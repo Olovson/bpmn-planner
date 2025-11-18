@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.40.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:process id="mortgage" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:startEvent id="Event_0ssbeto">
+      <bpmn:documentation>
+## Start Mortgage Process
+
+Initiates the complete mortgage application and approval workflow.
+- Input: Customer mortgage application request
+- Trigger: New mortgage application submission
+- Outcome: Begins application collection and evaluation process
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_0fm79a0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:callActivity id="application" name="Application">
+      <bpmn:documentation>
+## Application Collection
+
+Executes the application collection subprocess to gather customer information.
+- Input: Mortgage application request and customer identification
+- Sub-process: Complete application data collection workflow
+- Outcome: Validated application data ready for credit evaluation
+      </bpmn:documentation>
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_0fm79a0</bpmn:incoming>
+      <bpmn:outgoing>Flow_0gwr9bl</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:endEvent id="event-application-cancelled" name="Cancelled">
+      <bpmn:documentation>
+## Application Cancelled
+
+Terminates the mortgage process when application collection is aborted.
+- Input: Application aborted error from application subprocess
+- Message event: Notifies external systems of application cancellation
+- Outcome: Mortgage process ends with cancelled status
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_1bgnyx4</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1tt9csl" />
+    </bpmn:endEvent>
+    <bpmn:intermediateThrowEvent id="event-application-evaluation-complete" name="Application completed">
+      <bpmn:documentation>
+## Application Evaluation Complete
+
+Signals successful completion of application collection phase.
+- Input: Completed application data from application subprocess
+- External message: Notifies systems that application is ready for credit evaluation
+- Outcome: Triggers credit evaluation subprocess initiation
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_0gwr9bl</bpmn:incoming>
+      <bpmn:outgoing>Flow_05h03ml</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0kwr934" camunda:type="external" camunda:topic="event-application-evaluation-complete" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:callActivity id="credit-evaluation" name="Credit Evaluation">
+      <bpmn:documentation>
+## Credit Evaluation
+
+Executes comprehensive credit evaluation subprocess for the application.
+- Input: Complete application data from application collection
+- Sub-process: Automated and manual credit assessment workflow
+- Outcome: Credit evaluation results and risk assessment
+      </bpmn:documentation>
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_05h03ml</bpmn:incoming>
+      <bpmn:outgoing>Flow_0l53m32</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:exclusiveGateway id="Gateway_0kd315e">
+      <bpmn:documentation>
+## Credit Evaluation Completion Convergence
+
+Converges different credit evaluation completion paths into unified flow.
+- Input: Manual evaluation, appeal approval, or automatic approval results
+- Routing logic: Consolidates various evaluation completion scenarios
+- Outcome: Unified credit evaluation completion for decision making
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_0gty4wi</bpmn:incoming>
+      <bpmn:incoming>Flow_0h4stlf</bpmn:incoming>
+      <bpmn:outgoing>Flow_01vw629</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:intermediateThrowEvent id="event-credit-evaluation-complete" name="Credit evaluation completed">
+      <bpmn:documentation>
+## Credit Evaluation Complete
+
+Signals successful completion of all credit evaluation activities.
+- Input: Consolidated credit evaluation results from all evaluation paths
+- External message: Notifies systems that credit evaluation is finalized
+- Outcome: Triggers credit decision subprocess initiation
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_01vw629</bpmn:incoming>
+      <bpmn:outgoing>Flow_0hcni0f</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0euerg1" camunda:type="external" camunda:topic="event-credit-evaluation-complete" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:callActivity id="credit-decision" name="Credit Decision">
+      <bpmn:documentation>
+## Credit Decision
+
+Executes credit decision subprocess to make final lending determination.
+- Input: Complete credit evaluation results and risk assessment
+- Sub-process: Final credit decision logic and terms determination
+- Outcome: Approved/rejected decision with loan terms or rejection reasons
+      </bpmn:documentation>
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_0hcni0f</bpmn:incoming>
+      <bpmn:outgoing>Flow_18ykhk9</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:endEvent id="event-application-evaluated" name="Done">
+      <bpmn:documentation>
+## Mortgage Application Completed
+
+Successfully completes the entire mortgage application process.
+- Input: Confirmation of successful disbursement completion
+- External message: Notifies systems of completed mortgage application
+- Outcome: Mortgage process fully completed with funds disbursed
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_18ykhk9</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0v16cg2" camunda:type="external" camunda:topic="event-application-evaluated" />
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="Event_0xyvwkm" name="Application aborted" attachedToRef="application">
+      <bpmn:documentation>
+## Application Aborted Event
+
+Captures application abortion during the application collection phase.
+- Input: Error condition from application subprocess indicating abort
+- Error handling: Catches application-aborted error from subprocess
+- Outcome: Terminates mortgage process with application cancelled status
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_1bgnyx4</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_1mgeofn" errorRef="Error_1y4topa" camunda:errorCodeVariable="application-aborted" camunda:errorMessageVariable="application-aborted" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Event_0y9br1l" attachedToRef="credit-decision">
+      <bpmn:documentation>
+## Reevaluation Required Event
+
+Captures escalation from credit decision requiring reevaluation.
+- Input: Escalation from credit decision subprocess for reevaluation
+- Escalation handling: Catches reevaluation-required escalation
+- Outcome: Routes to reevaluation workflow for additional assessment
+      </bpmn:documentation>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_1c4ylq3" escalationRef="Escalation_26ogfaj" camunda:escalationCodeVariable="reevaluation-required" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_0fm79a0" sourceRef="Event_0ssbeto" targetRef="application" />
+    <bpmn:sequenceFlow id="Flow_1bgnyx4" sourceRef="Event_0xyvwkm" targetRef="event-application-cancelled" />
+    <bpmn:sequenceFlow id="Flow_0l53m32" sourceRef="credit-evaluation" targetRef="event-credit-evaluation-completed" />
+    <bpmn:sequenceFlow id="Flow_01vw629" sourceRef="Gateway_0kd315e" targetRef="event-credit-evaluation-complete" />
+    <bpmn:sequenceFlow id="Flow_0hcni0f" sourceRef="event-credit-evaluation-complete" targetRef="credit-decision" />
+    <bpmn:sequenceFlow id="Flow_05h03ml" sourceRef="event-application-evaluation-complete" targetRef="credit-evaluation" />
+    <bpmn:exclusiveGateway id="automatic-decision" name="Automatic decision">
+      <bpmn:documentation>
+## Automatic Credit Decision Gateway
+
+Routes applications based on automated credit evaluation results.
+- Input: Credit evaluation completion results and scoring
+- Decision logic: Green (auto-approve), Yellow (manual review), Red (likely reject)
+- Outcome: Directs to appropriate processing path based on risk assessment
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_1gie2jo</bpmn:incoming>
+      <bpmn:outgoing>red</bpmn:outgoing>
+      <bpmn:outgoing>green</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_0h4stlf" sourceRef="event-automatically-approved" targetRef="Gateway_0kd315e" />
+    <bpmn:intermediateThrowEvent id="event-automatically-approved" name="Application autmatically approved">
+      <bpmn:documentation>
+## Application Automatically Approved
+
+Signals automatic approval of application based on low-risk assessment.
+- Input: Green decision from automatic credit evaluation
+- Message event: Notifies systems of automatic approval
+- Outcome: Bypasses manual review and proceeds to credit evaluation completion
+      </bpmn:documentation>
+      <bpmn:incoming>green</bpmn:incoming>
+      <bpmn:outgoing>Flow_0h4stlf</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_19b3y3r" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:eventBasedGateway id="Gateway_1g9xok4">
+      <bpmn:documentation>
+## Appeal or Timeout Gateway
+
+Waits for customer appeal or timeout expiration for rejected applications.
+- Input: Red decision indicating likely rejection
+- Event-based choice: Customer appeal request or 30-day timeout
+- Outcome: Either appeal processing or automatic rejection
+      </bpmn:documentation>
+      <bpmn:incoming>red</bpmn:incoming>
+      <bpmn:outgoing>Flow_1hgxejo</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1783i2r</bpmn:outgoing>
+    </bpmn:eventBasedGateway>
+    <bpmn:sequenceFlow id="red" name="Red" sourceRef="automatic-decision" targetRef="Gateway_1g9xok4" />
+    <bpmn:intermediateCatchEvent id="event-appeal" name="Appeal">
+      <bpmn:documentation>
+## Customer Appeal Request
+
+Captures customer appeal request for rejected application.
+- Input: Customer appeal message within timeout period
+- Message event: Receives appeal request from customer
+- Outcome: Initiates appeal handling process for manual review
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_1hgxejo</bpmn:incoming>
+      <bpmn:outgoing>Flow_181p1lz</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0kicy97" messageRef="Message_3g9un62" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_1hgxejo" sourceRef="Gateway_1g9xok4" targetRef="event-appeal" />
+    <bpmn:intermediateCatchEvent id="event-appeal-timeout" name="30 days">
+      <bpmn:documentation>
+## Appeal Timeout Event
+
+Captures 30-day timeout period for customer appeal requests.
+- Input: Timer starts when application enters red decision state
+- Timer event: 30-day duration for customer appeal window
+- Outcome: Automatically rejects application if no appeal received
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_1783i2r</bpmn:incoming>
+      <bpmn:outgoing>Flow_1iwfpvp</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_1ehl6gh">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P30D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_1783i2r" sourceRef="Gateway_1g9xok4" targetRef="event-appeal-timeout" />
+    <bpmn:sequenceFlow id="Flow_1iwfpvp" sourceRef="event-appeal-timeout" targetRef="event-application-automatically-rejected" />
+    <bpmn:endEvent id="event-application-automatically-rejected" name="Application automatically rejected">
+      <bpmn:incoming>Flow_1iwfpvp</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0p7sqdk" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="green" name="Green" sourceRef="automatic-decision" targetRef="event-automatically-approved" />
+    <bpmn:callActivity id="appeal-handling-manual" name="Appeal handling">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_181p1lz</bpmn:incoming>
+      <bpmn:outgoing>Flow_1auukfb</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:sequenceFlow id="Flow_181p1lz" sourceRef="event-appeal" targetRef="appeal-handling-manual" />
+    <bpmn:exclusiveGateway id="appeal-result">
+      <bpmn:incoming>Flow_1auukfb</bpmn:incoming>
+      <bpmn:outgoing>accepted</bpmn:outgoing>
+      <bpmn:outgoing>rejected</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_1auukfb" sourceRef="appeal-handling-manual" targetRef="appeal-result" />
+    <bpmn:sequenceFlow id="accepted" sourceRef="appeal-result" targetRef="event-appeal-application-approved" />
+    <bpmn:sequenceFlow id="rejected" sourceRef="appeal-result" targetRef="event-appeal-application-rejected" />
+    <bpmn:endEvent id="event-appeal-application-rejected" name="Application manually rejected">
+      <bpmn:incoming>rejected</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1iu8pva" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0gty4wi" sourceRef="event-appeal-application-approved" targetRef="Gateway_0kd315e" />
+    <bpmn:intermediateThrowEvent id="event-appeal-application-approved" name="Application manually approved">
+      <bpmn:incoming>accepted</bpmn:incoming>
+      <bpmn:outgoing>Flow_0gty4wi</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0d2f9mm" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:sequenceFlow id="Flow_0gwr9bl" sourceRef="application" targetRef="event-application-evaluation-complete" />
+    <bpmn:sequenceFlow id="Flow_1gie2jo" sourceRef="event-credit-evaluation-completed" targetRef="automatic-decision" />
+    <bpmn:intermediateThrowEvent id="event-credit-evaluation-completed" name="Credit evaluation completed">
+      <bpmn:incoming>Flow_0l53m32</bpmn:incoming>
+      <bpmn:outgoing>Flow_1gie2jo</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1fue7uu" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:endEvent id="event-credit-evaluation-cancelled" name="Cancelled">
+      <bpmn:incoming>Flow_0pn7eyz</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_156n1gl" />
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="Event_0roerge" name="Credit evaluation aborted" attachedToRef="credit-evaluation">
+      <bpmn:outgoing>Flow_0pn7eyz</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_16fe38t" errorRef="Error_030920h" camunda:errorCodeVariable="credit-evaluation-aborted" camunda:errorMessageVariable="credit-evaluation-aborted" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_0pn7eyz" sourceRef="Event_0roerge" targetRef="event-credit-evaluation-cancelled" />
+    <bpmn:subProcess id="Activity_01lq9v3" name="Escalation" triggeredByEvent="true">
+      <bpmn:startEvent id="escalations-start" isInterrupting="false">
+        <bpmn:outgoing>Flow_0232we1</bpmn:outgoing>
+        <bpmn:escalationEventDefinition id="EscalationEventDefinition_0jr7jfa" />
+      </bpmn:startEvent>
+      <bpmn:endEvent id="Event_1ex2o5r">
+        <bpmn:incoming>Flow_0232we1</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_0232we1" sourceRef="escalations-start" targetRef="Event_1ex2o5r" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_18ykhk9" sourceRef="credit-decision" targetRef="event-application-evaluated" />
+  </bpmn:process>
+  <bpmn:escalation id="Escalation_1v6p9v7" name="application-rejected" escalationCode="application-rejected" />
+  <bpmn:escalation id="Escalation_0gwy918" name="application-rejected" escalationCode="application-rejected" />
+  <bpmn:escalation id="Escalation_1hx638b" name="application-rejected" escalationCode="application-rejected" />
+  <bpmn:escalation id="Escalation_1q0zgdt" name="application-rejected" escalationCode="application-rejected" />
+  <bpmn:error id="Error_1y4topa" name="application-aborted" errorCode="application-aborted" />
+  <bpmn:error id="Error_0wtalyh" name="kyc-aborted" errorCode="kyc-aborted" />
+  <bpmn:error id="Error_030920h" name="credit-evaluation-aborted" errorCode="credit-evaluation-aborted" />
+  <bpmn:escalation id="Escalation_26ogfaj" name="reevaluation-required" escalationCode="reevaluation-required" />
+  <bpmn:escalation id="Escalation_2bbe9hr" name="recalculation-needed" escalationCode="recalculation-needed" />
+  <bpmn:message id="Message_3g9un62" name="event-appeal-requested" />
+  <bpmn:escalation id="Escalation_3v2lrul" name="proof-of-finance-rejected" escalationCode="proof-of-finance-rejected" />
+  <bpmn:escalation id="Escalation_3vubi88" name="event-offer-rejected" escalationCode="event-offer-rejected" />
+  <bpmn:message id="Message_3blc0qh" name="event-advance-paid-out" />
+  <bpmn:escalation id="Escalation_1oa001l" name="event-trigger-advance" escalationCode="event-trigger-advance" />
+  <bpmn:message id="Message_0j968r1" name="update-party" />
+  <bpmn:escalation id="Escalation_0kt74qc" name="consent-rejected" escalationCode="consent-rejected" />
+  <bpmn:escalation id="Escalation_1h4f5o3" name="terminate" escalationCode="terminate" />
+  <bpmn:escalation id="Escalation_1lgt8jd" name="terminate" escalationCode="terminate" />
+  <bpmn:escalation id="Escalation_0r2qfph" name="escalation-update-landmark" escalationCode="escalation-update-landmark" />
+  <bpmn:error id="Error_05hqs6l" name="rejected-kyc-evaluation" errorCode="rejected-kyc-evaluation" camunda:errorMessage="rejected-kyc-evaluation" />
+  <bpmn:error id="Error_0z2r5b4" name="Error_1kro955" errorCode="terminate" camunda:errorMessage="terminate" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="mortgage">
+      <bpmndi:BPMNShape id="Event_0ssbeto_di" bpmnElement="Event_0ssbeto">
+        <dc:Bounds x="152" y="362" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_16rwxy5_di" bpmnElement="application">
+        <dc:Bounds x="250" y="340" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1cn4muq_di" bpmnElement="event-application-cancelled" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="332" y="485" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="326" y="528" width="49" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1lf2sno_di" bpmnElement="event-application-evaluation-complete">
+        <dc:Bounds x="472" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="464" y="405" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_16bnskh_di" bpmnElement="credit-evaluation">
+        <dc:Bounds x="617" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0kd315e_di" bpmnElement="Gateway_0kd315e" isMarkerVisible="true">
+        <dc:Bounds x="1382" y="355" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_17c905q_di" bpmnElement="event-credit-evaluation-complete">
+        <dc:Bounds x="1499" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1476" y="405" width="83" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_065g0i6_di" bpmnElement="credit-decision">
+        <dc:Bounds x="1610" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_15wo982_di" bpmnElement="automatic-decision" isMarkerVisible="true">
+        <dc:Bounds x="985" y="355" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="935" y="326" width="49" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0jy4v0w_di" bpmnElement="event-automatically-approved">
+        <dc:Bounds x="1192" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1180" y="405" width="59" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1r19m3b_di" bpmnElement="Gateway_1g9xok4">
+        <dc:Bounds x="985" y="525" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_04a2off_di" bpmnElement="event-appeal">
+        <dc:Bounds x="1112" y="532" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1112" y="508" width="35" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0osm00p_di" bpmnElement="event-appeal-timeout">
+        <dc:Bounds x="992" y="632" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="940" y="653" width="39" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1avhmsm_di" bpmnElement="event-application-automatically-rejected" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="992" y="732" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="978" y="775" width="65" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1cyfby5" bpmnElement="appeal-handling-manual">
+        <dc:Bounds x="1230" y="510" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1v3nww5_di" bpmnElement="appeal-result" isMarkerVisible="true">
+        <dc:Bounds x="1382" y="525" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0ncdtkf_di" bpmnElement="event-appeal-application-rejected" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="1389" y="632" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1364" y="675" width="87" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0a3uryp_di" bpmnElement="event-appeal-application-approved">
+        <dc:Bounds x="1389" y="452" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1333" y="437" width="54" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ivf343_di" bpmnElement="event-credit-evaluation-completed">
+        <dc:Bounds x="832" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="809" y="405" width="83" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0xc7mxb_di" bpmnElement="event-credit-evaluation-cancelled" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="699" y="485" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="693" y="528" width="49" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1x0wky9_di" bpmnElement="event-application-evaluated">
+        <dc:Bounds x="1792" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1798" y="405" width="27" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_13iqzua_di" bpmnElement="Activity_01lq9v3" isExpanded="true">
+        <dc:Bounds x="149" y="80" width="302" height="170" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_02iz8ww_di" bpmnElement="escalations-start">
+        <dc:Bounds x="189" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ex2o5r_di" bpmnElement="Event_1ex2o5r">
+        <dc:Bounds x="371" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0232we1_di" bpmnElement="Flow_0232we1">
+        <di:waypoint x="225" y="180" />
+        <di:waypoint x="371" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_0iu5kel_di" bpmnElement="Event_0roerge">
+        <dc:Bounds x="699" y="402" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="625" y="441" width="83" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0gycn63_di" bpmnElement="Event_0y9br1l">
+        <dc:Bounds x="1592" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1783" y="276" width="68" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1v4wwyw_di" bpmnElement="Event_0xyvwkm">
+        <dc:Bounds x="332" y="402" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="357" y="443" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0fm79a0_di" bpmnElement="Flow_0fm79a0">
+        <di:waypoint x="188" y="380" />
+        <di:waypoint x="250" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1bgnyx4_di" bpmnElement="Flow_1bgnyx4">
+        <di:waypoint x="350" y="438" />
+        <di:waypoint x="350" y="485" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0l53m32_di" bpmnElement="Flow_0l53m32">
+        <di:waypoint x="717" y="380" />
+        <di:waypoint x="832" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_01vw629_di" bpmnElement="Flow_01vw629">
+        <di:waypoint x="1432" y="380" />
+        <di:waypoint x="1499" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0hcni0f_di" bpmnElement="Flow_0hcni0f">
+        <di:waypoint x="1535" y="380" />
+        <di:waypoint x="1610" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05h03ml_di" bpmnElement="Flow_05h03ml">
+        <di:waypoint x="508" y="380" />
+        <di:waypoint x="617" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0h4stlf_di" bpmnElement="Flow_0h4stlf">
+        <di:waypoint x="1228" y="380" />
+        <di:waypoint x="1382" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1y6htwp_di" bpmnElement="red">
+        <di:waypoint x="1010" y="405" />
+        <di:waypoint x="1010" y="525" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1019" y="443" width="21" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1hgxejo_di" bpmnElement="Flow_1hgxejo">
+        <di:waypoint x="1035" y="550" />
+        <di:waypoint x="1112" y="550" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1783i2r_di" bpmnElement="Flow_1783i2r">
+        <di:waypoint x="1010" y="575" />
+        <di:waypoint x="1010" y="632" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1iwfpvp_di" bpmnElement="Flow_1iwfpvp">
+        <di:waypoint x="1010" y="668" />
+        <di:waypoint x="1010" y="732" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_06cl4as_di" bpmnElement="green">
+        <di:waypoint x="1035" y="380" />
+        <di:waypoint x="1192" y="380" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1099" y="362" width="31" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_181p1lz_di" bpmnElement="Flow_181p1lz">
+        <di:waypoint x="1148" y="550" />
+        <di:waypoint x="1230" y="550" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1auukfb_di" bpmnElement="Flow_1auukfb">
+        <di:waypoint x="1330" y="550" />
+        <di:waypoint x="1382" y="550" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_06xmh4c_di" bpmnElement="accepted">
+        <di:waypoint x="1407" y="525" />
+        <di:waypoint x="1407" y="488" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1br8s2s_di" bpmnElement="rejected">
+        <di:waypoint x="1407" y="575" />
+        <di:waypoint x="1407" y="632" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0gty4wi_di" bpmnElement="Flow_0gty4wi">
+        <di:waypoint x="1407" y="452" />
+        <di:waypoint x="1407" y="405" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0gwr9bl_di" bpmnElement="Flow_0gwr9bl">
+        <di:waypoint x="350" y="380" />
+        <di:waypoint x="472" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1gie2jo_di" bpmnElement="Flow_1gie2jo">
+        <di:waypoint x="868" y="380" />
+        <di:waypoint x="985" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0pn7eyz_di" bpmnElement="Flow_0pn7eyz">
+        <di:waypoint x="717" y="438" />
+        <di:waypoint x="717" y="485" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18ykhk9_di" bpmnElement="Flow_18ykhk9">
+        <di:waypoint x="1710" y="380" />
+        <di:waypoint x="1792" y="380" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

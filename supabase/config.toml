@@ -1,0 +1,16 @@
+project_id = "wguequebmkccmdcrtlwb"
+
+[functions.submit-test-results]
+verify_jwt = false
+
+[functions.list-bpmn-files]
+verify_jwt = false
+
+[functions.upload-bpmn-file]
+verify_jwt = false
+
+[functions.delete-bpmn-file]
+verify_jwt = false
+
+[functions.sync-bpmn-from-github]
+verify_jwt = false
