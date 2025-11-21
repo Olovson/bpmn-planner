@@ -58,6 +58,7 @@ import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { buildDocStoragePaths, buildTestStoragePaths } from '@/lib/artifactPaths';
+import { isPGRST204Error, getSchemaErrorMessage } from '@/lib/schemaVerification';
 
 const flattenHierarchyNodes = (node: any): any[] => {
   if (!node) return [];
@@ -143,7 +144,7 @@ export default function BpmnFileManager() {
   const [cancelGeneration, setCancelGeneration] = useState(false);
   const [llmMode, setLlmMode] = useState<LlmGenerationMode>(() => getLlmGenerationMode());
   const llmModeDetails = getLlmModeConfig(llmMode);
-  type GenerationMode = 'local' | LlmGenerationMode; // 'local' | 'fast' | 'slow'
+  type GenerationMode = 'local' | LlmGenerationMode; // 'local' | 'slow'
   const [generationMode, setGenerationMode] = useState<GenerationMode>('local');
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
@@ -197,7 +198,7 @@ export default function BpmnFileManager() {
   type ArtifactStatus = 'missing' | 'complete' | 'partial' | 'error';
   interface ArtifactSnapshot {
     status: ArtifactStatus;
-    mode: 'local' | 'fast' | 'slow' | null;
+    mode: 'local' | 'slow' | null;
     generatedAt: string | null;
     jobId: string | null;
     outdated: boolean;
@@ -209,7 +210,7 @@ export default function BpmnFileManager() {
     hierarchy: ArtifactSnapshot;
     latestJob: {
       jobId: string;
-      mode: 'local' | 'fast' | 'slow' | null;
+      mode: 'local' | 'slow' | null;
       status: GenerationStatus;
       finishedAt: string | null;
       startedAt: string | null;
@@ -359,7 +360,7 @@ export default function BpmnFileManager() {
   const createGenerationJob = async (
     fileName: string,
     operation: GenerationOperation,
-    mode?: 'local' | 'fast' | 'slow',
+    mode?: 'local' | 'slow',
   ) => {
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
@@ -603,7 +604,7 @@ export default function BpmnFileManager() {
 
   const handleGenerateArtifacts = async (
     file: BpmnFile,
-    mode: GenerationMode = 'fast',
+    mode: GenerationMode = 'slow',
     scope: GenerationScope = 'file',
   ) => {
     if (file.file_type !== 'bpmn') {
@@ -636,7 +637,7 @@ export default function BpmnFileManager() {
     let docUploadsCompleted = 0;
     resetGenerationState();
     const effectiveLlmMode: LlmGenerationMode | null = !isLocalMode
-      ? (mode === 'fast' ? 'fast' : 'slow')
+      ? 'slow'
       : null;
     if (!isLocalMode && effectiveLlmMode) {
       persistLlmGenerationMode(effectiveLlmMode);
@@ -804,7 +805,7 @@ export default function BpmnFileManager() {
       // Generera alla artefakter med hierarkisk analys
       const generationSourceLabel = isLocalMode
         ? 'local'
-        : mode === 'fast'
+        : false
         ? 'llm-fast'
         : 'llm-slow';
       const result = await generateAllFromBpmnWithGraph(
@@ -1188,24 +1189,94 @@ export default function BpmnFileManager() {
         }
 
         if (testLinksToInsert.length > 0) {
-            const linksWithMode = testLinksToInsert.map((link) => ({
-              ...link,
-              mode: effectiveLlmMode ?? (isLocalMode ? 'local' : null),
-            }));
-            const { error: testError } = await supabase
-              .from('node_test_links')
-              .upsert(linksWithMode, {
-                onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
-                ignoreDuplicates: false,
-              });
+          const linksWithMode = testLinksToInsert.map((link) => ({
+            ...link,
+            mode: effectiveLlmMode ?? (isLocalMode ? 'local' : null),
+          }));
 
-            if (testError) {
-              console.error('Save test links error:', testError);
-            } else {
-              invalidateArtifactQueries(queryClient);
+          let testLinksData: unknown = null;
+          let testError: unknown = null;
+
+          // Första försök: upsert med mode-kolumn (normalläget när schemat är uppdaterat)
+          const firstAttempt = await supabase
+            .from('node_test_links')
+            .upsert(linksWithMode, {
+              onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
+              ignoreDuplicates: false,
+            })
+            .select();
+
+          if (firstAttempt.error) {
+            testError = firstAttempt.error;
+
+            // Om det är ett schema-cache / saknad kolumn-fel (PGRST204) försöker vi
+            // en gång till utan mode-kolumn så att lokal utveckling kan fortsätta.
+            if (isPGRST204Error(firstAttempt.error)) {
+              console.warn(
+                '[Generation] node_test_links.mode saknas i aktivt schema eller cache – försöker fallback-upsert utan mode. ' +
+                  'För full funktionalitet, kör Supabase-migrationerna (t.ex. supabase db reset eller supabase migration up) enligt README.'
+              );
+
+              const linksWithoutMode = testLinksToInsert.map((link) => ({
+                bpmn_file: link.bpmn_file,
+                bpmn_element_id: link.bpmn_element_id,
+                test_file_path: link.test_file_path,
+                test_name: link.test_name,
+              }));
+
+              const fallbackAttempt = await supabase
+                .from('node_test_links')
+                .upsert(linksWithoutMode, {
+                  onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
+                  ignoreDuplicates: false,
+                })
+                .select();
+
+              if (fallbackAttempt.error) {
+                testError = fallbackAttempt.error;
+              } else {
+                testLinksData = fallbackAttempt.data;
+                testError = null;
+              }
             }
-            checkCancellation();
+          } else {
+            testLinksData = firstAttempt.data;
+            testError = null;
           }
+
+          if (testError) {
+            console.error('[Generation] Save test links error:', testError);
+
+            if (isPGRST204Error(testError)) {
+              // Testfilerna är genererade, men länkning till databasen misslyckades på grund av schema-problem.
+              toast({
+                title: 'Tester genererade – men länkning till DB misslyckades',
+                description:
+                  'Testfilerna har skapats, men kunde inte kopplas i tabellen node_test_links. ' +
+                  'Om du kör lokalt och nyligen ändrat DB-schemat: kör supabase-migrationerna (t.ex. supabase db reset) enligt README.',
+                variant: 'destructive',
+                duration: 10000,
+              });
+            } else {
+              toast({
+                title: 'Kunde inte spara testlänkar',
+                description:
+                  (testError as { message?: string }).message ||
+                  'Okänt fel vid sparning av testlänkar',
+                variant: 'destructive',
+              });
+            }
+          } else {
+            console.log(
+              `[Generation] Sparade ${(testLinksData as { length?: number } | null)?.length ?? testLinksToInsert.length
+              } testlänkar för ${file.file_name}`
+            );
+          }
+
+          // Invalidera cache oavsett om det fanns fel eller inte (för att visa aktuell status)
+          invalidateArtifactQueries(queryClient);
+          checkCancellation();
+        }
         }
       await ensureJobTotal(jobTotalCount + result.docs.size);
 
@@ -1341,7 +1412,7 @@ export default function BpmnFileManager() {
             tests: totalTestCount,
             docs: totalDocCount,
             filesAnalyzed,
-            mode: isLocalMode ? 'local' : (mode as 'fast' | 'slow'),
+            mode: isLocalMode ? 'local' : 'slow',
             missingDependencies,
             skippedSubprocesses: skippedList,
           },
@@ -1350,12 +1421,15 @@ export default function BpmnFileManager() {
 
       // Refresh data (structure + artifacts) and give UI some time to re-render
       invalidateStructureQueries(queryClient);
+      invalidateArtifactQueries(queryClient);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['bpmn-files'] }),
         queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
+        queryClient.invalidateQueries({ queryKey: ['file-artifact-coverage'] }),
         queryClient.invalidateQueries({ queryKey: ['all-dor-dod-criteria'] }),
         queryClient.invalidateQueries({ queryKey: ['process-tree'] }),
         queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
+        queryClient.invalidateQueries({ queryKey: ['node-test-links'] }),
       ]);
       await new Promise(resolve => setTimeout(resolve, 1200));
     } catch (error) {
@@ -1425,7 +1499,7 @@ export default function BpmnFileManager() {
 
     toast({
       title: 'Startar generering',
-      description: `Genererar artefakter för ${selectedFile.file_name} med ${generationMode === 'local' ? 'Local' : generationMode === 'fast' ? 'Fast LLM' : 'Slow LLM'} läge.`,
+      description: `Genererar artefakter för ${selectedFile.file_name} med ${generationMode === 'local' ? 'Local' : 'Slow LLM'} läge.`,
     });
 
     await handleGenerateArtifacts(selectedFile, generationMode, 'file');
@@ -1867,11 +1941,7 @@ export default function BpmnFileManager() {
                 <Sparkles className="w-4 h-4 text-primary" />
                 <h2 className="text-lg font-semibold">Genereringsläge</h2>
                 <Badge variant="outline">
-                  {generationMode === 'local'
-                    ? 'Local'
-                    : generationMode === 'fast'
-                    ? 'Fast LLM'
-                    : 'Slow LLM'}
+                  {generationMode === 'local' ? 'Local' : 'Slow LLM'}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -1938,7 +2008,7 @@ export default function BpmnFileManager() {
                 variant={generationMode === option.value ? 'default' : 'outline'}
                 className="gap-2"
                 onClick={() => {
-                  // option.value är 'fast' | 'slow'
+                  // option.value är 'slow'
                   setLlmMode(option.value as LlmGenerationMode);
                   setGenerationMode(option.value as GenerationMode);
                 }}
@@ -2416,14 +2486,12 @@ export default function BpmnFileManager() {
                         mode?: string;
                         skippedSubprocesses?: string[];
                       };
-                      const modeLabel =
-                        job.mode === 'fast'
-                          ? 'Fast LLM'
-                          : job.mode === 'slow'
-                          ? 'Slow LLM'
-                          : job.mode === 'local'
-                          ? 'Local'
-                          : 'Okänt';
+                        const modeLabel =
+                          job.mode === 'slow'
+                            ? 'Slow LLM'
+                            : job.mode === 'local'
+                            ? 'Local'
+                            : 'Okänt';
                       const statusLabel = formatStatusLabel(job.status);
                       return (
                         <>
@@ -2597,9 +2665,7 @@ export default function BpmnFileManager() {
                                 return 'Ingen dokumentation genererad ännu.';
                               }
                               const modeLabel =
-                                snap.mode === 'fast'
-                                  ? 'Fast LLM'
-                                  : snap.mode === 'slow'
+                                snap.mode === 'slow'
                                   ? 'Slow LLM'
                                   : snap.mode === 'local'
                                   ? 'Local'
@@ -2625,9 +2691,7 @@ export default function BpmnFileManager() {
                                 return 'Inga tester genererade ännu.';
                               }
                               const modeLabel =
-                                snap.mode === 'fast'
-                                  ? 'Fast LLM'
-                                  : snap.mode === 'slow'
+                                snap.mode === 'slow'
                                   ? 'Slow LLM'
                                   : snap.mode === 'local'
                                   ? 'Local'
@@ -2653,9 +2717,7 @@ export default function BpmnFileManager() {
                                 return 'Ingen hierarki/hierarkiska tester genererade ännu.';
                               }
                               const modeLabel =
-                                snap.mode === 'fast'
-                                  ? 'Fast LLM'
-                                  : snap.mode === 'slow'
+                                snap.mode === 'slow'
                                   ? 'Slow LLM'
                                   : snap.mode === 'local'
                                   ? 'Local'
@@ -2680,9 +2742,7 @@ export default function BpmnFileManager() {
                       (() => {
                         const latest = artifactStatusByFile.get(file.file_name)!.latestJob!;
                         const modeLabel =
-                          latest.mode === 'fast'
-                            ? 'Fast LLM'
-                            : latest.mode === 'slow'
+                          latest.mode === 'slow'
                             ? 'Slow LLM'
                             : latest.mode === 'local'
                             ? 'Local'

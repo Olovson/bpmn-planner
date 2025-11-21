@@ -44,11 +44,8 @@ Man kan sedan alltid **återgenerera** dokumentationen om man önskar byta modus
 #### **1. Lokal generering (snabbast)**
 Bygger dokument helt utan LLM – förutsägbart och snabbt, baserat på mallar och den deterministiska BPMN-hierarkin.
 
-#### **2. ChatGPT – Fast Mode**
-Snabb LLM-förbättring för tydlig och användbar dokumentation. Mer innehåll än lokalt läge, men snabbare än Deep Mode.
-
-#### **3. ChatGPT – Deep Mode (mest utfyllande & detaljerad)**
-Tar längst tid och genererar:
+#### **2. ChatGPT – Slow LLM Mode (full kvalitet)**
+Använder LLM för att generera rikare innehåll:
 - Mer komplett affärslogik
 - Djupare produkt- och UX-innehåll
 - Rikare testscenarier
@@ -65,7 +62,7 @@ BPMN Planner genererar även:
 - **Playwright-testfiler** per nod eller per processträdgren  
 - **Testscenarier och testlogik** kopplade till centrala noder  
 - **Node tests** som visas direkt i UI  
-- **LLM-genererade testfall** i Fast eller Deep Mode  
+- **LLM-genererade testfall** i Slow LLM Mode  
 - Debug-kopior av rå-LLM sparas i `llm-debug/tests/`
 
 ---
@@ -106,9 +103,47 @@ npm install
 ```
 
 ## 1. Starta Supabase
+
+**Kontrollera om Supabase körs:**
 ```bash
-supabase start
+npm run check:supabase-status  # Visar om Supabase körs eller inte
+# eller
+supabase status  # Visar detaljerad status om Supabase körs
 ```
+
+**Starta Supabase (guide):**
+```bash
+npm run start:supabase  # Visar instruktioner för att starta Supabase
+```
+
+**Starta Supabase manuellt:**
+```bash
+supabase start  # Startar Supabase lokalt
+```
+
+**⚠️ Om du ser felmeddelandet "supabase start is not running" eller "open supabase/.temp/profile: no such file or directory":**
+
+Detta betyder att Supabase CLI inte hittar din lokala projektprofil och faller tillbaka till remote-projektet. Följ dessa steg:
+
+```bash
+# 1. Se guide för att fixa profil-problemet
+npm run fix:supabase-profile
+
+# 2. Följ instruktionerna i guiden, eller kör manuellt:
+supabase start                    # Återskapar projektprofilen
+supabase db reset                 # Resetar databasen
+supabase start                    # Startar igen (om den inte redan startade)
+npm run check:db-schema          # Verifierar att schema är korrekt
+```
+
+**Viktigt:** Om du ser `PGRST204`-fel (schema-cache mismatch) efter att ha lagt till nya kolumner:
+```bash
+npm run supabase:reset  # Stoppar, resetar DB och startar om (rekommenderat)
+# eller
+npm run supabase:ensure-schema  # Säkerställer schema-sync vid start
+```
+
+Detta säkerställer att PostgREST läser om schemat och uppdaterar sin cache.
 
 ## 2. Miljövariabler (.env.local)
 ```
@@ -173,7 +208,7 @@ Checklista:
 
 1. **Files** – ladda upp BPMN/DMN eller synka GitHub.  
 2. **Build hierarchy** – bygger deterministisk struktur.  
-3. **Generate documentation** – välj Local / Fast / Deep Mode.  
+3. **Generate documentation** – välj Local eller Slow LLM Mode.  
 4. Visa resultat i **Viewer / Tree / List**.  
 5. Justera metadata i **Node Matrix**.  
 6. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
@@ -186,7 +221,7 @@ Checklista:
 
 - Deterministisk BPMN-hierarki  
 - Subprocess-matchning med confidence score  
-- Dokumentgenerering i tre lägen (Local / Fast / Deep)  
+- Dokumentgenerering i två lägen (Local / Slow LLM)  
 - Playwright-skapande automatiskt  
 - Node Dashboard  
 - SOT i Supabase Storage  
@@ -216,6 +251,25 @@ Checklista:
 - Process Tree 404 → starta edge-funktionen  
 - Tomma dokument → kör Generate igen  
 - Hierarki-problem → se diagnostics i Node Matrix
+
+## Schema-cache problem (PGRST204) & `supabase db reset`
+
+När du kör `supabase db reset` i det här projektet är det normalt att se:
+
+- `NOTICE: trigger "<namn>" for relation "<tabell>" does not exist, skipping`  
+  Dessa kommer från `DROP TRIGGER IF EXISTS ...` i migrations och betyder bara att det inte fanns någon trigger att ta bort – det är inte ett fel.
+- `WARN: no files matched pattern: supabase/seed.sql`  
+  Projektet använder ingen global `supabase/seed.sql` just nu; all viktig initiering sker via migrations. Den här varningen kan ignoreras.
+
+Så länge inga **ERROR**-rader visas och kommandot avslutas med något i stil med `Finished supabase db reset on branch main.`, är databasen korrekt återställd.
+
+Om du ser fel som `PGRST204: Could not find the 'mode' column` vid körning i appen:
+
+1. Kör `npm run check:db-schema` för att kontrollera att kolumnen `mode` finns på `generation_jobs` och `node_test_links` i den aktiva databasen.
+2. Om checken säger att schema/cachen är fel: kör `npm run supabase:reset` för att stoppa, resetta och starta om Supabase med aktuella migrationer.
+3. **Förhindra problem:** Använd `npm run supabase:ensure-schema` innan dev-server startar för att säkerställa schema-sync.
+
+Detta problem uppstår när PostgREST schema-cache är utdaterad efter migrationer.
 
 ---
 

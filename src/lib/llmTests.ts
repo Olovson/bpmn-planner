@@ -56,7 +56,6 @@ export async function generateTestSpecWithLlm(
 
   const mode = getLlmGenerationMode();
   const modeConfig = getLlmModeConfig(mode);
-  const isFast = mode === 'fast';
   const scenarioSchema = buildTestScenarioSchema(
     modeConfig.testMinScenarios,
     modeConfig.testMaxScenarios
@@ -83,31 +82,17 @@ export async function generateTestSpecWithLlm(
   try {
     let response: string | null = null;
     try {
-      if (isFast) {
-        const fastInstruction =
-          'FAST MODE: Returnera 1–2 testscenarier i JSON-format: {"scenarios":[{"name":"...","description":"...","expectedResult":"...","type":"happy-path|error-case|edge-case","steps":["..."]}]} utan extra text före eller efter JSON.';
-        const fastMessages: ChatCompletionMessageParam[] = [
-          { role: 'system', content: `${systemPrompt}\n\n${fastInstruction}` },
-          { role: 'user', content: userPrompt },
-        ];
-        response = await generateChatCompletion(fastMessages, {
-          temperature: modeConfig.testTemperature,
-          maxTokens: modeConfig.testMaxTokens,
-          model: 'fast',
-        });
-      } else {
-        response = await generateChatCompletion(messages, {
-          temperature: modeConfig.testTemperature,
-          maxTokens: modeConfig.testMaxTokens,
-          responseFormat: {
-            type: 'json_schema',
-            json_schema: scenarioSchema,
-          },
-          model: 'slow',
-        });
-      }
+      response = await generateChatCompletion(messages, {
+        temperature: modeConfig.testTemperature,
+        maxTokens: modeConfig.testMaxTokens,
+        responseFormat: {
+          type: 'json_schema',
+          json_schema: scenarioSchema,
+        },
+        model: 'slow',
+      });
     } catch (error) {
-      if (!isFast && isSchemaFormatError(error)) {
+      if (isSchemaFormatError(error)) {
         console.warn('JSON schema response_format unsupported, retrying with plain text:', error);
         response = await generateChatCompletion(messages, {
           temperature: modeConfig.testTemperature,
@@ -153,10 +138,6 @@ export async function generateTestSpecWithLlm(
     } catch (error) {
       console.warn('Failed to parse LLM test scenarios:', error);
       await saveLlmDebugArtifact('test', `${element.id || element.name || 'unknown'}-parse-error`, response);
-      if (isFast) {
-        const fallbackScenario: LlmTestScenario = buildFastFallbackScenario(element);
-        return [fallbackScenario];
-      }
       await logLlmFallback({
         eventType: 'test',
         status: 'error',
@@ -221,81 +202,3 @@ function sanitizeJsonResponse(raw: string): string {
   return result.trim();
 }
 
-function buildFastFallbackScenario(element: BpmnElement): LlmTestScenario {
-  const baseName = element.name || element.id || 'Nod';
-  const type = element.type || '';
-  const lowerType = type.toLowerCase();
-
-  if (lowerType.includes('usertask')) {
-    return {
-      name: `${baseName} – happy path`,
-      description: 'Användaren fyller i alla obligatoriska fält korrekt.',
-      expectedResult: 'Steget slutförs och processen går vidare till nästa nod.',
-      type: 'happy-path',
-      steps: [
-        'Öppna sidan eller vyn för uppgiften.',
-        'Fyll i alla obligatoriska fält med giltiga värden.',
-        'Spara eller skicka in formuläret.',
-        'Verifiera att nästa steg i processen visas utan felmeddelanden.',
-      ],
-    };
-  }
-
-  if (lowerType.includes('servicetask')) {
-    return {
-      name: `${baseName} – lyckat API-anrop`,
-      description: 'Systemet anropar tjänsten med giltiga data och får ett lyckat svar.',
-      expectedResult: 'Tjänsten returnerar ett 200/OK-svar och processen fortsätter.',
-      type: 'happy-path',
-      steps: [
-        'Initiera service tasken med giltig input payload.',
-        'Skicka API-anropet till konfigurerat endpoint.',
-        'Verifiera att svaret har status 200/OK.',
-        'Verifiera att responsdata lagras eller används enligt specifikation.',
-      ],
-    };
-  }
-
-  if (lowerType.includes('businessruletask')) {
-    return {
-      name: `${baseName} – regel godkänner`,
-      description: 'Inkommande data uppfyller reglernas kriterier.',
-      expectedResult: 'Regeln returnerar ett positivt utfall (t.ex. APPROVE/OK).',
-      type: 'happy-path',
-      steps: [
-        'Skapa en inputprofil som uppfyller alla regler och tröskelvärden.',
-        'Kör business rule mot denna inputprofil.',
-        'Verifiera att beslutsvärdet är APPROVE/OK.',
-        'Verifiera att eventuella flaggor/loggar sätts korrekt.',
-      ],
-    };
-  }
-
-  if (lowerType.includes('callactivity')) {
-    return {
-      name: `${baseName} – subprocess lyckas`,
-      description: 'Subprocessen körs klart utan fel.',
-      expectedResult: 'Call Activity slutförs och återvänder kontroll till huvudprocessen.',
-      type: 'happy-path',
-      steps: [
-        'Trigga Call Activity med en giltig input som matchar subprocessens förutsättningar.',
-        'Verifiera att subprocessens steg genomförs utan avbrott.',
-        'Verifiera att subprocessen returnerar ett lyckat resultat.',
-        'Verifiera att huvudprocessen fortsätter till nästa steg.',
-      ],
-    };
-  }
-
-  return {
-    name: `${baseName} – happy path`,
-    description: 'Grundläggande lyckat flöde för denna BPMN-nod.',
-    expectedResult: 'Steget slutförs utan fel och processen går vidare.',
-    type: 'happy-path',
-    steps: [
-      'Initiera noden med giltig input.',
-      'Utför de åtgärder som noden representerar.',
-      'Verifiera att inga fel uppstår.',
-      'Verifiera att nästa steg i processen triggas.',
-    ],
-  };
-}

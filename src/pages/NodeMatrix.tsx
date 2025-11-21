@@ -511,7 +511,7 @@ const NodeMatrix = () => {
                     </TableCell>
                     <TableCell>
                       {node.elementId && node.bpmnFile ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -523,21 +523,24 @@ const NodeMatrix = () => {
                             <FileCode className="h-3 w-3 shrink-0" />
                             <span>Testrapport</span>
                           </button>
-                          {node.testFilePath && (
+                          {node.testFilePath ? (
                             <a
                               href={getTestFileUrl(node.testFilePath)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                              className="text-xs text-primary hover:underline flex items-center gap-1 max-w-[200px] truncate"
                               onClick={(e) => e.stopPropagation()}
-                              title="Öppna testfil i ny flik"
+                              title={node.testFilePath}
                             >
+                              <span>{node.testFilePath}</span>
                               <ExternalLink className="h-3 w-3 shrink-0" />
                             </a>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Ingen fil</span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-xs text-muted-foreground">Ingen fil</span>
                       )}
                     </TableCell>
                     <TableCell>

@@ -2,8 +2,10 @@ import type { GenerationMode } from '@/pages/BpmnFileManager';
 
 export type ArtifactMode = GenerationMode | null | undefined;
 
-const normalizeMode = (mode: ArtifactMode): 'local' | 'fast' | 'slow' | null => {
-  if (mode === 'fast' || mode === 'slow' || mode === 'local') return mode;
+const normalizeMode = (mode: ArtifactMode): 'local' | 'slow' | null => {
+  if (mode === 'slow' || mode === 'local') return mode;
+  // Legacy: 'fast' behandlas som 'slow'
+  if (mode === 'fast') return 'slow';
   return null;
 };
 

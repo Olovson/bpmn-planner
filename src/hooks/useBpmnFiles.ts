@@ -51,13 +51,13 @@ export const useUploadBpmnFile = () => {
     onSuccess: (data) => {
       invalidateStructureQueries(queryClient);
       queryClient.invalidateQueries({ queryKey: ['root-bpmn-file'] });
-      
+
       toast({
         title: 'Fil uppladdad',
-        description: data.githubSync?.success
-          ? 'Filen har laddats upp och synkats till GitHub'
-          : 'Filen har laddats upp (GitHub-sync misslyckades)',
-        variant: data.githubSync?.success ? 'default' : 'destructive',
+        // GitHub-sync är idag frivillig och ofta inaktiv; vi visar bara ett neutralt
+        // meddelande för att undvika brus när GitHub inte används.
+        description: 'Filen har laddats upp.',
+        variant: 'default',
       });
     },
     onError: (error: Error) => {
@@ -85,12 +85,13 @@ export const useDeleteBpmnFile = () => {
     },
     onSuccess: (data) => {
       invalidateStructureQueries(queryClient);
-      
+
       toast({
         title: 'Fil borttagen',
-        description: data.githubSync?.success
-          ? 'Filen har tagits bort och synkats till GitHub'
-          : 'Filen har tagits bort (GitHub-sync misslyckades)',
+        // GitHub-sync används inte längre som primär kanal; vi ger ett neutralt
+        // meddelande så att avsaknad av GitHub-konfiguration inte upplevs som fel.
+        description: 'Filen har tagits bort.',
+        variant: 'default',
       });
     },
     onError: (error: Error) => {

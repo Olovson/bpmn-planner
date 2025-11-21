@@ -3,7 +3,7 @@ import type { TemplateLinks } from './documentationTemplates';
 import type { BpmnProcessNode } from './bpmnProcessGraph';
 import { generateChatCompletion, isLlmEnabled } from './llmClient';
 import { getLlmModeConfig, getLlmGenerationMode } from './llmMode';
-import { FEATURE_EPIC_PROMPT, DMN_BUSINESSRULE_PROMPT, FAST_MODE_STUB_PROMPT } from './llmPrompts';
+import { FEATURE_EPIC_PROMPT, DMN_BUSINESSRULE_PROMPT } from './llmPrompts';
 import { saveLlmDebugArtifact } from './llmDebugStorage';
 
 export type DocumentationDocType = 'feature' | 'epic' | 'businessRule';
@@ -28,14 +28,10 @@ export async function generateDocumentationWithLlm(
       : 'BusinessRule';
   const mode = getLlmGenerationMode();
   const modeConfig = getLlmModeConfig(mode);
-  const isFast = mode === 'fast';
-  const basePrompt =
+  const systemPrompt =
     docType === 'businessRule'
       ? DMN_BUSINESSRULE_PROMPT
       : FEATURE_EPIC_PROMPT;
-  const systemPrompt = isFast
-    ? `${basePrompt}\n\n\nFAST MODE: Skriv max 2 meningar per sektion. Ingen extra förklaring, inga exempel.`
-    : basePrompt;
 
   // JSON-input som skickas till GPT-4 enligt promptdefinitionerna.
   const llmInput = {
@@ -53,7 +49,7 @@ export async function generateDocumentationWithLlm(
     {
       temperature: modeConfig.docTemperature,
       maxTokens: modeConfig.docMaxTokens,
-      model: isFast ? 'fast' : 'slow',
+      model: 'slow',
     }
   );
 

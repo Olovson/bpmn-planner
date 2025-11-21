@@ -12,8 +12,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:generator": "vitest run tests/unit/generateAllFromBpmnWithGraph.test.ts",
-    "check:db-schema": "node --loader ts-node/esm scripts/check-db-schema.mts",
-    "check:db": "npm run check:db-schema"
+    "check:db-schema": "node scripts/check-db-schema.mjs",
+    "check:db": "npm run check:db-schema",
+    "supabase:ensure-schema": "node scripts/ensure-supabase-schema.mjs",
+    "supabase:reset": "node scripts/reset-supabase.mjs",
+    "check:supabase-status": "node scripts/check-supabase-status.mjs",
+    "fix:supabase-profile": "node scripts/fix-supabase-profile.mjs",
+    "start:supabase": "node scripts/start-supabase.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -919,7 +919,7 @@ async function renderDocWithLlmFallback(
     bpmnFile: context.node.bpmnFile,
   };
 
-  // In lokalt/FAST-läge eller när LLM är avstängt ska vi aldrig göra något LLM-anrop.
+  // I lokalt läge eller när LLM är avstängt ska vi aldrig göra något LLM-anrop.
   if (!llmActive) {
     return fallback();
   }

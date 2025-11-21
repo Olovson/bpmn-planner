@@ -17,7 +17,7 @@ const DocViewer = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generationSource, setGenerationSource] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'local' | 'fast' | 'slow' | 'auto'>('auto');
+  const [viewMode, setViewMode] = useState<'local' | 'slow' | 'auto'>('auto');
   const decoded = docId ? decodeURIComponent(docId) : '';
   const sanitizeDocId = (value: string) => value.replace(/[^a-zA-Z0-9/_-]/g, '');
   const rawSegments = decoded.split('/').filter(Boolean);
@@ -48,8 +48,9 @@ const DocViewer = () => {
     if (viewMode === 'auto') {
       if (!generationSource) return null;
       if (generationSource === 'local') return 'local';
-      if (generationSource.startsWith('llm-fast')) return 'fast';
       if (generationSource.startsWith('llm-slow')) return 'slow';
+      // Legacy: llm-fast behandlas som slow
+      if (generationSource.startsWith('llm-fast')) return 'slow';
       return null;
     }
     return viewMode;
@@ -154,7 +155,7 @@ const DocViewer = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex rounded-md border bg-muted/40 p-0.5 text-xs">
-                {(['local', 'fast', 'slow'] as const).map((mode) => (
+                {(['local', 'slow'] as const).map((mode) => (
                   <button
                     key={mode}
                     type="button"
@@ -163,7 +164,7 @@ const DocViewer = () => {
                     }`}
                     onClick={() => setViewMode(mode)}
                   >
-                    {mode === 'local' ? 'Local' : mode === 'fast' ? 'Fast LLM' : 'Slow LLM'}
+                    {mode === 'local' ? 'Local' : 'Slow LLM'}
                   </button>
                 ))}
               </div>

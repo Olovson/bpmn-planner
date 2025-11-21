@@ -1,4 +1,4 @@
-export type LlmGenerationMode = 'fast' | 'slow';
+export type LlmGenerationMode = 'slow';
 
 interface LlmModeConfig {
   key: LlmGenerationMode;
@@ -21,30 +21,12 @@ interface LlmModeConfig {
 
 const STORAGE_KEY = 'bpmn-planner-llm-mode';
 
-const envDefault = (import.meta.env?.VITE_LLM_MODE_DEFAULT ?? 'fast').toString().toLowerCase();
+const envDefault = (import.meta.env?.VITE_LLM_MODE_DEFAULT ?? 'slow').toString().toLowerCase();
 
 const isMode = (value: unknown): value is LlmGenerationMode =>
-  value === 'fast' || value === 'slow';
+  value === 'slow';
 
 const MODE_CONFIG: Record<LlmGenerationMode, LlmModeConfig> = {
-  fast: {
-    key: 'fast',
-    label: 'Fast LLM mode (snabb, kortfattad)',
-    description: 'Snabb generering med korta, fokuserade sektioner.',
-    speedCaption: 'Rekommenderas i utveckling – prioriterar hastighet.',
-    runHint: 'Genererar 1–2 meningar per sektion. Bra vid många iterationer.',
-    docGuidance: 'Fokusera på 1–2 meningar eller ett fåtal bullets per sektion. Ta endast med mest kritiska datapunkter.',
-    docTone: 'Direkt och koncis ton utan onödiga exempel.',
-    docMaxTokens: 350,
-    docTemperature: 0.2,
-    docExtraInstruction: 'Undvik upprepningar mellan sektioner.',
-    testGuidance: 'Generera ett fåtal representativa scenarier med fokus på happy-path, edge-case och error-case.',
-    testScenarioRange: '1–2 scenarier',
-    testMinScenarios: 1,
-    testMaxScenarios: 2,
-    testMaxTokens: 350,
-    testTemperature: 0.2,
-  },
   slow: {
     key: 'slow',
     label: 'Slow LLM mode (full kvalitet)',
@@ -65,7 +47,7 @@ const MODE_CONFIG: Record<LlmGenerationMode, LlmModeConfig> = {
   },
 };
 
-let currentMode: LlmGenerationMode = isMode(envDefault) ? envDefault : 'fast';
+let currentMode: LlmGenerationMode = isMode(envDefault) ? envDefault : 'slow';
 
 if (typeof window !== 'undefined') {
   const storedValue = window.localStorage?.getItem(STORAGE_KEY);

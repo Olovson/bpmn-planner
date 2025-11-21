@@ -9,7 +9,7 @@ export interface GenerationJob {
   file_name: string;
   operation: GenerationOperation;
   // Mode sätts antingen via egen kolumn i generation_jobs eller via result.mode
-  mode?: 'local' | 'fast' | 'slow' | null;
+  mode?: 'local' | 'slow' | null;
   status: GenerationStatus;
   progress: number | null;
   total: number | null;
@@ -34,14 +34,14 @@ export const useGenerationJobs = () => {
       if (error) throw error;
 
       const rows = (data || []) as Array<
-        GenerationJob & { result?: { mode?: 'local' | 'fast' | 'slow' } }
+        GenerationJob & { result?: { mode?: 'local' | 'slow' } }
       >;
 
       return rows.map((row) => {
         const derivedMode =
           row.mode ??
           (row.result && typeof row.result === 'object'
-            ? (row.result.mode as 'local' | 'fast' | 'slow' | undefined)
+            ? (row.result.mode as 'local' | 'slow' | undefined)
             : undefined);
         return {
           ...row,
