@@ -8,14 +8,15 @@ const IS_BROWSER = typeof window !== 'undefined';
 
 let openAiClient: OpenAI | null = null;
 
-if (USE_LLM && API_KEY) {
+if (USE_LLM && API_KEY && import.meta.env.MODE !== 'test') {
   openAiClient = new OpenAI({
     apiKey: API_KEY,
     ...(IS_BROWSER ? { dangerouslyAllowBrowser: true } : {}),
   });
 }
 
-export const isLlmEnabled = (): boolean => USE_LLM && !!openAiClient;
+export const isLlmEnabled = (): boolean =>
+  import.meta.env.MODE !== 'test' && USE_LLM && !!openAiClient;
 
 interface CompletionOptions {
   temperature?: number;
