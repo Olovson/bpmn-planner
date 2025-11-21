@@ -9,6 +9,8 @@ Du får använda **siffersatta exempelregler** (t.ex. belåningsgrad, skuldkvot,
 - inte utger sig för att vara en specifik banks officiella policy
 - används som **exempel**
 
+All output ska vara **HTML-innehåll**, inte en fullständig HTML-sida.
+
 ---
 
 ## INPUT (JSON)
@@ -111,3 +113,6 @@ Riktat till testare och utvecklare:
 - Gör det tydligt att reglerna är **exempel på rimlig logik**, inte juridiskt bindande eller bank-specifik policy.
 - Upprepa inte samma sak i flera sektioner.
 - Fokusera på att göra det lätt för arkitekter, utvecklare och testare att förstå hur reglerna fungerar.
+- Skriv ren HTML för rubriker, stycken, listor och tabeller, men lägg inte till:
+  - ingen `<html>`, `<head>` eller `<body>`
+  - ingen `<style>`, `<link>` eller `<script>`

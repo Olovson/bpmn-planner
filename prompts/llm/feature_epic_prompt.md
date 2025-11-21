@@ -10,6 +10,8 @@ Du får gärna använda **siffersatta exempelregler** (t.ex. belåningsgrad, sku
 - rimliga och branschlogiska
 - formulerade som **exempel** – inte som exakt policy för en specifik bank
 
+All output ska vara **HTML-innehåll**, inte en fullständig HTML-sida.
+
 ---
 
 ## INPUT (JSON)
@@ -45,7 +47,8 @@ Skriv all text på **svenska**.
 
 ## OUTPUTSTRUKTUR
 
-Använd följande rubriker:
+Använd följande rubriker, som **HTML-rubriker och sektioner**.  
+Systemet kommer att lägga på ett gemensamt `<html>/<head>/<body>`-skal och CSS, så du ska ENDAST skriva innehållet inuti `<body>`, utan egna `<html>`, `<head>`, `<body>` eller `<script>`-taggar.
 
 ### 1. Översikt
 Kort beskrivning av syftet med feature/epic, vilken del av kreditresan den tillhör (t.ex. ansökan, kreditprövning, utbetalning, efterkontroll) och vilket värde den skapar.
@@ -125,3 +128,6 @@ Kort sektion riktad till arkitekter/utvecklare:
 - Du får vara **kreativ** i att fylla luckor, men håll dig till **sannolika mönster** för svenska banker.
 - När du anger siffersatta regler, behandla dem som **illustrativa exempel**, inte som bindande policy.
 - Upprepa inte samma meningar i flera sektioner.
+- Skriv ren HTML för rubriker, stycken, listor och tabeller, men lägg inte till:
+  - ingen `<html>`, `<head>` eller `<body>`
+  - ingen `<style>`, `<link>` eller `<script>`

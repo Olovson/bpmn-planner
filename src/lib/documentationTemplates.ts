@@ -9,7 +9,7 @@ export interface TemplateLinks {
   dmnLink?: string;
 }
 
-const wrapDocument = (title: string, body: string) => `<!DOCTYPE html>
+export const wrapDocument = (title: string, body: string) => `<!DOCTYPE html>
 <html lang="sv">
 <head>
   <meta charset="UTF-8" />
@@ -105,6 +105,77 @@ const wrapDocument = (title: string, body: string) => `<!DOCTYPE html>
   </div>
 </body>
 </html>`;
+
+const looksLikeHtml = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value);
+
+const stripDangerousTags = (html: string) =>
+  html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<link[^>]+rel=["']?stylesheet["']?[^>]*>/gi, '');
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+/**
+ * Normaliserar LLM-innehåll (markdown, fragment eller full HTML) till en
+ * wrapper-kompatibel HTML-sida med gemensam layout.
+ *
+ * - Tar bort egna <html>/<head>/<body>-skal från LLM-output.
+ * - Tar bort script/style/link-taggar.
+ * - Konverterar enkel markdown/text till <p>/<h2>-block.
+ */
+export const wrapLlmContentAsDocument = (rawContent: string, title: string): string => {
+  const trimmed = rawContent.trim();
+
+  if (!trimmed) {
+    return wrapDocument(title, '<p class="muted">Inget innehåll genererades av LLM.</p>');
+  }
+
+  let innerHtml = trimmed;
+  const hasHtmlTag = /<html[\s>]/i.test(trimmed);
+  const hasBodyTag = /<body[\s>]/i.test(trimmed);
+
+  if (hasHtmlTag || hasBodyTag) {
+    const bodyMatch = trimmed.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    if (bodyMatch && bodyMatch[1].trim()) {
+      innerHtml = bodyMatch[1].trim();
+    } else {
+      innerHtml = trimmed
+        .replace(/<!DOCTYPE[^>]*>/gi, '')
+        .replace(/<\/?(html|head|body)[^>]*>/gi, '')
+        .trim();
+    }
+  } else if (!looksLikeHtml(trimmed)) {
+    const blocks = trimmed.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
+    innerHtml = blocks
+      .map((block) => {
+        const lines = block.split('\n');
+        const first = lines[0] || '';
+        const headingMatch = first.match(/^#+\s+(.*)$/);
+        if (headingMatch) {
+          const heading = escapeHtml(headingMatch[1].trim());
+          return `<h2>${heading}</h2>`;
+        }
+        const paragraphs = block
+          .split(/\n+/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => `<p>${escapeHtml(line)}</p>`)
+          .join('\n');
+        return paragraphs;
+      })
+      .join('\n');
+  }
+
+  const sanitized = stripDangerousTags(innerHtml);
+  return wrapDocument(title, sanitized);
+};
 
 const buildNodeLink = (node: NodeDocumentationContext['node'], label?: string) => {
   const elementId = node.bpmnElementId || node.bpmnElementId || '';

@@ -133,10 +133,12 @@ vi.mock('@/lib/documentationContext', () => ({
 }));
 
 vi.mock('@/lib/documentationTemplates', () => ({
-  renderFeatureGoalDoc: () => '<html>feature</html>',
-  renderEpicDoc: () => '<html>epic</html>',
+  renderFeatureGoalDoc: () => '<html><body>feature</body></html>',
+  renderEpicDoc: () => '<html><body>epic</body></html>',
   renderBusinessRuleDoc: (_context: any, links: any) =>
-    `<html>${links?.dmnLink ?? 'Ingen DMN-länk konfigurerad'}</html>`,
+    `<html><body>${links?.dmnLink ?? 'Ingen DMN-länk konfigurerad'}</body></html>`,
+  wrapLlmContentAsDocument: (content: string, title: string) =>
+    `<!DOCTYPE html><html><head><title>${title}</title></head><body>${content}</body></html>`,
 }));
 
 vi.mock('@/lib/llmDocumentation', () => ({

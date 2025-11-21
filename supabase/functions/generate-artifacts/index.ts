@@ -1055,39 +1055,135 @@ function buildDependencies(elements: BpmnElement[], parentFile: string) {
 
 function generateDocumentationHtml(elements: BpmnElement[], fileName: string): string {
   const processName = fileName.replace('.bpmn', '');
-  
-  let html = `<!DOCTYPE html>
+  const title = `${processName} - Dokumentation`;
+
+  const headerSection = `
+    <section class="doc-section">
+      <span class="doc-badge">Process</span>
+      <h1>${processName}</h1>
+      <p class="muted">Autogenererad dokumentation från BPMN-fil: ${fileName}</p>
+    </section>
+  `;
+
+  const elementsIntroSection = `
+    <section class="doc-section">
+      <h2>Processelement (${elements.length})</h2>
+      <p class="muted">Översikt över identifierade noder i processen.</p>
+    </section>
+  `;
+
+  const elementsSections = elements.map((element) => {
+    const elementName = element.name || element.id;
+    return `
+    <section class="doc-section">
+      <div class="muted">Typ: ${element.type}</div>
+      <h2>${elementName}</h2>
+      <p><span class="muted">ID:</span> <code>${element.id}</code></p>
+    </section>
+    `;
+  }).join('\n');
+
+  const body = `
+    ${headerSection}
+    ${elementsIntroSection}
+    ${elementsSections}
+  `;
+
+  const html = `<!DOCTYPE html>
 <html lang="sv">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${processName} - Dokumentation</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title}</title>
+  <meta name="x-generation-source" content="server-generator" />
   <style>
-    body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
-    h1 { color: #333; border-bottom: 2px solid #007acc; padding-bottom: 10px; }
-    h2 { color: #555; margin-top: 30px; }
-    .element { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
-    .element-type { color: #007acc; font-weight: bold; }
-    .element-name { font-size: 1.2em; margin: 5px 0; }
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
-  <h1>${processName}</h1>
-  <p>Autogenerad dokumentation från BPMN-fil: ${fileName}</p>
-  
-  <h2>Process Elements (${elements.length})</h2>
-`;
-
-  elements.forEach(element => {
-    html += `
-  <div class="element">
-    <div class="element-type">${element.type}</div>
-    <div class="element-name">${element.name}</div>
-    <div>ID: <code>${element.id}</code></div>
-  </div>`;
-  });
-
-  html += `
+  <div class="doc-shell">
+    ${body}
+  </div>
 </body>
 </html>`;
 

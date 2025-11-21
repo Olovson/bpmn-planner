@@ -7,6 +7,9 @@ Skriv all text på **svenska**.
 
 Du får använda **rimliga exempelvärden och siffersatta regler** (t.ex. belåningsgrad, skuldkvot, inkomstnivåer) för att göra testfallen konkreta.
 
+All output ska vara **HTML-innehåll** (rubriker, stycken, listor) som kan bäddas in i en gemensam dokumentationssida.  
+Systemet kommer att lägga på ett eget `<html>/<head>/<body>`-skal, så du ska ENDAST skriva innehållet inuti `<body>`, utan egna `<html>`, `<head>` eller `<script>`-taggar.
+
 ---
 
 ## INPUT (JSON)
@@ -114,3 +117,6 @@ Inkludera gärna exempel på:
 - Beskriv bara sådant som är **logiskt för nodens roll** i processen.
 - Du får vara kreativ i att hitta relevanta testfall, men de ska kännas realistiska för ett svenskt kreditsystem.
 - Skriv så att en testare enkelt kan översätta instruktionerna till automatiserad testkod.
+- Skriv ren HTML för rubriker, stycken, listor och tabeller, men lägg inte till:
+  - ingen `<html>`, `<head>` eller `<body>`
+  - ingen `<style>`, `<link>` eller `<script>`

@@ -7,6 +7,7 @@ import {
   renderFeatureGoalDoc,
   renderEpicDoc,
   renderBusinessRuleDoc,
+  wrapLlmContentAsDocument,
   type TemplateLinks,
 } from '@/lib/documentationTemplates';
 import { getNodeDocFileKey, getNodeTestFileKey, getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
@@ -925,10 +926,28 @@ async function renderDocWithLlmFallback(
 
   try {
     const llmDoc = await generateDocumentationWithLlm(docType, context, links);
-    if (llmDoc) {
+    if (llmDoc && llmDoc.trim()) {
       const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
       await saveLlmDebugArtifact('doc', identifier, llmDoc);
-      return llmDoc;
+      const title =
+        context.node.name ||
+        context.node.bpmnElementId ||
+        (docType === 'feature'
+          ? 'Feature'
+          : docType === 'epic'
+          ? 'Epic'
+          : 'Business Rule');
+      const wrapped = wrapLlmContentAsDocument(llmDoc, title);
+      if (!/<html[\s>]/i.test(wrapped) || !/<body[\s>]/i.test(wrapped)) {
+        await logLlmFallback({
+          eventType: 'documentation',
+          status: 'fallback',
+          reason: 'invalid-html-contract',
+          ...basePayload,
+        });
+        return fallback();
+      }
+      return wrapped;
     }
     await logLlmFallback({
       eventType: 'documentation',
@@ -1213,24 +1232,9 @@ export async function generateAllFromBpmnWithGraph(
       const nodesInFile = testableNodes.filter(node => node.bpmnFile === file);
       
       if (nodesInFile.length > 0) {
-        // Skapa en sammanslagen dokumentation för hela filen – med fokus på innehåll,
-        // inte egen app-liknande header. Själva app-layouten hanteras i DocViewer.
-        let combinedDoc = `<!DOCTYPE html>
-<html lang="sv">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dokumentation - ${file}</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background: #ffffff; }
-    h1 { font-size: 1.5rem; margin: 0 0 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
-    h2 { color: #1e40af; margin-top: 24px; font-size: 1.1rem; }
-    .node-section { border-left: 3px solid #dbeafe; padding-left: 16px; margin: 16px 0; }
-    .node-type { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; }
-  </style>
-</head>
-<body>
-  <h1>Dokumentation för ${file}</h1>
+        // Skapa en sammanslagen dokumentation för hela filen – med fokus på innehåll.
+        // Själva app-layouten hanteras i DocViewer och den gemensamma wrappern.
+        let combinedBody = `<h1>Dokumentation för ${file}</h1>
 `;
         
         const processedDocNodes = new Set<string>();
@@ -1335,9 +1339,9 @@ export async function generateAllFromBpmnWithGraph(
           });
           processedDocNodes.add(nodeKey);
 
-          const bodyMatch = nodeDocContent.match(/<body>([\s\S]*)<\/body>/);
+          const bodyMatch = nodeDocContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
           if (bodyMatch) {
-            combinedDoc += `<div class="node-section">
+            combinedBody += `<div class="node-section">
   <span class="node-type">${node.type}</span>
   <h2>${node.name || node.bpmnElementId}</h2>
   ${bodyMatch[1]}
@@ -1346,11 +1350,11 @@ export async function generateAllFromBpmnWithGraph(
           }
         }
         
-        combinedDoc += `
-</body>
-</html>`;
-        
-        result.docs.set(docFileName, insertGenerationMeta(combinedDoc, generationSourceLabel));
+        const wrappedCombined = insertGenerationMeta(
+          wrapLlmContentAsDocument(combinedBody, `Dokumentation - ${file}`),
+          generationSourceLabel,
+        );
+        result.docs.set(docFileName, wrappedCombined);
         console.log(`Generated documentation: ${docFileName}`);
       }
     }
