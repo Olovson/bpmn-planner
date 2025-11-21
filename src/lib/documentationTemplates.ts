@@ -129,8 +129,13 @@ const escapeHtml = (value: string) =>
  * - Tar bort egna <html>/<head>/<body>-skal från LLM-output.
  * - Tar bort script/style/link-taggar.
  * - Konverterar enkel markdown/text till <p>/<h2>-block.
+ * - Kan lägga till placeholders för kända sektioner (t.ex. Feature Goals).
  */
-export const wrapLlmContentAsDocument = (rawContent: string, title: string): string => {
+export const wrapLlmContentAsDocument = (
+  rawContent: string,
+  title: string,
+  options?: { docType?: string },
+): string => {
   const trimmed = rawContent.trim();
 
   if (!trimmed) {
@@ -173,7 +178,32 @@ export const wrapLlmContentAsDocument = (rawContent: string, title: string): str
       .join('\n');
   }
 
-  const sanitized = stripDangerousTags(innerHtml);
+  let sanitized = stripDangerousTags(innerHtml);
+
+  if (options?.docType === 'feature') {
+    const placeholderSections: Array<{ label: string; heading: string }> = [
+      { label: 'Sammanfattning', heading: 'Sammanfattning' },
+      { label: 'Omfattning &amp; Avgränsningar', heading: 'Omfattning &amp; Avgränsningar' },
+      { label: 'Ingående Epics', heading: 'Ingående Epics' },
+      { label: 'Affärsflöde', heading: 'Affärsflöde' },
+      { label: 'Kritiska beroenden', heading: 'Kritiska beroenden' },
+      { label: 'Affärs-scenarion', heading: 'Affärs-scenarion' },
+      { label: 'Koppling till automatiska tester', heading: 'Koppling till automatiska tester' },
+      { label: 'Implementation Notes (för dev)', heading: 'Implementation Notes (för dev)' },
+      { label: 'Relaterade regler / subprocesser', heading: 'Relaterade regler / subprocesser' },
+    ];
+
+    for (const section of placeholderSections) {
+      if (!sanitized.includes(section.heading)) {
+        sanitized += `
+<section class="doc-section">
+  <h2>${section.label}</h2>
+  <p class="muted">Denna sektion behöver kompletteras för detta Feature Goal.</p>
+</section>`;
+      }
+    }
+  }
+
   return wrapDocument(title, sanitized);
 };
 
@@ -233,138 +263,188 @@ export const renderFeatureGoalDoc = (
   const descendantEpics = context.childNodes.filter((child) =>
     ['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'].includes(child.type)
   );
-  const hasUserFacingDescendants = context.descendantNodes.some((desc) => desc.type === 'userTask');
-  const firstUserFacing = context.descendantNodes.find((desc) => desc.type === 'userTask');
-  const coreIntentItems = [
-    `Processdel: ${nodeName} knyter ihop ${upstreamName} med ${downstreamName}.`,
-    `Affärsresultat: möjliggör ett spårbart kreditbeslut för ${node.bpmnFile.replace('.bpmn', '')}.`,
-    `Primär input: ${inputNodes.length ? buildNodeNameList(inputNodes) : 'Processstart & kunddata'}.`,
-    `Primär output: ${outputNodes.length ? buildNodeNameList(outputNodes) : 'Beslut & notifiering'}.`,
-    `Viktig hierarki: ${descendantEpics.length ? buildNodeNameList(descendantEpics, 4) : 'Epics definieras från barnnoder'}.`,
-    `Utanför scope: senare Feature Goals och externa eftermarknadsflöden.`,
+  const initiative = node.bpmnFile.replace('.bpmn', '');
+  const owner = 'Produktägare Kredit / Risk & Policy';
+  const versionLabel = '1.0 (exempel) – uppdateras vid ändring';
+
+  const scopePoints = [
+    `Feature Goal <strong>${nodeName}</strong> binder ihop ${upstreamName} med ${downstreamName} i initiativet ${initiative}.`,
+    'Möjliggör ett sammanhängande kreditflöde där data, regler och interaktioner hänger ihop.',
+    'Fokuserar på att skapa ett spårbart underlag för kreditbeslut i hela initiativet.',
+  ];
+
+  const boundaries = [
+    'Ingår: end-to-end-flöde för det specifika kreditinitiativet.',
+    'Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.',
+    'Ingår inte: tekniska implementationer i underliggande system – dessa dokumenteras separat.',
+  ];
+
+  const epicRows = descendantEpics.slice(0, 6).map((epic, index) => ({
+    id: `E${index + 1}`,
+    name: formatNodeName(epic),
+    description: `Delsteg som bidrar till att ${nodeName.toLowerCase()} uppnås.`,
+    team: inferTeamForNode(epic.type),
+  }));
+
+  const flowSteps = [
+    `Initiativet startar i ${upstreamName} när en kreditprocess initieras.`,
+    `${nodeName} koordinerar ingående epics för att samla in, verifiera och bearbeta kreditunderlag.`,
+    'Beslut och nyckeldata förs vidare till nedströms steg i processen.',
+    'Eventuella avvikelser eller risker eskaleras enligt definierade regler.',
+    `Feature Goalet avslutas när ${downstreamName} är uppfyllt och beslutet är spårbart.`,
+  ];
+
+  const dependencyBullets = [
+    'Andra Feature Goals som hanterar efterföljande steg i kreditresan.',
+    'Regel- och DMN-modeller för riskbedömning, skuldsättning och produktvillkor.',
+    'Tekniska beroenden mot kärnsystem, kreditmotor och kunddataregister.',
+  ];
+
+  const scenarioRows = [
+    {
+      id: 'S1',
+      name: 'Normalflöde – komplett ansökan',
+      type: 'Happy',
+      outcome: 'Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.',
+    },
+    {
+      id: 'S2',
+      name: 'Ofullständig information',
+      type: 'Edge',
+      outcome: 'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
+    },
+    {
+      id: 'S3',
+      name: 'Hög riskprofil',
+      type: 'Edge',
+      outcome: 'Ärendet flaggas för extra granskning eller avslag enligt policy.',
+    },
   ];
 
   const body = `
     <section class="doc-section">
       <span class="doc-badge">Feature Goal</span>
       <h1>${nodeName}</h1>
-      <p class="muted">Kopplar ${upstreamName} → ${downstreamName} i ${node.bpmnFile.replace('.bpmn', '')}.</p>
-    </section>
-
-    <section class="doc-section">
-      <h2>Core Intent</h2>
-      ${renderList(coreIntentItems)}
-    </section>
-
-    <section class="doc-section">
-      <h2>Start och slut</h2>
       <ul>
-        <li><strong>Startas av:</strong> ${upstreamName}</li>
-        <li><strong>Avslutas av:</strong> ${downstreamName}</li>
+        <li><strong>Initiativ:</strong> ${initiative}</li>
+        <li><strong>BPMN Call Activity:</strong> ${node.bpmnElementId} (${nodeName})</li>
+        <li><strong>Regel/affärsägare:</strong> ${owner}</li>
+        <li><strong>Kreditprocess-steg:</strong> ${initiative}</li>
+        <li><strong>Version / datum:</strong> ${versionLabel}</li>
       </ul>
     </section>
 
     <section class="doc-section">
-      <h2>Involverade team</h2>
-      <p class="muted">Lägg till dina egna team och ansvar här.</p>
+      <h2>Sammanfattning</h2>
+      <p>${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.</p>
+      <p>Feature Goalet säkerställer att rätt data, regler och interaktioner finns på plats för att fatta välgrundade kreditbeslut.</p>
+      ${renderList(scopePoints)}
     </section>
 
     <section class="doc-section">
-      <h2>Funktionellt innehåll</h2>
-      <p>${nodeName} möjliggör ${context.childNodes.length ? `${context.childNodes.length} identifierade epics/delprocesser` : 'en samlad process'} och säkerställer att beroenden mellan ${upstreamName} och ${downstreamName} hanteras konsekvent.</p>
+      <h2>Omfattning &amp; Avgränsningar</h2>
+      ${renderList(boundaries)}
     </section>
 
     <section class="doc-section">
       <h2>Ingående Epics</h2>
-      ${renderList(
-        descendantEpics.length
-          ? descendantEpics.map(
-              (epic) => `${formatNodeName(epic)} – Team: ${inferTeamForNode(epic.type)}`
-            )
-          : ['Epics härleds från barnnoder när detaljer finns i BPMN.']
-      )}
-    </section>
-
-    <section class="doc-section">
-      <h2>User Stories</h2>
       ${
-        descendantEpics.length
-          ? renderList(
-              descendantEpics.slice(0, 5).map(
-                (epic, index) =>
-                  `FG-${index + 1} – Som produktteam vill vi leverera ${formatNodeName(
-                    epic
-                  )} för att ${nodeName.toLowerCase()} ska bli komplett.`
-              )
-            )
-          : '<p class="muted">User stories fylls i manuellt här.</p>'
+        epicRows.length
+          ? `
+      <table>
+        <tr>
+          <th>Epic-ID</th>
+          <th>Epic-namn</th>
+          <th>Beskrivning</th>
+          <th>Team</th>
+        </tr>
+        ${epicRows
+          .map(
+            (row) => `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.name}</td>
+          <td>${row.description}</td>
+          <td>${row.team}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>`
+          : '<p class="muted">Inga epics identifierade ännu – fyll på när BPMN-hierarkin är komplett.</p>'
       }
     </section>
 
     <section class="doc-section">
-      <h2>Affärs- &amp; kreditregler (översikt)</h2>
-      ${renderList([
-        'Samtliga kreditprinciper och policygränser ska vara dokumenterade.',
-        `Regler för ${nodeName} styr när ärenden ska eskaleras till manuell granskning.`,
-        'Data- och regelversioner måste vara spårbara genom hela processen.',
-      ])}
+      <h2>Affärsflöde</h2>
+      <ol>
+        ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
+      </ol>
     </section>
 
     <section class="doc-section">
-      <h2>Data – översikt</h2>
+      <h2>Kritiska beroenden</h2>
+      ${renderList(dependencyBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärs-scenarion</h2>
       <table>
-        <tr><th>Typ</th><th>Objekt</th><th>Beskrivning</th></tr>
-        <tr><td>Input</td><td>${inputNodes.length ? buildNodeNameList(inputNodes) : 'Processstart'}</td><td>Underlag från föregående noder samt kund-/produktdata</td></tr>
-        <tr><td>Output</td><td>${outputNodes.length ? buildNodeNameList(outputNodes) : downstreamName}</td><td>Kreditbeslut, statuskoder och kommunikéer</td></tr>
+        <tr>
+          <th>Scenario</th>
+          <th>Beskrivning</th>
+          <th>Typ (Happy/Edge/Error)</th>
+          <th>Förväntat resultat</th>
+        </tr>
+        ${scenarioRows
+          .map(
+            (row) => `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.name}</td>
+          <td>${row.type}</td>
+          <td>${row.outcome}</td>
+        </tr>`,
+          )
+          .join('')}
       </table>
     </section>
 
     <section class="doc-section">
-      <h2>UX-relatering (om tillämpligt)</h2>
-      <p>${
-        hasUserFacingDescendants
-          ? `Påverkar UI-flöden såsom ${formatNodeName(firstUserFacing!)} och relaterade skärmar i viewer.`
-          : 'Ingen direkt UX-koppling; levereras huvudsakligen som bakgrundsflöde.'
-      }</p>
+      <h2>Koppling till automatiska tester</h2>
+      <p>
+        Scenarion ovan mappas mot automatiska tester i:
+        ${
+          links.testLink
+            ? `<code>${links.testLink}</code>`
+            : '<span class="muted">Testfil länkas via node_test_links</span>'
+        }
+        <br />
+        Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
+      </p>
     </section>
 
     <section class="doc-section">
-      <h2>Avgränsningar / Out of Scope</h2>
+      <h2>Implementation Notes (för dev)</h2>
       ${renderList([
-        'Eftermarknadsaktiviteter efter avslutat kreditbeslut.',
-        'System utanför kreditplattformens domän.',
-        'Globala policyuppdateringar som ägs av andra initiativ.',
-        'Lokala landanpassningar som inte ingår i BPMN-filerna.',
+        'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
+        'Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.',
+        'Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.',
+        'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
       ])}
     </section>
 
     <section class="doc-section">
-      <h2>Definition of Ready (DoR)</h2>
+      <h2>Relaterade regler / subprocesser</h2>
       ${renderList([
-        'Processgränser och triggers kartlagda.',
-        'Epics/Call Activities identifierade och uppskattade.',
-        'Regler, data och externa beroenden dokumenterade.',
-        'Teamkapacitet och ansvar tydliggjorda.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Done (DoD)</h2>
-      ${renderList([
-        'Samtliga epics klara och integrerade end-to-end.',
-        'Regression och QA godkänd inklusive regelmotor.',
-        'Dokumentation och artefakter (HTML, test) uppdaterade.',
-        'Övervakning och KPI:er i drift, releasekoordinerad.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Relaterade artefakter</h2>
-      ${renderList([
-        links.docLink ? `<a href="${links.docLink}">Genererad dokumentation</a>` : 'HTML genereras automatiskt vid byggtid.',
-        links.testLink ? `<a href="${links.testLink}">Automatiserade tester</a>` : 'Testartefakter skapas för relevanta noder.',
-        links.dorLink ? `<a href="${links.dorLink}">Definition of Ready/Done</a>` : 'DoR/DoD-länk sätts via Jira.',
-        links.bpmnViewerLink ? `<a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>` : `BPMN-fil: ${node.bpmnFile}`,
+        links.bpmnViewerLink
+          ? `Relaterad subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
+          : `Relaterad subprocess: BPMN-fil ${node.bpmnFile}`,
+        links.dmnLink
+          ? `Relaterade regler/DMN: <a href="${links.dmnLink}">${links.dmnLink.split('/').pop()}</a>`
+          : 'Relaterade regler/DMN dokumenteras per Business Rule.',
+        inputNodes.length
+          ? `Föregående noder: ${buildNodeNameList(inputNodes)}`
+          : 'Föregående noder: initierande steg i processen.',
       ])}
     </section>
   `;
@@ -391,193 +471,216 @@ export const renderEpicDoc = (
   const apiSlug = slugify(nodeName);
   const upstreamName = previousNode ? formatNodeName(previousNode) : 'Processstart';
   const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg';
-  const coreIntentItems = [
-    `Funktionalitet: ${nodeName} levererar ett ${node.type} med fokus på ${node.bpmnFile.replace('.bpmn', '')}.`,
-    `Ägande team: ${inferTeamForNode(node.type)}.`,
-    `Processkoppling: tar emot från ${upstreamName} och lämnar till ${downstreamName}.`,
-    `Primär input: ${previousNode ? formatNodeName(previousNode) : 'Kund- och ansökningsdata'}.`,
-    `Primär output: ${nextNode ? formatNodeName(nextNode) : 'Status & beslut'}.`,
+  const processStep = node.bpmnFile.replace('.bpmn', '');
+  const isUserTask = node.type === 'userTask';
+  const isServiceTask = node.type === 'serviceTask';
+  const swimlaneOwner = isUserTask
+    ? 'Kund / Rådgivare'
+    : isServiceTask
+    ? 'Backend & Integration'
+    : inferTeamForNode(node.type);
+  const versionLabel = '1.0 (exempel) – uppdateras vid ändring';
+  const ownerLabel = 'Produktteam Kredit / Arkitektur';
+
+  const scopeBullets = [
+    `Epiken <strong>${nodeName}</strong> ingår i steget <strong>${processStep}</strong> mellan ${upstreamName} och ${downstreamName}.`,
+    isUserTask
+      ? 'Fokuserar på interaktion mellan kund/rådgivare och kreditplattformen.'
+      : 'Fokuserar på automatiserad systemexekvering utan direkt användarinteraktion.',
+    'Påverkar vilka data och beslut som förs vidare i kreditkedjan.',
+    'Utanför scope: eftermarknad och generella kundengagemang utanför den aktuella ansökan.',
+  ];
+
+  const triggerBullets = [
+    previousNode
+      ? `Triggas normalt efter <strong>${formatNodeName(previousNode)}</strong>.`
+      : 'Triggas när föregående processsteg är klart.',
+    'Förutsätter att grundläggande kund- och ansökningsdata är validerade.',
+    'Eventuella föregående KYC/AML- och identitetskontroller ska vara godkända.',
+  ];
+
+  const highLevelStepsUser = [
+    'Användaren öppnar vyn och ser sammanfattad ansöknings- och kundinformation.',
+    'Formulär eller val presenteras baserat på föregående steg och riskprofil.',
+    'Användaren fyller i eller bekräftar uppgifter och skickar vidare.',
+    'Systemet validerar indata och uppdaterar processens status samt triggar nästa steg.',
+  ];
+
+  const highLevelStepsService = [
+    'Processmotorn triggar tjänsten med relevant ansöknings- och kunddata.',
+    'Tjänsten anropar interna och/eller externa system för att hämta eller berika data.',
+    'Svar kontrolleras mot förväntade format och felkoder hanteras på övergripande nivå.',
+    'Resultatet lagras och vidarebefordras till nästa BPMN-nod.',
+  ];
+
+  const interactionBulletsUser = [
+    'Kanal: web/app eller internt handläggargränssnitt beroende på roll.',
+    'UI ska vara förklarande, med tydlig koppling till kreditbeslut och nästa steg.',
+    'Felmeddelanden ska vara begripliga och vägleda till rätt åtgärd.',
+  ];
+
+  const interactionBulletsService = [
+    `Primära API:er: t.ex. POST /api/${apiSlug} för exekvering.`,
+    'Tjänsten ska hantera timeouts och felkoder från beroenden på ett kontrollerat sätt (retry/circuit breaker på plattformsnivå).',
+    'Respons ska vara deterministisk och innehålla tydliga statusfält som går att logga och följa upp.',
   ];
 
   const dataTable = `
     <table>
-      <tr><th>Typ</th><th>Fält / Objekt</th><th>Källa / Mottagare</th><th>Kommentar</th></tr>
-      <tr><td>Input</td><td>${previousNode ? formatNodeName(previousNode) : 'Processstart'}</td><td>${previousNode ? previousNode.bpmnFile : 'Intern källa'}</td><td>Data som triggar epiken</td></tr>
-      <tr><td>Output</td><td>${nextNode ? formatNodeName(nextNode) : 'Nästa steg'}</td><td>${nextNode ? nextNode.bpmnFile : 'Nedströms nod'}</td><td>Resultat, status och loggar</td></tr>
+      <tr>
+        <th>Typ</th>
+        <th>Fält / Objekt</th>
+        <th>Källa / Konsument</th>
+        <th>Kommentar</th>
+      </tr>
+      <tr>
+        <td>Input</td>
+        <td>${previousNode ? formatNodeName(previousNode) : 'Ansökningsdata'}</td>
+        <td>${previousNode ? previousNode.bpmnFile : 'Intern källa'}</td>
+        <td>Underlag som triggar epiken.</td>
+      </tr>
+      <tr>
+        <td>Output</td>
+        <td>${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}</td>
+        <td>${nextNode ? nextNode.bpmnFile : 'Nedströms nod'}</td>
+        <td>Status, flaggor och eventuell berikad data.</td>
+      </tr>
     </table>
   `;
+
+  const businessRuleRefs = [
+    'Regeln använder eller påverkas av relevanta Business Rule / DMN-beslut (se separat dokumentation).',
+    'Policykrav för risk, skuldsättning och produktvillkor ska vara spårbara via kopplade regler.',
+    'Eventuella AML/KYC-krav hanteras i samverkan med dedikerade kontrollnoder.',
+  ];
+
+  const testRows = [
+    {
+      name: 'Happy path',
+      description: isUserTask
+        ? 'Kunden/handläggaren fyller i korrekta uppgifter och flödet går vidare utan avvikelser.'
+        : 'Tjänsten får kompletta data, alla beroenden svarar OK och flödet går vidare.',
+    },
+    {
+      name: 'Valideringsfel',
+      description: isUserTask
+        ? 'Användaren lämnar fält tomma eller anger ogiltiga värden, och får begripliga felmeddelanden.'
+        : 'Indata saknar obligatoriska fält eller bryter mot format – tjänsten ska avvisa och logga tydligt.',
+    },
+    {
+      name: 'Tekniskt fel / beroende nere',
+      description: isUserTask
+        ? 'Systemfel eller otillgänglig tjänst ska ge information utan att tappa ansökan.'
+        : 'Extern tjänst svarar inte eller ger fel – epiken ska hantera detta enligt övergripande felstrategi.',
+    },
+  ];
 
   const body = `
     <section class="doc-section">
       <span class="doc-badge">Epic</span>
       <h1>${nodeName}</h1>
-      <p class="muted">${node.type} mellan ${upstreamName} → ${downstreamName}.</p>
-    </section>
-
-    <section class="doc-section">
-      <h2>Core Intent</h2>
-      ${renderList(coreIntentItems)}
-    </section>
-
-    <section class="doc-section">
-      <h2>BPMN-koppling</h2>
+      <p class="muted">${node.type} i ${processStep} mellan ${upstreamName} → ${downstreamName}.</p>
       <ul>
-        <li><strong>Nodtyp:</strong> ${node.type}</li>
-        <li><strong>Nod-ID:</strong> ${node.bpmnElementId}</li>
-        <li><strong>Startpunkt:</strong> ${upstreamName}</li>
-        <li><strong>Slutpunkt:</strong> ${downstreamName}</li>
-        <li><strong>BPMN-länk:</strong> ${
-          links.bpmnViewerLink ? `<a href="${links.bpmnViewerLink}">Öppna i viewer</a>` : 'Öppna från huvudflödet'
-        }</li>
+        <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
+        <li><strong>Kreditprocess-steg:</strong> ${processStep}</li>
+        <li><strong>Swimlane/ägare:</strong> ${swimlaneOwner}</li>
+        <li><strong>Version &amp; datum:</strong> ${versionLabel}</li>
+        <li><strong>Ansvarig:</strong> ${ownerLabel}</li>
       </ul>
-      <p><strong>Viktiga noder runt epiken:</strong></p>
-      ${renderList(
-        relatedNodes.length
-          ? relatedNodes.map((relatedNode) => `${formatNodeName(relatedNode)} (${relatedNode.type})`)
-          : ['Inga ytterligare noder identifierade i BPMN-traverseringen.']
-      )}
     </section>
 
     <section class="doc-section">
-      <h2>Funktionell beskrivning</h2>
-      <p>${nodeName} realiserar ${node.type} som omsätter BPMN-flödet till praktisk funktionalitet, säkerställer dataflöden och triggar efterföljande aktiviteter.</p>
+      <h2>Syfte &amp; Scope</h2>
+      <p>${nodeName} är ett delsteg i kreditflödet som säkerställer att rätt data, regler och interaktioner hanteras innan processen går vidare.</p>
+      <p>Epiken bidrar till en spårbar och begriplig kreditprocess för både kund och interna användare.</p>
+      ${renderList(scopeBullets)}
     </section>
 
     <section class="doc-section">
-      <h2>Affärs- &amp; kreditregler</h2>
-      ${renderList([
-        'Validera produkt- och kundspecifika regler innan handoff.',
-        'Säkerställ att kreditpolicy och riskparametrar kontrolleras.',
-        'Hanterar eskalering vid avvikande score eller saknade underlag.',
-      ])}
+      <h2>Trigger &amp; Förutsättningar</h2>
+      ${renderList(triggerBullets)}
     </section>
 
     <section class="doc-section">
-      <h2>Data In / Data Ut</h2>
+      <h2>Huvudflöde (High-level scenario)</h2>
+      <ol>
+        ${(
+          isUserTask ? highLevelStepsUser : highLevelStepsService
+        )
+          .map((step) => `<li>${step}</li>`)
+          .join('')}
+      </ol>
+    </section>
+
+    <section class="doc-section">
+      <h2>Interaktioner &amp; Kanaler</h2>
+      ${renderList(isUserTask ? interactionBulletsUser : interactionBulletsService)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Data &amp; Kontrakt</h2>
       ${dataTable}
     </section>
 
     <section class="doc-section">
-      <h2>Arkitektur / Systeminteraktioner</h2>
-      ${renderList([
-        `API: POST /api/${apiSlug} för primär exekvering.`,
-        `Event ${apiSlug}.status.changed publiceras till övriga system.`,
-        'Felhantering via retry-queue och incidentloggning.',
-        'Integration mot kreditmotor eller externa register vid behov.',
-      ])}
+      <h2>Affärsregler &amp; Policykoppling</h2>
+      ${renderList(businessRuleRefs)}
     </section>
 
     <section class="doc-section">
-      <h2>API-översikt</h2>
+      <h2>Testkriterier (affärsnivå)</h2>
+      <p class="muted">Scenarierna nedan är affärsnära och ska mappas till automatiska tester.</p>
       <table>
-        <tr><th>Metod</th><th>Endpoint</th><th>Syfte</th></tr>
-        <tr><td>POST</td><td>/api/${apiSlug}</td><td>Initiera epikens huvudflöde</td></tr>
-        <tr><td>GET</td><td>/api/${apiSlug}/{id}</td><td>Hämta status och beslut</td></tr>
+        <tr>
+          <th>Scenario</th>
+          <th>Beskrivning</th>
+          <th>Automatiskt test</th>
+        </tr>
+        ${testRows
+          .map(
+            (row) => `
+        <tr>
+          <td>${row.name}</td>
+          <td>${row.description}</td>
+          <td>${
+            links.testLink
+              ? `<code>${links.testLink}</code>`
+              : '<span class="muted">Test mappas i node_test_links</span>'
+          }</td>
+        </tr>`,
+          )
+          .join('')}
       </table>
     </section>
 
     <section class="doc-section">
-      <h2>UX-relatering (om tillämpligt)</h2>
-      <p>${
-        node.type === 'userTask'
-          ? `Epiken kopplas till UI-skärmen <strong>${nodeName}</strong> och relaterade Figma-flöden.`
-          : 'Ingen direkt UX-koppling; epiken körs som backend-/integrationsflöde.'
-      }</p>
-    </section>
-
-    <section class="doc-section">
-      <h2>User Stories</h2>
-      ${
-        context.childNodes.length
-          ? renderList(
-              context.childNodes.slice(0, 5).map(
-                (child, index) =>
-                  `STORY-${slugify(nodeName)}-${index + 1} – Leverera ${formatNodeName(
-                    child
-                  )} som del av ${nodeName}.`
-              )
-            )
-          : '<p class="muted">User stories kopplas till epiken i Jira / produktplanen.</p>'
-      }
-    </section>
-
-    <section class="doc-section">
-      <h2>Acceptanskriterier</h2>
+      <h2>Implementation Notes (för dev/test)</h2>
       ${renderList([
-        'Validera obligatoriska fält och regelutfall.',
-        'Hantera fel från externa tjänster med tydliga svarskoder.',
-        'Logga beslut, input och output för audit.',
-        'Utlösa nedströms event när epiken är klar.',
+        `Primära endpoints: /api/${apiSlug} med GET/POST beroende på flöde.`,
+        links.testLink
+          ? `Relaterad Playwright-testfil: <code>${links.testLink}</code>`
+          : 'Playwright-testfil genereras och länkas via node_test_links.',
+        'Eventuella domän-events bör döpas konsekvent och innehålla nycklar för ansökan/kund.',
+        'Tekniska risker: beroenden mot externa tjänster, svarstider och felhantering måste övervakas.',
       ])}
     </section>
 
     <section class="doc-section">
-      <h2>Testscenarier (nyckelscenarier)</h2>
+      <h2>Relaterade steg &amp; artefakter</h2>
       ${renderList([
-        'Normalflöde – lyckad hantering med kompletta data.',
-        'Felaktig eller saknad input – avvisning med tydlig felkod.',
-        'Regelavslag – korrekt branching och kommunikation.',
-        'Systemfel/fallback – externa beroenden nere.',
-        'Edge cases – parallella ansökningar, tidsgränser.',
+        previousNode
+          ? `Föregående steg: ${buildNodeLink(previousNode)}`
+          : 'Föregående steg: Rotprocess eller startnod.',
+        downstreamNodes.length
+          ? `Nedströms steg: ${downstreamNodes.map((n) => formatNodeName(n)).join(', ')}`
+          : 'Nedströms steg: se processträdet.',
+        links.docLink
+          ? `Relaterad dokumentation: <a href="${links.docLink}">HTML-dokument</a>`
+          : 'Relaterad dokumentation hanteras via DocViewer.',
+        links.bpmnViewerLink
+          ? `BPMN viewer: <a href="${links.bpmnViewerLink}">Visa noden i BPMN viewer</a>`
+          : 'BPMN viewer-länk sätts via applikationen.',
       ])}
-      <p>${links.testLink ? `<a href="${links.testLink}">Läs testfil /spec</a>` : 'Testfil länkas automatiskt när den genereras.'}</p>
-    </section>
-
-    <section class="doc-section">
-      <h2>Testdata</h2>
-      <table>
-        <tr><th>Scenario</th><th>Input</th><th>Förväntat resultat</th></tr>
-        <tr><td>Normalfall</td><td>applicationId=OK123, score=720</td><td>Godkänt beslut, status=APPROVED</td></tr>
-        <tr><td>Regelavslag</td><td>applicationId=RISK999, score=480</td><td>Avslag med kod RISK_LOW_SCORE</td></tr>
-        <tr><td>Systemfel</td><td>applicationId=TIMEOUT1</td><td>Retry + incidentloggning</td></tr>
-      </table>
-    </section>
-
-    <section class="doc-section">
-      <h2>Observability &amp; Logging</h2>
-      ${renderList([
-        'Logga correlationId, ansöknings-ID och regelutfall.',
-        'Emit metrics för svarstider och felkoder.',
-        'Auditspåra ändringar i data som skickas vidare.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Regression – påverkade områden</h2>
-      ${renderList([
-        upstreamName,
-        ...downstreamNodes.map((child) => formatNodeName(child)),
-        context.parentChain.length ? formatNodeName(context.parentChain[0]) : 'Rotprocess',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Ready (DoR)</h2>
-      ${renderList([
-        'Syfte och scope bekräftat med processägare.',
-        'BPMN-nod och datafält kartlagda.',
-        'Regler, API-behov och beroenden identifierade.',
-        'Estimaten är verifierbara och teststrategi framtagen.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Done (DoD)</h2>
-      ${renderList([
-        'Stories klara och distribuerade till produktion.',
-        'End-to-end tester gröna inkl. regression.',
-        'Observability dashboards uppdaterade.',
-        'Dokumentation och artefakter uppdaterade.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Relaterade noder</h2>
-      ${renderList(
-        relatedNodes.length
-          ? relatedNodes.map((relatedNode) => `${formatNodeName(relatedNode)} – ${buildNodeLink(relatedNode)}`)
-          : ['Inga extra noder identifierade.']
-      )}
     </section>
   `;
 
@@ -590,193 +693,213 @@ export const renderBusinessRuleDoc = (
 ) => {
   const node = context.node;
   const nodeName = node.name || node.bpmnElementId || 'Business Rule';
-  const inputs = context.parentChain.slice(-2);
-  const outputs = context.childNodes.slice(0, 3);
-  const previousNode = context.parentChain.length
+  const ruleId = node.bpmnElementId || node.id;
+  const upstreamNode = context.parentChain.length
     ? context.parentChain[context.parentChain.length - 1]
     : undefined;
-  const upstreamName = previousNode ? formatNodeName(previousNode) : 'Processstart';
-  const downstreamName = outputs.length ? formatNodeName(outputs[0]) : 'Nästa beslut';
-  const hasUxRelation = context.parentChain.some((parent) => parent.type === 'userTask');
-  const coreIntentItems = [
-    `Avgör kreditbeslutet "${nodeName}" baserat på policy och riskparametrar.`,
-    `Input: ${inputs.length ? buildNodeNameList(inputs) : 'Föregående nod'} med kompletterande data.`,
-    `Output: ${outputs.length ? buildNodeNameList(outputs) : 'Flaggor för fortsättning/avslag'}.`,
-    'Policygrund: kreditmanual och regulatoriska krav.',
-    'Risk: felkonfigurerade regler kan släppa igenom felaktiga ansökningar.',
+  const downstreamNode = context.childNodes.length ? context.childNodes[0] : undefined;
+  const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
+  const downstreamName = downstreamNode ? formatNodeName(downstreamNode) : 'Nästa beslut';
+  const processStep = node.bpmnFile.replace('.bpmn', '');
+  const dmnLabel = links.dmnLink ? links.dmnLink.split('/').pop() : undefined;
+  const owner = 'Risk & Policy team';
+  const channel = 'Digital ansökan / intern handläggare';
+
+  const scopeBullets = [
+    `Regeln avgör kreditutfall för delsteget <strong>${processStep}</strong>.`,
+    `Gäller typiskt nyutlåning och limitändringar för bolån/konsumtionskrediter.`,
+    `Triggas efter ${upstreamName} och före ${downstreamName}.`,
+    'Utanför scope: eftermarknadsflöden, generella produktkampanjer och manuella undantag.',
+  ];
+
+  const prerequisites = [
+    'Grundläggande ansökningsuppgifter är kompletta och validerade.',
+    'Kund- och engagemangsdata är inläst från kärnsystem/UC eller motsvarande.',
+    'Produkt- och kanalregler för aktuellt erbjudande är applicerade.',
+    'Nödvändiga DMN-tabeller/regelmotorer är tillgängliga.',
+  ];
+
+  const decisionBullets = [
+    'Auto-approve vid låg risk och komplett underlag.',
+    'Refer (manuell granskning) vid blandad riskbild eller policyundantag.',
+    'Decline vid tydligt överskriden risknivå eller hårda exklusionskriterier.',
+  ];
+
+  const policySupportBullets = [
+    'Stödjer kreditpolicy för skuldkvot, belåningsgrad och betalningsanmärkningar.',
+    'Säkerställer likformig hantering av risk enligt riskmanual.',
+    'Minimerar manuell hantering genom tydliga auto-approve/auto-decline-kriterier.',
+  ];
+
+  const scenariosRows = [
+    {
+      id: 'SCN-1',
+      name: 'Normalfall – stabil kund',
+      input: 'Hög kreditvärdighet, skuldkvot inom riktvärde, god säkerhet.',
+      outcome: 'Beslut = APPROVE, inga extra flaggor.',
+    },
+    {
+      id: 'SCN-2',
+      name: 'Hög skuldsättning',
+      input: 'Skuldkvot över tröskel och/eller hög belåningsgrad.',
+      outcome: 'Beslut = REFER eller DECLINE, flagga för hög skuldsättning.',
+    },
+    {
+      id: 'SCN-3',
+      name: 'Sanktions- eller fraudträff',
+      input: 'Träff på sanktions-/fraudlista eller allvarlig betalningshistorik.',
+      outcome: 'Beslut = DECLINE, markering för specialhantering.',
+    },
   ];
 
   const body = `
     <section class="doc-section">
       <span class="doc-badge">Business Rule</span>
       <h1>${nodeName}</h1>
-      <p class="muted">Policybeslut mellan ${upstreamName} → ${downstreamName}.</p>
-    </section>
-
-    <section class="doc-section">
-      <h2>Core Intent</h2>
-      ${renderList(coreIntentItems)}
-    </section>
-
-    <section class="doc-section">
-      <h2>BPMN-koppling</h2>
+      <p class="muted">Policybeslut mellan ${upstreamName} → ${downstreamName} i steget ${processStep}.</p>
       <ul>
-        <li><strong>Nodtyp:</strong> Business Rule Task</li>
-        <li><strong>Nod-ID:</strong> ${node.bpmnElementId}</li>
-        <li><strong>Startar efter:</strong> ${upstreamName}</li>
-        <li><strong>Leder vidare till:</strong> ${downstreamName}</li>
-        <li><strong>BPMN-länk:</strong> ${
-          links.bpmnViewerLink ? `<a href="${links.bpmnViewerLink}">Öppna i viewer</a>` : 'Öppna i BPMN viewer'
-        }</li>
+        <li><strong>Regel-ID:</strong> ${ruleId}</li>
+        <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
+        <li><strong>DMN / beslutsmodell:</strong> ${dmnLabel || 'Ej länkad DMN-tabell'}</li>
+        <li><strong>Version &amp; status:</strong> 1.0 (exempel) – Aktiv</li>
+        <li><strong>Ägare:</strong> ${owner}</li>
+        <li><strong>Kreditprocess-steg &amp; kanal:</strong> ${processStep} – ${channel}</li>
       </ul>
     </section>
 
     <section class="doc-section">
-      <h2>Funktionell beskrivning</h2>
-      <p>${nodeName} applicerar kreditreglerna med hjälp av regelmotor/DMN och avgör om processen kan fortsätta, kräver manuell kontroll eller ska avslås.</p>
+      <h2>Sammanfattning &amp; scope</h2>
+      <p>${nodeName} använder kreditdata och policypunkter för att avgöra om en ansökan kan godkännas automatiskt, ska skickas till manuell granskning eller ska avslås.</p>
+      <p>Regeln fokuserar på risknivå, betalningsförmåga och formella exklusionskriterier för den aktuella produkten.</p>
+      ${renderList(scopeBullets)}
     </section>
 
     <section class="doc-section">
-      <h2>Regelmatris</h2>
+      <h2>Förutsättningar &amp; kontext</h2>
+      ${renderList(prerequisites)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs &amp; datakällor</h2>
       <table>
-        <tr><th>Regel</th><th>Input</th><th>Output</th><th>Prioritet</th><th>Konfigurerbar</th></tr>
-        <tr><td>${nodeName}-Eligibility</td><td>riskScore, loanAmount</td><td>APPROVE / REVIEW / REJECT</td><td>1</td><td>Ja</td></tr>
-        <tr><td>${nodeName}-Fraud</td><td>sanctionCheck, partyFlags</td><td>STOP_PROCESS</td><td>2</td><td>Ja</td></tr>
+        <tr>
+          <th>Fält</th>
+          <th>Datakälla</th>
+          <th>Typ / format</th>
+          <th>Obligatoriskt</th>
+          <th>Validering</th>
+          <th>Felhantering</th>
+        </tr>
+        <tr>
+          <td>riskScore</td>
+          <td>Kreditmotor / UC</td>
+          <td>Tal (0–1000)</td>
+          <td>Ja</td>
+          <td>Inom definierat intervall</td>
+          <td>Avslå eller skicka till manuell granskning</td>
+        </tr>
+        <tr>
+          <td>debtToIncomeRatio</td>
+          <td>Intern beräkning</td>
+          <td>Decimal</td>
+          <td>Ja</td>
+          <td>&gt;= 0</td>
+          <td>Flagga för manuell granskning vid saknade data</td>
+        </tr>
+        <tr>
+          <td>loanToValue</td>
+          <td>Fastighetsvärdering</td>
+          <td>Procent</td>
+          <td>Ja</td>
+          <td>0–100 %</td>
+          <td>Avslå vid orimliga värden</td>
+        </tr>
       </table>
     </section>
 
     <section class="doc-section">
-      <h2>DMN / Regeldefinitioner</h2>
+      <h2>Beslutslogik (DMN / regler)</h2>
+      <p>Regeln kombinerar riskScore, skuldsättning, belåningsgrad och eventuella riskflaggor för att fatta ett samlat beslut.</p>
+      ${renderList([
+        'Hög riskScore och måttlig skuldsättning ger normalt auto-approve.',
+        'Mellanrisk eller ofullständig data leder till manuell granskning.',
+        'Tydliga exklusionskriterier (t.ex. betalningsanmärkningar eller sanktionsflaggor) ger auto-decline.',
+      ])}
+    </section>
+
+    <section class="doc-section">
+      <h2>Output &amp; effekter</h2>
+      ${renderList([
+        'Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.',
+        `Processpåverkan: fortsätter till ${downstreamName} vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE.`,
+        'Flaggor: t.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff.',
+        'Loggning: beslut, huvudparametrar och regelversion loggas för audit.',
+      ])}
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärsregler &amp; policystöd</h2>
+      ${renderList(policySupportBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
+      <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
+      <table>
+        <tr>
+          <th>Scenario-ID</th>
+          <th>Scenario</th>
+          <th>Input (kortfattat)</th>
+          <th>Förväntat beslut/flagga</th>
+          <th>Automatiskt test</th>
+        </tr>
+        ${scenariosRows
+          .map(
+            (row) => `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.name}</td>
+          <td>${row.input}</td>
+          <td>${row.outcome}</td>
+          <td>${
+            links.testLink
+              ? `<code>${links.testLink}</code>`
+              : '<span class="muted">Test mappas i node_test_links</span>'
+          }</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation &amp; integrationsnoter</h2>
       ${renderList([
         links.dmnLink
-          ? `<a href="${links.dmnLink}">Öppna DMN-diagram</a>`
+          ? `DMN-tabell: <a href="${links.dmnLink}">${dmnLabel}</a>`
+          : 'DMN-tabell: ej länkad – lägg till beslutstabell/DMN när den finns.',
+        `BPMN-koppling: Business Rule Task i filen ${node.bpmnFile}.`,
+        links.bpmnViewerLink
+          ? `BPMN viewer: <a href="${links.bpmnViewerLink}">Öppna noden i viewer</a>`
+          : 'BPMN viewer-länk sätts via applikationen.',
+        'API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).',
+        'Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.',
+      ])}
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade regler &amp; subprocesser</h2>
+      ${renderList([
+        links.dmnLink
+          ? `Relaterad DMN-modell: <a href="${links.dmnLink}">${dmnLabel}</a>`
           : 'Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell/DMN när den finns.',
-        'Versionering i Supabase storage med auditspår.',
-        'Ägarskap: Risk & Policy team.',
+        links.bpmnViewerLink
+          ? `Relaterad BPMN-subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
+          : 'Subprocess-länk sätts via BPMN viewer.',
+        context.parentChain.length
+          ? `Överordnad nod: ${buildNodeLink(context.parentChain[context.parentChain.length - 1])}`
+          : 'Överordnad nod: Rotprocess',
       ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Datamodell (Input/Output)</h2>
-      <table>
-        <tr><th>Typ</th><th>Fält</th><th>Källa / Beskrivning</th></tr>
-        <tr><td>Input</td><td>applicationId</td><td>Nyckel från föregående nod</td></tr>
-        <tr><td>Input</td><td>riskScore</td><td>Beräknas av kreditmotor</td></tr>
-        <tr><td>Input</td><td>loanAmount</td><td>Ansökt belopp</td></tr>
-        <tr><td>Output</td><td>decision</td><td>APPROVE / REVIEW / REJECT</td></tr>
-        <tr><td>Output</td><td>reasonCodes</td><td>Lista med regelutfall</td></tr>
-      </table>
-    </section>
-
-    <section class="doc-section">
-      <h2>User Stories (om tillämpligt)</h2>
-      ${
-        context.childNodes.length
-          ? renderList(
-              context.childNodes.slice(0, 3).map(
-                (child, index) =>
-                  `RULE-STORY-${index + 1} – Implementera ${formatNodeName(child)} som konsument av ${nodeName}.`
-              )
-            )
-          : '<p class="muted">Inga specifika user stories kopplade – regeln exekveras via generisk engine.</p>'
-      }
-    </section>
-
-    <section class="doc-section">
-      <h2>UX-relatering (om tillämpligt)</h2>
-      <p>${
-        hasUxRelation
-          ? 'Resultatet visas för handläggare i nästa User Task och måste vara begripligt.'
-          : 'Ingen direkt UX-koppling; svar används av automatiserade flöden.'
-      }</p>
-    </section>
-
-    <section class="doc-section">
-      <h2>Testspecificitet</h2>
-      ${renderList([
-        'Testa varje regelgren och konfigurationsparameter.',
-        'Verifiera DMN-versioner och fallback när regelmotor ej nås.',
-        'Säkerställ deterministiska svar vid lika score.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Testscenarier (nyckelscenarier)</h2>
-      ${renderList([
-        'Regel-succéfall – riskScore över tröskel, beslut APPROVE.',
-        'Regel-felfall – saknade data eller ogiltig kombination.',
-        'Systemfel från regelmotor – fallback till defaultbeslut.',
-        'Edge cases – extrem belåningsgrad, manuella flaggor.',
-      ])}
-      <p>${links.testLink ? `<a href="${links.testLink}">Se automatisk testfil</a>` : 'Testfil skapas när scenarier genereras.'}</p>
-    </section>
-
-    <section class="doc-section">
-      <h2>Testdata</h2>
-      <table>
-        <tr><th>Scenario</th><th>Input</th><th>Förväntad output</th></tr>
-        <tr><td>Approve</td><td>riskScore=780, loanAmount=1.2M</td><td>decision=APPROVE</td></tr>
-        <tr><td>Manual review</td><td>riskScore=620, sanctionCheck=HIT</td><td>decision=REVIEW, reason=SANCTION</td></tr>
-        <tr><td>Stop</td><td>fraudFlag=true</td><td>decision=STOP_PROCESS</td></tr>
-      </table>
-    </section>
-
-    <section class="doc-section">
-      <h2>Processpåverkan / Stop Criteria</h2>
-      ${renderList([
-        'Processen fortsätter när decision är APPROVE.',
-        'Review triggar manuell hantering och paus i automatiserat flöde.',
-        'STOP_PROCESS eller REJECT avslutar processen och loggar incident.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Observability &amp; Logging</h2>
-      ${renderList([
-        'Logga regelversion, inputdata och utfallet.',
-        'Knyt loggar till applicationId och correlationId.',
-        'Publicera metrics för antal avslag, review och fel.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Regression – påverkade områden</h2>
-      ${renderList([
-        upstreamName,
-        ...outputs.map((out) => formatNodeName(out)),
-        context.parentChain.length ? formatNodeName(context.parentChain[0]) : 'Rotprocess',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Ready (DoR)</h2>
-      ${renderList([
-        'Regelkrav dokumenterade och godkända av Risk.',
-        'Input/Output-fält fastställda och mappade.',
-        'Testdata och DMN-versioner identifierade.',
-        'Policybeslut om fallback/stop-kriterier klara.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Done (DoD)</h2>
-      ${renderList([
-        'Regler implementerade och testade.',
-        'DMN publicerad med version och ägarskap.',
-        'Logging/audit bekräftade i QA/PROD.',
-        'Dokumentation och tester uppdaterade.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Relaterade noder</h2>
-      ${renderList(
-        [...outputs, previousNode].filter(Boolean).length
-          ? [...outputs, previousNode]
-              .filter(Boolean)
-              .map((relatedNode) => `${formatNodeName(relatedNode!)} – ${buildNodeLink(relatedNode!)}`)
-          : ['Inga relaterade noder identifierade.']
-      )}
     </section>
   `;
 

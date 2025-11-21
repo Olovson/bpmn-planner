@@ -43,66 +43,81 @@ Skriv all text på **svenska**.
 
 ## OUTPUTSTRUKTUR
 
-### 1. Översikt
-Beskriv syftet med beslutet/regeln:
-- vilken fråga den besvarar (t.ex. “kan vi gå vidare med ansökan?”, “krävs manuell granskning?”)
-- var i kreditprocessen den används (t.ex. pre-screening, huvudbeslut, efterkontroll)
+Skriv alltid sektionerna nedan i **denna ordning**, med rubrikerna exakt som angivna.  
+Använd `<h1>` för titel-sektionen och `<h2>` för övriga sektioner.  
+Håll varje sektion kort och konkret (max 4–6 meningar eller en kompakt tabell/lista).
 
-### 2. Indata (Inputs)
-Lista alla viktiga indata:
+### 1. Titel &amp; metadata
+- Rubrik: `<h1>…</h1>` med regelns huvudnamn.  
+- Lista metadata i HTML-lista (`<ul>` / `<li>`), t.ex.:
+  - Regel-ID / DMN-namn (om känt)
+  - BPMN-element (id, namn, typ)
+  - Version &amp; status (t.ex. “1.0 (exempel) – Aktiv” om inget annat finns)
+  - Ägare (t.ex. “Risk &amp; Policy team”)
+  - Kreditprocess-steg &amp; kanal (t.ex. pre-screening, huvudbeslut, web/app/intern)
 
-För varje input:  
-- namn  
-- typ (t.ex. heltal, decimal, boolesk, enum)  
-- beskrivning (vad betyder fältet? t.ex. kundens bruttoinkomst, belåningsgrad, antal betalningsanmärkningar)
+### 2. Sammanfattning &amp; scope
+- Kort beskrivning (3–5 meningar) som förklarar:
+  - Vad regeln gör (vilken typ av beslut).
+  - Varför den finns (affärs-/riskmotiv).
+  - Vilka kunder/produkter som omfattas (högnivå).
+  - När regeln triggas / inte triggas (in-/out-of-scope).
 
-### 3. Utdata (Outputs)
-Lista alla utdata:
+### 3. Förutsättningar &amp; kontext
+- Punktlista (`<ul>`) med centrala förutsättningar, t.ex.:
+  - vilka upstream-steg som måste vara klara
+  - beroenden mot andra regler/DMN
+  - viktiga antaganden (t.ex. att viss data alltid finns)
 
-För varje output:  
-- namn  
-- typ  
-- beskrivning (t.ex. beslutsklass, rekommendation, flagga för manuell granskning)
+### 4. Inputs &amp; datakällor
+- En HTML-tabell med kolumner:
+  - Fält
+  - Datakälla
+  - Typ / format
+  - Obligatoriskt (Ja/Nej)
+  - Validering (kort)
+  - Felhantering (kort)
+- Använd max 5–7 rader – välj de viktigaste fälten.
 
-### 4. Regelöversikt
-Beskriv hur reglerna är strukturerade:
+### 5. Beslutslogik (DMN / regler)
+- Kort text + punktlista som förklarar:
+  - hur viktiga fält kombineras (ex. riskScore + skuldkvot + LTV)
+  - vilka tröskelvärden/zoner som finns (exempel med rimliga siffror)
+  - typiska edge cases (t.ex. hög inkomst men hög skuldsättning)
 
-- Antal regler (på en övergripande nivå)
-- Om det finns kategorier av regler (t.ex. inkomstrestriktioner, LTV-regler, riskflaggor)
-- Hit policy (om DMN), t.ex. FIRST, COLLECT, PRIORITY
-- Exempel på hur en regel kan se ut, t.ex.:
-  - belåningsgrad > 85 % → flagga för manuell granskning
-  - skuldkvot > 5,0 → avslag eller manuell granskning
-  - betalningsanmärkning senaste 12 månader → särskild hantering
+### 6. Output &amp; effekter
+- Punktlista över:
+  - möjliga beslut (approve / refer / decline, riskklass, flaggor)
+  - effekter i processen (fortsätter, pausas, stoppas, skickas till kö)
+  - vad som loggas (beslut, nyckelparametrar, regelversion)
 
-### 5. Beslutslogik – Narrativ beskrivning
-Förklara i text hur logiken fungerar:
+### 7. Affärsregler &amp; policystöd
+- Kort lista (3–5 punkter) som:
+  - kopplar regeln till interna policydokument/principer
+  - beskriver hur regeln hjälper att följa dessa principer
 
-- Hur kombineras indata för att nå ett beslut?
-- Vad är de viktigaste tröskelvärdena eller brytpunkterna?
-- När leder reglerna till auto-approve, auto-decline eller manuell granskning?
-- Finns det uppenbara edge cases (t.ex. hög inkomst men hög skuldsättning)?
+### 8. Nyckelscenarier / testkriterier (affärsnivå)
+- Skapa **max 3–5 scenarier**.  
+- Presentera dem i en HTML-tabell med kolumner:
+  - Scenario-ID
+  - Scenario (kort namn)
+  - Input (kortfattad beskrivning)
+  - Förväntat beslut/flagga  
+  - Automatiskt test (t.ex. referens till testfil/scenario-ID om sådan är känd, annars text som “mappas i automatiska tester”)
+- Beskriv bara affärsnivå (inte tekniska steg, inga detaljerade testskript här).
 
-Här får du vara **måttligt kreativ** och lägga till **rimliga siffersatta exempel** för att göra logiken konkret.
+### 9. Implementation &amp; integrationsnoter
+- Kort sektion i form av punktlista:
+  - DMN-tabell(er) / beslutsnoder / filnamn (om kända)
+  - Relevanta API-kontrakt (endast namn på viktiga endpoints/fält)
+  - Beroenden (feature flags, externa tjänster)
+  - Migreringsinfo om regeln ersätter tidigare versioner
 
-### 6. Integration i processen
-Beskriv hur beslutet är kopplat till BPMN-/kreditprocessen:
-
-- vilken nod eller subprocess som anropar beslutslogiken
-- vilken information flödar in respektive ut
-- hur efterföljande steg använder utfallet (t.ex. visning för kund, beslutsbrev, intern kö)
-
-### 7. Test- och kvalitetsaspekter
-Riktat till testare och utvecklare:
-
-- viktiga testscenarion:
-  - typfall (normal kund)
-  - riskfall (hög skuldsättning, låg inkomst, hög LTV)
-  - tekniska edge cases (saknad data, orimliga värden)
-- exempel på **boundary values** som bör testas:
-  - exakt vid tröskelvärden (t.ex. skuldkvot = 5,0)
-  - strax under och strax över
-- eventuella krav på spårbarhet (loggning av vilket regelutfall som gav beslutet)
+### 10. Relaterade regler &amp; subprocesser
+- Lista länkar/beskrivningar till:
+  - närliggande regler / DMN-modeller
+  - relevanta BPMN-subprocesser där regeln används
+  - ev. överordnade/underordnade beslut i kedjan
 
 ---
 
@@ -113,6 +128,8 @@ Riktat till testare och utvecklare:
 - Gör det tydligt att reglerna är **exempel på rimlig logik**, inte juridiskt bindande eller bank-specifik policy.
 - Upprepa inte samma sak i flera sektioner.
 - Fokusera på att göra det lätt för arkitekter, utvecklare och testare att förstå hur reglerna fungerar.
+- Håll varje sektion kort (max 4–6 meningar) och använd tabeller/listor där det gör innehållet mer överskådligt.
+- Skapa **max 3–5 nyckelscenarier** under “Nyckelscenarier / testkriterier (affärsnivå)”.
 - Skriv ren HTML för rubriker, stycken, listor och tabeller, men lägg inte till:
   - ingen `<html>`, `<head>` eller `<body>`
   - ingen `<style>`, `<link>` eller `<script>`

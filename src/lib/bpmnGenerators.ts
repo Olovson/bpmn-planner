@@ -937,7 +937,7 @@ async function renderDocWithLlmFallback(
           : docType === 'epic'
           ? 'Epic'
           : 'Business Rule');
-      const wrapped = wrapLlmContentAsDocument(llmDoc, title);
+      const wrapped = wrapLlmContentAsDocument(llmDoc, title, { docType });
       if (!/<html[\s>]/i.test(wrapped) || !/<body[\s>]/i.test(wrapped)) {
         await logLlmFallback({
           eventType: 'documentation',
