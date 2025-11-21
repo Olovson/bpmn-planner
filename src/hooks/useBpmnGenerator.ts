@@ -5,6 +5,7 @@ import { useToast } from './use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateArtifactQueries } from '@/lib/queryInvalidation';
+import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
 
 export interface GenerateOptions {
   overwriteDocs?: boolean;
@@ -122,7 +123,7 @@ test.describe('${nodeName} - ${bpmnFile}', () => {
   return testTemplate;
 }
 
-export const useBpmnGenerator = (bpmnFilePath: string) => {
+export const useBpmnGenerator = (bpmnFilePath: string | null) => {
   const { parseResult, loading: parseLoading } = useBpmnParser(bpmnFilePath);
   const [generating, setGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
@@ -143,24 +144,21 @@ export const useBpmnGenerator = (bpmnFilePath: string) => {
     try {
       setGenerating(true);
 
-      // Get list of existing BPMN files
-      const bpmnFiles = [
-        'mortgage.bpmn',
-        'mortgage-se-application.bpmn',
-        'mortgage-se-credit-evaluation.bpmn',
-        'mortgage-se-credit-decision.bpmn',
-        'mortgage-se-stakeholder.bpmn',
-        'mortgage-se-object.bpmn',
-        'mortgage-se-household.bpmn',
-        'mortgage-se-internal-data-gathering.bpmn',
-        'mortgage-se-object-information.bpmn',
-      ];
+      const { data: storedFiles, error: filesError } = await supabase
+        .from('bpmn_files')
+        .select('file_name, file_type');
 
-      // Get list of existing DMN files (will be populated as DMN files are added)
-      const dmnFiles: string[] = [
-        // Add DMN files here as they are created
-        // Example: 'pre-screen-party.dmn',
-      ];
+      if (filesError) {
+        throw filesError;
+      }
+
+      const bpmnFiles = (storedFiles || [])
+        .filter(file => file.file_type === 'bpmn')
+        .map(file => file.file_name);
+
+      const dmnFiles = (storedFiles || [])
+        .filter(file => file.file_type === 'dmn')
+        .map(file => file.file_name);
 
       // Använd hierarkisk analys för toppnivåfiler (mortgage.bpmn)
       const topLevelFiles = ['mortgage.bpmn'];
@@ -173,7 +171,8 @@ export const useBpmnGenerator = (bpmnFilePath: string) => {
         parseResult.fileName || 'unknown.bpmn',
         bpmnFiles,
         dmnFiles,
-        useHierarchy
+        useHierarchy,
+        true
       );
 
       setGenerationResult(result);
@@ -226,13 +225,14 @@ export const useBpmnGenerator = (bpmnFilePath: string) => {
       if (result.metadata?.filesIncluded && result.metadata.filesIncluded.length > 0) {
         const testLinksToInsert: any[] = [];
         const jiraTypeMappingsToInsert: any[] = [];
+        const callActivityCandidates: CallActivityMappingCandidate[] = [];
         
         // For each file in the hierarchy, parse and create test links for testable nodes
         for (const includedFile of result.metadata.filesIncluded) {
           try {
             // Parse the file to get its elements
-            const fileUrl = `https://wguequebmkccmdcrtlwb.supabase.co/storage/v1/object/public/bpmn-files/${includedFile}`;
-            const response = await fetch(fileUrl);
+            const fileUrl = await getBpmnFileUrl(includedFile);
+            const response = await fetch(fileUrl, { cache: 'no-store' });
             const xmlText = await response.text();
             
             // Simple regex to extract testable elements (UserTask, ServiceTask, BusinessRuleTask, CallActivity)
@@ -296,6 +296,17 @@ export const useBpmnGenerator = (bpmnFilePath: string) => {
                 element_id: elementId,
                 jira_type: defaultJiraType,
               });
+
+              if (nodeType === 'CallActivity') {
+                const matchedSubprocess = result.subprocessMappings.get(elementId);
+                if (matchedSubprocess) {
+                  callActivityCandidates.push({
+                    bpmn_file: includedFile,
+                    element_id: elementId,
+                    subprocess_bpmn_file: matchedSubprocess,
+                  });
+                }
+              }
             }
           } catch (error) {
             console.error(`Error processing test links for ${includedFile}:`, error);
@@ -331,6 +342,67 @@ export const useBpmnGenerator = (bpmnFilePath: string) => {
             console.error('Auto-initialize jira_type error:', jiraTypeError);
           } else {
             console.log(`Initialized jira_type for ${jiraTypeMappingsToInsert.length} nodes`);
+          }
+        }
+
+        // Populate subprocess mappings for Call Activities
+        if (callActivityCandidates.length > 0) {
+          const filesToCheck = Array.from(new Set(callActivityCandidates.map((item) => item.bpmn_file)));
+          const { data: existingMappings, error: mappingsError } = await supabase
+            .from('bpmn_element_mappings')
+            .select('id,bpmn_file,element_id,subprocess_bpmn_file')
+            .in('bpmn_file', filesToCheck);
+
+          if (mappingsError) {
+            console.error('Failed to load existing subprocess mappings:', mappingsError);
+          } else {
+            const mappingIndex = new Map(
+              (existingMappings || []).map((row) => [`${row.bpmn_file}:${row.element_id}`, row])
+            );
+
+            const subprocessInserts: CallActivityMappingCandidate[] = [];
+            const subprocessUpdates: { id: string; subprocess_bpmn_file: string }[] = [];
+
+            callActivityCandidates.forEach((candidate) => {
+              const key = `${candidate.bpmn_file}:${candidate.element_id}`;
+              const existing = mappingIndex.get(key);
+              if (existing?.subprocess_bpmn_file === candidate.subprocess_bpmn_file) {
+                return;
+              }
+
+              if (existing?.id) {
+                subprocessUpdates.push({
+                  id: existing.id,
+                  subprocess_bpmn_file: candidate.subprocess_bpmn_file,
+                });
+              } else {
+                subprocessInserts.push(candidate);
+              }
+            });
+
+            if (subprocessInserts.length > 0) {
+              const { error: insertError } = await supabase
+                .from('bpmn_element_mappings')
+                .insert(subprocessInserts);
+              if (insertError) {
+                console.error('Failed to insert subprocess mappings:', insertError);
+              } else {
+                console.log(`Inserted ${subprocessInserts.length} subprocess mappings`);
+              }
+            }
+
+            if (subprocessUpdates.length > 0) {
+              for (const update of subprocessUpdates) {
+                const { error: updateError } = await supabase
+                  .from('bpmn_element_mappings')
+                  .update({ subprocess_bpmn_file: update.subprocess_bpmn_file })
+                  .eq('id', update.id);
+                if (updateError) {
+                  console.error('Failed to update subprocess mapping:', updateError);
+                }
+              }
+              console.log(`Updated ${subprocessUpdates.length} subprocess mappings`);
+            }
           }
         }
         
@@ -496,3 +568,8 @@ export const useBpmnGenerator = (bpmnFilePath: string) => {
     parseLoading,
   };
 };
+interface CallActivityMappingCandidate {
+  bpmn_file: string;
+  element_id: string;
+  subprocess_bpmn_file: string;
+}

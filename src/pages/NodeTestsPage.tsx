@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, FileCode, CheckCircle2, XCircle, Clock, AlertCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useNodeTests } from '@/hooks/useNodeTests';
+import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
@@ -15,11 +17,12 @@ const NodeTestsPage = () => {
   const bpmnFile = searchParams.get('bpmnFile');
   const elementId = searchParams.get('elementId');
 
-  const { tests, nodeInfo, isLoading } = useNodeTests({ 
+  const { tests, nodeInfo, plannedScenarios, isLoading } = useNodeTests({ 
     nodeId: nodeId || undefined,
     bpmnFile: bpmnFile || undefined,
     elementId: elementId || undefined,
   });
+  const [implementedTestFile, setImplementedTestFile] = useState<string | null>(null);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -44,6 +47,52 @@ const NodeTestsPage = () => {
     }
   };
 
+  useEffect(() => {
+    if (!bpmnFile || !elementId) {
+      setImplementedTestFile(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchTestLink = async () => {
+      try {
+        const { data, error, status } = await supabase
+          .from('node_test_links')
+          .select('test_file_path')
+          .eq('bpmn_file', bpmnFile)
+          .eq('bpmn_element_id', elementId)
+          .limit(1)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (error && status !== 406) {
+          console.warn('[NodeTestsPage] node_test_links error', error);
+          setImplementedTestFile(null);
+          return;
+        }
+
+        if (data?.test_file_path) {
+          setImplementedTestFile(data.test_file_path);
+        } else {
+          setImplementedTestFile(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('[NodeTestsPage] Failed to read node_test_links', err);
+          setImplementedTestFile(null);
+        }
+      }
+    };
+
+    fetchTestLink();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bpmnFile, elementId]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -67,11 +116,19 @@ const NodeTestsPage = () => {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">
-                  Tester för nod: {nodeInfo?.name || nodeId}
+                  Testrapport för {nodeInfo?.name || elementId || nodeId || 'okänd nod'}
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {nodeInfo?.type}
-                </p>
+                <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                  {elementId && (
+                    <span className="font-mono">{elementId}</span>
+                  )}
+                  {bpmnFile && (
+                    <>
+                      {elementId && <span>•</span>}
+                      <span>{bpmnFile}</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
             <Button
@@ -86,12 +143,71 @@ const NodeTestsPage = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {tests.length === 0 && (
+        {/* Summary section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{tests.length}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {tests.length === 1 ? 'Kört test' : 'Körda tester'}
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  {tests.filter(t => t.status === 'passing').length} passerade • {tests.filter(t => t.status === 'failing').length} misslyckade
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{implementedTestFile ? 1 : 0}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  Implementerade testfiler
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  {implementedTestFile && tests.length === 0 ? 'Ej körda ännu' : implementedTestFile ? 'Körda' : 'Inga'}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{plannedScenarios.length}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {plannedScenarios.length === 1 ? 'Planerat scenario' : 'Planerade scenarion'}
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Designade men ej implementerade
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {tests.length === 0 && !implementedTestFile && plannedScenarios.length === 0 && (
           <Card>
             <CardContent className="py-8">
               <div className="text-center text-muted-foreground">
                 Inga tester är kopplade till den här noden ännu.
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {implementedTestFile && tests.length === 0 && (
+          <Card className="mb-6 border-dashed border-amber-400/70 bg-amber-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <span>🧪 Test implementerat men ej kört</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Det finns en genererad testfil för denna nod, men inga körda testresultat är inrapporterade ännu.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="font-mono text-xs">{implementedTestFile}</p>
             </CardContent>
           </Card>
         )}
@@ -161,6 +277,46 @@ const NodeTestsPage = () => {
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {plannedScenarios.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span>📝 Planerade scenarion</span>
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Designade testscenarion kopplade till denna nod. Dessa representerar målbilden och är
+                inte nödvändigtvis implementerade eller körda ännu.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Namn</TableHead>
+                    <TableHead>Typ</TableHead>
+                    <TableHead>Beskrivning</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {plannedScenarios.map((scenario) => (
+                    <TableRow key={scenario.id}>
+                      <TableCell className="font-medium text-sm">
+                        {scenario.name}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {scenario.category}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {scenario.description}
                       </TableCell>
                     </TableRow>
                   ))}

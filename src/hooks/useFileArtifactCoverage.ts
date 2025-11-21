@@ -3,6 +3,7 @@ import { parseBpmnFile } from '@/lib/bpmnParser';
 import { supabase } from '@/integrations/supabase/client';
 import { useBpmnFiles } from './useBpmnFiles';
 import { getBpmnFileUrl } from './useDynamicBpmnFiles';
+import { sanitizeElementId } from '@/lib/nodeArtifactPaths';
 
 export type CoverageStatus = 'none' | 'partial' | 'full' | 'noApplicableNodes';
 
@@ -17,6 +18,7 @@ export interface FileArtifactCoverage {
   docs: ArtifactCoverage;
   tests: ArtifactCoverage;
   dorDod: ArtifactCoverage;
+  hierarchy: ArtifactCoverage;
 }
 
 const getCoverageStatus = (covered: number, total: number): CoverageStatus => {
@@ -78,31 +80,43 @@ export const useFileArtifactCoverage = (fileName: string) => {
         coverage_status: getCoverageStatus(tests_covered, total_nodes),
       });
 
-      // Check docs coverage per node from Supabase Storage
-      let docs_covered = 0;
-      
-      for (const node of relevantNodes) {
-        const docPath = `docs/${node.id}.html`;
-        try {
-          const { data, error } = await supabase.storage
-            .from('bpmn-files')
-            .list('docs', {
-              search: `${node.id}.html`,
-            });
-          
-          if (!error && data && data.length > 0) {
-            docs_covered++;
-          }
-        } catch (error) {
-          console.error(`Error checking doc for ${node.id}:`, error);
-        }
+      let hierarchyCovered = 0;
+      try {
+        const [parentDeps, childDeps] = await Promise.all([
+          supabase
+            .from('bpmn_dependencies')
+            .select('parent_file')
+            .eq('parent_file', fileName),
+          supabase
+            .from('bpmn_dependencies')
+            .select('child_file')
+            .eq('child_file', fileName),
+        ]);
+        const isHierarchical =
+          (parentDeps.data?.length || 0) > 0 ||
+          (childDeps.data?.length || 0) > 0;
+        hierarchyCovered = isHierarchical ? 1 : 0;
+      } catch (error) {
+        console.error(`[Coverage Debug] Error checking hierarchy for ${fileName}:`, error);
       }
 
-      console.log(`[Coverage Debug] ${fileName} - Docs:`, {
-        docs_covered,
-        total_nodes,
-        coverage_status: getCoverageStatus(docs_covered, total_nodes),
-      });
+      // Docs: one HTML per BPMN file. Consider all nodes covered if file doc exists.
+      let docs_covered = 0;
+      try {
+        const docFolder = `docs/nodes/${fileName.replace('.bpmn', '')}`;
+        const { data: docEntries } = await supabase.storage
+          .from('bpmn-files')
+          .list(docFolder, { limit: 1000 });
+        const docNames = new Set(docEntries?.map(entry => entry.name));
+        for (const node of relevantNodes) {
+          const safeId = sanitizeElementId(node.id);
+          if (docNames.has(`${safeId}.html`)) {
+            docs_covered++;
+          }
+        }
+      } catch (error) {
+        console.error(`[Coverage Debug] Error checking docs for ${fileName}:`, error);
+      }
 
       return {
         bpmn_file: fileName,
@@ -121,6 +135,11 @@ export const useFileArtifactCoverage = (fileName: string) => {
           status: getCoverageStatus(dorDod_covered, total_nodes),
           total: total_nodes,
           covered: dorDod_covered,
+        },
+        hierarchy: {
+          status: getCoverageStatus(hierarchyCovered, 1),
+          total: 1,
+          covered: hierarchyCovered,
         },
       };
     },
@@ -146,6 +165,9 @@ export const useAllFilesArtifactCoverage = () => {
       const { data: allTestLinksData } = await supabase
         .from('node_test_links')
         .select('bpmn_file, bpmn_element_id');
+      const { data: allDependenciesData } = await supabase
+        .from('bpmn_dependencies')
+        .select('parent_file, child_file');
 
       for (const file of bpmnFiles) {
         try {
@@ -177,24 +199,21 @@ export const useAllFilesArtifactCoverage = () => {
             coverage_status: getCoverageStatus(tests_covered, total_nodes),
           });
 
-          // Check docs coverage per node from Supabase Storage
           let docs_covered = 0;
-          
-          for (const node of relevantNodes) {
-            const docPath = `docs/${node.id}.html`;
-            try {
-              const { data, error } = await supabase.storage
-                .from('bpmn-files')
-                .list('docs', {
-                  search: `${node.id}.html`,
-                });
-              
-              if (!error && data && data.length > 0) {
+          try {
+            const docFolder = `docs/nodes/${file.file_name.replace('.bpmn', '')}`;
+            const { data: docEntries } = await supabase.storage
+              .from('bpmn-files')
+              .list(docFolder, { limit: 1000 });
+            const docNames = new Set(docEntries?.map(entry => entry.name));
+            for (const node of relevantNodes) {
+              const safeId = sanitizeElementId(node.id);
+              if (docNames.has(`${safeId}.html`)) {
                 docs_covered++;
               }
-            } catch (error) {
-              console.error(`Error checking doc for ${node.id}:`, error);
             }
+          } catch (error) {
+            console.error(`[Coverage Debug] Error checking docs for ${file.file_name}:`, error);
           }
 
           console.log(`[Coverage Debug] ${file.file_name} - Docs:`, {
@@ -202,6 +221,11 @@ export const useAllFilesArtifactCoverage = () => {
             total_nodes,
             coverage_status: getCoverageStatus(docs_covered, total_nodes),
           });
+
+          const isInHierarchy = allDependenciesData?.some(
+            dep => dep.parent_file === file.file_name || dep.child_file === file.file_name
+          );
+          const hierarchyCovered = isInHierarchy ? 1 : 0;
 
           coverageMap.set(file.file_name, {
             bpmn_file: file.file_name,
@@ -220,6 +244,11 @@ export const useAllFilesArtifactCoverage = () => {
               status: getCoverageStatus(dorDod_covered, total_nodes),
               total: total_nodes,
               covered: dorDod_covered,
+            },
+            hierarchy: {
+              status: getCoverageStatus(hierarchyCovered, 1),
+              total: 1,
+              covered: hierarchyCovered,
             },
           });
         } catch (error) {

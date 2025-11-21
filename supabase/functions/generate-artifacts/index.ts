@@ -26,7 +26,16 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const authHeader = req.headers.get('Authorization') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: authHeader
+        ? {
+            headers: {
+              Authorization: authHeader,
+            },
+          }
+        : undefined,
+    });
 
     // 1. Check if file exists in bpmn_files
     const { data: fileData, error: fileError } = await supabase
@@ -69,6 +78,21 @@ serve(async (req) => {
 
     // 3. Parse BPMN (simplified parsing - extract basic elements)
     const elements = parseBpmnContent(fileContent, fileName);
+    try {
+      const bpmnMeta = await parseBpmnXml(fileContent);
+      const { error: metaError } = await supabase
+        .from('bpmn_files')
+        .update({ meta: bpmnMeta })
+        .eq('file_name', fileName);
+
+      if (metaError) {
+        console.error('Failed to update bpmn_files meta:', metaError);
+      } else {
+        console.log(`Updated bpmn_files.meta for ${fileName}`);
+      }
+    } catch (metaParseError) {
+      console.error('Failed to parse BPMN for meta:', metaParseError);
+    }
     console.log(`Parsed ${elements.length} elements from BPMN`);
 
     // 4. Generate DoR/DoD criteria
@@ -156,7 +180,7 @@ serve(async (req) => {
 
     // 8. Create test links and generate test files for testable nodes
     const testableElements = elements.filter(e => 
-      ['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity'].includes(e.type)
+      ['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity', 'SubProcess'].includes(e.type)
     );
 
     const testLinks = testableElements.map(element => ({
@@ -788,6 +812,58 @@ function parseBpmnContent(content: string, fileName: string): BpmnElement[] {
   }
 
   return elements;
+}
+
+async function parseBpmnXml(xml: string) {
+  const getAttr = (element: string, attrName: string): string => {
+    const regex = new RegExp(`${attrName}="([^"]+)"`, 'i');
+    const match = regex.exec(element);
+    return match ? match[1] : '';
+  };
+
+  const processMatch = /<(?:bpmn:)?process[^>]*>/i.exec(xml);
+  const processId = processMatch ? getAttr(processMatch[0], 'id') : '';
+  const processName = processMatch ? (getAttr(processMatch[0], 'name') || processId) : '';
+
+  const callActivities: Array<{ id: string; name: string; calledElement: string | null }> = [];
+  const callActivityRegex = /<(?:bpmn:)?callActivity[^>]*>/gi;
+  let match;
+  while ((match = callActivityRegex.exec(xml)) !== null) {
+    const id = getAttr(match[0], 'id');
+    const name = getAttr(match[0], 'name') || id;
+    const calledElement = getAttr(match[0], 'calledElement') || null;
+    if (id) callActivities.push({ id, name, calledElement });
+  }
+
+  const tasks: Array<{ id: string; name: string; type: 'UserTask' | 'ServiceTask' | 'BusinessRuleTask' }> = [];
+  const taskPatterns = [
+    { regex: /<(?:bpmn:)?userTask[^>]*>/gi, type: 'UserTask' as const },
+    { regex: /<(?:bpmn:)?serviceTask[^>]*>/gi, type: 'ServiceTask' as const },
+    { regex: /<(?:bpmn:)?businessRuleTask[^>]*>/gi, type: 'BusinessRuleTask' as const },
+  ];
+  for (const { regex, type } of taskPatterns) {
+    while ((match = regex.exec(xml)) !== null) {
+      const id = getAttr(match[0], 'id');
+      const name = getAttr(match[0], 'name') || id;
+      if (id) tasks.push({ id, name, type });
+    }
+  }
+
+  const subprocesses: Array<{ id: string; name: string }> = [];
+  const subprocessRegex = /<(?:bpmn:)?subProcess[^>]*>/gi;
+  while ((match = subprocessRegex.exec(xml)) !== null) {
+    const id = getAttr(match[0], 'id');
+    const name = getAttr(match[0], 'name') || id;
+    if (id) subprocesses.push({ id, name });
+  }
+
+  return {
+    processId,
+    name: processName,
+    callActivities,
+    tasks,
+    subprocesses,
+  };
 }
 
 interface DoRDoDCriterion {

@@ -2,6 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBpmnFiles } from './useBpmnFiles';
 
+type DependencyRow = { parent_file: string; child_file?: string | null };
+type BpmnFileRow = { file_name: string };
+
 /**
  * Identifies the root BPMN file by analyzing the dependency hierarchy.
  * The root file is the one that appears as parent but never as child.
@@ -12,7 +15,14 @@ export const useRootBpmnFile = () => {
   
   return useQuery({
     queryKey: ['root-bpmn-file'],
-    queryFn: async (): Promise<string> => {
+    queryFn: async (): Promise<string | null> => {
+      // Guard when files are not loaded yet
+      if (!allFiles || allFiles.length === 0) {
+        return null;
+      }
+
+      const mortgageExists = allFiles.some((f) => f.file_name === 'mortgage.bpmn');
+
       // Get all dependencies
       const { data: dependencies, error } = await supabase
         .from('bpmn_dependencies')
@@ -20,46 +30,47 @@ export const useRootBpmnFile = () => {
 
       if (error) {
         console.error('Error fetching dependencies:', error);
-        return 'mortgage.bpmn'; // Default fallback
+        return mortgageExists ? 'mortgage.bpmn' : allFiles[0].file_name;
       }
 
-      // If no dependencies exist, return mortgage.bpmn as default
-      if (!dependencies || dependencies.length === 0) {
-        console.log('[useRootBpmnFile] No dependencies found, defaulting to mortgage.bpmn');
-        return 'mortgage.bpmn';
-      }
-
-      // Find all parent files
-      const parentFiles = new Set(dependencies.map(d => d.parent_file));
-      
-      // Find all child files (that exist in DB)
-      const childFiles = new Set(
-        dependencies
-          .map(d => d.child_file)
-          .filter(Boolean) as string[]
-      );
-
-      // Root file is a parent that is never a child
-      const rootFiles = Array.from(parentFiles).filter(
-        parent => !childFiles.has(parent)
-      );
-
-      console.log('[useRootBpmnFile] Parents:', Array.from(parentFiles));
-      console.log('[useRootBpmnFile] Children:', Array.from(childFiles));
-      console.log('[useRootBpmnFile] Root files:', rootFiles);
-
-      if (rootFiles.length === 0) {
-        // Fallback: if no clear root, take the first parent file
-        const fallback = dependencies[0]?.parent_file || 'mortgage.bpmn';
-        console.log('[useRootBpmnFile] No root found, using fallback:', fallback);
-        return fallback;
-      }
-
-      // Return the first root file (there should typically be only one)
-      console.log('[useRootBpmnFile] Using root file:', rootFiles[0]);
-      return rootFiles[0];
+      const root = pickRootBpmnFile(allFiles, dependencies || []);
+      return root;
     },
-    enabled: !!allFiles,
+    enabled: Array.isArray(allFiles),
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 };
+
+/**
+ * Pure helper to pick a root BPMN file from available files + dependencies.
+ * Exposed for unit testing.
+ */
+export function pickRootBpmnFile(
+  allFiles: BpmnFileRow[] = [],
+  dependencies: DependencyRow[] = [],
+): string | null {
+  if (!allFiles.length) return null;
+
+  const mortgageExists = allFiles.some((f) => f.file_name === 'mortgage.bpmn');
+
+  if (!dependencies || dependencies.length === 0) {
+    return mortgageExists ? 'mortgage.bpmn' : allFiles[0].file_name;
+  }
+
+  const parentFiles = new Set(dependencies.map((d) => d.parent_file));
+  const childFiles = new Set(
+    dependencies
+      .map((d) => d.child_file)
+      .filter(Boolean) as string[],
+  );
+
+  const rootFiles = Array.from(parentFiles).filter((parent) => !childFiles.has(parent));
+  if (rootFiles.length > 0) {
+    // Prefer mortgage if it is one of the roots; otherwise first root
+    const mortgageRoot = rootFiles.find((r) => r === 'mortgage.bpmn');
+    return mortgageRoot ?? rootFiles[0];
+  }
+
+  // Fallback: if no clear root, prefer mortgage, else first available file
+  return mortgageExists ? 'mortgage.bpmn' : allFiles[0].file_name;
+}

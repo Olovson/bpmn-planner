@@ -8,6 +8,7 @@ import 'dmn-js/dist/assets/dmn-font/css/dmn-embedded.css';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { useDynamicDmnFiles, getDmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
 
 interface DmnViewerProps {
   businessRuleTaskName: string;
@@ -19,31 +20,55 @@ export const DmnViewer = ({ businessRuleTaskName, manualDmnFile }: DmnViewerProp
   const viewerRef = useRef<DmnJS | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dmnFileUrl, setDmnFileUrl] = useState<string | null>(null);
   const { toast } = useToast();
+  const { data: availableDmnFiles = [] } = useDynamicDmnFiles();
 
   // Prioritize manual DMN file link over automatic matching
-  let matchingDmnFile = manualDmnFile;
-
-  // If no manual link, try to find matching DMN file automatically
-  if (!matchingDmnFile) {
-    const dmnFiles = [
-      // Add DMN files here as they are created
-      // Example: 'pre-screen-party.dmn',
-    ];
-
-    matchingDmnFile = dmnFiles.find(file => {
-      const fileName = file.replace('.dmn', '').toLowerCase();
-      const taskName = businessRuleTaskName.toLowerCase();
-      
-      // Check if names are similar (simple fuzzy match)
-      return fileName.includes(taskName) || taskName.includes(fileName);
-    });
-  }
-
-  const dmnFilePath = matchingDmnFile ? `/dmn/${matchingDmnFile}` : null;
+  const matchingDmnFile = (() => {
+    if (manualDmnFile) return manualDmnFile;
+    const normalizedTask = businessRuleTaskName.toLowerCase();
+    return availableDmnFiles.find(file => {
+      const normalizedFile = file.replace('.dmn', '').toLowerCase();
+      return normalizedFile.includes(normalizedTask) || normalizedTask.includes(normalizedFile);
+    }) || null;
+  })();
 
   useEffect(() => {
-    if (!containerRef.current || !dmnFilePath) {
+    let cancelled = false;
+    const resolveUrl = async () => {
+      if (!matchingDmnFile) {
+        setDmnFileUrl(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const url = await getDmnFileUrl(matchingDmnFile);
+        if (!cancelled) {
+          setDmnFileUrl(url);
+        }
+      } catch (err) {
+        console.error('Failed to resolve DMN file URL', err);
+        if (!cancelled) {
+          setDmnFileUrl(null);
+          setError(`Kunde inte hitta DMN-fil: ${matchingDmnFile}`);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    resolveUrl();
+    return () => {
+      cancelled = true;
+    };
+  }, [matchingDmnFile]);
+
+  useEffect(() => {
+    if (!containerRef.current || !dmnFileUrl) {
       setLoading(false);
       return;
     }
@@ -64,9 +89,9 @@ export const DmnViewer = ({ businessRuleTaskName, manualDmnFile }: DmnViewerProp
         viewerRef.current = viewer;
 
         // Load DMN file
-        const response = await fetch(dmnFilePath);
+        const response = await fetch(dmnFileUrl, { cache: 'no-store' });
         if (!response.ok) {
-          throw new Error(`DMN file not found: ${dmnFilePath}`);
+          throw new Error(`DMN file not found: ${dmnFileUrl}`);
         }
 
         const xml = await response.text();
@@ -110,9 +135,9 @@ export const DmnViewer = ({ businessRuleTaskName, manualDmnFile }: DmnViewerProp
         viewerRef.current = null;
       }
     };
-  }, [dmnFilePath, toast]);
+  }, [dmnFileUrl, toast]);
 
-  if (!dmnFilePath) {
+  if (!matchingDmnFile) {
     return (
       <Alert>
         <AlertCircle className="h-4 w-4" />
@@ -129,7 +154,7 @@ export const DmnViewer = ({ businessRuleTaskName, manualDmnFile }: DmnViewerProp
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
           {error.includes('not found') 
-            ? `DMN-fil hittades inte: ${dmnFilePath.split('/').pop()}`
+            ? `DMN-fil hittades inte: ${matchingDmnFile}`
             : error
           }
         </AlertDescription>

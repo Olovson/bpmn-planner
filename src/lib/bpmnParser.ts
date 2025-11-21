@@ -1,5 +1,6 @@
 import BpmnModeler from 'bpmn-js/lib/Modeler';
-import { BpmnMeta } from '@/types/bpmnMeta';
+import { BpmnMeta, BpmnProcessMeta } from '@/types/bpmnMeta';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface BpmnElement {
   id: string;
@@ -58,9 +59,46 @@ export class BpmnParser {
       // Build canonical BpmnMeta
       let processId = '';
       let processName = '';
+      let firstProcessId: string | null = null;
       const metaCallActivities: BpmnMeta['callActivities'] = [];
       const metaTasks: BpmnMeta['tasks'] = [];
       const metaSubprocesses: BpmnMeta['subprocesses'] = [];
+      const processMetaMap = new Map<string, BpmnProcessMeta>();
+      const processOrder: string[] = [];
+
+      const ensureProcessMeta = (id: string | undefined, nameHint?: string): BpmnProcessMeta | null => {
+        if (!id) return null;
+        if (!processMetaMap.has(id)) {
+          const entry: BpmnProcessMeta = {
+            id,
+            name: nameHint || id,
+            callActivities: [],
+            tasks: [],
+            parseDiagnostics: [],
+          };
+          processMetaMap.set(id, entry);
+          processOrder.push(id);
+        } else if (nameHint) {
+          const entry = processMetaMap.get(id)!;
+          if (!entry.name || entry.name === entry.id) {
+            entry.name = nameHint;
+          }
+        }
+        return processMetaMap.get(id)!;
+      };
+
+      const findOwningProcessId = (bo: any): string | undefined => {
+        let current = bo;
+        while (current) {
+          if (current.$type === 'bpmn:Process') {
+            return current.id || current.name;
+          }
+          current = current.$parent;
+        }
+        return undefined;
+      };
+
+      const timestamp = () => new Date().toISOString();
 
       allElements.forEach((element: any) => {
         const bo = element.businessObject;
@@ -70,6 +108,10 @@ export class BpmnParser {
         if (bo.$type === 'bpmn:Process') {
           processId = bo.id || element.id;
           processName = bo.name || processId;
+          if (!firstProcessId) {
+            firstProcessId = processId;
+          }
+          ensureProcessMeta(processId, processName);
         }
 
         const bpmnElement: BpmnElement = {
@@ -104,9 +146,38 @@ export class BpmnParser {
             name: bo.name || element.id,
             calledElement,
           });
+          const owningProcessId = findOwningProcessId(bo) || firstProcessId || processId;
+          const owningProcess = ensureProcessMeta(owningProcessId, processName);
+          if (owningProcess) {
+            owningProcess.callActivities.push({
+              id: element.id,
+              name: bo.name || element.id,
+              calledElement,
+            });
+          } else {
+            const fallback = ensureProcessMeta(processId || firstProcessId || element.id);
+            fallback?.callActivities.push({
+              id: element.id,
+              name: bo.name || element.id,
+              calledElement,
+            });
+            fallback?.parseDiagnostics?.push({
+              severity: 'warning',
+              code: 'PROCESS_ASSIGNMENT_FAILED',
+              message: 'Kunde inte koppla Call Activity till en specifik process. Använder filens huvudprocess.',
+              context: { elementId: element.id },
+              timestamp: timestamp(),
+            });
+          }
         } else if (bo.$type === 'bpmn:ServiceTask') {
           serviceTasks.push(bpmnElement);
           metaTasks.push({
+            id: element.id,
+            name: bo.name || element.id,
+            type: 'ServiceTask',
+          });
+          const owningProcessId = findOwningProcessId(bo) || firstProcessId || processId;
+          ensureProcessMeta(owningProcessId, processName)?.tasks.push({
             id: element.id,
             name: bo.name || element.id,
             type: 'ServiceTask',
@@ -118,9 +189,19 @@ export class BpmnParser {
             name: bo.name || element.id,
             type: 'UserTask',
           });
+          ensureProcessMeta(findOwningProcessId(bo) || firstProcessId || processId, processName)?.tasks.push({
+            id: element.id,
+            name: bo.name || element.id,
+            type: 'UserTask',
+          });
         } else if (bo.$type === 'bpmn:BusinessRuleTask') {
           businessRuleTasks.push(bpmnElement);
           metaTasks.push({
+            id: element.id,
+            name: bo.name || element.id,
+            type: 'BusinessRuleTask',
+          });
+          ensureProcessMeta(findOwningProcessId(bo) || firstProcessId || processId, processName)?.tasks.push({
             id: element.id,
             name: bo.name || element.id,
             type: 'BusinessRuleTask',
@@ -135,12 +216,19 @@ export class BpmnParser {
         }
       });
 
+      const orderedProcesses = processOrder
+        .map((id) => processMetaMap.get(id)!)
+        .filter(Boolean);
+
+      const primaryProcess = orderedProcesses[0];
+
       const meta: BpmnMeta = {
-        processId,
-        name: processName,
+        processId: primaryProcess?.id || processId,
+        name: primaryProcess?.name || processName,
         callActivities: metaCallActivities,
         tasks: metaTasks,
         subprocesses: metaSubprocesses,
+        processes: orderedProcesses,
       };
 
       return {
@@ -167,25 +255,68 @@ export class BpmnParser {
 // Cache parsed results
 const parseCache = new Map<string, BpmnParseResult>();
 
+async function loadBpmnXml(fileUrl: string): Promise<{ xml: string; cacheKey: string }> {
+  const normalized = fileUrl.split('?')[0] || fileUrl;
+  const cacheKey = normalized.split('/').pop() || normalized;
+
+  const tryLocal = async () => {
+    const response = await fetch(fileUrl, { cache: 'no-store' });
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.toLowerCase().includes('xml')) {
+      const xml = await response.text();
+      return { xml, cacheKey };
+    }
+    return null;
+  };
+
+  const tryStorage = async () => {
+    const { data: storageRecord } = await supabase
+      .from('bpmn_files')
+      .select('storage_path')
+      .eq('file_name', cacheKey)
+      .maybeSingle();
+
+    const storagePath = storageRecord?.storage_path || cacheKey;
+    const { data, error } = await supabase.storage
+      .from('bpmn-files')
+      .download(storagePath);
+
+    if (error || !data) {
+      return null;
+    }
+
+    const xml = await data.text();
+    if (!xml || !xml.includes('<bpmn:definitions')) {
+      return null;
+    }
+
+    return { xml, cacheKey };
+  };
+
+  const localResult = await tryLocal();
+  if (localResult) return localResult;
+
+  const storageResult = await tryStorage();
+  if (storageResult) return storageResult;
+
+  throw new Error(`Failed to load BPMN file: ${cacheKey}`);
+}
+
 export async function parseBpmnFile(bpmnFilePath: string): Promise<BpmnParseResult> {
   // Check cache
-  if (parseCache.has(bpmnFilePath)) {
-    return parseCache.get(bpmnFilePath)!;
+  const cacheKey = bpmnFilePath.split('/').pop() || bpmnFilePath;
+  if (parseCache.has(cacheKey)) {
+    return parseCache.get(cacheKey)!;
   }
 
   try {
-    const response = await fetch(bpmnFilePath);
-    if (!response.ok) {
-      throw new Error(`Failed to load BPMN file: ${bpmnFilePath}`);
-    }
-    
-    const bpmnXml = await response.text();
+    const { xml: bpmnXml, cacheKey: key } = await loadBpmnXml(bpmnFilePath);
     const parser = new BpmnParser();
     const result = await parser.parse(bpmnXml);
     parser.destroy();
 
     // Extract filename from path
-    const fileName = bpmnFilePath.split('/').pop() || bpmnFilePath;
+    const fileName = key;
     
     // Add filename to result
     const resultWithFileName = {
@@ -194,7 +325,7 @@ export async function parseBpmnFile(bpmnFilePath: string): Promise<BpmnParseResu
     };
 
     // Cache result
-    parseCache.set(bpmnFilePath, resultWithFileName);
+    parseCache.set(key, resultWithFileName);
     
     return resultWithFileName;
   } catch (error) {

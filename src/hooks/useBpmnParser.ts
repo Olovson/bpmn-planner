@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { parseBpmnFile, BpmnParseResult } from '@/lib/bpmnParser';
 import { useToast } from '@/hooks/use-toast';
 
-export const useBpmnParser = (bpmnFilePath: string) => {
+export const useBpmnParser = (bpmnFilePath: string | null) => {
   const [parseResult, setParseResult] = useState<BpmnParseResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -12,6 +12,12 @@ export const useBpmnParser = (bpmnFilePath: string) => {
     let isMounted = true;
 
     const parse = async () => {
+      if (!bpmnFilePath) {
+        setParseResult(null);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);

@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useDynamicBpmnFiles, getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
 
 type ValidationScope = 'file' | 'project';
 
@@ -37,15 +38,49 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
   const [overwriteTests, setOverwriteTests] = useState(false);
   const [overwriteDorDod, setOverwriteDorDod] = useState(false);
   const { toast } = useToast();
+  const { data: availableBpmnFiles = [] } = useDynamicBpmnFiles();
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [resolvingUrl, setResolvingUrl] = useState(true);
   
-  const { parseResult, loading: parseLoading } = useBpmnParser(`/bpmn/${bpmnFile}`);
+  useEffect(() => {
+    let cancelled = false;
+    setResolvingUrl(true);
+    getBpmnFileUrl(bpmnFile)
+      .then(url => {
+        if (!cancelled) {
+          setFileUrl(url);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to resolve BPMN file URL', error);
+        if (!cancelled) {
+          setFileUrl(null);
+          toast({
+            title: 'Hittade inte BPMN-fil',
+            description: `Kunde inte hitta ${bpmnFile} i lagringen.`,
+            variant: 'destructive',
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setResolvingUrl(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bpmnFile, toast]);
+  
+  const { parseResult, loading: parseLoading } = useBpmnParser(fileUrl);
   const {
     generateAll,
     downloadTests,
     downloadDocs,
     generating,
     generationResult,
-  } = useBpmnGenerator(`/bpmn/${bpmnFile}`);
+  } = useBpmnGenerator(fileUrl);
 
   // Run validation when dialog opens
   useEffect(() => {
@@ -62,26 +97,17 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
       
       let parseResults;
       
-      if (validationScope === 'file') {
-        // Validate only the current file
-        parseResults = [parseResult];
-      } else {
-        // Validate all BPMN files in the project
-        const BPMN_FILES = [
-          'mortgage.bpmn',
-          'mortgage-se-application.bpmn',
-          'mortgage-se-credit-evaluation.bpmn',
-          'mortgage-se-household.bpmn',
-          'mortgage-se-internal-data-gathering.bpmn',
-          'mortgage-se-object-information.bpmn',
-          'mortgage-se-object.bpmn',
-          'mortgage-se-stakeholder.bpmn',
-        ];
+      const filesToValidate =
+        validationScope === 'file' || availableBpmnFiles.length === 0
+          ? [bpmnFile]
+          : Array.from(new Set(availableBpmnFiles));
 
-        parseResults = await Promise.all(
-          BPMN_FILES.map(file => parseBpmnFile(`/bpmn/${file}`))
-        );
-      }
+      parseResults = await Promise.all(
+        filesToValidate.map(async file => {
+          const url = await getBpmnFileUrl(file);
+          return parseBpmnFile(url);
+        })
+      );
 
       const result = await validateBpmnWithDatabase(parseResults);
       setValidation(result);
@@ -153,6 +179,11 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+          {resolvingUrl && (
+            <div className="border border-dashed rounded-md p-3 text-sm text-muted-foreground bg-muted/30">
+              Hämtar BPMN-filen från registret …
+            </div>
+          )}
           {/* Validation Scope Selector */}
           <div className="border rounded-lg p-4 bg-muted/50">
             <Label className="text-sm font-semibold mb-3 block">Valideringsomfång</Label>

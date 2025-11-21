@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Table,
   TableBody,
@@ -33,28 +36,73 @@ import { useBpmnFiles, useUploadBpmnFile, useDeleteBpmnFile, BpmnFile } from '@/
 import { useSyncFromGithub, SyncResult } from '@/hooks/useSyncFromGithub';
 import { supabase } from '@/integrations/supabase/client';
 import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
+import { pickRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { ArtifactStatusBadge } from '@/components/ArtifactStatusBadge';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { generateAllFromBpmnWithGraph } from '@/lib/bpmnGenerators';
+import { generateAllFromBpmnWithGraph, type GenerationPhaseKey } from '@/lib/bpmnGenerators';
 import { parseBpmnFile } from '@/lib/bpmnParser';
 import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
-import { invalidateArtifactQueries } from '@/lib/queryInvalidation';
+import { invalidateArtifactQueries, invalidateStructureQueries } from '@/lib/queryInvalidation';
 import { useResetAndRegenerate } from '@/hooks/useResetAndRegenerate';
+import {
+  getLlmGenerationMode,
+  getLlmModeConfig,
+  setLlmGenerationMode as persistLlmGenerationMode,
+  LLM_MODE_OPTIONS,
+  type LlmGenerationMode,
+} from '@/lib/llmMode';
+import { buildBpmnProcessGraph, createGraphSummary } from '@/lib/bpmnProcessGraph';
+import { useGenerationJobs, type GenerationJob, type GenerationOperation, type GenerationStatus } from '@/hooks/useGenerationJobs';
+import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { useAuth } from '@/hooks/useAuth';
+import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
+
+const flattenHierarchyNodes = (node: any): any[] => {
+  if (!node) return [];
+  const nodes: any[] = [];
+  if (node.type !== 'Process') {
+    nodes.push(node);
+  }
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) {
+      nodes.push(...flattenHierarchyNodes(child));
+    }
+  }
+  return nodes;
+};
+
+const formatFileRootName = (fileName: string) =>
+  fileName
+    .replace('.bpmn', '')
+    .replace(/^mortgage-se-/, '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const JOB_PHASES = ['graph', 'hierTests', 'dor', 'dependencies', 'mappings'] as const;
+type JobPhaseKey = typeof JOB_PHASES[number];
+const JOB_PHASE_TOTAL = JOB_PHASES.length;
+
+type GenerationScope = 'file' | 'node';
 
 export default function BpmnFileManager() {
+  // TODO: Add a UI test to assert AppHeaderWithTabs renders on /files and stays visible across navigations.
   const { data: files = [], isLoading } = useBpmnFiles();
   const uploadMutation = useUploadBpmnFile();
   const deleteMutation = useDeleteBpmnFile();
   const syncMutation = useSyncFromGithub();
   const { data: coverageMap } = useAllFilesArtifactCoverage();
+  const { data: generationJobs = [] } = useGenerationJobs();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, signOut } = useAuth();
+  const { hasDorDod, hasTests } = useArtifactAvailability();
   const [dragActive, setDragActive] = useState(false);
   const [deleteFile, setDeleteFile] = useState<BpmnFile | null>(null);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [showSyncReport, setShowSyncReport] = useState(false);
   const [generatingFile, setGeneratingFile] = useState<string | null>(null);
+  const [activeOperation, setActiveOperation] = useState<'llm' | 'local' | 'hierarchy' | null>(null);
   
   interface DetailedGenerationResult {
     fileName: string;
@@ -64,16 +112,225 @@ export default function BpmnFileManager() {
     docFiles: string[];
     jiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }>;
     subprocessMappings: Array<{ callActivity: string; subprocessFile: string }>;
+    nodeArtifacts?: Array<{ bpmnFile: string; elementId: string; elementName: string; docFileName?: string; testFileName?: string }>;
+    missingDependencies?: { parent: string; childProcess: string }[];
+    skippedSubprocesses?: string[];
+  }
+  
+  interface HierarchyBuildResult {
+    fileName: string;
+    filesAnalyzed: string[];
+    totalNodes: number;
+    totalFiles: number;
+    hierarchyDepth: number;
+    missingDependencies: { parent: string; childProcess: string }[];
   }
   
   const [generationResult, setGenerationResult] = useState<DetailedGenerationResult | null>(null);
   const [showGenerationReport, setShowGenerationReport] = useState(false);
+  const [hierarchyResult, setHierarchyResult] = useState<HierarchyBuildResult | null>(null);
+  const [showHierarchyReport, setShowHierarchyReport] = useState(false);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0 });
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showTransitionOverlay, setShowTransitionOverlay] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
+  const [overlayDescription, setOverlayDescription] = useState('');
+  const [generationProgress, setGenerationProgress] = useState<{ step: string; detail?: string } | null>(null);
+  const cancelGenerationRef = useRef(false);
+  const [cancelGeneration, setCancelGeneration] = useState(false);
+  const [llmMode, setLlmMode] = useState<LlmGenerationMode>(() => getLlmGenerationMode());
+  const llmModeDetails = getLlmModeConfig(llmMode);
+  const navigate = useNavigate();
+
+  const handleViewChange = (view: string) => {
+    if (view === 'diagram') navigate('/');
+    else if (view === 'tree') navigate('/process-explorer');
+    else if (view === 'listvy') navigate('/node-matrix');
+    else if (view === 'tests') navigate('/test-report');
+    else navigate('/files');
+  };
   
   const { resetGeneratedData, isResetting } = useResetAndRegenerate();
+  
+  useEffect(() => {
+    persistLlmGenerationMode(llmMode);
+  }, [llmMode]);
+
+  const refreshGenerationJobs = () => {
+    queryClient.invalidateQueries({ queryKey: ['generation-jobs'] });
+  };
+
+  const resetGenerationState = () => {
+    cancelGenerationRef.current = false;
+    setCancelGeneration(false);
+    setGenerationProgress(null);
+  };
+
+  const checkCancellation = () => {
+    if (cancelGenerationRef.current) {
+      throw new Error('Avbrutet av användaren');
+    }
+  };
+
+  const logGenerationProgress = (modeLabel: string, step: string, detail?: string) => {
+    const message = `[Generation][${modeLabel}] ${step}${detail ? ` – ${detail}` : ''}`;
+    console.log(message);
+    setGenerationProgress({ step, detail });
+  };
+
+  const createGenerationJob = async (fileName: string, operation: GenerationOperation) => {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
+    if (!userData.user) {
+      throw new Error('Ingen användarsession hittades. Logga in och försök igen.');
+    }
+
+    const { data, error } = await supabase
+      .from('generation_jobs')
+      .insert({
+        file_name: fileName,
+        operation,
+        created_by: userData.user.id,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    refreshGenerationJobs();
+    return data as GenerationJob;
+  };
+
+  const updateGenerationJob = async (
+    jobId: string,
+    updates: Partial<Pick<GenerationJob, 'status' | 'progress' | 'total' | 'result' | 'error' | 'started_at' | 'finished_at'>>
+  ) => {
+    const { error } = await supabase
+      .from('generation_jobs')
+      .update(updates)
+      .eq('id', jobId);
+
+    if (error) {
+      console.error('Failed updating generation job', error);
+    } else {
+      refreshGenerationJobs();
+    }
+  };
+
+  const resolveRootBpmnFile = async (): Promise<BpmnFile | null> => {
+    if (!files.length) {
+      toast({
+        title: 'Inga BPMN-filer',
+        description: 'Ladda upp minst en BPMN-fil innan du genererar artefakter.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+
+    const allFileRows = files.map((f) => ({ file_name: f.file_name }));
+    const { data: deps, error } = await supabase
+      .from('bpmn_dependencies')
+      .select('parent_file, child_file');
+
+    if (error) {
+      console.error('Error fetching dependencies for root selection:', error);
+    }
+
+    const rootName = pickRootBpmnFile(allFileRows, deps || []);
+    if (!rootName) {
+      toast({
+        title: 'Kunde inte hitta toppnod',
+        description:
+          'Systemet kunde inte avgöra en BPMN-rotfil. Kontrollera hierarkin och försök igen.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+
+    const rootFile = files.find((f) => f.file_name === rootName) ?? null;
+    if (!rootFile) {
+      toast({
+        title: 'Kunde inte hitta toppnod',
+        description: `Rotfilen ${rootName} finns inte i den aktuella fil-listan.`,
+        variant: 'destructive',
+      });
+    }
+    return rootFile;
+  };
+
+  const setJobStatus = async (jobId: string, status: GenerationStatus, extra: Record<string, unknown> = {}) => {
+    await updateGenerationJob(jobId, {
+      status,
+      ...extra,
+    });
+  };
+
+  const abortGenerationJob = async (job: GenerationJob) => {
+    try {
+      await updateGenerationJob(job.id, {
+        status: 'cancelled',
+        error: 'Avbruten av användare',
+        finished_at: new Date().toISOString(),
+      });
+      toast({
+        title: 'Jobb stoppat',
+        description: `${job.file_name} (${formatOperationLabel(job.operation)}) markerat som avbrutet`,
+      });
+    } catch (error) {
+      console.error('Abort job error:', error);
+      toast({
+        title: 'Kunde inte stoppa jobb',
+        description: error instanceof Error ? error.message : 'Okänt fel',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getStatusBadgeClasses = (status: GenerationStatus) => {
+    switch (status) {
+      case 'running':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'succeeded':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'failed':
+        return 'bg-red-50 text-red-700 border-red-200';
+      case 'cancelled':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      default:
+        return 'bg-slate-50 text-slate-700 border-slate-200';
+    }
+  };
+
+  const formatStatusLabel = (status: GenerationStatus) => {
+    switch (status) {
+      case 'running':
+        return 'Pågår';
+      case 'succeeded':
+        return 'Klar';
+      case 'failed':
+        return 'Fel';
+      case 'cancelled':
+        return 'Avbruten';
+      default:
+        return 'Köad';
+    }
+  };
+
+  const formatOperationLabel = (operation: GenerationOperation) => {
+    switch (operation) {
+      case 'hierarchy':
+        return 'Hierarki';
+      case 'local_generation':
+        return 'Dok/Test (lokal)';
+      case 'llm_generation':
+      case 'generation':
+        return 'Dok/Test (LLM)';
+      default:
+        return 'Artefakter';
+    }
+  };
 
   const handleSyncFromGithub = async () => {
     const result = await syncMutation.mutateAsync();
@@ -81,7 +338,54 @@ export default function BpmnFileManager() {
     setShowSyncReport(true);
   };
 
-  const handleGenerateArtifacts = async (file: BpmnFile) => {
+  const handleCancelGeneration = async () => {
+    if (cancelGenerationRef.current) return;
+    cancelGenerationRef.current = true;
+    setCancelGeneration(true);
+    setOverlayDescription('Avbryter pågående körning …');
+
+    try {
+      // Markera aktuellt jobb som avbrutet i databasen om vi hittar det.
+      // Detta kan misslyckas (t.ex. nätverksfel), men UI ska ändå lämna
+      // "kör"-läget och popupen ska stängas.
+      if (generatingFile) {
+        const runningJob = generationJobs.find(
+          (job) =>
+            job.status === 'running' &&
+            (job.operation === 'local_generation' || job.operation === 'llm_generation') &&
+            job.file_name === generatingFile,
+        );
+        if (runningJob) {
+          await abortGenerationJob(runningJob);
+        }
+      }
+    } catch (error) {
+      console.error('Cancel generation error:', error);
+      toast({
+        title: 'Kunde inte avbryta jobb',
+        description: error instanceof Error ? error.message : 'Okänt fel',
+        variant: 'destructive',
+      });
+    } finally {
+      // Oavsett om backend-jobbet hann stoppas eller inte behandlar vi
+      // detta som en "avsluta väntan på resultat" i UI:t:
+      // - stäng overlay
+      // - lämna running-läget
+      // Själva generatorn i bakgrunden får sedan själv hantera isCancelled.
+      setGeneratingFile(null);
+      setActiveOperation(null);
+      setShowTransitionOverlay(false);
+      setOverlayMessage('');
+      setOverlayDescription('');
+      setGenerationProgress(null);
+    }
+  };
+
+  const handleGenerateArtifacts = async (
+    file: BpmnFile,
+    mode: 'local' | 'llm' = 'llm',
+    scope: GenerationScope = 'file',
+  ) => {
     if (file.file_type !== 'bpmn') {
       toast({
         title: 'Ej stödd filtyp',
@@ -90,9 +394,127 @@ export default function BpmnFileManager() {
       });
       return;
     }
+    if (!file.storage_path) {
+      toast({
+        title: 'Filen är inte uppladdad än',
+        description: 'Ladda upp BPMN-filen via files-sidan innan du genererar artefakter.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
+    const isLocalMode = mode === 'local';
+    const generationScope: GenerationScope = scope;
+    const modeLabel = isLocalMode ? 'local' : 'llm';
+    // Progress model bookkeeping for this run
+    let totalGraphFiles = 0;
+    let totalGraphNodes = 0;
+    let docgenCompleted = 0;
+    let testUploadsPlanned = 0;
+    let testUploadsCompleted = 0;
+    let docUploadsPlanned = 0;
+    let docUploadsCompleted = 0;
+    resetGenerationState();
+    if (!isLocalMode) {
+      persistLlmGenerationMode(llmMode);
+    }
     setGeneratingFile(file.file_name);
+    setActiveOperation(isLocalMode ? 'local' : 'llm');
+    setOverlayMessage(
+      `${isLocalMode ? 'Genererar lokalt' : 'Genererar'} ${file.file_name.replace('.bpmn', '')}`
+    );
+    setOverlayDescription(
+      isLocalMode
+        ? 'Skapar dokumentation, tester och DoR/DoD med lokala mallar. Kör separat LLM-läge när du behöver förbättrad text.'
+        : `LLM-läge: ${llmModeDetails.label}. ${llmModeDetails.runHint} Vi uppdaterar dokumentation, DoR/DoD och testfiler.`
+    );
+    setShowTransitionOverlay(true);
     
+    let activeJob: GenerationJob | null = null;
+    let jobProgressCount = 0;
+    let jobTotalCount = JOB_PHASE_TOTAL;
+    const syncOverlayProgress = (label?: string) => {
+      setOverlayMessage(`Steg ${Math.min(jobProgressCount, jobTotalCount)} av ${jobTotalCount}`);
+      if (label) {
+        setOverlayDescription(label);
+      }
+    };
+    const ensureJobTotal = async (newTotal: number) => {
+      if (newTotal <= jobTotalCount) return;
+      jobTotalCount = newTotal;
+      if (activeJob) {
+        await updateGenerationJob(activeJob.id, { total: jobTotalCount });
+      }
+      syncOverlayProgress();
+    };
+    const incrementJobProgress = async (label?: string) => {
+      jobProgressCount = Math.min(jobProgressCount + 1, jobTotalCount);
+      if (activeJob) {
+        await updateGenerationJob(activeJob.id, { progress: jobProgressCount });
+      }
+      syncOverlayProgress(label);
+    };
+
+    const handleGeneratorPhase = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
+      logGenerationProgress(modeLabel, label, detail);
+      switch (phase) {
+        case 'graph:start':
+          syncOverlayProgress('Analyserar BPMN-struktur');
+          break;
+        case 'graph:complete':
+          await incrementJobProgress('Processträd klart');
+          break;
+        case 'hier-tests:start':
+          syncOverlayProgress('Genererar hierarkiska tester');
+          break;
+        case 'hier-tests:file':
+          await incrementJobProgress(`Hierarkitest: ${detail || ''}`);
+          break;
+        case 'node-analysis:start':
+          syncOverlayProgress(`Analyserar noder (${detail || ''})`);
+          break;
+        case 'node-analysis:node':
+          // Nodanalyser används främst som förberedelse – räkna inte varje nod som ett eget framsteg,
+          // utan visa bara status i overlayen.
+          syncOverlayProgress(`Analyserar nod: ${detail || ''}`);
+          break;
+        case 'docgen:start':
+          syncOverlayProgress('Genererar dokumentation/testinstruktioner');
+          break;
+        case 'docgen:file':
+          // Här sker den tunga logiken (mallar/LLM per nod), så koppla framsteg till verkligt antal noder.
+          docgenCompleted += 1;
+          if (totalGraphNodes > 0) {
+            await incrementJobProgress(
+              `Dokumentation ${docgenCompleted} av ${totalGraphNodes} noder`
+            );
+          } else {
+            await incrementJobProgress(`Dokumentation: ${detail || ''}`);
+          }
+          break;
+        case 'total:init':
+          if (detail) {
+            try {
+              const parsed = JSON.parse(detail) as { files?: number; nodes?: number };
+              const extraFiles = Number(parsed.files) || 0;
+              const extraNodes = Number(parsed.nodes) || 0;
+              totalGraphFiles = extraFiles;
+              totalGraphNodes = extraNodes;
+              // Lägg till ett steg per fil och ett steg per nod (docgen),
+              // tidiga faser (graf/nodanalyser) förblir en liten del av den totala bilden.
+              const extraSteps = extraFiles + extraNodes;
+              await ensureJobTotal(JOB_PHASE_TOTAL + extraSteps);
+            } catch (error) {
+              console.warn('Failed to parse total:init detail', detail);
+            }
+          }
+          break;
+        default:
+          break;
+      }
+    };
+    syncOverlayProgress('Förbereder generering');
+
     try {
       // Kolla om användaren är autentiserad mot Supabase
       const { data: authData, error: authError } = await supabase.auth.getSession();
@@ -114,40 +536,91 @@ export default function BpmnFileManager() {
         );
         return;
       }
+      checkCancellation();
+      const jobOperation: GenerationOperation = isLocalMode ? 'local_generation' : 'llm_generation';
+      activeJob = await createGenerationJob(file.file_name, jobOperation);
+      checkCancellation();
+      await setJobStatus(activeJob.id, 'running', {
+        started_at: new Date().toISOString(),
+        progress: 0,
+        total: JOB_PHASE_TOTAL,
+      });
+      checkCancellation();
 
       // Hämta alla tillgängliga BPMN-filer
       const { data: allFiles, error: filesError } = await supabase
         .from('bpmn_files')
-        .select('file_name, file_type')
+        .select('file_name, file_type, storage_path')
         .eq('file_type', 'bpmn');
 
       if (filesError) throw filesError;
+      checkCancellation();
 
-      const existingBpmnFiles = allFiles?.map(f => f.file_name) || [];
+      const missingUploads = (allFiles || []).filter(f => !f.storage_path).map(f => f.file_name);
+      if (missingUploads.length) {
+        toast({
+          title: 'BPMN-filer saknar uppladdning',
+          description: `Hoppar över ${missingUploads.length} filer som inte finns i Supabase Storage: ${missingUploads.join(', ')}.`,
+          variant: 'destructive',
+        });
+      }
+
+      const existingBpmnFiles = (allFiles || [])
+        .filter(f => !!f.storage_path)
+        .map(f => f.file_name);
       const existingDmnFiles: string[] = []; // DMN files kan läggas till senare
 
-      // Avgör om hierarkisk analys ska användas (för toppnivåfiler)
-      const topLevelFiles = ['mortgage.bpmn'];
-      const useHierarchy = topLevelFiles.includes(file.file_name);
+      // Använd alltid den hierarkiska generatorn (LLM + nodkontext) för samtliga BPMN-filer
+      const useHierarchy = true;
 
       console.log(`Generating for ${file.file_name} (hierarchy: ${useHierarchy})`);
 
+      logGenerationProgress(modeLabel, 'Analyserar BPMN-struktur');
+      checkCancellation();
+
       // Generera alla artefakter med hierarkisk analys
+      const generationSourceLabel = isLocalMode ? 'local' : `llm-${llmMode}`;
       const result = await generateAllFromBpmnWithGraph(
         file.file_name,
         existingBpmnFiles,
         existingDmnFiles,
-        useHierarchy
+        useHierarchy,
+        !isLocalMode,
+        handleGeneratorPhase,
+        generationSourceLabel
       );
-
+      checkCancellation();
+      const nodeArtifacts = result.nodeArtifacts || [];
+      const missingDependencies = result.metadata?.missingDependencies || [];
+      const skippedSubprocesses = new Set<string>(result.metadata?.skippedSubprocesses || []);
+      if (skippedSubprocesses.size) {
+        const skippedArray = Array.from(skippedSubprocesses);
+        const preview = skippedArray.slice(0, 3).join(', ');
+        const more = skippedArray.length > 3 ? ` … och ${skippedArray.length - 3} till` : '';
+        toast({
+          title: 'Ofullständig subprocess-täckning',
+          description: `Följande subprocesser saknar BPMN-fil: ${preview}${more}. Artefakter genereras utan dem.`,
+          variant: 'destructive',
+        });
+      }
       // Spara DoR/DoD till databasen
       let dorDodCount = 0;
       const detailedDorDod: Array<{ subprocess: string; category: string; type: string; text: string }> = [];
       
+      logGenerationProgress(modeLabel, 'Skapar DoR/DoD-kriterier', file.file_name);
+      checkCancellation();
+
       if (result.dorDod.size > 0) {
+        console.log('[Local generation] DoR/DoD: bearbetar', result.dorDod.size, 'subprocesser');
         const criteriaToInsert: any[] = [];
         
         result.dorDod.forEach((criteria, subprocessName) => {
+          checkCancellation();
+          if (missingDependencies.some(dep => dep.childProcess === subprocessName)) {
+            skippedSubprocesses.add(subprocessName);
+            console.warn('[Local generation] Hoppar över DoR/DoD för', subprocessName, '- saknar BPMN-fil');
+            return;
+          }
           criteria.forEach(criterion => {
             criteriaToInsert.push({
               subprocess_name: subprocessName,
@@ -162,6 +635,7 @@ export default function BpmnFileManager() {
           });
         });
 
+        console.log('[Local generation] DoR/DoD: skriver', criteriaToInsert.length, 'kriterier till databasen');
         const { error: dbError } = await supabase
           .from('dor_dod_status')
           .upsert(criteriaToInsert, {
@@ -173,177 +647,85 @@ export default function BpmnFileManager() {
           console.error('Auto-save DoR/DoD error:', dbError);
         } else {
           dorDodCount = criteriaToInsert.length;
+          console.log('[Local generation] DoR/DoD klart:', dorDodCount);
         }
+        checkCancellation();
+      } else {
+        console.log('[Local generation] DoR/DoD: inga kriterier skapades');
       }
+      await incrementJobProgress('Skapar DoR/DoD-kriterier');
 
-      // Spara genererade testfiler till Supabase Storage
-      let testsCount = 0;
-      const testLinksToInsert: any[] = [];
-      const detailedTestFiles: Array<{ fileName: string; elements: Array<{ id: string; name: string }> }> = [];
-      
-      if (result.tests.size > 0) {
-        for (const [testFileName, testContent] of result.tests.entries()) {
-          const testPath = `tests/${testFileName}`;
-          const testFileElements: Array<{ id: string; name: string }> = [];
-          
-          // Upload test file to Supabase Storage
-          const { error: uploadError } = await supabase.storage
-            .from('bpmn-files')
-            .upload(testPath, new Blob([testContent], { type: 'text/plain' }), {
-              upsert: true,
-              contentType: 'text/plain',
-            });
-
-          if (uploadError) {
-            console.error(`Error uploading test file ${testFileName}:`, uploadError);
-          } else {
-            testsCount++;
-          }
-
-          // För hierarkiska tester (.hierarchical.spec.ts): skapa länkar för alla element i filen
-          if (testFileName.includes('.hierarchical.spec.ts')) {
-            const bpmnFileName = testFileName.replace('.hierarchical.spec.ts', '.bpmn');
-            const filesToProcess = (result.metadata?.filesIncluded && result.metadata.filesIncluded.length > 0)
-              ? result.metadata.filesIncluded
-              : [file.file_name];
-
-            // Hitta matchande BPMN-fil
-            const matchingFile = filesToProcess.find(f => f === bpmnFileName) || file.file_name;
-
-            try {
-              const fileUrl = await getBpmnFileUrl(matchingFile);
-              const parsed = await parseBpmnFile(fileUrl);
-              
-              // Skapa test-länkar för alla testbara element i denna fil
-              for (const element of parsed.elements) {
-                const nodeType = element.type.replace('bpmn:', '');
-                if (['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity'].includes(nodeType)) {
-                  testLinksToInsert.push({
-                    bpmn_file: matchingFile,
-                    bpmn_element_id: element.id,
-                    test_file_path: testPath,
-                    test_name: `Hierarchical test for ${element.name || element.id}`,
-                  });
-                  testFileElements.push({
-                    id: element.id,
-                    name: element.name || element.id,
-                  });
-                }
-              }
-            } catch (e) {
-              console.error(`Error processing hierarchical test links for ${matchingFile}:`, e);
-            }
-          } else {
-            // För icke-hierarkiska tester: gamla metoden (element-ID i filnamn)
-            const elementId = testFileName.replace('.spec.ts', '');
-            
-            const filesToProcess = (result.metadata?.filesIncluded && result.metadata.filesIncluded.length > 0)
-              ? result.metadata.filesIncluded
-              : [file.file_name];
-
-            for (const includedFile of filesToProcess) {
-              try {
-                const fileUrl = await getBpmnFileUrl(includedFile);
-                const parsed = await parseBpmnFile(fileUrl);
-                const element = parsed.elements.find(el => el.id === elementId);
-                
-                if (element) {
-                  testLinksToInsert.push({
-                    bpmn_file: includedFile,
-                    bpmn_element_id: elementId,
-                    test_file_path: testPath,
-                    test_name: `Test for ${element.name || elementId}`,
-                  });
-                  testFileElements.push({
-                    id: elementId,
-                    name: element.name || elementId,
-                  });
-                  break;
-                }
-              } catch (e) {
-                console.error(`Error processing test links for ${includedFile}:`, e);
-              }
-            }
-          }
-          
-          if (testFileElements.length > 0) {
-            detailedTestFiles.push({
-              fileName: testFileName,
-              elements: testFileElements,
-            });
-          }
-        }
-
-        if (testLinksToInsert.length > 0) {
-          const { error: testError } = await supabase
-            .from('node_test_links')
-            .upsert(testLinksToInsert, {
-              onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
-              ignoreDuplicates: false,
-            });
-
-          if (testError) {
-            console.error('Save test links error:', testError);
-          } else {
-            invalidateArtifactQueries(queryClient);
-          }
-        }
-      }
-
-      // Spara dokumentation till Supabase Storage
-      let docsCount = 0;
-      const detailedDocFiles: string[] = [];
-      
-      if (result.docs.size > 0) {
-        for (const [docFileName, docContent] of result.docs.entries()) {
-          const docPath = `docs/${docFileName}`;
-          const htmlBlob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
-          const { error: uploadError } = await supabase.storage
-            .from('bpmn-files')
-            .upload(docPath, htmlBlob, {
-              upsert: true,
-              contentType: 'text/html; charset=utf-8',
-              cacheControl: '3600',
-            });
-
-          if (uploadError) {
-            console.error(`Error uploading ${docFileName}:`, uploadError);
-          } else {
-            docsCount++;
-            detailedDocFiles.push(docFileName);
-          }
-        }
-      }
-
-      // Spara subprocess mappings (dependencies) till databasen
+      // Spara subprocess mappings (dependencies) till databasen.
+      // Detta steg är gemensamt för lokal och LLM‑generering men beter sig olika
+      // beroende på scope: för node‑scope hoppar vi över global synk och använder
+      // endast mappings i minnet.
       const detailedSubprocessMappings: Array<{ callActivity: string; subprocessFile: string }> = [];
       
-      if (result.subprocessMappings.size > 0) {
-        const dependenciesToInsert: any[] = [];
-        
-        result.subprocessMappings.forEach((childFile, elementId) => {
-          dependenciesToInsert.push({
-            parent_file: file.file_name,
-            child_process: elementId,
-            child_file: childFile,
-          });
-          detailedSubprocessMappings.push({
-            callActivity: elementId,
-            subprocessFile: childFile,
-          });
-        });
+      logGenerationProgress(modeLabel, 'Synkar subprocess-kopplingar', file.file_name);
+      checkCancellation();
 
-        const { error: depError } = await supabase
-          .from('bpmn_dependencies')
-          .upsert(dependenciesToInsert, {
-            onConflict: 'parent_file,child_process',
-            ignoreDuplicates: false,
+      if (generationScope === 'file') {
+        if (result.subprocessMappings.size > 0) {
+          const dependenciesToInsert: any[] = [];
+
+          checkCancellation();
+          result.subprocessMappings.forEach((childFile, elementId) => {
+            dependenciesToInsert.push({
+              parent_file: file.file_name,
+              child_process: elementId,
+              child_file: childFile,
+            });
+            detailedSubprocessMappings.push({
+              callActivity: elementId,
+              subprocessFile: childFile,
+            });
           });
 
-        if (depError) {
-          console.error('Save dependencies error:', depError);
+          if (dependenciesToInsert.length > 0) {
+            try {
+              checkCancellation();
+              const { error: depError } = await supabase
+                .from('bpmn_dependencies')
+                .upsert(dependenciesToInsert, {
+                  onConflict: 'parent_file,child_process',
+                  ignoreDuplicates: false,
+                });
+
+              if (depError) {
+                console.error('Save dependencies error:', depError);
+              }
+            } catch (error) {
+              console.error('Unexpected error while saving subprocess mappings:', error);
+            }
+          }
+          checkCancellation();
+        } else {
+          // Inga mappings att synka i fil-scope – behandla som no-op men behåll framsteg.
+          console.log(
+            '[Generation] Synkar subprocess-kopplingar: inga mappings att spara för fil-scope',
+          );
+        }
+      } else {
+        // Node-scope: global subprocess-synk är best-effort och kan hoppas över
+        // eftersom vi primärt genererar artefakter för ett nod-centrerat flöde.
+        if (result.subprocessMappings.size > 0) {
+          result.subprocessMappings.forEach((childFile, elementId) => {
+            detailedSubprocessMappings.push({
+              callActivity: elementId,
+              subprocessFile: childFile,
+            });
+          });
+          console.log(
+            '[Generation] Synkar subprocess-kopplingar: hoppar över skrivning till bpmn_dependencies i node-scope',
+          );
+        } else {
+          console.log(
+            '[Generation] Synkar subprocess-kopplingar: inget att göra i node-scope',
+          );
         }
       }
+
+      await incrementJobProgress('Synkar subprocess-kopplingar');
 
       // Spara BPMN element mappings med Jira-information
       // Detta behövs för att listvyn ska kunna visa jira_type och jira_name
@@ -404,20 +786,7 @@ export default function BpmnFileManager() {
             const hierarchy = await buildBpmnHierarchy(bpmnFileName, bpmnUrl, parentPath);
             
             // Extrahera alla noder från hierarkin (inklusive nested)
-            const extractAllNodes = (node: any): any[] => {
-              const nodes = [];
-              if (node.type !== 'Process') {
-                nodes.push(node);
-              }
-              if (node.children) {
-                for (const child of node.children) {
-                  nodes.push(...extractAllNodes(child));
-                }
-              }
-              return nodes;
-            };
-            
-            const allNodes = extractAllNodes(hierarchy.rootNode);
+            const allNodes = flattenHierarchyNodes(hierarchy.rootNode);
             
             // Skapa mappings för varje nod
             for (const node of allNodes) {
@@ -452,20 +821,7 @@ export default function BpmnFileManager() {
           const hierarchy = await buildBpmnHierarchy(file.file_name, bpmnUrl, parentPath);
           
           // Extrahera alla noder från hierarkin (inklusive nested)
-          const extractAllNodes = (node: any): any[] => {
-            const nodes = [];
-            if (node.type !== 'Process') {
-              nodes.push(node);
-            }
-            if (node.children) {
-              for (const child of node.children) {
-                nodes.push(...extractAllNodes(child));
-              }
-            }
-            return nodes;
-          };
-          
-          const allNodes = extractAllNodes(hierarchy.rootNode);
+          const allNodes = flattenHierarchyNodes(hierarchy.rootNode);
           
           // Skapa mappings för varje nod
           for (const node of allNodes) {
@@ -504,6 +860,170 @@ export default function BpmnFileManager() {
           console.log(`Saved ${mappingsToInsert.length} element mappings with Jira metadata`);
         }
       }
+      await incrementJobProgress('Bygger Jira-mappningar');
+
+      // Spara genererade testfiler till Supabase Storage
+      let testsCount = 0;
+      const testLinksToInsert: any[] = [];
+      const detailedTestFiles: Array<{ fileName: string; elements: Array<{ id: string; name: string }> }> = [];
+      const testArtifactMap = new Map(
+        nodeArtifacts
+          .filter(artifact => artifact.testFileName)
+          .map(artifact => [artifact.testFileName!, artifact])
+      );
+      
+      logGenerationProgress(modeLabel, 'Genererar testfiler', file.file_name);
+      testUploadsPlanned = result.tests.size;
+      testUploadsCompleted = 0;
+      setOverlayDescription(
+        testUploadsPlanned > 0
+          ? `Genererar testfiler – laddar upp och mappar tester (0 av ${testUploadsPlanned})`
+          : 'Genererar testfiler – laddar upp och mappar tester'
+      );
+      checkCancellation();
+
+      await ensureJobTotal(jobTotalCount + result.tests.size);
+      if (result.tests.size > 0) {
+        for (const [testFileName, testContent] of result.tests.entries()) {
+          const testPath = `tests/${testFileName}`;
+          const testFileElements: Array<{ id: string; name: string }> = [];
+          
+          checkCancellation();
+
+          // Upload test file to Supabase Storage
+          const { error: uploadError } = await supabase.storage
+            .from('bpmn-files')
+            .upload(testPath, new Blob([testContent], { type: 'text/plain' }), {
+              upsert: true,
+              contentType: 'text/plain',
+            });
+
+          if (uploadError) {
+            console.error(`Error uploading test file ${testFileName}:`, uploadError);
+          } else {
+            testsCount++;
+          }
+          checkCancellation();
+
+          // För noder med explicita testfiler
+          const nodeArtifact = testArtifactMap.get(testFileName);
+          if (nodeArtifact) {
+            testLinksToInsert.push({
+              bpmn_file: nodeArtifact.bpmnFile || file.file_name,
+              bpmn_element_id: nodeArtifact.elementId,
+              test_file_path: testPath,
+              test_name: `Test for ${nodeArtifact.elementName || nodeArtifact.elementId}`,
+            });
+            testFileElements.push({
+              id: nodeArtifact.elementId,
+              name: nodeArtifact.elementName || nodeArtifact.elementId,
+            });
+          } else if (testFileName.includes('.hierarchical.spec.ts')) {
+            continue;
+          } else {
+            const elementId = testFileName.replace('.spec.ts', '');
+            const filesToProcess = (result.metadata?.filesIncluded && result.metadata.filesIncluded.length > 0)
+              ? result.metadata.filesIncluded
+              : [file.file_name];
+
+            for (const includedFile of filesToProcess) {
+              try {
+                const fileUrl = await getBpmnFileUrl(includedFile);
+                const parsed = await parseBpmnFile(fileUrl);
+                const element = parsed.elements.find(el => el.id === elementId);
+                
+                if (element) {
+                  testLinksToInsert.push({
+                    bpmn_file: includedFile,
+                    bpmn_element_id: elementId,
+                    test_file_path: testPath,
+                    test_name: `Test for ${element.name || elementId}`,
+                  });
+                  testFileElements.push({
+                    id: elementId,
+                    name: element.name || elementId,
+                  });
+                  break;
+                }
+              } catch (e) {
+                console.error(`Error processing test links for ${includedFile}:`, e);
+              }
+            }
+          }
+          if (testFileElements.length > 0) {
+            detailedTestFiles.push({
+              fileName: testFileName,
+              elements: testFileElements,
+            });
+          }
+          testUploadsCompleted += 1;
+          const label =
+            testUploadsPlanned > 0
+              ? `Testfil ${testUploadsCompleted} av ${testUploadsPlanned}`
+              : `Testfil: ${testFileName}`;
+          await incrementJobProgress(label);
+        }
+
+        if (testLinksToInsert.length > 0) {
+            const { error: testError } = await supabase
+              .from('node_test_links')
+              .upsert(testLinksToInsert, {
+                onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
+                ignoreDuplicates: false,
+              });
+
+            if (testError) {
+              console.error('Save test links error:', testError);
+            } else {
+              invalidateArtifactQueries(queryClient);
+            }
+            checkCancellation();
+          }
+        }
+      await ensureJobTotal(jobTotalCount + result.docs.size);
+
+      // Spara dokumentation till Supabase Storage
+      let docsCount = 0;
+      const detailedDocFiles: string[] = [];
+      
+      logGenerationProgress(modeLabel, 'Publicerar dokumentation', file.file_name);
+      docUploadsPlanned = result.docs.size;
+      docUploadsCompleted = 0;
+      setOverlayDescription(
+        docUploadsPlanned > 0
+          ? `Publicerar dokumentation – laddar upp HTML (0 av ${docUploadsPlanned})`
+          : 'Publicerar dokumentation – laddar upp HTML'
+      );
+      checkCancellation();
+
+      if (result.docs.size > 0) {
+        for (const [docFileName, docContent] of result.docs.entries()) {
+          checkCancellation();
+          const docPath = `docs/${docFileName}`;
+          const htmlBlob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
+          const { error: uploadError } = await supabase.storage
+            .from('bpmn-files')
+            .upload(docPath, htmlBlob, {
+              upsert: true,
+              contentType: 'text/html; charset=utf-8',
+              cacheControl: '3600',
+            });
+
+          if (uploadError) {
+            console.error(`Error uploading ${docFileName}:`, uploadError);
+          } else {
+            docsCount++;
+            detailedDocFiles.push(docFileName);
+          }
+          checkCancellation();
+          docUploadsCompleted += 1;
+          const label =
+            docUploadsPlanned > 0
+              ? `Dokumentation ${docUploadsCompleted} av ${docUploadsPlanned} filer`
+              : `Dokumentation: ${docFileName}`;
+          await incrementJobProgress(label);
+        }
+      }
 
       // Clear structure change flag after successful generation
       if (file.has_structure_changes) {
@@ -518,6 +1038,7 @@ export default function BpmnFileManager() {
         ? result.metadata.filesIncluded 
         : [file.file_name];
       
+      const skippedList = Array.from(skippedSubprocesses);
       setGenerationResult({
         fileName: file.file_name,
         filesAnalyzed,
@@ -526,23 +1047,63 @@ export default function BpmnFileManager() {
         docFiles: detailedDocFiles,
         jiraMappings: detailedJiraMappings,
         subprocessMappings: detailedSubprocessMappings,
+        nodeArtifacts,
+        missingDependencies,
+        skippedSubprocesses: skippedList,
       });
       setShowGenerationReport(true);
 
+      const nodeDocCount = nodeArtifacts.filter(a => a.docFileName).length;
+      const nodeTestCount = nodeArtifacts.filter(a => a.testFileName).length;
+      const totalDocCount = nodeDocCount || docsCount;
+      const totalTestCount = nodeTestCount || testsCount;
+
       const resultMessage: string[] = [];
+      if (isLocalMode) {
+        resultMessage.push('Lokal körning (ingen LLM)');
+      }
       if (useHierarchy && result.metadata) {
         resultMessage.push(`Hierarkisk analys: ${result.metadata.totalFilesAnalyzed} filer`);
       }
       resultMessage.push(`${dorDodCount} DoR/DoD-kriterier`);
-      resultMessage.push(`${testsCount} testkopplingar`);
-      resultMessage.push(`${docsCount} dokumentationsfiler`);
+      resultMessage.push(`${totalTestCount} testfiler`);
+      resultMessage.push(`${totalDocCount} dokumentationsfiler`);
+      if (skippedList.length) {
+        resultMessage.push(`Hoppade över ${skippedList.length} saknade subprocesser`);
+      }
 
       toast({
         title: 'Artefakter genererade!',
         description: resultMessage.join(', '),
       });
+      if (jobProgressCount < jobTotalCount) {
+        jobProgressCount = jobTotalCount;
+        if (activeJob) {
+          await updateGenerationJob(activeJob.id, {
+            progress: jobProgressCount,
+            total: jobTotalCount,
+          });
+        }
+      }
+      syncOverlayProgress('Generering klar');
+      if (activeJob) {
+        await setJobStatus(activeJob.id, 'succeeded', {
+          finished_at: new Date().toISOString(),
+          progress: jobProgressCount,
+          result: {
+            dorDod: dorDodCount,
+            tests: totalTestCount,
+            docs: totalDocCount,
+            filesAnalyzed,
+            mode: isLocalMode ? 'local' : llmMode,
+            missingDependencies,
+            skippedSubprocesses: skippedList,
+          },
+        });
+      }
 
-      // Refresh data
+      // Refresh data (structure + artifacts) and give UI some time to re-render
+      invalidateStructureQueries(queryClient);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['bpmn-files'] }),
         queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
@@ -550,15 +1111,255 @@ export default function BpmnFileManager() {
         queryClient.invalidateQueries({ queryKey: ['process-tree'] }),
         queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
       ]);
+      await new Promise(resolve => setTimeout(resolve, 1200));
     } catch (error) {
+      const isCancelled = error instanceof Error && error.message === 'Avbrutet av användaren';
       console.error('Generation error:', error);
       toast({
-        title: 'Generering misslyckades',
+        title: isCancelled ? 'Generering avbruten' : 'Generering misslyckades',
+        description: error instanceof Error ? error.message : 'Ett okänt fel uppstod',
+        variant: isCancelled ? 'default' : 'destructive',
+      });
+      if (activeJob) {
+        await setJobStatus(activeJob.id, isCancelled ? 'cancelled' : 'failed', {
+          error: error instanceof Error ? error.message : 'Okänt fel',
+          finished_at: new Date().toISOString(),
+        });
+      }
+      if (isCancelled) {
+        setOverlayMessage('Generering avbruten');
+        setOverlayDescription('Jobbet markerades som avbrutet och resterande steg hoppas över.');
+      } else {
+        setShowTransitionOverlay(false);
+        setOverlayMessage('');
+        setOverlayDescription('');
+      }
+    } finally {
+      setTimeout(() => {
+        setGeneratingFile(null);
+        setActiveOperation(null);
+        setShowTransitionOverlay(false);
+        setOverlayMessage('');
+        setOverlayDescription('');
+        resetGenerationState();
+      }, 200);
+    }
+  };
+
+  const handleGenerateAllArtifacts = async (mode: 'local' | 'llm' = 'llm') => {
+    const rootFile = await resolveRootBpmnFile();
+    if (!rootFile) return;
+
+    toast({
+      title: 'Startar generering från toppnoden',
+      description: `Genererar hierarki och artefakter utifrån ${rootFile.file_name} för alla BPMN-filer.`,
+    });
+
+    await handleGenerateArtifacts(rootFile, mode, 'file');
+  };
+
+  const handleBuildHierarchy = async (file: BpmnFile) => {
+    if (file.file_type !== 'bpmn') {
+      toast({
+        title: 'Ej stödd filtyp',
+        description: 'Endast BPMN-filer stöds för hierarkibyggnad',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!file.storage_path) {
+      toast({
+        title: 'Filen är inte uppladdad än',
+        description: 'Ladda upp BPMN-filen innan du bygger hierarkin.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    resetGenerationState();
+    setGeneratingFile(file.file_name);
+    setOverlayMessage(`Bygger hierarki för ${file.file_name.replace('.bpmn', '')}`);
+    setOverlayDescription('Vi uppdaterar endast strukturen så att du kan verifiera processträdet innan artefakter genereras.');
+    setShowTransitionOverlay(true);
+
+    let hierarchyJob: GenerationJob | null = null;
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      if (authError) {
+        console.error('Error getting Supabase session:', authError);
+      }
+      const isAuthenticated = !!authData?.session;
+      if (!isAuthenticated) {
+        toast({
+          title: 'Inloggning krävs',
+          description: 'Logga in via Auth-sidan för att kunna uppdatera hierarkin.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      hierarchyJob = await createGenerationJob(file.file_name, 'hierarchy');
+      await setJobStatus(hierarchyJob.id, 'running', {
+        started_at: new Date().toISOString(),
+        progress: 0,
+        total: 3,
+      });
+
+      const { data: allFiles, error: filesError } = await supabase
+        .from('bpmn_files')
+        .select('file_name, file_type')
+        .eq('file_type', 'bpmn');
+
+      if (filesError) throw filesError;
+      const existingBpmnFiles = allFiles?.map(f => f.file_name) || [];
+
+      const graph = await buildBpmnProcessGraph(file.file_name, existingBpmnFiles);
+      const summary = createGraphSummary(graph);
+      if (hierarchyJob) {
+        await updateGenerationJob(hierarchyJob.id, { progress: 1 });
+      }
+
+      const dependenciesToInsert: Array<{ parent_file: string; child_process: string; child_file: string }> = [];
+      for (const node of graph.allNodes.values()) {
+        if (node.subprocessFile) {
+          dependenciesToInsert.push({
+            parent_file: node.bpmnFile,
+            child_process: node.bpmnElementId,
+            child_file: node.subprocessFile,
+          });
+        }
+      }
+
+      if (dependenciesToInsert.length > 0) {
+        const { error: depError } = await supabase
+          .from('bpmn_dependencies')
+          .upsert(dependenciesToInsert, {
+            onConflict: 'parent_file,child_process',
+            ignoreDuplicates: false,
+          });
+
+        if (depError) {
+          console.error('Save dependencies error:', depError);
+        }
+      }
+      if (hierarchyJob) {
+        await updateGenerationJob(hierarchyJob.id, { progress: 2 });
+      }
+
+      const parentMap = new Map<string, { parentFile: string }>();
+      for (const dep of dependenciesToInsert) {
+        parentMap.set(dep.child_file, {
+          parentFile: dep.parent_file,
+        });
+      }
+
+      const buildParentPath = (fileName: string): string[] => {
+        const path: string[] = [];
+        let current = parentMap.get(fileName);
+        const guard = new Set<string>();
+        while (current && !guard.has(current.parentFile)) {
+          guard.add(current.parentFile);
+          path.unshift(formatFileRootName(current.parentFile));
+          current = parentMap.get(current.parentFile);
+        }
+        return path;
+      };
+
+      const filesToProcess = summary.filesIncluded.length > 0 ? summary.filesIncluded : [file.file_name];
+      const mappingsToInsert: any[] = [];
+
+      for (const bpmnFileName of filesToProcess) {
+        try {
+          const bpmnUrl = await getBpmnFileUrl(bpmnFileName);
+          const { buildBpmnHierarchy } = await import('@/lib/bpmnHierarchy');
+          const hierarchy = await buildBpmnHierarchy(bpmnFileName, bpmnUrl, buildParentPath(bpmnFileName));
+          const allNodes = flattenHierarchyNodes(hierarchy.rootNode);
+
+          for (const node of allNodes) {
+            mappingsToInsert.push({
+              bpmn_file: node.bpmnFile,
+              element_id: node.id,
+              jira_type: node.jiraType || null,
+              jira_name: node.jiraName || null,
+            });
+          }
+        } catch (error) {
+          console.error(`Error building mappings for ${bpmnFileName}:`, error);
+        }
+      }
+
+      if (mappingsToInsert.length > 0) {
+        const { error: mappingsError } = await supabase
+          .from('bpmn_element_mappings')
+          .upsert(mappingsToInsert, {
+            onConflict: 'bpmn_file,element_id',
+            ignoreDuplicates: false,
+          });
+
+        if (mappingsError) {
+          console.error('Save element mappings error:', mappingsError);
+        }
+      }
+      if (hierarchyJob) {
+        await updateGenerationJob(hierarchyJob.id, { progress: 3 });
+      }
+
+      setHierarchyResult({
+        fileName: file.file_name,
+        filesAnalyzed: filesToProcess,
+        totalNodes: summary.totalNodes,
+        totalFiles: summary.totalFiles,
+        hierarchyDepth: summary.hierarchyDepth,
+        missingDependencies: graph.missingDependencies,
+      });
+      setShowHierarchyReport(true);
+
+      queryClient.invalidateQueries({ queryKey: ['root-bpmn-file'] });
+
+      toast({
+        title: 'Hierarki uppdaterad',
+        description: `${filesToProcess.length} filer analyserade. Öppna processträdet för att verifiera resultatet.`,
+      });
+      if (hierarchyJob) {
+        await setJobStatus(hierarchyJob.id, 'succeeded', {
+          finished_at: new Date().toISOString(),
+          progress: 3,
+          result: {
+            filesAnalyzed: filesToProcess.length,
+            totalNodes: summary.totalNodes,
+            hierarchyDepth: summary.hierarchyDepth,
+          },
+        });
+      }
+
+      invalidateStructureQueries(queryClient);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['process-tree'] }),
+        queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
+        queryClient.invalidateQueries({ queryKey: ['bpmn-files'] }),
+        queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
+      ]);
+    } catch (error) {
+      console.error('Hierarchy build error:', error);
+      toast({
+        title: 'Hierarkibyggnad misslyckades',
         description: error instanceof Error ? error.message : 'Ett okänt fel uppstod',
         variant: 'destructive',
       });
+      if (hierarchyJob) {
+        await setJobStatus(hierarchyJob.id, 'failed', {
+          error: error instanceof Error ? error.message : 'Okänt fel',
+          finished_at: new Date().toISOString(),
+        });
+      }
     } finally {
-      setGeneratingFile(null);
+      setTimeout(() => {
+        setGeneratingFile(null);
+        setActiveOperation(null);
+        setShowTransitionOverlay(false);
+        setOverlayMessage('');
+        setOverlayDescription('');
+      }, 200);
     }
   };
 
@@ -668,9 +1469,12 @@ export default function BpmnFileManager() {
 
   const handleReset = async () => {
     setShowResetDialog(false);
+    setOverlayMessage('Återställer registret');
+    setOverlayDescription('Alla genererade artefakter och jobbkön tas bort (BPMN/DMN-filer behålls).');
+    setShowTransitionOverlay(true);
     
     await resetGeneratedData({
-      safeMode: false,
+      safeMode: true,
       deleteBpmn: false,
       deleteDmn: false,
       deleteDocs: true,
@@ -682,56 +1486,97 @@ export default function BpmnFileManager() {
       deleteGitHub: false,
       deleteTestResults: true,
     });
+
+    invalidateStructureQueries(queryClient);
+    invalidateArtifactQueries(queryClient);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['node-test-links'] }),
+      queryClient.resetQueries({ queryKey: ['all-files-artifact-coverage'] }, { exact: true }),
+      queryClient.resetQueries({ queryKey: ['file-artifact-coverage'] }),
+      queryClient.resetQueries({ queryKey: ['process-tree'] }),
+      queryClient.resetQueries({ queryKey: ['generation-jobs'] }, { exact: true }),
+      queryClient.setQueryData(['generation-jobs'], []),
+      queryClient.resetQueries({ queryKey: ['node-matrix'] }),
+    ]);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setShowTransitionOverlay(false);
+    setOverlayMessage('');
+    setOverlayDescription('');
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-8 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">BPMN & DMN Filhantering</h1>
-          <p className="text-muted-foreground">
-            Hantera dina BPMN- och DMN-filer med automatisk GitHub-synkning
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => window.location.hash = '/registry-status'}
-            className="gap-2"
-          >
-            <AlertCircle className="w-4 h-4" />
-            Registry Status
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setShowResetDialog(true)}
-            disabled={isResetting}
-            className="gap-2"
-          >
-            {isResetting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Återställer...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4" />
-                Reset registret
-              </>
-            )}
-          </Button>
-          {files.length > 0 && (
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteAllDialog(true)}
-              className="gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Radera alla filer
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="flex min-h-screen bg-background overflow-hidden">
+      <AppHeaderWithTabs
+        userEmail={user?.email ?? ''}
+        currentView="files"
+        onViewChange={handleViewChange}
+        onOpenVersions={() => navigate('/')}
+        onSignOut={async () => {
+          await signOut();
+          navigate('/auth');
+        }}
+        isTestsEnabled={hasTests}
+      />
+
+      {/* main med min-w-0 så att tabeller och paneler inte orsakar global horisontell scroll */}
+      <main className="flex-1 min-w-0 overflow-auto">
+        <div className="container mx-auto py-8 px-4 relative">
+          <div className="mb-8 flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">BPMN & DMN Filhantering</h1>
+              <p className="text-muted-foreground">
+                Hantera dina BPMN- och DMN-filer med automatisk GitHub-synkning
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => window.location.hash = '/registry-status'}
+                className="gap-2"
+              >
+                <AlertCircle className="w-4 h-4" />
+                Registry Status
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => setShowResetDialog(true)}
+                disabled={isResetting}
+                className="gap-2"
+              >
+                {isResetting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Återställer...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Reset registret
+                  </>
+                )}
+              </Button>
+              {files.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteAllDialog(true)}
+                  className="gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Radera alla filer
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <Alert className="mb-8">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Vad gör en full reset?</AlertTitle>
+            <AlertDescription>
+              Knappen <strong>Reset registret</strong> stoppar alla pågående jobb, rensar jobbkön (generation_jobs) och tar bort
+              genererade dokument, tester, DoR/DoD, LLM-loggar och mappings. BPMN- och DMN-källfiler sparas. Använd
+              <strong> Radera alla filer</strong> nedan om du även vill radera uppladdade källfiler.
+            </AlertDescription>
+          </Alert>
 
       {/* Upload Area */}
       <Card className="p-8 mb-8">
@@ -790,6 +1635,73 @@ export default function BpmnFileManager() {
           </Button>
         </div>
       </Card>
+      
+      <Card className="p-6 mb-8 border-dashed border-muted-foreground/40 bg-muted/10">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h2 className="text-lg font-semibold">LLM-genereringsläge</h2>
+              <Badge variant="outline">{llmModeDetails.label}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">{llmModeDetails.description}</p>
+            <p className="text-xs text-muted-foreground">{llmModeDetails.speedCaption}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {LLM_MODE_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                size="sm"
+                variant={llmMode === option.value ? 'default' : 'outline'}
+                className="gap-2"
+                onClick={() => setLlmMode(option.value)}
+                disabled={llmMode === option.value}
+              >
+                <Sparkles className="w-4 h-4" />
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">{llmModeDetails.runHint}</p>
+      </Card>
+
+      {showTransitionOverlay && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-card border shadow-lg rounded-lg p-8 flex flex-col items-center gap-4 text-center max-w-sm">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <div>
+              <p className="font-semibold text-lg">{overlayMessage || 'Arbetar...'}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {overlayDescription || 'Vi synkar struktur och artefakter.'}
+              </p>
+            </div>
+            {generationProgress && (
+              <div className="w-full text-left text-sm bg-muted/30 rounded-md p-3">
+                <p className="font-medium text-foreground">Pågående steg</p>
+                <p className="text-muted-foreground">{generationProgress.step}</p>
+                {generationProgress.detail && (
+                  <p className="text-xs text-muted-foreground/80 mt-1">{generationProgress.detail}</p>
+                )}
+              </div>
+            )}
+            {(activeOperation === 'llm' || activeOperation === 'local') && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleCancelGeneration}
+                disabled={cancelGeneration}
+              >
+                {cancelGeneration ? 'Avbryter...' : 'Avbryt körning'}
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Du kan luta dig tillbaka under tiden.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Sync Report */}
       {showSyncReport && syncResult && (
@@ -945,6 +1857,27 @@ export default function BpmnFileManager() {
                 </ul>
               </div>
             )}
+            {generationResult?.skippedSubprocesses && generationResult.skippedSubprocesses.length > 0 && (
+              <div className="border rounded-lg p-4 bg-amber-50">
+                <h3 className="font-semibold mb-2 flex items-center gap-2 text-amber-700">
+                  <AlertTriangle className="h-4 w-4" />
+                  Saknade subprocesser ({generationResult.skippedSubprocesses.length})
+                </h3>
+                <p className="text-sm text-amber-800 mb-2">
+                  Dessa Call Activities saknar BPMN-fil. Dokumentation, tester och DoR/DoD genererades inte för dem.
+                </p>
+                <ul className="text-sm space-y-1 text-amber-800">
+                  {generationResult.skippedSubprocesses.slice(0, 15).map((subprocess, i) => (
+                    <li key={i}>• {subprocess}</li>
+                  ))}
+                </ul>
+                {generationResult.skippedSubprocesses.length > 15 && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    ...och {generationResult.skippedSubprocesses.length - 15} till
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* DoR/DoD Criteria */}
             {generationResult && generationResult.dorDodCriteria.length > 0 && (
@@ -1066,6 +1999,225 @@ export default function BpmnFileManager() {
         </DialogContent>
       </Dialog>
 
+      {/* Hierarchy Report Dialog */}
+      <Dialog open={showHierarchyReport} onOpenChange={setShowHierarchyReport}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              Hierarkisammanställning - {hierarchyResult?.fileName}
+            </DialogTitle>
+            <DialogDescription>
+              Uppdatera strukturdata separat och verifiera i processträdet innan du genererar dokumentation och tester.
+            </DialogDescription>
+          </DialogHeader>
+
+          {hierarchyResult ? (
+            <div className="space-y-6 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="border rounded-lg p-4 bg-card">
+                  <p className="text-xs text-muted-foreground uppercase">BPMN-filer</p>
+                  <p className="text-2xl font-bold">{hierarchyResult.totalFiles}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Analyserade filer</p>
+                </div>
+                <div className="border rounded-lg p-4 bg-card">
+                  <p className="text-xs text-muted-foreground uppercase">Noder</p>
+                  <p className="text-2xl font-bold">{hierarchyResult.totalNodes}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Totalt i hierarkin</p>
+                </div>
+                <div className="border rounded-lg p-4 bg-card">
+                  <p className="text-xs text-muted-foreground uppercase">Djup</p>
+                  <p className="text-2xl font-bold">{hierarchyResult.hierarchyDepth}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Maximala nivåer</p>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Filer i hierarkin ({hierarchyResult.filesAnalyzed.length})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {hierarchyResult.filesAnalyzed.map(fileName => (
+                    <Badge key={fileName} variant="secondary">
+                      {fileName}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Saknade subprocess-filer
+                </h4>
+                {hierarchyResult.missingDependencies.length > 0 ? (
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    {hierarchyResult.missingDependencies.map((dep, idx) => (
+                      <li key={`${dep.parent}-${dep.childProcess}-${idx}`}>
+                        • {dep.parent} refererar till "{dep.childProcess}" utan uppladdad fil
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Inga saknade subprocess-referenser hittades.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Öppna nod-matrisen eller registreringsstatusen i nya flikar för att dubbelkolla strukturen visuellt.
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => window.open('#/node-matrix', '_blank')}>
+                    Visa nod-matris
+                  </Button>
+                  <Button variant="outline" onClick={() => window.open('#/registry-status', '_blank')}>
+                    Statusvy
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Ingen hierarkidata att visa.</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Global actions + Job Queue */}
+      <Card className="mt-6">
+        <div className="border-b px-4 py-3">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="font-semibold">Jobbkön</h3>
+              <p className="text-sm text-muted-foreground">
+                Senaste körningar och deras status
+                <span className="block text-xs text-muted-foreground/80">
+                  En full reset stoppar och rensar jobbkön, så listan ska vara tom efter att registret har tömts.
+                </span>
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={generatingFile !== null || isLoading || files.length === 0}
+                onClick={() => handleGenerateAllArtifacts('local')}
+              >
+                {generatingFile && activeOperation === 'local' ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin mr-2" />
+                    Genererar allt (lokalt)...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-3 h-3 mr-2" />
+                    Generera allt (lokalt)
+                  </>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={generatingFile !== null || isLoading || files.length === 0}
+                onClick={() => handleGenerateAllArtifacts('llm')}
+                className="gap-2"
+              >
+                {generatingFile && activeOperation === 'llm' ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Genererar allt (LLM)...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3" />
+                    Generera allt (LLM)
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="p-4">
+          {generationJobs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Inga jobb har skapats ännu.</p>
+          ) : (
+            <ul className="space-y-3">
+              {generationJobs.map(job => (
+                <li
+                  key={job.id}
+                  className="flex flex-col md:flex-row md:items-center justify-between gap-2 border rounded-lg p-3"
+                >
+                  {(() => {
+                    const jobResult = (job.result || {}) as {
+                      docs?: number;
+                      tests?: number;
+                      dorDod?: number;
+                      filesAnalyzed?: string[];
+                      mode?: string;
+                    };
+                    return (
+                      <>
+                        <div>
+                          <div className="text-sm font-semibold">{job.file_name}</div>
+                          <p className="text-xs text-muted-foreground">
+                            {formatOperationLabel(job.operation)} • Start: {job.created_at ? new Date(job.created_at).toLocaleTimeString('sv-SE') : 'okänd'}
+                          </p>
+                          <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                            {job.status === 'running' && job.total ? (
+                              <p>Steg {job.progress ?? 0} av {job.total}</p>
+                            ) : null}
+                            {job.status === 'succeeded' && (
+                              <p>
+                                {jobResult.docs ?? 0} dok · {jobResult.tests ?? 0} tester · {jobResult.dorDod ?? 0} DoR/DoD
+                              </p>
+                            )}
+                            {jobResult.filesAnalyzed && jobResult.filesAnalyzed.length > 0 && (
+                              <p className="line-clamp-1">
+                                Filer: {jobResult.filesAnalyzed.join(', ')}
+                              </p>
+                            )}
+                            {Array.isArray(jobResult.skippedSubprocesses) && jobResult.skippedSubprocesses.length > 0 && (
+                              <p className="text-amber-600">
+                                Hoppade över {jobResult.skippedSubprocesses.length} subprocesser
+                              </p>
+                            )}
+                            {jobResult.mode && (
+                              <p>Läge: {jobResult.mode}</p>
+                            )}
+                            {job.error && (
+                              <p className="text-red-600">{job.error}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full border ${getStatusBadgeClasses(job.status)}`}
+                          >
+                            {formatStatusLabel(job.status)}
+                          </span>
+                          {job.status === 'running' && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                          {(job.status === 'running' || job.status === 'pending') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => abortGenerationJob(job)}
+                            >
+                              Stoppa
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Card>
       {/* Files Table */}
       <Card>
         <Table>
@@ -1158,6 +2310,13 @@ export default function BpmnFileManager() {
                             covered={coverageMap.get(file.file_name)!.dorDod.covered}
                             total={coverageMap.get(file.file_name)!.dorDod.total}
                           />
+                          <ArtifactStatusBadge
+                            icon="🌐"
+                            label="Hierarki"
+                            status={coverageMap.get(file.file_name)!.hierarchy.status}
+                            covered={coverageMap.get(file.file_name)!.hierarchy.covered}
+                            total={coverageMap.get(file.file_name)!.hierarchy.total}
+                          />
                         </>
                       ) : (
                         <span className="text-xs text-muted-foreground">
@@ -1168,38 +2327,6 @@ export default function BpmnFileManager() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {file.file_type === 'bpmn' && (
-                        <Button
-                          size="sm"
-                          variant={coverageMap?.get(file.file_name) ? (
-                            coverageMap.get(file.file_name)!.docs.status === 'full' &&
-                            coverageMap.get(file.file_name)!.tests.status === 'full' &&
-                            coverageMap.get(file.file_name)!.dorDod.status === 'full'
-                              ? "ghost"
-                              : "outline"
-                          ) : "outline"}
-                          disabled={generatingFile === file.file_name}
-                          onClick={() => handleGenerateArtifacts(file)}
-                          className="gap-2"
-                        >
-                          {generatingFile === file.file_name ? (
-                            <>
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              Genererar...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3 h-3" />
-                              {coverageMap?.get(file.file_name) &&
-                               coverageMap.get(file.file_name)!.docs.status === 'full' &&
-                               coverageMap.get(file.file_name)!.tests.status === 'full' &&
-                               coverageMap.get(file.file_name)!.dorDod.status === 'full'
-                                ? 'Regenerera'
-                                : 'Generera saknade'}
-                            </>
-                          )}
-                        </Button>
-                      )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1331,18 +2458,17 @@ export default function BpmnFileManager() {
               Reset registret?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Detta kommer att radera ALL genererad data inklusive:
+              Detta rensar genererade artefakter och jobbhistorik (BPMN/DMN-källfiler behålls) och loggar ut dig.
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>DoR/DoD-kriterier</li>
-                <li>Testfiler och testresultat</li>
-                <li>Dokumentation</li>
-                <li>Element-mappningar och Jira-metadata</li>
-                <li>Beroenden</li>
+                <li>Genererad dokumentation, tester, DoR/DoD, node references, llm-debug, testresultat</li>
+                <li>Jobbkön och jobbhistorik (generation_jobs, llm_generation_logs m.fl.)</li>
+                <li>Element-mappningar, Jira-metadata och beroenden</li>
+                <li>Cache/session rensas – du loggas ut efter reset</li>
               </ul>
               <br />
-              <strong className="text-primary">BPMN- och DMN-källfiler påverkas INTE.</strong>
+              BPMN- och DMN-källfiler sparas. Använd “Radera alla filer” om källfiler också ska tas bort.
               <br /><br />
-              <strong className="text-destructive">Denna åtgärd kan inte ångras!</strong>
+              <strong className="text-destructive">Denna åtgärd stoppar alla jobb och kan inte ångras!</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1367,6 +2493,8 @@ export default function BpmnFileManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </div>
+      </main>
     </div>
   );
 }

@@ -5,20 +5,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, ExternalLink, X, Filter, Download, Pencil } from 'lucide-react';
+import { ExternalLink, X, Filter, Download, Pencil, AlertTriangle, FileCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { getTestFileUrl, getDocumentationUrl } from '@/lib/artifactUrls';
+import { getTestFileUrl, getDocumentationUrl, getNodeTestReportUrl } from '@/lib/artifactUrls';
+import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { useAuth } from '@/hooks/useAuth';
+import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 
 type SortField = 'bpmnFile' | 'elementName' | 'nodeType';
 type SortDirection = 'asc' | 'desc';
 
 const NodeMatrix = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const { nodes, loading } = useAllBpmnNodes();
+  const { hasDorDod, hasTests } = useArtifactAvailability();
   const { toast } = useToast();
   const [sortField, setSortField] = useState<SortField>('bpmnFile');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -115,7 +120,7 @@ const NodeMatrix = () => {
         'Element Namn': node.elementName,
         'Typ': node.nodeType,
         'Figma URL': node.figmaUrl || '',
-        'Dokumentation': getDocumentationUrl(node.bpmnFile),
+        'Dokumentation': getDocumentationUrl(node.bpmnFile, node.elementId),
         'Testfil': node.testFilePath || '',
         'Jira Namn': node.jiraName || '',
         'Jira Typ': node.jiraType || '',
@@ -287,61 +292,56 @@ const NodeMatrix = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col h-screen bg-background">
-        <header className="border-b border-border bg-card px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Tillbaka
-            </Button>
-            <h1 className="text-2xl font-bold">Listvy</h1>
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      <AppHeaderWithTabs
+        userEmail={user?.email ?? ''}
+        currentView="listvy"
+        onViewChange={(v) => {
+          if (v === 'diagram') navigate('/');
+          else if (v === 'tree') navigate('/process-explorer');
+          else if (v === 'tests') navigate('/test-report');
+          else if (v === 'files') navigate('/files');
+          else navigate('/node-matrix');
+        }}
+        onOpenVersions={() => navigate('/')}
+        onSignOut={async () => {
+          await signOut();
+          navigate('/auth');
+        }}
+        isTestsEnabled={hasTests}
+      />
+
+      {/* main med min-w-0 så att tabeller inte tvingar hela sidan att scrolla horisontellt */}
+      <main className="flex-1 min-w-0 overflow-auto p-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">Listvy</h1>
+            <p className="text-sm text-muted-foreground">
+              {filteredAndSortedNodes.length} av {mergedNodes?.length || 0} noder
+            </p>
           </div>
-        </header>
-        <main className="flex-1 overflow-auto p-6">
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAllFilters}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Rensa filter
+            </Button>
+          )}
+        </div>
+
+        {loading ? (
           <div className="space-y-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-96 w-full" />
           </div>
-        </main>
-      </div>
-    );
-  }
+        ) : (
+          <>
 
-  return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="border-b border-border bg-card px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Tillbaka
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Listvy</h1>
-              <p className="text-sm text-muted-foreground">
-                {filteredAndSortedNodes.length} av {mergedNodes?.length || 0} noder
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearAllFilters}
-                className="flex items-center gap-2"
-              >
-                <X className="h-4 w-4" />
-                Rensa filter
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 overflow-auto p-6">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -388,6 +388,8 @@ const NodeMatrix = () => {
         </div>
 
         <div className="border rounded-lg">
+          {/* Lokal horisontell scroll för tabellen, inte på root-level */}
+          <div className="overflow-x-auto max-w-full">
           <Table>
             <TableHeader>
               <TableRow>
@@ -410,13 +412,24 @@ const NodeMatrix = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSortedNodes.map((node, index) => (
+              {filteredAndSortedNodes.map((node, index) => {
+                const issueSummary = node.diagnosticsSummary;
+                const hasIssues = Boolean(issueSummary);
+                return (
                   <TableRow key={`${node.bpmnFile}:${node.elementId}`}>
                     <TableCell className="text-xs text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="text-xs font-mono">{node.bpmnFile}</TableCell>
                     <TableCell className="text-xs">
                       <div className="flex flex-col">
-                        <span className="font-medium">{node.elementName}</span>
+                        <span className="font-medium flex items-center gap-1">
+                          {node.elementName}
+                          {hasIssues && (
+                            <AlertTriangle
+                              className="h-3 w-3 text-amber-500"
+                              title={issueSummary || 'Problem med subprocess'}
+                            />
+                          )}
+                        </span>
                         <span className="text-muted-foreground">{node.elementId}</span>
                       </div>
                     </TableCell>
@@ -481,28 +494,49 @@ const NodeMatrix = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <a
-                        href={getDocumentationUrl(node.bpmnFile)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                        title={`Dokumentation för ${node.bpmnFile}`}
-                      >
-                        <span className="truncate max-w-[150px]">Visa docs</span>
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                    </TableCell>
-                    <TableCell>
-                      {node.testFilePath ? (
+                      {node.hasDocs ? (
                         <a
-                          href={getTestFileUrl(node.testFilePath)}
+                          href={node.documentationUrl ?? getDocumentationUrl(node.bpmnFile, node.elementId)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-primary hover:underline flex items-center gap-1"
+                          title={`Dokumentation för ${node.elementName}`}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <span className="truncate max-w-[150px]">{node.testFilePath.split('/').pop()}</span>
+                          <span className="truncate max-w-[150px]">Visa docs</span>
                           <ExternalLink className="h-3 w-3 shrink-0" />
                         </a>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {node.elementId && node.bpmnFile ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(getNodeTestReportUrl(node.bpmnFile, node.elementId).replace('#', ''));
+                            }}
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                            title="Visa testrapport för denna nod"
+                          >
+                            <FileCode className="h-3 w-3 shrink-0" />
+                            <span>Testrapport</span>
+                          </button>
+                          {node.testFilePath && (
+                            <a
+                              href={getTestFileUrl(node.testFilePath)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Öppna testfil i ny flik"
+                            >
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
@@ -524,25 +558,22 @@ const NodeMatrix = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs"
-                        onClick={() => navigate(node.dorDodUrl)}
-                      >
-                        Visa
-                      </Button>
+                      <span className="text-xs text-muted-foreground">Se dokumentation</span>
                     </TableCell>
                   </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
+          </div>
         </div>
 
         {filteredAndSortedNodes.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             {hasActiveFilters ? 'Inga noder matchar de valda filtren' : 'Inga noder hittades'}
           </div>
+        )}
+          </>
         )}
       </main>
     </div>

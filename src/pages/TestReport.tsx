@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, AlertCircle, XCircle, FileCode, Clock, Package, ChevronDown, Filter } from 'lucide-react';
+import { CheckCircle2, AlertCircle, XCircle, FileCode, Clock, Package, ChevronDown, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { elementResourceMapping } from '@/data/elementResourceMapping';
 import { testMapping, getAllTests, TestInfo } from '@/data/testMapping';
 import { useTestResults, TestResult, TestScenario } from '@/hooks/useTestResults';
+import { getNodeTestReportUrl } from '@/lib/artifactUrls';
 import { useE2EScenarios } from '@/hooks/useE2EScenarios';
+import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { useAuth } from '@/hooks/useAuth';
+import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
+import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
 
 interface TestGroup {
   id: string;
@@ -30,13 +35,18 @@ interface TestGroup {
 }
 
 const TestReport = () => {
+  // TODO: Add a UI/snapshot test to assert the shared header renders on /test-report.
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { hasDorDod, hasTests } = useArtifactAvailability();
+  const { data: coverageMap } = useAllFilesArtifactCoverage();
   const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [fileFilter, setFileFilter] = useState<string>('all');
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+  const [expandedScenarioNode, setExpandedScenarioNode] = useState<string | null>(null);
   
-  const { testResults, isLoading } = useTestResults();
+  const { testResults, isLoading, stats } = useTestResults();
   const { data: e2eScenarios, isLoading: e2eScenariosLoading } = useE2EScenarios();
 
   // Get testId from URL if present
@@ -152,6 +162,47 @@ const TestReport = () => {
     return groups;
   }, [testResults]);
 
+  // Aggregate coverage based on real artifacts + test_results
+  const coverageSummary = useMemo(() => {
+    let totalNodes = 0;
+    let implementedNodes = 0;
+
+    if (coverageMap) {
+      for (const coverage of coverageMap.values()) {
+        totalNodes += coverage.total_nodes;
+        implementedNodes += coverage.tests.covered;
+      }
+    }
+
+    const executedNodeIds = new Set(
+      (testResults || [])
+        .map((r) => r.node_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    const implementedCoverage =
+      totalNodes > 0 ? (implementedNodes / totalNodes) * 100 : 0;
+    const executedCoverage =
+      totalNodes > 0 ? (executedNodeIds.size / totalNodes) * 100 : 0;
+
+    return {
+      totalNodes,
+      implementedNodes,
+      executedNodeCount: executedNodeIds.size,
+      implementedCoverage,
+      executedCoverage,
+    };
+  }, [coverageMap, testResults]);
+
+  const executedScenarioCount = useMemo(
+    () =>
+      (testResults || []).reduce(
+        (sum, r) => sum + (r.scenarios?.length ?? 0),
+        0,
+      ),
+    [testResults],
+  );
+
   // Apply filters
   const filteredGroups = useMemo(() => {
     return testGroups
@@ -185,8 +236,8 @@ const TestReport = () => {
     return Array.from(files).sort();
   }, [testResults]);
 
-  // Analyze test coverage (using old logic for compatibility)
-  const analysis = useMemo(() => {
+  // Analyze planned scenarios based on static testMapping (design/plan, not executed tests)
+  const scenarioAnalysis = useMemo(() => {
     const allNodes = Object.keys(elementResourceMapping);
     const testedNodes = Object.keys(testMapping);
     const untestedNodes = allNodes.filter(node => !testedNodes.includes(node));
@@ -247,50 +298,79 @@ const TestReport = () => {
     );
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/')}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Test Coverage Report</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Comprehensive overview of test coverage for BPMN nodes
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="text-base px-4 py-2">
-                {new Date().toLocaleDateString('sv-SE')}
-              </Badge>
-            </div>
-          </div>
-        </div>
-      </header>
+  const getScenarioCategoryBadge = (category: TestScenario['category']) => {
+    const categoryMap: Record<TestScenario['category'], { label: string; className: string }> = {
+      'happy-path': { label: 'Happy path', className: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' },
+      'error-case': { label: 'Error case', className: 'bg-rose-500/10 text-rose-700 border-rose-500/20' },
+      'edge-case': { label: 'Edge case', className: 'bg-sky-500/10 text-sky-700 border-sky-500/20' },
+    };
 
-      <main className="container mx-auto px-4 py-8 space-y-8">
+    const { label, className } = categoryMap[category];
+    return (
+      <Badge variant="outline" className={className}>
+        {label}
+      </Badge>
+    );
+  };
+
+  const getScenarioStatusChip = (status: TestScenario['status']) => {
+    const variants: Record<TestScenario['status'], string> = {
+      passing: 'text-green-700 bg-green-500/10 border-green-500/20',
+      failing: 'text-red-700 bg-red-500/10 border-red-500/20',
+      pending: 'text-yellow-700 bg-yellow-500/10 border-yellow-500/20',
+      skipped: 'text-gray-700 bg-gray-500/10 border-gray-500/20',
+    };
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${variants[status]}`}>
+        {status}
+      </span>
+    );
+  };
+
+  const handleViewChange = (view: string) => {
+    if (view === 'diagram') navigate('/');
+    else if (view === 'tree') navigate('/process-explorer');
+    else if (view === 'listvy') navigate('/node-matrix');
+    else if (view === 'files') navigate('/files');
+    else navigate('/test-report');
+  };
+
+  return (
+    <div className="flex min-h-screen bg-background overflow-hidden">
+      <AppHeaderWithTabs
+        userEmail={user?.email ?? ''}
+        currentView="tests"
+        onViewChange={handleViewChange}
+        onOpenVersions={() => navigate('/')}
+        onSignOut={async () => {
+          await signOut();
+          navigate('/auth');
+        }}
+        isTestsEnabled={hasTests}
+      />
+
+      {/* main med min-w-0 så att rapporttabeller kan få lokal scroll istället för global */}
+      <main className="flex-1 min-w-0 overflow-auto">
+        <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Coverage</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Testcoverage</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <div className="text-3xl font-bold text-foreground">
-                  {analysis.coverage.toFixed(0)}%
+                  {coverageSummary.implementedCoverage.toFixed(0)}%
                 </div>
-                <Progress value={analysis.coverage} className="h-2" />
+                <Progress value={coverageSummary.implementedCoverage} className="h-2" />
                 <p className="text-xs text-muted-foreground">
-                  {analysis.testedNodes.length} / {analysis.allNodes.length} nodes tested
+                  🧪 Implementerade tester: {coverageSummary.implementedNodes} /{' '}
+                  {coverageSummary.totalNodes} noder
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  ✔ Körda tester: {coverageSummary.executedNodeCount} / {coverageSummary.totalNodes}{' '}
+                  noder
                 </p>
               </div>
             </CardContent>
@@ -302,9 +382,11 @@ const TestReport = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
-                <div className="text-3xl font-bold text-foreground">{analysis.totalTests}</div>
+                <div className="text-3xl font-bold text-foreground">
+                  {stats.total}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  {analysis.totalScenarios} scenarios
+                  {executedScenarioCount} scenarion (körda)
                 </p>
               </div>
             </CardContent>
@@ -321,14 +403,14 @@ const TestReport = () => {
                     <CheckCircle2 className="h-4 w-4" />
                     Passing
                   </span>
-                  <span className="font-semibold">{analysis.passingTests}</span>
+                  <span className="font-semibold">{stats.passing}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-1 text-red-600">
                     <XCircle className="h-4 w-4" />
                     Failing
                   </span>
-                  <span className="font-semibold">{analysis.failingTests}</span>
+                  <span className="font-semibold">{stats.failing}</span>
                 </div>
               </div>
             </CardContent>
@@ -345,14 +427,14 @@ const TestReport = () => {
                     <AlertCircle className="h-4 w-4" />
                     Untested
                   </span>
-                  <span className="font-semibold">{analysis.untestedNodes.length}</span>
+                  <span className="font-semibold">{scenarioAnalysis.untestedNodes.length}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-1 text-purple-600">
                     <Package className="h-4 w-4" />
                     Orphans
                   </span>
-                  <span className="font-semibold">{analysis.orphanTests.length}</span>
+                  <span className="font-semibold">{scenarioAnalysis.orphanTests.length}</span>
                 </div>
               </div>
             </CardContent>
@@ -501,7 +583,8 @@ const TestReport = () => {
               Klicka på en grupp för att se detaljer, klicka på ett test för att öppna i BPMN-vyn
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          {/* Lokal horisontell scroll för drill-down-tabellen */}
+          <CardContent className="overflow-x-auto max-w-full">
             {isLoading && (
               <div className="text-center py-8 text-muted-foreground">
                 Laddar tester...
@@ -552,7 +635,10 @@ const TestReport = () => {
                             }`}
                             onClick={() => {
                               if (test.node_id) {
-                                navigate(`/?file=mortgage.bpmn&element=${test.node_id}`);
+                                // Navigate to node-specific test report
+                                // Try to infer bpmnFile from test_file or use fallback
+                                const inferredBpmnFile = test.test_file.includes('mortgage') ? 'mortgage.bpmn' : 'mortgage.bpmn';
+                                navigate(getNodeTestReportUrl(inferredBpmnFile, test.node_id).replace('#', ''));
                               }
                             }}
                           >
@@ -619,13 +705,13 @@ const TestReport = () => {
         <Tabs defaultValue="tested" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="tested">
-              Tested Nodes ({analysis.testedNodes.length})
+              Tested Nodes ({scenarioAnalysis.testedNodes.length})
             </TabsTrigger>
             <TabsTrigger value="untested">
-              Untested Nodes ({analysis.untestedNodes.length})
+              Untested Nodes ({scenarioAnalysis.untestedNodes.length})
             </TabsTrigger>
             <TabsTrigger value="orphans">
-              Orphan Tests ({analysis.orphanTests.length})
+              Orphan Tests ({scenarioAnalysis.orphanTests.length})
             </TabsTrigger>
           </TabsList>
 
@@ -641,7 +727,7 @@ const TestReport = () => {
                   BPMN nodes that have associated test cases
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto max-w-full">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -654,7 +740,7 @@ const TestReport = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {analysis.allTests.map((test) => (
+                    {scenarioAnalysis.allTests.map((test) => (
                       <TableRow key={test.nodeId} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-mono text-xs">
                           <a 
@@ -719,8 +805,8 @@ const TestReport = () => {
                   BPMN nodes that need test cases to be created
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                {analysis.untestedNodes.length > 0 ? (
+              <CardContent className="overflow-x-auto max-w-full">
+                {scenarioAnalysis.untestedNodes.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -730,7 +816,7 @@ const TestReport = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {analysis.untestedNodes.map((nodeId) => {
+                      {scenarioAnalysis.untestedNodes.map((nodeId) => {
                         const resources = elementResourceMapping[nodeId];
                         return (
                           <TableRow key={nodeId}>
@@ -785,8 +871,8 @@ const TestReport = () => {
                   Test cases not associated with any BPMN node
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                {analysis.orphanTests.length > 0 ? (
+              <CardContent className="overflow-x-auto max-w-full">
+                {scenarioAnalysis.orphanTests.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -796,7 +882,7 @@ const TestReport = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {analysis.orphanTests.map((testId) => {
+                      {scenarioAnalysis.orphanTests.map((testId) => {
                         const test = testMapping[testId];
                         return (
                           <TableRow key={testId} className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -837,6 +923,96 @@ const TestReport = () => {
           </TabsContent>
         </Tabs>
 
+        {scenarioAnalysis.allTests.length > 0 && (
+          <section className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <FileCode className="h-5 w-5 text-primary" />
+                  Testscenarier per BPMN-nod (planerade)
+                </CardTitle>
+                <CardDescription>
+                  📝 Visar designade scenarion från testMapping.ts – dessa är tänkta krav/idéer och
+                  speglar inte körda tester.
+                </CardDescription>
+                <div className="mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    Fallback-data
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {scenarioAnalysis.allTests.map((test) => (
+                  <div key={test.nodeId} className="border rounded-lg p-4 bg-muted/30">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-semibold">{test.nodeName}</h3>
+                          {getStatusBadge(test.status)}
+                        </div>
+                        <p className="text-sm text-muted-foreground font-mono mt-1">
+                          {test.testFile}
+                        </p>
+                        {elementResourceMapping[test.nodeId]?.bpmnFile && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            BPMN-fil: {elementResourceMapping[test.nodeId]?.bpmnFile}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          {test.testCount} tester · {test.scenarios?.length || 0} scenarier
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setExpandedScenarioNode((prev) =>
+                              prev === test.nodeId ? null : test.nodeId
+                            )
+                          }
+                        >
+                          {expandedScenarioNode === test.nodeId ? 'Dölj scenarier' : 'Visa scenarier'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {expandedScenarioNode === test.nodeId && (
+                      <div className="mt-4 space-y-3">
+                        {(test.scenarios || []).map((scenario) => (
+                          <div
+                            key={scenario.id}
+                            className="border rounded-lg p-3 bg-card space-y-2"
+                          >
+                            <div className="flex flex-wrap items-center gap-3 justify-between">
+                              <p className="font-medium">{scenario.name}</p>
+                              <div className="flex gap-2">
+                                {getScenarioCategoryBadge(scenario.category)}
+                                {getScenarioStatusChip(scenario.status)}
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{scenario.description}</p>
+                            {scenario.duration && (
+                              <p className="text-xs text-muted-foreground">
+                                Duration: {scenario.duration}s
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                        {(test.scenarios || []).length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            Inga scenarier registrerade för denna nod ännu.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         {/* CI/CD Integration Info */}
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader>
@@ -852,16 +1028,32 @@ const TestReport = () => {
                 meets your quality standards before deployment.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Coverage: {analysis.coverage.toFixed(0)}%</Badge>
-                <Badge variant="secondary">Total Tests: {analysis.totalTests}</Badge>
-                <Badge variant="secondary">Scenarios: {analysis.totalScenarios}</Badge>
-                <Badge variant={analysis.untestedNodes.length > 0 ? "destructive" : "default"}>
-                  Untested: {analysis.untestedNodes.length}
+                <Badge variant="secondary">
+                  Implementerade tester: {coverageSummary.implementedCoverage.toFixed(0)}%
+                </Badge>
+                <Badge variant="secondary">
+                  Körda tester: {coverageSummary.executedCoverage.toFixed(0)}%
+                </Badge>
+                <Badge variant="secondary">Testresultat: {stats.total}</Badge>
+                <Badge
+                  variant={
+                    coverageSummary.totalNodes - coverageSummary.implementedNodes > 0
+                      ? 'destructive'
+                      : 'default'
+                  }
+                >
+                  Noder utan implementerad testfil:{' '}
+                  {Math.max(
+                    coverageSummary.totalNodes - coverageSummary.implementedNodes,
+                    0
+                  )}
                 </Badge>
               </div>
             </div>
           </CardContent>
         </Card>
+        {/* End of inner content wrapper */}
+        </div>
       </main>
     </div>
   );

@@ -17,12 +17,14 @@ export interface TestForNode {
 interface UseTestsForNodeParams {
   bpmnFile?: string | null;
   bpmnElementId?: string | null;
+  nodeSlug?: string | null;
 }
 
-export const useTestsForNode = ({ bpmnFile, bpmnElementId }: UseTestsForNodeParams) => {
+export const useTestsForNode = ({ bpmnFile, bpmnElementId, nodeSlug }: UseTestsForNodeParams) => {
   const { testResults, isLoading } = useTestResults();
 
   const normalizedId = (bpmnElementId || '').toLowerCase();
+  const fallbackKey = (nodeSlug || '').toLowerCase();
 
   const dbTests = useMemo<TestForNode[]>(() => {
     if (!bpmnElementId) return [];
@@ -33,7 +35,7 @@ export const useTestsForNode = ({ bpmnFile, bpmnElementId }: UseTestsForNodePara
       if (r.scenarios && r.scenarios.length > 0) {
         r.scenarios.forEach((sc) => {
           scenarioItems.push({
-            id: (sc as any).id || `${r.id}-${sc.name}`,
+            id: sc.id || `${r.id}-${sc.name}`,
             title: sc.name,
             fileName: r.test_file.replace('tests/', ''),
             status: sc.status,
@@ -65,8 +67,8 @@ export const useTestsForNode = ({ bpmnFile, bpmnElementId }: UseTestsForNodePara
 
   // Fallback to mock mapping when DB has no entries for this node
   const fallbackTests = useMemo<TestForNode[]>(() => {
-    if (!normalizedId) return [];
-    const info = testMapping[normalizedId];
+    if (!fallbackKey) return [];
+    const info = testMapping[fallbackKey];
     if (!info) return [];
 
     const file = info.testFile?.replace('tests/', '') || '';
@@ -82,7 +84,7 @@ export const useTestsForNode = ({ bpmnFile, bpmnElementId }: UseTestsForNodePara
       nodeId: info.nodeId,
       nodeName: info.nodeName,
     }));
-  }, [normalizedId]);
+  }, [fallbackKey]);
 
   const tests = dbTests.length > 0 ? dbTests : fallbackTests;
 

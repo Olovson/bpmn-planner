@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useTestResults, TestResult } from './useTestResults';
-import { testMapping, TestInfo } from '@/data/testMapping';
+import { useTestResults } from './useTestResults';
+import { testMapping, TestInfo, TestScenario as TemplateScenario } from '@/data/testMapping';
 
 export interface NodeTestCase {
   id: string;
@@ -30,15 +30,16 @@ interface UseNodeTestsParams {
 export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams) => {
   const { testResults, isLoading } = useTestResults();
 
-  const { tests, nodeInfo } = useMemo(() => {
+  const { tests, nodeInfo, plannedScenarios } = useMemo(() => {
     const effectiveNodeId = nodeId || elementId;
     
     if (!effectiveNodeId) {
-      return { tests: [], nodeInfo: null };
+      return { tests: [] as NodeTestCase[], nodeInfo: null as NodeInfo | null, plannedScenarios: [] as TemplateScenario[] };
     }
 
     // First try to get from database using nodeId or elementId
     const dbTests = testResults.filter(result => result.node_id === effectiveNodeId);
+    const template = testMapping[effectiveNodeId];
     
     if (dbTests.length > 0) {
       const firstTest = dbTests[0];
@@ -60,41 +61,26 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
         bpmnFile: bpmnFile,
       }));
 
-      return { tests: testCases, nodeInfo: info };
+      return { tests: testCases, nodeInfo: info, plannedScenarios: template?.scenarios ?? [] };
     }
 
-    // Fallback to mock data from testMapping
-    const mockTest = testMapping[effectiveNodeId];
-    if (!mockTest) {
-      return { tests: [], nodeInfo: null };
+    if (template) {
+      const info: NodeInfo = {
+        name: template.nodeName,
+        type: 'BPMN Node',
+        elementId: effectiveNodeId,
+        bpmnFile: bpmnFile,
+      };
+      return { tests: [] as NodeTestCase[], nodeInfo: info, plannedScenarios: template.scenarios };
     }
 
-    const info: NodeInfo = {
-      name: mockTest.nodeName,
-      type: 'BPMN Node',
-      elementId: effectiveNodeId,
-      bpmnFile: bpmnFile,
-    };
-
-    // Convert scenarios to test cases
-    const testCases: NodeTestCase[] = mockTest.scenarios.map(scenario => ({
-      id: scenario.id,
-      title: scenario.name,
-      fileName: mockTest.testFile.replace('tests/', ''),
-      status: scenario.status,
-      lastRunAt: mockTest.lastRun || new Date().toISOString(),
-      scenarioName: scenario.name,
-      duration: scenario.duration,
-      bpmnElementId: effectiveNodeId,
-      bpmnFile: bpmnFile,
-    }));
-
-    return { tests: testCases, nodeInfo: info };
+    return { tests: [] as NodeTestCase[], nodeInfo: null as NodeInfo | null, plannedScenarios: [] as TemplateScenario[] };
   }, [testResults, nodeId, bpmnFile, elementId]);
 
   return {
     tests,
     nodeInfo,
+    plannedScenarios,
     isLoading,
     error: null,
   };

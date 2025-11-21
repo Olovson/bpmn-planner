@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { ProcessTreeNode, ProcessNodeType, NodeArtifact } from '@/lib/processTree';
+import { ProcessTreeNode, ProcessNodeType, NodeArtifact, getProcessNodeStyle, PROCESS_NODE_STYLES } from '@/lib/processTree';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ProcessTreeD3Props {
@@ -11,25 +11,45 @@ interface ProcessTreeD3Props {
 }
 
 const getColorForNodeType = (type: ProcessNodeType): string => {
-  const colors: Record<ProcessNodeType, string> = {
-    process: '#3B82F6',
-    subprocess: '#3B82F6',
-    callActivity: '#8B5CF6',
-    userTask: '#10B981',
-    serviceTask: '#8B5CF6',
-    businessRuleTask: '#F59E0B',
-    dmnDecision: '#EAB308',
-  };
-  return colors[type] || '#64748B';
+  return getProcessNodeStyle(type).hexColor;
 };
 
-const getLegendItems = () => [
-  { type: 'process' as ProcessNodeType, label: 'Process/Subprocess', color: '#3B82F6' },
-  { type: 'userTask' as ProcessNodeType, label: 'User Task', color: '#10B981' },
-  { type: 'serviceTask' as ProcessNodeType, label: 'Service Task', color: '#8B5CF6' },
-  { type: 'businessRuleTask' as ProcessNodeType, label: 'Business Rule Task', color: '#F59E0B' },
-  { type: 'dmnDecision' as ProcessNodeType, label: 'DMN Decision', color: '#EAB308' },
-];
+const getLegendItems = () => {
+  const order: ProcessNodeType[] = ['process', 'callActivity', 'userTask', 'serviceTask', 'businessRuleTask', 'dmnDecision'];
+  return order.map(type => ({
+    type,
+    label: getProcessNodeStyle(type).label,
+    color: getProcessNodeStyle(type).hexColor,
+  }));
+};
+
+const nodeHasIssues = (node: ProcessTreeNode): boolean => {
+  const linkIssue =
+    node.subprocessLink &&
+    node.subprocessLink.matchStatus &&
+    node.subprocessLink.matchStatus !== 'matched';
+  const nodeDiagnostics = (node.diagnostics && node.diagnostics.length > 0) || false;
+  const linkDiagnostics = node.subprocessLink?.diagnostics && node.subprocessLink.diagnostics.length > 0;
+  return Boolean(linkIssue || nodeDiagnostics || linkDiagnostics);
+};
+
+const summarizeDiagnostics = (node: ProcessTreeNode): string | null => {
+  const parts: string[] = [];
+  if (node.subprocessLink && node.subprocessLink.matchStatus && node.subprocessLink.matchStatus !== 'matched') {
+    parts.push(`Subprocess: ${node.subprocessLink.matchStatus}`);
+  }
+  (node.diagnostics ?? []).forEach((diag) => {
+    if (diag.message) {
+      parts.push(diag.message);
+    }
+  });
+  (node.subprocessLink?.diagnostics ?? []).forEach((diag) => {
+    if (diag.message) {
+      parts.push(diag.message);
+    }
+  });
+  return parts.length ? parts.join(' • ') : null;
+};
 
 export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactClick }: ProcessTreeD3Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -182,10 +202,10 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
       .text((d: any) => collapsedIds.has(d.data.id) ? '+' : '−');
 
     // Node label
-    node.append('text')
+    const label = node.append('text')
       .attr('dx', 18)
       .attr('dy', 4)
-      .text((d: any) => d.data.label)
+      .text((d: any) => (nodeHasIssues(d.data) ? `${d.data.label} ⚠︎` : d.data.label))
       .attr('font-size', 13)
       .attr('fill', 'hsl(var(--foreground))')
       .attr('pointer-events', 'none')
@@ -194,85 +214,12 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
         return isSelected ? '600' : '400';
       });
 
-    // Artifacts badges
-    node.each(function (d: any) {
-      const nodeData: ProcessTreeNode = d.data;
-      if (!nodeData.artifacts || nodeData.artifacts.length === 0) return;
-
-      const foreign = d3.select(this)
-        .append('foreignObject')
-        .attr('x', 18)
-        .attr('y', 10)
-        .attr('width', 200)
-        .attr('height', 30);
-
-      const div = foreign
-        .append('xhtml:div')
-        .style('display', 'flex')
-        .style('flex-wrap', 'wrap')
-        .style('gap', '3px')
-        .style('margin-top', '2px');
-
-      nodeData.artifacts.forEach((artifact) => {
-        const badge = div
-          .append('xhtml:button')
-          .attr('class', 'artifact-badge')
-          .style('display', 'inline-flex')
-          .style('align-items', 'center')
-          .style('padding', '2px 8px')
-          .style('font-size', '10px')
-          .style('border-radius', '9999px')
-          .style('border', 'none')
-          .style('cursor', 'pointer')
-          .style('transition', 'all 0.15s')
-          .style('font-family', 'inherit')
-          .on('click', (event: MouseEvent) => {
-            event.stopPropagation();
-            if (onArtifactClick) {
-              onArtifactClick(artifact, nodeData);
-            }
-          });
-
-        // Set colors based on artifact type
-        if (artifact.type === 'test') {
-          badge
-            .style('background-color', '#d1fae5')
-            .style('color', '#065f46')
-            .on('mouseenter', function() {
-              d3.select(this).style('background-color', '#a7f3d0');
-            })
-            .on('mouseleave', function() {
-              d3.select(this).style('background-color', '#d1fae5');
-            });
-          badge.text(`🧪 Test (${artifact.count || 0})`);
-        } else if (artifact.type === 'doc') {
-          badge
-            .style('background-color', '#dbeafe')
-            .style('color', '#1e40af')
-            .on('mouseenter', function() {
-              d3.select(this).style('background-color', '#bfdbfe');
-            })
-            .on('mouseleave', function() {
-              d3.select(this).style('background-color', '#dbeafe');
-            });
-          badge.text('📄 Dok');
-        } else if (artifact.type === 'dor') {
-          // Combined DoR/DoD badge
-          badge
-            .style('background-color', '#fef3c7')
-            .style('color', '#92400e')
-            .on('mouseenter', function() {
-              d3.select(this).style('background-color', '#fde68a');
-            })
-            .on('mouseleave', function() {
-              d3.select(this).style('background-color', '#fef3c7');
-            });
-          badge.text(`✅ DoR/DoD (${artifact.count || 0})`);
-        }
-
-        // Add title for tooltip
-        badge.append('xhtml:title').text(artifact.label);
-      });
+    label.each(function (d: any) {
+      if (!nodeHasIssues(d.data)) return;
+      const summary = summarizeDiagnostics(d.data);
+      if (summary) {
+        d3.select(this).append('title').text(summary);
+      }
     });
 
   }, [root, selectedNodeId, collapsedIds, onSelectNode, onArtifactClick]);

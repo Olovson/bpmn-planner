@@ -1,19 +1,24 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BpmnJS from 'bpmn-js/lib/NavigatedViewer';
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Upload, FolderOpen } from 'lucide-react';
+import { ChevronLeft, Upload, FolderOpen, ArrowUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { BpmnMapping } from '@/hooks/useBpmnMappings';
 import { useTestResults } from '@/hooks/useTestResults';
 import { useBpmnSelection } from '@/contexts/BpmnSelectionContext';
 import { useDynamicBpmnFiles, getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
+import { supabase } from '@/integrations/supabase/client';
+import { useProcessTree } from '@/hooks/useProcessTree';
+import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
+import { buildSubprocessNavigationMap } from '@/lib/processTreeNavigation';
+import type { ProcessTreeNode } from '@/lib/processTree';
 
 interface BpmnViewerProps {
-  onElementSelect?: (elementId: string | null, elementType?: string | null) => void;
+  onElementSelect?: (elementId: string | null, elementType?: string | null, elementName?: string | null) => void;
   onFileChange?: (fileName: string) => void;
   bpmnMappings?: Record<string, BpmnMapping>;
   initialFileName?: string;
@@ -49,6 +54,79 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
   const { getTestResultByNodeId } = useTestResults();
   const { setSelectedElementId } = useBpmnSelection();
   const { data: bpmnFiles, isLoading: isLoadingFiles } = useDynamicBpmnFiles();
+  const { data: rootBpmnFile } = useRootBpmnFile();
+  const hierarchyRootFile = rootBpmnFile || initialFileName || 'mortgage.bpmn';
+  const { data: processTree, isLoading: processTreeLoading } = useProcessTree(hierarchyRootFile);
+  const subprocessNavMap = useMemo(
+    () => buildSubprocessNavigationMap(processTree),
+    [processTree],
+  );
+  const findCallActivityNode = useCallback(
+    (targetFile: string, elementId: string): ProcessTreeNode | null => {
+      if (!processTree) return null;
+      const stack: ProcessTreeNode[] = [processTree];
+      while (stack.length) {
+        const node = stack.pop()!;
+        if (
+          node.type === 'callActivity' &&
+          node.bpmnFile === targetFile &&
+          (node.bpmnElementId === elementId || node.id === elementId)
+        ) {
+          return node;
+        }
+        node.children.forEach((child) => stack.push(child));
+      }
+      return null;
+    },
+    [processTree],
+  );
+
+  const summarizeDiagnostics = useCallback((node: ProcessTreeNode | null): string | null => {
+    if (!node) return null;
+    const parts: string[] = [];
+    if (node.subprocessLink && node.subprocessLink.matchStatus && node.subprocessLink.matchStatus !== 'matched') {
+      parts.push(`Subprocess: ${node.subprocessLink.matchStatus}`);
+    }
+    (node.diagnostics ?? []).forEach((diag) => {
+      if (diag.message) {
+        parts.push(diag.message);
+      }
+    });
+    (node.subprocessLink?.diagnostics ?? []).forEach((diag) => {
+      if (diag.message) {
+        parts.push(diag.message);
+      }
+    });
+    return parts.length ? parts.join(' • ') : null;
+  }, []);
+
+  // Reset navigation/history when the root file changes
+  useEffect(() => {
+    if (!initialFileName) return;
+    setBpmnHistory([]);
+    setSelectedElement(null);
+    setSelectedElementId(null);
+    // Trigger a fresh load for the new root
+    setCurrentXml('');
+    setFileName(initialFileName);
+  }, [initialFileName, setSelectedElementId]);
+  const parentHistoryItem = bpmnHistory.length > 0 ? bpmnHistory[bpmnHistory.length - 1] : null;
+  const downloadFromStorage = useCallback(async (name: string) => {
+    const { data: record } = await supabase
+      .from('bpmn_files')
+      .select('storage_path')
+      .eq('file_name', name)
+      .maybeSingle();
+
+    const storagePath = record?.storage_path || name;
+    const { data, error } = await supabase.storage
+      .from('bpmn-files')
+      .download(storagePath);
+
+    if (error || !data) return null;
+    const xml = await data.text();
+    return xml.includes('<bpmn:definitions') ? xml : null;
+  }, []);
 
   // Define loadSubProcess before it's used in useEffects
   const loadSubProcess = useCallback(async (bpmnFileName: string) => {
@@ -56,16 +134,25 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       const url = await getBpmnFileUrl(bpmnFileName);
       console.log('Loading subprocess:', url);
 
-      const response = await fetch(url);
+      let response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} when fetching ${url}`);
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      const xml = await response.text();
+      let contentType = response.headers.get('content-type') || '';
+      let xml = await response.text();
 
       // Validate that we actually received BPMN XML and not an HTML fallback
-      const looksLikeBpmn = /<bpmn:definitions[\s>]/i.test(xml);
+      let looksLikeBpmn = /<bpmn:definitions[\s>]/i.test(xml);
+      if (!looksLikeBpmn) {
+        const storageXml = await downloadFromStorage(bpmnFileName);
+        if (storageXml) {
+          xml = storageXml;
+          looksLikeBpmn = true;
+          contentType = 'application/xml (storage fallback)';
+        }
+      }
+
       if (!looksLikeBpmn) {
         throw new Error(
           `Received non-BPMN content (content-type: ${contentType || 'unknown'}) from ${url}. ` +
@@ -90,7 +177,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         variant: 'destructive',
       });
     }
-  }, [fileName, currentXml, toast]);
+  }, [fileName, currentXml, toast, downloadFromStorage]);
 
   // Centralized highlight function
   const highlightElement = useCallback((elementId: string | null) => {
@@ -217,10 +304,16 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     if (isLoadingFiles || !bpmnFiles) return;
 
     const loadBpmn = async () => {
-      // Determine which file to load
-      const fileToLoad = initialFileName || bpmnFiles[0];
+      // If already showing the requested file, skip
+      if (fileName && initialFileName && fileName === initialFileName) return;
+
+      const availableFiles = Array.isArray(bpmnFiles) ? bpmnFiles : [];
+      const hasInitial = initialFileName && availableFiles.includes(initialFileName);
+      const fileToLoad = hasInitial ? initialFileName! : availableFiles[0];
       
       if (!fileToLoad) {
+        setCurrentXml('');
+        setFileName('');
         toast({
           title: 'Inga BPMN-filer',
           description: 'Lägg till filer via Filer-sidan för att börja.',
@@ -232,16 +325,21 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         const url = await getBpmnFileUrl(fileToLoad);
         console.log('Attempting to load BPMN from:', url);
         
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} when fetching ${url}`);
-        }
-        
-        const contentType = response.headers.get('content-type') || '';
-        const xml = await response.text();
+        let response = await fetch(url);
+        let contentType = response.headers.get('content-type') || '';
+        let xml = response.ok ? await response.text() : '';
 
         // Validate BPMN content
-        const looksLikeBpmn = /<bpmn:definitions[\s>]/i.test(xml);
+        let looksLikeBpmn = /<bpmn:definitions[\s>]/i.test(xml);
+        if (!looksLikeBpmn) {
+          const storageXml = await downloadFromStorage(fileToLoad);
+          if (storageXml) {
+            xml = storageXml;
+            looksLikeBpmn = true;
+            contentType = 'application/xml (storage fallback)';
+          }
+        }
+
         if (!looksLikeBpmn) {
           throw new Error(
             `Mottog icke-BPMN-innehåll (content-type: ${contentType || 'okänt'}) från ${url}.`
@@ -262,7 +360,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     };
     
     loadBpmn();
-  }, [bpmnFiles, isLoadingFiles, initialFileName, toast]);
+  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage]);
 
   // Initialize viewer when container becomes available (after loading UI is gone)
   useEffect(() => {
@@ -399,6 +497,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       .importXML(currentXml)
       .then(() => {
         const canvas = viewerRef.current!.get('canvas') as any;
+        // Initial fit once per import
         canvas.zoom('fit-viewport');
         
         // Add test status overlays
@@ -423,9 +522,10 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
             // Highlight the element (after selection has updated)
             requestAnimationFrame(() => highlightElement(target.id));
 
+            const elementName = target.businessObject?.name || target.id;
             setSelectedElement(target.id);
             setSelectedElementId(target.id); // Update global context
-            onElementSelect?.(target.id, type);
+            onElementSelect?.(target.id, type, elementName);
           }
         };
         
@@ -444,29 +544,55 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
 
         // (Removed mousedown highlight; rely on click/selection)
         
-        // Double click - navigate to subprocess if it's a CallActivity
+        // Double click - navigate to subprocess only when a resolved subprocess exists
         dblclickListener = (event: any) => {
-          const { element } = event;
-          if (element.type === 'bpmn:CallActivity') {
-            // Use ONLY database mappings as source of truth
-            const dbMapping = bpmnMappings?.[element.id];
-            const subprocessFile = dbMapping?.subprocess_bpmn_file;
-            
-            console.log('Double-click on CallActivity:', element.id);
-            console.log('DB mapping:', dbMapping);
-            console.log('Subprocess file:', subprocessFile);
-            
-            if (subprocessFile) {
-              loadSubProcess(subprocessFile);
-            } else {
-              console.warn(`No subprocess mapping found for element ${element.id} in file ${fileName}`);
-              toast({
-                title: 'No BPMN file configured',
-                description: `No subprocess mapping found for ${element.id}. Run artifact generation to create mappings.`,
-                variant: 'destructive',
-              });
-            }
+          const rawElement = event?.element;
+          const target = rawElement?.labelTarget || rawElement;
+          const type = target?.businessObject?.$type || target?.type;
+          if (type !== 'bpmn:CallActivity') return;
+
+          const elementId = target.id;
+          const hierarchyMatch = subprocessNavMap.get(`${fileName}:${elementId}`);
+          const callActivityNode = findCallActivityNode(fileName, elementId);
+          const diagnosticsSummary = summarizeDiagnostics(callActivityNode);
+          const dbMapping = bpmnMappings?.[elementId];
+          const localMapping = nodeMappings[elementId]?.bpmnFile;
+
+          const linkMatched =
+            callActivityNode?.subprocessLink?.matchStatus === 'matched'
+              ? (callActivityNode?.subprocessLink as any)?.matchedFileName || callActivityNode?.subprocessFile || null
+              : null;
+
+          const resolvedFile = hierarchyMatch || linkMatched || dbMapping?.subprocess_bpmn_file || localMapping;
+          const hasMatchedLink = Boolean(resolvedFile);
+
+          if (!hasMatchedLink || !resolvedFile) {
+            console.warn(`No resolved subprocess for element ${elementId} in file ${fileName}`);
+            toast({
+              title: 'Ingen subprocess kopplad',
+              description:
+                diagnosticsSummary ||
+                `Ingen subprocess hittades för ${target?.businessObject?.name || elementId}.`,
+            });
+            return;
           }
+
+          if (!hierarchyMatch && (processTreeLoading || !processTree)) {
+            toast({
+              title: 'Hierarki laddas',
+              description: 'Vänta några sekunder och försök igen.',
+            });
+            return;
+          }
+
+          if (diagnosticsSummary) {
+            toast({
+              title: 'Subprocessdiagnostik',
+              description: diagnosticsSummary,
+            });
+          }
+
+          loadSubProcess(resolvedFile);
         };
         
         eventBus.on('element.dblclick', dblclickListener);
@@ -499,12 +625,30 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         const eventBus = viewerRef.current.get('eventBus') as any;
         eventBus.off('element.dblclick', dblclickListener);
       }
+      if (viewerRef.current && canvasClickListener) {
+        const eventBus = viewerRef.current.get('eventBus') as any;
+        eventBus.off('canvas.click', canvasClickListener);
+      }
       if (viewerRef.current && selectionChangedListener) {
         const eventBus = viewerRef.current.get('eventBus') as any;
         eventBus.off('selection.changed', selectionChangedListener);
       }
     };
-  }, [viewerReady, currentXml, toast, onElementSelect, nodeMappings, bpmnMappings, loadSubProcess, addTestStatusOverlays]);
+  }, [
+    viewerReady,
+    currentXml,
+    toast,
+    onElementSelect,
+    nodeMappings,
+    bpmnMappings,
+    loadSubProcess,
+    addTestStatusOverlays,
+    subprocessNavMap,
+    findCallActivityNode,
+    summarizeDiagnostics,
+    processTreeLoading,
+    highlightElement,
+  ]);
 
   const navigateBack = (index: number) => {
     if (index < 0 || index >= bpmnHistory.length) return;
@@ -600,6 +744,22 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         </div>
       </div>
       <div className="flex-1 relative bg-muted/30">
+        {parentHistoryItem && (
+          <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="shadow-md"
+              onClick={() => navigateBack(bpmnHistory.length - 1)}
+            >
+              <ArrowUp className="w-4 h-4 mr-2" />
+              Gå upp en nivå
+            </Button>
+            <span className="text-xs text-muted-foreground bg-card/80 px-2 py-1 rounded shadow">
+              Tillbaka till {parentHistoryItem.fileName.replace('.bpmn', '')}
+            </span>
+          </div>
+        )}
         <div ref={containerRef} className="absolute inset-0" />
       </div>
     </div>

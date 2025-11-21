@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       throw new Error('Missing authorization header');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    const authedSupabase = createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: false,
       },
@@ -43,12 +43,18 @@ Deno.serve(async (req) => {
     });
 
     // Verify user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await authedSupabase.auth.getUser();
     if (authError || !user) {
       throw new Error('Unauthorized');
     }
 
     console.log(`Reset initiated by user: ${user.id}`);
+
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+      },
+    });
 
     // Parse request body for options
     const options: ResetOptions = req.method === 'POST' 
@@ -60,7 +66,8 @@ Deno.serve(async (req) => {
     // In safe mode, only delete what's explicitly requested
     // In full reset mode, delete everything BPMN-related (DB + Storage + GitHub artifacts)
     // BUT preserve BPMN/DMN source files (in Supabase Storage and bpmn_files table)
-    const shouldDeleteBpmn = safeMode ? (options.deleteBpmn ?? false) : false;
+    const shouldDeleteBpmn = safeMode ? (options.deleteBpmn ?? false) : true;
+    const shouldDeleteDmn = safeMode ? (options.deleteDmn ?? false) : true;
     const shouldDeleteDocs = safeMode ? (options.deleteDocs ?? false) : true;
     const shouldDeleteTests = safeMode ? (options.deleteTests ?? false) : true;
     const shouldDeleteReports = safeMode ? (options.deleteReports ?? false) : true;
@@ -74,7 +81,8 @@ Deno.serve(async (req) => {
 
     console.log('Reset options:', { 
       safeMode, 
-      shouldDeleteBpmn, 
+      shouldDeleteBpmn,
+      shouldDeleteDmn,
       shouldDeleteDocs, 
       shouldDeleteTests, 
       shouldDeleteReports, 
@@ -87,6 +95,8 @@ Deno.serve(async (req) => {
 
     // Delete from database tables
     const deleted: Record<string, number> = {};
+    const deletionErrors: string[] = [];
+    const storageFileRemovals: string[] = [];
     
     if (shouldDeleteAllTables || shouldDeleteDorDod) {
       const { count: dorDodCount } = await supabase.from('dor_dod_status').select('*', { count: 'exact', head: true });
@@ -134,6 +144,47 @@ Deno.serve(async (req) => {
       console.log(`Deleted ${refsCount} rows from node_references`);
     }
 
+    // Jobbhistorik: alltid försök rensa generation_jobs och llm_generation_logs
+    const { count: jobsCount, error: jobsCountError } = await supabase
+      .from('generation_jobs')
+      .select('*', { count: 'exact', head: true });
+    if (jobsCountError) {
+      deletionErrors.push(`generation_jobs count failed: ${jobsCountError.message}`);
+      console.error('Failed to count generation_jobs:', jobsCountError);
+    } else {
+      const { error: jobsDeleteError } = await supabase
+        .from('generation_jobs')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (jobsDeleteError) {
+        deletionErrors.push(`generation_jobs delete failed: ${jobsDeleteError.message}`);
+        console.error('Failed to clear generation_jobs:', jobsDeleteError);
+      } else {
+        deleted.generation_jobs = jobsCount || 0;
+        console.log(`Deleted ${jobsCount} rows from generation_jobs`);
+      }
+    }
+
+    const { count: llmLogCount, error: llmCountError } = await supabase
+      .from('llm_generation_logs')
+      .select('*', { count: 'exact', head: true });
+    if (llmCountError) {
+      deletionErrors.push(`llm_generation_logs count failed: ${llmCountError.message}`);
+      console.error('Failed to count llm_generation_logs:', llmCountError);
+    } else {
+      const { error: llmDeleteError } = await supabase
+        .from('llm_generation_logs')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (llmDeleteError) {
+        deletionErrors.push(`llm_generation_logs delete failed: ${llmDeleteError.message}`);
+        console.error('Failed to clear llm_generation_logs:', llmDeleteError);
+      } else {
+        deleted.llm_generation_logs = llmLogCount || 0;
+        console.log(`Deleted ${llmLogCount} rows from llm_generation_logs`);
+      }
+    }
+
     // Delete test_results in full reset or if explicitly requested in Safe Mode
     if (shouldDeleteTestResults) {
       const { count: resultsCount } = await supabase.from('test_results').select('*', { count: 'exact', head: true });
@@ -142,9 +193,33 @@ Deno.serve(async (req) => {
       console.log(`Deleted ${resultsCount} rows from test_results`);
     }
 
-    // ALWAYS preserve BPMN/DMN source files - they are never deleted by reset
-    const { count: filesCount } = await supabase.from('bpmn_files').select('*', { count: 'exact', head: true });
-    console.log(`Preserved ${filesCount} rows in bpmn_files (BPMN/DMN sources are never deleted by reset).`);
+    if (shouldDeleteBpmn || shouldDeleteDmn) {
+      const { data: existingFiles, error: listError } = await supabase
+        .from('bpmn_files')
+        .select('id, file_name, file_type, storage_path');
+
+      if (listError) throw listError;
+
+      const filesToDelete = (existingFiles || []).filter(file =>
+        (file.file_type === 'bpmn' && shouldDeleteBpmn) ||
+        (file.file_type === 'dmn' && shouldDeleteDmn)
+      );
+
+      if (filesToDelete.length > 0) {
+        const ids = filesToDelete.map(f => f.id);
+        await supabase.from('bpmn_files').delete().in('id', ids);
+        const bpmnCount = filesToDelete.filter(f => f.file_type === 'bpmn').length;
+        const dmnCount = filesToDelete.filter(f => f.file_type === 'dmn').length;
+        if (bpmnCount) deleted.bpmn_files = (deleted.bpmn_files || 0) + bpmnCount;
+        if (dmnCount) deleted.dmn_files = (deleted.dmn_files || 0) + dmnCount;
+        filesToDelete.forEach(file => {
+          if (file.storage_path) {
+            storageFileRemovals.push(file.storage_path);
+          }
+        });
+        console.log(`Deleted ${filesToDelete.length} BPMN/DMN source rows from bpmn_files`);
+      }
+    }
 
     // Delete files from Supabase Storage based on options
     let storageDeleted = 0;
@@ -152,36 +227,83 @@ Deno.serve(async (req) => {
     
     // Delete only generated artifacts (NEVER delete BPMN/DMN source files)
     if (!safeMode) {
-      storagePrefixes.push('docs', 'generated-docs', 'tests', 'tests/e2e', 'test-reports', 'reports');
+      storagePrefixes.push(
+        'docs',
+        'generated-docs',
+        'tests',
+        'tests/e2e',
+        'test-reports',
+        'reports',
+        'llm-debug'
+      );
+      if (shouldDeleteBpmn) storagePrefixes.push('bpmn');
+      if (shouldDeleteDmn) storagePrefixes.push('dmn');
     } else {
       // In safe mode, only delete what's explicitly requested
       // Note: BPMN/DMN source files ('bpmn', 'dmn' prefixes) are NEVER deleted
       if (shouldDeleteDocs) storagePrefixes.push('docs', 'generated-docs');
-      if (shouldDeleteTests) storagePrefixes.push('tests', 'tests/e2e');
+      if (shouldDeleteTests) storagePrefixes.push('tests', 'tests/e2e', 'llm-debug/tests');
       if (shouldDeleteReports) storagePrefixes.push('test-reports', 'reports');
     }
     
-    for (const prefix of storagePrefixes) {
+    const deleteStorageTree = async (path: string): Promise<number> => {
       try {
-        const { data: files, error: listError } = await supabase.storage
+        const { data, error } = await supabase.storage
           .from('bpmn-files')
-          .list(prefix);
+          .list(path, { limit: 1000 });
 
-        if (!listError && files && files.length > 0) {
-          const filesToRemove = files.map(f => `${prefix}/${f.name}`);
-          const { error: deleteError } = await supabase.storage
-            .from('bpmn-files')
-            .remove(filesToRemove);
-          
-          if (deleteError) {
-            console.error(`Error deleting files from ${prefix}:`, deleteError);
+        if (error) {
+          console.error(`Error listing ${path || 'root'}:`, error);
+          return 0;
+        }
+
+        if (!data || data.length === 0) return 0;
+
+        let removed = 0;
+        const fileBatch: string[] = [];
+
+        for (const entry of data) {
+          const isDirectory = !entry?.metadata;
+          const fullPath = path ? `${path}/${entry.name}` : entry.name;
+          if (isDirectory) {
+            removed += await deleteStorageTree(fullPath);
           } else {
-            storageDeleted += filesToRemove.length;
-            console.log(`Deleted ${filesToRemove.length} files from storage:${prefix}`);
+            fileBatch.push(fullPath);
           }
         }
+
+        if (fileBatch.length > 0) {
+          const { error: deleteError } = await supabase.storage
+            .from('bpmn-files')
+            .remove(fileBatch);
+          if (deleteError) {
+            console.error(`Error deleting batch from ${path}:`, deleteError);
+          } else {
+            removed += fileBatch.length;
+            console.log(`Deleted ${fileBatch.length} files from storage:${path || 'root'}`);
+          }
+        }
+
+        return removed;
       } catch (error) {
-        console.error(`Error processing storage prefix ${prefix}:`, error);
+        console.error(`Error deleting tree for ${path}:`, error);
+        return 0;
+      }
+    };
+
+    for (const prefix of storagePrefixes) {
+      storageDeleted += await deleteStorageTree(prefix);
+    }
+
+    if (storageFileRemovals.length > 0) {
+      const { error: removeError } = await supabase.storage
+        .from('bpmn-files')
+        .remove(storageFileRemovals);
+      if (removeError) {
+        console.error('Error deleting BPMN/DMN source files from storage:', removeError);
+      } else {
+        storageDeleted += storageFileRemovals.length;
+        console.log(`Deleted ${storageFileRemovals.length} BPMN/DMN source files from storage`);
       }
     }
 
@@ -204,8 +326,8 @@ Deno.serve(async (req) => {
       // Always delete generated tests and docs
       dirsToClean.push('tests', 'public/docs', 'docs/generated', 'public/generated-docs');
       
-      // Only delete BPMN/DMN source files if explicitly requested in Safe Mode
-      if (shouldDeleteBpmn && safeMode) {
+      // Delete BPMN/DMN source files when requested
+      if (shouldDeleteBpmn) {
         dirsToClean.push('public/bpmn', 'bpmn');
       }
 
@@ -235,12 +357,19 @@ Deno.serve(async (req) => {
 
           for (const item of items) {
             // Determine if file should be deleted based on directory and file type
-            const shouldDelete = 
-              (path === 'tests' && item.name.endsWith('.spec.ts')) ||
-              (path.startsWith('public/docs') && item.name.endsWith('.html')) ||
-              (path.startsWith('docs/generated') && item.name.endsWith('.html')) ||
-              (path.startsWith('public/bpmn') && !item.name.endsWith('.bpmn')) ||
-              (path === 'bpmn' && !item.name.endsWith('.bpmn') && !item.name.endsWith('.dmn'));
+            const isGeneratedTest = path === 'tests' && item.name.endsWith('.spec.ts');
+            const isGeneratedDoc =
+              path.startsWith('public/docs') && item.name.endsWith('.html') ||
+              path.startsWith('docs/generated') && item.name.endsWith('.html');
+            const isGeneratedPublicDoc =
+              path.startsWith('public/generated-docs') && item.name.endsWith('.html');
+            const isBpmnSource =
+              shouldDeleteBpmn &&
+              (
+                (path.startsWith('public/bpmn') && item.name.endsWith('.bpmn')) ||
+                (path === 'bpmn' && (item.name.endsWith('.bpmn') || item.name.endsWith('.dmn')))
+              );
+            const shouldDelete = isGeneratedTest || isGeneratedDoc || isGeneratedPublicDoc || isBpmnSource;
 
             if (item.type === 'file' && shouldDelete) {
               // Delete file
@@ -296,6 +425,10 @@ Deno.serve(async (req) => {
         const { count } = await supabase.from('test_results').select('*', { count: 'exact', head: true });
         preserved.test_results = count || 0;
       }
+    }
+
+    if (deletionErrors.length > 0) {
+      throw new Error(`Reset failed: ${deletionErrors.join('; ')}`);
     }
 
     const result = {

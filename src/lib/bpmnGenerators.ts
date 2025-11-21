@@ -1,7 +1,55 @@
-import { BpmnElement, BpmnSubprocess, parseBpmnFile } from './bpmnParser';
+import { BpmnElement, BpmnSubprocess, parseBpmnFile } from '@/lib/bpmnParser';
 import { CriterionCategory, CriterionType } from '@/hooks/useDorDodStatus';
-import { BpmnHierarchyNode, buildBpmnHierarchy } from './bpmnHierarchy';
+import { BpmnHierarchyNode } from '@/lib/bpmnHierarchy';
 import { nodeToMeta, generateTestCode } from '@/tests/meta/jiraBpmnMeta';
+import { buildNodeDocumentationContext } from '@/lib/documentationContext';
+import {
+  renderFeatureGoalDoc,
+  renderEpicDoc,
+  renderBusinessRuleDoc,
+  type TemplateLinks,
+} from '@/lib/documentationTemplates';
+import { getNodeDocFileKey, getNodeTestFileKey, getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
+import { generateDocumentationWithLlm, type DocumentationDocType } from '@/lib/llmDocumentation';
+import { generateTestSpecWithLlm } from '@/lib/llmTests';
+import { isLlmEnabled } from '@/lib/llmClient';
+import { logLlmFallback } from '@/lib/llmMonitoring';
+import { saveLlmDebugArtifact } from '@/lib/llmDebugStorage';
+import {
+  buildProcessHierarchy,
+  type NormalizedProcessDefinition,
+} from '@/lib/bpmn/buildProcessHierarchy';
+import {
+  buildProcessDefinitionsFromRegistry,
+  type ProcessRegistryEntry,
+} from '@/lib/bpmn/processDefinition';
+import {
+  resolveProcessFileName,
+  resolveProcessFileNameByInternalId,
+  traverseHierarchy,
+} from '@/lib/bpmn/hierarchyTraversal';
+import type { HierarchyNode, SubprocessLink } from '@/lib/bpmn/types';
+import {
+  buildBpmnProcessGraph,
+  createGraphSummary,
+  getTestableNodes,
+} from '@/lib/bpmnProcessGraph';
+
+export type GenerationPhaseKey =
+  | 'graph:start'
+  | 'graph:complete'
+  | 'hier-tests:start'
+  | 'hier-tests:file'
+  | 'hier-tests:complete'
+  | 'node-analysis:start'
+  | 'node-analysis:node'
+  | 'node-analysis:complete'
+  | 'docgen:start'
+  | 'docgen:file'
+  | 'docgen:complete'
+  | 'total:init';
+import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
+import { buildDorDodCriteria, type DorDodNodeType } from '@/lib/templates/dorDodTemplates';
 
 // ============= HIERARCHICAL TEST GENERATION =============
 
@@ -66,6 +114,34 @@ test.describe('${contextRoot}', () => {
 
   testTemplate += '});\n';
   return testTemplate;
+}
+
+function graphNodeToHierarchy(node: any): BpmnHierarchyNode {
+  const typeMap: Record<string, BpmnHierarchyNode['type']> = {
+    process: 'Process',
+    callActivity: 'CallActivity',
+    userTask: 'UserTask',
+    serviceTask: 'ServiceTask',
+    businessRuleTask: 'BusinessRuleTask',
+    task: 'UserTask',
+  };
+
+  return {
+    id: node.bpmnElementId || node.id,
+    name: node.name,
+    type: typeMap[node.type] ?? 'Process',
+    bpmnFile: node.bpmnFile,
+    children: (node.children || []).map(graphNodeToHierarchy),
+    parentPath: [],
+    depth: 0,
+    jiraType:
+      node.type === 'callActivity'
+        ? 'feature goal'
+        : node.type === 'userTask' || node.type === 'serviceTask' || node.type === 'businessRuleTask'
+          ? 'epic'
+          : null,
+    jiraName: node.name,
+  };
 }
 
 /**
@@ -162,7 +238,7 @@ function generateNodeTests(node: HierarchicalTestNode, indentLevel: number): str
 
 // ============= LEGACY TEST SKELETON GENERATOR (for backward compatibility) =============
 
-export function generateTestSkeleton(element: BpmnElement): string {
+export function generateTestSkeleton(element: BpmnElement, llmScenarios?: { name: string; description: string; expectedResult?: string; steps?: string[] }[]): string {
   const testName = element.name || element.id;
   const nodeType = element.type.replace('bpmn:', '');
 
@@ -174,6 +250,27 @@ test.describe('${testName} Tests', () => {
     await expect(page).toHaveTitle(/BPMN Viewer/);
   });
 `;
+
+  if (llmScenarios && llmScenarios.length) {
+    llmScenarios.forEach((scenario, index) => {
+      const stepsComment = scenario.steps?.length
+        ? scenario.steps.map((step, idx) => `    // ${idx + 1}. ${step}`).join('\n')
+        : '    // Beskriv stegen här';
+
+      testTemplate += `
+  test('${scenario.name.replace(/'/g, "\\'")}', async ({ page }) => {
+    await page.goto('/');
+${stepsComment}
+    // Förväntat resultat: ${scenario.expectedResult || 'Beskriv resultat'}
+    expect(true).toBe(true);
+  });
+`;
+    });
+
+    testTemplate += `});
+`;
+    return testTemplate;
+  }
 
   // Add specific tests based on node type
   if (nodeType === 'UserTask') {
@@ -424,403 +521,15 @@ export function generateDorDodCriteria(subprocessName: string, nodeType: string)
  * Stödjer: ServiceTask, UserTask, BusinessRuleTask, CallActivity
  */
 export function generateDorDodForNodeType(
-  nodeType: 'ServiceTask' | 'UserTask' | 'BusinessRuleTask' | 'CallActivity',
+  nodeType: DorDodNodeType,
   normalizedName: string
 ): GeneratedCriterion[] {
-  switch (nodeType) {
-    case 'ServiceTask':
-      return generateServiceTaskDorDod(normalizedName);
-    case 'UserTask':
-      return generateUserTaskDorDod(normalizedName);
-    case 'BusinessRuleTask':
-      return generateBusinessRuleTaskDorDod(normalizedName);
-    case 'CallActivity':
-      return generateCallActivityDorDod(normalizedName);
-    default:
-      return [];
-  }
+  return buildDorDodCriteria(nodeType, normalizedName);
 }
 
-/**
- * DoR/DoD för ServiceTask (API-anrop / backend-automatik)
- */
-function generateServiceTaskDorDod(normalizedName: string): GeneratedCriterion[] {
-  const dor: GeneratedCriterion[] = [
-    {
-      criterion_type: 'dor',
-      criterion_category: 'process_krav',
-      criterion_key: `${normalizedName}_purpose_defined`,
-      criterion_text:
-        'Syftet med ServiceTasken är beskrivet och godkänt (vilken data som hämtas eller skrivs och varför).',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'data_api',
-      criterion_key: `${normalizedName}_api_spec_complete`,
-      criterion_text:
-        'API-specifikationen är komplett (endpoint, payload, schema, felkoder, idempotency).',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'teknik_arkitektur',
-      criterion_key: `${normalizedName}_integration_dependencies_known`,
-      criterion_text:
-        'Alla integrationsberoenden (interna/externa system) är identifierade och godkända av arkitekt.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'data_input_output',
-      criterion_key: `${normalizedName}_io_defined`,
-      criterion_text:
-        'Input- och outputfält är definierade, inklusive obligatoriska fält och valideringsregler.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'teknik_arkitektur',
-      criterion_key: `${normalizedName}_error_strategy_defined`,
-      criterion_text:
-        'Felhanteringsstrategi är definierad (felkoder, retries, timeouts, fallback-beteende).',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'test_kvalitet',
-      criterion_key: `${normalizedName}_test_scenarios_defined`,
-      criterion_text:
-        'Testscenarier för happy path, felhantering, timeouts och edge cases är definierade.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'planering_beroenden',
-      criterion_key: `${normalizedName}_no_blocking_dependencies`,
-      criterion_text:
-        'Eventuella blockerande beroenden (andra tjänster, beslut, konfiguration) är identifierade och hanterade.',
-    },
-  ];
+// DoR/DoD criteria are sourced from static templates in src/lib/templates/dorDodTemplates.ts
+// to ensure the LLM never rewrites or invents definitions.
 
-  const dod: GeneratedCriterion[] = [
-    {
-      criterion_type: 'dod',
-      criterion_category: 'funktion_krav',
-      criterion_key: `${normalizedName}_behavior_implemented`,
-      criterion_text:
-        'ServiceTasken uppfyller definierat beteende i processen (rätt data hämtas eller skrivs vid rätt tidpunkt).',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'data_api',
-      criterion_key: `${normalizedName}_api_implemented`,
-      criterion_text:
-        'API-anrop är implementerat enligt specifikation och validerat mot avtalat schema.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'teknik_drift',
-      criterion_key: `${normalizedName}_timeouts_retries`,
-      criterion_text:
-        'Timeout- och retrylogik är implementerad enligt överenskommen strategi, inklusive idempotency där det krävs.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'teknik_drift',
-      criterion_key: `${normalizedName}_logging_monitoring`,
-      criterion_text:
-        'Relevant logging och monitoring är implementerad (framgång, fel, edge cases).',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'test_kvalitet',
-      criterion_key: `${normalizedName}_tests_passing`,
-      criterion_text:
-        'Automatiska tester (unit/integration/E2E) för definierade scenarier är implementerade och passerar i CI.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'dokumentation',
-      criterion_key: `${normalizedName}_docs_updated`,
-      criterion_text:
-        'Dokumentation (payload-exempel, felkoder, beroenden) är uppdaterad i systemets dokumentation.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'overlamning',
-      criterion_key: `${normalizedName}_review_approved`,
-      criterion_text:
-        'Code review är genomförd och godkänd av ansvarig utvecklare/arkitekt.',
-    },
-  ];
-
-  return [...dor, ...dod];
-}
-
-/**
- * DoR/DoD för UserTask (mänsklig interaktion / UI)
- */
-function generateUserTaskDorDod(normalizedName: string): GeneratedCriterion[] {
-  const dor: GeneratedCriterion[] = [
-    {
-      criterion_type: 'dor',
-      criterion_category: 'process_krav',
-      criterion_key: `${normalizedName}_user_flow_defined`,
-      criterion_text:
-        'Syfte och användarflöde för UserTasken är beskrivet (happy path och grundläggande fel-flöden).',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'design',
-      criterion_key: `${normalizedName}_figma_ready`,
-      criterion_text:
-        'Relevant Figma-design är framtagen, inklusive layout, states och felmeddelanden.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'data_input_output',
-      criterion_key: `${normalizedName}_form_fields_defined`,
-      criterion_text:
-        'Formulärfält, obligatoriska fält och grundläggande valideringsregler är definierade.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'test_kvalitet',
-      criterion_key: `${normalizedName}_ux_test_cases_defined`,
-      criterion_text:
-        'Testscenarier för valideringsfel, edge cases (tomma fält, fel format) och avbrutna flöden är definierade.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'team_alignment',
-      criterion_key: `${normalizedName}_po_ux_dev_aligned`,
-      criterion_text:
-        'Produktägare, UX och utveckling är överens om scope och beteende för UserTasken.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'planering_beroenden',
-      criterion_key: `${normalizedName}_no_blocking_backend`,
-      criterion_text:
-        'Eventuella beroenden mot backend och andra UI-flöden är identifierade och blockerande beroenden hanterade.',
-    },
-  ];
-
-  const dod: GeneratedCriterion[] = [
-    {
-      criterion_type: 'dod',
-      criterion_category: 'funktion_krav',
-      criterion_key: `${normalizedName}_ui_behavior_implemented`,
-      criterion_text:
-        'UserTasken beter sig enligt överenskommet flöde (inklusive navigation, states och felhantering).',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'design',
-      criterion_key: `${normalizedName}_matches_figma`,
-      criterion_text:
-        'UI är implementerat i linje med Figma-design eller avvikelser är dokumenterade och godkända.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'data_input_output',
-      criterion_key: `${normalizedName}_data_persisted_correctly`,
-      criterion_text:
-        'Användarinmatad data lagras, valideras och konsumeras korrekt enligt specifikation.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'test_kvalitet',
-      criterion_key: `${normalizedName}_ui_tests_passing`,
-      criterion_text:
-        'Automatiska UI-tester (t.ex. Playwright) täcker definierade scenarier och passerar i CI.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'dokumentation',
-      criterion_key: `${normalizedName}_ux_docs_updated`,
-      criterion_text:
-        'Dokumentation av användarflöde, fält och felmeddelanden är uppdaterad.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'overlamning',
-      criterion_key: `${normalizedName}_accepted_by_po`,
-      criterion_text:
-        'UserTasken är demo:ad och accepterad av produktägare.',
-    },
-  ];
-
-  return [...dor, ...dod];
-}
-
-/**
- * DoR/DoD för BusinessRuleTask (DMN-beslut)
- */
-function generateBusinessRuleTaskDorDod(normalizedName: string): GeneratedCriterion[] {
-  const dor: GeneratedCriterion[] = [
-    {
-      criterion_type: 'dor',
-      criterion_category: 'process_krav',
-      criterion_key: `${normalizedName}_decision_purpose_defined`,
-      criterion_text:
-        'Beslutsfrågan (decision question) är tydligt formulerad och kopplad till processen.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'data_input_output',
-      criterion_key: `${normalizedName}_dmn_io_defined`,
-      criterion_text:
-        'Inputs och outputs för DMN-beslutet är definierade och mappade mot data-/API-modell.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'test_kvalitet',
-      criterion_key: `${normalizedName}_dmn_test_cases_defined`,
-      criterion_text:
-        'Testfall per regel (minst ett happy path, negativa fall och kantfall) är identifierade.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'teknik_arkitektur',
-      criterion_key: `${normalizedName}_dmn_integration_defined`,
-      criterion_text:
-        'Hur DMN-beslutet anropas från tjänst eller motor är beskrivet (API, engine, parameters).',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'planering_beroenden',
-      criterion_key: `${normalizedName}_business_risk_signoff_planned`,
-      criterion_text:
-        'Behov av godkännande från business/risk är identifierat och inplanerat.',
-    },
-  ];
-
-  const dod: GeneratedCriterion[] = [
-    {
-      criterion_type: 'dod',
-      criterion_category: 'funktion_krav',
-      criterion_key: `${normalizedName}_rules_implemented`,
-      criterion_text:
-        'Samtliga överenskomna regler är implementerade i DMN-tabellen.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'data_api',
-      criterion_key: `${normalizedName}_dmn_io_validated`,
-      criterion_text:
-        'Input/Output är verifierade mot verkliga payloads och konsumerande system.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'test_kvalitet',
-      criterion_key: `${normalizedName}_dmn_tests_passing`,
-      criterion_text:
-        'Automatiska tester av DMN-regler (inklusive edge/negativa fall) finns och passerar i CI.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'dokumentation',
-      criterion_key: `${normalizedName}_dmn_docs_updated`,
-      criterion_text:
-        'DMN-dokumentation (regeltabell och beskrivning) är uppdaterad i verktyget.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'teknik_drift',
-      criterion_key: `${normalizedName}_dmn_monitoring_in_place`,
-      criterion_text:
-        'Eventuell logging/monitorering av DMN-beslut är på plats enligt överenskommen nivå.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'overlamning',
-      criterion_key: `${normalizedName}_business_risk_approved`,
-      criterion_text:
-        'Regeluppsättningen är godkänd av business och, vid behov, riskfunktion.',
-    },
-  ];
-
-  return [...dor, ...dod];
-}
-
-/**
- * DoR/DoD för CallActivity (Subprocess)
- */
-function generateCallActivityDorDod(normalizedName: string): GeneratedCriterion[] {
-  const dor: GeneratedCriterion[] = [
-    {
-      criterion_type: 'dor',
-      criterion_category: 'process_krav',
-      criterion_key: `${normalizedName}_subprocess_scope_defined`,
-      criterion_text:
-        'Scope och syfte för subprocessen är definierat, inklusive start-/slutvillkor.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'data_input_output',
-      criterion_key: `${normalizedName}_subprocess_io_defined`,
-      criterion_text:
-        'Input- och output-data mellan parent-process och subprocess är definierade.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'teknik_arkitektur',
-      criterion_key: `${normalizedName}_called_element_mapped`,
-      criterion_text:
-        'calledElement är mappad till korrekt BPMN-fil och teknisk integration är förankrad hos arkitekt.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'planering_beroenden',
-      criterion_key: `${normalizedName}_dependencies_identified`,
-      criterion_text:
-        'Beroenden mot andra subprocesser/system är identifierade och planerade.',
-    },
-    {
-      criterion_type: 'dor',
-      criterion_category: 'team_alignment',
-      criterion_key: `${normalizedName}_teams_aligned`,
-      criterion_text:
-        'Berörda team (t.ex. de som bygger parent- och child-processen) är överens om ansvar och gränssnitt.',
-    },
-  ];
-
-  const dod: GeneratedCriterion[] = [
-    {
-      criterion_type: 'dod',
-      criterion_category: 'funktion_krav',
-      criterion_key: `${normalizedName}_subprocess_behavior_implemented`,
-      criterion_text:
-        'Subprocessen exekverar enligt design (korrekt flöde och integration med parent-process).',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'test_kvalitet',
-      criterion_key: `${normalizedName}_integration_tests_passing`,
-      criterion_text:
-        'End-to-end-test och integrationstest mellan parent-process och subprocess finns och passerar i CI.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'dokumentation',
-      criterion_key: `${normalizedName}_subprocess_docs_updated`,
-      criterion_text:
-        'Dokumentation för subprocessen och dess koppling till parent-process är uppdaterad.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'teknik_drift',
-      criterion_key: `${normalizedName}_runtime_behavior_validated`,
-      criterion_text:
-        'Eventuella körningsegenskaper (prestanda, felbeteende) är verifierade i relevant miljö.',
-    },
-    {
-      criterion_type: 'dod',
-      criterion_category: 'overlamning',
-      criterion_key: `${normalizedName}_subprocess_approved`,
-      criterion_text:
-        'Subprocessen är demo:ad och godkänd av ansvarig produktägare och arkitekt.',
-    },
-  ];
-
-  return [...dor, ...dod];
-}
 
 // ============= DOCUMENTATION GENERATOR =============
 
@@ -841,7 +550,8 @@ export interface SubprocessSummary {
 export function generateDocumentationHTML(
   element: BpmnElement, 
   subprocessFile?: string,
-  subprocessSummary?: SubprocessSummary
+  subprocessSummary?: SubprocessSummary,
+  dorDodCriteria: DorDodCriterion[] = [],
 ): string {
   const nodeType = element.type.replace('bpmn:', '');
   const documentation = element.businessObject.documentation?.[0]?.text || 'Ingen dokumentation tillgänglig.';
@@ -1141,12 +851,25 @@ export function generateDocumentationHTML(
             </div>
         </section>
 
+        ${dorDodCriteria.length ? `
         <section>
-            <h2>✅ Definition of Ready / Done</h2>
+            <h2>✅ Definition of Ready / Definition of Done – krav</h2>
             <div class="card">
-                <p><em>Se DoR/DoD-dashboard för detaljerade kriterier</em></p>
+                <p style="margin-bottom: 10px;">
+                    Nedan listas statiska DoR/DoD-krav kopplade till denna nods typ och sammanhang. 
+                    Dessa är avsedda som stöd vid planering, utveckling och kvalitetssäkring.
+                </p>
+                <ul style="margin-left: 1.5rem; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                    ${dorDodCriteria.map((criterion) => `
+                        <li>
+                            <strong>[${criterion.criterion_type.toUpperCase()} – ${criterion.criterion_category}]</strong>
+                            &nbsp;${criterion.criterion_text}
+                        </li>
+                    `).join('')}
+                </ul>
             </div>
         </section>
+        ` : ''}
     </div>
 </body>
 </html>`;
@@ -1154,64 +877,86 @@ export function generateDocumentationHTML(
   return html;
 }
 
-// ============= SUBPROCESS FILE MATCHER =============
-
-export function matchSubprocessFile(callActivityName: string, existingFiles: string[]): string | null {
-  // Normalize the name (remove spaces, lowercase, handle special cases)
-  const normalized = callActivityName
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/_/g, '-');
-
-  // Try exact match
-  const exactMatch = existingFiles.find(f => 
-    f.toLowerCase().includes(normalized)
-  );
-  
-  if (exactMatch) return exactMatch;
-
-  // Try partial match (match significant parts of the name)
-  const nameParts = normalized.split('-').filter(p => p.length > 3);
-  
-  for (const file of existingFiles) {
-    const fileLower = file.toLowerCase();
-    const matchedParts = nameParts.filter(part => fileLower.includes(part));
-    
-    // If more than half of the significant parts match, consider it a match
-    if (matchedParts.length >= Math.ceil(nameParts.length / 2)) {
-      return file;
-    }
-  }
-
-  // Suggest a filename based on the convention
-  return `mortgage-se-${normalized}.bpmn`;
-}
-
 // ============= BATCH GENERATOR =============
 
+interface NodeArtifactEntry {
+  bpmnFile: string;
+  elementId: string;
+  elementName: string;
+  docFileName?: string;
+  testFileName?: string;
+}
+
 export interface GenerationResult {
-  tests: Map<string, string>; // filename -> content
-  docs: Map<string, string>; // filename -> content
-  dorDod: Map<string, DorDodCriterion[]>; // subprocess -> criteria
-  subprocessMappings: Map<string, string | null>; // elementId -> subprocess file
+  tests: Map<string, string>;
+  docs: Map<string, string>;
+  dorDod: Map<string, DorDodCriterion[]>;
+  subprocessMappings: Map<string, string | null>;
+  nodeArtifacts?: NodeArtifactEntry[];
   metadata?: {
     hierarchyUsed: boolean;
     totalFilesAnalyzed?: number;
     filesIncluded?: string[];
     hierarchyDepth?: number;
+    missingDependencies?: { parent: string; childProcess: string }[];
+    skippedSubprocesses?: string[];
   };
+}
+
+async function renderDocWithLlmFallback(
+  docType: DocumentationDocType,
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  fallback: () => string,
+  llmAllowed: boolean,
+): Promise<string> {
+  const llmActive = llmAllowed && isLlmEnabled();
+  const basePayload = {
+    docType,
+    nodeId: context.node.bpmnElementId,
+    nodeName: context.node.name,
+    bpmnFile: context.node.bpmnFile,
+  };
+
+  // In lokalt/FAST-läge eller när LLM är avstängt ska vi aldrig göra något LLM-anrop.
+  if (!llmActive) {
+    return fallback();
+  }
+
+  try {
+    const llmDoc = await generateDocumentationWithLlm(docType, context, links);
+    if (llmDoc) {
+      const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
+      await saveLlmDebugArtifact('doc', identifier, llmDoc);
+      return llmDoc;
+    }
+    await logLlmFallback({
+      eventType: 'documentation',
+      status: 'fallback',
+      reason: 'empty-response',
+      ...basePayload,
+      metadata: {
+        childCount: context.childNodes.length,
+        parentDepth: context.parentChain.length,
+      },
+    });
+  } catch (error) {
+    console.error('LLM documentation generation failed:', error);
+    await logLlmFallback({
+      eventType: 'documentation',
+      status: 'error',
+      reason: 'request-error',
+      error,
+      ...basePayload,
+    });
+  }
+  return fallback();
 }
 
 async function parseSubprocessFile(fileName: string): Promise<SubprocessSummary | null> {
   try {
-    const response = await fetch(`/bpmn/${fileName}`);
-    if (!response.ok) return null;
-    
-    const xml = await response.text();
-    const { BpmnParser } = await import('./bpmnParser');
-    const parser = new BpmnParser();
-    const result = await parser.parse(xml);
-    parser.destroy();
+    const url = await getBpmnFileUrl(fileName);
+    const result = await parseBpmnFile(url);
     
     // Count different node types
     const userTasks = result.elements.filter(e => e.type === 'bpmn:UserTask').length;
@@ -1301,19 +1046,41 @@ async function parseDmnSummary(fileName: string): Promise<SubprocessSummary | nu
  * @param existingDmnFiles - Alla tillgängliga DMN-filer
  * @param useHierarchy - Om true, bygg processgraf först (rekommenderat för toppnivåfiler)
  */
+type ProgressReporter = (phase: GenerationPhaseKey, label: string, detail?: string) => void | Promise<void>;
+
+const insertGenerationMeta = (html: string, source: string): string => {
+  if (!source) return html;
+  if (html.includes('x-generation-source')) return html;
+  const metaTag = `<meta name="x-generation-source" content="${source}" />`;
+  if (html.includes('<head>')) {
+    return html.replace('<head>', `<head>\n  ${metaTag}`);
+  }
+  return `<!-- generation-source:${source} -->\n${html}`;
+};
+
 export async function generateAllFromBpmnWithGraph(
   bpmnFileName: string,
   existingBpmnFiles: string[],
   existingDmnFiles: string[] = [],
-  useHierarchy: boolean = false
+  useHierarchy: boolean = false,
+  useLlm: boolean = true,
+  progressCallback?: ProgressReporter,
+  generationSource?: string
 ): Promise<GenerationResult> {
+  const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
+    if (progressCallback) {
+      await progressCallback(phase, label, detail);
+    }
+  };
+  const generationSourceLabel = generationSource ?? (useLlm ? 'llm' : 'local');
   // Om hierarki ska användas, bygg processgraf först
   if (useHierarchy) {
-    const { buildBpmnProcessGraph, createGraphSummary, getTestableNodes } = await import('./bpmnProcessGraph');
+    await reportProgress('graph:start', 'Analyserar BPMN-struktur', bpmnFileName);
     
     console.log(`Building process graph for ${bpmnFileName}...`);
     const graph = await buildBpmnProcessGraph(bpmnFileName, existingBpmnFiles);
     const summary = createGraphSummary(graph);
+    await reportProgress('graph:complete', 'Processträd klart', `${summary.totalFiles} filer · djup ${summary.hierarchyDepth}`);
     
     console.log('Process graph built:', {
       totalFiles: summary.totalFiles,
@@ -1321,6 +1088,7 @@ export async function generateAllFromBpmnWithGraph(
       filesIncluded: summary.filesIncluded,
       hierarchyDepth: summary.hierarchyDepth,
     });
+    const testableNodes = getTestableNodes(graph);
 
     // Generera artefakter från grafen
     const result: GenerationResult = {
@@ -1333,25 +1101,37 @@ export async function generateAllFromBpmnWithGraph(
         totalFilesAnalyzed: summary.totalFiles,
         filesIncluded: summary.filesIncluded,
         hierarchyDepth: summary.hierarchyDepth,
+        missingDependencies: graph.missingDependencies,
+        skippedSubprocesses: Array.from(new Set(graph.missingDependencies.map(dep => dep.childProcess))),
       },
     };
+    const hierarchicalNodeArtifacts: NodeArtifactEntry[] = [];
+    result.nodeArtifacts = hierarchicalNodeArtifacts;
 
     // === HIERARKISKA TESTER MED JIRA-META ===
-    // Bygg BPMN-hierarkin för varje fil och generera hierarkiska tester
+    // Generera hierarkiska tester direkt från processgrafen
     console.log('Generating hierarchical tests with Jira metadata...');
     const filesToGenerate = summary.filesIncluded.length > 0 
       ? summary.filesIncluded 
       : [bpmnFileName];
+    await reportProgress('total:init', 'Init totals', JSON.stringify({
+      files: filesToGenerate.length,
+      nodes: testableNodes.length,
+    }));
+    await reportProgress('hier-tests:start', 'Genererar hierarkiska tester', `${filesToGenerate.length} filer`);
+
+    const hierarchyRoot = graph.root;
+    const hierarchyRootName = hierarchyRoot?.name || bpmnFileName.replace('.bpmn', '');
+    const hierarchyChildren = hierarchyRoot ? hierarchyRoot.children.map(graphNodeToHierarchy) : [];
 
     for (const file of filesToGenerate) {
-      const bpmnUrl = `/bpmn/${file}`;
       try {
-        const hierarchy = await buildBpmnHierarchy(file, bpmnUrl);
+        await reportProgress('hier-tests:file', 'Hierarkitest', file);
         
         const hierarchicalTestContent = generateHierarchicalTestFile(
-          hierarchy.rootName,
-          hierarchy.rootNode.children,
-          hierarchy.bpmnFile
+          hierarchyRootName,
+          hierarchyChildren,
+          file
         );
 
         // Döp filen så att det syns att detta är hierarkiska tester
@@ -1363,13 +1143,15 @@ export async function generateAllFromBpmnWithGraph(
         console.error(`Error generating hierarchical test for ${file}:`, error);
       }
     }
+    await reportProgress('hier-tests:complete', 'Hierarkiska tester klara');
 
     // === DOR/DOD OCH SUBPROCESS MAPPINGS ===
     // Testbara noder från hela grafen (för DoR/DoD och subprocess mappings)
-    const testableNodes = getTestableNodes(graph);
+    await reportProgress('node-analysis:start', 'Analyserar noder för artefakter', `${testableNodes.length} noder`);
     
     for (const node of testableNodes) {
       if (!node.element) continue;
+      await reportProgress('node-analysis:node', 'Analyserar nod', node.name || node.bpmnElementId);
       
       const nodeType = node.type as 'userTask' | 'serviceTask' | 'businessRuleTask' | 'callActivity';
       
@@ -1378,7 +1160,7 @@ export async function generateAllFromBpmnWithGraph(
         .toLowerCase()
         .trim()
         .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9\-]/g, '');
+        .replace(/[^a-z0-9-]/g, '');
       
       const typeMap: Record<string, 'ServiceTask' | 'UserTask' | 'BusinessRuleTask' | 'CallActivity'> = {
         'userTask': 'UserTask',
@@ -1396,27 +1178,43 @@ export async function generateAllFromBpmnWithGraph(
           bpmn_element_id: node.bpmnElementId,
           bpmn_file: node.bpmnFile,
         }));
-        result.dorDod.set(normalizedName, enrichedCriteria);
+        result.dorDod.set(`${node.bpmnFile}:${node.bpmnElementId}`, enrichedCriteria);
       }
 
       // Subprocess mappings
-      if (node.type === 'callActivity' && node.children.length > 0) {
-        const childFile = node.children[0]?.bpmnFile;
+      if (node.type === 'callActivity' && node.subprocessFile) {
+        const childFile = node.subprocessFile;
         if (childFile) {
           result.subprocessMappings.set(node.bpmnElementId, childFile);
         }
       }
     }
+    await reportProgress('node-analysis:complete', 'Nodanalyser klara', `${testableNodes.length} noder`);
 
     // Generera dokumentation per fil (inte per element)
+    await reportProgress('docgen:start', 'Genererar dokumentation/testinstruktioner', `${filesToGenerate.length} filer`);
+    const buildMatchWarning = (node: typeof testableNodes[number]) => {
+      const reasons: string[] = [];
+      if (node.subprocessMatchStatus && node.subprocessMatchStatus !== 'matched') {
+        reasons.push(`Subprocess match: ${node.subprocessMatchStatus}`);
+      }
+      if (node.subprocessDiagnostics?.length) {
+        reasons.push(...node.subprocessDiagnostics);
+      }
+      const reasonText = reasons.length ? reasons.join(' • ') : 'Okänd orsak';
+      return `<p>Subprocess-kopplingen är inte bekräftad. Följande diagnostik finns:</p><p>${reasonText}</p>`;
+    };
+
     for (const file of filesToGenerate) {
+      await reportProgress('docgen:file', 'Genererar dokumentation/testinstruktioner', file);
       const docFileName = file.replace('.bpmn', '.html');
       
       // Samla alla noder från denna fil för dokumentation
       const nodesInFile = testableNodes.filter(node => node.bpmnFile === file);
       
       if (nodesInFile.length > 0) {
-        // Skapa en sammanslagen dokumentation för hela filen
+        // Skapa en sammanslagen dokumentation för hela filen – med fokus på innehåll,
+        // inte egen app-liknande header. Själva app-layouten hanteras i DocViewer.
         let combinedDoc = `<!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -1424,38 +1222,119 @@ export async function generateAllFromBpmnWithGraph(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dokumentation - ${file}</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
-    h1 { color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px; }
-    h2 { color: #1e40af; margin-top: 30px; }
-    .node-section { border-left: 3px solid #dbeafe; padding-left: 20px; margin: 20px 0; }
-    .node-type { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 4px; font-size: 14px; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background: #ffffff; }
+    h1 { font-size: 1.5rem; margin: 0 0 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+    h2 { color: #1e40af; margin-top: 24px; font-size: 1.1rem; }
+    .node-section { border-left: 3px solid #dbeafe; padding-left: 16px; margin: 16px 0; }
+    .node-type { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; }
   </style>
 </head>
 <body>
   <h1>Dokumentation för ${file}</h1>
 `;
         
+        const processedDocNodes = new Set<string>();
         for (const node of nodesInFile) {
-          if (!node.element) continue;
-          
-          let subprocessFile: string | undefined;
-          let subprocessSummary: SubprocessSummary | undefined;
-          
-          if (node.type === 'callActivity' && node.children.length > 0) {
-            const childFile = node.children[0]?.bpmnFile;
-            if (childFile) {
-              subprocessFile = childFile;
-              subprocessSummary = await parseSubprocessFile(childFile) || undefined;
-            }
-          }
-          
-          const nodeDocContent = generateDocumentationHTML(
-            node.element,
-            subprocessFile,
-            subprocessSummary
+          if (!node.element || !node.bpmnElementId) continue;
+          await reportProgress(
+            'docgen:file',
+            'Genererar dokumentation/testinstruktioner',
+            `${file} → ${node.name || node.bpmnElementId}`,
           );
-          
-          // Extrahera body-innehållet från node-dokumentationen
+          const nodeKey = `${node.bpmnFile}:${node.bpmnElementId}`;
+          if (processedDocNodes.has(nodeKey)) {
+            console.log(`Skipping duplicate doc generation in this run: ${nodeKey}`);
+            continue;
+          }
+
+          const docFileKey = getNodeDocFileKey(node.bpmnFile, node.bpmnElementId);
+          const testFileKey = getNodeTestFileKey(node.bpmnFile, node.bpmnElementId);
+          const nodeContext = buildNodeDocumentationContext(graph, node.id);
+          const docLinks = {
+            bpmnViewerLink: `#/bpmn/${node.bpmnFile}`,
+            dorLink: undefined,
+            testLink: `tests/${testFileKey}`,
+          };
+
+          const dorDodKey = `${node.bpmnFile}:${node.bpmnElementId}`;
+          const dorDodForNode = result.dorDod.get(dorDodKey) || [];
+
+          let nodeDocContent: string;
+          if (nodeContext) {
+            if (node.type === 'callActivity') {
+              nodeDocContent = await renderDocWithLlmFallback(
+                'feature',
+                nodeContext,
+                docLinks,
+                () => renderFeatureGoalDoc(nodeContext, docLinks),
+                useLlm,
+              );
+              // Skapa även en separat feature goal-sida för matched subprocesser
+              const featureDocPath = getFeatureGoalDocFileKey(node.bpmnFile, node.bpmnElementId);
+              result.docs.set(
+                featureDocPath,
+                insertGenerationMeta(nodeDocContent, generationSourceLabel),
+              );
+              // Lägg till diagnostiksektion om subprocess-matchen inte är bekräftad
+              if (
+                node.subprocessMatchStatus &&
+                node.subprocessMatchStatus !== 'matched'
+              ) {
+                const diag = buildMatchWarning(node);
+                const section = `<section><h2>Subprocess-diagnostik</h2>${diag}</section>`;
+                if (nodeDocContent.includes('</body>')) {
+                  nodeDocContent = nodeDocContent.replace(
+                    '</body>',
+                    `${section}</body>`,
+                  );
+                } else {
+                  nodeDocContent += section;
+                }
+              }
+            } else if (node.type === 'businessRuleTask') {
+              nodeDocContent = await renderDocWithLlmFallback(
+                'businessRule',
+                nodeContext,
+                docLinks,
+                () => renderBusinessRuleDoc(nodeContext, docLinks),
+                useLlm,
+              );
+              if (!(docLinks as any).dmnLink) {
+                nodeDocContent +=
+                  '\n<p>Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell när den finns.</p>';
+              }
+            } else {
+              nodeDocContent = await renderDocWithLlmFallback(
+                'epic',
+                nodeContext,
+                docLinks,
+                () => renderEpicDoc(nodeContext, docLinks),
+                useLlm,
+              );
+            }
+          } else {
+            nodeDocContent = generateDocumentationHTML(node.element, undefined, undefined, dorDodForNode);
+          }
+
+          result.docs.set(
+            docFileKey,
+            insertGenerationMeta(nodeDocContent, generationSourceLabel),
+          );
+          const llmScenarios = useLlm ? await generateTestSpecWithLlm(node.element) : null;
+          result.tests.set(
+            testFileKey,
+            generateTestSkeleton(node.element, llmScenarios || undefined),
+          );
+
+          hierarchicalNodeArtifacts.push({
+            bpmnFile: node.bpmnFile,
+            elementId: node.bpmnElementId,
+            elementName: node.name || node.bpmnElementId,
+            docFileName: docFileKey,
+            testFileName: testFileKey,
+          });
+          processedDocNodes.add(nodeKey);
+
           const bodyMatch = nodeDocContent.match(/<body>([\s\S]*)<\/body>/);
           if (bodyMatch) {
             combinedDoc += `<div class="node-section">
@@ -1471,10 +1350,11 @@ export async function generateAllFromBpmnWithGraph(
 </body>
 </html>`;
         
-        result.docs.set(docFileName, combinedDoc);
+        result.docs.set(docFileName, insertGenerationMeta(combinedDoc, generationSourceLabel));
         console.log(`Generated documentation: ${docFileName}`);
       }
     }
+    await reportProgress('docgen:complete', 'Dokumentation/testinstruktioner klara');
 
     return result;
   }
@@ -1488,7 +1368,9 @@ export async function generateAllFromBpmnWithGraph(
     parseResult.subprocesses,
     existingBpmnFiles,
     existingDmnFiles,
-    bpmnFileName
+    bpmnFileName,
+    useLlm,
+    generationSourceLabel
   );
 }
 
@@ -1497,7 +1379,9 @@ export async function generateAllFromBpmn(
   subprocesses: BpmnSubprocess[],
   existingBpmnFiles: string[],
   existingDmnFiles: string[] = [],
-  bpmnFileName?: string // Add fileName parameter
+  bpmnFileName?: string,
+  useLlm: boolean = true,
+  generationSourceLabel?: string
 ): Promise<GenerationResult> {
   const result: GenerationResult = {
     tests: new Map(),
@@ -1505,6 +1389,9 @@ export async function generateAllFromBpmn(
     dorDod: new Map(),
     subprocessMappings: new Map(),
   };
+  const docSource = generationSourceLabel || (useLlm ? 'llm' : 'local');
+  const nodeArtifacts: NodeArtifactEntry[] = [];
+  result.nodeArtifacts = nodeArtifacts;
 
   // Samla dokumentation för alla element i filen
   let combinedDoc = '';
@@ -1516,11 +1403,11 @@ export async function generateAllFromBpmn(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dokumentation - ${bpmnFileName}</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
-    h1 { color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px; }
-    h2 { color: #1e40af; margin-top: 30px; }
-    .node-section { border-left: 3px solid #dbeafe; padding-left: 20px; margin: 20px 0; }
-    .node-type { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 4px; font-size: 14px; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background: #ffffff; }
+    h1 { font-size: 1.5rem; margin: 0 0 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+    h2 { color: #1e40af; margin-top: 24px; font-size: 1.1rem; }
+    .node-section { border-left: 3px solid #dbeafe; padding-left: 16px; margin: 16px 0; }
+    .node-type { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -1530,6 +1417,8 @@ export async function generateAllFromBpmn(
 
   // Generate for each element
   for (const element of elements) {
+    let docContent: string | null = null;
+    let nodeTestFileKey: string | null = null;
     const nodeType = element.type.replace('bpmn:', '') as 'ServiceTask' | 'UserTask' | 'BusinessRuleTask' | 'CallActivity' | string;
     
     // Skip process definitions and labels
@@ -1539,8 +1428,13 @@ export async function generateAllFromBpmn(
 
     // Generate test skeleton
     if (['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity'].includes(nodeType)) {
-      const testContent = generateTestSkeleton(element);
-      result.tests.set(`${element.id}.spec.ts`, testContent);
+      const llmScenarios = useLlm ? await generateTestSpecWithLlm(element) : null;
+      const testContent = generateTestSkeleton(element, llmScenarios || undefined);
+      const testFileKey = bpmnFileName
+        ? getNodeTestFileKey(bpmnFileName, element.id)
+        : `${element.id}.spec.ts`;
+      result.tests.set(testFileKey, testContent);
+      nodeTestFileKey = testFileKey;
       
       // Generate DoR/DoD criteria for individual elements
       // Use hyphen for normalization (consistent with subprocess IDs)
@@ -1548,7 +1442,7 @@ export async function generateAllFromBpmn(
         .toLowerCase()
         .trim()
         .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9\-]/g, '');
+        .replace(/[^a-z0-9-]/g, '');
         
       if (nodeType === 'ServiceTask' || nodeType === 'UserTask' || nodeType === 'BusinessRuleTask' || nodeType === 'CallActivity') {
         const criteria = generateDorDodForNodeType(
@@ -1573,13 +1467,7 @@ export async function generateAllFromBpmn(
     let subprocessSummary: SubprocessSummary | undefined;
     
     if (nodeType === 'CallActivity') {
-      subprocessFile = matchSubprocessFile(element.name || element.id, existingBpmnFiles);
-      
-      // Parse subprocess if file exists
-      if (subprocessFile) {
-        subprocessSummary = await parseSubprocessFile(subprocessFile) || undefined;
-        result.subprocessMappings.set(element.id, subprocessFile);
-      }
+      subprocessFile = undefined; // Legacy läge utan hierarki gör ingen deterministisk matchning
     } else if (nodeType === 'BusinessRuleTask') {
       // Match DMN file for BusinessRuleTask
       const { matchDmnFile } = await import('./dmnParser');
@@ -1592,9 +1480,26 @@ export async function generateAllFromBpmn(
       }
     }
     
-    // Lägg till element-dokumentation till kombinerad fil
+    if (['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity'].includes(nodeType)) {
+      docContent = generateDocumentationHTML(element, subprocessFile, subprocessSummary);
+      const docFileKey = bpmnFileName
+        ? getNodeDocFileKey(bpmnFileName, element.id)
+        : `${element.id}.html`;
+      result.docs.set(docFileKey, insertGenerationMeta(docContent, docSource));
+      
+      nodeArtifacts.push({
+        bpmnFile: bpmnFileName || '',
+        elementId: element.id,
+        elementName: element.name || element.id,
+        docFileName: docFileKey,
+        testFileName: nodeTestFileKey || undefined,
+      });
+    }
+
     if (bpmnFileName) {
-      const docContent = generateDocumentationHTML(element, subprocessFile, subprocessSummary);
+      if (!docContent) {
+        docContent = generateDocumentationHTML(element, subprocessFile, subprocessSummary);
+      }
       const bodyMatch = docContent.match(/<body>([\s\S]*)<\/body>/);
       if (bodyMatch) {
         combinedDoc += `<div class="node-section">
@@ -1613,7 +1518,7 @@ export async function generateAllFromBpmn(
 </body>
 </html>`;
     const docFileName = bpmnFileName.replace('.bpmn', '.html');
-    result.docs.set(docFileName, combinedDoc);
+    result.docs.set(docFileName, insertGenerationMeta(combinedDoc, docSource));
   }
 
   // Generate DoR/DoD for subprocesses (legacy support)
@@ -1624,7 +1529,7 @@ export async function generateAllFromBpmn(
       .toLowerCase()
       .trim()
       .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9\-]/g, '');
+      .replace(/[^a-z0-9-]/g, '');
     
     // Only add if not already added from elements loop
     if (!result.dorDod.has(normalizedName)) {

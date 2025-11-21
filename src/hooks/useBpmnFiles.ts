@@ -50,6 +50,7 @@ export const useUploadBpmnFile = () => {
     },
     onSuccess: (data) => {
       invalidateStructureQueries(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['root-bpmn-file'] });
       
       toast({
         title: 'Fil uppladdad',

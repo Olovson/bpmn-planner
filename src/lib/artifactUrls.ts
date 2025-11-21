@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getFileDocViewerPath, getNodeDocViewerPath, getNodeDocFileKey } from './nodeArtifactPaths';
 
 /**
  * Get the public URL for a documentation file in Supabase Storage.
@@ -7,17 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
  * @param bpmnFile - The BPMN file name (e.g., 'mortgage-se-application.bpmn')
  * @returns The Supabase public URL to the documentation HTML file
  */
-export function getDocumentationUrl(bpmnFile: string): string {
-  // Remove .bpmn extension and construct storage path
-  const base = bpmnFile.replace('.bpmn', '');
-  const docPath = `docs/${base}.html`;
-  
-  // Get public URL from Supabase Storage (same pattern as test files)
-  const { data } = supabase.storage
-    .from('bpmn-files')
-    .getPublicUrl(docPath);
-  
-  return data.publicUrl;
+export function getDocumentationUrl(bpmnFile: string, elementId?: string): string {
+  if (elementId) {
+    return `#/doc-viewer/${encodeURIComponent(getNodeDocViewerPath(bpmnFile, elementId))}`;
+  }
+  return `#/doc-viewer/${encodeURIComponent(getFileDocViewerPath(bpmnFile))}`;
 }
 
 /**
@@ -31,4 +26,36 @@ export function getTestFileUrl(testFilePath: string): string {
     .getPublicUrl(testFilePath);
   
   return data.publicUrl;
+}
+
+export async function storageFileExists(filePath: string): Promise<boolean> {
+  const parts = filePath.split('/');
+  const fileName = parts.pop();
+  const dir = parts.join('/');
+  if (!fileName) return false;
+
+  const { data, error } = await supabase.storage
+    .from('bpmn-files')
+    .list(dir || undefined, { search: fileName, limit: 1 });
+
+  if (error) {
+    console.warn('[storageFileExists] list error for', filePath, error);
+    return false;
+  }
+
+  return Boolean((data ?? []).find((entry) => entry.name === fileName));
+}
+
+export const getNodeDocStoragePath = (bpmnFile: string, elementId: string) =>
+  // Docs lagras i Supabase Storage under 'docs/<node-doc-key>'
+  `docs/${getNodeDocFileKey(bpmnFile, elementId)}`;
+
+/**
+ * Build URL for node-specific test report page
+ * @param bpmnFile - The BPMN file name (e.g., 'mortgage-se-application.bpmn')
+ * @param elementId - The BPMN element ID (e.g., 'credit-decision')
+ * @returns The hash router URL to the node test report page
+ */
+export function getNodeTestReportUrl(bpmnFile: string, elementId: string): string {
+  return `#/node-tests?bpmnFile=${encodeURIComponent(bpmnFile)}&elementId=${encodeURIComponent(elementId)}`;
 }

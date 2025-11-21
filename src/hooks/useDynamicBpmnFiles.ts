@@ -7,6 +7,22 @@ export interface DynamicBpmnFile {
   storage_path: string;
 }
 
+const buildStorageUrl = (path: string) => {
+  const { data } = supabase.storage.from('bpmn-files').getPublicUrl(path);
+  return data?.publicUrl || '';
+};
+
+const fetchFileRecord = async (fileName: string, fileType: 'bpmn' | 'dmn') => {
+  const { data } = await supabase
+    .from('bpmn_files')
+    .select('storage_path')
+    .eq('file_name', fileName)
+    .eq('file_type', fileType)
+    .maybeSingle();
+
+  return data?.storage_path ? buildStorageUrl(data.storage_path) : null;
+};
+
 /**
  * Hook to fetch all BPMN/DMN files from the database
  * Returns file names in the format needed by other hooks
@@ -23,18 +39,8 @@ export const useDynamicBpmnFiles = () => {
 
       if (error) throw error;
 
-      // If no files in DB, fallback to default files
       if (!data || data.length === 0) {
-        return [
-          'mortgage.bpmn',
-          'mortgage-se-application.bpmn',
-          'mortgage-se-credit-evaluation.bpmn',
-          'mortgage-se-household.bpmn',
-          'mortgage-se-internal-data-gathering.bpmn',
-          'mortgage-se-object-information.bpmn',
-          'mortgage-se-object.bpmn',
-          'mortgage-se-stakeholder.bpmn',
-        ];
+        return [];
       }
 
       return data.map(f => f.file_name);
@@ -48,24 +54,36 @@ export const useDynamicBpmnFiles = () => {
  * This is async to check if file exists in storage before returning URL
  */
 export const getBpmnFileUrl = async (fileName: string): Promise<string> => {
-  // Check if file exists in database (means it's in storage)
-  const { data: fileRecord } = await supabase
-    .from('bpmn_files')
-    .select('storage_path')
-    .eq('file_name', fileName)
-    .maybeSingle();
+  const storageUrl = await fetchFileRecord(fileName, 'bpmn');
+  if (storageUrl) return storageUrl;
 
-  if (fileRecord) {
-    // File exists in storage, return storage URL
-    const { data } = supabase.storage
-      .from('bpmn-files')
-      .getPublicUrl(fileRecord.storage_path);
-    
-    if (data?.publicUrl) {
-      return data.publicUrl;
-    }
-  }
+  // Fall back to direct storage path (same as uploaded file name)
+  const directStorageUrl = buildStorageUrl(fileName);
+  if (directStorageUrl) return directStorageUrl;
 
   // Fallback to public folder (for files not yet migrated to storage)
   return `/bpmn/${fileName}`;
+};
+
+export const useDynamicDmnFiles = () => {
+  return useQuery({
+    queryKey: ['dynamic-dmn-files'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bpmn_files')
+        .select('file_name')
+        .eq('file_type', 'dmn')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return (data || []).map(f => f.file_name);
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+};
+
+export const getDmnFileUrl = async (fileName: string): Promise<string> => {
+  const storageUrl = await fetchFileRecord(fileName, 'dmn');
+  if (storageUrl) return storageUrl;
+  return `/dmn/${fileName}`;
 };

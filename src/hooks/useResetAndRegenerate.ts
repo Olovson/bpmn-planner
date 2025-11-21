@@ -95,8 +95,7 @@ export const useResetAndRegenerate = () => {
           // Also clear localStorage mappings
           localStorage.removeItem('bpmn-node-mappings');
         }
-        // Note: BPMN source files are never actually deleted, so no need to invalidate
-        // The deleteBpmn option is kept for backwards compatibility but doesn't delete sources
+        // Note: BPMN/DMN sources are deleted only in full reset mode. In safe mode we leave caches intact.
       }
 
       const deletedSummary = Object.entries(data.deleted)
@@ -105,7 +104,7 @@ export const useResetAndRegenerate = () => {
 
       toast({
         title: options.safeMode ? 'Vald data har rensats' : 'Registret har rensats',
-        description: `Borttaget: ${deletedSummary}. Storage: ${data.storage_deleted} filer. GitHub: ${data.github_deleted} filer.`,
+        description: `Borttaget: ${deletedSummary}. Storage: ${data.storage_deleted} filer. GitHub: ${data.github_deleted} filer. Jobbkön rensad och eventuella BPMN/DMN måste laddas upp igen.`,
       });
 
       return data as ResetResult;
@@ -119,6 +118,7 @@ export const useResetAndRegenerate = () => {
       return null;
     } finally {
       setIsResetting(false);
+      queryClient.invalidateQueries({ queryKey: ['root-bpmn-file'] });
     }
   };
 
@@ -174,7 +174,8 @@ export const useResetAndRegenerate = () => {
             file.file_name,
             allBpmnFiles,
             dmnFiles,
-            useHierarchy
+            useHierarchy,
+            true
           );
 
           // Save DoR/DoD

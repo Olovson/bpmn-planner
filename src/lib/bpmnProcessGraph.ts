@@ -1,5 +1,15 @@
-import { BpmnElement, BpmnSubprocess, parseBpmnFile } from './bpmnParser';
-import { matchSubprocessFile } from './bpmnGenerators';
+import type { BpmnElement, BpmnParseResult } from './bpmnParser';
+import { parseBpmnFile } from './bpmnParser';
+import { collectProcessDefinitionsFromMeta } from '@/lib/bpmn/processDefinition';
+import {
+  buildProcessHierarchy,
+  type NormalizedProcessDefinition,
+} from '@/lib/bpmn/buildProcessHierarchy';
+import type { HierarchyNode, ProcessDefinition } from '@/lib/bpmn/types';
+import {
+  resolveProcessFileName,
+  resolveProcessFileNameByInternalId,
+} from '@/lib/bpmn/hierarchyTraversal';
 
 export type BpmnNodeType =
   | 'process'
@@ -21,6 +31,9 @@ export interface BpmnProcessNode {
   children: BpmnProcessNode[];
   element?: BpmnElement; // Original BPMN element for reference
   missingDefinition?: boolean; // True if subprocess file is not found
+  subprocessFile?: string; // Matched BPMN file for CallActivities/SubProcesses
+  subprocessMatchStatus?: HierarchyNode['link'] extends { matchStatus: infer T } ? T : string;
+  subprocessDiagnostics?: string[];
 }
 
 export interface BpmnProcessGraph {
@@ -28,184 +41,229 @@ export interface BpmnProcessGraph {
   root: BpmnProcessNode;
   allNodes: Map<string, BpmnProcessNode>; // nodeId -> node
   fileNodes: Map<string, BpmnProcessNode[]>; // bpmnFile -> nodes in that file
+  missingDependencies: { parent: string; childProcess: string }[];
 }
 
 /**
- * Bygger en komplett BPMN-processgraf för en toppnivåfil.
- * Denna graf innehåller alla noder från toppnivån och alla underliggande subprocess-filer.
- * 
- * @param rootFile - BPMN-fil att starta från (t.ex. 'mortgage.bpmn')
- * @param existingBpmnFiles - Lista över alla tillgängliga BPMN-filer
- * @returns En komplett processgraf med alla relationer
+ * Bygger en komplett BPMN-processgraf baserad på den nya deterministiska
+ * hierarkimotorn. Grafen innehåller alla noder från toppnivån och länkar till
+ * deras subprocesser med diagnostik för saknade eller osäkra matchningar.
  */
 export async function buildBpmnProcessGraph(
   rootFile: string,
   existingBpmnFiles: string[]
 ): Promise<BpmnProcessGraph> {
+  const parseResults = await parseAllBpmnFiles(existingBpmnFiles);
+  const processDefinitions = buildProcessDefinitions(parseResults);
+
+  const preferredProcessIds = new Set(
+    processDefinitions.filter((proc) => proc.fileName === rootFile).map((proc) => proc.id),
+  );
+
+  const hierarchy = buildProcessHierarchy(processDefinitions, {
+    preferredRootProcessIds: preferredProcessIds,
+  });
+
+  if (!hierarchy.roots.length) {
+    throw new Error('Kunde inte bygga hierarki: inga processrötter hittades.');
+  }
+
+  const rootHierarchyNode =
+    hierarchy.roots.find((node) => resolveProcessFileName(node, hierarchy.processes) === rootFile) ??
+    hierarchy.roots[0];
+
+  const rootFileName =
+    resolveProcessFileName(rootHierarchyNode, hierarchy.processes) ?? rootFile;
+
+  const elementsByFile = buildElementIndex(parseResults);
   const allNodes = new Map<string, BpmnProcessNode>();
   const fileNodes = new Map<string, BpmnProcessNode[]>();
-  const processedFiles = new Set<string>();
-  const fileUrlBase = '/bpmn/';
   const missingDependencies: { parent: string; childProcess: string }[] = [];
 
-  /**
-   * Rekursiv funktion som bygger trädet av noder.
-   * Skyddar mot cykler genom att hålla koll på processedFiles.
-   */
-  async function buildNodeTree(
-    bpmnFile: string,
-    parentNodeId?: string
-  ): Promise<BpmnProcessNode[]> {
-    // Undvik cykler
-    if (processedFiles.has(bpmnFile)) {
-      console.warn(`Cycle detected: ${bpmnFile} already processed`);
-      return [];
-    }
+  const rootChildren = convertHierarchyChildren(rootHierarchyNode.children, {
+    currentFile: rootFileName,
+    processes: hierarchy.processes,
+    elementsByFile,
+    allNodes,
+    fileNodes,
+    missingDependencies,
+  });
 
-    processedFiles.add(bpmnFile);
-    
-    try {
-      // Parse BPMN-filen
-      const fileUrl = fileUrlBase + bpmnFile;
-      const parseResult = await parseBpmnFile(fileUrl);
-      
-      const nodes: BpmnProcessNode[] = [];
-
-      // Skapa noder för alla relevanta BPMN-element
-      for (const element of parseResult.elements) {
-        const nodeType = mapBpmnTypeToNodeType(element.type);
-        
-        // Skippa process definitions och labels
-        if (!nodeType || nodeType === 'process') continue;
-
-        const node: BpmnProcessNode = {
-          id: `${bpmnFile}:${element.id}`,
-          name: element.name || element.id,
-          type: nodeType,
-          bpmnFile,
-          bpmnElementId: element.id,
-          children: [],
-          element,
-        };
-
-        // Om detta är en CallActivity eller SubProcess, försök hitta och läsa in underliggande fil
-        if (nodeType === 'callActivity' || nodeType === 'subProcess') {
-          const subprocessName = element.name || element.id;
-          const subprocessFile = matchSubprocessFile(
-            subprocessName,
-            existingBpmnFiles
-          );
-
-          if (subprocessFile && existingBpmnFiles.includes(subprocessFile)) {
-            // Rekursivt bygg undernoder
-            const childNodes = await buildNodeTree(subprocessFile, node.id);
-            node.children = childNodes;
-          } else {
-            // Subprocess-filen finns inte - skapa placeholder
-            console.warn(`Missing subprocess file for: ${subprocessName} (parent: ${bpmnFile})`);
-            node.missingDefinition = true;
-            
-            // Track missing dependency
-            missingDependencies.push({
-              parent: bpmnFile,
-              childProcess: subprocessName,
-            });
-          }
-        }
-
-        nodes.push(node);
-        allNodes.set(node.id, node);
-      }
-
-      // Lagra noder per fil
-      if (!fileNodes.has(bpmnFile)) {
-        fileNodes.set(bpmnFile, []);
-      }
-      fileNodes.get(bpmnFile)!.push(...nodes);
-
-      return nodes;
-    } catch (error) {
-      console.error(`Error building node tree for ${bpmnFile}:`, error);
-      return [];
-    }
-  }
-
-  // Bygg från rot
-  const rootNodes = await buildNodeTree(rootFile);
-
-  // Skapa rot-nod för grafen (representerar hela processen)
   const root: BpmnProcessNode = {
-    id: `root:${rootFile}`,
-    name: rootFile.replace('.bpmn', '').replace('mortgage-se-', ''),
+    id: `root:${rootFileName}`,
+    name: rootHierarchyNode.displayName || rootFileName.replace('.bpmn', ''),
     type: 'process',
-    bpmnFile: rootFile,
-    bpmnElementId: 'root',
-    children: rootNodes,
+    bpmnFile: rootFileName,
+    bpmnElementId: rootHierarchyNode.processId || 'root',
+    children: rootChildren,
   };
 
-  // Save missing dependencies to database (fire and forget)
-  if (missingDependencies.length > 0) {
-    saveMissingDependencies(missingDependencies).catch(err => 
-      console.error('Failed to save dependencies:', err)
-    );
-  }
-
   return {
-    rootFile,
+    rootFile: rootFileName,
     root,
     allNodes,
     fileNodes,
+    missingDependencies,
   };
 }
 
-/**
- * Sparar saknade dependencies till databasen
- */
-async function saveMissingDependencies(
-  dependencies: { parent: string; childProcess: string }[]
-): Promise<void> {
-  // Import supabase client dynamically to avoid circular dependencies
-  const { supabase } = await import('@/integrations/supabase/client');
-  
-  const records = dependencies.map(dep => ({
-    parent_file: dep.parent,
-    child_process: dep.childProcess,
-    child_file: null,
-  }));
-
-  const { error } = await supabase
-    .from('bpmn_dependencies')
-    .upsert(records, {
-      onConflict: 'parent_file,child_process',
-      ignoreDuplicates: false,
-    });
-
-  if (error) {
-    console.error('Error saving dependencies:', error);
+async function parseAllBpmnFiles(
+  fileNames: string[],
+): Promise<Map<string, BpmnParseResult>> {
+  const results = new Map<string, BpmnParseResult>();
+  for (const file of fileNames) {
+    try {
+      const result = await parseBpmnFile(`/bpmn/${file}`);
+      results.set(file, result);
+    } catch (error) {
+      console.error(`Kunde inte parsa ${file}:`, error);
+    }
   }
+  return results;
 }
 
-/**
- * Mappar BPMN-typer till vår interna nodtyp
- */
-function mapBpmnTypeToNodeType(bpmnType: string): BpmnNodeType | null {
-  const typeMap: Record<string, BpmnNodeType> = {
-    'bpmn:Process': 'process',
-    'bpmn:SubProcess': 'subProcess',
-    'bpmn:CallActivity': 'callActivity',
-    'bpmn:UserTask': 'userTask',
-    'bpmn:ServiceTask': 'serviceTask',
-    'bpmn:BusinessRuleTask': 'businessRuleTask',
-    'bpmn:ExclusiveGateway': 'gateway',
-    'bpmn:ParallelGateway': 'gateway',
-    'bpmn:InclusiveGateway': 'gateway',
-    'bpmn:StartEvent': 'event',
-    'bpmn:EndEvent': 'event',
-    'bpmn:IntermediateThrowEvent': 'event',
-    'bpmn:IntermediateCatchEvent': 'event',
-  };
+function buildProcessDefinitions(parseResults: Map<string, BpmnParseResult>) {
+  const definitions: ProcessDefinition[] = [];
+  for (const [fileName, result] of parseResults.entries()) {
+    definitions.push(
+      ...collectProcessDefinitionsFromMeta(fileName, result.meta),
+    );
+  }
+  return definitions;
+}
 
-  return typeMap[bpmnType] || null;
+function buildElementIndex(parseResults: Map<string, BpmnParseResult>) {
+  const map = new Map<string, Map<string, BpmnElement>>();
+  for (const [fileName, result] of parseResults.entries()) {
+    const elementMap = new Map<string, BpmnElement>();
+    result.elements.forEach((element) => {
+      elementMap.set(element.id, element);
+    });
+    map.set(fileName, elementMap);
+  }
+  return map;
+}
+
+interface ConversionContext {
+  currentFile: string;
+  processes: Map<string, NormalizedProcessDefinition>;
+  elementsByFile: Map<string, Map<string, BpmnElement>>;
+  allNodes: Map<string, BpmnProcessNode>;
+  fileNodes: Map<string, BpmnProcessNode[]>;
+  missingDependencies: { parent: string; childProcess: string }[];
+}
+
+function convertHierarchyChildren(
+  nodes: HierarchyNode[],
+  context: ConversionContext,
+): BpmnProcessNode[] {
+  const result: BpmnProcessNode[] = [];
+
+  for (const node of nodes) {
+    if (node.bpmnType === 'process') {
+      const nextFile = resolveProcessFileName(node, context.processes) ?? context.currentFile;
+      result.push(
+        ...convertHierarchyChildren(node.children, {
+          ...context,
+          currentFile: nextFile,
+        }),
+      );
+      continue;
+    }
+
+    if (node.bpmnType === 'callActivity') {
+      const elementId = node.link?.callActivityId ?? extractElementId(node.nodeId);
+      const element = context.elementsByFile.get(context.currentFile)?.get(elementId);
+      const subprocessFile = node.link?.matchedProcessId
+        ? resolveProcessFileNameByInternalId(node.link.matchedProcessId, context.processes)
+        : undefined;
+
+      if (!subprocessFile || node.link?.matchStatus !== 'matched') {
+        context.missingDependencies.push({
+          parent: context.currentFile,
+          childProcess: node.displayName,
+        });
+      }
+
+      const children = node.children.flatMap((child) => {
+        if (child.bpmnType === 'process') {
+          const processFile =
+            resolveProcessFileName(child, context.processes) ?? subprocessFile ?? context.currentFile;
+          return convertHierarchyChildren(child.children, {
+            ...context,
+            currentFile: processFile,
+          });
+        }
+        return convertHierarchyChildren([child], {
+          ...context,
+          currentFile: subprocessFile ?? context.currentFile,
+        });
+      });
+
+      const graphNode: BpmnProcessNode = {
+        id: `${context.currentFile}:${elementId}`,
+        name: node.displayName,
+        type: 'callActivity',
+        bpmnFile: context.currentFile,
+        bpmnElementId: elementId,
+        children,
+        element,
+        subprocessFile,
+        missingDefinition: !subprocessFile,
+        subprocessMatchStatus: node.link?.matchStatus,
+        subprocessDiagnostics: node.link?.diagnostics?.map((d) => d.message).filter(Boolean),
+      };
+
+      registerGraphNode(graphNode, context);
+      result.push(graphNode);
+      continue;
+    }
+
+    if (isTaskLike(node.bpmnType)) {
+      const elementId = extractElementId(node.nodeId);
+      const element = context.elementsByFile.get(context.currentFile)?.get(elementId);
+
+      const typeMap: Record<string, BpmnNodeType> = {
+        userTask: 'userTask',
+        serviceTask: 'serviceTask',
+        businessRuleTask: 'businessRuleTask',
+        task: 'userTask',
+      };
+
+      const graphNode: BpmnProcessNode = {
+        id: `${context.currentFile}:${elementId}`,
+        name: node.displayName,
+        type: typeMap[node.bpmnType] ?? 'userTask',
+        bpmnFile: context.currentFile,
+        bpmnElementId: elementId,
+        children: [],
+        element,
+      };
+
+      registerGraphNode(graphNode, context);
+      result.push(graphNode);
+      continue;
+    }
+  }
+
+  return result;
+}
+
+function registerGraphNode(node: BpmnProcessNode, context: ConversionContext) {
+  context.allNodes.set(node.id, node);
+  if (!context.fileNodes.has(node.bpmnFile)) {
+    context.fileNodes.set(node.bpmnFile, []);
+  }
+  context.fileNodes.get(node.bpmnFile)!.push(node);
+}
+
+function extractElementId(nodeId: string): string {
+  const segments = nodeId.split(':');
+  return segments[segments.length - 1];
+}
+
+function isTaskLike(type: HierarchyNode['bpmnType']) {
+  return type === 'userTask' || type === 'serviceTask' || type === 'businessRuleTask' || type === 'task';
 }
 
 /**
@@ -262,15 +320,11 @@ export function createGraphSummary(graph: BpmnProcessGraph): GraphSummary {
     nodesByType[node.type] = (nodesByType[node.type] || 0) + 1;
   }
 
-  // Beräkna hierarchi-djup
-  function calculateDepth(node: BpmnProcessNode, currentDepth: number = 0): number {
-    if (node.children.length === 0) return currentDepth;
-    
-    const childDepths = node.children.map(child =>
-      calculateDepth(child, currentDepth + 1)
-    );
-    
-    return Math.max(...childDepths);
+  // Beräkna hierarki-djup (antal nivåer, inkl. rot)
+  function calculateDepth(node: BpmnProcessNode): number {
+    if (node.children.length === 0) return 1;
+    const childDepths = node.children.map((child) => calculateDepth(child));
+    return 1 + Math.max(...childDepths);
   }
 
   return {

@@ -1,54 +1,88 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Navigate, useParams, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, Navigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { BpmnViewer } from '@/components/BpmnViewer';
 import { RightPanel } from '@/components/RightPanel';
 import { Button } from '@/components/ui/button';
-import { LogOut, History } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useBpmnMappings } from '@/hooks/useBpmnMappings';
 import { VersionHistoryDialog } from '@/components/VersionHistoryDialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import ProcessExplorer from '@/pages/ProcessExplorer';
+import { ProcessExplorerView } from '@/pages/ProcessExplorer';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
+import { useBpmnFiles } from '@/hooks/useBpmnFiles';
+import { AppHeaderWithTabs, ViewKey } from '@/components/AppHeaderWithTabs';
+import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 
 const Index = () => {
   const { filename } = useParams();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: rootFile, isLoading: loadingRootFile } = useRootBpmnFile();
+  const { data: bpmnFiles = [], isLoading: loadingFiles } = useBpmnFiles();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [selectedElementType, setSelectedElementType] = useState<string | null>(null);
+  const [selectedElementName, setSelectedElementName] = useState<string | null>(null);
   // Use root file from hierarchy analysis, fallback to 'mortgage.bpmn'
-  const [currentBpmnFile, setCurrentBpmnFile] = useState<string>(rootFile || 'mortgage.bpmn');
+  const [currentBpmnFile, setCurrentBpmnFile] = useState<string | null>(null);
   const [versionDialogOpen, setVersionDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'diagram' | 'tree' | 'listvy'>('diagram');
   const { user, loading, signOut } = useAuth();
-  const navigate = useNavigate();
+  const baseNavigate = useNavigate();
   const { toast } = useToast();
-  const { mappings, reload } = useBpmnMappings(currentBpmnFile);
+  const { mappings, saveMapping, reload } = useBpmnMappings(currentBpmnFile);
+  const { hasDorDod, hasTests } = useArtifactAvailability();
+
+  const urlFile = searchParams.get('file');
+  const urlElement = searchParams.get('el');
 
   // Determine active view based on current route
-  const currentView = location.pathname.includes('/node-matrix') ? 'listvy' : viewMode;
+  const currentView: ViewKey = location.pathname.includes('/node-matrix')
+    ? 'listvy'
+    : location.pathname.includes('/process-explorer')
+      ? 'tree'
+      : 'diagram';
 
   const handleViewChange = (value: string) => {
     if (value === 'listvy') {
-      navigate('/node-matrix');
+      baseNavigate('/node-matrix');
+    } else if (value === 'tree') {
+      baseNavigate('/process-explorer');
+    } else if (value === 'tests') {
+      baseNavigate('/test-report');
+    } else if (value === 'files') {
+      baseNavigate('/files');
     } else {
       setViewMode(value as 'diagram' | 'tree');
+      if (value === 'diagram') baseNavigate('/');
     }
   };
+  const baseRootRef = useRef<string | null>(null);
+  const derivedRoot = useMemo(() => {
+    if (rootFile) return rootFile;
+    const mortgageExists = bpmnFiles.some((f) => f.file_name === 'mortgage.bpmn');
+    if (mortgageExists) return 'mortgage.bpmn';
+    if (bpmnFiles.length > 0) return bpmnFiles[0].file_name;
+    return null;
+  }, [rootFile, bpmnFiles]);
+
   useEffect(() => {
-    if (rootFile) {
-      console.log('[Index] Setting currentBpmnFile to root:', rootFile);
-      setCurrentBpmnFile(rootFile);
+    if (derivedRoot && derivedRoot !== baseRootRef.current) {
+      baseRootRef.current = derivedRoot;
+      console.log('[Index] Setting currentBpmnFile to root:', derivedRoot);
+      setCurrentBpmnFile(derivedRoot);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('file', derivedRoot);
+        return next;
+      }, { replace: true });
     }
-  }, [rootFile]);
+  }, [derivedRoot, setSearchParams]);
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/auth');
+      baseNavigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, baseNavigate]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -63,13 +97,24 @@ const Index = () => {
       window.removeEventListener('bpmn-db-mapping-updated', handler as EventListener);
     };
   }, [currentBpmnFile, reload]);
-  const handleElementSelect = (elementId: string | null, elementType?: string | null) => {
+  const handleElementSelect = (elementId: string | null, elementType?: string | null, elementName?: string | null) => {
     setSelectedElement(elementId);
     setSelectedElementType(elementType || null);
+    setSelectedElementName(elementName || null);
+    const next = new URLSearchParams(searchParams);
+    if (elementId) next.set('el', elementId);
+    else next.delete('el');
+    setSearchParams(next, { replace: false });
   };
 
   const handleTreeNodeSelect = (bpmnFile: string, elementId?: string) => {
-    setCurrentBpmnFile(bpmnFile.replace('/bpmn/', ''));
+    const cleaned = bpmnFile.replace('/bpmn/', '');
+    setCurrentBpmnFile(cleaned);
+    const next = new URLSearchParams(searchParams);
+    next.set('file', cleaned);
+    if (elementId) next.set('el', elementId);
+    else next.delete('el');
+    setSearchParams(next, { replace: false });
     setSelectedElement(elementId || null);
     if (elementId) {
       // Switch to diagram view when selecting a specific element
@@ -83,8 +128,18 @@ const Index = () => {
       title: 'Utloggad',
       description: 'Du har loggats ut',
     });
-    navigate('/auth');
+    baseNavigate('/auth');
   };
+
+  // Sync URL param to state if present
+  useEffect(() => {
+    if (urlFile && urlFile !== currentBpmnFile) {
+      setCurrentBpmnFile(urlFile);
+    }
+    if (urlElement && urlElement !== selectedElement) {
+      setSelectedElement(urlElement);
+    }
+  }, [urlFile, urlElement, currentBpmnFile, selectedElement]);
 
   if (loading) {
     return (
@@ -98,99 +153,84 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
+  const effectiveBpmnFile =
+    urlFile ||
+    currentBpmnFile ||
+    derivedRoot ||
+    (bpmnFiles[0]?.file_name ?? null);
+
+  const isLoadingData = loadingRootFile || loadingFiles;
+  const hasNoFiles = !isLoadingData && bpmnFiles.length === 0;
+  const hasEffectiveFile = Boolean(effectiveBpmnFile);
+
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">BPMN Viewer</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Visualize and analyze business process models
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <p className="text-sm text-muted-foreground">
-                {user.email}
-              </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setVersionDialogOpen(true)}
-              >
-                <History className="h-4 w-4 mr-2" />
-                Versioner
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logga ut
-              </Button>
-            </div>
+    <div className="flex h-screen bg-background overflow-hidden">
+      <AppHeaderWithTabs
+        userEmail={user.email}
+        currentView={currentView}
+        onViewChange={(v) => handleViewChange(v)}
+        onOpenVersions={() => setVersionDialogOpen(true)}
+        onSignOut={handleSignOut}
+        isTestsEnabled={hasTests}
+      />
+
+      {/* main behöver min-w-0 för att undvika global horisontell scroll i flex-layouten */}
+      <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
+        {isLoadingData && (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-muted-foreground">Laddar BPMN-data…</p>
           </div>
-        </div>
-      </header>
-      
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <div className="border-b px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Tabs value={currentView} onValueChange={handleViewChange}>
-              <TabsList>
-                <TabsTrigger value="diagram">BPMN-diagram</TabsTrigger>
-                <TabsTrigger value="tree">Strukturträd</TabsTrigger>
-                <TabsTrigger value="listvy">Listvy</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate('/dor-dod')}
-            >
-              DoR/DoD
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate('/test-report')}
-            >
-              Tests
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate('/files')}
-            >
-              Filer
+        )}
+
+        {!isLoadingData && hasNoFiles && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-2">
+            <p className="text-muted-foreground">
+              Ingen BPMN-fil hittades. Ladda upp en BPMN-fil via sidan Filer.
+            </p>
+            <Button variant="outline" onClick={() => baseNavigate('/files')}>
+              Gå till Filer
             </Button>
           </div>
-        </div>
-        
-        {viewMode === 'diagram' ? (
-          <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1">
-              <BpmnViewer 
-                onElementSelect={handleElementSelect}
-                onFileChange={setCurrentBpmnFile}
-                bpmnMappings={mappings}
-                initialFileName={currentBpmnFile}
-              />
-            </div>
-            <RightPanel 
-              selectedElement={selectedElement} 
-              selectedElementType={selectedElementType}
-              bpmnFile={currentBpmnFile}
-            />
+        )}
+
+        {!isLoadingData && !hasNoFiles && !hasEffectiveFile && (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-muted-foreground">Försöker hitta BPMN-rot…</p>
           </div>
-        ) : (
-          <div className="flex-1 overflow-hidden">
-            <ProcessExplorer 
-              onNodeSelect={handleTreeNodeSelect}
-              selectedBpmnFile={currentBpmnFile}
-              selectedElementId={selectedElement || undefined}
-            />
-          </div>
+        )}
+
+        {!isLoadingData && !hasNoFiles && hasEffectiveFile && (
+          <>
+            {viewMode === 'diagram' ? (
+              <div className="flex-1 min-w-0 flex overflow-hidden">
+                {/* viewer-container med min-w-0 så att RightPanel inte tvingar fram global horisontell scroll */}
+                <div className="flex-1 min-w-0">
+                  <BpmnViewer
+                    onElementSelect={handleElementSelect}
+                    onFileChange={setCurrentBpmnFile}
+                    bpmnMappings={mappings}
+                    initialFileName={effectiveBpmnFile}
+                  />
+                </div>
+                <RightPanel
+                  selectedElement={selectedElement}
+                  selectedElementType={selectedElementType}
+                  selectedElementName={selectedElementName}
+                  bpmnFile={effectiveBpmnFile}
+                  mappings={mappings}
+                  saveMapping={saveMapping}
+                />
+              </div>
+            ) : (
+              <div className="flex-1 overflow-hidden">
+                <ProcessExplorerView
+                  onNodeSelect={handleTreeNodeSelect}
+                  selectedBpmnFile={currentBpmnFile}
+                  selectedElementId={selectedElement || undefined}
+                />
+              </div>
+            )}
+          </>
         )}
       </main>
 

@@ -200,6 +200,96 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error: string | null
+          file_name: string
+          finished_at: string | null
+          id: string
+          operation: Database["public"]["Enums"]["generation_operation"]
+          progress: number | null
+          result: Json | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["generation_status"]
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          file_name: string
+          finished_at?: string | null
+          id?: string
+          operation: Database["public"]["Enums"]["generation_operation"]
+          progress?: number | null
+          result?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["generation_status"]
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          file_name?: string
+          finished_at?: string | null
+          id?: string
+          operation?: Database["public"]["Enums"]["generation_operation"]
+          progress?: number | null
+          result?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["generation_status"]
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      llm_generation_logs: {
+        Row: {
+          bpmn_file: string | null
+          created_at: string
+          doc_type: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          node_id: string | null
+          node_name: string | null
+          reason: string
+          status: string
+        }
+        Insert: {
+          bpmn_file?: string | null
+          created_at?: string
+          doc_type?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          node_id?: string | null
+          node_name?: string | null
+          reason: string
+          status: string
+        }
+        Update: {
+          bpmn_file?: string | null
+          created_at?: string
+          doc_type?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          node_id?: string | null
+          node_name?: string | null
+          reason?: string
+          status?: string
+        }
+        Relationships: []
+      }
       e2e_scenarios: {
         Row: {
           bpmn_file: string
@@ -423,6 +513,8 @@ export type Database = {
         | "dokumentation"
         | "overlamning"
       criterion_type: "dor" | "dod"
+      generation_operation: "hierarchy" | "generation" | "local_generation" | "llm_generation"
+      generation_status: "pending" | "running" | "succeeded" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never

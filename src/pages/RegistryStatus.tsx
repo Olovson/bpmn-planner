@@ -6,6 +6,7 @@ import { SUBPROCESS_REGISTRY } from "@/data/subprocessRegistry";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function RegistryStatus() {
   const navigate = useNavigate();
@@ -51,6 +52,15 @@ export default function RegistryStatus() {
         <div className="flex items-center gap-4 mb-6">
           <h1 className="text-4xl font-bold text-primary">Registry Status</h1>
         </div>
+        
+        <Alert className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Full reset påverkar även registryt</AlertTitle>
+          <AlertDescription>
+            När du kör <strong>Reset registret</strong> rensas jobbkön, alla genererade artefakter och de uppladdade BPMN/DMN-källfilerna i Supabase Storage.
+            Efteråt måste du logga in igen, ladda upp processfilerna och köra hierarki/dokumentation från början för att fylla registryt.
+          </AlertDescription>
+        </Alert>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card>

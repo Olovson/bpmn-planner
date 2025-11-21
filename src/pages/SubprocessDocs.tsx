@@ -65,9 +65,9 @@ export default function SubprocessDocs() {
           <p className="text-muted-foreground mb-4">
             Ingen information hittades för "{subprocess}"
           </p>
-          <Button onClick={() => navigate('/dor-dod')}>
+          <Button onClick={() => navigate('/')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tillbaka till DoR/DoD
+            Tillbaka till översikt
           </Button>
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function SubprocessDocs() {
               Öppna i BPMN
             </Button>
             <Button variant="outline" asChild>
-              <a href={getDocumentationUrl(elementInfo.bpmnFile)} target="_blank" rel="noopener noreferrer">
+              <a href={getDocumentationUrl(elementInfo.bpmnFile, elementInfo.bpmnElementId)} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Full dokumentation
               </a>

@@ -12,6 +12,12 @@ interface ProcessTreeNode {
   bpmnFile: string | null;
   bpmnElementId?: string;
   missingDefinition?: boolean;
+  subprocessDiagnostics?: Array<{
+    severity: 'info' | 'warning' | 'error';
+    code: string;
+    message: string;
+    context?: Record<string, unknown>;
+  }>;
   children: ProcessTreeNode[];
   artifacts?: Array<{
     id: string;
@@ -64,18 +70,6 @@ Deno.serve(async (req) => {
       }
     });
 
-    // List documentation files present in Storage (docs/*.html)
-    let docsFilesSet = new Set<string>();
-    try {
-      const { data: docsList } = await supabase.storage
-        .from('bpmn-files')
-        .list('docs', { limit: 1000 });
-      if (docsList && docsList.length > 0) {
-        docsFilesSet = new Set(docsList.map((d: any) => d.name));
-      }
-    } catch (_) {
-      // ignore storage listing errors; we'll rely on bpmn_docs table only
-    }
 
     // Cache for BPMN XML content
     const bpmnCache = new Map<string, string>();
@@ -96,31 +90,272 @@ Deno.serve(async (req) => {
       }
     };
 
-    // Match subprocess name to existing file (same logic as frontend matchSubprocessFile)
-    const matchSubprocessFile = (callActivityName: string): string | null => {
-      const normalized = callActivityName
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/_/g, '-');
+    type ProcessDefinition = {
+      id: string;
+      name?: string;
+      fileName: string;
+      callActivities: Array<{ id: string; name?: string; calledElement?: string | null }>;
+      tasks: Array<{ id: string; name?: string; type?: string }>;
+    };
 
-      // Try exact match
-      const exactMatch = Array.from(fileNames).find(f => 
-        f.toLowerCase().includes(normalized)
-      );
-      if (exactMatch) return exactMatch;
+    const processDefinitions: ProcessDefinition[] = [];
+    metaByFile.forEach((meta, fileName) => {
+      if (!meta) return;
+      if (Array.isArray(meta.processes) && meta.processes.length > 0) {
+        meta.processes.forEach((proc: any) => {
+          if (proc?.id) {
+            processDefinitions.push({
+              id: proc.id,
+              name: proc.name,
+              fileName,
+              callActivities:
+                proc.callActivities?.map((ca: any) => ({
+                  id: ca.id,
+                  name: ca.name,
+                  calledElement: ca.calledElement ?? null,
+                })) ?? [],
+              tasks:
+                proc.tasks?.map((task: any) => ({
+                  id: task.id,
+                  name: task.name,
+                  type: task.type,
+                })) ?? [],
+            });
+          }
+        });
+      } else if (meta.processId) {
+        processDefinitions.push({
+          id: meta.processId,
+          name: meta.name,
+          fileName,
+          callActivities:
+            meta.callActivities?.map((ca: any) => ({
+              id: ca.id,
+              name: ca.name,
+              calledElement: ca.calledElement ?? null,
+            })) ?? [],
+          tasks:
+            meta.tasks?.map((task: any) => ({
+              id: task.id,
+              name: task.name,
+              type: task.type,
+            })) ?? [],
+        });
+      }
+    });
 
-      // Try partial match - match significant parts of the name
-      const nameParts = normalized.split('-').filter(p => p.length > 3);
-      for (const file of Array.from(fileNames)) {
-        const fileLower = file.toLowerCase();
-        const matchedParts = nameParts.filter(part => fileLower.includes(part));
-        // If more than half of the significant parts match, consider it a match
-        if (matchedParts.length >= Math.ceil(nameParts.length / 2)) {
-          return file;
-        }
+    type SubprocessMatchStatus = 'matched' | 'ambiguous' | 'lowConfidence' | 'unresolved';
+    type Diagnostic = {
+      severity: 'info' | 'warning' | 'error';
+      code: string;
+      message: string;
+      context?: Record<string, unknown>;
+    };
+
+    const matchCallActivityToProcesses = (
+      callActivity: { id: string; name?: string; calledElement?: string | null },
+      candidates: ProcessDefinition[],
+    ): { matchStatus: SubprocessMatchStatus; matchedProcessId?: string; diagnostics: Diagnostic[] } => {
+      const diagnostics: Diagnostic[] = [];
+      const evaluated = candidates
+        .map((candidate) => evaluateCandidate(callActivity, candidate))
+        .filter((candidate): candidate is { processId: string; score: number } => candidate.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      const best = evaluated[0];
+      const second = evaluated[1];
+
+      if (!best) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'NO_MATCH',
+          message: 'Inga potentiella subprocesser hittades för Call Activity.',
+          context: {
+            callActivityId: callActivity.id,
+            calledElement: callActivity.calledElement,
+          },
+        });
+        return { matchStatus: 'unresolved', diagnostics };
       }
 
-      return null; // Not found
+      if (second && second.score >= best.score - 0.1) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'AMBIGUOUS_MATCH',
+          message: 'Flera subprocesser matchar nästan lika bra.',
+          context: {
+            callActivityId: callActivity.id,
+            bestScore: best.score,
+            secondScore: second.score,
+          },
+        });
+        return { matchStatus: 'ambiguous', matchedProcessId: best.processId, diagnostics };
+      }
+      if (best.score < 0.75) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'LOW_CONFIDENCE_MATCH',
+          message: 'Endast lågkonfidensmatchning hittades för Call Activity.',
+          context: {
+            callActivityId: callActivity.id,
+            score: best.score,
+            threshold: 0.75,
+          },
+        });
+        return { matchStatus: 'lowConfidence', matchedProcessId: best.processId, diagnostics };
+      }
+      return { matchStatus: 'matched', matchedProcessId: best.processId, diagnostics };
+    };
+
+    const evaluateCandidate = (
+      callActivity: { id: string; name?: string; calledElement?: string | null },
+      candidate: ProcessDefinition,
+    ): { processId: string; score: number } => {
+      const reasons: string[] = [];
+      let score = 0;
+
+      score = pickBestScore(
+        score,
+        reasons,
+        () => equals(callActivity.calledElement, candidate.id) ? 1 : 0,
+      );
+
+      score = pickBestScore(
+        score,
+        reasons,
+        () => normalizedEquals(callActivity.calledElement, candidate.name) ? 0.96 : 0,
+      );
+
+      score = pickBestScore(
+        score,
+        reasons,
+        () => equals(callActivity.id, candidate.id) ? 0.9 : 0,
+      );
+
+      score = pickBestScore(
+        score,
+        reasons,
+        () => normalizedEquals(callActivity.name, candidate.name) ? 0.85 : 0,
+      );
+
+      const callActivityName = normalize(callActivity.name);
+      const calledElement = normalize(callActivity.calledElement);
+      const candidateProcessName = normalize(candidate.name);
+      const candidateProcessId = normalize(candidate.id);
+      const candidateFileBase = normalize(stripBpmnExtension(candidate.fileName));
+
+      score = pickBestScore(
+        score,
+        reasons,
+        () =>
+          (callActivityName && callActivityName === candidateFileBase) ||
+          (calledElement && calledElement === candidateFileBase)
+            ? 0.8
+            : 0,
+      );
+
+      const fuzzyTargets = [candidateProcessName, candidateFileBase, candidateProcessId].filter(Boolean) as string[];
+      const fuzzyScore = computeFuzzyScore(callActivityName || calledElement || '', fuzzyTargets);
+
+      score = pickBestScore(
+        score,
+        reasons,
+        () => fuzzyScore,
+      );
+
+      return {
+        processId: candidate.id,
+        score,
+      };
+    };
+
+    const matchCallActivity = (
+      callActivity: { id: string; name: string; calledElement?: string | null },
+    ): { status: SubprocessMatchStatus; matchedFile?: string; diagnostics: Diagnostic[] } => {
+      if (processDefinitions.length === 0) {
+        return {
+          status: 'unresolved',
+          diagnostics: [
+            {
+              severity: 'warning',
+              code: 'NO_PROCESSES',
+              message: 'Inga processdefinitioner tillgängliga för matchning.',
+              context: { callActivityId: callActivity.id },
+            },
+          ],
+        };
+      }
+
+      const result = matchCallActivityToProcesses(callActivity, processDefinitions);
+      const matchedFile = result.matchedProcessId
+        ? processDefinitions.find((p) => p.id === result.matchedProcessId)?.fileName
+        : undefined;
+
+      if (result.diagnostics.length) {
+        console.log('[build-process-tree] Subprocess match diagnostics', {
+          callActivityId: callActivity.id,
+          diagnostics: result.diagnostics,
+          status: result.matchStatus,
+        });
+      }
+
+      return {
+        status: result.matchStatus,
+        matchedFile: matchedFile && fileNames.has(matchedFile) ? matchedFile : undefined,
+        diagnostics: result.diagnostics,
+      };
+    };
+
+    const pickBestScore = (
+      currentScore: number,
+      _reasons: string[],
+      scorer: () => number | false,
+    ): number => {
+      const result = scorer();
+      if (typeof result === 'number' && result > currentScore) {
+        return result;
+      }
+      return currentScore;
+    };
+
+    const equals = (a?: string | null, b?: string | null): boolean => Boolean(a) && Boolean(b) && a === b;
+    const normalizedEquals = (a?: string | null, b?: string | null): boolean => normalize(a) === normalize(b);
+    const normalize = (value?: string | null): string => (value ?? '').toLowerCase().trim().replace(/[\s_]+/g, '-');
+    const stripBpmnExtension = (fileName: string): string => fileName.replace(/\.bpmn$/i, '').replace(/^\/?public\//, '');
+    const computeFuzzyScore = (source: string, targets: string[]): number => {
+      if (!source || targets.length === 0) return 0;
+      const sourceNorm = normalize(source);
+      if (!sourceNorm) return 0;
+
+      const diceCoefficient = (a: string, b: string): number => {
+        if (!a || !b) return 0;
+        if (a === b) return 1;
+        const bigrams = (str: string) => {
+          const grams = new Map<string, number>();
+          for (let i = 0; i < str.length - 1; i += 1) {
+            const gram = str.slice(i, i + 2);
+            grams.set(gram, (grams.get(gram) ?? 0) + 1);
+          }
+          return grams;
+        };
+        const aBigrams = bigrams(a);
+        const bBigrams = bigrams(b);
+        let intersection = 0;
+        aBigrams.forEach((count, gram) => {
+          if (bBigrams.has(gram)) {
+            intersection += Math.min(count, bBigrams.get(gram)!);
+          }
+        });
+        const total = a.length - 1 + (b.length - 1);
+        return total === 0 ? 0 : (2 * intersection) / total;
+      };
+
+      const best = targets.reduce((max, target) => {
+        const value = diceCoefficient(sourceNorm, target);
+        return value > max ? value : max;
+      }, 0);
+
+      return best * 0.7;
     };
 
     // Extract CallActivity/SubProcess elements from BpmnMeta
@@ -156,17 +391,27 @@ Deno.serve(async (req) => {
     const parseTaskNodesFromMeta = (fileName: string): Array<{ id: string; name: string; type: ProcessTreeNode['type'] }> => {
       const meta = metaByFile.get(fileName);
       if (!meta || !meta.tasks || !Array.isArray(meta.tasks)) return [];
-      
-      return meta.tasks.map((task: any) => ({
-        id: task.id,
-        name: task.name || task.id,
-        type: task.type.toLowerCase() as ProcessTreeNode['type'], // Convert 'UserTask' -> 'userTask'
-      }));
+
+      const typeMap: Record<string, ProcessTreeNode['type']> = {
+        UserTask: 'userTask',
+        ServiceTask: 'serviceTask',
+        BusinessRuleTask: 'businessRuleTask',
+      };
+
+      return meta.tasks
+        .map((task: any) => ({
+          id: task.id,
+          name: task.name || task.id,
+          type: typeMap[task.type] || 'userTask',
+        }))
+        .filter(task => Boolean(task.id));
     };
 
     // Helper to build artifacts array for a node
     // NOTE: Process tree only shows BPMN structure + documentation
     // DoR/DoD and test artifacts are excluded from the tree view
+    const sanitizeElementId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
+
     const buildArtifacts = (bpmnFile: string, elementId: string) => {
       const artifacts: Array<{
         id: string;
@@ -175,28 +420,18 @@ Deno.serve(async (req) => {
         href?: string;
       }> = [];
 
-      // Documentation link - use Supabase Storage public URL
-      // Documentation is generated per BPMN file, not per element
-      {
-        // Extract base name from BPMN file (e.g., 'mortgage-se-application' from 'mortgage-se-application.bpmn')
-        const baseName = bpmnFile.replace('.bpmn', '');
-        const docFileName = `${baseName}.html`;
-        const docExistsInStorage = docsFilesSet.has(docFileName);
-        
-        if (docExistsInStorage) {
-          // Get public URL from Supabase Storage
-          const { data: publicUrl } = supabase.storage
-            .from('bpmn-files')
-            .getPublicUrl(`docs/${docFileName}`);
-          
-          artifacts.push({
-            id: `${bpmnFile}:${elementId}:doc`,
-            type: 'doc',
-            label: `Dokumentation`,
-            href: publicUrl.publicUrl,
-          });
-        }
-      }
+      const baseName = bpmnFile.replace('.bpmn', '');
+      const safeId = sanitizeElementId(elementId);
+      const docPath = elementId
+        ? `nodes/${baseName}/${safeId}`
+        : baseName;
+
+      artifacts.push({
+        id: `${bpmnFile}:${elementId}:doc`,
+        type: 'doc',
+        label: `Dokumentation`,
+        href: `#/doc-viewer/${encodeURIComponent(docPath)}`,
+      });
 
       return artifacts.length > 0 ? artifacts : undefined;
     };
@@ -226,7 +461,14 @@ Deno.serve(async (req) => {
       // Extract CallActivity/SubProcess elements from BPMN metadata
       const callActivities = extractCallActivitiesFromMeta(fileName);
       for (const ca of callActivities) {
-        const subprocessFile = matchSubprocessFile(ca.name);
+        const link = matchCallActivity({
+          id: ca.id,
+          name: ca.name || ca.id,
+          calledElement: metaByFile.get(fileName)?.callActivities?.find((entry: any) => entry.id === ca.id)?.calledElement ?? null,
+        });
+        const subprocessFile = link.matchedFile && fileNames.has(link.matchedFile)
+          ? link.matchedFile
+          : null;
 
         // Always create a CallActivity node in the parent context with artifacts
         const caNode: ProcessTreeNode = {
@@ -236,10 +478,11 @@ Deno.serve(async (req) => {
           bpmnFile: fileName,
           bpmnElementId: ca.id,
           children: [],
+          subprocessDiagnostics: link.diagnostics,
           artifacts: buildArtifacts(fileName, ca.id),
         };
 
-        if (subprocessFile && fileNames.has(subprocessFile)) {
+        if (link.status === 'matched' && subprocessFile) {
           // Subprocess file found - attach its subtree under the call activity
           const childSubTree = await buildTree(subprocessFile, undefined, false);
           if (childSubTree) {

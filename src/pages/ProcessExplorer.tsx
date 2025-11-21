@@ -4,6 +4,9 @@ import { ProcessTreeD3 } from '@/components/ProcessTreeD3';
 import { ProcessTreeNode, NodeArtifact } from '@/lib/processTree';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
+import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { useAuth } from '@/hooks/useAuth';
+import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 
 interface ProcessExplorerProps {
   onNodeSelect: (bpmnFile: string, elementId?: string) => void;
@@ -11,7 +14,7 @@ interface ProcessExplorerProps {
   selectedElementId?: string;
 }
 
-export default function ProcessExplorer({
+export function ProcessExplorerView({
   onNodeSelect,
   selectedBpmnFile,
   selectedElementId,
@@ -101,6 +104,40 @@ export default function ProcessExplorer({
         onSelectNode={handleNodeSelect}
         onArtifactClick={handleArtifactClick}
       />
+    </div>
+  );
+}
+
+export default function ProcessExplorerPage() {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { hasTests } = useArtifactAvailability();
+
+  const handleViewChange = (view: string) => {
+    if (view === 'diagram') navigate('/');
+    else if (view === 'listvy') navigate('/node-matrix');
+    else if (view === 'tests') navigate('/test-report');
+    else if (view === 'files') navigate('/files');
+    else navigate('/process-explorer');
+  };
+
+  return (
+    <div className="flex min-h-screen bg-background overflow-hidden">
+      <AppHeaderWithTabs
+        userEmail={user?.email ?? ''}
+        currentView="tree"
+        onViewChange={handleViewChange}
+        onOpenVersions={() => navigate('/')}
+        onSignOut={async () => {
+          await signOut();
+          navigate('/auth');
+        }}
+        isTestsEnabled={hasTests}
+      />
+      {/* main med min-w-0 så att D3-trädet kan krympa utan att skapa global horisontell scroll */}
+      <main className="flex-1 min-w-0 overflow-hidden">
+        <ProcessExplorerView onNodeSelect={() => {}} />
+      </main>
     </div>
   );
 }
