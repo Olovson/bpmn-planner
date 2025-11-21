@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { elementResourceMapping } from '@/data/elementResourceMapping';
 import { useTestResults } from '@/hooks/useTestResults';
-import { useTestsForNode } from '@/hooks/useTestsForNode';
 import { useToast } from '@/hooks/use-toast';
 import type { BpmnMapping } from '@/hooks/useBpmnMappings';
 import { useDynamicBpmnFiles, useDynamicDmnFiles } from '@/hooks/useDynamicBpmnFiles';
@@ -15,7 +14,6 @@ import { matchDmnFile } from '@/lib/dmnParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getDocumentationUrl, getTestFileUrl, getNodeDocStoragePath, getNodeTestReportUrl } from '@/lib/artifactUrls';
 import { supabase } from '@/integrations/supabase/client';
-import { testMapping } from '@/data/testMapping';
 import { checkDocsAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
 
 interface RightPanelProps {
@@ -297,30 +295,6 @@ export const RightPanel = ({
   const [loadingArtifacts, setLoadingArtifacts] = useState(false);
 
   const isBusinessRuleTask = selectedElementType === 'bpmn:BusinessRuleTask';
-  const nodeSlug = useMemo(() => {
-    const candidates: string[] = [];
-    if (elementResources?.bpmnFile) {
-      candidates.push(slugFromBpmnFile(elementResources.bpmnFile));
-    }
-    if (displaySubprocessFile) {
-      candidates.push(slugFromBpmnFile(displaySubprocessFile));
-    }
-    if (currentMapping?.jira_name) {
-      candidates.push(slugifyName(currentMapping.jira_name));
-    }
-    if (selectedElementName) {
-      candidates.push(slugifyName(selectedElementName));
-    }
-    const slug = candidates.find(Boolean);
-    return slug || '';
-  }, [elementResources?.bpmnFile, displaySubprocessFile, currentMapping?.jira_name, selectedElementName]);
-  const fallbackTestInfo = nodeSlug ? testMapping[nodeSlug] : undefined;
-
-  const { tests: nodeTests, isLoading: testsLoading } = useTestsForNode({
-    bpmnFile,
-    bpmnElementId: selectedElement,
-    nodeSlug,
-  });
 
   useEffect(() => {
     let cancelled = false;
@@ -567,127 +541,94 @@ export const RightPanel = ({
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Tester</CardTitle>
-                <CardDescription>Sammanfattning av genererade tester och scenarier.</CardDescription>
+                <CardDescription>
+                  Datadriven status för tester kopplade till denna nod.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {testResult ? (
-                  <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Testfil</p>
+                  {testFileUrl ? (
+                    <div className="flex items-center justify-between gap-2 rounded border border-border/60 px-3 py-2 text-xs">
+                      <p className="truncate">
+                        <span className="font-medium">Kopplad testfil</span>
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => openExternal(testFileUrl)}
+                      >
+                        <FileCode className="h-3 w-3 mr-1" />
+                        Öppna
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Ingen automatisk testfil är kopplad till denna nod ännu.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Sammanfattning</p>
+                  {testResult ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Badge variant={testResult.status === 'passing' ? 'default' : 'destructive'}>
                           {testResult.status}
                         </Badge>
-                        <p className="text-sm font-medium">{testResult.node_name || selectedElement}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {testResult.test_count} tester {testResult.duration ? `• ${testResult.duration.toFixed(1)}s` : ''}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Senaste testkörning</p>
-                      <div className="rounded border border-border/60 px-3 py-2 text-xs">
-                        <p className="font-medium">{testResult.report_name || 'Genererad testrapport'}</p>
-                        <p className="text-muted-foreground">
-                          {testResult.executed_at
-                            ? new Date(testResult.executed_at).toLocaleString()
-                            : 'Tidpunkt saknas'}
+                        <p className="text-sm font-medium">
+                          {testResult.node_name || selectedElement}
                         </p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (selectedElement && bpmnFile) {
-                            navigate(getNodeTestReportUrl(bpmnFile, selectedElement).replace('#', ''));
-                          }
-                        }}
-                        className="justify-start gap-2"
-                        title={selectedElement && bpmnFile ? `Visa testrapport för ${selectedElementName || selectedElement}` : 'Välj en nod för att visa testrapport'}
-                      >
-                        <Clock className="h-4 w-4" />
-                        Visa testrapport
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Scenarier</p>
-                      {testResult.scenarios?.length ? (
-                        <div className="space-y-2">
-                          {testResult.scenarios.map((scenario) => (
-                            <div key={scenario.id} className="flex items-start gap-2 rounded bg-muted/40 px-2 py-1 text-xs">
-                              <Badge
-                                variant={scenario.status === 'passing' ? 'default' : 'destructive'}
-                                className="text-[10px] h-4 px-1"
-                              >
-                                {scenario.status}
-                              </Badge>
-                              <div className="flex-1">
-                                <p className="font-medium">{scenario.name}</p>
-                                {scenario.description && (
-                                  <p className="text-muted-foreground text-[10px]">{scenario.description}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Inga scenarier inrapporterade.</p>
-                      )}
-                    </div>
-                  </div>
-                ) : fallbackTestInfo ? (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={fallbackTestInfo.status === 'passing' ? 'default' : 'destructive'}>
-                          {fallbackTestInfo.status}
-                        </Badge>
-                        <p className="text-sm font-medium">{fallbackTestInfo.nodeName || fallbackTestInfo.nodeId}</p>
-                      </div>
                       <p className="text-xs text-muted-foreground">
-                        {fallbackTestInfo.testCount} tester {fallbackTestInfo.duration ? `• ${fallbackTestInfo.duration.toFixed(1)}s` : ''}
+                        {testResult.test_count} tester
+                        {typeof testResult.duration === 'number'
+                          ? ` • ${testResult.duration.toFixed(1)}s`
+                          : ''}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Senast körd:{' '}
+                        {testResult.executed_at
+                          ? new Date(testResult.executed_at).toLocaleString()
+                          : '—'}
                       </p>
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Genererad testfil</p>
-                      <div className="rounded border border-border/60 px-3 py-2 text-xs">
-                        <p className="font-medium">{fallbackTestInfo.testFile || 'tests/' + (fallbackTestInfo.nodeId || '') + '.spec.ts'}</p>
-                        <p className="text-muted-foreground">
-                          {fallbackTestInfo.lastRun ? new Date(fallbackTestInfo.lastRun).toLocaleString() : 'Ej körd ännu'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Scenarier</p>
-                      {fallbackTestInfo.scenarios?.length ? (
-                        <div className="space-y-2">
-                          {fallbackTestInfo.scenarios.map((scenario) => (
-                            <div key={scenario.id} className="flex items-start gap-2 rounded bg-muted/40 px-2 py-1 text-xs">
-                              <Badge
-                                variant={scenario.status === 'passing' ? 'default' : 'destructive'}
-                                className="text-[10px] h-4 px-1"
-                              >
-                                {scenario.status}
-                              </Badge>
-                              <div className="flex-1">
-                                <p className="font-medium">{scenario.name}</p>
-                                {scenario.description && (
-                                  <p className="text-muted-foreground text-[10px]">{scenario.description}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Scenarier genereras när testkörning finns.</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded border border-dashed px-3 py-4 text-xs text-muted-foreground">
-                    Inga testrapporter registrerade ännu.
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {testFileUrl
+                        ? 'En testfil finns, men inga testkörningar är registrerade ännu.'
+                        : 'Inga tester är kopplade till denna nod ännu.'}
+                    </p>
+                  )}
+                </div>
 
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Testrapport</p>
+                  {selectedElement && bpmnFile && (testResult || hasTestReport) ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (selectedElement && bpmnFile) {
+                          navigate(
+                            getNodeTestReportUrl(bpmnFile, selectedElement).replace('#', ''),
+                          );
+                        }
+                      }}
+                      className="justify-start gap-2"
+                      title={`Visa testrapport för ${selectedElementName || selectedElement}`}
+                    >
+                      <Clock className="h-4 w-4" />
+                      Öppna testrapport
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Ingen testrapport är tillgänglig ännu.
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 

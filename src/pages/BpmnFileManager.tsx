@@ -1550,62 +1550,103 @@ export default function BpmnFileManager() {
       {/* main med min-w-0 så att tabeller och paneler inte orsakar global horisontell scroll */}
       <main className="flex-1 min-w-0 overflow-auto">
         <div className="container mx-auto py-8 px-4 relative">
-          <div className="mb-8 flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">BPMN & DMN Filhantering</h1>
-              <p className="text-muted-foreground">
-                Hantera dina BPMN- och DMN-filer med automatisk GitHub-synkning
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => window.location.hash = '/registry-status'}
-                className="gap-2"
-              >
-                <AlertCircle className="w-4 h-4" />
-                Registry Status
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => setShowResetDialog(true)}
-                disabled={isResetting}
-                className="gap-2"
-              >
-                {isResetting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Återställer...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    Reset registret
-                  </>
-                )}
-              </Button>
-              {files.length > 0 && (
-                <Button
-                  variant="destructive"
-                  onClick={() => setShowDeleteAllDialog(true)}
-                  className="gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Radera alla filer
-                </Button>
-              )}
-            </div>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold mb-2">BPMN & DMN Filhantering</h1>
+            <p className="text-muted-foreground">
+              Hantera dina BPMN- och DMN-filer, registrera status och generera artefakter för hela hierarkin.
+            </p>
           </div>
 
-          <Alert className="mb-8">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Vad gör en full reset?</AlertTitle>
-            <AlertDescription>
-              Knappen <strong>Reset registret</strong> stoppar alla pågående jobb, rensar jobbkön (generation_jobs) och tar bort
-              genererade dokument, tester, DoR/DoD, LLM-loggar och mappings. BPMN- och DMN-källfiler sparas. Använd
-              <strong> Radera alla filer</strong> nedan om du även vill radera uppladdade källfiler.
-            </AlertDescription>
-          </Alert>
+          {/* Samlad åtgärdsyta för registret och generering */}
+          <Card className="mb-8">
+            <div className="px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold">Åtgärder</h2>
+                <p className="text-xs text-muted-foreground">
+                  Registrera status, återställ registret, radera alla filer och generera hierarki & dokumentation för alla BPMN-filer.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (window.location.hash = '/registry-status')}
+                  className="gap-2"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  Registry Status
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowResetDialog(true)}
+                  disabled={isResetting}
+                  className="gap-2"
+                >
+                  {isResetting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Återställer...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      Reset registret
+                    </>
+                  )}
+                </Button>
+                {files.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteAllDialog(true)}
+                    className="gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Radera alla filer
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={generatingFile !== null || isLoading || files.length === 0}
+                  onClick={() => handleGenerateAllArtifacts('local')}
+                  className="gap-2"
+                >
+                  {generatingFile && activeOperation === 'local' ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Genererar allt (lokalt)...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-3 h-3" />
+                      Generera allt (lokalt)
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={generatingFile !== null || isLoading || files.length === 0}
+                  onClick={() => handleGenerateAllArtifacts('llm')}
+                  className="gap-2"
+                >
+                  {generatingFile && activeOperation === 'llm' ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Genererar allt (LLM)...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3 h-3" />
+                      Generera allt (LLM)
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </Card>
 
       {/* Upload Area */}
       <Card className="p-8 mb-8">
@@ -2080,60 +2121,13 @@ export default function BpmnFileManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Global actions + Job Queue */}
+      {/* Job Queue */}
       <Card className="mt-6">
         <div className="border-b px-4 py-3">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="font-semibold">Generera hierarki & artefakter</h3>
-              <p className="text-sm text-muted-foreground">
-                Vi identifierar toppnoden och genererar hierarki, dokumentation och tester för alla BPMN-filer.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={generatingFile !== null || isLoading || files.length === 0}
-                onClick={() => handleGenerateAllArtifacts('local')}
-              >
-                {generatingFile && activeOperation === 'local' ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin mr-2" />
-                    Genererar allt (lokalt)...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="w-3 h-3 mr-2" />
-                    Generera allt (lokalt)
-                  </>
-                )}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={generatingFile !== null || isLoading || files.length === 0}
-                onClick={() => handleGenerateAllArtifacts('llm')}
-                className="gap-2"
-              >
-                {generatingFile && activeOperation === 'llm' ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Genererar allt (LLM)...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3 h-3" />
-                    Generera allt (LLM)
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
+          <h3 className="font-semibold">Jobbkön</h3>
         </div>
         <div className="p-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium">Jobbkön</p>
             {generationJobs.length === 0 ? (
               <p className="text-sm text-muted-foreground">Inga jobb har skapats ännu.</p>
             ) : (
@@ -2214,10 +2208,9 @@ export default function BpmnFileManager() {
           </div>
         </div>
       </Card>
-      {/* Files & details */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-        <Card className="lg:col-span-2">
-          <Table>
+      {/* Files */}
+      <Card className="mt-4">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Filnamn</TableHead>
@@ -2359,132 +2352,7 @@ export default function BpmnFileManager() {
             )}
           </TableBody>
         </Table>
-        </Card>
-
-        <Card className="lg:col-span-1">
-          <div className="p-4 space-y-3">
-            <h3 className="font-semibold text-sm">Filinformation</h3>
-            {!selectedFile ? (
-              <p className="text-sm text-muted-foreground">
-                Välj en BPMN-fil i listan för att se detaljer.
-              </p>
-            ) : (
-              <div className="space-y-3 text-sm">
-                <div>
-                  <p className="font-medium flex items-center gap-2">
-                    {formatFileRootName(selectedFile.file_name)}
-                    {selectedFile.file_type === 'bpmn' && (
-                      <Badge variant="outline" className="text-xs">
-                        BPMN
-                      </Badge>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {selectedFile.file_name}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Roll i hierarkin</p>
-                  {selectedFile.file_type === 'bpmn' ? (
-                    <p className="text-sm">
-                      {rootFileName && selectedFile.file_name === rootFileName
-                        ? 'Toppnod (rotprocess)'
-                        : 'Övrig BPMN-fil (subprocess eller fristående)'}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Ej del av BPMN-hierarkin</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Senast uppdaterad</p>
-                  <p className="text-sm">
-                    {formatDate(selectedFile.last_updated_at)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Storlek</p>
-                  <p className="text-sm">{formatBytes(selectedFile.size_bytes)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">GitHub-status</p>
-                  {selectedFile.github_synced ? (
-                    <Badge variant="default" className="gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Synkad
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      Ej synkad
-                    </Badge>
-                  )}
-                </div>
-                {coverageMap?.get(selectedFile.file_name) && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground mb-1">Artefaktstatus</p>
-                    {(() => {
-                      const coverage = coverageMap.get(selectedFile.file_name)!;
-                      return (
-                        <div className="flex flex-col gap-1">
-                          <ArtifactStatusBadge
-                            icon="📄"
-                            label="Dok"
-                            status={coverage.docs.status}
-                            covered={coverage.docs.covered}
-                            total={coverage.docs.total}
-                          />
-                          <ArtifactStatusBadge
-                            icon="🧪"
-                            label="Test"
-                            status={coverage.tests.status}
-                            covered={coverage.tests.covered}
-                            total={coverage.tests.total}
-                          />
-                          <ArtifactStatusBadge
-                            icon="🌐"
-                            label="Hierarki"
-                            status={coverage.hierarchy.status}
-                            covered={coverage.hierarchy.covered}
-                            total={coverage.hierarchy.total}
-                          />
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-                <div className="pt-2 border-t mt-2 space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    Relaterade vyer
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={() => navigate('/')}
-                    >
-                      BPMN-viewer
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={() => navigate('/process-explorer')}
-                    >
-                      Strukturträd
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={() => navigate('/node-matrix')}
-                    >
-                      Listvy
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteFile} onOpenChange={() => setDeleteFile(null)}>
