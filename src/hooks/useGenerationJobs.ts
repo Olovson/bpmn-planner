@@ -8,8 +8,8 @@ export interface GenerationJob {
   id: string;
   file_name: string;
   operation: GenerationOperation;
-  // Optional mode field when tillgänglig i databasen/result
-  mode?: 'local' | 'fast' | 'slow';
+  // Mode sätts antingen via egen kolumn i generation_jobs eller via result.mode
+  mode?: 'local' | 'fast' | 'slow' | null;
   status: GenerationStatus;
   progress: number | null;
   total: number | null;
@@ -33,7 +33,21 @@ export const useGenerationJobs = () => {
 
       if (error) throw error;
 
-      return (data || []) as GenerationJob[];
+      const rows = (data || []) as Array<
+        GenerationJob & { result?: { mode?: 'local' | 'fast' | 'slow' } }
+      >;
+
+      return rows.map((row) => {
+        const derivedMode =
+          row.mode ??
+          (row.result && typeof row.result === 'object'
+            ? (row.result.mode as 'local' | 'fast' | 'slow' | undefined)
+            : undefined);
+        return {
+          ...row,
+          mode: derivedMode ?? null,
+        };
+      });
     },
     refetchInterval: 4000,
   });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -192,6 +192,23 @@ export default function BpmnFileManager() {
   const refreshGenerationJobs = () => {
     queryClient.invalidateQueries({ queryKey: ['generation-jobs'] });
   };
+
+  const latestJobByFile = useMemo(() => {
+    const map = new Map<string, GenerationJob>();
+    for (const job of generationJobs) {
+      const existing = map.get(job.file_name);
+      if (!existing) {
+        map.set(job.file_name, job);
+        continue;
+      }
+      const existingTime = existing.created_at ? new Date(existing.created_at).getTime() : 0;
+      const jobTime = job.created_at ? new Date(job.created_at).getTime() : 0;
+      if (jobTime > existingTime) {
+        map.set(job.file_name, job);
+      }
+    }
+    return map;
+  }, [generationJobs]);
 
   const resetGenerationState = () => {
     cancelGenerationRef.current = false;
@@ -414,7 +431,7 @@ export default function BpmnFileManager() {
 
   const handleGenerateArtifacts = async (
     file: BpmnFile,
-    mode: 'local' | 'llm' = 'llm',
+    mode: GenerationMode = 'fast',
     scope: GenerationScope = 'file',
   ) => {
     if (file.file_type !== 'bpmn') {
@@ -436,7 +453,7 @@ export default function BpmnFileManager() {
 
     const isLocalMode = mode === 'local';
     const generationScope: GenerationScope = scope;
-    const modeLabel = isLocalMode ? 'local' : 'llm';
+    const modeLabel = isLocalMode ? 'local' : mode;
     // Progress model bookkeeping for this run
     let totalGraphFiles = 0;
     let totalGraphNodes = 0;
@@ -446,8 +463,11 @@ export default function BpmnFileManager() {
     let docUploadsPlanned = 0;
     let docUploadsCompleted = 0;
     resetGenerationState();
-    if (!isLocalMode) {
-      persistLlmGenerationMode(llmMode);
+    const effectiveLlmMode: LlmGenerationMode | null = !isLocalMode
+      ? (mode === 'fast' ? 'fast' : 'slow')
+      : null;
+    if (!isLocalMode && effectiveLlmMode) {
+      persistLlmGenerationMode(effectiveLlmMode);
     }
     setGeneratingFile(file.file_name);
     setActiveOperation(isLocalMode ? 'local' : 'llm');
@@ -610,7 +630,11 @@ export default function BpmnFileManager() {
       checkCancellation();
 
       // Generera alla artefakter med hierarkisk analys
-      const generationSourceLabel = isLocalMode ? 'local' : `llm-${llmMode}`;
+      const generationSourceLabel = isLocalMode
+        ? 'local'
+        : mode === 'fast'
+        ? 'llm-fast'
+        : 'llm-slow';
       const result = await generateAllFromBpmnWithGraph(
         file.file_name,
         existingBpmnFiles,
@@ -1126,7 +1150,7 @@ export default function BpmnFileManager() {
             tests: totalTestCount,
             docs: totalDocCount,
             filesAnalyzed,
-            mode: isLocalMode ? 'local' : llmMode,
+            mode: isLocalMode ? 'local' : (mode as 'fast' | 'slow'),
             missingDependencies,
             skippedSubprocesses: skippedList,
           },
@@ -1187,7 +1211,7 @@ export default function BpmnFileManager() {
     });
 
     const effectiveMode: 'local' | 'llm' = generationMode === 'local' ? 'local' : 'llm';
-    await handleGenerateArtifacts(rootFile, effectiveMode, 'file');
+    await handleGenerateArtifacts(rootFile, generationMode, 'file');
   };
 
   const handleBuildHierarchy = async (file: BpmnFile) => {
@@ -2276,6 +2300,7 @@ export default function BpmnFileManager() {
               <TableHead>Senast uppdaterad</TableHead>
               <TableHead>GitHub-status</TableHead>
               <TableHead>Kopplade artefakter</TableHead>
+              <TableHead>Senaste jobb</TableHead>
               <TableHead className="text-right">Åtgärder</TableHead>
             </TableRow>
           </TableHeader>
@@ -2384,6 +2409,41 @@ export default function BpmnFileManager() {
                         </span>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {file.file_type === 'bpmn' && latestJobByFile.get(file.file_name) ? (
+                      (() => {
+                        const job = latestJobByFile.get(file.file_name)!;
+                        const modeLabel =
+                          job.mode === 'fast'
+                            ? 'Fast LLM'
+                            : job.mode === 'slow'
+                            ? 'Slow LLM'
+                            : 'Local';
+                        return (
+                          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                            <span>
+                              Läge:{' '}
+                              <span className="font-medium text-foreground">
+                                {modeLabel}
+                              </span>
+                            </span>
+                            <span>Status: {formatStatusLabel(job.status)}</span>
+                            {job.created_at && (
+                              <span>
+                                Start:{' '}
+                                {new Date(job.created_at).toLocaleTimeString('sv-SE', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Ingen körning</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

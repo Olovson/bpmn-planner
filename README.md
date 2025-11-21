@@ -8,7 +8,7 @@
 - generera dokumentation, tester, DoR/DoD och metadata,
 - och koppla allt till Supabase (tabeller + Storage) på ett spårbart sätt.
 
-Systemet stödjer både **ren lokal generering** (mallar, inga LLM‑anrop) och **LLM‑förstärkt generering** med två lägen (Snabb/Fördjupad).
+Systemet stödjer både **ren lokal generering** (mallar, inga LLM‑anrop) och **LLM‑förstärkt generering** via tre tydliga modes: Local / Fast LLM / Slow LLM.
 
 ---
 
@@ -114,6 +114,21 @@ Hela appen delar samma top‑layout med tabs:
   - **Reset registret** (se nedan),
   - **Radera alla filer** (tar bort källfiler).
 
+På Filer‑sidan finns en **genereringspanel** där du väljer vilket mode som ska användas:
+
+- `Local` – ingen LLM, snabb, mall‑ och schema‑baserad generering.  
+  Bra för utveckling, regression och när du vill se ren struktur utan LLM‑kostnad.
+- `Fast LLM` – använder `gpt-4o-mini` och en minimal prompt.  
+  Ger kortfattad dokumentation (1–2 meningar per sektion) med låg latens.
+- `Slow LLM` – använder `gpt-4o` och de fulla promptarna.  
+  Ger mer komplett, rik dokumentation men med högre latens och tokenkostnad.
+
+Alla tre modes körs via **samma pipeline**:
+
+- samma hierarkibyggnad (`generateAllFromBpmnWithGraph`),
+- samma schema‑ och section‑renderers för HTML,
+- samma jobbkön (`generation_jobs`) och statusmodell.
+
 ---
 
 ## 📄 Dokumentation, tester & DoR/DoD
@@ -130,27 +145,33 @@ Genereringen sker via `generateAllFromBpmnWithGraph`:
    - subprocess‑mappningar (bpmn_dependencies),
    - Jira‑metadata (bpmn_element_mappings).
 
-### Lokalt läge (ingen LLM)
-- Använder bara mallar + BPMN‑hierarki, inga API‑anrop.
+### Lokalt läge (ingen LLM) – `mode = local`
+- Använder bara mallar + BPMN‑hierarki, inga LLM‑anrop.
 - Dokumentation genereras för:
   - alla relevanta noder (CallActivity, UserTask, ServiceTask, BusinessRuleTask),
   - **även när subprocess‑match är olöst**:
     - noden dokumenteras,
-    - en *extra sektion* “Subprocess‑diagnostik” läggs till där t.ex.  
-      `Subprocess match: unresolved • Ingen subprocess kunde matchas …` visas.
+    - en *extra sektion* “Subprocess‑diagnostik” kan beskriva t.ex.  
+      `Subprocess match: unresolved • Ingen subprocess kunde matchas …`.
 - Tester:
   - genereras som Playwright‑skelett per nod, alltid, oberoende av subprocess‑matchning.
 - DoR/DoD:
   - genereras per nod via statiska templates,
   - sparas i `dor_dod_status` med `bpmn_file`, `bpmn_element_id` och `subprocess_name`.
 
-### LLM‑lägen (Snabb / Fördjupad)
-- Aktiveras via UI (LLM‑läge) och styrs av `llmMode`:
-  - Snabb (fast): kortare docs, färre scenarier.
-  - Fördjupad (extended): rikare docs, fler testscenarier.
+### LLM‑lägen – `mode = fast | slow`
+- Aktiveras via genereringspanelen på Filer‑sidan och styrs av `llmMode`:
+  - **Fast LLM (`fast`)**
+    - modell: `gpt-4o-mini`,
+    - korta sektioner (1–2 meningar eller få bullets),
+    - lägre tokenbudget, låg latens.
+  - **Slow LLM (`slow`)**
+    - modell: `gpt-4o`,
+    - rikare sektioner, fler affärs-scenarion,
+    - högre tokenbudget, längre svarstid.
 - Viktigt:
-  - LLM används bara som **författare** för docs/tests, DoR/DoD‑definitioner är statiska.
-  - Om LLM är avstängt eller `useLlm=false` → fallback till mallar direkt.
+  - LLM används bara som **textförfattare** för docs/tests – DoR/DoD‑definitioner är alltid statiska.
+  - Om LLM är avstängt eller `useLlm=false` → generatorn faller tillbaka till samma mall‑/schema‑flöde som i local‑läget.
 
 ---
 
@@ -258,9 +279,9 @@ Nyckeltester:
 
 1. **Filer**: ladda upp BPMN/DMN eller synka från GitHub.
 2. **Build hierarchy**: kör hierarkibyggnad (endast struktur, inga docs/tests).
-3. **Generate artifacts**: kör lokal eller LLM‑generering för vald fil:
-   - dokumentation per nod + fil,
-   - Playwright‑tester,
+3. **Generate artifacts**: kör generering för vald fil i valt mode (Local/Fast LLM/Slow LLM):
+   - dokumentation per nod + fil (HTML enligt schema/SECTION_RENDERERS),
+   - Playwright‑tester (inkl. hierarkiska tester),
    - DoR/DoD,
    - mappings, node‑test‑länkar, m.m.
 4. **Utforska**:
