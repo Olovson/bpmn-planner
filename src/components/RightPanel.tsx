@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getDocumentationUrl, getTestFileUrl, getNodeDocStoragePath, getNodeTestReportUrl } from '@/lib/artifactUrls';
 import { supabase } from '@/integrations/supabase/client';
 import { testMapping } from '@/data/testMapping';
-import { checkDocsAvailable, checkDorDodAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
+import { checkDocsAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
 
 interface RightPanelProps {
   selectedElement?: string | null;
@@ -344,7 +344,6 @@ export const RightPanel = ({
         });
         setHasDocs(Boolean(mapping?.confluence_url));
         setHasTestReport(Boolean(mapping?.test_report_url));
-        setHasDorDod(false);
         setLoadingArtifacts(false);
         return;
       }
@@ -389,7 +388,6 @@ export const RightPanel = ({
         if (!cancelled) {
           setHasDocs(Boolean(mapping?.confluence_url));
           setHasTestReport(Boolean(mapping?.test_report_url));
-          setHasDorDod(false);
           setLoadingArtifacts(false);
         }
       }

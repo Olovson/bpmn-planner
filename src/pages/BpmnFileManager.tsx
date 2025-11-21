@@ -96,7 +96,7 @@ export default function BpmnFileManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
-  const { hasDorDod, hasTests } = useArtifactAvailability();
+  const { hasTests } = useArtifactAvailability();
   const [dragActive, setDragActive] = useState(false);
   const [deleteFile, setDeleteFile] = useState<BpmnFile | null>(null);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
@@ -143,6 +143,8 @@ export default function BpmnFileManager() {
   const [llmMode, setLlmMode] = useState<LlmGenerationMode>(() => getLlmGenerationMode());
   const llmModeDetails = getLlmModeConfig(llmMode);
   const navigate = useNavigate();
+  const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
+  const [rootFileName, setRootFileName] = useState<string | null>(null);
 
   const handleViewChange = (view: string) => {
     if (view === 'diagram') navigate('/');
@@ -157,6 +159,33 @@ export default function BpmnFileManager() {
   useEffect(() => {
     persistLlmGenerationMode(llmMode);
   }, [llmMode]);
+
+  // Resolve root BPMN-fil för att kunna markera toppnod i fil-listan och detaljpanelen.
+  useEffect(() => {
+    let cancelled = false;
+    const resolveRootForUi = async () => {
+      if (!files.length) {
+        if (!cancelled) setRootFileName(null);
+        return;
+      }
+      try {
+        const root = await resolveRootBpmnFile();
+        if (!cancelled) {
+          setRootFileName(root?.file_name ?? null);
+        }
+      } catch (error) {
+        console.error('Failed to resolve root BPMN file for UI:', error);
+        if (!cancelled) {
+          setRootFileName(null);
+        }
+      }
+    };
+    resolveRootForUi();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
 
   const refreshGenerationJobs = () => {
     queryClient.invalidateQueries({ queryKey: ['generation-jobs'] });
@@ -425,8 +454,8 @@ export default function BpmnFileManager() {
     );
     setOverlayDescription(
       isLocalMode
-        ? 'Skapar dokumentation, tester och DoR/DoD med lokala mallar. Kör separat LLM-läge när du behöver förbättrad text.'
-        : `LLM-läge: ${llmModeDetails.label}. ${llmModeDetails.runHint} Vi uppdaterar dokumentation, DoR/DoD och testfiler.`
+        ? 'Skapar dokumentation och tester med lokala mallar. Kör separat LLM-läge när du behöver förbättrad text.'
+        : `LLM-läge: ${llmModeDetails.label}. ${llmModeDetails.runHint} Vi uppdaterar dokumentation och testfiler.`
     );
     setShowTransitionOverlay(true);
     
@@ -527,7 +556,7 @@ export default function BpmnFileManager() {
         // Visa tydligt meddelande och avbryt innan vi börjar skriva något
         toast({
           title: 'Inloggning krävs',
-          description: 'Du är inte inloggad i Supabase. Logga in via Auth-sidan för att kunna generera och spara dokumentation, tester och DoR/DoD till registret.',
+          description: 'Du är inte inloggad i Supabase. Logga in via Auth-sidan för att kunna generera och spara dokumentation och tester till registret.',
           variant: 'destructive',
         });
 
@@ -603,7 +632,7 @@ export default function BpmnFileManager() {
           variant: 'destructive',
         });
       }
-      // Spara DoR/DoD till databasen
+      // Spara DoR/DoD till databasen (endast för dokumentations-HTML, ingen separat UI-visning)
       let dorDodCount = 0;
       const detailedDorDod: Array<{ subprocess: string; category: string; type: string; text: string }> = [];
       
@@ -1805,7 +1834,7 @@ export default function BpmnFileManager() {
 
           <div className="space-y-6 mt-4">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="border rounded-lg p-4 bg-card">
                 <div className="flex items-center gap-2 mb-2">
                   <FileText className="h-5 w-5 text-blue-500" />
@@ -1813,15 +1842,6 @@ export default function BpmnFileManager() {
                 </div>
                 <div className="text-2xl font-bold">{generationResult?.filesAnalyzed.length || 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">Analyserade BPMN-filer</p>
-              </div>
-
-              <div className="border rounded-lg p-4 bg-card">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className="h-5 w-5 text-purple-500" />
-                  <h4 className="font-semibold text-sm">DoR/DoD</h4>
-                </div>
-                <div className="text-2xl font-bold">{generationResult?.dorDodCriteria.length || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Kriterier skapade</p>
               </div>
 
               <div className="border rounded-lg p-4 bg-card">
@@ -1864,7 +1884,7 @@ export default function BpmnFileManager() {
                   Saknade subprocesser ({generationResult.skippedSubprocesses.length})
                 </h3>
                 <p className="text-sm text-amber-800 mb-2">
-                  Dessa Call Activities saknar BPMN-fil. Dokumentation, tester och DoR/DoD genererades inte för dem.
+                  Dessa Call Activities saknar BPMN-fil. Dokumentation och tester genererades inte för dem.
                 </p>
                 <ul className="text-sm space-y-1 text-amber-800">
                   {generationResult.skippedSubprocesses.slice(0, 15).map((subprocess, i) => (
@@ -1876,31 +1896,6 @@ export default function BpmnFileManager() {
                     ...och {generationResult.skippedSubprocesses.length - 15} till
                   </p>
                 )}
-              </div>
-            )}
-
-            {/* DoR/DoD Criteria */}
-            {generationResult && generationResult.dorDodCriteria.length > 0 && (
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  DoR/DoD Kriterier ({generationResult.dorDodCriteria.length})
-                </h3>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {generationResult.dorDodCriteria.slice(0, 20).map((criterion, i) => (
-                    <div key={i} className="text-sm p-2 bg-muted/30 rounded">
-                      <div className="font-medium">{criterion.subprocess}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {criterion.type.toUpperCase()} - {criterion.category}: {criterion.text}
-                      </div>
-                    </div>
-                  ))}
-                  {generationResult.dorDodCriteria.length > 20 && (
-                    <p className="text-xs text-muted-foreground italic">
-                      ...och {generationResult.dorDodCriteria.length - 20} fler
-                    </p>
-                  )}
-                </div>
               </div>
             )}
 
@@ -2090,12 +2085,9 @@ export default function BpmnFileManager() {
         <div className="border-b px-4 py-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="font-semibold">Jobbkön</h3>
+              <h3 className="font-semibold">Generera hierarki & artefakter</h3>
               <p className="text-sm text-muted-foreground">
-                Senaste körningar och deras status
-                <span className="block text-xs text-muted-foreground/80">
-                  En full reset stoppar och rensar jobbkön, så listan ska vara tom efter att registret har tömts.
-                </span>
+                Vi identifierar toppnoden och genererar hierarki, dokumentation och tester för alla BPMN-filer.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -2140,91 +2132,97 @@ export default function BpmnFileManager() {
           </div>
         </div>
         <div className="p-4">
-          {generationJobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Inga jobb har skapats ännu.</p>
-          ) : (
-            <ul className="space-y-3">
-              {generationJobs.map(job => (
-                <li
-                  key={job.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between gap-2 border rounded-lg p-3"
-                >
-                  {(() => {
-                    const jobResult = (job.result || {}) as {
-                      docs?: number;
-                      tests?: number;
-                      dorDod?: number;
-                      filesAnalyzed?: string[];
-                      mode?: string;
-                    };
-                    return (
-                      <>
-                        <div>
-                          <div className="text-sm font-semibold">{job.file_name}</div>
-                          <p className="text-xs text-muted-foreground">
-                            {formatOperationLabel(job.operation)} • Start: {job.created_at ? new Date(job.created_at).toLocaleTimeString('sv-SE') : 'okänd'}
-                          </p>
-                          <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                            {job.status === 'running' && job.total ? (
-                              <p>Steg {job.progress ?? 0} av {job.total}</p>
-                            ) : null}
-                            {job.status === 'succeeded' && (
-                              <p>
-                                {jobResult.docs ?? 0} dok · {jobResult.tests ?? 0} tester · {jobResult.dorDod ?? 0} DoR/DoD
-                              </p>
-                            )}
-                            {jobResult.filesAnalyzed && jobResult.filesAnalyzed.length > 0 && (
-                              <p className="line-clamp-1">
-                                Filer: {jobResult.filesAnalyzed.join(', ')}
-                              </p>
-                            )}
-                            {Array.isArray(jobResult.skippedSubprocesses) && jobResult.skippedSubprocesses.length > 0 && (
-                              <p className="text-amber-600">
-                                Hoppade över {jobResult.skippedSubprocesses.length} subprocesser
-                              </p>
-                            )}
-                            {jobResult.mode && (
-                              <p>Läge: {jobResult.mode}</p>
-                            )}
-                            {job.error && (
-                              <p className="text-red-600">{job.error}</p>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Jobbkön</p>
+            {generationJobs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Inga jobb har skapats ännu.</p>
+            ) : (
+              <ul className="space-y-3">
+                {generationJobs.map(job => (
+                  <li
+                    key={job.id}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-2 border rounded-lg p-3"
+                  >
+                    {(() => {
+                      const jobResult = (job.result || {}) as {
+                        docs?: number;
+                        tests?: number;
+                        dorDod?: number;
+                        filesAnalyzed?: string[];
+                        mode?: string;
+                        skippedSubprocesses?: string[];
+                      };
+                      return (
+                        <>
+                          <div>
+                            <div className="text-sm font-semibold">{job.file_name}</div>
+                            <p className="text-xs text-muted-foreground">
+                              {formatOperationLabel(job.operation)} • Start: {job.created_at ? new Date(job.created_at).toLocaleTimeString('sv-SE') : 'okänd'}
+                            </p>
+                            <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                              {job.status === 'running' && job.total ? (
+                                <p>Steg {job.progress ?? 0} av {job.total}</p>
+                              ) : null}
+                              {job.status === 'succeeded' && (
+                                <p>
+                                  {jobResult.docs ?? 0} dok · {jobResult.tests ?? 0} tester
+                                </p>
+                              )}
+                              {jobResult.filesAnalyzed && jobResult.filesAnalyzed.length > 0 && (
+                                <p className="line-clamp-1">
+                                  Filer: {jobResult.filesAnalyzed.join(', ')}
+                                </p>
+                              )}
+                              {Array.isArray(jobResult.skippedSubprocesses) && jobResult.skippedSubprocesses.length > 0 && (
+                                <p className="text-amber-600">
+                                  Hoppade över {jobResult.skippedSubprocesses.length} subprocesser
+                                </p>
+                              )}
+                              {jobResult.mode && (
+                                <p>Läge: {jobResult.mode}</p>
+                              )}
+                              {job.error && (
+                                <p className="text-red-600">{job.error}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full border ${getStatusBadgeClasses(job.status)}`}
+                            >
+                              {formatStatusLabel(job.status)}
+                            </span>
+                            {job.status === 'running' && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                            {(job.status === 'running' || job.status === 'pending') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => abortGenerationJob(job)}
+                              >
+                                Stoppa
+                              </Button>
                             )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full border ${getStatusBadgeClasses(job.status)}`}
-                          >
-                            {formatStatusLabel(job.status)}
-                          </span>
-                          {job.status === 'running' && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                          {(job.status === 'running' || job.status === 'pending') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => abortGenerationJob(job)}
-                            >
-                              Stoppa
-                            </Button>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </li>
-              ))}
-            </ul>
-          )}
+                        </>
+                      );
+                    })()}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </Card>
-      {/* Files Table */}
-      <Card>
-        <Table>
+      {/* Files & details */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+        <Card className="lg:col-span-2">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Filnamn</TableHead>
               <TableHead>Typ</TableHead>
+              <TableHead>Roll</TableHead>
               <TableHead>Storlek</TableHead>
               <TableHead>Senast uppdaterad</TableHead>
               <TableHead>GitHub-status</TableHead>
@@ -2235,19 +2233,23 @@ export default function BpmnFileManager() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   Laddar filer...
                 </TableCell>
               </TableRow>
             ) : files.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Inga filer uppladdade ännu
                 </TableCell>
               </TableRow>
             ) : (
               files.map((file) => (
-                <TableRow key={file.id}>
+                <TableRow
+                  key={file.id}
+                  className={selectedFile?.id === file.id ? 'bg-muted/40' : ''}
+                  onClick={() => setSelectedFile(file)}
+                >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4" />
@@ -2267,6 +2269,22 @@ export default function BpmnFileManager() {
                     <Badge variant="outline">
                       {file.file_type.toUpperCase()}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {file.file_type === 'bpmn' ? (
+                      rootFileName && file.file_name === rootFileName ? (
+                        <Badge variant="default" className="gap-1 text-xs">
+                          <GitBranch className="w-3 h-3" />
+                          Toppnod
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          Övrig BPMN-fil
+                        </Badge>
+                      )
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>{formatBytes(file.size_bytes)}</TableCell>
                   <TableCell className="text-sm">
@@ -2302,13 +2320,6 @@ export default function BpmnFileManager() {
                             status={coverageMap.get(file.file_name)!.tests.status}
                             covered={coverageMap.get(file.file_name)!.tests.covered}
                             total={coverageMap.get(file.file_name)!.tests.total}
-                          />
-                          <ArtifactStatusBadge
-                            icon="✅"
-                            label="DoR/DoD"
-                            status={coverageMap.get(file.file_name)!.dorDod.status}
-                            covered={coverageMap.get(file.file_name)!.dorDod.covered}
-                            total={coverageMap.get(file.file_name)!.dorDod.total}
                           />
                           <ArtifactStatusBadge
                             icon="🌐"
@@ -2348,7 +2359,132 @@ export default function BpmnFileManager() {
             )}
           </TableBody>
         </Table>
-      </Card>
+        </Card>
+
+        <Card className="lg:col-span-1">
+          <div className="p-4 space-y-3">
+            <h3 className="font-semibold text-sm">Filinformation</h3>
+            {!selectedFile ? (
+              <p className="text-sm text-muted-foreground">
+                Välj en BPMN-fil i listan för att se detaljer.
+              </p>
+            ) : (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="font-medium flex items-center gap-2">
+                    {formatFileRootName(selectedFile.file_name)}
+                    {selectedFile.file_type === 'bpmn' && (
+                      <Badge variant="outline" className="text-xs">
+                        BPMN
+                      </Badge>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {selectedFile.file_name}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Roll i hierarkin</p>
+                  {selectedFile.file_type === 'bpmn' ? (
+                    <p className="text-sm">
+                      {rootFileName && selectedFile.file_name === rootFileName
+                        ? 'Toppnod (rotprocess)'
+                        : 'Övrig BPMN-fil (subprocess eller fristående)'}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Ej del av BPMN-hierarkin</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Senast uppdaterad</p>
+                  <p className="text-sm">
+                    {formatDate(selectedFile.last_updated_at)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Storlek</p>
+                  <p className="text-sm">{formatBytes(selectedFile.size_bytes)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">GitHub-status</p>
+                  {selectedFile.github_synced ? (
+                    <Badge variant="default" className="gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Synkad
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      Ej synkad
+                    </Badge>
+                  )}
+                </div>
+                {coverageMap?.get(selectedFile.file_name) && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground mb-1">Artefaktstatus</p>
+                    {(() => {
+                      const coverage = coverageMap.get(selectedFile.file_name)!;
+                      return (
+                        <div className="flex flex-col gap-1">
+                          <ArtifactStatusBadge
+                            icon="📄"
+                            label="Dok"
+                            status={coverage.docs.status}
+                            covered={coverage.docs.covered}
+                            total={coverage.docs.total}
+                          />
+                          <ArtifactStatusBadge
+                            icon="🧪"
+                            label="Test"
+                            status={coverage.tests.status}
+                            covered={coverage.tests.covered}
+                            total={coverage.tests.total}
+                          />
+                          <ArtifactStatusBadge
+                            icon="🌐"
+                            label="Hierarki"
+                            status={coverage.hierarchy.status}
+                            covered={coverage.hierarchy.covered}
+                            total={coverage.hierarchy.total}
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+                <div className="pt-2 border-t mt-2 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Relaterade vyer
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => navigate('/')}
+                    >
+                      BPMN-viewer
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => navigate('/process-explorer')}
+                    >
+                      Strukturträd
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => navigate('/node-matrix')}
+                    >
+                      Listvy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteFile} onOpenChange={() => setDeleteFile(null)}>

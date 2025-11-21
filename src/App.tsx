@@ -10,7 +10,6 @@ import BpmnFileManager from "./pages/BpmnFileManager";
 import RegistryStatus from "./pages/RegistryStatus";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import SubprocessDocs from "./pages/SubprocessDocs";
 import NodeMatrix from "./pages/NodeMatrix";
 import ProcessExplorer from "./pages/ProcessExplorer";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -32,7 +31,6 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/bpmn/:filename" element={<Index />} />
               <Route path="/process-explorer" element={<ProcessExplorer />} />
-              <Route path="/subprocess/:subprocess" element={<SubprocessDocs />} />
               <Route path="/node-matrix" element={<NodeMatrix />} />
               <Route path="/test-report" element={<TestReport />} />
               <Route path="/node-tests" element={<NodeTestsPage />} />

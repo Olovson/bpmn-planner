@@ -232,7 +232,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     };
   }, [loadSubProcess]);
 
-  // Listen for highlight requests from DoR/DoD pages
+  // Listen for highlight requests (e.g. from registry or other views)
   useEffect(() => {
     const handleHighlightElement = (event: CustomEvent) => {
       const { elementId, bpmnFile: targetFile } = event.detail;
@@ -253,7 +253,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
             if (!element) {
               toast({
                 title: 'Nod saknas i BPMN',
-                description: 'Den här DoR/DoD-posten refererar till en nod som inte längre finns i BPMN-diagrammet.',
+                description: 'Den här referensen pekar på en nod som inte längre finns i BPMN-diagrammet.',
                 variant: 'destructive',
               });
               return;
@@ -277,7 +277,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         if (!element) {
           toast({
             title: 'Nod saknas i BPMN',
-            description: 'Den här DoR/DoD-posten refererar till en nod som inte längre finns i BPMN-diagrammet.',
+            description: 'Den här referensen pekar på en nod som inte längre finns i BPMN-diagrammet.',
             variant: 'destructive',
           });
           return;

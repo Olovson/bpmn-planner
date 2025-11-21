@@ -31,7 +31,7 @@ export function ProcessExplorerView({
 
   const handleArtifactClick = (artifact: NodeArtifact, node: ProcessTreeNode) => {
     if (artifact.href) {
-      // Check if it's a HashRouter internal link (DoR/DoD)
+      // Interna HashRouter-länkar (t.ex. doc-viewer) hanteras via React Router
       if (artifact.href.startsWith('#/')) {
         // Remove the # and navigate using React Router
         const path = artifact.href.substring(1);

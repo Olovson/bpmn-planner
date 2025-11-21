@@ -408,7 +408,6 @@ const NodeMatrix = () => {
                 <TableHead>Testfil</TableHead>
                 <TableHead>Jira Namn</TableHead>
                 <TableHead>Jira Typ</TableHead>
-                <TableHead>DoR/DoD</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -556,9 +555,6 @@ const NodeMatrix = () => {
                         {node.jiraType === 'epic' && 'Epic'}
                         {!node.jiraType && <span className="text-muted-foreground">—</span>}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">Se dokumentation</span>
                     </TableCell>
                   </TableRow>
                 );
