@@ -193,22 +193,149 @@ export default function BpmnFileManager() {
     queryClient.invalidateQueries({ queryKey: ['generation-jobs'] });
   };
 
-  const latestJobByFile = useMemo(() => {
-    const map = new Map<string, GenerationJob>();
+  type ArtifactStatus = 'missing' | 'complete' | 'partial' | 'error';
+  interface ArtifactSnapshot {
+    status: ArtifactStatus;
+    mode: 'local' | 'fast' | 'slow' | null;
+    generatedAt: string | null;
+    jobId: string | null;
+    outdated: boolean;
+  }
+  interface FileArtifactStatusSummary {
+    fileName: string;
+    doc: ArtifactSnapshot;
+    test: ArtifactSnapshot;
+    hierarchy: ArtifactSnapshot;
+    latestJob: {
+      jobId: string;
+      mode: 'local' | 'fast' | 'slow' | null;
+      status: GenerationStatus;
+      finishedAt: string | null;
+      startedAt: string | null;
+    } | null;
+  }
+
+  const artifactStatusByFile = useMemo(() => {
+    const map = new Map<string, FileArtifactStatusSummary>();
+    const jobsByFile = new Map<string, GenerationJob[]>();
+
     for (const job of generationJobs) {
-      const existing = map.get(job.file_name);
-      if (!existing) {
-        map.set(job.file_name, job);
-        continue;
-      }
-      const existingTime = existing.created_at ? new Date(existing.created_at).getTime() : 0;
-      const jobTime = job.created_at ? new Date(job.created_at).getTime() : 0;
-      if (jobTime > existingTime) {
-        map.set(job.file_name, job);
-      }
+      const list = jobsByFile.get(job.file_name) ?? [];
+      list.push(job);
+      jobsByFile.set(job.file_name, list);
     }
+
+    const resolveLatestJob = (fileName: string): GenerationJob | null => {
+      const list = jobsByFile.get(fileName);
+      if (!list || list.length === 0) return null;
+      return list.reduce((latest, job) => {
+        const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
+        const jobTime = job.created_at ? new Date(job.created_at).getTime() : 0;
+        return jobTime > latestTime ? job : latest;
+      }, list[0]);
+    };
+
+    const resolveLatestGenerationJob = (fileName: string): GenerationJob | null => {
+      const list = jobsByFile.get(fileName);
+      if (!list || list.length === 0) return null;
+      const candidates = list.filter((job) =>
+        job.operation === 'local_generation' || job.operation === 'llm_generation'
+      );
+      if (candidates.length === 0) return null;
+      return candidates.reduce((latest, job) => {
+        const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
+        const jobTime = job.created_at ? new Date(job.created_at).getTime() : 0;
+        return jobTime > latestTime ? job : latest;
+      }, candidates[0]);
+    };
+
+    for (const file of files) {
+      if (file.file_type !== 'bpmn') continue;
+
+      const coverage = coverageMap?.get(file.file_name);
+      const latestJob = resolveLatestJob(file.file_name);
+      const latestGenJob = resolveLatestGenerationJob(file.file_name);
+
+      const computeStatus = (covered: number, total: number): ArtifactStatus => {
+        if (total === 0) return 'missing';
+        if (covered === 0) return 'missing';
+        if (covered === total) return 'complete';
+        return 'partial';
+      };
+
+      const lastChange = file.last_updated_at ? new Date(file.last_updated_at).getTime() : 0;
+      const genTime = latestGenJob?.finished_at
+        ? new Date(latestGenJob.finished_at).getTime()
+        : latestGenJob?.created_at
+        ? new Date(latestGenJob.created_at).getTime()
+        : 0;
+
+      const baseMode = latestGenJob?.mode ?? null;
+      const baseGeneratedAt = latestGenJob?.finished_at ?? latestGenJob?.created_at ?? null;
+      const outdatedBase = !!(baseGeneratedAt && lastChange && lastChange > genTime);
+
+      const docsCovered = coverage?.docs.covered ?? 0;
+      const docsTotal = coverage?.docs.total ?? 0;
+      const testsCovered = coverage?.tests.covered ?? 0;
+      const testsTotal = coverage?.tests.total ?? 0;
+      const hierarchyCovered = coverage?.hierarchy.covered ?? 0;
+
+      const docStatus: ArtifactStatus = latestGenJob && latestGenJob.status === 'failed'
+        ? 'error'
+        : computeStatus(docsCovered, docsTotal);
+      const testStatus: ArtifactStatus = latestGenJob && latestGenJob.status === 'failed'
+        ? 'error'
+        : computeStatus(testsCovered, testsTotal);
+      const hierarchyStatus: ArtifactStatus =
+        latestGenJob && latestGenJob.status === 'failed'
+          ? 'error'
+          : hierarchyCovered > 0
+          ? 'complete'
+          : 'missing';
+
+      const doc: ArtifactSnapshot = {
+        status: docStatus,
+        mode: baseMode,
+        generatedAt: baseGeneratedAt,
+        jobId: latestGenJob?.id ?? null,
+        outdated: outdatedBase,
+      };
+      const test: ArtifactSnapshot = {
+        status: testStatus,
+        mode: baseMode,
+        generatedAt: baseGeneratedAt,
+        jobId: latestGenJob?.id ?? null,
+        outdated: outdatedBase,
+      };
+      const hierarchy: ArtifactSnapshot = {
+        status: hierarchyStatus,
+        mode: baseMode,
+        generatedAt: baseGeneratedAt,
+        jobId: latestGenJob?.id ?? null,
+        outdated: outdatedBase,
+      };
+
+      const latestJobSummary = latestJob
+        ? {
+            jobId: latestJob.id,
+            mode: latestJob.mode ?? null,
+            status: latestJob.status,
+            finishedAt: latestJob.finished_at,
+            startedAt: latestJob.started_at,
+          }
+        : null;
+
+      map.set(file.file_name, {
+        fileName: file.file_name,
+        doc,
+        test,
+        hierarchy,
+        latestJob: latestJobSummary,
+      });
+    }
+
     return map;
-  }, [generationJobs]);
+  }, [files, coverageMap, generationJobs]);
 
   const resetGenerationState = () => {
     cancelGenerationRef.current = false;
@@ -228,7 +355,11 @@ export default function BpmnFileManager() {
     setGenerationProgress({ step, detail });
   };
 
-  const createGenerationJob = async (fileName: string, operation: GenerationOperation) => {
+  const createGenerationJob = async (
+    fileName: string,
+    operation: GenerationOperation,
+    mode?: 'local' | 'fast' | 'slow',
+  ) => {
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
     if (!userData.user) {
@@ -240,6 +371,7 @@ export default function BpmnFileManager() {
       .insert({
         file_name: fileName,
         operation,
+        mode: mode || null,
         created_by: userData.user.id,
       })
       .select()
@@ -589,7 +721,7 @@ export default function BpmnFileManager() {
       }
       checkCancellation();
       const jobOperation: GenerationOperation = isLocalMode ? 'local_generation' : 'llm_generation';
-      activeJob = await createGenerationJob(file.file_name, jobOperation);
+      activeJob = await createGenerationJob(file.file_name, jobOperation, mode);
       checkCancellation();
       await setJobStatus(activeJob.id, 'running', {
         started_at: new Date().toISOString(),
@@ -1210,8 +1342,34 @@ export default function BpmnFileManager() {
       description: `Genererar hierarki och artefakter utifrån ${rootFile.file_name} för alla BPMN-filer.`,
     });
 
-    const effectiveMode: 'local' | 'llm' = generationMode === 'local' ? 'local' : 'llm';
     await handleGenerateArtifacts(rootFile, generationMode, 'file');
+  };
+
+  const handleGenerateSelectedFile = async () => {
+    if (!selectedFile) {
+      toast({
+        title: 'Ingen fil vald',
+        description: 'Välj en fil i tabellen först.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (selectedFile.file_type !== 'bpmn') {
+      toast({
+        title: 'Ej stödd filtyp',
+        description: 'Endast BPMN-filer stöds för generering',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Startar generering',
+      description: `Genererar artefakter för ${selectedFile.file_name} med ${generationMode === 'local' ? 'Local' : generationMode === 'fast' ? 'Fast LLM' : 'Slow LLM'} läge.`,
+    });
+
+    await handleGenerateArtifacts(selectedFile, generationMode, 'file');
   };
 
   const handleBuildHierarchy = async (file: BpmnFile) => {
@@ -1584,88 +1742,6 @@ export default function BpmnFileManager() {
             </p>
           </div>
 
-          {/* Samlad åtgärdsyta för registret och generering */}
-          <Card className="mb-8">
-            <div className="px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-sm font-semibold">Åtgärder</h2>
-                <p className="text-xs text-muted-foreground">
-                  Registrera status, återställ registret, radera alla filer och generera hierarki & dokumentation för alla BPMN-filer.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => (window.location.hash = '/registry-status')}
-                  className="gap-2"
-                >
-                  <AlertCircle className="w-4 h-4" />
-                  Registry Status
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowResetDialog(true)}
-                  disabled={isResetting}
-                  className="gap-2"
-                >
-                  {isResetting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Återställer...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4" />
-                      Reset registret
-                    </>
-                  )}
-                </Button>
-                {files.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setShowDeleteAllDialog(true)}
-                    className="gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Radera alla filer
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={generatingFile !== null || isLoading || files.length === 0}
-                  onClick={handleGenerateAllArtifacts}
-                  className="gap-2"
-                >
-                  {generatingFile ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      {activeOperation === 'local'
-                        ? 'Genererar allt (Local)...'
-                        : 'Genererar allt (LLM)...'}
-                    </>
-                  ) : (
-                    <>
-                      {generationMode === 'local' ? (
-                        <FileText className="w-3 h-3" />
-                      ) : (
-                        <Sparkles className="w-3 h-3" />
-                      )}
-                      {generationMode === 'local'
-                        ? 'Generera allt (Local)'
-                        : generationMode === 'fast'
-                        ? 'Generera allt (Fast LLM)'
-                        : 'Generera allt (Slow LLM)'}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </Card>
-
       {/* Upload Area */}
       <Card className="p-8 mb-8">
         <div className="flex items-center justify-between mb-6">
@@ -1725,29 +1801,65 @@ export default function BpmnFileManager() {
       </Card>
       
       <Card className="p-6 mb-8 border-dashed border-muted-foreground/40 bg-muted/10">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="text-lg font-semibold">Genereringsläge</h2>
-              <Badge variant="outline">
-                {generationMode === 'local'
-                  ? 'Local (ingen LLM)'
-                  : generationMode === 'fast'
-                  ? LLM_MODE_OPTIONS.find((o) => o.value === 'fast')?.label ?? 'Fast LLM'
-                  : LLM_MODE_OPTIONS.find((o) => o.value === 'slow')?.label ?? 'Slow LLM'}
-              </Badge>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <h2 className="text-lg font-semibold">Genereringsläge</h2>
+                <Badge variant="outline">
+                  {generationMode === 'local'
+                    ? 'Local'
+                    : generationMode === 'fast'
+                    ? 'Fast LLM'
+                    : 'Slow LLM'}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Välj hur dokumentation och tester ska genereras.
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {generationMode === 'local'
-                ? 'Snabb, deterministisk mallgenerering utan LLM. Bra för utveckling, regression och strukturvalidering.'
-                : llmModeDetails.description}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {generationMode === 'local'
-                ? 'Rekommenderas när du vill testa generatorn utan LLM-kostnad.'
-                : llmModeDetails.speedCaption}
-            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => (window.location.hash = '/registry-status')}
+                className="gap-2"
+              >
+                <AlertCircle className="w-4 h-4" />
+                Registry Status
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowResetDialog(true)}
+                disabled={isResetting}
+                className="gap-2"
+              >
+                {isResetting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Återställer...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Reset registret
+                  </>
+                )}
+              </Button>
+              {files.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteAllDialog(true)}
+                  className="gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Radera alla filer
+                </Button>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -1778,41 +1890,60 @@ export default function BpmnFileManager() {
               </Button>
             ))}
           </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between mt-3 gap-2">
-          <p className="text-xs text-muted-foreground">
-            {generationMode === 'local'
-              ? 'Läget använder bara lokala mallar. Du kan senare köra Fast eller Slow LLM för att förbättra texterna.'
-              : llmModeDetails.runHint}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {generationJobs.length === 0
-              ? 'Inga genereringsjobb pågår.'
-              : (() => {
-                  const fastCount = generationJobs.filter(
-                    (job) =>
-                      (job.mode === 'fast' ||
-                        ((job.result as any)?.mode && (job.result as any).mode === 'fast')) &&
-                      job.status === 'running',
-                  ).length;
-                  const slowCount = generationJobs.filter(
-                    (job) =>
-                      (job.mode === 'slow' ||
-                        ((job.result as any)?.mode && (job.result as any).mode === 'slow')) &&
-                      job.status === 'running',
-                  ).length;
-                  const localCount = generationJobs.filter(
-                    (job) =>
-                      (job.mode === 'local' ||
-                        ((job.result as any)?.mode && (job.result as any).mode === 'local')) &&
-                      job.status === 'running',
-                  ).length;
-                  const totalRunning = fastCount + slowCount + localCount;
-                  return totalRunning === 0
-                    ? 'Inga aktiva jobb – alla genereringar är klara.'
-                    : `Pågående jobb: ${totalRunning} (Local: ${localCount}, Fast LLM: ${fastCount}, Slow LLM: ${slowCount})`;
-                })()}
-          </p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Button
+              size="sm"
+              variant="default"
+              disabled={
+                generatingFile !== null ||
+                isLoading ||
+                !selectedFile ||
+                selectedFile.file_type !== 'bpmn'
+              }
+              onClick={handleGenerateSelectedFile}
+              className="gap-2"
+              title={!selectedFile ? 'Välj en BPMN-fil i listan för att generera' : undefined}
+            >
+              {generatingFile && selectedFile ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Genererar…
+                </>
+              ) : (
+                <>
+                  {generationMode === 'local' ? (
+                    <FileText className="w-3 h-3" />
+                  ) : (
+                    <Sparkles className="w-3 h-3" />
+                  )}
+                  Generera för valda filer
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={generatingFile !== null || isLoading || files.length === 0}
+              onClick={handleGenerateAllArtifacts}
+              className="gap-2"
+            >
+              {generatingFile && !selectedFile ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Genererar…
+                </>
+              ) : (
+                <>
+                  {generationMode === 'local' ? (
+                    <FileText className="w-3 h-3" />
+                  ) : (
+                    <Sparkles className="w-3 h-3" />
+                  )}
+                  Generera allt
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -2204,12 +2335,12 @@ export default function BpmnFileManager() {
       {/* Job Queue */}
       <Card className="mt-6">
         <div className="border-b px-4 py-3">
-          <h3 className="font-semibold">Jobbkön</h3>
+          <h3 className="font-semibold">Jobb & historik</h3>
         </div>
         <div className="p-4">
           <div className="space-y-2">
             {generationJobs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Inga jobb har skapats ännu.</p>
+              <p className="text-sm text-muted-foreground">Inga aktiva jobb – alla genereringar är klara just nu.</p>
             ) : (
               <ul className="space-y-3">
                 {generationJobs.map(job => (
@@ -2226,12 +2357,27 @@ export default function BpmnFileManager() {
                         mode?: string;
                         skippedSubprocesses?: string[];
                       };
+                      const modeLabel =
+                        job.mode === 'fast'
+                          ? 'Fast LLM'
+                          : job.mode === 'slow'
+                          ? 'Slow LLM'
+                          : job.mode === 'local'
+                          ? 'Local'
+                          : 'Okänt';
+                      const statusLabel = formatStatusLabel(job.status);
                       return (
                         <>
-                          <div>
-                            <div className="text-sm font-semibold">{job.file_name}</div>
+                          <div className="flex-1">
+                            <div className="text-sm font-semibold mb-1">
+                              {job.file_name} · {modeLabel} · {statusLabel}
+                            </div>
                             <p className="text-xs text-muted-foreground">
-                              {formatOperationLabel(job.operation)} • Start: {job.created_at ? new Date(job.created_at).toLocaleTimeString('sv-SE') : 'okänd'}
+                              {formatOperationLabel(job.operation)} · Start: {job.created_at ? new Date(job.created_at).toLocaleTimeString('sv-SE', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                              }) : 'okänd'}
                             </p>
                             <div className="text-xs text-muted-foreground mt-1 space-y-1">
                               {job.status === 'running' && job.total ? (
@@ -2252,9 +2398,6 @@ export default function BpmnFileManager() {
                                   Hoppade över {jobResult.skippedSubprocesses.length} subprocesser
                                 </p>
                               )}
-                              {jobResult.mode && (
-                                <p>Läge: {jobResult.mode}</p>
-                              )}
                               {job.error && (
                                 <p className="text-red-600">{job.error}</p>
                               )}
@@ -2264,7 +2407,7 @@ export default function BpmnFileManager() {
                             <span
                               className={`text-xs px-2 py-1 rounded-full border ${getStatusBadgeClasses(job.status)}`}
                             >
-                              {formatStatusLabel(job.status)}
+                              {statusLabel}
                             </span>
                             {job.status === 'running' && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                             {(job.status === 'running' || job.status === 'pending') && (
@@ -2387,6 +2530,27 @@ export default function BpmnFileManager() {
                             status={coverageMap.get(file.file_name)!.docs.status}
                             covered={coverageMap.get(file.file_name)!.docs.covered}
                             total={coverageMap.get(file.file_name)!.docs.total}
+                            title={(() => {
+                              const summary = artifactStatusByFile.get(file.file_name);
+                              if (!summary) return undefined;
+                              const snap = summary.doc;
+                              if (snap.status === 'missing') {
+                                return 'Ingen dokumentation genererad ännu.';
+                              }
+                              const modeLabel =
+                                snap.mode === 'fast'
+                                  ? 'Fast LLM'
+                                  : snap.mode === 'slow'
+                                  ? 'Slow LLM'
+                                  : snap.mode === 'local'
+                                  ? 'Local'
+                                  : 'Okänt läge';
+                              const timeStr = snap.generatedAt
+                                ? new Date(snap.generatedAt).toLocaleString('sv-SE')
+                                : '';
+                              const outdatedText = snap.outdated ? ' (inaktuell – BPMN har ändrats efter generering)' : '';
+                              return `Dokumentation: ${modeLabel}${timeStr ? ` · ${timeStr}` : ''}${outdatedText}`;
+                            })()}
                           />
                           <ArtifactStatusBadge
                             icon="🧪"
@@ -2394,6 +2558,27 @@ export default function BpmnFileManager() {
                             status={coverageMap.get(file.file_name)!.tests.status}
                             covered={coverageMap.get(file.file_name)!.tests.covered}
                             total={coverageMap.get(file.file_name)!.tests.total}
+                            title={(() => {
+                              const summary = artifactStatusByFile.get(file.file_name);
+                              if (!summary) return undefined;
+                              const snap = summary.test;
+                              if (snap.status === 'missing') {
+                                return 'Inga tester genererade ännu.';
+                              }
+                              const modeLabel =
+                                snap.mode === 'fast'
+                                  ? 'Fast LLM'
+                                  : snap.mode === 'slow'
+                                  ? 'Slow LLM'
+                                  : snap.mode === 'local'
+                                  ? 'Local'
+                                  : 'Okänt läge';
+                              const timeStr = snap.generatedAt
+                                ? new Date(snap.generatedAt).toLocaleString('sv-SE')
+                                : '';
+                              const outdatedText = snap.outdated ? ' (inaktuella – BPMN har ändrats efter generering)' : '';
+                              return `Tester: ${modeLabel}${timeStr ? ` · ${timeStr}` : ''}${outdatedText}`;
+                            })()}
                           />
                           <ArtifactStatusBadge
                             icon="🌐"
@@ -2401,6 +2586,27 @@ export default function BpmnFileManager() {
                             status={coverageMap.get(file.file_name)!.hierarchy.status}
                             covered={coverageMap.get(file.file_name)!.hierarchy.covered}
                             total={coverageMap.get(file.file_name)!.hierarchy.total}
+                            title={(() => {
+                              const summary = artifactStatusByFile.get(file.file_name);
+                              if (!summary) return undefined;
+                              const snap = summary.hierarchy;
+                              if (snap.status === 'missing') {
+                                return 'Ingen hierarki/hierarkiska tester genererade ännu.';
+                              }
+                              const modeLabel =
+                                snap.mode === 'fast'
+                                  ? 'Fast LLM'
+                                  : snap.mode === 'slow'
+                                  ? 'Slow LLM'
+                                  : snap.mode === 'local'
+                                  ? 'Local'
+                                  : 'Okänt läge';
+                              const timeStr = snap.generatedAt
+                                ? new Date(snap.generatedAt).toLocaleString('sv-SE')
+                                : '';
+                              const outdatedText = snap.outdated ? ' (inaktuell – BPMN har ändrats efter generering)' : '';
+                              return `Hierarki: ${modeLabel}${timeStr ? ` · ${timeStr}` : ''}${outdatedText}`;
+                            })()}
                           />
                         </>
                       ) : (
@@ -2411,53 +2617,76 @@ export default function BpmnFileManager() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {file.file_type === 'bpmn' && latestJobByFile.get(file.file_name) ? (
+                    {file.file_type === 'bpmn' && artifactStatusByFile.get(file.file_name)?.latestJob ? (
                       (() => {
-                        const job = latestJobByFile.get(file.file_name)!;
+                        const latest = artifactStatusByFile.get(file.file_name)!.latestJob!;
                         const modeLabel =
-                          job.mode === 'fast'
+                          latest.mode === 'fast'
                             ? 'Fast LLM'
-                            : job.mode === 'slow'
+                            : latest.mode === 'slow'
                             ? 'Slow LLM'
-                            : 'Local';
+                            : latest.mode === 'local'
+                            ? 'Local'
+                            : 'Okänt';
+                        const statusLabel = formatStatusLabel(latest.status);
+                        const timeStr = (latest.finishedAt || latest.startedAt)
+                          ? new Date(latest.finishedAt || latest.startedAt!).toLocaleTimeString('sv-SE', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '';
                         return (
-                          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                            <span>
-                              Läge:{' '}
-                              <span className="font-medium text-foreground">
-                                {modeLabel}
-                              </span>
-                            </span>
-                            <span>Status: {formatStatusLabel(job.status)}</span>
-                            {job.created_at && (
-                              <span>
-                                Start:{' '}
-                                {new Date(job.created_at).toLocaleTimeString('sv-SE', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            )}
+                          <div className="text-xs">
+                            <Badge variant="outline" className="text-xs">
+                              {modeLabel} · {statusLabel}
+                              {timeStr ? ` · ${timeStr}` : ''}
+                            </Badge>
                           </div>
                         );
                       })()
                     ) : (
-                      <span className="text-xs text-muted-foreground">Ingen körning</span>
+                      <Badge variant="secondary" className="text-xs">
+                        Ingen körning
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {file.file_type === 'bpmn' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleGenerateArtifacts(file, generationMode, 'file');
+                          }}
+                          disabled={generatingFile !== null || isLoading}
+                          title="Generera dokumentation och tester för denna fil"
+                        >
+                          {generationMode === 'local' ? (
+                            <FileText className="w-4 h-4" />
+                          ) : (
+                            <Sparkles className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleDownload(file)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDownload(file);
+                        }}
                       >
                         <Download className="w-4 h-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setDeleteFile(file)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteFile(file);
+                        }}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

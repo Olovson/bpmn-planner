@@ -125,9 +125,6 @@ const DocViewer = () => {
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Dokumentation
               </p>
-              <h1 className="text-2xl font-semibold mt-1">
-                {prettyTitle || 'Okänd fil'}
-              </h1>
               {prettySubtitle && (
                 <p className="text-sm text-muted-foreground mt-1">{prettySubtitle}</p>
               )}
