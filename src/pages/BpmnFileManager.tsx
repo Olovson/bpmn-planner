@@ -142,6 +142,8 @@ export default function BpmnFileManager() {
   const [cancelGeneration, setCancelGeneration] = useState(false);
   const [llmMode, setLlmMode] = useState<LlmGenerationMode>(() => getLlmGenerationMode());
   const llmModeDetails = getLlmModeConfig(llmMode);
+  type GenerationMode = 'local' | LlmGenerationMode; // 'local' | 'fast' | 'slow'
+  const [generationMode, setGenerationMode] = useState<GenerationMode>('local');
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
   const [rootFileName, setRootFileName] = useState<string | null>(null);
@@ -1175,7 +1177,7 @@ export default function BpmnFileManager() {
     }
   };
 
-  const handleGenerateAllArtifacts = async (mode: 'local' | 'llm' = 'llm') => {
+  const handleGenerateAllArtifacts = async () => {
     const rootFile = await resolveRootBpmnFile();
     if (!rootFile) return;
 
@@ -1184,7 +1186,8 @@ export default function BpmnFileManager() {
       description: `Genererar hierarki och artefakter utifrån ${rootFile.file_name} för alla BPMN-filer.`,
     });
 
-    await handleGenerateArtifacts(rootFile, mode, 'file');
+    const effectiveMode: 'local' | 'llm' = generationMode === 'local' ? 'local' : 'llm';
+    await handleGenerateArtifacts(rootFile, effectiveMode, 'file');
   };
 
   const handleBuildHierarchy = async (file: BpmnFile) => {
@@ -1610,37 +1613,28 @@ export default function BpmnFileManager() {
                   size="sm"
                   variant="outline"
                   disabled={generatingFile !== null || isLoading || files.length === 0}
-                  onClick={() => handleGenerateAllArtifacts('local')}
+                  onClick={handleGenerateAllArtifacts}
                   className="gap-2"
                 >
-                  {generatingFile && activeOperation === 'local' ? (
+                  {generatingFile ? (
                     <>
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      Genererar allt (lokalt)...
+                      {activeOperation === 'local'
+                        ? 'Genererar allt (Local)...'
+                        : 'Genererar allt (LLM)...'}
                     </>
                   ) : (
                     <>
-                      <FileText className="w-3 h-3" />
-                      Generera allt (lokalt)
-                    </>
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={generatingFile !== null || isLoading || files.length === 0}
-                  onClick={() => handleGenerateAllArtifacts('llm')}
-                  className="gap-2"
-                >
-                  {generatingFile && activeOperation === 'llm' ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Genererar allt (LLM)...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3 h-3" />
-                      Generera allt (LLM)
+                      {generationMode === 'local' ? (
+                        <FileText className="w-3 h-3" />
+                      ) : (
+                        <Sparkles className="w-3 h-3" />
+                      )}
+                      {generationMode === 'local'
+                        ? 'Generera allt (Local)'
+                        : generationMode === 'fast'
+                        ? 'Generera allt (Fast LLM)'
+                        : 'Generera allt (Slow LLM)'}
                     </>
                   )}
                 </Button>
@@ -1711,21 +1705,49 @@ export default function BpmnFileManager() {
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="text-lg font-semibold">LLM-genereringsläge</h2>
-              <Badge variant="outline">{llmModeDetails.label}</Badge>
+              <h2 className="text-lg font-semibold">Genereringsläge</h2>
+              <Badge variant="outline">
+                {generationMode === 'local'
+                  ? 'Local (ingen LLM)'
+                  : generationMode === 'fast'
+                  ? LLM_MODE_OPTIONS.find((o) => o.value === 'fast')?.label ?? 'Fast LLM'
+                  : LLM_MODE_OPTIONS.find((o) => o.value === 'slow')?.label ?? 'Slow LLM'}
+              </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{llmModeDetails.description}</p>
-            <p className="text-xs text-muted-foreground">{llmModeDetails.speedCaption}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {generationMode === 'local'
+                ? 'Snabb, deterministisk mallgenerering utan LLM. Bra för utveckling, regression och strukturvalidering.'
+                : llmModeDetails.description}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {generationMode === 'local'
+                ? 'Rekommenderas när du vill testa generatorn utan LLM-kostnad.'
+                : llmModeDetails.speedCaption}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={generationMode === 'local' ? 'default' : 'outline'}
+              className="gap-2"
+              onClick={() => setGenerationMode('local')}
+              disabled={generationMode === 'local'}
+            >
+              <FileText className="w-4 h-4" />
+              Local (ingen LLM)
+            </Button>
             {LLM_MODE_OPTIONS.map((option) => (
               <Button
                 key={option.value}
                 size="sm"
-                variant={llmMode === option.value ? 'default' : 'outline'}
+                variant={generationMode === option.value ? 'default' : 'outline'}
                 className="gap-2"
-                onClick={() => setLlmMode(option.value)}
-                disabled={llmMode === option.value}
+                onClick={() => {
+                  // option.value är 'fast' | 'slow'
+                  setLlmMode(option.value as LlmGenerationMode);
+                  setGenerationMode(option.value as GenerationMode);
+                }}
+                disabled={generationMode === option.value}
               >
                 <Sparkles className="w-4 h-4" />
                 {option.label}
@@ -1733,7 +1755,41 @@ export default function BpmnFileManager() {
             ))}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-3">{llmModeDetails.runHint}</p>
+        <div className="flex flex-wrap items-center justify-between mt-3 gap-2">
+          <p className="text-xs text-muted-foreground">
+            {generationMode === 'local'
+              ? 'Läget använder bara lokala mallar. Du kan senare köra Fast eller Slow LLM för att förbättra texterna.'
+              : llmModeDetails.runHint}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {generationJobs.length === 0
+              ? 'Inga genereringsjobb pågår.'
+              : (() => {
+                  const fastCount = generationJobs.filter(
+                    (job) =>
+                      (job.mode === 'fast' ||
+                        ((job.result as any)?.mode && (job.result as any).mode === 'fast')) &&
+                      job.status === 'running',
+                  ).length;
+                  const slowCount = generationJobs.filter(
+                    (job) =>
+                      (job.mode === 'slow' ||
+                        ((job.result as any)?.mode && (job.result as any).mode === 'slow')) &&
+                      job.status === 'running',
+                  ).length;
+                  const localCount = generationJobs.filter(
+                    (job) =>
+                      (job.mode === 'local' ||
+                        ((job.result as any)?.mode && (job.result as any).mode === 'local')) &&
+                      job.status === 'running',
+                  ).length;
+                  const totalRunning = fastCount + slowCount + localCount;
+                  return totalRunning === 0
+                    ? 'Inga aktiva jobb – alla genereringar är klara.'
+                    : `Pågående jobb: ${totalRunning} (Local: ${localCount}, Fast LLM: ${fastCount}, Slow LLM: ${slowCount})`;
+                })()}
+          </p>
+        </div>
       </Card>
 
       {showTransitionOverlay && (

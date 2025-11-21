@@ -3,7 +3,8 @@ import type { ChatCompletionMessageParam, ChatCompletionCreateParams } from 'ope
 
 const USE_LLM = String(import.meta.env.VITE_USE_LLM ?? '').trim().toLowerCase() === 'true';
 const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-const DEFAULT_MODEL = import.meta.env.VITE_OPENAI_MODEL || 'gpt-4.1-mini';
+const FAST_MODEL = 'gpt-4o-mini';
+const FULL_MODEL = 'gpt-4o';
 const IS_BROWSER = typeof window !== 'undefined';
 
 let openAiClient: OpenAI | null = null;
@@ -21,7 +22,7 @@ export const isLlmEnabled = (): boolean =>
 interface CompletionOptions {
   temperature?: number;
   maxTokens?: number;
-  model?: string;
+  model?: 'fast' | 'slow';
   responseFormat?: ChatCompletionCreateParams.ResponseFormat;
 }
 
@@ -31,8 +32,15 @@ export async function generateChatCompletion(
 ): Promise<string | null> {
   if (!isLlmEnabled() || !openAiClient) return null;
 
+  const resolvedModel =
+    options.model === 'fast'
+      ? FAST_MODEL
+      : options.model === 'slow'
+      ? FULL_MODEL
+      : FAST_MODEL;
+
   const response = await openAiClient.chat.completions.create({
-    model: options.model ?? DEFAULT_MODEL,
+    model: resolvedModel,
     temperature: options.temperature ?? 0.35,
     max_tokens: options.maxTokens ?? 1800,
     messages,

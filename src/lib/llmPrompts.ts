@@ -3,7 +3,9 @@
 import featureEpicPromptMd from '../../prompts/llm/feature_epic_prompt.md?raw';
 import dmnBusinessRulePromptMd from '../../prompts/llm/dmn_businessrule_prompt.md?raw';
 import testscriptPromptMd from '../../prompts/llm/testscript_prompt.md?raw';
+import fastModeStubPromptMd from '../../prompts/llm/fast_mode_stub_prompt.md?raw';
 
 export const FEATURE_EPIC_PROMPT = featureEpicPromptMd;
 export const DMN_BUSINESSRULE_PROMPT = dmnBusinessRulePromptMd;
 export const TESTSCRIPT_PROMPT = testscriptPromptMd;
+export const FAST_MODE_STUB_PROMPT = fastModeStubPromptMd;

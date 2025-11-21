@@ -2,8 +2,8 @@ import type { NodeDocumentationContext } from './documentationContext';
 import type { TemplateLinks } from './documentationTemplates';
 import type { BpmnProcessNode } from './bpmnProcessGraph';
 import { generateChatCompletion, isLlmEnabled } from './llmClient';
-import { getLlmModeConfig } from './llmMode';
-import { FEATURE_EPIC_PROMPT, DMN_BUSINESSRULE_PROMPT } from './llmPrompts';
+import { getLlmModeConfig, getLlmGenerationMode } from './llmMode';
+import { FEATURE_EPIC_PROMPT, DMN_BUSINESSRULE_PROMPT, FAST_MODE_STUB_PROMPT } from './llmPrompts';
 import { saveLlmDebugArtifact } from './llmDebugStorage';
 
 export type DocumentationDocType = 'feature' | 'epic' | 'businessRule';
@@ -26,9 +26,14 @@ export async function generateDocumentationWithLlm(
       : docType === 'epic'
       ? 'Epic'
       : 'BusinessRule';
-  const modeConfig = getLlmModeConfig();
-  const systemPrompt =
-    docType === 'businessRule' ? DMN_BUSINESSRULE_PROMPT : FEATURE_EPIC_PROMPT;
+  const mode = getLlmGenerationMode();
+  const modeConfig = getLlmModeConfig(mode);
+  const isFast = mode === 'fast';
+  const systemPrompt = isFast
+    ? FAST_MODE_STUB_PROMPT
+    : docType === 'businessRule'
+    ? DMN_BUSINESSRULE_PROMPT
+    : FEATURE_EPIC_PROMPT;
 
   // JSON-input som skickas till GPT-4 enligt promptdefinitionerna.
   const llmInput = {
@@ -43,7 +48,11 @@ export async function generateDocumentationWithLlm(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: modeConfig.docTemperature, maxTokens: modeConfig.docMaxTokens }
+    {
+      temperature: modeConfig.docTemperature,
+      maxTokens: modeConfig.docMaxTokens,
+      model: isFast ? 'fast' : 'slow',
+    }
   );
 
   if (response) {

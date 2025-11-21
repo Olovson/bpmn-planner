@@ -3,7 +3,7 @@ import { generateChatCompletion, isLlmEnabled } from './llmClient';
 import type { BpmnElement } from './bpmnParser';
 import { buildBpmnElementSummary } from './llmUtils';
 import { logLlmFallback } from './llmMonitoring';
-import { getLlmModeConfig } from './llmMode';
+import { getLlmModeConfig, getLlmGenerationMode } from './llmMode';
 import { saveLlmDebugArtifact } from './llmDebugStorage';
 import { TESTSCRIPT_PROMPT } from './llmPrompts';
 
@@ -54,7 +54,8 @@ export async function generateTestSpecWithLlm(
 ): Promise<LlmTestScenario[] | null> {
   if (!isLlmEnabled()) return null;
 
-  const modeConfig = getLlmModeConfig();
+  const mode = getLlmGenerationMode();
+  const modeConfig = getLlmModeConfig(mode);
   const scenarioSchema = buildTestScenarioSchema(
     modeConfig.testMinScenarios,
     modeConfig.testMaxScenarios
@@ -80,21 +81,24 @@ export async function generateTestSpecWithLlm(
 
   try {
     let response: string | null = null;
+    const isFast = mode === 'fast';
     try {
-      response = await generateChatCompletion(messages, {
-        temperature: modeConfig.testTemperature,
-        maxTokens: modeConfig.testMaxTokens,
-        responseFormat: {
-          type: 'json_schema',
-          json_schema: scenarioSchema,
-        },
-      });
+        response = await generateChatCompletion(messages, {
+          temperature: modeConfig.testTemperature,
+          maxTokens: modeConfig.testMaxTokens,
+          responseFormat: {
+            type: 'json_schema',
+            json_schema: scenarioSchema,
+          },
+          model: isFast ? 'fast' : 'slow',
+        });
     } catch (error) {
       if (isSchemaFormatError(error)) {
         console.warn('JSON schema response_format unsupported, retrying with plain text:', error);
         response = await generateChatCompletion(messages, {
           temperature: modeConfig.testTemperature,
           maxTokens: modeConfig.testMaxTokens,
+          model: isFast ? 'fast' : 'slow',
         });
       } else {
         throw error;

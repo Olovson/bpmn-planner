@@ -8,6 +8,8 @@ export interface GenerationJob {
   id: string;
   file_name: string;
   operation: GenerationOperation;
+  // Optional mode field when tillgänglig i databasen/result
+  mode?: 'local' | 'fast' | 'slow';
   status: GenerationStatus;
   progress: number | null;
   total: number | null;

@@ -1,4 +1,4 @@
-export type LlmGenerationMode = 'fast' | 'extended';
+export type LlmGenerationMode = 'fast' | 'slow';
 
 interface LlmModeConfig {
   key: LlmGenerationMode;
@@ -24,44 +24,44 @@ const STORAGE_KEY = 'bpmn-planner-llm-mode';
 const envDefault = (import.meta.env?.VITE_LLM_MODE_DEFAULT ?? 'fast').toString().toLowerCase();
 
 const isMode = (value: unknown): value is LlmGenerationMode =>
-  value === 'fast' || value === 'extended';
+  value === 'fast' || value === 'slow';
 
 const MODE_CONFIG: Record<LlmGenerationMode, LlmModeConfig> = {
   fast: {
     key: 'fast',
-    label: 'Snabb',
-    description: 'Snabb generering med fokuserade sektioner och komprimerade listor.',
-    speedCaption: '≈30% snabbare – prioriterar kärninfo.',
-    runHint: 'Kortare svar, perfekt vid många iterationer.',
-    docGuidance: 'Fokusera på ett fåtal meningar eller 2–3 bullets per sektion. Ta med endast mest kritiska datapunkter.',
+    label: 'Fast LLM mode (snabb, kortfattad)',
+    description: 'Snabb generering med korta, fokuserade sektioner.',
+    speedCaption: 'Rekommenderas i utveckling – prioriterar hastighet.',
+    runHint: 'Genererar 1–2 meningar per sektion. Bra vid många iterationer.',
+    docGuidance: 'Fokusera på 1–2 meningar eller ett fåtal bullets per sektion. Ta endast med mest kritiska datapunkter.',
     docTone: 'Direkt och koncis ton utan onödiga exempel.',
-    docMaxTokens: 1300,
+    docMaxTokens: 150,
     docTemperature: 0.2,
     docExtraInstruction: 'Undvik upprepningar mellan sektioner.',
-    testGuidance: 'Generera exakt tre scenarier (ett happy-path, ett error-case, ett edge-case).',
-    testScenarioRange: '3 scenarier',
-    testMinScenarios: 3,
+    testGuidance: 'Generera ett fåtal representativa scenarier med fokus på happy-path, edge-case och error-case.',
+    testScenarioRange: '2–3 scenarier',
+    testMinScenarios: 2,
     testMaxScenarios: 3,
-    testMaxTokens: 900,
-    testTemperature: 0.3,
+    testMaxTokens: 200,
+    testTemperature: 0.2,
   },
-  extended: {
-    key: 'extended',
-    label: 'Fördjupad',
+  slow: {
+    key: 'slow',
+    label: 'Slow LLM mode (full kvalitet)',
     description: 'Mer kontext, exempel och täckning av beroenden.',
-    speedCaption: 'Tar längre tid men fyller dokumenten rikligt.',
+    speedCaption: 'Långsammare men med rikare innehåll.',
     runHint: 'Bra när du behöver slutligt material för delning.',
     docGuidance: 'Avsätt 3–4 meningar eller bullets per sektion med konkreta exempel och tydliga beroenden.',
     docTone: 'Strategiskt språk med fokus på sammanhang och konsekvenser.',
-    docMaxTokens: 2400,
-    docTemperature: 0.32,
+    docMaxTokens: 1800,
+    docTemperature: 0.35,
     docExtraInstruction: 'Lyft gärna upp till två exempel per sektion om relevant.',
-    testGuidance: 'Generera fyra till fem scenarier med variation (minst ett per typ).',
-    testScenarioRange: '4–5 scenarier',
-    testMinScenarios: 4,
+    testGuidance: 'Generera flera scenarier med variation (happy-path, error-case, edge-case).',
+    testScenarioRange: '3–5 scenarier',
+    testMinScenarios: 3,
     testMaxScenarios: 5,
-    testMaxTokens: 1500,
-    testTemperature: 0.4,
+    testMaxTokens: 900,
+    testTemperature: 0.3,
   },
 };
 
