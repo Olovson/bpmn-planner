@@ -33,6 +33,31 @@ const isRelevantNodeType = (type: string) => {
   return /(?:^|:)(UserTask|ServiceTask|BusinessRuleTask|CallActivity)$/.test(type);
 };
 
+export const getHierarchicalTestFileName = (fileName: string) =>
+  fileName.replace('.bpmn', '.hierarchical.spec.ts');
+
+export const hasHierarchicalTestsForFile = async (fileName: string): Promise<boolean> => {
+  const hierarchicalFileName = getHierarchicalTestFileName(fileName);
+  try {
+    const { data, error } = await supabase.storage
+      .from('bpmn-files')
+      .list('tests', {
+        search: hierarchicalFileName,
+        limit: 1,
+      });
+
+    if (error) {
+      console.error(`[Coverage Debug] Error listing hierarchical tests for ${fileName}:`, error);
+      return false;
+    }
+
+    return Array.isArray(data) && data.length > 0;
+  } catch (error) {
+    console.error(`[Coverage Debug] Error checking hierarchical tests for ${fileName}:`, error);
+    return false;
+  }
+};
+
 export const useFileArtifactCoverage = (fileName: string) => {
 
   return useQuery({
@@ -80,25 +105,8 @@ export const useFileArtifactCoverage = (fileName: string) => {
         coverage_status: getCoverageStatus(tests_covered, total_nodes),
       });
 
-      let hierarchyCovered = 0;
-      try {
-        const [parentDeps, childDeps] = await Promise.all([
-          supabase
-            .from('bpmn_dependencies')
-            .select('parent_file')
-            .eq('parent_file', fileName),
-          supabase
-            .from('bpmn_dependencies')
-            .select('child_file')
-            .eq('child_file', fileName),
-        ]);
-        const isHierarchical =
-          (parentDeps.data?.length || 0) > 0 ||
-          (childDeps.data?.length || 0) > 0;
-        hierarchyCovered = isHierarchical ? 1 : 0;
-      } catch (error) {
-        console.error(`[Coverage Debug] Error checking hierarchy for ${fileName}:`, error);
-      }
+      const hasHierarchyTests = await hasHierarchicalTestsForFile(fileName);
+      const hierarchyCovered = hasHierarchyTests ? 1 : 0;
 
       // Docs: one HTML per BPMN file. Consider all nodes covered if file doc exists.
       let docs_covered = 0;
@@ -165,9 +173,6 @@ export const useAllFilesArtifactCoverage = () => {
       const { data: allTestLinksData } = await supabase
         .from('node_test_links')
         .select('bpmn_file, bpmn_element_id');
-      const { data: allDependenciesData } = await supabase
-        .from('bpmn_dependencies')
-        .select('parent_file, child_file');
 
       for (const file of bpmnFiles) {
         try {
@@ -222,10 +227,8 @@ export const useAllFilesArtifactCoverage = () => {
             coverage_status: getCoverageStatus(docs_covered, total_nodes),
           });
 
-          const isInHierarchy = allDependenciesData?.some(
-            dep => dep.parent_file === file.file_name || dep.child_file === file.file_name
-          );
-          const hierarchyCovered = isInHierarchy ? 1 : 0;
+          const hasHierarchyTests = await hasHierarchicalTestsForFile(file.file_name);
+          const hierarchyCovered = hasHierarchyTests ? 1 : 0;
 
           coverageMap.set(file.file_name, {
             bpmn_file: file.file_name,
