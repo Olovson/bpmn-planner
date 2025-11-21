@@ -29,11 +29,13 @@ export async function generateDocumentationWithLlm(
   const mode = getLlmGenerationMode();
   const modeConfig = getLlmModeConfig(mode);
   const isFast = mode === 'fast';
+  const basePrompt =
+    docType === 'businessRule'
+      ? DMN_BUSINESSRULE_PROMPT
+      : FEATURE_EPIC_PROMPT;
   const systemPrompt = isFast
-    ? FAST_MODE_STUB_PROMPT
-    : docType === 'businessRule'
-    ? DMN_BUSINESSRULE_PROMPT
-    : FEATURE_EPIC_PROMPT;
+    ? `${basePrompt}\n\n\nFAST MODE: Skriv max 2 meningar per sektion. Ingen extra förklaring, inga exempel.`
+    : basePrompt;
 
   // JSON-input som skickas till GPT-4 enligt promptdefinitionerna.
   const llmInput = {

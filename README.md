@@ -138,6 +138,7 @@ npm run dev   # http://localhost:8080/
 ```bash
 npm test                 # kör vitest
 npm run check:generator  # snabb kontroll av BPMN-generatorn
+npm run check:db-schema  # verifierar att generation_jobs.mode finns i Supabase-schema
 npx vitest run \
   src/lib/bpmn/buildProcessHierarchy.test.ts \
   src/lib/processTreeNavigation.test.ts   # verifierar hierarkin + UI-kartan
@@ -145,6 +146,26 @@ npx vitest run \
 ```
 
 _Tips: hierarkin byggs från metadata i tabellen `bpmn_files.meta` (genereras vid uppladdning/parsing). Se till att metadata finns för att träd/diagram/listor ska spegla aktuell struktur._
+
+### Local Schema Debug Checklist
+
+Om du får fel av typen:
+
+> `PGRST204: Could not find the 'mode' column of 'generation_jobs'`
+
+så betyder det att din lokala Supabase‑databas inte har kolumnen `mode` på tabellen `generation_jobs`, eller att Supabase kör mot en gammal databasvolym.
+
+Checklista:
+
+1. Kör `npm run check:db-schema`  
+   - Om den rapporterar att `mode` saknas:  
+     - Kör `supabase db reset` **i projektets rot** eller `supabase migration up` för att applicera alla migrationer.  
+     - Starta om Supabase (`supabase stop && supabase start`).
+2. Kontrollera att du inte har flera Supabase‑projekt/containers igång på samma port (127.0.0.1:54321).
+3. Kontrollera i Supabase Studio eller via SQL:
+   - `SELECT column_name FROM information_schema.columns WHERE table_name = 'generation_jobs';`  
+   - Verifiera att `mode` finns.
+4. Om problemet kvarstår: rensa lokala Supabase-volymer för det här projektet enligt Supabase‑dokumentationen och gör en ny `supabase db reset`.
 
 ---
 

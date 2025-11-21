@@ -210,6 +210,7 @@ export type Database = {
           id: string
           operation: Database["public"]["Enums"]["generation_operation"]
           progress: number | null
+          mode: string | null
           result: Json | null
           started_at: string | null
           status: Database["public"]["Enums"]["generation_status"]
@@ -225,6 +226,7 @@ export type Database = {
           id?: string
           operation: Database["public"]["Enums"]["generation_operation"]
           progress?: number | null
+          mode?: string | null
           result?: Json | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["generation_status"]
@@ -240,6 +242,7 @@ export type Database = {
           id?: string
           operation?: Database["public"]["Enums"]["generation_operation"]
           progress?: number | null
+          mode?: string | null
           result?: Json | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["generation_status"]
@@ -371,6 +374,7 @@ export type Database = {
           bpmn_file: string
           created_at: string
           id: string
+          mode: string | null
           test_file_path: string
           test_name: string | null
           updated_at: string
@@ -380,6 +384,7 @@ export type Database = {
           bpmn_file: string
           created_at?: string
           id?: string
+          mode?: string | null
           test_file_path: string
           test_name?: string | null
           updated_at?: string
@@ -389,6 +394,7 @@ export type Database = {
           bpmn_file?: string
           created_at?: string
           id?: string
+          mode?: string | null
           test_file_path?: string
           test_name?: string | null
           updated_at?: string

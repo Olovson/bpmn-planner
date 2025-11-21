@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:generator": "vitest run tests/unit/generateAllFromBpmnWithGraph.test.ts"
+    "check:generator": "vitest run tests/unit/generateAllFromBpmnWithGraph.test.ts",
+    "check:db-schema": "node --loader ts-node/esm scripts/check-db-schema.mts",
+    "check:db": "npm run check:db-schema"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

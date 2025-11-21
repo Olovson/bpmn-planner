@@ -17,6 +17,7 @@ const DocViewer = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generationSource, setGenerationSource] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'local' | 'fast' | 'slow' | 'auto'>('auto');
   const decoded = docId ? decodeURIComponent(docId) : '';
   const sanitizeDocId = (value: string) => value.replace(/[^a-zA-Z0-9/_-]/g, '');
   const rawSegments = decoded.split('/').filter(Boolean);
@@ -43,6 +44,17 @@ const DocViewer = () => {
     return generationSource;
   };
 
+  const resolveModeFolder = () => {
+    if (viewMode === 'auto') {
+      if (!generationSource) return null;
+      if (generationSource === 'local') return 'local';
+      if (generationSource.startsWith('llm-fast')) return 'fast';
+      if (generationSource.startsWith('llm-slow')) return 'slow';
+      return null;
+    }
+    return viewMode;
+  };
+
   useEffect(() => {
     const fetchDoc = async () => {
       setLoading(true);
@@ -54,20 +66,28 @@ const DocViewer = () => {
           throw new Error('Ingen dokumentationsfil angavs.');
         }
 
-        const docPath = `docs/${safeDocId}.html`;
-        const { data } = supabase.storage.from('bpmn-files').getPublicUrl(docPath);
+        const modeFolder = resolveModeFolder();
+        const docPath =
+          modeFolder != null ? `docs/${modeFolder}/${safeDocId}.html` : `docs/${safeDocId}.html`;
+        const tryPaths = modeFolder != null
+          ? [`docs/${modeFolder}/${safeDocId}.html`, `docs/${safeDocId}.html`]
+          : [`docs/${safeDocId}.html`];
 
-        if (!data?.publicUrl) {
-          throw new Error('Hittade ingen länk till dokumentationen.');
+        let rawHtml: string | null = null;
+        for (const path of tryPaths) {
+          const { data } = supabase.storage.from('bpmn-files').getPublicUrl(path);
+          if (!data?.publicUrl) continue;
+          const versionedUrl = `${data.publicUrl}?t=${Date.now()}`;
+          const response = await fetch(versionedUrl, { cache: 'no-store' });
+          if (!response.ok) continue;
+          rawHtml = await response.text();
+          break;
         }
 
-        const versionedUrl = `${data.publicUrl}?t=${Date.now()}`;
-        const response = await fetch(versionedUrl, { cache: 'no-store' });
-        if (!response.ok) {
-          throw new Error('Kunde inte hämta dokumentationen.');
+        if (!rawHtml) {
+          throw new Error('Kunde inte hämta dokumentationen i valt läge eller legacy-läge.');
         }
 
-        const rawHtml = await response.text();
         const metaMatch = rawHtml.match(/<meta[^>]+name=["']x-generation-source["'][^>]*content=["']([^"']+)/i) || rawHtml.match(/<!--\s*generation-source:([a-z0-9-_]+)\s*-->/i);
         if (metaMatch) {
           setGenerationSource(metaMatch[1]);
@@ -96,7 +116,7 @@ const DocViewer = () => {
         blobUrlRef.current = null;
       }
     };
-  }, [docId, decoded]);
+  }, [docId, decoded, viewMode]);
 
   return (
     <div className="flex min-h-screen bg-background overflow-hidden">
@@ -131,6 +151,22 @@ const DocViewer = () => {
               <p className="text-xs text-muted-foreground mt-1">
                 Genereringskälla: {formatGenerationSource()}
               </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-md border bg-muted/40 p-0.5 text-xs">
+                {(['local', 'fast', 'slow'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`px-2 py-1 rounded-sm ${
+                      viewMode === mode ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                    }`}
+                    onClick={() => setViewMode(mode)}
+                  >
+                    {mode === 'local' ? 'Local' : mode === 'fast' ? 'Fast LLM' : 'Slow LLM'}
+                  </button>
+                ))}
+              </div>
             </div>
             <Button variant="outline" onClick={() => navigate(-1)} className="gap-2 shrink-0">
               <ArrowLeft className="h-4 w-4" />

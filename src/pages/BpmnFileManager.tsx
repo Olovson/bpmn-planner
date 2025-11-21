@@ -57,6 +57,7 @@ import { useGenerationJobs, type GenerationJob, type GenerationOperation, type G
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
+import { buildDocStoragePaths, buildTestStoragePaths } from '@/lib/artifactPaths';
 
 const flattenHierarchyNodes = (node: any): any[] => {
   if (!node) return [];
@@ -377,7 +378,46 @@ export default function BpmnFileManager() {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      const isSchemaModeError =
+        typeof error.code === 'string' &&
+        error.code === 'PGRST204' &&
+        typeof error.message === 'string' &&
+        error.message.includes("'mode' column of 'generation_jobs'");
+
+      if (isSchemaModeError) {
+        console.warn(
+          '[GenerationJobs] generation_jobs.mode saknas i det aktiva schemat – försöker fallback-insert utan mode-kolumn. ' +
+            'För full funktionalitet, kör Supabase-migrationerna (t.ex. supabase db reset eller supabase migration up) enligt README.'
+        );
+
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('generation_jobs')
+          .insert({
+            file_name: fileName,
+            operation,
+            created_by: userData.user.id,
+          })
+          .select()
+          .single();
+
+        if (fallbackError) {
+          console.error(
+            '[GenerationJobs] Fallback-insert utan mode misslyckades också:',
+            fallbackError
+          );
+          throw new Error(
+            'Kolumnen mode saknas på generation_jobs i din lokala Supabase-databas och fallback utan mode misslyckades. ' +
+              'Kontrollera din Supabase-instans och kör migrationerna enligt README.'
+          );
+        }
+
+        refreshGenerationJobs();
+        return fallbackData as GenerationJob;
+      }
+
+      throw error;
+    }
 
     refreshGenerationJobs();
     return data as GenerationJob;
@@ -1072,7 +1112,10 @@ export default function BpmnFileManager() {
       await ensureJobTotal(jobTotalCount + result.tests.size);
       if (result.tests.size > 0) {
         for (const [testFileName, testContent] of result.tests.entries()) {
-          const testPath = `tests/${testFileName}`;
+          const { modePath: testPath, legacyPath: legacyTestPath } = buildTestStoragePaths(
+            testFileName,
+            effectiveLlmMode ?? (isLocalMode ? 'local' : null)
+          );
           const testFileElements: Array<{ id: string; name: string }> = [];
           
           checkCancellation();
@@ -1084,6 +1127,23 @@ export default function BpmnFileManager() {
               upsert: true,
               contentType: 'text/plain',
             });
+
+          // Skriv även till legacy-path för bakåtkompatibilitet
+          if (!uploadError && legacyTestPath !== testPath) {
+            const { error: legacyUploadError } = await supabase.storage
+              .from('bpmn-files')
+              .upload(legacyTestPath, new Blob([testContent], { type: 'text/plain' }), {
+                upsert: true,
+                contentType: 'text/plain',
+              });
+            if (legacyUploadError) {
+              console.warn(
+                'Kunde inte skriva legacy-testfil för bakåtkompatibilitet:',
+                legacyTestPath,
+                legacyUploadError
+              );
+            }
+          }
 
           if (uploadError) {
             console.error(`Error uploading test file ${testFileName}:`, uploadError);
@@ -1098,7 +1158,7 @@ export default function BpmnFileManager() {
             testLinksToInsert.push({
               bpmn_file: nodeArtifact.bpmnFile || file.file_name,
               bpmn_element_id: nodeArtifact.elementId,
-              test_file_path: testPath,
+              test_file_path: legacyTestPath,
               test_name: `Test for ${nodeArtifact.elementName || nodeArtifact.elementId}`,
             });
             testFileElements.push({
@@ -1108,34 +1168,10 @@ export default function BpmnFileManager() {
           } else if (testFileName.includes('.hierarchical.spec.ts')) {
             continue;
           } else {
-            const elementId = testFileName.replace('.spec.ts', '');
-            const filesToProcess = (result.metadata?.filesIncluded && result.metadata.filesIncluded.length > 0)
-              ? result.metadata.filesIncluded
-              : [file.file_name];
-
-            for (const includedFile of filesToProcess) {
-              try {
-                const fileUrl = await getBpmnFileUrl(includedFile);
-                const parsed = await parseBpmnFile(fileUrl);
-                const element = parsed.elements.find(el => el.id === elementId);
-                
-                if (element) {
-                  testLinksToInsert.push({
-                    bpmn_file: includedFile,
-                    bpmn_element_id: elementId,
-                    test_file_path: testPath,
-                    test_name: `Test for ${element.name || elementId}`,
-                  });
-                  testFileElements.push({
-                    id: elementId,
-                    name: element.name || elementId,
-                  });
-                  break;
-                }
-              } catch (e) {
-                console.error(`Error processing test links for ${includedFile}:`, e);
-              }
-            }
+            console.warn(
+              '[Generation] Hittade ingen nodeArtifact för testfil, hoppar node_test_links:',
+              testFileName
+            );
           }
           if (testFileElements.length > 0) {
             detailedTestFiles.push({
@@ -1152,9 +1188,13 @@ export default function BpmnFileManager() {
         }
 
         if (testLinksToInsert.length > 0) {
+            const linksWithMode = testLinksToInsert.map((link) => ({
+              ...link,
+              mode: effectiveLlmMode ?? (isLocalMode ? 'local' : null),
+            }));
             const { error: testError } = await supabase
               .from('node_test_links')
-              .upsert(testLinksToInsert, {
+              .upsert(linksWithMode, {
                 onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
                 ignoreDuplicates: false,
               });
@@ -1186,7 +1226,10 @@ export default function BpmnFileManager() {
       if (result.docs.size > 0) {
         for (const [docFileName, docContent] of result.docs.entries()) {
           checkCancellation();
-          const docPath = `docs/${docFileName}`;
+          const { modePath: docPath, legacyPath: legacyDocPath } = buildDocStoragePaths(
+            docFileName,
+            effectiveLlmMode ?? (isLocalMode ? 'local' : null)
+          );
           const htmlBlob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
           const { error: uploadError } = await supabase.storage
             .from('bpmn-files')
@@ -1201,6 +1244,22 @@ export default function BpmnFileManager() {
           } else {
             docsCount++;
             detailedDocFiles.push(docFileName);
+            if (legacyDocPath !== docPath) {
+              const { error: legacyUploadError } = await supabase.storage
+                .from('bpmn-files')
+                .upload(legacyDocPath, htmlBlob, {
+                  upsert: true,
+                  contentType: 'text/html; charset=utf-8',
+                  cacheControl: '3600',
+                });
+              if (legacyUploadError) {
+                console.warn(
+                  'Kunde inte skriva legacy-dokumentation för bakåtkompatibilitet:',
+                  legacyDocPath,
+                  legacyUploadError
+                );
+              }
+            }
           }
           checkCancellation();
           docUploadsCompleted += 1;
