@@ -91,6 +91,8 @@ När `type = "Feature"` ska du:
 - endast använda: `<p>`, `<ul>`, `<ol>`, `<li>`, `<code>`.
 - **inte** skriva metadata som titel, BPMN-id, Jira-nyckel, ägare, team, version eller filnamn – allt detta renderas av systemet.
 - beskriva Feature Goalet ur ett **affärs-, process- och kreditperspektiv**, inte på detaljnivå för kod.
+ - **inte** lägga till extra sektioner, avslutande sammanfattningar, “Övrigt”, “Appendix” eller liknande utanför de definierade sektionerna.
+ - om du är osäker på om en viss epic, dependency eller ett scenario finns i underlaget ska du hellre beskriva det generellt eller utelämna raden än att hitta på specifika namn/ID:n.
 
 Följande beskriver vad du ska skriva för varje sektion, i den ordning de ska förekomma i outputen. Du ska inte markera sektionerna i texten – endast följa ordningen.
 
@@ -175,6 +177,7 @@ Ge en kompakt översikt över de viktigaste epics som ingår i Feature Goalet.
 **Begränsningar:**
 - 2–6 epics är normalt tillräckligt.
 - Ingen tabell, ingen rubrik.
+ - Utgå i första hand från epics som finns i input/hierarkitrail; om sådan information saknas, håll beskrivningen generell och hitta inte på nya, detaljerade epics med specifika ID:n.
 
 ---
 
@@ -364,6 +367,8 @@ När `type = "Epic"` ska du:
 - endast använda: `<p>`, `<ul>`, `<ol>`, `<li>`, `<code>`.
 - **inte** skriva metadata som titel, BPMN-id, Jira-nyckel, ägare, team, version eller filnamn – allt detta renderas av systemet.
 - beskriva epiken ur ett **affärs- och processperspektiv** (User Task/Service Task), inte på detaljerad kodnivå.
+ - **inte** lägga till extra sektioner, avslutande sammanfattningar, “Övrigt”, “Appendix” eller liknande utanför de definierade sektionerna.
+ - om du är osäker på om ett visst fält, scenario eller dependency finns i underlaget ska du hellre beskriva det generellt eller utelämna raden än att hitta på specifika namn/ID:n.
 
 Följande beskriver vad du ska skriva för varje sektion, i den ordning de ska förekomma i outputen. Du ska inte markera sektionerna i texten – endast följa ordningen.
 
@@ -379,6 +384,9 @@ Förklara kort *vad* epiken gör, *varför* den finns och *hur* den påverkar ku
   - beskriver epikens mål (t.ex. samla in ansökningsdata, genomföra pre-screening, visa beslutsstöd),
   - beskriver vilket värde den ger (för kund, handläggare och banken),
   - nämner om det är en User Task (mänsklig interaktion) eller Service Task (ren systeminteraktion) på ett naturligt sätt.
+
+**Viktigt:**  
+- Denna sektion ska **inte** innehålla detaljerade valideringsregler, fältlistor eller tekniska beslutsregler – sådant hör hemma i `inputs`, `outputs` och `business-rules-policy`.
 
 **Formatexempel (illustration):**
 
@@ -449,7 +457,7 @@ Ge en översiktlig beskrivning av epikens normala flöde, steg för steg.
 ```
 
 **Begränsningar:**
-- Beskriv endast affärs-/processflöde, inte exakta tekniska API-anrop.
+- Beskriv endast affärs-/processflöde, inte exakta tekniska API-anrop eller detaljerad valideringslogik.
 - Ingen rubrik.
 
 ---

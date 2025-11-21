@@ -69,6 +69,12 @@ Du ska därför **endast generera innehåll** för dessa sektioner, i exakt ordn
      9. `related-items`
    - Skriv innehållet för alla sektioner som en enda HTML-ström (ett sammanhängande body-fragment) i denna ordning.
    - Avgränsa sektionerna endast genom att följa ordningen och byta stycke/listor – **inte** med rubriker.
+   - Lägg inte till några extra sektioner, avslutande sammanfattningar, “Övrigt”, “Appendix” eller liknande utanför de definierade sektionerna.
+
+7. **Vid osäkerhet – utelämna hellre än att hitta på**
+   - Om du är osäker på om ett visst fält, scenario eller detalj finns i kontexten:
+     - **hitta inte på exakta värden eller metadata** (t.ex. regel-ID, filnamn, verkliga policydokument).
+     - utelämna hellre raden än att fylla den med påhittad information.
 
 ---
 
