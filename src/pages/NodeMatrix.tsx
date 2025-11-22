@@ -515,7 +515,12 @@ const NodeMatrix = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(getNodeTestReportUrl(node.bpmnFile, node.elementId).replace('#', ''));
+                              navigate(
+                                getNodeTestReportUrl(
+                                  node.bpmnFile,
+                                  node.elementId,
+                                ).replace('#', ''),
+                              );
                             }}
                             className="text-xs text-primary hover:underline flex items-center gap-1"
                             title="Visa testrapport för denna nod"
@@ -524,19 +529,29 @@ const NodeMatrix = () => {
                             <span>Testrapport</span>
                           </button>
                           {node.testFilePath ? (
-                            <a
-                              href={getTestFileUrl(node.testFilePath)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline flex items-center gap-1 max-w-[200px] truncate"
-                              onClick={(e) => e.stopPropagation()}
-                              title={node.testFilePath}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-primary hover:underline flex items-center gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(
+                                  `/node-test-script?bpmnFile=${encodeURIComponent(
+                                    node.bpmnFile,
+                                  )}&elementId=${encodeURIComponent(
+                                    node.elementId,
+                                  )}`,
+                                );
+                              }}
+                              title="Visa testscript (Local/Full LLM mode)"
                             >
-                              <span>{node.testFilePath}</span>
                               <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
+                              <span>Testscript</span>
+                            </Button>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Ingen fil</span>
+                            <span className="text-xs text-muted-foreground">
+                              Ingen fil
+                            </span>
                           )}
                         </div>
                       ) : (

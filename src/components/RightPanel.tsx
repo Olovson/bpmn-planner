@@ -67,10 +67,10 @@ export const RightPanel = ({
   const { data: availableDmnFiles = [] } = useDynamicDmnFiles();
 
   // Get test file URL from node_test_links
-  const [testFileUrl, setTestFileUrl] = useState<string | null>(null);
+  const [testFilePath, setTestFilePath] = useState<string | null>(null);
   useEffect(() => {
     if (!selectedElement || !bpmnFile) {
-      setTestFileUrl(null);
+      setTestFilePath(null);
       return;
     }
 
@@ -87,22 +87,22 @@ export const RightPanel = ({
         if (error) {
           if (status === 406) {
             console.warn('[RightPanel] node_test_links 406 for', bpmnFile, selectedElement);
-            setTestFileUrl(null);
+            setTestFilePath(null);
             return;
           }
           console.error('[RightPanel] node_test_links error', error);
-          setTestFileUrl(null);
+          setTestFilePath(null);
           return;
         }
 
         if (data?.test_file_path) {
-          setTestFileUrl(getTestFileUrl(data.test_file_path));
+          setTestFilePath(data.test_file_path);
         } else {
-          setTestFileUrl(null);
+          setTestFilePath(null);
         }
       } catch (err) {
         console.error('[RightPanel] node_test_links fetch failed', err);
-        setTestFileUrl(null);
+        setTestFilePath(null);
       }
     };
 
@@ -474,12 +474,20 @@ export const RightPanel = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={!testFileUrl}
-                    onClick={() => openExternal(testFileUrl)}
+                    disabled={!testFilePath}
+                    onClick={() => {
+                      if (bpmnFile && selectedElement && testFilePath) {
+                        navigate(
+                          `/node-test-script?bpmnFile=${encodeURIComponent(
+                            bpmnFile,
+                          )}&elementId=${encodeURIComponent(selectedElement)}`,
+                        );
+                      }
+                    }}
                     className="justify-start gap-2"
                   >
                     <FileCode className="h-4 w-4" />
-                    Automatisk testfil
+                    Testscript (Local/Full)
                   </Button>
                   <Button
                     variant="outline"

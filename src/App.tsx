@@ -6,7 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import TestReport from "./pages/TestReport";
+import TestScriptsPage from "./pages/TestScriptsPage";
 import NodeTestsPage from "./pages/NodeTestsPage";
+import NodeTestScriptViewer from "./pages/NodeTestScriptViewer";
 import BpmnFileManager from "./pages/BpmnFileManager";
 import RegistryStatus from "./pages/RegistryStatus";
 import NotFound from "./pages/NotFound";
@@ -64,7 +66,9 @@ const App = () => {
                 <Route path="/process-explorer" element={<ProcessExplorer />} />
                 <Route path="/node-matrix" element={<NodeMatrix />} />
                 <Route path="/test-report" element={<TestReport />} />
+                <Route path="/test-scripts" element={<TestScriptsPage />} />
                 <Route path="/node-tests" element={<NodeTestsPage />} />
+                <Route path="/node-test-script" element={<NodeTestScriptViewer />} />
                 <Route path="/files" element={<ProtectedRoute><BpmnFileManager /></ProtectedRoute>} />
                 <Route path="/registry-status" element={<ProtectedRoute><RegistryStatus /></ProtectedRoute>} />
                 <Route path="/auth" element={<Auth />} />

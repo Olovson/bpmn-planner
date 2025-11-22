@@ -1,5 +1,7 @@
 import { NodeDocumentationContext } from './documentationContext';
 import { getNodeDocViewerPath } from './nodeArtifactPaths';
+import { mapFeatureGoalLlmToSections } from './featureGoalLlmMapper';
+import type { FeatureGoalLlmSections } from './featureGoalLlmTypes';
 
 export interface TemplateLinks {
   bpmnViewerLink?: string;
@@ -597,6 +599,247 @@ function buildFeatureGoalDocBody(
   `;
 }
 
+function buildFeatureGoalLlmDocBody(
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  sections: FeatureGoalLlmSections,
+): string {
+  const node = context.node;
+  const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
+  const upstreamNode = context.parentChain.length
+    ? context.parentChain[context.parentChain.length - 1]
+    : undefined;
+  const downstreamNode = context.childNodes.length
+    ? context.childNodes[context.childNodes.length - 1]
+    : undefined;
+  const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
+  const downstreamName = downstreamNode ? formatNodeName(downstreamNode) : 'Nedströms leverans';
+  const inputNodes = context.parentChain.slice(-2);
+  const descendantEpics = context.childNodes.filter((child) =>
+    ['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'].includes(child.type),
+  );
+  const initiative = node.bpmnFile.replace('.bpmn', '');
+  const owner = 'Produktägare Kredit / Risk & Policy';
+  const versionLabel = '1.0 (LLM-genererad) – valideras innan produktion';
+
+  const epicRows =
+    sections.epics.length > 0
+      ? sections.epics
+      : descendantEpics.slice(0, 6).map((epic, index) => ({
+          id: `E${index + 1}`,
+          name: formatNodeName(epic),
+          description: `Delsteg som bidrar till att ${nodeName.toLowerCase()} uppnås.`,
+          team: inferTeamForNode(epic.type),
+        }));
+
+  const flowSteps =
+    sections.flowSteps.length > 0
+      ? sections.flowSteps
+      : [
+          `Initiativet startar i ${upstreamName} när en kreditprocess initieras.`,
+          `${nodeName} samlar in, koordinerar och kvalitetssäkrar data och beslut från ingående epics.`,
+          'Regler och policystöd appliceras på ett konsekvent sätt för att möjliggöra välgrundade kreditbeslut.',
+          `Resultat och status förs vidare till ${downstreamName} och vidare in i efterföljande processer.`,
+        ];
+
+  const dependencies =
+    sections.dependencies.length > 0
+      ? sections.dependencies
+      : [
+          'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
+          'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
+          'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
+        ];
+
+  const scenarioRows =
+    sections.scenarios.length > 0
+      ? sections.scenarios
+      : [
+          {
+            id: 'S1',
+            name: 'Normalflöde – komplett ansökan',
+            type: 'Happy',
+            outcome: 'Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.',
+          },
+          {
+            id: 'S2',
+            name: 'Ofullständig information',
+            type: 'Edge',
+            outcome:
+              'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
+          },
+          {
+            id: 'S3',
+            name: 'Hög riskprofil',
+            type: 'Edge',
+            outcome: 'Ärendet flaggas för extra granskning eller avslag enligt policy.',
+          },
+        ];
+
+  const summaryText =
+    sections.summary ||
+    `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
+
+  const scopeBullets: string[] = [];
+  if (sections.scopeIncluded.length) {
+    scopeBullets.push(`Ingår: ${sections.scopeIncluded.join('; ')}`);
+  }
+  if (sections.scopeExcluded.length) {
+    scopeBullets.push(`Ingår inte: ${sections.scopeExcluded.join('; ')}`);
+  }
+  if (!scopeBullets.length) {
+    scopeBullets.push(
+      'Ingår: end-to-end-flöde för det specifika kreditinitiativet.',
+      'Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.',
+      'Ingår inte: tekniska implementationer i underliggande system – dessa dokumenteras separat.',
+    );
+  }
+
+  const implementationNotes =
+    sections.implementationNotes.length > 0
+      ? sections.implementationNotes
+      : [
+          'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
+          'Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.',
+          'Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.',
+          'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
+        ];
+
+  const relatedItems =
+    sections.relatedItems.length > 0
+      ? sections.relatedItems
+      : [
+          links.bpmnViewerLink
+            ? `Relaterad subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
+            : `Relaterad subprocess: BPMN-fil ${node.bpmnFile}`,
+          links.dmnLink
+            ? `Relaterade regler/DMN: <a href="${links.dmnLink}">${links.dmnLink.split('/').pop()}</a>`
+            : 'Relaterade regler/DMN dokumenteras per Business Rule.',
+          inputNodes.length
+            ? `Föregående noder: ${buildNodeNameList(inputNodes)}`
+            : 'Föregående noder: initierande steg i processen.',
+        ];
+
+  const testDescription =
+    sections.testDescription ||
+    'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
+
+  return `
+    <section class="doc-section">
+      <span class="doc-badge">Feature Goal</span>
+      <h1>${nodeName}</h1>
+      <ul>
+        <li><strong>Initiativ:</strong> ${initiative}</li>
+        <li><strong>BPMN Call Activity:</strong> ${node.bpmnElementId} (${nodeName})</li>
+        <li><strong>Regel/affärsägare:</strong> ${owner}</li>
+        <li><strong>Kreditprocess-steg:</strong> ${initiative}</li>
+        <li><strong>Version / datum:</strong> ${versionLabel}</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Sammanfattning &amp; scope</h2>
+      <p>${summaryText}</p>
+      ${renderList(scopeBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Omfattning &amp; Avgränsningar</h2>
+      ${renderList([])}
+    </section>
+
+    <section class="doc-section">
+      <h2>Ingående Epics</h2>
+      ${
+        epicRows.length
+          ? `
+      <table>
+        <tr>
+          <th>Epic-ID</th>
+          <th>Epic-namn</th>
+          <th>Beskrivning</th>
+          <th>Team</th>
+        </tr>
+        ${epicRows
+          .map(
+            (row) => `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.name}</td>
+          <td>${row.description}</td>
+          <td>${row.team}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>`
+          : '<p class="muted">Inga epics identifierade ännu – fyll på när BPMN-hierarkin är komplett.</p>'
+      }
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärsflöde</h2>
+      <ol>
+        ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
+      </ol>
+    </section>
+
+    <section class="doc-section">
+      <h2>Kritiska beroenden</h2>
+      ${renderList(dependencies)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärs-scenarion</h2>
+      ${
+        scenarioRows.length
+          ? `
+      <table>
+        <tr>
+          <th>Scenario</th>
+          <th>Beskrivning</th>
+          <th>Typ (Happy/Edge/Error)</th>
+          <th>Förväntat resultat</th>
+        </tr>
+        ${scenarioRows
+          .map(
+            (row) => `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.name}</td>
+          <td>${row.type}</td>
+          <td>${row.outcome}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>`
+          : '<p class="muted">Inga affärs-scenarion identifierade ännu.</p>'
+      }
+    </section>
+
+    <section class="doc-section">
+      <h2>Koppling till automatiska tester</h2>
+      <p>
+        ${testDescription}
+        ${
+          links.testLink
+            ? `<br />Testfil: <code>${links.testLink}</code>`
+            : '<br /><span class="muted">Testfil länkas via node_test_links</span>'
+        }
+      </p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes (för dev)</h2>
+      ${renderList(implementationNotes)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade regler / subprocesser</h2>
+      ${renderList(relatedItems)}
+    </section>
+  `;
+}
+
 function buildEpicDocBody(
   context: NodeDocumentationContext,
   links: TemplateLinks,
@@ -1035,6 +1278,18 @@ export const renderFeatureGoalDoc = (
   context: NodeDocumentationContext,
   links: TemplateLinks,
 ) => renderDocWithSchema('feature-goal', FEATURE_GOAL_DOC_SCHEMA, context, links);
+
+export const renderFeatureGoalDocFromLlm = (
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  rawLlmContent: string,
+) => {
+  const node = context.node;
+  const title = node.name || node.bpmnElementId || 'Feature Goal';
+  const sections = mapFeatureGoalLlmToSections(rawLlmContent);
+  const body = buildFeatureGoalLlmDocBody(context, links, sections);
+  return wrapDocument(title, body);
+};
 
 export const renderEpicDoc = (
   context: NodeDocumentationContext,

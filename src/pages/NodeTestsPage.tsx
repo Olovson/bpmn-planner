@@ -265,15 +265,17 @@ const NodeTestsPage = () => {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const githubOwner = import.meta.env.VITE_GITHUB_OWNER;
-                            const githubRepo = import.meta.env.VITE_GITHUB_REPO;
-                            if (githubOwner && githubRepo) {
-                              window.open(
-                                `https://github.com/${githubOwner}/${githubRepo}/blob/main/tests/${test.fileName}`,
-                                '_blank'
+                            const file = test.bpmnFile || bpmnFile;
+                            const element = test.bpmnElementId || elementId;
+                            if (file && element) {
+                              navigate(
+                                `/node-test-script?bpmnFile=${encodeURIComponent(
+                                  file,
+                                )}&elementId=${encodeURIComponent(element)}`,
                               );
                             }
                           }}
+                          title="Visa testscript för denna nod"
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>

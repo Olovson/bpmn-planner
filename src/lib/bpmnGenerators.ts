@@ -7,6 +7,7 @@ import {
   renderFeatureGoalDoc,
   renderEpicDoc,
   renderBusinessRuleDoc,
+  renderFeatureGoalDocFromLlm,
   wrapLlmContentAsDocument,
   type TemplateLinks,
 } from '@/lib/documentationTemplates';
@@ -927,6 +928,12 @@ async function renderDocWithLlmFallback(
   try {
     const llmDoc = await generateDocumentationWithLlm(docType, context, links);
     if (llmDoc && llmDoc.trim()) {
+      if (docType === 'feature') {
+        // För Feature Goals använder vi samma HTML-layout som den lokala varianten,
+        // men fyller sektionerna med LLM-innehåll via en dedikerad mapper.
+        return renderFeatureGoalDocFromLlm(context, links, llmDoc);
+      }
+
       const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
       await saveLlmDebugArtifact('doc', identifier, llmDoc);
       const title =
