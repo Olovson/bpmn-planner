@@ -1,22 +1,37 @@
 import OpenAI from 'openai';
-import type { ChatCompletionMessageParam, ChatCompletionCreateParams } from 'openai/resources/index.mjs';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionCreateParams,
+} from 'openai/resources/index.mjs';
 
-const USE_LLM = String(import.meta.env.VITE_USE_LLM ?? '').trim().toLowerCase() === 'true';
+const USE_LLM =
+  String(import.meta.env.VITE_USE_LLM ?? '').trim().toLowerCase() === 'true';
 const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const MODE = import.meta.env.MODE;
+const ALLOW_LLM_IN_TESTS =
+  String(import.meta.env.VITE_ALLOW_LLM_IN_TESTS ?? '')
+    .trim()
+    .toLowerCase() === 'true';
+
 const FULL_MODEL = 'gpt-4o';
 const IS_BROWSER = typeof window !== 'undefined';
 
+// Normalfall: LLM är aktiverat i dev/prod när VITE_USE_LLM=true och vi har API-nyckel.
+// I tester är LLM som standard AV, men kan explicit slås på via VITE_ALLOW_LLM_IN_TESTS=true
+// för utvalda e2e-scenarion.
+const shouldEnableLlm =
+  USE_LLM && !!API_KEY && (MODE !== 'test' || ALLOW_LLM_IN_TESTS);
+
 let openAiClient: OpenAI | null = null;
 
-if (USE_LLM && API_KEY && import.meta.env.MODE !== 'test') {
+if (shouldEnableLlm) {
   openAiClient = new OpenAI({
     apiKey: API_KEY,
     ...(IS_BROWSER ? { dangerouslyAllowBrowser: true } : {}),
   });
 }
 
-export const isLlmEnabled = (): boolean =>
-  import.meta.env.MODE !== 'test' && USE_LLM && !!openAiClient;
+export const isLlmEnabled = (): boolean => shouldEnableLlm;
 
 interface CompletionOptions {
   temperature?: number;

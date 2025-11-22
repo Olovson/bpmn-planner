@@ -79,4 +79,3 @@ describe('Mortgage BPMN real XML parse (fixtures)', () => {
     expect(hierarchy.callActivities).toContain('household');
   });
 });
-

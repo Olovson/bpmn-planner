@@ -204,8 +204,15 @@ npm run dev   # http://localhost:8080/
 `seed-bot@local.test / Passw0rd!`
 
 ## 6. Validering & tester
+
+**Testmiljö:**
+- **Vitest** för unit- och integrationstester.
+- Standard environment är `node`. jsdom används selektivt i de testfiler som behöver DOM (t.ex. parser-tester).
+
+**Kör tester (snabb, deterministisk svit utan riktiga LLM-anrop):**
 ```bash
-npm test                 # kör vitest
+npm test                 # kör alla vitest-tester
+npm run test:watch       # kör tester i watch-läge
 npm run check:generator  # snabb kontroll av BPMN-generatorn
 npm run check:db-schema  # verifierar att generation_jobs.mode finns i Supabase-schema
 npx vitest run \
@@ -213,6 +220,32 @@ npx vitest run \
   src/lib/processTreeNavigation.test.ts   # verifierar hierarkin + UI-kartan
 # (valfritt) supabase functions serve build-process-tree --env-file supabase/.env --no-verify-jwt
 ```
+
+**Riktiga LLM-smoke-tester (opt-in):**
+
+Det finns ett dedikerat script för att köra ett litet antal riktiga LLM-tester (Feature Goal + Epic + Business Rule) utan att påverka resten av sviten:
+
+```bash
+npm run test:llm:smoke
+```
+
+Scriptet sätter:
+
+- `VITE_USE_LLM=true`
+- `VITE_ALLOW_LLM_IN_TESTS=true`
+
+och kör `tests/integration/llm.real.smoke.test.ts`, som:
+
+- använder `generateDocumentationWithLlm` med verklig OpenAI-klient när:
+  - `VITE_OPENAI_API_KEY` är satt,
+  - `VITE_USE_LLM=true`,
+  - `VITE_ALLOW_LLM_IN_TESTS=true`,
+- testar LLM-flödet (JSON → modell → HTML) för:
+  - Feature Goal (`docType = "feature"`),
+  - Epic (`docType = "epic"`),
+  - Business Rule (`docType = "businessRule"`).
+
+Om LLM inte är aktiverat i tests (t.ex. ingen API-nyckel) hoppar smoke-test-filen automatiskt över sina tester (`describe.skip`).
 
 _Tips: hierarkin byggs från metadata i tabellen `bpmn_files.meta` (genereras vid uppladdning/parsing). Se till att metadata finns för att träd/diagram/listor ska spegla aktuell struktur._
 
