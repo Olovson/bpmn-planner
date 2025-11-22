@@ -172,7 +172,21 @@ function renderDocWithSchema(
   return wrapDocument(title, body);
 }
 
-export const wrapDocument = (title: string, body: string) => `<!DOCTYPE html>
+export interface LlmMetadata {
+  provider: 'cloud' | 'local';
+  model: string;
+}
+
+export const wrapDocument = (
+  title: string,
+  body: string,
+  llmMetadata?: LlmMetadata
+) => {
+  const docShellAttrs = llmMetadata
+    ? ` class="doc-shell" data-llm-provider="${llmMetadata.provider}" data-llm-model="${llmMetadata.model}"`
+    : ' class="doc-shell"';
+  
+  return `<!DOCTYPE html>
 <html lang="sv">
 <head>
   <meta charset="UTF-8" />
@@ -263,7 +277,7 @@ export const wrapDocument = (title: string, body: string) => `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <div class="doc-shell">
+  <div${docShellAttrs}>
     ${body}
   </div>
 </body>
@@ -1823,12 +1837,13 @@ export const renderFeatureGoalDocFromLlm = (
   context: NodeDocumentationContext,
   links: TemplateLinks,
   rawLlmContent: string,
+  llmMetadata?: LlmMetadata,
 ) => {
   const node = context.node;
   const title = node.name || node.bpmnElementId || 'Feature Goal';
   const sections = mapFeatureGoalLlmToSections(rawLlmContent);
   const body = buildFeatureGoalDocHtmlFromModel(context, links, sections);
-  return wrapDocument(title, body);
+  return wrapDocument(title, body, llmMetadata);
 };
 
 export const renderEpicDoc = (
@@ -1840,12 +1855,13 @@ export const renderEpicDocFromLlm = (
   context: NodeDocumentationContext,
   links: TemplateLinks,
   rawLlmContent: string,
+  llmMetadata?: LlmMetadata,
 ) => {
   const sections = mapEpicLlmToSections(rawLlmContent);
   const body = buildEpicDocHtmlFromModel(context, links, sections);
   const node = context.node;
   const title = node.name || node.bpmnElementId || 'Epic';
-  return wrapDocument(title, body);
+  return wrapDocument(title, body, llmMetadata);
 };
 
 const renderBusinessRuleDocLegacy = (
@@ -2395,10 +2411,11 @@ export const renderBusinessRuleDocFromLlm = (
   context: NodeDocumentationContext,
   links: TemplateLinks,
   rawLlmContent: string,
+  llmMetadata?: LlmMetadata,
 ) => {
   const sections = mapBusinessRuleLlmToSections(rawLlmContent);
   const body = buildBusinessRuleDocHtmlFromModel(context, links, sections);
   const node = context.node;
   const title = node.name || node.bpmnElementId || 'Business Rule';
-  return wrapDocument(title, body);
+  return wrapDocument(title, body, llmMetadata);
 };

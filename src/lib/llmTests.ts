@@ -3,9 +3,13 @@ import { generateChatCompletion, isLlmEnabled } from './llmClient';
 import type { BpmnElement } from './bpmnParser';
 import { buildBpmnElementSummary } from './llmUtils';
 import { logLlmFallback } from './llmMonitoring';
-import { getLlmModeConfig, getLlmGenerationMode } from './llmMode';
 import { saveLlmDebugArtifact } from './llmDebugStorage';
-import { TESTSCRIPT_PROMPT } from './llmPrompts';
+import type { LlmProvider } from './llmClientAbstraction';
+import { getDefaultLlmProvider } from './llmClients';
+import { LocalLlmUnavailableError } from './llmClients/localLlmClient';
+import { getTestscriptPrompt, buildSystemPrompt } from './promptLoader';
+import { getLlmProfile } from './llmProfiles';
+import { validateTestscriptJson, logValidationResult } from './llmValidation';
 
 interface LlmTestScenario {
   name: string;
@@ -51,17 +55,25 @@ const buildTestScenarioSchema = (minItems: number, maxItems: number) => ({
 
 export async function generateTestSpecWithLlm(
   element: BpmnElement,
+  llmProvider?: LlmProvider,
 ): Promise<LlmTestScenario[] | null> {
   if (!isLlmEnabled()) return null;
 
-  const mode = getLlmGenerationMode();
-  const modeConfig = getLlmModeConfig(mode);
-  const scenarioSchema = buildTestScenarioSchema(
-    modeConfig.testMinScenarios,
-    modeConfig.testMaxScenarios
-  );
+  // Hämta prompt via central promptLoader
+  const basePrompt = getTestscriptPrompt();
+
+  // Hämta provider-specifik profil
+  const effectiveProvider = llmProvider || getDefaultLlmProvider();
+  const profile = getLlmProfile('testscript', effectiveProvider);
+
+  // Bygg system prompt med ev. extra prefix för provider
+  const systemPrompt = buildSystemPrompt(basePrompt, profile.extraSystemPrefix);
+
+  // Bygg test scenario schema (använder standardvärden för nu)
+  // TODO: Detta kan ev. göras provider-aware i framtiden
+  const scenarioSchema = buildTestScenarioSchema(3, 5);
+
   const summary = buildBpmnElementSummary(element);
-  const systemPrompt = TESTSCRIPT_PROMPT;
   const llmInput = {
     nodeName: summary.name,
     type: summary.type,
@@ -82,23 +94,45 @@ export async function generateTestSpecWithLlm(
   try {
     let response: string | null = null;
     try {
-      response = await generateChatCompletion(messages, {
-        temperature: modeConfig.testTemperature,
-        maxTokens: modeConfig.testMaxTokens,
-        responseFormat: {
-          type: 'json_schema',
-          json_schema: scenarioSchema,
+      response = await generateChatCompletion(
+        messages,
+        {
+          temperature: profile.temperature,
+          maxTokens: profile.maxTokens,
+          responseFormat: {
+            type: 'json_schema',
+            json_schema: scenarioSchema,
+          },
+          model: 'slow',
         },
-        model: 'slow',
-      });
+        effectiveProvider
+      );
     } catch (error) {
+      // Hantera LocalLlmUnavailableError
+      if (error instanceof LocalLlmUnavailableError) {
+        console.warn('Local LLM unavailable during test generation:', error.message);
+        return null;
+      }
+
       if (isSchemaFormatError(error)) {
         console.warn('JSON schema response_format unsupported, retrying with plain text:', error);
-        response = await generateChatCompletion(messages, {
-          temperature: modeConfig.testTemperature,
-          maxTokens: modeConfig.testMaxTokens,
-          model: 'slow',
-        });
+        try {
+          response = await generateChatCompletion(
+            messages,
+            {
+              temperature: profile.temperature,
+              maxTokens: profile.maxTokens,
+              model: 'slow',
+            },
+            effectiveProvider
+          );
+        } catch (retryError) {
+          if (retryError instanceof LocalLlmUnavailableError) {
+            console.warn('Local LLM unavailable during test generation (retry):', retryError.message);
+            return null;
+          }
+          throw retryError;
+        }
       } else {
         throw error;
       }
@@ -122,6 +156,19 @@ export async function generateTestSpecWithLlm(
       const parsed = JSON.parse(parsedJson) as
         | { scenarios: LlmTestScenario[] }
         | LlmTestScenario[];
+
+      // Validera JSON-struktur mot kontrakt
+      const validationResult = validateTestscriptJson(parsed, effectiveProvider);
+      logValidationResult(validationResult, effectiveProvider, 'testscript', element.id);
+
+      if (!validationResult.valid) {
+        console.error(
+          `[LLM Tests] JSON validation failed for testscript (${effectiveProvider}). Errors:`,
+          validationResult.errors
+        );
+        // Fortsätt ändå - validering är varning, inte blockerande
+      }
+
       const scenarios = Array.isArray(parsed) ? parsed : parsed?.scenarios;
       if (Array.isArray(scenarios)) {
         return scenarios;

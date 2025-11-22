@@ -5,6 +5,8 @@ import { isLlmEnabled } from '@/lib/llmClient';
 import { generateDocumentationWithLlm } from '@/lib/llmDocumentation';
 import type { NodeDocumentationContext } from '@/lib/documentationContext';
 import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
+import type { LlmProvider } from '@/lib/llmClientAbstraction';
+import { LocalLlmUnavailableError } from '@/lib/llmClients/localLlmClient';
 import {
   renderFeatureGoalDocFromLlm,
   renderEpicDocFromLlm,
@@ -27,6 +29,11 @@ import {
 // Real LLM smoke-test: kör riktiga anrop mot LLM när
 // VITE_USE_LLM=true, VITE_ALLOW_LLM_IN_TESTS=true och VITE_OPENAI_API_KEY är satt.
 // Om LLM inte är aktiverat i test-miljö, markeras hela describe-blocket som skip.
+//
+// Provider kan väljas via env-variabel LLM_PROVIDER=cloud|local
+// Default är 'cloud' om inte specificerat.
+
+const LLM_PROVIDER = (process.env.LLM_PROVIDER?.trim().toLowerCase() as LlmProvider) || 'cloud';
 
 if (!isLlmEnabled()) {
   describe.skip('Real LLM smoke tests (skipped – LLM not enabled in tests)', () => {
@@ -43,8 +50,8 @@ if (!isLlmEnabled()) {
     return `${html.slice(0, insertAt)}\n  ${comment}${html.slice(insertAt)}`;
   };
 
-  describe('Real LLM smoke tests', () => {
-    const outputDir = join(process.cwd(), 'tests', 'llm-output');
+  describe(`Real LLM smoke tests (provider: ${LLM_PROVIDER})`, () => {
+    const outputDir = join(process.cwd(), 'tests', 'llm-output', LLM_PROVIDER);
 
     const ensureOutputDir = () => {
       try {
@@ -115,8 +122,16 @@ if (!isLlmEnabled()) {
         descendantNodes: [],
       };
 
-      const raw = await generateDocumentationWithLlm('feature', context, links);
-      expect(raw && raw.trim().length).toBeGreaterThan(0);
+      const raw = await generateDocumentationWithLlm('feature', context, links, LLM_PROVIDER);
+      
+      if (!raw || !raw.trim().length) {
+        if (LLM_PROVIDER === 'local') {
+          throw new Error(
+            'Local LLM returned empty response. Make sure Ollama is running and the model is available.'
+          );
+        }
+        throw new Error('LLM returned empty response');
+      }
 
       const sections = mapFeatureGoalLlmToSections(raw || '');
 
@@ -149,7 +164,7 @@ if (!isLlmEnabled()) {
 
       const dir = ensureOutputDir();
       writeFileSync(
-        join(dir, 'html', 'llm-feature-goal-smoke.html'),
+        join(dir, 'html', `llm-feature-goal-smoke-${LLM_PROVIDER}.html`),
         llmHtml,
         'utf8',
       );
@@ -160,7 +175,7 @@ if (!isLlmEnabled()) {
       );
       if (raw) {
         writeFileSync(
-          join(dir, 'json', 'llm-feature-goal-smoke.raw.json'),
+          join(dir, 'json', `llm-feature-goal-smoke-${LLM_PROVIDER}.raw.json`),
           raw,
           'utf8',
         );
@@ -176,8 +191,16 @@ if (!isLlmEnabled()) {
         descendantNodes: [],
       };
 
-      const raw = await generateDocumentationWithLlm('epic', context, links);
-      expect(raw && raw.trim().length).toBeGreaterThan(0);
+      const raw = await generateDocumentationWithLlm('epic', context, links, LLM_PROVIDER);
+      
+      if (!raw || !raw.trim().length) {
+        if (LLM_PROVIDER === 'local') {
+          throw new Error(
+            'Local LLM returned empty response. Make sure Ollama is running and the model is available.'
+          );
+        }
+        throw new Error('LLM returned empty response');
+      }
 
       const sections = mapEpicLlmToSections(raw || '');
 
@@ -209,7 +232,7 @@ if (!isLlmEnabled()) {
 
       const dir = ensureOutputDir();
       writeFileSync(
-        join(dir, 'html', 'llm-epic-smoke.html'),
+        join(dir, 'html', `llm-epic-smoke-${LLM_PROVIDER}.html`),
         llmHtml,
         'utf8',
       );
@@ -220,7 +243,7 @@ if (!isLlmEnabled()) {
       );
       if (raw) {
         writeFileSync(
-          join(dir, 'json', 'llm-epic-smoke.raw.json'),
+          join(dir, 'json', `llm-epic-smoke-${LLM_PROVIDER}.raw.json`),
           raw,
           'utf8',
         );
@@ -236,8 +259,16 @@ if (!isLlmEnabled()) {
         descendantNodes: [],
       };
 
-      const raw = await generateDocumentationWithLlm('businessRule', context, links);
-      expect(raw && raw.trim().length).toBeGreaterThan(0);
+      const raw = await generateDocumentationWithLlm('businessRule', context, links, LLM_PROVIDER);
+      
+      if (!raw || !raw.trim().length) {
+        if (LLM_PROVIDER === 'local') {
+          throw new Error(
+            'Local LLM returned empty response. Make sure Ollama is running and the model is available.'
+          );
+        }
+        throw new Error('LLM returned empty response');
+      }
 
       const sections = mapBusinessRuleLlmToSections(raw || '');
 
@@ -265,7 +296,7 @@ if (!isLlmEnabled()) {
 
       const dir = ensureOutputDir();
       writeFileSync(
-        join(dir, 'html', 'llm-business-rule-smoke.html'),
+        join(dir, 'html', `llm-business-rule-smoke-${LLM_PROVIDER}.html`),
         llmHtml,
         'utf8',
       );
@@ -276,7 +307,7 @@ if (!isLlmEnabled()) {
       );
       if (raw) {
         writeFileSync(
-          join(dir, 'json', 'llm-business-rule-smoke.raw.json'),
+          join(dir, 'json', `llm-business-rule-smoke-${LLM_PROVIDER}.raw.json`),
           raw,
           'utf8',
         );

@@ -16,6 +16,8 @@ import {
 import { getNodeDocFileKey, getNodeTestFileKey, getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
 import { generateDocumentationWithLlm, type DocumentationDocType } from '@/lib/llmDocumentation';
 import { generateTestSpecWithLlm } from '@/lib/llmTests';
+import type { LlmProvider } from './llmClientAbstraction';
+import { getLlmClient, getDefaultLlmProvider } from './llmClients';
 import { isLlmEnabled } from '@/lib/llmClient';
 import { logLlmFallback } from '@/lib/llmMonitoring';
 import { saveLlmDebugArtifact } from '@/lib/llmDebugStorage';
@@ -913,6 +915,7 @@ async function renderDocWithLlmFallback(
   links: TemplateLinks,
   fallback: () => string,
   llmAllowed: boolean,
+  llmProvider?: LlmProvider,
 ): Promise<string> {
   const llmActive = llmAllowed && isLlmEnabled();
   const basePayload = {
@@ -928,22 +931,35 @@ async function renderDocWithLlmFallback(
   }
 
   try {
-    const llmDoc = await generateDocumentationWithLlm(docType, context, links);
+    const llmDoc = await generateDocumentationWithLlm(docType, context, links, llmProvider);
     if (llmDoc && llmDoc.trim()) {
+      // Hämta provider-info för metadata
+      const effectiveProvider = llmProvider || getDefaultLlmProvider();
+      const llmClient = getLlmClient(effectiveProvider);
+      
       if (docType === 'feature') {
         // För Feature Goals använder vi samma HTML-layout som den lokala varianten,
         // men fyller sektionerna med LLM-innehåll via en dedikerad mapper.
-        return renderFeatureGoalDocFromLlm(context, links, llmDoc);
+        return renderFeatureGoalDocFromLlm(context, links, llmDoc, {
+          provider: llmClient.provider,
+          model: llmClient.modelName,
+        });
       }
 
       if (docType === 'epic') {
         // För Epics använder vi samma layout som lokalt, men fyller via EpicDocModel.
-        return renderEpicDocFromLlm(context, links, llmDoc);
+        return renderEpicDocFromLlm(context, links, llmDoc, {
+          provider: llmClient.provider,
+          model: llmClient.modelName,
+        });
       }
 
       if (docType === 'businessRule') {
         // För Business Rules används också modellbaserad layout.
-        return renderBusinessRuleDocFromLlm(context, links, llmDoc);
+        return renderBusinessRuleDocFromLlm(context, links, llmDoc, {
+          provider: llmClient.provider,
+          model: llmClient.modelName,
+        });
       }
 
       const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
@@ -1103,7 +1119,8 @@ export async function generateAllFromBpmnWithGraph(
   useHierarchy: boolean = false,
   useLlm: boolean = true,
   progressCallback?: ProgressReporter,
-  generationSource?: string
+  generationSource?: string,
+  llmProvider?: LlmProvider,
 ): Promise<GenerationResult> {
   const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
     if (progressCallback) {
@@ -1291,6 +1308,7 @@ export async function generateAllFromBpmnWithGraph(
                 docLinks,
                 () => renderFeatureGoalDoc(nodeContext, docLinks),
                 useLlm,
+                llmProvider,
               );
               // Skapa även en separat feature goal-sida för matched subprocesser
               const featureDocPath = getFeatureGoalDocFileKey(node.bpmnFile, node.bpmnElementId);
@@ -1321,6 +1339,7 @@ export async function generateAllFromBpmnWithGraph(
                 docLinks,
                 () => renderBusinessRuleDoc(nodeContext, docLinks),
                 useLlm,
+                llmProvider,
               );
               if (!(docLinks as any).dmnLink) {
                 nodeDocContent +=
@@ -1333,6 +1352,7 @@ export async function generateAllFromBpmnWithGraph(
                 docLinks,
                 () => renderEpicDoc(nodeContext, docLinks),
                 useLlm,
+                llmProvider,
               );
             }
           } else {
@@ -1343,7 +1363,7 @@ export async function generateAllFromBpmnWithGraph(
             docFileKey,
             insertGenerationMeta(nodeDocContent, generationSourceLabel),
           );
-          const llmScenarios = useLlm ? await generateTestSpecWithLlm(node.element) : null;
+          const llmScenarios = useLlm ? await generateTestSpecWithLlm(node.element, llmProvider) : null;
           result.tests.set(
             testFileKey,
             generateTestSkeleton(node.element, llmScenarios || undefined),
@@ -1451,7 +1471,7 @@ export async function generateAllFromBpmn(
 
     // Generate test skeleton
     if (['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity'].includes(nodeType)) {
-      const llmScenarios = useLlm ? await generateTestSpecWithLlm(element) : null;
+      const llmScenarios = useLlm ? await generateTestSpecWithLlm(element, llmProvider) : null;
       const testContent = generateTestSkeleton(element, llmScenarios || undefined);
       const testFileKey = bpmnFileName
         ? getNodeTestFileKey(bpmnFileName, element.id)

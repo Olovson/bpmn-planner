@@ -52,6 +52,7 @@ import {
   LLM_MODE_OPTIONS,
   type LlmGenerationMode,
 } from '@/lib/llmMode';
+import type { LlmProvider } from '@/lib/llmClientAbstraction';
 import { buildBpmnProcessGraph, createGraphSummary } from '@/lib/bpmnProcessGraph';
 import { useGenerationJobs, type GenerationJob, type GenerationOperation, type GenerationStatus } from '@/hooks/useGenerationJobs';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
@@ -59,6 +60,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { buildDocStoragePaths, buildTestStoragePaths } from '@/lib/artifactPaths';
 import { isPGRST204Error, getSchemaErrorMessage } from '@/lib/schemaVerification';
+import { useLlmHealth } from '@/hooks/useLlmHealth';
 
 const flattenHierarchyNodes = (node: any): any[] => {
   if (!node) return [];
@@ -99,6 +101,7 @@ export default function BpmnFileManager() {
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
   const { hasTests } = useArtifactAvailability();
+  const { data: llmHealth, isLoading: llmHealthLoading } = useLlmHealth();
   const [dragActive, setDragActive] = useState(false);
   const [deleteFile, setDeleteFile] = useState<BpmnFile | null>(null);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
@@ -146,6 +149,11 @@ export default function BpmnFileManager() {
   const llmModeDetails = getLlmModeConfig(llmMode);
   type GenerationMode = 'local' | LlmGenerationMode; // 'local' | 'slow'
   const [generationMode, setGenerationMode] = useState<GenerationMode>('local');
+  const [llmProvider, setLlmProvider] = useState<LlmProvider>(() => {
+    // Läs från localStorage om det finns, annars default till 'cloud'
+    const stored = localStorage.getItem('llmProvider');
+    return (stored === 'local' || stored === 'cloud') ? stored : 'cloud';
+  });
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
   const [rootFileName, setRootFileName] = useState<string | null>(null);
@@ -163,6 +171,11 @@ export default function BpmnFileManager() {
   useEffect(() => {
     persistLlmGenerationMode(llmMode);
   }, [llmMode]);
+
+  useEffect(() => {
+    // Spara provider-val i localStorage
+    localStorage.setItem('llmProvider', llmProvider);
+  }, [llmProvider]);
 
   // Resolve root BPMN-fil för att kunna markera toppnod i fil-listan och detaljpanelen.
   useEffect(() => {
@@ -815,7 +828,8 @@ export default function BpmnFileManager() {
         useHierarchy,
         !isLocalMode,
         handleGeneratorPhase,
-        generationSourceLabel
+        generationSourceLabel,
+        !isLocalMode ? llmProvider : undefined
       );
       checkCancellation();
       const nodeArtifacts = result.nodeArtifacts || [];
@@ -1956,6 +1970,60 @@ export default function BpmnFileManager() {
                 Välj hur dokumentation och tester ska genereras.
               </p>
             </div>
+            {generationMode !== 'local' && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">LLM-motor:</label>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Button
+                    size="sm"
+                    variant={llmProvider === 'cloud' ? 'default' : 'outline'}
+                    className="gap-2"
+                    onClick={() => setLlmProvider('cloud')}
+                    disabled={llmProvider === 'cloud'}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Standard (moln)
+                    {llmHealth?.cloud.available && (
+                      <Badge variant="outline" className="ml-1 text-xs">
+                        Tillgänglig
+                      </Badge>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={llmProvider === 'local' ? 'default' : 'outline'}
+                    className="gap-2"
+                    onClick={() => setLlmProvider('local')}
+                    disabled={llmProvider === 'local' || !llmHealth?.local.available}
+                    title={
+                      !llmHealth?.local.available
+                        ? `Kan inte nå lokal LLM-motor – kontrollera att Ollama körs. ${llmHealth?.local.error ? `Fel: ${llmHealth.local.error}` : ''}`
+                        : undefined
+                    }
+                  >
+                    <FileCode className="w-4 h-4" />
+                    Lokal (Llama 3.1 8B)
+                    {llmHealthLoading ? (
+                      <Loader2 className="w-3 h-3 animate-spin ml-1" />
+                    ) : llmHealth?.local.available ? (
+                      <Badge variant="outline" className="ml-1 text-xs bg-green-50 text-green-700 border-green-200">
+                        Tillgänglig
+                        {llmHealth.local.latencyMs && ` (${llmHealth.local.latencyMs}ms)`}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="ml-1 text-xs bg-red-50 text-red-700 border-red-200">
+                        Ej tillgänglig
+                      </Badge>
+                    )}
+                  </Button>
+                </div>
+                {!llmHealth?.local.available && generationMode !== 'local' && (
+                  <p className="text-xs text-muted-foreground">
+                    Lokal LLM är inte tillgänglig. Kontrollera att Ollama körs på {import.meta.env.VITE_LLM_LOCAL_BASE_URL || 'http://localhost:11434'}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"

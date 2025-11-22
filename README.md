@@ -85,6 +85,25 @@ Använder LLM för att generera rikare innehåll:
 - Rikare testscenarier
 - Fördjupade tekniska beskrivningar
 
+**LLM-provider val:**
+- **Standard (moln)**: Använder OpenAI/ChatGPT (gpt-4o) via molnet
+- **Lokal (Llama 3.1 8B)**: Använder lokal Llama-instans via Ollama eller annan HTTP-gateway
+
+När du väljer Slow LLM Mode i UI:t kan du välja mellan moln- och lokal LLM. Valet sparas i localStorage så att du slipper välja om varje gång.
+
+**Konfiguration för lokal LLM:**
+Sätt följande env-variabler i `.env.local`:
+```bash
+VITE_LLM_LOCAL_BASE_URL=http://localhost:11434  # Ollama default port
+VITE_LLM_LOCAL_MODEL=llama3.1:8b                # Modellnamn
+VITE_LLM_DEFAULT_PROVIDER=cloud                 # Standard-provider (cloud eller local)
+```
+
+**Metadata i genererade dokument:**
+Alla LLM-genererade HTML-dokument innehåller metadata-attribut:
+- `data-llm-provider`: "cloud" eller "local"
+- `data-llm-model`: Modellnamn (t.ex. "gpt-4o" eller "llama3.1:8b")
+
 Alla dokument sparas i Supabase Storage och versioneras genom mappar i `bpmn-files/docs/`.
 
 ---
