@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eligibility Rule</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    <section class="doc-section">
+      <span class="doc-badge">Business Rule / DMN</span>
+      <h1>Eligibility Rule</h1>
+      <ul>
+        <li><strong>Regel-ID:</strong> Rule_Eligibility</li>
+        <li><strong>BPMN-element:</strong> Rule_Eligibility (businessRuleTask)</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Risk &amp; Kreditpolicy</li>
+        <li><strong>Kreditprocess-steg:</strong> mortgage</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Sammanfattning &amp; scope</h2>
+      <ul><li>Regeln för behörighet avgör om en kund är berättigad till att ansöka om ett bostadslån. Den riktar sig främst till privatkunder som söker bolån och används i förhandsbedömningen av ansökningar. Regeln inkluderar kontroll av grundläggande behörighetskriterier men omfattar inte detaljerad kreditvärdering.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Förutsättningar &amp; kontext</h2>
+      <ul><li>Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-65 år; Felhantering: Avvisa ansökan.</li><li>Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: Minst 200000 SEK/år; Felhantering: Avvisa ansökan.</li><li>Fält: Anställningsstatus; Datakälla: Arbetsgivarintyg; Typ: Text; Obligatoriskt: Ja; Validering: Fast anställd; Felhantering: Avvisa ansökan.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs &amp; datakällor</h2>
+      <ul><li>Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-65 år; Felhantering: Avvisa ansökan.</li><li>Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: Minst 200000 SEK/år; Felhantering: Avvisa ansökan.</li><li>Fält: Anställningsstatus; Datakälla: Arbetsgivarintyg; Typ: Text; Obligatoriskt: Ja; Validering: Fast anställd; Felhantering: Avvisa ansökan.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Beslutslogik (DMN / regler)</h2>
+      <ul><li>Beslutet baseras på en kombination av ålder, inkomst och anställningsstatus.</li><li>Kunden måste vara mellan 18 och 65 år för att vara berättigad.</li><li>Inkomsten måste överstiga ett visst tröskelvärde för att ansökan ska godkännas.</li><li>Endast kunder med fast anställning är berättigade.</li><li>Regeln implementeras i en DMN-tabell för att säkerställa konsekvent beslutsfattande.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Output &amp; effekter</h2>
+      <ul><li>Outputtyp: Behörighetsbeslut; Typ: Binärt; Effekt: Godkänd/Avvisad; Loggning: Ja.</li><li>Outputtyp: Riskflagga; Typ: Text; Effekt: Indikerar potentiell risk; Loggning: Ja.</li><li>Outputtyp: Beslutslogg; Typ: Text; Effekt: Dokumenterar beslutskriterier; Loggning: Ja.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärsregler &amp; policystöd</h2>
+      <ul><li>Regeln stödjer interna principer för ansvarsfull utlåning genom att säkerställa att endast berättigade kunder kan ansöka.</li><li>Följer principer för att minimera kreditrisk genom att ställa krav på inkomst och anställningsstatus.</li><li>Stödjer efterlevnad av konsumentkreditlagen genom att fastställa tydliga behörighetskriterier.</li><li>Bidrar till att uppfylla interna krav på kundkännedom (KYC) genom validering av kunddata.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
+      <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
+      <table>
+        <tr>
+          <th>Scenario-ID</th>
+          <th>Scenario</th>
+          <th>Input (kortfattat)</th>
+          <th>Förväntat beslut/flagga</th>
+          <th>Automatiskt test</th>
+        </tr>
+        
+        <tr>
+          <td>BR1</td>
+          <td>Standardbehörighet</td>
+          <td>Kund är 30 år, har en årlig inkomst på 300000 SEK och är fast anställd.</td>
+          <td>Godkänd</td>
+          <td><code>tests/mortgage.smoke.spec.ts</code></td>
+        </tr>
+        <tr>
+          <td>BR2</td>
+          <td>Under åldersgräns</td>
+          <td>Kund är 17 år, har en årlig inkomst på 250000 SEK och är fast anställd.</td>
+          <td>Avvisad</td>
+          <td><code>tests/mortgage.smoke.spec.ts</code></td>
+        </tr>
+        <tr>
+          <td>BR3</td>
+          <td>Otillräcklig inkomst</td>
+          <td>Kund är 40 år, har en årlig inkomst på 150000 SEK och är fast anställd.</td>
+          <td>Avvisad</td>
+          <td><code>tests/mortgage.smoke.spec.ts</code></td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation &amp; integrationsnoter</h2>
+      <ul><li>Regeln implementeras i en DMN-tabell som del av en intern beslutstjänst.</li><li>Beslutstjänsten är integrerad med kunddataregister för att hämta nödvändiga indata.</li><li>Prestandaoptimering kan krävas för att hantera stora volymer av ansökningar.</li><li>Beroende av externa tjänster för validering av inkomst och anställningsstatus.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade regler &amp; subprocesser</h2>
+      <ul><li>Relaterad regel: Kreditvärderingsregel som används efter behörighetskontroll.</li><li>Subprocess: Förhandsbedömning av ansökan.</li><li>Övergripande dokumentation: Kreditpolicy-dokumentation som beskriver behörighetskriterier.</li></ul>
+    </section>
+  
+  </div>
+</body>
+</html>

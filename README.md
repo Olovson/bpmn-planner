@@ -243,7 +243,11 @@ och kör `tests/integration/llm.real.smoke.test.ts`, som:
 - testar LLM-flödet (JSON → modell → HTML) för:
   - Feature Goal (`docType = "feature"`),
   - Epic (`docType = "epic"`),
-  - Business Rule (`docType = "businessRule"`).
+  - Business Rule (`docType = "businessRule"`),
+- skriver både LLM- och lokal HTML till lokala filer under `tests/llm-output/`:
+  - `llm-feature-goal-smoke.html` / `local-feature-goal-smoke.html`
+  - `llm-epic-smoke.html` / `local-epic-smoke.html`
+  - `llm-business-rule-smoke.html` / `local-business-rule-smoke.html`
 
 Om LLM inte är aktiverat i tests (t.ex. ingen API-nyckel) hoppar smoke-test-filen automatiskt över sina tester (`describe.skip`).
 

@@ -59,7 +59,7 @@ Exempel på format (illustrativt – fyll med riktig text i svaret):
 
 5. **Stil**
    - Skriv på **svenska** i formell bank-/risk-ton.
-   - Var konkret, kortfattad och undvik fluff/marknadsföringsspråk.
+   - Var konkret men **generös**: sträva efter 3–5 meningar i `summary` när det är motiverat och normalt 4–7 punkter i listbaserade fält (minst 3) där det finns substans.
    - Upprepa inte samma sak i flera fält.
 
 Allt nedan beskriver VILKET INNEHÅLL som ska ligga i respektive fält i JSON-objektet.
@@ -221,7 +221,7 @@ Ge orientering om närliggande beslut och processer utan att duplicera deras det
 ## STILREGLER (sammanfattning)
 
 - Svara alltid med **ett JSON-objekt** enligt modellen ovan.
-- Skriv på **svenska** med formell bank-/risk-ton.
-- Använd konkreta men generiska exempel (t.ex. trösklar) utan att utge dig för att beskriva en specifik banks faktiska policy.
-- Upprepa inte samma sak i flera fält.
-- Använd aldrig HTML-taggar eller Markdown i fälten.
+– Skriv på **svenska** med formell bank-/risk-ton.
+– Använd konkreta men generiska exempel (t.ex. trösklar) utan att utge dig för att beskriva en specifik banks faktiska policy.
+– Upprepa inte samma sak i flera fält.
+– Använd aldrig HTML-taggar eller Markdown i fälten.
