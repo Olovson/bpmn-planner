@@ -14,9 +14,15 @@ import {
   renderBusinessRuleDoc,
   type TemplateLinks,
 } from '@/lib/documentationTemplates';
-import { __setAllowFeatureGoalLlmFallbackForTests } from '@/lib/featureGoalLlmMapper';
-import { __setAllowEpicLlmFallbackForTests } from '@/lib/epicLlmMapper';
-import { __setAllowBusinessRuleLlmFallbackForTests } from '@/lib/businessRuleLlmMapper';
+import {
+  __setAllowFeatureGoalLlmFallbackForTests,
+  mapFeatureGoalLlmToSections,
+} from '@/lib/featureGoalLlmMapper';
+import { __setAllowEpicLlmFallbackForTests, mapEpicLlmToSections } from '@/lib/epicLlmMapper';
+import {
+  __setAllowBusinessRuleLlmFallbackForTests,
+  mapBusinessRuleLlmToSections,
+} from '@/lib/businessRuleLlmMapper';
 
 // Real LLM smoke-test: kör riktiga anrop mot LLM när
 // VITE_USE_LLM=true, VITE_ALLOW_LLM_IN_TESTS=true och VITE_OPENAI_API_KEY är satt.
@@ -29,12 +35,22 @@ if (!isLlmEnabled()) {
     });
   });
 } else {
+  const injectOriginComment = (html: string, comment: string): string => {
+    const marker = '<div class="doc-shell">';
+    const index = html.indexOf(marker);
+    if (index === -1) return html;
+    const insertAt = index + marker.length;
+    return `${html.slice(0, insertAt)}\n  ${comment}${html.slice(insertAt)}`;
+  };
+
   describe('Real LLM smoke tests', () => {
     const outputDir = join(process.cwd(), 'tests', 'llm-output');
 
     const ensureOutputDir = () => {
       try {
         mkdirSync(outputDir, { recursive: true });
+        mkdirSync(join(outputDir, 'html'), { recursive: true });
+        mkdirSync(join(outputDir, 'json'), { recursive: true });
       } catch {
         // ignore mkdir errors in tests
       }
@@ -102,7 +118,29 @@ if (!isLlmEnabled()) {
       const raw = await generateDocumentationWithLlm('feature', context, links);
       expect(raw && raw.trim().length).toBeGreaterThan(0);
 
-      const llmHtml = renderFeatureGoalDocFromLlm(context, links, raw || '');
+      const sections = mapFeatureGoalLlmToSections(raw || '');
+
+      const originComment =
+        '<!-- LLM_SECTION_ORIGIN: ' +
+        [
+          `summary=${sections.summary ? 'llm' : 'fallback'}`,
+          `effectGoals=${sections.effectGoals.length ? 'llm' : 'fallback'}`,
+          `scopeIncluded=${sections.scopeIncluded.length ? 'llm' : 'fallback'}`,
+          `scopeExcluded=${sections.scopeExcluded.length ? 'llm' : 'fallback'}`,
+          `epics=${sections.epics.length ? 'llm' : 'fallback'}`,
+          `flowSteps=${sections.flowSteps.length ? 'llm' : 'fallback'}`,
+          `dependencies=${sections.dependencies.length ? 'llm' : 'fallback'}`,
+          `scenarios=${sections.scenarios.length ? 'llm' : 'fallback'}`,
+          `testDescription=${sections.testDescription ? 'llm' : 'fallback'}`,
+          `implementationNotes=${sections.implementationNotes.length ? 'llm' : 'fallback'}`,
+          `relatedItems=${sections.relatedItems.length ? 'llm' : 'fallback'}`,
+          // Tekniska & externa beroenden saknar eget LLM-fält och är alltid fallback i HTML-buildern
+          'technicalDependencies=fallback',
+        ].join(', ') +
+        ' -->';
+
+      const llmHtmlRaw = renderFeatureGoalDocFromLlm(context, links, raw || '');
+      const llmHtml = injectOriginComment(llmHtmlRaw, originComment);
       expect(llmHtml).toContain('Feature Goal');
       expect(llmHtml).toContain('Sammanfattning');
 
@@ -110,8 +148,23 @@ if (!isLlmEnabled()) {
       const localHtml = renderFeatureGoalDoc(context, links);
 
       const dir = ensureOutputDir();
-      writeFileSync(join(dir, 'llm-feature-goal-smoke.html'), llmHtml, 'utf8');
-      writeFileSync(join(dir, 'local-feature-goal-smoke.html'), localHtml, 'utf8');
+      writeFileSync(
+        join(dir, 'html', 'llm-feature-goal-smoke.html'),
+        llmHtml,
+        'utf8',
+      );
+      writeFileSync(
+        join(dir, 'html', 'local-feature-goal-smoke.html'),
+        localHtml,
+        'utf8',
+      );
+      if (raw) {
+        writeFileSync(
+          join(dir, 'json', 'llm-feature-goal-smoke.raw.json'),
+          raw,
+          'utf8',
+        );
+      }
     }, 60000);
 
     it('genererar Epic-dokumentation med riktig LLM', async () => {
@@ -126,15 +179,52 @@ if (!isLlmEnabled()) {
       const raw = await generateDocumentationWithLlm('epic', context, links);
       expect(raw && raw.trim().length).toBeGreaterThan(0);
 
-      const llmHtml = renderEpicDocFromLlm(context, links, raw || '');
+      const sections = mapEpicLlmToSections(raw || '');
+
+      const originComment =
+        '<!-- LLM_SECTION_ORIGIN: ' +
+        [
+          `summary=${sections.summary ? 'llm' : 'fallback'}`,
+          `prerequisites=${sections.prerequisites.length ? 'llm' : 'fallback'}`,
+          `inputs=${sections.inputs.length ? 'llm' : 'fallback'}`,
+          `flowSteps=${sections.flowSteps.length ? 'llm' : 'fallback'}`,
+          `interactions=${sections.interactions.length ? 'llm' : 'fallback'}`,
+          `dataContracts=${sections.dataContracts.length ? 'llm' : 'fallback'}`,
+          `businessRulesPolicy=${sections.businessRulesPolicy.length ? 'llm' : 'fallback'}`,
+          `scenarios=${sections.scenarios.length ? 'llm' : 'fallback'}`,
+          `testDescription=${sections.testDescription ? 'llm' : 'fallback'}`,
+          `implementationNotes=${sections.implementationNotes.length ? 'llm' : 'fallback'}`,
+          `relatedItems=${sections.relatedItems.length ? 'llm' : 'fallback'}`,
+          // Tekniska & externa beroenden-sektionen har ingen dedikerad LLM-del i modellen
+          'technicalDependencies=fallback',
+        ].join(', ') +
+        ' -->';
+
+      const llmHtmlRaw = renderEpicDocFromLlm(context, links, raw || '');
+      const llmHtml = injectOriginComment(llmHtmlRaw, originComment);
       expect(llmHtml).toContain('Epic');
       expect(llmHtml).toContain('Syfte');
 
       const localHtml = renderEpicDoc(context, links);
 
       const dir = ensureOutputDir();
-      writeFileSync(join(dir, 'llm-epic-smoke.html'), llmHtml, 'utf8');
-      writeFileSync(join(dir, 'local-epic-smoke.html'), localHtml, 'utf8');
+      writeFileSync(
+        join(dir, 'html', 'llm-epic-smoke.html'),
+        llmHtml,
+        'utf8',
+      );
+      writeFileSync(
+        join(dir, 'html', 'local-epic-smoke.html'),
+        localHtml,
+        'utf8',
+      );
+      if (raw) {
+        writeFileSync(
+          join(dir, 'json', 'llm-epic-smoke.raw.json'),
+          raw,
+          'utf8',
+        );
+      }
     }, 60000);
 
     it('genererar Business Rule-dokumentation med riktig LLM', async () => {
@@ -149,15 +239,48 @@ if (!isLlmEnabled()) {
       const raw = await generateDocumentationWithLlm('businessRule', context, links);
       expect(raw && raw.trim().length).toBeGreaterThan(0);
 
-      const llmHtml = renderBusinessRuleDocFromLlm(context, links, raw || '');
+      const sections = mapBusinessRuleLlmToSections(raw || '');
+
+      const originComment =
+        '<!-- LLM_SECTION_ORIGIN: ' +
+        [
+          `summary=${sections.summary ? 'llm' : 'fallback'}`,
+          `inputs=${sections.inputs.length ? 'llm' : 'fallback'}`,
+          `decisionLogic=${sections.decisionLogic.length ? 'llm' : 'fallback'}`,
+          `outputs=${sections.outputs.length ? 'llm' : 'fallback'}`,
+          `businessRulesPolicy=${sections.businessRulesPolicy.length ? 'llm' : 'fallback'}`,
+          `scenarios=${sections.scenarios.length ? 'llm' : 'fallback'}`,
+          `testDescription=${sections.testDescription ? 'llm' : 'fallback'}`,
+          `implementationNotes=${sections.implementationNotes.length ? 'llm' : 'fallback'}`,
+          `relatedItems=${sections.relatedItems.length ? 'llm' : 'fallback'}`,
+        ].join(', ') +
+        ' -->';
+
+      const llmHtmlRaw = renderBusinessRuleDocFromLlm(context, links, raw || '');
+      const llmHtml = injectOriginComment(llmHtmlRaw, originComment);
       expect(llmHtml).toContain('Business Rule');
       expect(llmHtml).toContain('Sammanfattning');
 
       const localHtml = renderBusinessRuleDoc(context, links);
 
       const dir = ensureOutputDir();
-      writeFileSync(join(dir, 'llm-business-rule-smoke.html'), llmHtml, 'utf8');
-      writeFileSync(join(dir, 'local-business-rule-smoke.html'), localHtml, 'utf8');
+      writeFileSync(
+        join(dir, 'html', 'llm-business-rule-smoke.html'),
+        llmHtml,
+        'utf8',
+      );
+      writeFileSync(
+        join(dir, 'html', 'local-business-rule-smoke.html'),
+        localHtml,
+        'utf8',
+      );
+      if (raw) {
+        writeFileSync(
+          join(dir, 'json', 'llm-business-rule-smoke.raw.json'),
+          raw,
+          'utf8',
+        );
+      }
     }, 60000);
   });
 }

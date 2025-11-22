@@ -90,6 +90,7 @@
 </head>
 <body>
   <div class="doc-shell">
+  <!-- LLM_SECTION_ORIGIN: summary=llm, effectGoals=llm, scopeIncluded=llm, scopeExcluded=llm, epics=llm, flowSteps=llm, dependencies=llm, scenarios=llm, testDescription=llm, implementationNotes=llm, relatedItems=llm, technicalDependencies=fallback -->
     
     <section class="doc-section">
       <span class="doc-badge">Feature Goal</span>
@@ -105,13 +106,13 @@
 
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
-      <p>Feature Goalet för intern datainsamling syftar till att effektivisera och automatisera insamlingen av kund- och engagemangsdata för kreditbedömning. Det omfattar alla kunder som ansöker om bolån och stödjer bankens strategi för att förbättra riskhantering och kundupplevelse genom snabbare och mer träffsäkra kreditbeslut.</p>
-      <ul><li>Ingår: Ingår: insamling av intern kund- och engagemangsdata för kreditbedömning.; Ingår: automatiserad kontroll av befintliga kundrelationer och riskflaggor.; Ingår: integration med interna system för att hämta uppdaterad kundinformation.; Ingår: stöd för att hantera och lagra insamlad data på ett säkert sätt.</li><li>Ingår inte: Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.; Ingår inte: manuell datainsamling och bearbetning utanför systemet.</li></ul>
+      <p>Målet med denna funktion är att effektivisera insamlingen av intern data för kreditbedömning inom bolåneprocessen. Detta omfattar kunder som ansöker om bolån och syftar till att förbättra kvaliteten och hastigheten i kreditbeslutsprocessen. Genom att automatisera datainsamlingen stödjer vi bankens strategi för riskhantering och förbättrar kundupplevelsen genom snabbare och mer precisa beslut.</p>
+      <ul><li>Ingår: Ingår: insamling av intern kund- och engagemangsdata för kreditbedömning.; Ingår: automatiserad validering av insamlad data mot interna databaser.; Ingår: integration med interna system för att hämta nödvändig information.; Ingår: uppdatering av kreditbeslutsmotor med insamlad data.</li><li>Ingår inte: Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.; Ingår inte: insamling av extern data från tredje part.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Effektmål</h2>
-      <ul><li>Automatisering av datainsamling minskar manuellt arbete och kortar ledtider för kreditbeslut.</li><li>Förbättrad kvalitet i kreditbedömningar genom mer fullständig och korrekt data.</li><li>Ökad kundnöjdhet genom snabbare besked och färre omtag i ansökningsprocessen.</li><li>Stärkt regelefterlevnad genom att säkerställa att all relevant data samlas in och granskas.</li></ul>
+      <ul><li>Automatisering av datainsamling minskar manuellt arbete och kortar ledtider i kreditbedömningen.</li><li>Förbättrad kvalitet och säkerhet i kreditbedömningar genom tillgång till aktuell och korrekt intern data.</li><li>Förbättrad kundupplevelse genom snabbare och tydligare besked om kreditbeslut.</li><li>Stärkt regelefterlevnad och riskkontroll genom att säkerställa att all relevant data beaktas i beslutsprocessen.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -127,15 +128,21 @@
         
         <tr>
           <td>E1</td>
-          <td>Automatiserad kunddatainsamling</td>
-          <td>Denna epic fokuserar på att automatisera insamlingen av kunddata från interna system.</td>
-          <td>Data & Analys</td>
+          <td>Data Integration</td>
+          <td>Integrera interna system för att möjliggöra effektiv datainsamling.</td>
+          <td>IT & Infrastruktur</td>
         </tr>
         <tr>
           <td>E2</td>
-          <td>Riskflaggsanalys</td>
-          <td>Denna epic hanterar analys och identifiering av riskflaggor baserat på insamlad data.</td>
+          <td>Data Validation</td>
+          <td>Automatisera validering av insamlad data för att säkerställa korrekthet.</td>
           <td>Risk & Kredit</td>
+        </tr>
+        <tr>
+          <td>E3</td>
+          <td>Decision Update</td>
+          <td>Uppdatera kreditbeslutsmotor med ny data för att förbättra beslutsprocessen.</td>
+          <td>Produktutveckling</td>
         </tr>
       </table>
     </section>
@@ -143,7 +150,7 @@
     <section class="doc-section">
       <h2>Affärsflöde</h2>
       <ol>
-        <li>Kunden ansöker om bolån via bankens digitala plattform.</li><li>Systemet initierar insamling av kunddata från interna system.</li><li>Insamlad data analyseras för att identifiera eventuella riskflaggor.</li><li>Resultaten från analysen används för att fatta preliminära kreditbeslut.</li>
+        <li>Kunden skickar in en ansökan om bolån via bankens webbportal.</li><li>Systemet initierar insamling av intern data från relevanta databaser.</li><li>Den insamlade datan valideras automatiskt mot interna regler och kriterier.</li><li>Validerad data integreras i kreditbeslutsmotorn för vidare bearbetning.</li><li>Kreditbeslutet uppdateras och kommuniceras till kunden via webbportalen.</li>
       </ol>
     </section>
 
@@ -159,21 +166,21 @@
         
         <tr>
           <td>S1</td>
-          <td>Standardansökan</td>
+          <td>Successful Data Collection</td>
           <td>Happy</td>
-          <td>Kunddata samlas in och analyseras utan problem, vilket leder till ett preliminärt godkännande.</td>
+          <td>All nödvändig data samlas in och valideras framgångsrikt, vilket leder till ett preliminärt godkännande.</td>
         </tr>
         <tr>
           <td>S2</td>
-          <td>Riskflagga identifierad</td>
-          <td>Edge</td>
-          <td>En riskflagga identifieras och ansökan skickas till manuell granskning.</td>
+          <td>Data Validation Error</td>
+          <td>Error</td>
+          <td>Valideringsfel upptäcks i insamlad data, vilket kräver manuell granskning.</td>
         </tr>
         <tr>
           <td>S3</td>
-          <td>Systemfel vid datainsamling</td>
-          <td>Error</td>
-          <td>Datainsamlingen misslyckas och ansökan pausas tills problemet är löst.</td>
+          <td>Incomplete Data</td>
+          <td>Edge</td>
+          <td>Viss data saknas, vilket leder till att ansökan skickas tillbaka till kunden för komplettering.</td>
         </tr>
       </table>
     </section>
@@ -181,7 +188,7 @@
     <section class="doc-section">
       <h2>Koppling till automatiska tester</h2>
       <p>
-        Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester. Återanvänd scenario-ID och namn i testfil och testnamn.
+        Affärsscenarierna ska mappas mot automatiska tester såsom E2E och API-tester. Återanvänd scenario-ID och namn i testfall och rapportering.
         <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
         <br />
         Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
@@ -190,7 +197,7 @@
 
     <section class="doc-section">
       <h2>Implementation Notes (för dev)</h2>
-      <ul><li>Använd RESTful API-mönster för integration med interna system.</li><li>Säkerställ att all insamlad data loggas och auditeras enligt bankens säkerhetspolicy.</li><li>Implementera robust felhantering för att hantera eventuella systemfel under datainsamlingen.</li><li>Optimera prestanda för datainsamling för att minimera svarstider och maximera användarupplevelsen.</li></ul>
+      <ul><li>Använd RESTful API för datautbyte mellan system.</li><li>Logga alla datainsamlings- och valideringssteg för auditändamål.</li><li>Säkerställ att systemet hanterar fel vid datavalidering och rapporterar dessa korrekt.</li><li>Optimera prestanda för datainsamling genom att använda batch-processer där möjligt.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -200,7 +207,7 @@
 
     <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
-      <ul><li>Relaterat Feature Goal: Extern datainsamling för kompletterande kreditinformation.</li><li>Relaterad Epic: Manuell granskning av riskflaggor.</li><li>Business Rule: Kreditvärderingsmodell för bolån.</li></ul>
+      <ul><li>Relaterad Feature Goal: Extern datainsamling för kreditbedömning.</li><li>Relaterad Epic: Manuell granskning av kreditansökningar.</li><li>Business Rule: Kreditvärderingspolicy för bolån.</li><li>Subprocess: Datavalidering och kvalitetskontroll.</li></ul>
     </section>
 
     <section class="doc-section">

@@ -1,0 +1,65 @@
+```json
+{
+  "summary": "Regeln för behörighet bedömer om en kund är berättigad till en viss produkt, såsom ett bolån. Den riktar sig främst till privatkunder som ansöker om nya lån och används under förhandsbedömningen. Regeln inkluderar inte företagskunder eller andra typer av krediter.",
+  "inputs": [
+    "Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-70 år; Felhantering: Avslag vid ogiltig ålder.",
+    "Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: Positivt värde; Felhantering: Avslag vid ogiltig inkomst.",
+    "Fält: Kreditvärdighet; Datakälla: Extern kreditupplysning; Typ: Heltal; Obligatoriskt: Ja; Validering: 300-850; Felhantering: Avslag vid ogiltigt värde."
+  ],
+  "decisionLogic": [
+    "Beslutslogiken baseras på en kombination av ålder, inkomst och kreditvärdighet.",
+    "Kunder under 18 eller över 70 år avvisas automatiskt.",
+    "Inkomster under en viss tröskel, exempelvis 200,000 kr per år, leder till avslag.",
+    "En kreditvärdighet under 600 leder till avslag.",
+    "Regeln implementeras i en DMN-tabell som används för att säkerställa konsekventa beslut."
+  ],
+  "outputs": [
+    "Outputtyp: Beslut; Typ: String; Effekt: APPROVE, REFER eller DECLINE; Loggning: Alla beslut loggas för revision.",
+    "Outputtyp: Flaggor; Typ: Boolean; Effekt: Indikerar hög riskprofil; Loggning: Flaggor loggas för vidare analys.",
+    "Outputtyp: Meddelande; Typ: String; Effekt: Informerar kund om beslut; Loggning: Kundkommunikation loggas."
+  ],
+  "businessRulesPolicy": [
+    "Regeln stödjer interna principer för ansvarsfull utlåning.",
+    "Den säkerställer att kunder uppfyller minimikrav för kreditvärdighet.",
+    "Följer regulatoriska krav enligt konsumentkreditlagen.",
+    "Stödjer bankens policy för att minimera kreditförluster.",
+    "Regeln bidrar till att upprätthålla en hållbar kreditportfölj."
+  ],
+  "scenarios": [
+    {
+      "id": "BR1",
+      "name": "Standardkund",
+      "type": "Happy",
+      "input": "Kund är 35 år, har en inkomst på 400,000 kr och en kreditvärdighet på 750.",
+      "outcome": "APPROVE"
+    },
+    {
+      "id": "BR2",
+      "name": "Ung kund",
+      "type": "Edge",
+      "input": "Kund är 17 år, har en inkomst på 300,000 kr och en kreditvärdighet på 700.",
+      "outcome": "DECLINE"
+    },
+    {
+      "id": "BR3",
+      "name": "Låg inkomst",
+      "type": "Error",
+      "input": "Kund är 40 år, har en inkomst på 150,000 kr och en kreditvärdighet på 650.",
+      "outcome": "DECLINE"
+    }
+  ],
+  "testDescription": "Scenarierna mappas mot automatiska tester som utförs med hjälp av verktyg som Playwright. Scenario-ID och namn bör återfinnas i testfiler och testnamn för spårbarhet.",
+  "implementationNotes": [
+    "Regeln implementeras i en DMN-tabell för att säkerställa flexibilitet och skalbarhet.",
+    "Exponeras via en intern beslutstjänst/API för realtidsbedömningar.",
+    "Kritiska beroenden inkluderar kunddataregister och externa kreditupplysningar.",
+    "Prestandaoptimering är viktig för att hantera stora volymer ansökningar."
+  ],
+  "relatedItems": [
+    "Relaterad regel: Kreditvärdighetsbedömning.",
+    "Subprocess: Förhandsbedömning av kreditansökan.",
+    "Dokumentation: Intern kreditpolicy för bolån.",
+    "Övergripande process: Huvudbeslut för kreditansökan."
+  ]
+}
+```

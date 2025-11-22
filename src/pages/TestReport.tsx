@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, XCircle, FileCode, Clock, Package } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,6 +13,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
 import { SUBPROCESS_REGISTRY, type NodeType } from '@/data/subprocessRegistry';
+import {
+  TestReportFilters,
+  type TestDocTypeFilter,
+  type TestStatusFilter,
+} from '@/components/TestReportFilters';
 
 const TestReport = () => {
   const navigate = useNavigate();
@@ -22,16 +26,17 @@ const TestReport = () => {
   const { data: coverageMap } = useAllFilesArtifactCoverage();
   const { testResults, isLoading, stats } = useTestResults();
 
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'passing' | 'failing' | 'pending' | 'skipped'
-  >('all');
+  const [statusFilter, setStatusFilter] = useState<TestStatusFilter>('all');
   const [processFilter, setProcessFilter] = useState<string>('all');
-  const [executedTypeFilter, setExecutedTypeFilter] = useState<
-    'all' | 'feature-goal' | 'epic' | 'business-rule'
-  >('all');
-  const [selectedProcess, setSelectedProcess] = useState<string>('all');
+  const [executedTypeFilter, setExecutedTypeFilter] =
+    useState<TestDocTypeFilter>('all');
+
+  const [plannedStatusFilter, setPlannedStatusFilter] =
+    useState<TestStatusFilter>('all');
+  const [plannedTypeFilter, setPlannedTypeFilter] =
+    useState<TestDocTypeFilter>('all');
+  const [plannedProcessFilter, setPlannedProcessFilter] = useState<string>('all');
   const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
-  const [nodeCategoryFilter, setNodeCategoryFilter] = useState<'all' | 'feature' | 'epic' | 'businessRule'>('all');
 
   const nodeTypeById = useMemo(() => {
     const map: Record<string, NodeType> = {};
@@ -144,6 +149,50 @@ const TestReport = () => {
         return bTime - aTime;
       });
   }, [testsWithDerivedProcess, statusFilter, processFilter, executedTypeFilter]);
+
+  const plannedProcessOptions = useMemo(() => {
+    const files = new Set<string>();
+    Object.values(elementResourceMapping).forEach((entry) => {
+      if (entry.bpmnFile) {
+        files.add(entry.bpmnFile);
+      }
+    });
+    return Array.from(files).sort();
+  }, []);
+
+  const filteredNodeIds = useMemo(() => {
+    return Object.entries(elementResourceMapping)
+      .filter(([nodeId, entry]) => {
+        const nodeType = nodeTypeById[nodeId];
+
+        if (plannedTypeFilter === 'feature-goal' && nodeType !== 'CallActivity') {
+          return false;
+        }
+        if (
+          plannedTypeFilter === 'epic' &&
+          nodeType !== 'UserTask' &&
+          nodeType !== 'ServiceTask'
+        ) {
+          return false;
+        }
+        if (
+          plannedTypeFilter === 'business-rule' &&
+          nodeType !== 'BusinessRuleTask'
+        ) {
+          return false;
+        }
+
+        if (
+          plannedProcessFilter !== 'all' &&
+          entry.bpmnFile !== plannedProcessFilter
+        ) {
+          return false;
+        }
+
+        return true;
+      })
+      .map(([nodeId]) => nodeId);
+  }, [plannedTypeFilter, plannedProcessFilter, nodeTypeById]);
 
   const handleViewChange = (view: string) => {
     if (view === 'diagram') navigate('/');
@@ -286,196 +335,7 @@ const TestReport = () => {
             </Card>
           )}
 
-          {/* Sektion 2: Körda tester (verklighet) */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileCode className="h-5 w-5" />
-                Körda tester
-              </CardTitle>
-              <CardDescription>
-                Sammanställning av verkliga testkörningar från{' '}
-                <code>test_results</code>.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 overflow-x-auto max-w-full">
-              <div className="flex flex-wrap gap-3 items-start justify-between">
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Filtrera på status:
-                    </span>
-                    {(['all', 'passing', 'failing', 'pending', 'skipped'] as const).map(
-                      (status) => (
-                        <Button
-                          key={status}
-                          size="xs"
-                          variant={statusFilter === status ? 'default' : 'outline'}
-                          className="text-xs"
-                          onClick={() => setStatusFilter(status)}
-                        >
-                          {status === 'all' ? 'Alla' : status}
-                        </Button>
-                      ),
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Filtrera på typ:
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { id: 'all', label: 'Alla' },
-                        { id: 'feature-goal', label: 'Feature Goal' },
-                        { id: 'epic', label: 'Epic' },
-                        { id: 'business-rule', label: 'Business Rule' },
-                      ].map((opt) => (
-                        <Button
-                          key={opt.id}
-                          size="xs"
-                          variant={
-                            executedTypeFilter === (opt.id as typeof executedTypeFilter)
-                              ? 'default'
-                              : 'outline'
-                          }
-                          className="text-xs"
-                          onClick={() =>
-                            setExecutedTypeFilter(
-                              opt.id as 'all' | 'feature-goal' | 'epic' | 'business-rule',
-                            )
-                          }
-                        >
-                          {opt.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Filtrera på BPMN‑fil:
-                  </span>
-                  <select
-                    value={processFilter}
-                    onChange={(e) => setProcessFilter(e.target.value)}
-                    className="px-3 py-1.5 min-h-[32px] rounded-md border border-input bg-background text-xs mr-2 mb-1"
-                  >
-                    <option value="all">Alla BPMN‑filer</option>
-                    {processOptions.map((file) => (
-                      <option key={file} value={file}>
-                        {file}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {isLoading && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Laddar testresultat...
-                </div>
-              )}
-
-              {!isLoading && stats.total === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  Inga körda tester är rapporterade ännu. Kör Playwright‑tester och skriv
-                  in resultat i <code>test_results</code> för att se dem här.
-                </div>
-              )}
-
-              {!isLoading && stats.total > 0 && (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Process/BPMN‑fil</TableHead>
-                      <TableHead>Nod</TableHead>
-                      <TableHead>Testfil</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Senast körd</TableHead>
-                      <TableHead>Antal testfall</TableHead>
-                      <TableHead>GitHub‑run</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredExecutedTests.map((result) => (
-                      <TableRow key={result.id}>
-                        <TableCell className="text-sm">
-                          {result.inferredFile || '–'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium">
-                              {result.node_name || result.node_id || 'Okänd nod'}
-                            </span>
-                            {result.node_id && (
-                              <span className="text-[11px] font-mono text-muted-foreground">
-                                {result.node_id}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm font-mono">
-                          {result.test_file?.replace('tests/', '') || '–'}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          <Badge
-                            variant={
-                              result.status === 'passing'
-                                ? 'default'
-                                : result.status === 'failing'
-                                ? 'destructive'
-                                : 'outline'
-                            }
-                            className="gap-1 text-xs"
-                          >
-                            {result.status === 'passing' && (
-                              <CheckCircle2 className="h-3 w-3" />
-                            )}
-                            {result.status === 'failing' && (
-                              <XCircle className="h-3 w-3" />
-                            )}
-                            {result.status === 'pending' && (
-                              <Clock className="h-3 w-3" />
-                            )}
-                            {result.status === 'skipped' && (
-                              <AlertCircle className="h-3 w-3" />
-                            )}
-                            <span className="capitalize">{result.status}</span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {result.executed_at
-                            ? new Date(result.executed_at).toLocaleString('sv-SE')
-                            : '–'}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {typeof result.test_count === 'number'
-                            ? result.test_count
-                            : '–'}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {result.github_run_url ? (
-                            <a
-                              href={result.github_run_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline"
-                            >
-                              Öppna run
-                            </a>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">–</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Sektion 3: Planerade scenarion & coverage (designnivå) */}
+          {/* Sektion 2: Planerade scenarion & coverage (designnivå) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -488,38 +348,22 @@ const TestReport = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Filtrera nodlista på typ:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { id: 'all', label: 'Alla' },
-                    { id: 'feature', label: 'Feature Goal' },
-                    { id: 'epic', label: 'Epic' },
-                    { id: 'businessRule', label: 'Business Rule' },
-                  ].map((opt) => (
-                    <Button
-                      key={opt.id}
-                      size="xs"
-                      variant={nodeCategoryFilter === opt.id ? 'default' : 'outline'}
-                      className="text-xs"
-                      onClick={() =>
-                        setNodeCategoryFilter(opt.id as 'all' | 'feature' | 'epic' | 'businessRule')
-                      }
-                    >
-                      {opt.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              <TestReportFilters
+                status={plannedStatusFilter}
+                type={plannedTypeFilter}
+                bpmnFile={plannedProcessFilter}
+                bpmnOptions={plannedProcessOptions}
+                onStatusChange={setPlannedStatusFilter}
+                onTypeChange={setPlannedTypeFilter}
+                onBpmnChange={setPlannedProcessFilter}
+              />
 
               {/* Nod‑läge för vald process */}
               <div className="space-y-2">
                 <p className="text-sm font-medium">
                   Nod‑läge{' '}
-                  {selectedProcess !== 'all'
-                    ? `för ${selectedProcess}`
+                  {plannedProcessFilter !== 'all'
+                    ? `för ${plannedProcessFilter}`
                     : '(alla processer)'}
                 </p>
                 <div className="overflow-x-auto max-w-full">
@@ -533,26 +377,8 @@ const TestReport = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {Object.entries(elementResourceMapping)
-                        .filter(([nodeId]) => {
-                          const type = nodeTypeById[nodeId];
-                          if (nodeCategoryFilter === 'feature') {
-                            return type === 'CallActivity';
-                          }
-                          if (nodeCategoryFilter === 'epic') {
-                            return type === 'UserTask' || type === 'ServiceTask';
-                          }
-                          if (nodeCategoryFilter === 'businessRule') {
-                            return type === 'BusinessRuleTask';
-                          }
-                          return true;
-                        })
-                        .filter(([_, meta]) =>
-                          selectedProcess === 'all'
-                            ? true
-                            : meta.bpmnFile === selectedProcess,
-                        )
-                        .map(([nodeId, meta]) => {
+                      {filteredNodeIds.map((nodeId) => {
+                        const meta = elementResourceMapping[nodeId];
                           const testInfo = testMapping[nodeId];
                           const plannedScenarios = testInfo?.scenarios ?? [];
                           const plannedScenarioCount = plannedScenarios.length;
@@ -677,6 +503,134 @@ const TestReport = () => {
                   </Table>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Sektion 3: Körda tester (verklighet) – sist på sidan */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileCode className="h-5 w-5" />
+                Körda tester
+              </CardTitle>
+              <CardDescription>
+                Sammanställning av verkliga testkörningar från{' '}
+                <code>test_results</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 overflow-x-auto max-w-full">
+              <TestReportFilters
+                status={statusFilter}
+                type={executedTypeFilter}
+                bpmnFile={processFilter}
+                bpmnOptions={processOptions}
+                onStatusChange={setStatusFilter}
+                onTypeChange={setExecutedTypeFilter}
+                onBpmnChange={setProcessFilter}
+              />
+
+              {isLoading && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Laddar testresultat...
+                </div>
+              )}
+
+              {!isLoading && stats.total === 0 && (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Inga körda tester är rapporterade ännu. Kör Playwright‑tester och skriv
+                  in resultat i <code>test_results</code> för att se dem här.
+                </div>
+              )}
+
+              {!isLoading && stats.total > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Process/BPMN‑fil</TableHead>
+                      <TableHead>Nod</TableHead>
+                      <TableHead>Testfil</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Senast körd</TableHead>
+                      <TableHead>Antal testfall</TableHead>
+                      <TableHead>GitHub‑run</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredExecutedTests.map((result) => (
+                      <TableRow key={result.id}>
+                        <TableCell className="text-sm">
+                          {result.inferredFile || '–'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">
+                              {result.node_name || result.node_id || 'Okänd nod'}
+                            </span>
+                            {result.node_id && (
+                              <span className="text-[11px] font-mono text-muted-foreground">
+                                {result.node_id}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm font-mono">
+                          {result.test_file?.replace('tests/', '') || '–'}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          <Badge
+                            variant={
+                              result.status === 'passing'
+                                ? 'default'
+                                : result.status === 'failing'
+                                ? 'destructive'
+                                : 'outline'
+                            }
+                            className="gap-1 text-xs"
+                          >
+                            {result.status === 'passing' && (
+                              <CheckCircle2 className="h-3 w-3" />
+                            )}
+                            {result.status === 'failing' && (
+                              <XCircle className="h-3 w-3" />
+                            )}
+                            {result.status === 'pending' && (
+                              <Clock className="h-3 w-3" />
+                            )}
+                            {result.status === 'skipped' && (
+                              <AlertCircle className="h-3 w-3" />
+                            )}
+                            <span className="capitalize">{result.status}</span>
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {result.executed_at
+                            ? new Date(result.executed_at).toLocaleString('sv-SE')
+                            : '–'}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {typeof result.test_count === 'number'
+                            ? result.test_count
+                            : '–'}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {result.github_run_url ? (
+                            <a
+                              href={result.github_run_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline"
+                            >
+                              Öppna run
+                            </a>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">–</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>

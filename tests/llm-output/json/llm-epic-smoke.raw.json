@@ -1,0 +1,78 @@
+```json
+{
+  "summary": "Epiken 'Approve Application' syftar till att möjliggöra en effektiv och korrekt godkännandeprocess för bolåneansökningar. Den spelar en central roll i kreditprocessen genom att säkerställa att alla nödvändiga kontroller och bedömningar är genomförda innan ett slutgiltigt beslut fattas. Detta är en User Task där handläggaren granskar och godkänner ansökningar baserat på systemets rekommendationer.",
+  "prerequisites": [
+    "Alla nödvändiga dokument och data måste vara insamlade och validerade.",
+    "Kreditvärdighetsbedömning och riskanalys måste vara genomförda.",
+    "Interna och externa kreditregler måste ha kontrollerats och godkänts.",
+    "Eventuella avvikelser eller flaggor måste ha hanterats i tidigare steg."
+  ],
+  "inputs": [
+    "Input: sammanfattad ansökningsdata från föregående steg.",
+    "Input: resultat från kreditvärdighetsbedömning.",
+    "Input: interna riskflaggor och engagemangsdata.",
+    "Input: dokumentation från kunder och eventuella kompletteringar."
+  ],
+  "flowSteps": [
+    "Användaren öppnar vyn för att granska ansökningsdetaljer.",
+    "Systemet visar sammanfattad information och rekommendationer.",
+    "Användaren granskar och gör eventuella justeringar i bedömningen.",
+    "Systemet registrerar beslutet och uppdaterar ansökningsstatusen.",
+    "Användaren bekräftar godkännandet och skickar vidare till nästa steg."
+  ],
+  "interactions": [
+    "Interaktion sker främst via handläggargränssnittet.",
+    "Felmeddelanden måste vara tydliga och vägledande.",
+    "UX-principer inkluderar enkel navigering och tydlig informationsstruktur.",
+    "Användaren måste kunna enkelt återgå till tidigare steg vid behov."
+  ],
+  "dataContracts": [
+    "Input: ansökningssystem – sammanfattad ansökningsdata.",
+    "Output: beslutsmotor – godkännandestatus och eventuella kommentarer.",
+    "Input: kreditvärderingssystem – riskbedömning och rekommendationer.",
+    "Output: kundsystem – uppdaterad status och beslut."
+  ],
+  "businessRulesPolicy": [
+    "Epiken använder sig av affärsregler för kreditvärdighetsbedömning.",
+    "Policyer för belåningsgrad och skuldsättning måste följas strikt.",
+    "AML/KYC-regler måste vara uppfyllda innan godkännande.",
+    "Beslut ska dokumenteras i enlighet med interna och externa regelverk."
+  ],
+  "scenarios": [
+    {
+      "id": "EPIC-S1",
+      "name": "Happy path",
+      "type": "Happy",
+      "description": "Alla kriterier är uppfyllda och ansökan kan godkännas utan avvikelser.",
+      "outcome": "Ansökan godkänns och skickas vidare för utbetalning."
+    },
+    {
+      "id": "EPIC-S2",
+      "name": "Edge case",
+      "type": "Edge",
+      "description": "Mindre avvikelser upptäcks men kan hanteras inom ramen för policyn.",
+      "outcome": "Ansökan godkänns med noteringar för framtida uppföljning."
+    },
+    {
+      "id": "EPIC-S3",
+      "name": "Error case",
+      "type": "Error",
+      "description": "Kritiska avvikelser upptäcks som kräver ytterligare utredning.",
+      "outcome": "Ansökan skickas tillbaka för komplettering eller avslås."
+    }
+  ],
+  "testDescription": "Scenarierna ska mappas till automatiska tester för att säkerställa korrekt funktionalitet. Scenario-ID och namn bör återanvändas i testfall och rapportering.",
+  "implementationNotes": [
+    "Använd API-endpoints för att hämta och uppdatera ansökningsdata.",
+    "Loggning och audit ska implementeras för alla beslut och ändringar.",
+    "Beroenden inkluderar kreditmotor och kunddata för korrekt bedömning.",
+    "Prestandaoptimering kan behövas för att hantera stora datamängder."
+  ],
+  "relatedItems": [
+    "Föregående steg: Insamling och validering av ansökningsdata.",
+    "Relaterad Feature Goal: Effektivisering av kreditbeslutsprocessen.",
+    "Relaterad subprocess: Riskbedömning och flaggning.",
+    "Dokumentation: Affärsregler och policyer för kreditbeslut."
+  ]
+}
+```

@@ -1,0 +1,86 @@
+```json
+{
+  "summary": "Målet med denna funktion är att effektivisera insamlingen av intern data för kreditbedömning inom bolåneprocessen. Detta omfattar kunder som ansöker om bolån och syftar till att förbättra kvaliteten och hastigheten i kreditbeslutsprocessen. Genom att automatisera datainsamlingen stödjer vi bankens strategi för riskhantering och förbättrar kundupplevelsen genom snabbare och mer precisa beslut.",
+  "effectGoals": [
+    "Automatisering av datainsamling minskar manuellt arbete och kortar ledtider i kreditbedömningen.",
+    "Förbättrad kvalitet och säkerhet i kreditbedömningar genom tillgång till aktuell och korrekt intern data.",
+    "Förbättrad kundupplevelse genom snabbare och tydligare besked om kreditbeslut.",
+    "Stärkt regelefterlevnad och riskkontroll genom att säkerställa att all relevant data beaktas i beslutsprocessen."
+  ],
+  "scopeIncluded": [
+    "Ingår: insamling av intern kund- och engagemangsdata för kreditbedömning.",
+    "Ingår: automatiserad validering av insamlad data mot interna databaser.",
+    "Ingår: integration med interna system för att hämta nödvändig information.",
+    "Ingår: uppdatering av kreditbeslutsmotor med insamlad data."
+  ],
+  "scopeExcluded": [
+    "Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.",
+    "Ingår inte: insamling av extern data från tredje part."
+  ],
+  "epics": [
+    {
+      "id": "E1",
+      "name": "Data Integration",
+      "description": "Integrera interna system för att möjliggöra effektiv datainsamling.",
+      "team": "IT & Infrastruktur"
+    },
+    {
+      "id": "E2",
+      "name": "Data Validation",
+      "description": "Automatisera validering av insamlad data för att säkerställa korrekthet.",
+      "team": "Risk & Kredit"
+    },
+    {
+      "id": "E3",
+      "name": "Decision Update",
+      "description": "Uppdatera kreditbeslutsmotor med ny data för att förbättra beslutsprocessen.",
+      "team": "Produktutveckling"
+    }
+  ],
+  "flowSteps": [
+    "Kunden skickar in en ansökan om bolån via bankens webbportal.",
+    "Systemet initierar insamling av intern data från relevanta databaser.",
+    "Den insamlade datan valideras automatiskt mot interna regler och kriterier.",
+    "Validerad data integreras i kreditbeslutsmotorn för vidare bearbetning.",
+    "Kreditbeslutet uppdateras och kommuniceras till kunden via webbportalen."
+  ],
+  "dependencies": [
+    "Beroende: Databasmotor; Id: kunddatabas; Beskrivning: används för att hämta kundens historik och engagemang.",
+    "Beroende: API-tjänst; Id: systemintegration; Beskrivning: möjliggör kommunikation mellan interna system.",
+    "Beroende: Regelmotor/DMN; Id: datavalidering; Beskrivning: används för att säkerställa korrekthet i insamlad data."
+  ],
+  "scenarios": [
+    {
+      "id": "S1",
+      "name": "Successful Data Collection",
+      "type": "Happy",
+      "outcome": "All nödvändig data samlas in och valideras framgångsrikt, vilket leder till ett preliminärt godkännande."
+    },
+    {
+      "id": "S2",
+      "name": "Data Validation Error",
+      "type": "Error",
+      "outcome": "Valideringsfel upptäcks i insamlad data, vilket kräver manuell granskning."
+    },
+    {
+      "id": "S3",
+      "name": "Incomplete Data",
+      "type": "Edge",
+      "outcome": "Viss data saknas, vilket leder till att ansökan skickas tillbaka till kunden för komplettering."
+    }
+  ],
+  "testDescription": "Affärsscenarierna ska mappas mot automatiska tester såsom E2E och API-tester. Återanvänd scenario-ID och namn i testfall och rapportering.",
+  "implementationNotes": [
+    "Använd RESTful API för datautbyte mellan system.",
+    "Logga alla datainsamlings- och valideringssteg för auditändamål.",
+    "Säkerställ att systemet hanterar fel vid datavalidering och rapporterar dessa korrekt.",
+    "Optimera prestanda för datainsamling genom att använda batch-processer där möjligt."
+  ],
+  "relatedItems": [
+    "Relaterad Feature Goal: Extern datainsamling för kreditbedömning.",
+    "Relaterad Epic: Manuell granskning av kreditansökningar.",
+    "Business Rule: Kreditvärderingspolicy för bolån.",
+    "Subprocess: Datavalidering och kvalitetskontroll."
+  ]
+}
+```

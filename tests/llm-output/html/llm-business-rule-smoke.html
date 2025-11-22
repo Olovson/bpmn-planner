@@ -90,6 +90,7 @@
 </head>
 <body>
   <div class="doc-shell">
+  <!-- LLM_SECTION_ORIGIN: summary=llm, inputs=llm, decisionLogic=llm, outputs=llm, businessRulesPolicy=llm, scenarios=llm, testDescription=llm, implementationNotes=llm, relatedItems=llm -->
     
     <section class="doc-section">
       <span class="doc-badge">Business Rule / DMN</span>
@@ -105,32 +106,32 @@
 
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
-      <ul><li>Regeln för behörighet avgör om en kund är berättigad till att ansöka om ett bostadslån. Den riktar sig främst till privatkunder som söker bolån och används i förhandsbedömningen av ansökningar. Regeln inkluderar kontroll av grundläggande behörighetskriterier men omfattar inte detaljerad kreditvärdering.</li></ul>
+      <ul><li>Regeln för behörighet bedömer om en kund är berättigad till en viss produkt, såsom ett bolån. Den riktar sig främst till privatkunder som ansöker om nya lån och används under förhandsbedömningen. Regeln inkluderar inte företagskunder eller andra typer av krediter.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Förutsättningar &amp; kontext</h2>
-      <ul><li>Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-65 år; Felhantering: Avvisa ansökan.</li><li>Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: Minst 200000 SEK/år; Felhantering: Avvisa ansökan.</li><li>Fält: Anställningsstatus; Datakälla: Arbetsgivarintyg; Typ: Text; Obligatoriskt: Ja; Validering: Fast anställd; Felhantering: Avvisa ansökan.</li></ul>
+      <ul><li>Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-70 år; Felhantering: Avslag vid ogiltig ålder.</li><li>Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: Positivt värde; Felhantering: Avslag vid ogiltig inkomst.</li><li>Fält: Kreditvärdighet; Datakälla: Extern kreditupplysning; Typ: Heltal; Obligatoriskt: Ja; Validering: 300-850; Felhantering: Avslag vid ogiltigt värde.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Inputs &amp; datakällor</h2>
-      <ul><li>Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-65 år; Felhantering: Avvisa ansökan.</li><li>Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: Minst 200000 SEK/år; Felhantering: Avvisa ansökan.</li><li>Fält: Anställningsstatus; Datakälla: Arbetsgivarintyg; Typ: Text; Obligatoriskt: Ja; Validering: Fast anställd; Felhantering: Avvisa ansökan.</li></ul>
+      <ul><li>Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-70 år; Felhantering: Avslag vid ogiltig ålder.</li><li>Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: Positivt värde; Felhantering: Avslag vid ogiltig inkomst.</li><li>Fält: Kreditvärdighet; Datakälla: Extern kreditupplysning; Typ: Heltal; Obligatoriskt: Ja; Validering: 300-850; Felhantering: Avslag vid ogiltigt värde.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Beslutslogik (DMN / regler)</h2>
-      <ul><li>Beslutet baseras på en kombination av ålder, inkomst och anställningsstatus.</li><li>Kunden måste vara mellan 18 och 65 år för att vara berättigad.</li><li>Inkomsten måste överstiga ett visst tröskelvärde för att ansökan ska godkännas.</li><li>Endast kunder med fast anställning är berättigade.</li><li>Regeln implementeras i en DMN-tabell för att säkerställa konsekvent beslutsfattande.</li></ul>
+      <ul><li>Beslutslogiken baseras på en kombination av ålder, inkomst och kreditvärdighet.</li><li>Kunder under 18 eller över 70 år avvisas automatiskt.</li><li>Inkomster under en viss tröskel, exempelvis 200,000 kr per år, leder till avslag.</li><li>En kreditvärdighet under 600 leder till avslag.</li><li>Regeln implementeras i en DMN-tabell som används för att säkerställa konsekventa beslut.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Output &amp; effekter</h2>
-      <ul><li>Outputtyp: Behörighetsbeslut; Typ: Binärt; Effekt: Godkänd/Avvisad; Loggning: Ja.</li><li>Outputtyp: Riskflagga; Typ: Text; Effekt: Indikerar potentiell risk; Loggning: Ja.</li><li>Outputtyp: Beslutslogg; Typ: Text; Effekt: Dokumenterar beslutskriterier; Loggning: Ja.</li></ul>
+      <ul><li>Outputtyp: Beslut; Typ: String; Effekt: APPROVE, REFER eller DECLINE; Loggning: Alla beslut loggas för revision.</li><li>Outputtyp: Flaggor; Typ: Boolean; Effekt: Indikerar hög riskprofil; Loggning: Flaggor loggas för vidare analys.</li><li>Outputtyp: Meddelande; Typ: String; Effekt: Informerar kund om beslut; Loggning: Kundkommunikation loggas.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Affärsregler &amp; policystöd</h2>
-      <ul><li>Regeln stödjer interna principer för ansvarsfull utlåning genom att säkerställa att endast berättigade kunder kan ansöka.</li><li>Följer principer för att minimera kreditrisk genom att ställa krav på inkomst och anställningsstatus.</li><li>Stödjer efterlevnad av konsumentkreditlagen genom att fastställa tydliga behörighetskriterier.</li><li>Bidrar till att uppfylla interna krav på kundkännedom (KYC) genom validering av kunddata.</li></ul>
+      <ul><li>Regeln stödjer interna principer för ansvarsfull utlåning.</li><li>Den säkerställer att kunder uppfyller minimikrav för kreditvärdighet.</li><li>Följer regulatoriska krav enligt konsumentkreditlagen.</li><li>Stödjer bankens policy för att minimera kreditförluster.</li><li>Regeln bidrar till att upprätthålla en hållbar kreditportfölj.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -147,23 +148,23 @@
         
         <tr>
           <td>BR1</td>
-          <td>Standardbehörighet</td>
-          <td>Kund är 30 år, har en årlig inkomst på 300000 SEK och är fast anställd.</td>
-          <td>Godkänd</td>
+          <td>Standardkund</td>
+          <td>Kund är 35 år, har en inkomst på 400,000 kr och en kreditvärdighet på 750.</td>
+          <td>APPROVE</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>BR2</td>
-          <td>Under åldersgräns</td>
-          <td>Kund är 17 år, har en årlig inkomst på 250000 SEK och är fast anställd.</td>
-          <td>Avvisad</td>
+          <td>Ung kund</td>
+          <td>Kund är 17 år, har en inkomst på 300,000 kr och en kreditvärdighet på 700.</td>
+          <td>DECLINE</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>BR3</td>
-          <td>Otillräcklig inkomst</td>
-          <td>Kund är 40 år, har en årlig inkomst på 150000 SEK och är fast anställd.</td>
-          <td>Avvisad</td>
+          <td>Låg inkomst</td>
+          <td>Kund är 40 år, har en inkomst på 150,000 kr och en kreditvärdighet på 650.</td>
+          <td>DECLINE</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
       </table>
@@ -171,12 +172,12 @@
 
     <section class="doc-section">
       <h2>Implementation &amp; integrationsnoter</h2>
-      <ul><li>Regeln implementeras i en DMN-tabell som del av en intern beslutstjänst.</li><li>Beslutstjänsten är integrerad med kunddataregister för att hämta nödvändiga indata.</li><li>Prestandaoptimering kan krävas för att hantera stora volymer av ansökningar.</li><li>Beroende av externa tjänster för validering av inkomst och anställningsstatus.</li></ul>
+      <ul><li>Regeln implementeras i en DMN-tabell för att säkerställa flexibilitet och skalbarhet.</li><li>Exponeras via en intern beslutstjänst/API för realtidsbedömningar.</li><li>Kritiska beroenden inkluderar kunddataregister och externa kreditupplysningar.</li><li>Prestandaoptimering är viktig för att hantera stora volymer ansökningar.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Relaterade regler &amp; subprocesser</h2>
-      <ul><li>Relaterad regel: Kreditvärderingsregel som används efter behörighetskontroll.</li><li>Subprocess: Förhandsbedömning av ansökan.</li><li>Övergripande dokumentation: Kreditpolicy-dokumentation som beskriver behörighetskriterier.</li></ul>
+      <ul><li>Relaterad regel: Kreditvärdighetsbedömning.</li><li>Subprocess: Förhandsbedömning av kreditansökan.</li><li>Dokumentation: Intern kreditpolicy för bolån.</li><li>Övergripande process: Huvudbeslut för kreditansökan.</li></ul>
     </section>
   
   </div>
