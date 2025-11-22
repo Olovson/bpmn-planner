@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:llm:smoke": "VITE_USE_LLM=true VITE_ALLOW_LLM_IN_TESTS=true LLM_PROVIDER=cloud vitest run tests/integration/llm.real.smoke.test.ts",
+    "test:llm:smoke": "VITE_USE_LLM=true VITE_ALLOW_LLM_IN_TESTS=true vitest run tests/integration/llm.real.smoke.test.ts",
     "test:llm:smoke:cloud": "VITE_USE_LLM=true VITE_ALLOW_LLM_IN_TESTS=true LLM_PROVIDER=cloud vitest run tests/integration/llm.real.smoke.test.ts",
     "test:llm:smoke:local": "VITE_USE_LLM=true VITE_ALLOW_LLM_IN_TESTS=true LLM_PROVIDER=local vitest run tests/integration/llm.real.smoke.test.ts",
     "test:watch": "vitest",

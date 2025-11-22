@@ -137,6 +137,9 @@ vi.mock('@/lib/documentationTemplates', () => ({
   renderEpicDoc: () => '<html><body>epic</body></html>',
   renderBusinessRuleDoc: (_context: any, links: any) =>
     `<html><body>${links?.dmnLink ?? 'Ingen DMN-länk konfigurerad'}</body></html>`,
+}));
+
+vi.mock('@/lib/wrapLlmContent', () => ({
   wrapLlmContentAsDocument: (content: string, title: string) =>
     `<!DOCTYPE html><html><head><title>${title}</title></head><body>${content}</body></html>`,
 }));

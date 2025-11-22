@@ -10,9 +10,9 @@ import {
   renderFeatureGoalDocFromLlm,
   renderEpicDocFromLlm,
   renderBusinessRuleDocFromLlm,
-  wrapLlmContentAsDocument,
   type TemplateLinks,
 } from '@/lib/documentationTemplates';
+import { wrapLlmContentAsDocument } from '@/lib/wrapLlmContent';
 import { getNodeDocFileKey, getNodeTestFileKey, getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
 import { generateDocumentationWithLlm, type DocumentationDocType } from '@/lib/llmDocumentation';
 import { generateTestSpecWithLlm } from '@/lib/llmTests';

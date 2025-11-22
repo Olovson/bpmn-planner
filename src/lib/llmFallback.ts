@@ -7,12 +7,13 @@
 import type { LlmProvider } from './llmClientAbstraction';
 import type { DocType } from './llmProfiles';
 import { getLlmClient } from './llmClients';
-import { getLlmProfile, buildSystemPrompt } from './llmProfiles';
+import { getLlmProfile } from './llmProfiles';
 import {
   getFeaturePrompt,
   getEpicPrompt,
   getBusinessRulePrompt,
   getTestscriptPrompt,
+  buildSystemPrompt,
 } from './promptLoader';
 import { LocalLlmUnavailableError } from './llmClients/localLlmClient';
 import type { LlmResolution } from './llmProviderResolver';

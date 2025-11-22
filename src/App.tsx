@@ -19,7 +19,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BpmnSelectionProvider } from "./contexts/BpmnSelectionContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import DocViewer from "./pages/DocViewer";
-import LlmDebugView from "./pages/LlmDebugView";
+import { LlmDebugView } from "./pages/LlmDebugView";
 import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
