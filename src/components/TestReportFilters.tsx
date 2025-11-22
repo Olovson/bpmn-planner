@@ -1,5 +1,3 @@
-import { Button } from '@/components/ui/button';
-
 export type TestStatusFilter = 'all' | 'passing' | 'failing' | 'pending' | 'skipped';
 
 export type TestDocTypeFilter = 'all' | 'feature-goal' | 'epic' | 'business-rule';
@@ -29,43 +27,33 @@ export function TestReportFilters({
         <span className="text-xs font-medium text-muted-foreground">
           Filtrera på status:
         </span>
-        {(['all', 'passing', 'failing', 'pending', 'skipped'] as const).map(
-          (statusValue) => (
-            <Button
-              key={statusValue}
-              size="xs"
-              variant={status === statusValue ? 'default' : 'outline'}
-              className="text-xs"
-              onClick={() => onStatusChange(statusValue)}
-            >
-              {statusValue === 'all' ? 'Alla' : statusValue}
-            </Button>
-          ),
-        )}
+        <select
+          value={status}
+          onChange={(e) => onStatusChange(e.target.value as TestStatusFilter)}
+          className="px-3 py-1.5 min-h-[32px] rounded-md border border-input bg-background text-xs mr-2 mb-1"
+        >
+          <option value="all">Alla statusar</option>
+          <option value="passing">passing</option>
+          <option value="failing">failing</option>
+          <option value="pending">pending</option>
+          <option value="skipped">skipped</option>
+        </select>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-muted-foreground">
           Filtrera på typ:
         </span>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'all', label: 'Alla' },
-            { id: 'feature-goal', label: 'Feature Goal' },
-            { id: 'epic', label: 'Epic' },
-            { id: 'business-rule', label: 'Business Rule' },
-          ].map((opt) => (
-            <Button
-              key={opt.id}
-              size="xs"
-              variant={type === (opt.id as TestDocTypeFilter) ? 'default' : 'outline'}
-              className="text-xs"
-              onClick={() => onTypeChange(opt.id as TestDocTypeFilter)}
-            >
-              {opt.label}
-            </Button>
-          ))}
-        </div>
+        <select
+          value={type}
+          onChange={(e) => onTypeChange(e.target.value as TestDocTypeFilter)}
+          className="px-3 py-1.5 min-h-[32px] rounded-md border border-input bg-background text-xs mr-2 mb-1"
+        >
+          <option value="all">Alla typer</option>
+          <option value="feature-goal">Feature Goal</option>
+          <option value="epic">Epic</option>
+          <option value="business-rule">Business Rule</option>
+        </select>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -88,4 +76,3 @@ export function TestReportFilters({
     </div>
   );
 }
-

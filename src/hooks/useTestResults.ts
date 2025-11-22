@@ -17,6 +17,8 @@ export interface TestResult {
   test_file: string;
   node_id: string | null;
   node_name: string | null;
+  // Valfritt fält i test_results som pekar ut BPMN-filen direkt om det finns
+  bpmn_file?: string | null;
   status: 'passing' | 'failing' | 'pending' | 'skipped';
   test_count: number;
   duration: number | null;

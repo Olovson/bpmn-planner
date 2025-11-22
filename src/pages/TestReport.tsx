@@ -109,6 +109,13 @@ const TestReport = () => {
         if (match) inferredFile = `${match[1]}.bpmn`;
       }
 
+      // Primär BPMN-fil för filtret: använd bpmn_file från backend om den finns,
+      // annars fall tillbaka till inferredFile-heuristiken.
+      const bpmnFile =
+        (result as any).bpmn_file && typeof (result as any).bpmn_file === 'string'
+          ? (result as any).bpmn_file
+          : inferredFile;
+
       // Härleder typ (Feature Goal / Epic / Business Rule) från nodeType
       let docType: 'feature-goal' | 'epic' | 'business-rule' | null = null;
       if (result.node_id) {
@@ -122,14 +129,14 @@ const TestReport = () => {
         }
       }
 
-      return { ...result, inferredFile, docType };
+      return { ...result, inferredFile, bpmnFile, docType };
     });
   }, [testResults, nodeTypeById]);
 
   const processOptions = useMemo(() => {
     const files = new Set<string>();
     testsWithDerivedProcess.forEach((t) => {
-      if (t.inferredFile) files.add(t.inferredFile);
+      if (t.bpmnFile) files.add(t.bpmnFile);
     });
     return Array.from(files).sort();
   }, [testsWithDerivedProcess]);
@@ -138,7 +145,7 @@ const TestReport = () => {
     return testsWithDerivedProcess
       .filter((t) => {
         if (statusFilter !== 'all' && t.status !== statusFilter) return false;
-        if (processFilter !== 'all' && t.inferredFile !== processFilter) return false;
+        if (processFilter !== 'all' && t.bpmnFile !== processFilter) return false;
         if (executedTypeFilter !== 'all' && t.docType !== executedTypeFilter) return false;
         return true;
       })
@@ -315,26 +322,6 @@ const TestReport = () => {
             </Card>
           </div>
 
-          {/* Banner när inga körda tester finns */}
-          {stats.total === 0 && (
-            <Card className="border-amber-200 bg-amber-50">
-              <CardContent className="py-3 text-sm text-amber-900 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 mt-0.5" />
-                <div>
-                  <p className="font-medium">
-                    Inga körda tester är rapporterade ännu.
-                  </p>
-                  <p className="text-xs">
-                    Vi visar nu bara planerade scenarion och node‑coverage baserat på
-                    genererade testfiler. När Playwright‑körningar börjar rapporteras
-                    till <code>test_results</code> kommer denna vy att visa verkliga
-                    resultat.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Sektion 2: Planerade scenarion & coverage (designnivå) */}
           <Card>
             <CardHeader>
@@ -506,6 +493,26 @@ const TestReport = () => {
             </CardContent>
           </Card>
 
+          {/* Banner när inga körda tester finns – placerad under Planerade scenarion & coverage */}
+          {stats.total === 0 && (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="py-3 text-sm text-amber-900 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 mt-0.5" />
+                <div>
+                  <p className="font-medium">
+                    Inga körda tester är rapporterade ännu.
+                  </p>
+                  <p className="text-xs">
+                    Vi visar nu bara planerade scenarion och node‑coverage baserat på
+                    genererade testfiler. När Playwright‑körningar börjar rapporteras
+                    till <code>test_results</code> kommer denna vy att visa verkliga
+                    resultat.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Sektion 3: Körda tester (verklighet) – sist på sidan */}
           <Card>
             <CardHeader>
@@ -559,7 +566,7 @@ const TestReport = () => {
                     {filteredExecutedTests.map((result) => (
                       <TableRow key={result.id}>
                         <TableCell className="text-sm">
-                          {result.inferredFile || '–'}
+                          {result.bpmnFile || result.inferredFile || '–'}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">

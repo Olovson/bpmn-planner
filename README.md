@@ -246,10 +246,15 @@ och kör `tests/integration/llm.real.smoke.test.ts`, som:
   - Feature Goal (`docType = "feature"`),
   - Epic (`docType = "epic"`),
   - Business Rule (`docType = "businessRule"`),
-- skriver både LLM- och lokal HTML till lokala filer under `tests/llm-output/`:
+- skriver både LLM- och lokal HTML till lokala filer under `tests/llm-output/html/`:
   - `llm-feature-goal-smoke.html` / `local-feature-goal-smoke.html`
   - `llm-epic-smoke.html` / `local-epic-smoke.html`
   - `llm-business-rule-smoke.html` / `local-business-rule-smoke.html`
+- skriver även råa LLM-svar (JSON-strängen som skickas tillbaka från ChatGPT) till `tests/llm-output/json/`:
+  - `llm-feature-goal-smoke.raw.json`
+  - `llm-epic-smoke.raw.json`
+  - `llm-business-rule-smoke.raw.json`
+- markerar i den LLM-baserade HTML:en vilka sektioner som kommer från LLM kontra fallback (t.ex. `data-source-summary="llm|fallback"`, `data-source-scenarios="llm|fallback"` per `<section class="doc-section">`), vilket gör det enkelt att inspektera källan i browserns devtools.
 
 Om LLM inte är aktiverat i tests (t.ex. ingen API-nyckel) hoppar smoke-test-filen automatiskt över sina tester (`describe.skip`).
 

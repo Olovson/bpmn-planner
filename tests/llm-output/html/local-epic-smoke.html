@@ -104,12 +104,12 @@
       </ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-summary="llm">
       <h2>Syfte &amp; Effekt</h2>
       <p>Approve Application är ett delsteg i kreditflödet som säkerställer att rätt data, regler och interaktioner hanteras innan processen går vidare. Epiken bidrar till en spårbar och begriplig kreditprocess för både kund och interna användare.</p>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-inputs="llm">
       <h2>Inputs</h2>
       
       <table>
@@ -129,24 +129,24 @@
       </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-flow="llm">
       <h2>Funktionellt flöde</h2>
       <ol>
         <li>Användaren öppnar vyn och ser sammanfattad ansöknings- och kundinformation.</li><li>Formulär eller val presenteras baserat på föregående steg och riskprofil.</li><li>Användaren fyller i eller bekräftar uppgifter och skickar vidare.</li><li>Systemet validerar indata och uppdaterar processens status samt triggar nästa steg.</li>
       </ol>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-outputs="llm">
       <h2>Output</h2>
       <ul><li>Input: Ansökningsdata – underlag som triggar epiken.</li><li>Output: Nästa steg i processen – status, flaggor och berikad data.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-business-rules="llm">
       <h2>Affärsregler som triggas</h2>
       <ul><li>Regeln använder eller påverkas av relevanta Business Rule / DMN-beslut (se separat dokumentation).</li><li>Policykrav för risk, skuldsättning och produktvillkor ska vara spårbara via kopplade regler.</li><li>Eventuella AML/KYC-krav hanteras i samverkan med dedikerade kontrollnoder.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-scenarios="llm">
       <h2>Affärs-scenarion (tabell)</h2>
       <p class="muted">Scenarierna nedan är affärsnära och ska mappas till automatiska tester.</p>
       <table>
@@ -182,7 +182,7 @@
       </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-test-description="llm">
       <h2>Koppling till automatiska tester</h2>
       <p>
         Scenarierna ovan bör mappas till automatiska tester där scenarionas namn används i testbeskrivningar.
@@ -190,7 +190,7 @@
       </p>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-implementation-notes="llm">
       <h2>Implementation Notes</h2>
       <ul><li>Primära API:er/tjänster: t.ex. POST /api/approve-application för exekvering.</li><li>Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll.</li><li>Eventuella externa beroenden (kreditupplysning, folkbokföring, engagemangsdata) hanteras via plattformens integrationslager.</li><li>Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.</li></ul>
     </section>
@@ -200,7 +200,7 @@
       <ul><li>Beroende tjänster och API:er som epiken anropar eller är beroende av.</li><li>Datakällor (tabeller, domäner och register) som epiken läser eller uppdaterar.</li><li>Externa system eller tredjepartstjänster som påverkar epikens flöde och tillgänglighet.</li><li>Påverkade komponenter i backend, frontend och integrationslager som behöver samspela.</li><li>Tekniska risker och känsliga beroenden som kräver särskild övervakning eller fallback-hantering.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-related-items="llm">
       <h2>Relaterade steg &amp; artefakter</h2>
       <ul><li>Närliggande noder: Inga närliggande noder identifierade.</li></ul>
     </section>

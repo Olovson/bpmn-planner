@@ -820,6 +820,8 @@ function buildFeatureGoalLlmDocBody(
           team: inferTeamForNode(epic.type),
         }));
 
+  const epicRowsSource = sections.epics.length > 0 ? 'llm' : 'fallback';
+
   const flowSteps =
     sections.flowSteps.length > 0
       ? sections.flowSteps
@@ -830,6 +832,8 @@ function buildFeatureGoalLlmDocBody(
           `Resultat och status förs vidare till ${downstreamName} och vidare in i efterföljande processer.`,
         ];
 
+  const flowStepsSource = sections.flowSteps.length > 0 ? 'llm' : 'fallback';
+
   const dependencies =
     sections.dependencies.length > 0
       ? sections.dependencies
@@ -838,6 +842,8 @@ function buildFeatureGoalLlmDocBody(
           'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
           'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
         ];
+
+  const dependenciesSource = sections.dependencies.length > 0 ? 'llm' : 'fallback';
 
   const scenarioRows =
     sections.scenarios.length > 0
@@ -864,9 +870,13 @@ function buildFeatureGoalLlmDocBody(
           },
         ];
 
+  const scenariosSource = sections.scenarios.length > 0 ? 'llm' : 'fallback';
+
   const summaryText =
     sections.summary ||
     `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
+
+  const summarySource = sections.summary ? 'llm' : 'fallback';
 
   const effectGoals =
     sections.effectGoals && sections.effectGoals.length
@@ -878,6 +888,9 @@ function buildFeatureGoalLlmDocBody(
           'Säkrade och mer förutsägbara kreditevalueringar enligt kreditpolicy och riskramverk.',
           'Högre kundnöjdhet genom snabbare och tydligare besked i tidiga steg av kundresan.',
         ];
+
+  const effectGoalsSource =
+    sections.effectGoals && sections.effectGoals.length ? 'llm' : 'fallback';
 
   const scopeBullets: string[] = [];
   if (sections.scopeIncluded.length) {
@@ -904,6 +917,9 @@ function buildFeatureGoalLlmDocBody(
           'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
         ];
 
+  const implementationNotesSource =
+    sections.implementationNotes.length > 0 ? 'llm' : 'fallback';
+
   const relatedItems =
     sections.relatedItems.length > 0
       ? sections.relatedItems
@@ -919,9 +935,14 @@ function buildFeatureGoalLlmDocBody(
             : 'Föregående noder: initierande steg i processen.',
         ];
 
+  const relatedItemsSource =
+    sections.relatedItems.length > 0 ? 'llm' : 'fallback';
+
   const testDescription =
     sections.testDescription ||
     'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
+
+  const testDescriptionSource = sections.testDescription ? 'llm' : 'fallback';
 
   const dorBullets = [
     'Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.',
@@ -952,18 +973,18 @@ function buildFeatureGoalLlmDocBody(
       </ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-summary="${summarySource}">
       <h2>Sammanfattning &amp; scope</h2>
       <p>${summaryText}</p>
       ${renderList(scopeBullets)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-effect-goals="${effectGoalsSource}">
       <h2>Effektmål</h2>
       ${renderList(effectGoals)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-epics="${epicRowsSource}">
       <h2>Ingående Epics</h2>
       ${
         epicRows.length
@@ -991,14 +1012,14 @@ function buildFeatureGoalLlmDocBody(
       }
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-flow="${flowStepsSource}">
       <h2>Affärsflöde</h2>
       <ol>
         ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-scenarios="${scenariosSource}">
       <h2>Affärs-scenarion</h2>
       ${
         scenarioRows.length
@@ -1026,7 +1047,7 @@ function buildFeatureGoalLlmDocBody(
       }
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-test-description="${testDescriptionSource}">
       <h2>Koppling till automatiska tester</h2>
       <p>
         ${testDescription}
@@ -1038,12 +1059,12 @@ function buildFeatureGoalLlmDocBody(
       </p>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
       <h2>Implementation Notes (för dev)</h2>
       ${renderList(implementationNotes)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-dependencies="${dependenciesSource}">
       <h2>Tekniska &amp; externa beroenden</h2>
       ${renderList([
         'Regelmotor(er) och beslutsmotorer kopplade till Feature Goalet.',
@@ -1054,7 +1075,7 @@ function buildFeatureGoalLlmDocBody(
       ])}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-related-items="${relatedItemsSource}">
       <h2>Relaterade regler / subprocesser</h2>
       ${renderList(relatedItems)}
     </section>
@@ -1308,6 +1329,7 @@ function buildEpicDocHtmlFromModel(
   const summaryText =
     model.summary ||
     `${nodeName} är ett delsteg i kreditflödet som säkerställer att rätt data, regler och interaktioner hanteras innan processen går vidare.`;
+  const summarySource = model.summary ? 'llm' : 'fallback';
 
   const prerequisites = model.prerequisites.length
     ? model.prerequisites
@@ -1318,6 +1340,7 @@ function buildEpicDocHtmlFromModel(
         'Förutsätter att grundläggande kund- och ansökningsdata är validerade.',
         'Eventuella föregående KYC/AML- och identitetskontroller ska vara godkända.',
       ];
+  const prerequisitesSource = model.prerequisites.length ? 'llm' : 'fallback';
 
   const inputs = model.inputs.length
     ? model.inputs
@@ -1326,6 +1349,7 @@ function buildEpicDocHtmlFromModel(
           ? `Input: användarens/handläggarens uppgifter och val från ${upstreamName}.`
           : `Input: data och status från föregående systemsteg (${upstreamName}).`,
       ];
+  const inputsSource = model.inputs.length ? 'llm' : 'fallback';
 
   const flowSteps = model.flowSteps.length
     ? model.flowSteps
@@ -1342,6 +1366,7 @@ function buildEpicDocHtmlFromModel(
         'Svar kontrolleras mot förväntade format och felkoder hanteras på övergripande nivå.',
         'Resultatet lagras och vidarebefordras till nästa BPMN-nod.',
       ];
+  const flowStepsSource = model.flowSteps.length ? 'llm' : 'fallback';
 
   const interactions = model.interactions.length
     ? model.interactions
@@ -1356,6 +1381,7 @@ function buildEpicDocHtmlFromModel(
         'Tjänsten ska hantera timeouts och felkoder från beroenden på ett kontrollerat sätt (retry/circuit breaker på plattformsnivå).',
         'Respons ska vara deterministisk och innehålla tydliga statusfält som går att logga och följa upp.',
       ];
+  const interactionsSource = model.interactions.length ? 'llm' : 'fallback';
 
   const dataContracts = model.dataContracts.length
     ? model.dataContracts
@@ -1363,6 +1389,7 @@ function buildEpicDocHtmlFromModel(
         `Input: ${previousNode ? formatNodeName(previousNode) : 'Ansökningsdata'} – underlag som triggar epiken.`,
         `Output: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'} – status, flaggor och berikad data.`,
       ];
+  const dataContractsSource = model.dataContracts.length ? 'llm' : 'fallback';
 
   const businessRulesPolicy = model.businessRulesPolicy.length
     ? model.businessRulesPolicy
@@ -1371,6 +1398,8 @@ function buildEpicDocHtmlFromModel(
         'Policykrav för risk, skuldsättning och produktvillkor ska vara spårbara via kopplade regler.',
         'Eventuella AML/KYC-krav hanteras i samverkan med dedikerade kontrollnoder.',
       ];
+  const businessRulesPolicySource =
+    model.businessRulesPolicy.length ? 'llm' : 'fallback';
 
   const scenarios =
     model.scenarios.length > 0
@@ -1387,10 +1416,12 @@ function buildEpicDocHtmlFromModel(
               'Epiken slutförs utan avvikelser och processen går vidare till nästa steg.',
           },
         ];
+  const scenariosSource = model.scenarios.length > 0 ? 'llm' : 'fallback';
 
   const testDescription =
     model.testDescription ||
     'Scenarierna ovan bör mappas till automatiska tester där scenarionas namn används i testbeskrivningar.';
+  const testDescriptionSource = model.testDescription ? 'llm' : 'fallback';
 
   const implementationNotes =
     model.implementationNotes.length > 0
@@ -1401,6 +1432,8 @@ function buildEpicDocHtmlFromModel(
           'Eventuella externa beroenden (kreditupplysning, folkbokföring, engagemangsdata) hanteras via plattformens integrationslager.',
           'Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.',
         ];
+  const implementationNotesSource =
+    model.implementationNotes.length > 0 ? 'llm' : 'fallback';
 
   const relatedList = relatedNodes.length
     ? relatedNodes.map((n) => `${formatNodeName(n)} (${n.type})`)
@@ -1416,7 +1449,8 @@ function buildEpicDocHtmlFromModel(
           links.bpmnViewerLink
             ? `Visa processen: <a href="${links.bpmnViewerLink}">BPMN viewer</a>`
             : `BPMN-fil: ${node.bpmnFile}`,
-        ];
+       ];
+  const relatedItemsSource = model.relatedItems.length > 0 ? 'llm' : 'fallback';
 
   const dorBullets = [
     'Syfte, effektmål och förväntat affärsvärde för epiken är beskrivet och förankrat.',
@@ -1448,12 +1482,12 @@ function buildEpicDocHtmlFromModel(
       </ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-summary="${summarySource}">
       <h2>Syfte &amp; Effekt</h2>
       <p>${summaryText}</p>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-inputs="${inputsSource}">
       <h2>Inputs</h2>
       ${
         model.inputs.length
@@ -1481,24 +1515,24 @@ function buildEpicDocHtmlFromModel(
       }
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-flow="${flowStepsSource}">
       <h2>Funktionellt flöde</h2>
       <ol>
         ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-outputs="${dataContractsSource}">
       <h2>Output</h2>
       ${renderList(dataContracts)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-business-rules="${businessRulesPolicySource}">
       <h2>Affärsregler som triggas</h2>
       ${renderList(businessRulesPolicy)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-scenarios="${scenariosSource}">
       <h2>Affärs-scenarion (tabell)</h2>
       <p class="muted">Scenarierna nedan är affärsnära och ska mappas till automatiska tester.</p>
       <table>
@@ -1528,7 +1562,7 @@ function buildEpicDocHtmlFromModel(
       </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-test-description="${testDescriptionSource}">
       <h2>Koppling till automatiska tester</h2>
       <p>
         ${testDescription}
@@ -1540,7 +1574,7 @@ function buildEpicDocHtmlFromModel(
       </p>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
       <h2>Implementation Notes</h2>
       ${renderList(implementationNotes)}
     </section>
@@ -1556,7 +1590,7 @@ function buildEpicDocHtmlFromModel(
       ])}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-related-items="${relatedItemsSource}">
       <h2>Relaterade steg &amp; artefakter</h2>
       ${renderList(relatedItems)}
     </section>
@@ -2108,6 +2142,7 @@ function buildBusinessRuleDocHtmlFromModel(
             outcome: 'Beslut: APPROVE utan manuell granskning.',
           },
         ];
+  const scenariosSource = model.scenarios.length > 0 ? 'llm' : 'fallback';
 
   const testDescription =
     model.testDescription ||
@@ -2127,6 +2162,8 @@ function buildBusinessRuleDocHtmlFromModel(
           'API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).',
           'Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.',
         ];
+  const implementationNotesSource =
+    model.implementationNotes.length > 0 ? 'llm' : 'fallback';
 
   const relatedItems =
     model.relatedItems.length > 0
@@ -2143,7 +2180,8 @@ function buildBusinessRuleDocHtmlFromModel(
                 context.parentChain[context.parentChain.length - 1],
               )}`
             : 'Överordnad nod: Rotprocess',
-        ];
+       ];
+  const relatedItemsSource = model.relatedItems.length > 0 ? 'llm' : 'fallback';
 
   return `
     <section class="doc-section">
@@ -2158,12 +2196,18 @@ function buildBusinessRuleDocHtmlFromModel(
       </ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-summary="${
+      model.summary && !model.summary.includes('avgör om en ansökan ligger')
+        ? 'llm'
+        : 'fallback'
+    }">
       <h2>Sammanfattning &amp; scope</h2>
       ${renderList(scopeBullets)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-inputs="${
+      model.inputs.length ? 'llm' : 'fallback'
+    }">
       <h2>Förutsättningar &amp; kontext</h2>
       ${renderList(prerequisites)}
     </section>
@@ -2173,12 +2217,16 @@ function buildBusinessRuleDocHtmlFromModel(
       ${renderList(model.inputs)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-decision-logic="${
+      model.decisionLogic.length ? 'llm' : 'fallback'
+    }">
       <h2>Beslutslogik (DMN / regler)</h2>
       ${renderList(decisionBullets)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-outputs="${
+      model.outputs.length ? 'llm' : 'fallback'
+    }">
       <h2>Output &amp; effekter</h2>
       ${renderList(model.outputs.length ? model.outputs : [
         'Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.',
@@ -2188,12 +2236,14 @@ function buildBusinessRuleDocHtmlFromModel(
       ])}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-business-rules="${
+      model.businessRulesPolicy.length ? 'llm' : 'fallback'
+    }">
       <h2>Affärsregler &amp; policystöd</h2>
       ${renderList(policySupportBullets)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-scenarios="${scenariosSource}">
       <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
       <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
       <table>
@@ -2223,12 +2273,12 @@ function buildBusinessRuleDocHtmlFromModel(
       </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
       <h2>Implementation &amp; integrationsnoter</h2>
       ${renderList(implementationNotes)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-related-items="${relatedItemsSource}">
       <h2>Relaterade regler &amp; subprocesser</h2>
       ${renderList(relatedItems)}
     </section>

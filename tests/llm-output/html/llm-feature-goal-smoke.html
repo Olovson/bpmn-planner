@@ -106,13 +106,13 @@
 
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
-      <p>Målet med denna funktion är att effektivisera insamlingen av intern data för kreditbedömning inom bolåneprocessen. Detta omfattar kunder som ansöker om bolån och syftar till att förbättra kvaliteten och hastigheten i kreditbeslutsprocessen. Genom att automatisera datainsamlingen stödjer vi bankens strategi för riskhantering och förbättrar kundupplevelsen genom snabbare och mer precisa beslut.</p>
-      <ul><li>Ingår: Ingår: insamling av intern kund- och engagemangsdata för kreditbedömning.; Ingår: automatiserad validering av insamlad data mot interna databaser.; Ingår: integration med interna system för att hämta nödvändig information.; Ingår: uppdatering av kreditbeslutsmotor med insamlad data.</li><li>Ingår inte: Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.; Ingår inte: insamling av extern data från tredje part.</li></ul>
+      <p>Syftet med detta Feature Goal är att möjliggöra effektiv insamling av intern kund- och engagemangsdata för att förbättra kreditbedömningen vid bolåneansökningar. Det omfattar kunder inom privatsegmentet som ansöker om nya bolån. Genom att automatisera datainsamlingen stödjer detta Feature Goal bankens strategi för att minska kreditrisker och förbättra kundupplevelsen genom snabbare och mer precisa beslut.</p>
+      <ul><li>Ingår: Ingår: insamling av intern kund- och engagemangsdata för kreditbedömning.; Ingår: automatiserad dataanalys för att stödja preliminära kreditbeslut.; Ingår: integration med interna datakällor och system för realtidsuppdateringar.; Ingår: stöd för riskbedömning och flaggning av potentiella kreditrisker.</li><li>Ingår inte: Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.; Ingår inte: hantering av externa datakällor utanför bankens kontroll.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Effektmål</h2>
-      <ul><li>Automatisering av datainsamling minskar manuellt arbete och kortar ledtider i kreditbedömningen.</li><li>Förbättrad kvalitet och säkerhet i kreditbedömningar genom tillgång till aktuell och korrekt intern data.</li><li>Förbättrad kundupplevelse genom snabbare och tydligare besked om kreditbeslut.</li><li>Stärkt regelefterlevnad och riskkontroll genom att säkerställa att all relevant data beaktas i beslutsprocessen.</li></ul>
+      <ul><li>Automatisering av datainsamling minskar manuellt arbete och kortar ledtider i kreditprocessen.</li><li>Förbättrad kvalitet i kreditbedömningar genom tillgång till mer omfattande och korrekt data.</li><li>Ökad kundnöjdhet genom snabbare besked och färre omtag i ansökningsprocessen.</li><li>Stärkt regelefterlevnad och riskkontroll genom systematisk insamling och analys av relevant data.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -128,21 +128,15 @@
         
         <tr>
           <td>E1</td>
-          <td>Data Integration</td>
-          <td>Integrera interna system för att möjliggöra effektiv datainsamling.</td>
-          <td>IT & Infrastruktur</td>
+          <td>Data Collection Automation</td>
+          <td>Automatisera insamling av nödvändig kunddata från interna system.</td>
+          <td>Data & Analytics</td>
         </tr>
         <tr>
           <td>E2</td>
-          <td>Data Validation</td>
-          <td>Automatisera validering av insamlad data för att säkerställa korrekthet.</td>
+          <td>Risk Assessment Integration</td>
+          <td>Integrera insamlad data med riskbedömningsmotorer för att stödja kreditbeslut.</td>
           <td>Risk & Kredit</td>
-        </tr>
-        <tr>
-          <td>E3</td>
-          <td>Decision Update</td>
-          <td>Uppdatera kreditbeslutsmotor med ny data för att förbättra beslutsprocessen.</td>
-          <td>Produktutveckling</td>
         </tr>
       </table>
     </section>
@@ -150,7 +144,7 @@
     <section class="doc-section">
       <h2>Affärsflöde</h2>
       <ol>
-        <li>Kunden skickar in en ansökan om bolån via bankens webbportal.</li><li>Systemet initierar insamling av intern data från relevanta databaser.</li><li>Den insamlade datan valideras automatiskt mot interna regler och kriterier.</li><li>Validerad data integreras i kreditbeslutsmotorn för vidare bearbetning.</li><li>Kreditbeslutet uppdateras och kommuniceras till kunden via webbportalen.</li>
+        <li>Systemet initierar insamling av kunddata från interna källor vid mottagande av en ny ansökan.</li><li>Data analyseras och sammanställs för att skapa en helhetsbild av kundens engagemang och riskprofil.</li><li>Automatiserade riskbedömningar utförs baserat på den insamlade datan.</li><li>Preliminära kreditbeslut genereras och kommuniceras till handläggare för vidare hantering.</li>
       </ol>
     </section>
 
@@ -166,21 +160,21 @@
         
         <tr>
           <td>S1</td>
-          <td>Successful Data Collection</td>
+          <td>Successful Data Gathering</td>
           <td>Happy</td>
-          <td>All nödvändig data samlas in och valideras framgångsrikt, vilket leder till ett preliminärt godkännande.</td>
+          <td>All nödvändig data samlas in och analyseras framgångsrikt, vilket leder till ett preliminärt kreditbeslut.</td>
         </tr>
         <tr>
           <td>S2</td>
-          <td>Data Validation Error</td>
-          <td>Error</td>
-          <td>Valideringsfel upptäcks i insamlad data, vilket kräver manuell granskning.</td>
+          <td>Partial Data Availability</td>
+          <td>Edge</td>
+          <td>Viss data saknas vilket kräver manuell komplettering innan ett kreditbeslut kan fattas.</td>
         </tr>
         <tr>
           <td>S3</td>
-          <td>Incomplete Data</td>
-          <td>Edge</td>
-          <td>Viss data saknas, vilket leder till att ansökan skickas tillbaka till kunden för komplettering.</td>
+          <td>Data Gathering Failure</td>
+          <td>Error</td>
+          <td>Systemet misslyckas med att samla in data, vilket resulterar i att ansökan skickas till manuell granskning.</td>
         </tr>
       </table>
     </section>
@@ -188,7 +182,7 @@
     <section class="doc-section">
       <h2>Koppling till automatiska tester</h2>
       <p>
-        Affärsscenarierna ska mappas mot automatiska tester såsom E2E och API-tester. Återanvänd scenario-ID och namn i testfall och rapportering.
+        Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester, där scenario-ID och namn återanvänds i testnamn och rapportering.
         <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
         <br />
         Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
@@ -197,7 +191,7 @@
 
     <section class="doc-section">
       <h2>Implementation Notes (för dev)</h2>
-      <ul><li>Använd RESTful API för datautbyte mellan system.</li><li>Logga alla datainsamlings- och valideringssteg för auditändamål.</li><li>Säkerställ att systemet hanterar fel vid datavalidering och rapporterar dessa korrekt.</li><li>Optimera prestanda för datainsamling genom att använda batch-processer där möjligt.</li></ul>
+      <ul><li>Använd RESTful API-mönster för datahämtning och integration.</li><li>Säkerställ omfattande loggning och audit för all datahantering.</li><li>Implementera fallback-mekanismer vid misslyckad datainsamling.</li><li>Optimera prestanda för realtidsdatahämtning och analys.</li><li>Beakta säkerhetsaspekter och dataskydd i enlighet med GDPR.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -207,7 +201,7 @@
 
     <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
-      <ul><li>Relaterad Feature Goal: Extern datainsamling för kreditbedömning.</li><li>Relaterad Epic: Manuell granskning av kreditansökningar.</li><li>Business Rule: Kreditvärderingspolicy för bolån.</li><li>Subprocess: Datavalidering och kvalitetskontroll.</li></ul>
+      <ul><li>Relaterat Feature Goal: Extern datainsamling för kreditbedömning.</li><li>Epic: Manuell datakomplettering vid ofullständig insamling.</li><li>Business Rule: Kreditvärderingspolicy och riskbedömningskriterier.</li></ul>
     </section>
 
     <section class="doc-section">

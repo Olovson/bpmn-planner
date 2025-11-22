@@ -105,12 +105,12 @@
       </ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-summary="llm">
       <h2>Syfte &amp; Effekt</h2>
-      <p>Epiken 'Approve Application' syftar till att möjliggöra en effektiv och korrekt godkännandeprocess för bolåneansökningar. Den spelar en central roll i kreditprocessen genom att säkerställa att alla nödvändiga kontroller och bedömningar är genomförda innan ett slutgiltigt beslut fattas. Detta är en User Task där handläggaren granskar och godkänner ansökningar baserat på systemets rekommendationer.</p>
+      <p>Epiken 'Approve Application' syftar till att möjliggöra en effektiv och korrekt bedömning av låneansökningar. Den spelar en central roll i kreditprocessen genom att säkerställa att ansökningar som uppfyller bankens kriterier godkänns snabbt och korrekt. Detta är en User Task där handläggaren granskar och fattar beslut baserat på tillgänglig data.</p>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-inputs="llm">
       <h2>Inputs</h2>
       
       <table>
@@ -128,19 +128,13 @@
           <td></td>
         </tr>
         <tr>
-          <td>Input: resultat från kreditvärdighetsbedömning.</td>
-          <td></td>
-          <td></td>
-          <td></td>
-        </tr>
-        <tr>
           <td>Input: interna riskflaggor och engagemangsdata.</td>
           <td></td>
           <td></td>
           <td></td>
         </tr>
         <tr>
-          <td>Input: dokumentation från kunder och eventuella kompletteringar.</td>
+          <td>Input: resultat från kreditvärderingsmotor och externa kreditupplysningar.</td>
           <td></td>
           <td></td>
           <td></td>
@@ -148,24 +142,24 @@
       </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-flow="llm">
       <h2>Funktionellt flöde</h2>
       <ol>
-        <li>Användaren öppnar vyn för att granska ansökningsdetaljer.</li><li>Systemet visar sammanfattad information och rekommendationer.</li><li>Användaren granskar och gör eventuella justeringar i bedömningen.</li><li>Systemet registrerar beslutet och uppdaterar ansökningsstatusen.</li><li>Användaren bekräftar godkännandet och skickar vidare till nästa steg.</li>
+        <li>Användaren öppnar vyn för att granska ansökan.</li><li>Systemet visar sammanfattad ansökningsinformation och riskbedömningar.</li><li>Användaren granskar informationen och fattar beslut om godkännande.</li><li>Systemet loggar beslutet och uppdaterar ansökningsstatus.</li>
       </ol>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-outputs="llm">
       <h2>Output</h2>
-      <ul><li>Input: ansökningssystem – sammanfattad ansökningsdata.</li><li>Output: beslutsmotor – godkännandestatus och eventuella kommentarer.</li><li>Input: kreditvärderingssystem – riskbedömning och rekommendationer.</li><li>Output: kundsystem – uppdaterad status och beslut.</li></ul>
+      <ul><li>Input: ansökningssystemet – sammanfattad ansökningsdata.</li><li>Output: kreditbeslutssystemet – beslut och motivering skickas vidare.</li><li>Input: riskhanteringssystemet – riskflaggor och engagemangsdata.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-business-rules="llm">
       <h2>Affärsregler som triggas</h2>
-      <ul><li>Epiken använder sig av affärsregler för kreditvärdighetsbedömning.</li><li>Policyer för belåningsgrad och skuldsättning måste följas strikt.</li><li>AML/KYC-regler måste vara uppfyllda innan godkännande.</li><li>Beslut ska dokumenteras i enlighet med interna och externa regelverk.</li></ul>
+      <ul><li>Epiken använder affärsregler för kreditvärdering och riskhantering.</li><li>Beslut måste följa bankens policy för skuldsättning och belåningsgrad.</li><li>AML/KYC-regler ska beaktas vid godkännande av ansökningar.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-scenarios="llm">
       <h2>Affärs-scenarion (tabell)</h2>
       <p class="muted">Scenarierna nedan är affärsnära och ska mappas till automatiska tester.</p>
       <table>
@@ -181,27 +175,27 @@
           <td>EPIC-S1</td>
           <td>Happy path</td>
           <td>Happy</td>
-          <td>Ansökan godkänns och skickas vidare för utbetalning.</td>
+          <td>Ansökan godkänns och kunden informeras om beslutet.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>EPIC-S2</td>
           <td>Edge case</td>
           <td>Edge</td>
-          <td>Ansökan godkänns med noteringar för framtida uppföljning.</td>
+          <td>Ansökan skickas till manuell granskning för vidare bedömning.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>EPIC-S3</td>
           <td>Error case</td>
           <td>Error</td>
-          <td>Ansökan skickas tillbaka för komplettering eller avslås.</td>
+          <td>Ansökan avslås och kunden informeras om nödvändiga korrigeringar.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
       </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-test-description="llm">
       <h2>Koppling till automatiska tester</h2>
       <p>
         Scenarierna ska mappas till automatiska tester för att säkerställa korrekt funktionalitet. Scenario-ID och namn bör återanvändas i testfall och rapportering.
@@ -209,9 +203,9 @@
       </p>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-implementation-notes="llm">
       <h2>Implementation Notes</h2>
-      <ul><li>Använd API-endpoints för att hämta och uppdatera ansökningsdata.</li><li>Loggning och audit ska implementeras för alla beslut och ändringar.</li><li>Beroenden inkluderar kreditmotor och kunddata för korrekt bedömning.</li><li>Prestandaoptimering kan behövas för att hantera stora datamängder.</li></ul>
+      <ul><li>API:er för ansöknings- och kreditbeslutssystem bör användas för datautbyte.</li><li>Loggning och audit av beslut är kritiska för regelefterlevnad.</li><li>Prestandaoptimering bör beaktas för att hantera stora volymer av ansökningar.</li><li>Integration med externa kreditupplysningssystem måste vara robust och säker.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -219,9 +213,9 @@
       <ul><li>Beroende tjänster och API:er som epiken anropar eller är beroende av.</li><li>Datakällor (tabeller, domäner och register) som epiken läser eller uppdaterar.</li><li>Externa system eller tredjepartstjänster som påverkar epikens flöde och tillgänglighet.</li><li>Påverkade komponenter i backend, frontend och integrationslager som behöver samspela.</li><li>Tekniska risker och känsliga beroenden som kräver särskild övervakning eller fallback-hantering.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-related-items="llm">
       <h2>Relaterade steg &amp; artefakter</h2>
-      <ul><li>Föregående steg: Insamling och validering av ansökningsdata.</li><li>Relaterad Feature Goal: Effektivisering av kreditbeslutsprocessen.</li><li>Relaterad subprocess: Riskbedömning och flaggning.</li><li>Dokumentation: Affärsregler och policyer för kreditbeslut.</li></ul>
+      <ul><li>Föregående steg: Insamling och verifiering av ansökningsdata.</li><li>Relaterade Business Rules: Kreditvärderings- och riskhanteringsregler.</li><li>Feature Goal: Effektivisering av kreditbedömningsprocessen.</li></ul>
     </section>
 
     <section class="doc-section">

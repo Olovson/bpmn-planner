@@ -1,65 +1,63 @@
 ```json
 {
-  "summary": "Regeln för behörighet bedömer om en kund är berättigad till en viss produkt, såsom ett bolån. Den riktar sig främst till privatkunder som ansöker om nya lån och används under förhandsbedömningen. Regeln inkluderar inte företagskunder eller andra typer av krediter.",
+  "summary": "Regeln bedömer kundens behörighet för att ansöka om ett bolån. Den riktar sig främst till privatkunder som söker bostadsfinansiering och används i förhandsbedömningen av ansökningar. Regeln inkluderar inte företagskunder eller andra typer av lån.",
   "inputs": [
-    "Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-70 år; Felhantering: Avslag vid ogiltig ålder.",
-    "Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: Positivt värde; Felhantering: Avslag vid ogiltig inkomst.",
-    "Fält: Kreditvärdighet; Datakälla: Extern kreditupplysning; Typ: Heltal; Obligatoriskt: Ja; Validering: 300-850; Felhantering: Avslag vid ogiltigt värde."
+    "Fält: Ålder; Datakälla: Kundregister; Typ: Numerisk; Obligatoriskt: Ja; Validering: Ålder mellan 18 och 65; Felhantering: Avvisa ansökan.",
+    "Fält: Inkomst; Datakälla: Inkomstuppgifter; Typ: Numerisk; Obligatoriskt: Ja; Validering: Måste överstiga minimikrav; Felhantering: Avvisa ansökan.",
+    "Fält: Kreditvärdighet; Datakälla: Extern kreditupplysning; Typ: Numerisk; Obligatoriskt: Ja; Validering: Minimum kreditpoäng; Felhantering: Avvisa ansökan."
   ],
   "decisionLogic": [
-    "Beslutslogiken baseras på en kombination av ålder, inkomst och kreditvärdighet.",
-    "Kunder under 18 eller över 70 år avvisas automatiskt.",
-    "Inkomster under en viss tröskel, exempelvis 200,000 kr per år, leder till avslag.",
-    "En kreditvärdighet under 600 leder till avslag.",
-    "Regeln implementeras i en DMN-tabell som används för att säkerställa konsekventa beslut."
+    "Beslutet baseras på en kombination av ålder, inkomst och kreditvärdighet.",
+    "Kunden måste vara mellan 18 och 65 år för att vara berättigad.",
+    "Inkomsten måste överstiga ett visst tröskelvärde beroende på lånebeloppet.",
+    "En kreditvärdighet under ett visst poäng leder till avslag.",
+    "Beslutet fattas genom en DMN-tabell som kombinerar dessa kriterier."
   ],
   "outputs": [
-    "Outputtyp: Beslut; Typ: String; Effekt: APPROVE, REFER eller DECLINE; Loggning: Alla beslut loggas för revision.",
-    "Outputtyp: Flaggor; Typ: Boolean; Effekt: Indikerar hög riskprofil; Loggning: Flaggor loggas för vidare analys.",
-    "Outputtyp: Meddelande; Typ: String; Effekt: Informerar kund om beslut; Loggning: Kundkommunikation loggas."
+    "Outputtyp: Beslut; Typ: APPROVE/DECLINE; Effekt: Fortsatt process eller avslag; Loggning: Ja, beslut loggas för revision.",
+    "Outputtyp: Flagga; Typ: Hög risk; Effekt: Manuell granskning; Loggning: Ja, flaggning loggas.",
+    "Outputtyp: Meddelande; Typ: Kundnotifiering; Effekt: Informera kund om beslut; Loggning: Ja, meddelande loggas."
   ],
   "businessRulesPolicy": [
-    "Regeln stödjer interna principer för ansvarsfull utlåning.",
-    "Den säkerställer att kunder uppfyller minimikrav för kreditvärdighet.",
-    "Följer regulatoriska krav enligt konsumentkreditlagen.",
-    "Stödjer bankens policy för att minimera kreditförluster.",
-    "Regeln bidrar till att upprätthålla en hållbar kreditportfölj."
+    "Regeln stödjer principen om ansvarsfull långivning genom att säkerställa att endast behöriga kunder får ansöka.",
+    "Den följer interna riktlinjer för skuldkvotstak och belåningsgrad.",
+    "Regeln är i linje med konsumentkreditlagen genom att säkerställa att låntagare har tillräcklig betalningsförmåga.",
+    "Den bidrar till att uppfylla AML/KYC-krav genom att verifiera kundens identitet och ekonomiska situation."
   ],
   "scenarios": [
     {
       "id": "BR1",
-      "name": "Standardkund",
+      "name": "Standardansökan",
       "type": "Happy",
-      "input": "Kund är 35 år, har en inkomst på 400,000 kr och en kreditvärdighet på 750.",
+      "input": "Kund är 30 år med stabil inkomst och god kreditvärdighet.",
       "outcome": "APPROVE"
     },
     {
       "id": "BR2",
-      "name": "Ung kund",
+      "name": "Hög ålder",
       "type": "Edge",
-      "input": "Kund är 17 år, har en inkomst på 300,000 kr och en kreditvärdighet på 700.",
+      "input": "Kund är 66 år med stabil inkomst och god kreditvärdighet.",
       "outcome": "DECLINE"
     },
     {
       "id": "BR3",
       "name": "Låg inkomst",
       "type": "Error",
-      "input": "Kund är 40 år, har en inkomst på 150,000 kr och en kreditvärdighet på 650.",
+      "input": "Kund är 30 år med låg inkomst och god kreditvärdighet.",
       "outcome": "DECLINE"
     }
   ],
-  "testDescription": "Scenarierna mappas mot automatiska tester som utförs med hjälp av verktyg som Playwright. Scenario-ID och namn bör återfinnas i testfiler och testnamn för spårbarhet.",
+  "testDescription": "Scenarierna mappas mot automatiska tester för att säkerställa korrekt beslutslogik. Scenario-ID och namn bör återfinnas i testfiler och testnamn.",
   "implementationNotes": [
-    "Regeln implementeras i en DMN-tabell för att säkerställa flexibilitet och skalbarhet.",
-    "Exponeras via en intern beslutstjänst/API för realtidsbedömningar.",
-    "Kritiska beroenden inkluderar kunddataregister och externa kreditupplysningar.",
-    "Prestandaoptimering är viktig för att hantera stora volymer ansökningar."
+    "Regeln implementeras i en DMN-tabell som hanteras av en regelmotor.",
+    "Den exponeras via en intern beslutstjänst för integration med ansökningssystemet.",
+    "Prestandaoptimering är viktig för att hantera stora volymer av ansökningar.",
+    "Beroende på externa kreditupplysningar för att verifiera kreditvärdighet."
   ],
   "relatedItems": [
-    "Relaterad regel: Kreditvärdighetsbedömning.",
-    "Subprocess: Förhandsbedömning av kreditansökan.",
-    "Dokumentation: Intern kreditpolicy för bolån.",
-    "Övergripande process: Huvudbeslut för kreditansökan."
+    "Relaterad regel: Kreditvärderingsregel för djupare analys.",
+    "Subprocess: Förhandsbedömning av låneansökan.",
+    "Dokumentation: Kreditpolicy och riktlinjer för bolån."
   ]
 }
 ```
