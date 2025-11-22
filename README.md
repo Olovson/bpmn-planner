@@ -123,6 +123,41 @@ VITE_LLM_LOCAL_MODEL=llama3:latest
 
 > **Obs:** när `VITE_USE_LLM=true` och `VITE_OPENAI_API_KEY` är satt används LLM-kontrakten för ChatGPT/Ollama. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
 
+## 2.5. Fusklapp – LLM‑utveckling (starta allt)
+
+När du ska jobba med LLM (ChatGPT/Ollama), använd alltid samma grundsekvens:
+
+1. Gå till projektet
+```bash
+cd /Users/magnusolovson/Documents/Projects/bpmn-planner
+```
+
+2. Starta Supabase (lokalt projekt)
+```bash
+npm run start:supabase   # guidat start/reset-flöde för Supabase
+```
+
+3. Starta dev‑server (frontend)
+```bash
+npm run dev   # http://localhost:8080/
+```
+
+4. Snabbkolla att Ollama svarar (valfritt men bra vid strul)
+```bash
+curl -s http://localhost:11434/api/generate \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"llama3:latest","prompt":"ping","stream":false,"options":{"num_predict":5}}'
+```
+
+5. Lokal LLM health‑test via Supabase‑funktion
+```bash
+LLM_HEALTH_TEST=true npx vitest run tests/integration/llm.health.local.test.ts
+```
+
+> Om du ändrar `.env.local` eller `supabase/.env` behöver du:
+> - starta om Supabase (`npm run start:supabase`), och
+> - om du kör `supabase functions serve llm-health ...` i en separat terminal: stoppa med Ctrl+C och starta om kommandot.
+
 ## 3. Edge Functions (valfritt men rekommenderat vid LLM-utveckling)
 
 För att vissa delar av appen ska fungera fullt ut lokalt (t.ex. LLM‑health och process‑trädet) behöver du starta relevanta edge functions i egna terminalfönster:
@@ -205,6 +240,30 @@ och kör `tests/integration/llm.real.smoke.test.ts`, som:
 - markerar i den LLM-baserade HTML:en vilka sektioner som kommer från LLM kontra fallback (t.ex. `data-source-summary="llm|fallback"`, `data-source-scenarios="llm|fallback"` per `<section class="doc-section">`), vilket gör det enkelt att inspektera källan i browserns devtools.
 
 Om LLM inte är aktiverat i tests (t.ex. ingen API-nyckel) hoppar smoke-test-filen automatiskt över sina tester (`describe.skip`).
+
+### Extra viktig LLM-notis (för både människor och agenter)
+
+- **ChatGPT (cloud) är “gold standard” för kontraktet.**  
+  - Använd alltid:  
+    `npm run test:llm:smoke:cloud`  
+    för att verifiera att promptar, validering och JSON-kontrakt fortfarande fungerar.
+  - Om denna svit är grön vet vi att kontrakten fungerar som avsett.
+
+- **Lokal Ollama är best-effort fallback.**  
+  - Använd:  
+    `npm run test:llm:smoke:local`  
+    för att inspektera lokal-modellens beteende (Feature/Epic/BusinessRule), se rå-output och valideringsfel.
+  - Den sviten får gärna vara röd under utveckling – den ska **inte** blockera ChatGPT-flödet.
+
+- **Ändra aldrig JSON-modellerna lättvindigt.**  
+  - Typer/kontrakt som `FeatureGoalDocModel`, `EpicDocModel`, `BusinessRuleDocModel` är centrala:
+    - UI, mappers, HTML-templates och tester förlitar sig på dessa.
+  - Vid behov: justera **promptar** och **validering** först, inte själva modellen.
+
+- **Efter ändringar i prompts eller validering:**  
+  1. Kör alltid `npm run test:llm:smoke:cloud` först.  
+  2. När cloud är grön, kör `npm run test:llm:smoke:local` för att se hur lokal LLM beter sig.  
+  3. Använd `tests/llm-output/json/*.raw.json` för att analysera lokal LLM-output.
 
 _Tips: hierarkin byggs från metadata i tabellen `bpmn_files.meta` (genereras vid uppladdning/parsing). Se till att metadata finns för att träd/diagram/listor ska spegla aktuell struktur._
 

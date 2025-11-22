@@ -17,7 +17,8 @@ const LOCAL_MODEL =
 const LOCAL_TIMEOUT_MS = (() => {
   const raw = import.meta.env.VITE_LLM_LOCAL_TIMEOUT_MS?.toString().trim();
   const parsed = raw ? Number.parseInt(raw, 10) : NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 600000;
+  // Default: 90 sekunder (balans mellan 60-120s som rekommenderat)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 90000;
 })();
 
 import type { LlmClient } from '../llmClientAbstraction';

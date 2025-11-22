@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eligibility Rule</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="doc-shell">
+  <!-- LLM_SECTION_ORIGIN: summary=llm, inputs=llm, decisionLogic=llm, outputs=llm, businessRulesPolicy=llm, scenarios=llm, testDescription=llm, implementationNotes=llm, relatedItems=llm -->
+    
+    
+    
+    <section class="doc-section">
+      <span class="doc-badge">Business Rule / DMN</span>
+      <h1>Eligibility Rule</h1>
+      <ul>
+        <li><strong>Regel-ID:</strong> Rule_Eligibility</li>
+        <li><strong>BPMN-element:</strong> Rule_Eligibility (businessRuleTask)</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Risk &amp; Kreditpolicy</li>
+        <li><strong>Kreditprocess-steg:</strong> mortgage</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" data-source-summary="llm">
+      <h2>Sammanfattning &amp; scope</h2>
+      <ul><li>Regeln bedömer kunders berättigande till bolån baserat på deras ekonomiska profil och kreditvärdighet. Den riktar sig främst till privatpersoner som ansöker om nya bolån. Regeln används i förhandsbedömningen för att snabbt avgöra om en kund är berättigad till vidare prövning. Den omfattar inte företagskunder eller befintliga lånejusteringar.</li></ul>
+    </section>
+
+    <section class="doc-section" data-source-prerequisites="fallback">
+      <h2>Förutsättningar &amp; kontext</h2>
+      <ul><li>Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.</li><li>Kräver att central kund- och ansökningsdata är komplett och validerad.</li><li>Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.</li></ul>
+    </section>
+
+    <section class="doc-section" data-source-inputs="llm">
+      <h2>Inputs &amp; datakällor</h2>
+      
+      <table>
+        <tr>
+          <th>Fält</th>
+          <th>Datakälla</th>
+          <th>Typ / format</th>
+          <th>Obligatoriskt</th>
+          <th>Validering</th>
+          <th>Felhantering</th>
+        </tr>
+        
+        <tr>
+          <td>Kreditvärdighet</td>
+          <td>Extern kreditbyrå</td>
+          <td>Numeriskt</td>
+          <td>Ja</td>
+          <td>Minsta värde 300 (exempelvärde)</td>
+          <td>Avvisa ansökan.</td>
+        </tr>
+        <tr>
+          <td>Ålder</td>
+          <td>Kundregister</td>
+          <td>Numeriskt</td>
+          <td>Ja</td>
+          <td>Minsta värde 18 (exempelvärde)</td>
+          <td>Avvisa ansökan.</td>
+        </tr>
+        <tr>
+          <td>Inkomst</td>
+          <td>Skattedeklaration</td>
+          <td>Numeriskt</td>
+          <td>Ja</td>
+          <td>Minsta värde 200 000 kr (exempelvärde)</td>
+          <td>Avvisa ansökan.</td>
+        </tr>
+        <tr>
+          <td>Skuldkvot</td>
+          <td>Intern beräkning</td>
+          <td>Numeriskt</td>
+          <td>Ja</td>
+          <td>Maxvärde 6.0 (exempelvärde)</td>
+          <td>Manuell granskning.</td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="doc-section" data-source-decision-logic="llm">
+      <h2>Beslutslogik (DMN / regler)</h2>
+      <ul><li>Regeln använder en poängbaserad metod för att bedöma kreditvärdighet.</li><li>Kunder med kreditvärdighet under 620 (exempelvärde) avvisas automatiskt.</li><li>Kunder med ålder under 18 (exempelvärde) avvisas automatiskt.</li><li>Kunder med en skuldkvot över 6.0 (exempelvärde) skickas till manuell granskning.</li><li>Låg kreditvärdighet + hög skuldsättning → manuell granskning.</li></ul>
+    </section>
+
+    <section class="doc-section" data-source-outputs="llm">
+      <h2>Output &amp; effekter</h2>
+      <ul><li>Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Godkännande eller avvisning av ansökan; Loggning: Beslutsresultat och orsaker loggas.</li><li>Outputtyp: Flaggor; Typ: Riskindikatorer; Effekt: Indikerar hög risk vid manuell granskning; Loggning: Riskfaktorer loggas.</li><li>Outputtyp: Notifiering; Typ: Intern kommunikation; Effekt: Informerar kreditavdelningen vid manuell granskning; Loggning: Notifieringsdetaljer loggas.</li></ul>
+    </section>
+
+    <section class="doc-section" data-source-business-rules="llm">
+      <h2>Affärsregler &amp; policystöd</h2>
+      <ul><li>Stödjer interna principer för kreditvärdighetsbedömning.</li><li>Följer riktlinjer för skuldkvotstak och belåningsgradstak.</li><li>Säkerställer efterlevnad av konsumentkreditlagen.</li><li>Implementerar exklusionskriterier för minderåriga låntagare.</li></ul>
+    </section>
+
+    <section class="doc-section" data-source-scenarios="llm">
+      <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
+      <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
+      <table>
+        <tr>
+          <th>Scenario-ID</th>
+          <th>Scenario</th>
+          <th>Input (kortfattat)</th>
+          <th>Förväntat beslut/flagga</th>
+          <th>Automatiskt test</th>
+        </tr>
+        
+        <tr>
+          <td>BR1</td>
+          <td>Godkänd kreditvärdighet</td>
+          <td>Kund med kreditvärdighet på 700 (exempelvärde), ålder 30 (exempelvärde), inkomst 400 000 kr (exempelvärde), skuldkvot 3.0 (exempelvärde).</td>
+          <td>APPROVE</td>
+          <td><code>tests/mortgage.smoke.spec.ts</code></td>
+        </tr>
+        <tr>
+          <td>BR2</td>
+          <td>Hög skuldkvot</td>
+          <td>Kund med kreditvärdighet på 650 (exempelvärde), ålder 45 (exempelvärde), inkomst 300 000 kr (exempelvärde), skuldkvot 7.0 (exempelvärde).</td>
+          <td>REFER</td>
+          <td><code>tests/mortgage.smoke.spec.ts</code></td>
+        </tr>
+        <tr>
+          <td>BR3</td>
+          <td>Underkänd kreditvärdighet</td>
+          <td>Kund med kreditvärdighet på 580 (exempelvärde), ålder 25 (exempelvärde), inkomst 250 000 kr (exempelvärde), skuldkvot 4.0 (exempelvärde).</td>
+          <td>DECLINE</td>
+          <td><code>tests/mortgage.smoke.spec.ts</code></td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="doc-section" data-source-implementation-notes="llm">
+      <h2>Implementation &amp; integrationsnoter</h2>
+      <ul><li>Regeln implementeras i en DMN-tabell för beslutsfattande.</li><li>Exponeras via intern beslutstjänst för realtidsbedömning.</li><li>Kräver integration med externa kreditbyråer för data.</li><li>Loggning av alla beslut och riskfaktorer för audit-spårbarhet.</li></ul>
+    </section>
+
+    <section class="doc-section" data-source-related-items="llm">
+      <h2>Relaterade regler &amp; subprocesser</h2>
+      <ul><li>Relaterad regel: Kreditriskbedömning.</li><li>Subprocess: Förhandsbedömning av kreditansökan.</li><li>Övergripande dokumentation: Kreditpolicy-dokumentation.</li></ul>
+    </section>
+  
+  </div>
+</body>
+</html>

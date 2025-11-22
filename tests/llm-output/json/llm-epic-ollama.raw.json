@@ -1,0 +1,25 @@
+Here is the JSON output:
+
+{
+"type": "Epic",
+"summary": "This epic describes the process of approving a mortgage application.",
+"prerequisites": [
+"Application submitted by customer",
+"Mortgage broker has reviewed and verified the application"
+],
+"inputs": [
+"Fält: Application ID; Datakälla: Mortgage database; Typ: String; Obligatoriskt: Ja; Validering: Unique identifier; Felhantering: Error message if duplicate found"
+],
+"flowSteps": [
+"What the customer does: Submits the application online or in person",
+"What the system does: Verifies the application and checks for any errors or discrepancies"
+],
+"interactions": [
+"User interface: Online portal or in-person interaction with a mortgage broker",
+"Error messages: Clear and concise error messages if there are any issues with the application"
+],
+"dataContracts": [
+"Incoming data: Application ID, customer information, and loan details",
+"Outgoing data: Approved or rejected status, and any relevant notes or comments"
+]
+}

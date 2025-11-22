@@ -1,0 +1,62 @@
+{
+  "summary": "Regeln bedömer kunders berättigande till bolån baserat på deras ekonomiska profil och kreditvärdighet. Den riktar sig främst till privatpersoner som ansöker om nya bolån. Regeln används i förhandsbedömningen för att snabbt avgöra om en kund är berättigad till vidare prövning. Den omfattar inte företagskunder eller befintliga lånejusteringar.",
+  "inputs": [
+    "Fält: Kreditvärdighet; Datakälla: Extern kreditbyrå; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Minsta värde 300 (exempelvärde); Felhantering: Avvisa ansökan.",
+    "Fält: Ålder; Datakälla: Kundregister; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Minsta värde 18 (exempelvärde); Felhantering: Avvisa ansökan.",
+    "Fält: Inkomst; Datakälla: Skattedeklaration; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Minsta värde 200 000 kr (exempelvärde); Felhantering: Avvisa ansökan.",
+    "Fält: Skuldkvot; Datakälla: Intern beräkning; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Maxvärde 6.0 (exempelvärde); Felhantering: Manuell granskning."
+  ],
+  "decisionLogic": [
+    "Regeln använder en poängbaserad metod för att bedöma kreditvärdighet.",
+    "Kunder med kreditvärdighet under 620 (exempelvärde) avvisas automatiskt.",
+    "Kunder med ålder under 18 (exempelvärde) avvisas automatiskt.",
+    "Kunder med en skuldkvot över 6.0 (exempelvärde) skickas till manuell granskning.",
+    "Låg kreditvärdighet + hög skuldsättning → manuell granskning."
+  ],
+  "outputs": [
+    "Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Godkännande eller avvisning av ansökan; Loggning: Beslutsresultat och orsaker loggas.",
+    "Outputtyp: Flaggor; Typ: Riskindikatorer; Effekt: Indikerar hög risk vid manuell granskning; Loggning: Riskfaktorer loggas.",
+    "Outputtyp: Notifiering; Typ: Intern kommunikation; Effekt: Informerar kreditavdelningen vid manuell granskning; Loggning: Notifieringsdetaljer loggas."
+  ],
+  "businessRulesPolicy": [
+    "Stödjer interna principer för kreditvärdighetsbedömning.",
+    "Följer riktlinjer för skuldkvotstak och belåningsgradstak.",
+    "Säkerställer efterlevnad av konsumentkreditlagen.",
+    "Implementerar exklusionskriterier för minderåriga låntagare."
+  ],
+  "scenarios": [
+    {
+      "id": "BR1",
+      "name": "Godkänd kreditvärdighet",
+      "type": "Happy",
+      "input": "Kund med kreditvärdighet på 700 (exempelvärde), ålder 30 (exempelvärde), inkomst 400 000 kr (exempelvärde), skuldkvot 3.0 (exempelvärde).",
+      "outcome": "APPROVE"
+    },
+    {
+      "id": "BR2",
+      "name": "Hög skuldkvot",
+      "type": "Edge",
+      "input": "Kund med kreditvärdighet på 650 (exempelvärde), ålder 45 (exempelvärde), inkomst 300 000 kr (exempelvärde), skuldkvot 7.0 (exempelvärde).",
+      "outcome": "REFER"
+    },
+    {
+      "id": "BR3",
+      "name": "Underkänd kreditvärdighet",
+      "type": "Error",
+      "input": "Kund med kreditvärdighet på 580 (exempelvärde), ålder 25 (exempelvärde), inkomst 250 000 kr (exempelvärde), skuldkvot 4.0 (exempelvärde).",
+      "outcome": "DECLINE"
+    }
+  ],
+  "testDescription": "Scenarierna mappas mot automatiska tester i systemet, där scenario-ID och namn återfinns i testfiler och testnamn.",
+  "implementationNotes": [
+    "Regeln implementeras i en DMN-tabell för beslutsfattande.",
+    "Exponeras via intern beslutstjänst för realtidsbedömning.",
+    "Kräver integration med externa kreditbyråer för data.",
+    "Loggning av alla beslut och riskfaktorer för audit-spårbarhet."
+  ],
+  "relatedItems": [
+    "Relaterad regel: Kreditriskbedömning.",
+    "Subprocess: Förhandsbedömning av kreditansökan.",
+    "Övergripande dokumentation: Kreditpolicy-dokumentation."
+  ]
+}

@@ -121,7 +121,6 @@
 </head>
 <body>
   <div class="doc-shell">
-  <!-- LLM_SECTION_ORIGIN: summary=llm, effectGoals=llm, scopeIncluded=llm, scopeExcluded=llm, epics=llm, flowSteps=llm, dependencies=llm, scenarios=llm, testDescription=llm, implementationNotes=llm, relatedItems=llm, technicalDependencies=fallback -->
     
     
     
@@ -139,51 +138,24 @@
 
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
-      <p>Feature Goalet syftar till att effektivisera den interna datainsamlingen för kreditansökningar. Det omfattar kunder inom bolånesegmentet och stödjer bankens strategi för att förbättra kreditbedömningens noggrannhet och effektivitet. Genom att automatisera datainsamlingen minskar vi manuellt arbete och förbättrar kundupplevelsen genom snabbare besked.</p>
-      <ul><li>Ingår: Ingår: Automatiserad insamling av kunddata från interna system.; Ingår: Validering av insamlad data mot befintliga register.; Ingår: Integration med bankens befintliga kreditbedömningssystem.; Ingår: Stöd för realtidsuppdatering av kunddata.; Ingår: Rapportering av datainsamlingsstatus till handläggare.; Ingår: Loggning av alla datainsamlingsaktiviteter för revision.; Ingår: Användning av regelmotor för preliminär datavalidering.</li><li>Ingår inte: Ingår inte: Insamling av data från externa källor.; Ingår inte: Manuell datainsamling av handläggare.; Ingår inte: Slutlig kreditbeslut baserat på insamlad data.</li></ul>
+      <p>Internal data gathering samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet. Feature Goalet säkerställer att rätt data, regler och interaktioner finns på plats för att fatta välgrundade kreditbeslut.</p>
+      <ul><li>Ingår: Feature Goal <strong>Internal data gathering</strong> binder ihop Processstart med Nedströms leverans i initiativet mortgage-se-application.; Möjliggör ett sammanhängande kreditflöde där data, regler och interaktioner hänger ihop.; Fokuserar på att skapa ett spårbart underlag för kreditbeslut i hela initiativet.</li><li>Ingår inte: Ingår: end-to-end-flöde för det specifika kreditinitiativet.; Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.; Ingår inte: tekniska implementationer i underliggande system – dessa dokumenteras separat.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Effektmål</h2>
-      <ul><li>Automatisering av datainsamling minskar manuellt arbete och kortar ledtider.</li><li>Förbättrad kvalitet i kreditbedömningar genom mer tillförlitlig data.</li><li>Bättre kundupplevelse med snabbare och tydligare besked.</li><li>Stärkt regelefterlevnad och riskkontroll genom korrekt datahantering.</li></ul>
+      <ul><li>Ökad automatisering i kreditprocessen, med mindre manuellt arbete per ansökan.</li><li>Minskad handläggningstid per ansökan genom mer komplett och strukturerad datainsamling.</li><li>Förbättrad datakvalitet och minskade felkällor i underlag för kreditevaluering.</li><li>Säkrade och mer förutsägbara kreditevalueringar enligt kreditpolicy och riskramverk.</li><li>Högre kundnöjdhet genom snabbare och tydligare besked i tidiga steg av kundresan.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Ingående Epics</h2>
-      
-      <table>
-        <tr>
-          <th>Epic-ID</th>
-          <th>Epic-namn</th>
-          <th>Beskrivning</th>
-          <th>Team</th>
-        </tr>
-        
-        <tr>
-          <td>E1</td>
-          <td>Automatisk datainsamling</td>
-          <td>Automatisera insamlingen av kunddata från interna databaser.</td>
-          <td>Data & Analys</td>
-        </tr>
-        <tr>
-          <td>E2</td>
-          <td>Data Validering</td>
-          <td>Validera insamlad data mot interna register för att säkerställa korrekthet.</td>
-          <td>Risk & Kredit</td>
-        </tr>
-        <tr>
-          <td>E3</td>
-          <td>Integration med kreditbedömning</td>
-          <td>Integrera insamlad data med bankens kreditbedömningssystem.</td>
-          <td>IT & Utveckling</td>
-        </tr>
-      </table>
+      <p class="muted">Inga epics identifierade ännu – fyll på när BPMN-hierarkin är komplett.</p>
     </section>
 
     <section class="doc-section">
       <h2>Affärsflöde</h2>
       <ol>
-        <li>Kunden initierar en kreditansökan via bankens portal.</li><li>Systemet samlar automatiskt in relevant kunddata från interna system.</li><li>Den insamlade datan valideras mot befintliga register.</li><li>Validerad data skickas vidare till kreditbedömningssystemet.</li><li>Handläggaren får en rapport om datainsamlingsstatus och eventuella avvikelser.</li>
+        <li>Initiativet startar i Processstart när en kreditprocess initieras.</li><li>Internal data gathering samlar in, koordinerar och kvalitetssäkrar data och beslut från ingående epics.</li><li>Regler och policystöd appliceras på ett konsekvent sätt för att möjliggöra välgrundade kreditbeslut.</li><li>Resultat och status förs vidare till Nedströms leverans och vidare in i efterföljande processer.</li>
       </ol>
     </section>
 
@@ -199,21 +171,21 @@
         
         <tr>
           <td>S1</td>
-          <td>Lyckad datainsamling</td>
+          <td>Normalflöde – komplett ansökan</td>
           <td>Happy</td>
-          <td>Data samlas in och valideras utan fel, vilket möjliggör en snabb kreditbedömning.</td>
+          <td>Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.</td>
         </tr>
         <tr>
           <td>S2</td>
-          <td>Ofullständig data</td>
+          <td>Ofullständig information</td>
           <td>Edge</td>
-          <td>Vissa datafält saknas, vilket kräver manuell komplettering av handläggaren.</td>
+          <td>Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.</td>
         </tr>
         <tr>
           <td>S3</td>
-          <td>Felaktig data</td>
-          <td>Error</td>
-          <td>Data valideras inte korrekt, vilket leder till att ansökan stoppas för vidare utredning.</td>
+          <td>Hög riskprofil</td>
+          <td>Edge</td>
+          <td>Ärendet flaggas för extra granskning eller avslag enligt policy.</td>
         </tr>
       </table>
     </section>
@@ -221,7 +193,7 @@
     <section class="doc-section">
       <h2>Koppling till automatiska tester</h2>
       <p>
-        Scenarierna ska mappas mot automatiska tester såsom E2E och API-tester. Återanvänd scenario-ID och namn i testfiler och testnamn.
+        Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
         <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
         <br />
         Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
@@ -230,7 +202,7 @@
 
     <section class="doc-section">
       <h2>Implementation Notes (för dev)</h2>
-      <ul><li>Använd RESTful API-mönster för datainsamlingstjänster.</li><li>Implementera detaljerad loggning och audit-spår för alla datainsamlingsaktiviteter.</li><li>Säkerställ robust felhantering vid datafel och avbrott.</li><li>Optimera prestanda för realtidsuppdateringar av kunddata.</li><li>Säkerställ att alla datavalideringar uppfyller bankens kvalitetsstandarder.</li></ul>
+      <ul><li>API- och integrationskontrakt ska vara dokumenterade per epic och nod.</li><li>Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.</li><li>Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.</li><li>DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -240,7 +212,7 @@
 
     <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
-      <ul><li>Relaterat Feature Goal: Extern datainsamling för kreditansökningar.</li><li>Relaterad Epic: Manuell datakomplettering av handläggare.</li><li>Relaterad Business Rule: Kreditvärdighetsbedömning och validering.</li></ul>
+      <ul><li>Relaterad subprocess: <a href="#/bpmn/mortgage.bpmn">Visa i BPMN viewer</a></li><li>Relaterade regler/DMN: <a href="/dmn/example.dmn">example.dmn</a></li><li>Föregående noder: initierande steg i processen.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -253,6 +225,15 @@
       <ul><li>Feature Goalet stödjer de definierade affärsscenarierna och uppfyller beskrivna policys och regler.</li><li>Alla epics som ingår är implementerade, testade och dokumenterade med spårbarhet mot detta Feature Goal.</li><li>Automatiska tester täcker centrala flöden, felhantering och definierade risk-/policykrav.</li><li>Loggning och mätpunkter finns på plats för uppföljning, insikter och incidenthantering.</li><li>Dokumentation (Feature Goal, epics, regler) är uppdaterad och tillgänglig för berörda team.</li></ul>
     </section>
   
+
+
+
+
+
+
+
+
+
   </div>
 </body>
 </html>

@@ -27,6 +27,13 @@ Allt nedan beskriver vilken struktur och vilket innehåll som ska ligga i respek
 
 ## När `type = "Feature"` (Feature Goal)
 
+**VIKTIGT:** När du genererar Feature Goal JSON måste du inkludera ALLA följande fält. Inga fält får saknas, även om du skriver en neutral mening.
+
+**Du får INTE inkludera:**
+- `type` (detta är bara input, inte output)
+- `bpmnContext` eller några andra fält från inputen
+- `prerequisites`, `inputs`, `interactions`, `dataContracts` (dessa är för Epic, inte Feature Goal)
+
 JSON-modellen är:
 
 ```json
@@ -49,6 +56,19 @@ JSON-modellen är:
 }
 ```
 
+**Obligatoriska fält (måste alla finnas):**
+- `summary` (string)
+- `effectGoals` (array av strängar)
+- `scopeIncluded` (array av strängar)
+- `scopeExcluded` (array av strängar)
+- `epics` (array av objekt med id, name, description, team)
+- `flowSteps` (array av strängar)
+- `dependencies` (array av strängar)
+- `scenarios` (array av objekt med id, name, type, outcome)
+- `testDescription` (string)
+- `implementationNotes` (array av strängar)
+- `relatedItems` (array av strängar)
+
 ### summary
 
 **Syfte:** Ge en tydlig, affärsinriktad sammanfattning av vad Feature Goalet möjliggör i kreditprocessen.
@@ -69,6 +89,8 @@ JSON-modellen är:
   - förbättrad kvalitet/säkerhet i kreditbedömningar,
   - bättre kundupplevelse (tydligare besked, färre omtag),
   - stärkt regelefterlevnad och riskkontroll.
+
+**VIKTIGT:** `effectGoals` måste vara en array av **strängar**, inte objekt. Varje element i arrayen är en hel mening som en sträng.
 
 ### scopeIncluded / scopeExcluded
 
@@ -119,6 +141,8 @@ Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>.
 Exempel (endast format, skriv egen text):
 - `Beroende: Regelmotor/DMN; Id: kreditvärdighetsbedömning; Beskrivning: används för att fatta preliminära och slutliga kreditbeslut.`
 
+**VIKTIGT:** `dependencies` måste vara en array av **strängar**, inte objekt. Varje element är en hel mening som en sträng.
+
 ### scenarios
 
 **Syfte:** Definiera affärsscenarier som Feature Goalet måste hantera.
@@ -155,6 +179,8 @@ Exempel (endast format, skriv egen text):
   - viktiga felhanterings- eller prestandaaspekter,
   - data- och kvalitetssäkringskrav.
 
+**VIKTIGT:** `implementationNotes` måste vara en array av **strängar**, inte objekt. Varje element är en hel mening som en sträng.
+
 ### relatedItems
 
 **Syfte:** Hjälpa läsaren att förstå sammanhanget.
@@ -164,6 +190,8 @@ Exempel (endast format, skriv egen text):
   - Feature Goals,
   - epics/subprocesser,
   - Business Rules/DMN (på beskrivningsnivå, utan hårdkodade IDs/paths).
+
+**VIKTIGT:** `relatedItems` måste vara en array av **strängar**, inte objekt. Varje element är en hel mening som en sträng.
 
 ---
 

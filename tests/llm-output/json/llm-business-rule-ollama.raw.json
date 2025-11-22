@@ -1,0 +1,59 @@
+{
+  "summary": "Kreditbedömning för privatlån: Regeln bedömer kundens kreditvärdighet och beslutar om lånetillgång.",
+  "inputs": [
+    {
+      "Fält: Kreditpoäng; Datakälla: Kunddata; Typ: Numeriskt; Obligatoriskt: Ja; Validering: 600 (exempelvärde); Felhantering: "
+    },
+    {
+      "Fält: Ålder; Datakälla: Kunddata; Typ: Numeriskt; Obligatoriskt: Nej; Validering: 25-65 år; Felhantering: "
+    }
+  ],
+  "decisionLogic": [
+    "Kombination av kreditpoäng och ålder ger beslut.",
+    "Låg kreditvärdighet + hög skuldsättning → manuell granskning.",
+    "Hög kreditvärdighet + låg skuldsättning → automatiskt godkännande."
+  ],
+  "outputs": [
+    {
+      "Outputtyp: Beslut; Typ: Automatiskt/Manuellt; Effekt: Lånetillgång; Loggning: "
+    }
+  ],
+  "businessRulesPolicy": [
+    "Regeln stödjer interna policys för kreditbedömning.",
+    "Kombination av riskfaktorer och kunddata ger beslut."
+  ],
+  "scenarios": [
+    {
+      "id": "BR1",
+      "name": "Happy Scenario",
+      "type": "Happy",
+      "input": "Kund med hög kreditvärdighet och låg skuldsättning.",
+      "outcome": "Automatiskt godkännande."
+    },
+    {
+      "id": "BR2",
+      "name": "Edge Scenario",
+      "type": "Edge",
+      "input": "Kund med normal kreditvärdighet och hög skuldsättning.",
+      "outcome": "Manuell granskning."
+    },
+    {
+      "id": "BR3",
+      "name": "Error Scenario",
+      "type": "Error",
+      "input": "Kund med låg kreditvärdighet och hög skuldsättning.",
+      "outcome": "Automatiskt nekat."
+    }
+  ],
+  "testDescription": "Scenarierna mappas mot automatiska tester (Playwright, API-tester).",
+  "implementationNotes": [
+    "Regeln implementeras i en DMN-tabell eller regelmotor.",
+    "Den exponeras via intern beslutstjänst/API."
+  ],
+  "relatedItems": [
+    {
+      "Relaterad regel: Kreditvärdighet och skuldsättning",
+      "Subprocess: Förhandsbedömning"
+    }
+  ]
+}

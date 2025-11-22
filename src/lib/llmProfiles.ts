@@ -60,7 +60,9 @@ const DEFAULT_PROFILES: LlmProfiles = {
         'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences. ' +
         'Börja direkt med { och avsluta med }. ' +
         'Ingen text före eller efter JSON-objektet. ' +
-        'Inga extra fält som bpmnContext eller liknande – endast fälten i Feature/Epic-modellen.',
+        'För Feature Goal måste du inkludera ALLA följande fält: summary, effectGoals, scopeIncluded, scopeExcluded, epics, flowSteps, dependencies, scenarios, testDescription, implementationNotes, relatedItems. ' +
+        'Inga extra fält som "type", "bpmnContext", "prerequisites", "inputs", "interactions", "dataContracts" – dessa är för Epic eller input, inte Feature Goal output. ' +
+        'List-fält (effectGoals, scopeIncluded, scopeExcluded, flowSteps, dependencies, implementationNotes, relatedItems) måste vara arrays av strängar, inte objekt.',
     },
   },
   epic: {

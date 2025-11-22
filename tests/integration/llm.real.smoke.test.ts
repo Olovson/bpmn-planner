@@ -31,7 +31,15 @@ import { LlmValidationError } from '@/lib/llmFallback';
 // VITE_USE_LLM=true, VITE_ALLOW_LLM_IN_TESTS=true och VITE_OPENAI_API_KEY är satt.
 // Om LLM inte är aktiverat i test-miljö, markeras hela describe-blocket som skip.
 //
-const PROVIDERS: LlmProvider[] = ['cloud', 'local'];
+// Vilka providers som körs styrs via env:
+// - om LLM_PROVIDER=cloud → endast cloud
+// - om LLM_PROVIDER=local → endast local
+// - annars → både cloud och local
+const ENV_PROVIDER = process.env.LLM_PROVIDER;
+const PROVIDERS: LlmProvider[] =
+  ENV_PROVIDER === 'cloud' || ENV_PROVIDER === 'local'
+    ? [ENV_PROVIDER]
+    : ['cloud', 'local'];
 const STRICT_SMOKE = process.env.LLM_SMOKE_STRICT === 'true';
 
 if (!isLlmEnabled()) {
@@ -285,11 +293,11 @@ if (!isLlmEnabled()) {
       // Lokalt genererad dokumentation (utan LLM) för diff jämförelse – samma för alla providers
       const localHtml = renderFeatureGoalDoc(context, links);
       writeFileSync(
-        join(dir, 'html', 'llm-feature-goal-fallback.html'),
-        localHtml,
-        'utf8',
-      );
-    }, 720000);
+      join(dir, 'html', 'llm-feature-goal-fallback.html'),
+      localHtml,
+      'utf8',
+    );
+    }, 180000); // 3 min per test (180s) - balans mellan 120-180s som rekommenderat
 
     it('genererar Epic-dokumentation med riktig LLM (cloud & local)', async () => {
       const context: NodeDocumentationContext = {
@@ -400,11 +408,11 @@ if (!isLlmEnabled()) {
 
       const localHtml = renderEpicDoc(context, links);
       writeFileSync(
-        join(dir, 'html', 'llm-epic-fallback.html'),
-        localHtml,
-        'utf8',
-      );
-    }, 720000);
+      join(dir, 'html', 'llm-epic-fallback.html'),
+      localHtml,
+      'utf8',
+    );
+    }, 180000); // 3 min per test (180s)
 
     it('genererar Business Rule-dokumentation med riktig LLM (cloud & local)', async () => {
       const context: NodeDocumentationContext = {
@@ -511,10 +519,10 @@ if (!isLlmEnabled()) {
 
       const localHtml = renderBusinessRuleDoc(context, links);
       writeFileSync(
-        join(dir, 'html', 'llm-business-rule-fallback.html'),
-        localHtml,
-        'utf8',
-      );
-    }, 720000);
+      join(dir, 'html', 'llm-business-rule-fallback.html'),
+      localHtml,
+      'utf8',
+    );
+    }, 180000); // 3 min per test (180s)
   });
 }

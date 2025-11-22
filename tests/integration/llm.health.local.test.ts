@@ -22,6 +22,5 @@ const RUN_HEALTH_TEST = process.env.LLM_HEALTH_TEST === 'true';
     };
 
     expect(status.local.available).toBe(true);
-  });
+  }, 20000);
 });
-
