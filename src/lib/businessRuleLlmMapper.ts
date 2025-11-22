@@ -110,9 +110,21 @@ function parseBusinessRuleWithFallback(rawContent: string): BusinessRuleDocModel
   return model;
 }
 
+let ALLOW_FALLBACK = true;
+
+// Test-only hook: låter t.ex. LLM-smoke-tester slå av fallback
+// för att verifiera att modellen returnerar strukturerad JSON enligt kontraktet.
+export const __setAllowBusinessRuleLlmFallbackForTests = (value: boolean) => {
+  ALLOW_FALLBACK = value;
+};
+
 export function mapBusinessRuleLlmToSections(rawContent: string): BusinessRuleDocModel {
   const structured = parseStructuredBusinessRule(rawContent);
   if (structured) return structured;
+  if (!ALLOW_FALLBACK) {
+    throw new Error(
+      'Business Rule LLM response did not match structured JSON contract (no structured sections, fallback disabled)',
+    );
+  }
   return parseBusinessRuleWithFallback(rawContent);
 }
-

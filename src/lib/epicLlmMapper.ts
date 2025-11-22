@@ -172,9 +172,21 @@ function parseEpicWithFallback(rawContent: string): EpicDocModel {
   return model;
 }
 
+let ALLOW_FALLBACK = true;
+
+// Test-only hook: låter t.ex. LLM-smoke-tester slå av regex/fri-text-fallback
+// för att verifiera att modellen returnerar strukturerad JSON enligt kontraktet.
+export const __setAllowEpicLlmFallbackForTests = (value: boolean) => {
+  ALLOW_FALLBACK = value;
+};
+
 export function mapEpicLlmToSections(rawContent: string): EpicDocModel {
   const structured = parseStructuredEpic(rawContent);
   if (structured) return structured;
+  if (!ALLOW_FALLBACK) {
+    throw new Error(
+      'Epic LLM response did not match structured JSON contract (no structured sections, fallback disabled)',
+    );
+  }
   return parseEpicWithFallback(rawContent);
 }
-

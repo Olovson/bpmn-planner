@@ -31,6 +31,7 @@ Dokumentationen för **Feature Goals**, **Epics** och **Business Rules** generer
   - Mapper: `mapFeatureGoalLlmToSections` (`src/lib/featureGoalLlmMapper.ts`)
   - HTML‑builder: `buildFeatureGoalDocHtmlFromModel` (`src/lib/documentationTemplates.ts`)
   - Promptkontrakt: Feature‑delen i `prompts/llm/feature_epic_prompt.md`
+  - Sektionen **“Tekniska & externa beroenden”** har i dagsläget en statisk fallback‑lista (regelmotorer, interna datakällor, externa API:er, integrationslager, påverkade interna system) som används när modellen inte explicit fyller denna del.
 - Epics:
   - Modell: `EpicDocModel` (`src/lib/epicDocTypes.ts`)
   - Mapper: `mapEpicLlmToSections` (`src/lib/epicLlmMapper.ts`)

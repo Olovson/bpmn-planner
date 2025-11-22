@@ -13,6 +13,7 @@ import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
+import { SUBPROCESS_REGISTRY, type NodeType } from '@/data/subprocessRegistry';
 
 const TestReport = () => {
   const navigate = useNavigate();
@@ -21,9 +22,24 @@ const TestReport = () => {
   const { data: coverageMap } = useAllFilesArtifactCoverage();
   const { testResults, isLoading, stats } = useTestResults();
 
-  const [statusFilter, setStatusFilter] = useState<'all' | 'passing' | 'failing' | 'pending' | 'skipped'>('all');
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'passing' | 'failing' | 'pending' | 'skipped'
+  >('all');
   const [processFilter, setProcessFilter] = useState<string>('all');
+  const [executedTypeFilter, setExecutedTypeFilter] = useState<
+    'all' | 'feature-goal' | 'epic' | 'business-rule'
+  >('all');
   const [selectedProcess, setSelectedProcess] = useState<string>('all');
+  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
+  const [nodeCategoryFilter, setNodeCategoryFilter] = useState<'all' | 'feature' | 'epic' | 'businessRule'>('all');
+
+  const nodeTypeById = useMemo(() => {
+    const map: Record<string, NodeType> = {};
+    SUBPROCESS_REGISTRY.forEach((sp) => {
+      map[sp.id] = sp.nodeType;
+    });
+    return map;
+  }, []);
 
   // KPI: coverage från coverageMap + test_results + testMapping
   const coverageSummary = useMemo(() => {
@@ -87,9 +103,23 @@ const TestReport = () => {
         const match = result.test_file.match(/([^/]+)\.spec\.ts$/);
         if (match) inferredFile = `${match[1]}.bpmn`;
       }
-      return { ...result, inferredFile };
+
+      // Härleder typ (Feature Goal / Epic / Business Rule) från nodeType
+      let docType: 'feature-goal' | 'epic' | 'business-rule' | null = null;
+      if (result.node_id) {
+        const nodeType = nodeTypeById[result.node_id];
+        if (nodeType === 'CallActivity') {
+          docType = 'feature-goal';
+        } else if (nodeType === 'UserTask' || nodeType === 'ServiceTask') {
+          docType = 'epic';
+        } else if (nodeType === 'BusinessRuleTask') {
+          docType = 'business-rule';
+        }
+      }
+
+      return { ...result, inferredFile, docType };
     });
-  }, [testResults]);
+  }, [testResults, nodeTypeById]);
 
   const processOptions = useMemo(() => {
     const files = new Set<string>();
@@ -104,6 +134,7 @@ const TestReport = () => {
       .filter((t) => {
         if (statusFilter !== 'all' && t.status !== statusFilter) return false;
         if (processFilter !== 'all' && t.inferredFile !== processFilter) return false;
+        if (executedTypeFilter !== 'all' && t.docType !== executedTypeFilter) return false;
         return true;
       })
       .slice()
@@ -112,7 +143,7 @@ const TestReport = () => {
         const bTime = b.executed_at ? new Date(b.executed_at).getTime() : 0;
         return bTime - aTime;
       });
-  }, [testsWithDerivedProcess, statusFilter, processFilter]);
+  }, [testsWithDerivedProcess, statusFilter, processFilter, executedTypeFilter]);
 
   const handleViewChange = (view: string) => {
     if (view === 'diagram') navigate('/');
@@ -268,48 +299,74 @@ const TestReport = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 overflow-x-auto max-w-full">
-              <div className="flex flex-wrap gap-3 items-center justify-between">
-                <div className="flex flex-wrap gap-2 items-center">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Filtrera på status:
-                  </span>
-                  {(['all', 'passing', 'failing', 'pending', 'skipped'] as const).map(
-                    (status) => (
-                      <Button
-                        key={status}
-                        size="xs"
-                        variant={statusFilter === status ? 'default' : 'outline'}
-                        className="text-xs"
-                        onClick={() => setStatusFilter(status)}
-                      >
-                        {status === 'all' ? 'Alla' : status}
-                      </Button>
-                    ),
-                  )}
+              <div className="flex flex-wrap gap-3 items-start justify-between">
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Filtrera på status:
+                    </span>
+                    {(['all', 'passing', 'failing', 'pending', 'skipped'] as const).map(
+                      (status) => (
+                        <Button
+                          key={status}
+                          size="xs"
+                          variant={statusFilter === status ? 'default' : 'outline'}
+                          className="text-xs"
+                          onClick={() => setStatusFilter(status)}
+                        >
+                          {status === 'all' ? 'Alla' : status}
+                        </Button>
+                      ),
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Filtrera på typ:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: 'all', label: 'Alla' },
+                        { id: 'feature-goal', label: 'Feature Goal' },
+                        { id: 'epic', label: 'Epic' },
+                        { id: 'business-rule', label: 'Business Rule' },
+                      ].map((opt) => (
+                        <Button
+                          key={opt.id}
+                          size="xs"
+                          variant={
+                            executedTypeFilter === (opt.id as typeof executedTypeFilter)
+                              ? 'default'
+                              : 'outline'
+                          }
+                          className="text-xs"
+                          onClick={() =>
+                            setExecutedTypeFilter(
+                              opt.id as 'all' | 'feature-goal' | 'epic' | 'business-rule',
+                            )
+                          }
+                        >
+                          {opt.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
                   <span className="text-xs font-medium text-muted-foreground">
                     Filtrera på BPMN‑fil:
                   </span>
-                  <Button
-                    size="xs"
-                    variant={processFilter === 'all' ? 'default' : 'outline'}
-                    className="text-xs"
-                    onClick={() => setProcessFilter('all')}
+                  <select
+                    value={processFilter}
+                    onChange={(e) => setProcessFilter(e.target.value)}
+                    className="px-3 py-1.5 min-h-[32px] rounded-md border border-input bg-background text-xs mr-2 mb-1"
                   >
-                    Alla
-                  </Button>
-                  {processOptions.map((file) => (
-                    <Button
-                      key={file}
-                      size="xs"
-                      variant={processFilter === file ? 'default' : 'outline'}
-                      className="text-xs"
-                      onClick={() => setProcessFilter(file)}
-                    >
-                      {file}
-                    </Button>
-                  ))}
+                    <option value="all">Alla BPMN‑filer</option>
+                    {processOptions.map((file) => (
+                      <option key={file} value={file}>
+                        {file}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -431,6 +488,32 @@ const TestReport = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Filtrera nodlista på typ:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'all', label: 'Alla' },
+                    { id: 'feature', label: 'Feature Goal' },
+                    { id: 'epic', label: 'Epic' },
+                    { id: 'businessRule', label: 'Business Rule' },
+                  ].map((opt) => (
+                    <Button
+                      key={opt.id}
+                      size="xs"
+                      variant={nodeCategoryFilter === opt.id ? 'default' : 'outline'}
+                      className="text-xs"
+                      onClick={() =>
+                        setNodeCategoryFilter(opt.id as 'all' | 'feature' | 'epic' | 'businessRule')
+                      }
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               {/* Nod‑läge för vald process */}
               <div className="space-y-2">
                 <p className="text-sm font-medium">
@@ -443,6 +526,7 @@ const TestReport = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead />
                         <TableHead>Nod</TableHead>
                         <TableHead>Planerade scenarion</TableHead>
                         <TableHead>Körda tester</TableHead>
@@ -450,6 +534,19 @@ const TestReport = () => {
                     </TableHeader>
                     <TableBody>
                       {Object.entries(elementResourceMapping)
+                        .filter(([nodeId]) => {
+                          const type = nodeTypeById[nodeId];
+                          if (nodeCategoryFilter === 'feature') {
+                            return type === 'CallActivity';
+                          }
+                          if (nodeCategoryFilter === 'epic') {
+                            return type === 'UserTask' || type === 'ServiceTask';
+                          }
+                          if (nodeCategoryFilter === 'businessRule') {
+                            return type === 'BusinessRuleTask';
+                          }
+                          return true;
+                        })
                         .filter(([_, meta]) =>
                           selectedProcess === 'all'
                             ? true
@@ -457,57 +554,123 @@ const TestReport = () => {
                         )
                         .map(([nodeId, meta]) => {
                           const testInfo = testMapping[nodeId];
-                          const plannedScenarioCount =
-                            testInfo?.scenarios?.length || 0;
+                          const plannedScenarios = testInfo?.scenarios ?? [];
+                          const plannedScenarioCount = plannedScenarios.length;
                           const hasExecuted = testResults.some(
                             (r) => r.node_id === nodeId,
                           );
+                          const isExpanded = expandedNodeId === nodeId;
 
                           return (
-                            <TableRow key={nodeId}>
-                              <TableCell>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-medium">
-                                    {meta.displayName || nodeId}
-                                  </span>
-                                  <span className="text-[11px] font-mono text-muted-foreground">
-                                    {nodeId}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                {plannedScenarioCount > 0 ? (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs bg-blue-500/10 text-blue-700 border-blue-200"
-                                  >
-                                    {plannedScenarioCount} scenarion
-                                  </Badge>
-                                ) : (
+                            <>
+                              <TableRow
+                                key={nodeId}
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  setExpandedNodeId((prev) =>
+                                    prev === nodeId ? null : nodeId,
+                                  );
+                                }}
+                              >
+                                <TableCell className="w-8 align-top text-center">
                                   <span className="text-xs text-muted-foreground">
-                                    Inga scenarion definierade
+                                    {isExpanded ? '▾' : '▸'}
                                   </span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                {hasExecuted ? (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-200"
-                                  >
-                                    Minst ett testresultat
-                                  </Badge>
-                                ) : plannedScenarioCount > 0 ? (
-                                  <span className="text-xs text-muted-foreground">
-                                    Scenarion finns, men inga körda tester
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">
-                                    Inga tester definierade
-                                  </span>
-                                )}
-                              </TableCell>
-                            </TableRow>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium">
+                                      {meta.displayName || nodeId}
+                                    </span>
+                                    <span className="text-[11px] font-mono text-muted-foreground">
+                                      {nodeId}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {plannedScenarioCount > 0 ? (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs bg-blue-500/10 text-blue-700 border-blue-200"
+                                    >
+                                      {plannedScenarioCount} scenarion
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      Inga scenarion definierade
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {hasExecuted ? (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-200"
+                                    >
+                                      Minst ett testresultat
+                                    </Badge>
+                                  ) : plannedScenarioCount > 0 ? (
+                                    <span className="text-xs text-muted-foreground">
+                                      Scenarion finns, men inga körda tester
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      Inga tester definierade
+                                    </span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                              {isExpanded && plannedScenarioCount > 0 && (
+                                <TableRow>
+                                  <TableCell colSpan={4} className="bg-muted/40">
+                                    <div className="py-3">
+                                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                                        Planerade scenarion för denna nod
+                                      </p>
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead className="w-24 text-xs">
+                                              Scenario-ID
+                                            </TableHead>
+                                            <TableHead className="text-xs">
+                                              Beskrivning
+                                            </TableHead>
+                                            <TableHead className="w-24 text-xs">
+                                              Typ
+                                            </TableHead>
+                                            <TableHead className="w-40 text-xs">
+                                              Testfil
+                                            </TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {plannedScenarios.map((scenario) => (
+                                            <TableRow key={scenario.id || scenario.name}>
+                                              <TableCell className="text-xs font-mono">
+                                                {scenario.id || '–'}
+                                              </TableCell>
+                                              <TableCell className="text-xs">
+                                                {scenario.description ||
+                                                  scenario.name ||
+                                                  '–'}
+                                              </TableCell>
+                                              <TableCell className="text-xs">
+                                                {scenario.type || '–'}
+                                              </TableCell>
+                                              <TableCell className="text-xs font-mono">
+                                                {testInfo?.testFile?.replace('tests/', '') ||
+                                                  '–'}
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </>
                           );
                         })}
                     </TableBody>

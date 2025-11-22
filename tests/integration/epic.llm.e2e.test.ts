@@ -150,10 +150,10 @@ describe('Epic LLM JSON → modell → HTML', () => {
     const html = renderEpicDocFromLlm(context, links, raw || '');
 
     expect(html).toContain('Epic');
-    expect(html).toContain('Syfte &amp; Scope');
+    // Rubriken i mallen är numera "Syfte & Effekt"
+    expect(html).toContain('Syfte &amp; Effekt');
     expect(html).toContain('Approve Application');
     expect(html).toContain('Happy path');
     expect(html).toContain('Valideringsfel');
   });
 });
-

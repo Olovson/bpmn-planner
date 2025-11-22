@@ -348,10 +348,23 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
   return sections;
 }
 
+let ALLOW_FALLBACK = true;
+
+// Test-only hook: låter t.ex. LLM-smoke-tester slå av regex-fallback
+// för att verifiera att modellen returnerar strukturerad JSON enligt kontraktet.
+export const __setAllowFeatureGoalLlmFallbackForTests = (value: boolean) => {
+  ALLOW_FALLBACK = value;
+};
+
 export function mapFeatureGoalLlmToSections(
   rawContent: string,
 ): FeatureGoalLlmSections {
   const structured = parseStructuredSections(rawContent);
   if (structured) return structured;
+  if (!ALLOW_FALLBACK) {
+    throw new Error(
+      'Feature Goal LLM response did not match structured JSON contract (no structured sections, fallback disabled)',
+    );
+  }
   return parseWithRegexFallback(rawContent);
 }

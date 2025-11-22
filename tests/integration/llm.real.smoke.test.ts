@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isLlmEnabled } from '@/lib/llmClient';
@@ -14,6 +14,9 @@ import {
   renderBusinessRuleDoc,
   type TemplateLinks,
 } from '@/lib/documentationTemplates';
+import { __setAllowFeatureGoalLlmFallbackForTests } from '@/lib/featureGoalLlmMapper';
+import { __setAllowEpicLlmFallbackForTests } from '@/lib/epicLlmMapper';
+import { __setAllowBusinessRuleLlmFallbackForTests } from '@/lib/businessRuleLlmMapper';
 
 // Real LLM smoke-test: kör riktiga anrop mot LLM när
 // VITE_USE_LLM=true, VITE_ALLOW_LLM_IN_TESTS=true och VITE_OPENAI_API_KEY är satt.
@@ -37,6 +40,20 @@ if (!isLlmEnabled()) {
       }
       return outputDir;
     };
+
+    // Stäng av LLM-fallback i dessa tester så vi verifierar
+    // att modellen returnerar strukturerad JSON enligt kontraktet.
+    beforeAll(() => {
+      __setAllowFeatureGoalLlmFallbackForTests(false);
+      __setAllowEpicLlmFallbackForTests(false);
+      __setAllowBusinessRuleLlmFallbackForTests(false);
+    });
+
+    afterAll(() => {
+      __setAllowFeatureGoalLlmFallbackForTests(true);
+      __setAllowEpicLlmFallbackForTests(true);
+      __setAllowBusinessRuleLlmFallbackForTests(true);
+    });
 
     const featureNode: BpmnProcessNode = {
       id: 'mortgage:Call_InternalData',

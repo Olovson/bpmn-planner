@@ -760,6 +760,17 @@ function buildFeatureGoalDocHtmlFromModel(
     </section>
 
     <section class="doc-section">
+      <h2>Tekniska &amp; externa beroenden</h2>
+      ${renderList([
+        'Regelmotor(er) och beslutsmotorer kopplade till Feature Goalet.',
+        'Datakällor (interna register, databaser och domäntjänster) som används i flödet.',
+        'Externa API:er och tjänster som tillhandahåller kredit-, person- eller objektsdata.',
+        'Integrationer och integrationslager som hanterar kommunikation mot interna/externa system.',
+        'Påverkade interna system, moduler och komponenter som behöver anpassas eller övervakas.',
+      ])}
+    </section>
+
+    <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
       ${renderList(relatedItems)}
     </section>
@@ -1030,6 +1041,17 @@ function buildFeatureGoalLlmDocBody(
     <section class="doc-section">
       <h2>Implementation Notes (för dev)</h2>
       ${renderList(implementationNotes)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Tekniska &amp; externa beroenden</h2>
+      ${renderList([
+        'Regelmotor(er) och beslutsmotorer kopplade till Feature Goalet.',
+        'Datakällor (interna register, databaser och domäntjänster) som används i flödet.',
+        'Externa API:er och tjänster som tillhandahåller kredit-, person- eller objektsdata.',
+        'Integrationer och integrationslager som hanterar kommunikation mot interna/externa system.',
+        'Påverkade interna system, moduler och komponenter som behöver anpassas eller övervakas.',
+      ])}
     </section>
 
     <section class="doc-section">
@@ -1521,6 +1543,17 @@ function buildEpicDocHtmlFromModel(
     <section class="doc-section">
       <h2>Implementation Notes</h2>
       ${renderList(implementationNotes)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Tekniska &amp; externa beroenden</h2>
+      ${renderList([
+        'Beroende tjänster och API:er som epiken anropar eller är beroende av.',
+        'Datakällor (tabeller, domäner och register) som epiken läser eller uppdaterar.',
+        'Externa system eller tredjepartstjänster som påverkar epikens flöde och tillgänglighet.',
+        'Påverkade komponenter i backend, frontend och integrationslager som behöver samspela.',
+        'Tekniska risker och känsliga beroenden som kräver särskild övervakning eller fallback-hantering.',
+      ])}
     </section>
 
     <section class="doc-section">

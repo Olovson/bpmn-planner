@@ -58,6 +58,7 @@ describe('renderFeatureGoalDoc', () => {
     const scenariosIndex = html.indexOf('Affärs-scenarion');
     const testsIndex = html.indexOf('Koppling till automatiska tester');
     const implIndex = html.indexOf('Implementation Notes (för dev)');
+    const techDepsIndex = html.indexOf('Tekniska &amp; externa beroenden');
     const dorIndex = html.indexOf('Definition of Ready');
     const dodIndex = html.indexOf('Definition of Done');
 
@@ -69,7 +70,8 @@ describe('renderFeatureGoalDoc', () => {
     expect(scenariosIndex).toBeGreaterThan(flowIndex);
     expect(testsIndex).toBeGreaterThan(scenariosIndex);
     expect(implIndex).toBeGreaterThan(testsIndex);
-    expect(dorIndex).toBeGreaterThan(implIndex);
+    expect(techDepsIndex).toBeGreaterThan(implIndex);
+    expect(dorIndex).toBeGreaterThan(techDepsIndex);
     expect(dodIndex).toBeGreaterThan(dorIndex);
   });
 }

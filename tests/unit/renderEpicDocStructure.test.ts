@@ -59,6 +59,8 @@ describe('renderEpicDoc', () => {
     const scenariosIndex = html.indexOf('Affärs-scenarion (tabell)');
     const testsIndex = html.indexOf('Koppling till automatiska tester');
     const implIndex = html.indexOf('Implementation Notes');
+    const techDepsIndex = html.indexOf('Tekniska &amp; externa beroenden');
+    const relatedIndex = html.indexOf('Relaterade steg &amp; artefakter');
     const dorIndex = html.indexOf('Definition of Ready');
     const dodIndex = html.indexOf('Definition of Done');
 
@@ -71,7 +73,9 @@ describe('renderEpicDoc', () => {
     expect(scenariosIndex).toBeGreaterThan(rulesIndex);
     expect(testsIndex).toBeGreaterThan(scenariosIndex);
     expect(implIndex).toBeGreaterThan(testsIndex);
-    expect(dorIndex).toBeGreaterThan(implIndex);
+    expect(techDepsIndex).toBeGreaterThan(implIndex);
+    expect(relatedIndex).toBeGreaterThan(techDepsIndex);
+    expect(dorIndex).toBeGreaterThan(relatedIndex);
     expect(dodIndex).toBeGreaterThan(dorIndex);
   });
 });
