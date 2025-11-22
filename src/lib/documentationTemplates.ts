@@ -177,14 +177,92 @@ export interface LlmMetadata {
   model: string;
 }
 
+export interface LlmHtmlRenderOptions {
+  llmMetadata?: LlmMetadata;
+  /**
+   * När true visas en tydlig badge högst upp i dokumentet som markerar
+   * att ChatGPT (moln-LLM) var otillgänglig och fallback har aktiverats.
+   */
+  fallbackBadge?: boolean;
+  /**
+   * Visas som detaljtext under badgen (t.ex. nätverksfel).
+   */
+  fallbackReason?: string;
+  /**
+   * Om LLM-fallback användes för att generera dokumentet.
+   */
+  fallbackUsed?: boolean;
+  /**
+   * Slutlig provider efter eventuell fallback.
+   */
+  finalProvider?: 'cloud' | 'local';
+}
+
+const escapeHtmlForBadge = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 export const wrapDocument = (
   title: string,
   body: string,
-  llmMetadata?: LlmMetadata
+  options?: LlmMetadata | LlmHtmlRenderOptions
 ) => {
-  const docShellAttrs = llmMetadata
-    ? ` class="doc-shell" data-llm-provider="${llmMetadata.provider}" data-llm-model="${llmMetadata.model}"`
-    : ' class="doc-shell"';
+  let llmMetadata: LlmMetadata | undefined;
+  let fallbackBadge = false;
+  let fallbackReason: string | undefined;
+  let fallbackUsed: boolean | undefined;
+  let finalProvider: 'cloud' | 'local' | undefined;
+
+  if (options) {
+    if ('provider' in options) {
+      llmMetadata = options;
+    } else {
+      llmMetadata = options.llmMetadata;
+      fallbackBadge = Boolean(options.fallbackBadge);
+      fallbackReason = options.fallbackReason;
+      fallbackUsed = options.fallbackUsed;
+      finalProvider = options.finalProvider;
+    }
+  }
+
+  const dataAttrs: string[] = [];
+  if (llmMetadata) {
+    dataAttrs.push(`data-llm-provider="${llmMetadata.provider}"`);
+    dataAttrs.push(`data-llm-model="${llmMetadata.model}"`);
+  }
+  if (typeof fallbackUsed === 'boolean') {
+    dataAttrs.push(`data-llm-fallback-used="${fallbackUsed ? 'true' : 'false'}"`);
+  }
+
+  const docShellAttrs =
+    dataAttrs.length > 0
+      ? ` class="doc-shell" ${dataAttrs.join(' ')}`
+      : ' class="doc-shell"';
+
+  const fallbackBadgeHtml = fallbackBadge
+    ? `
+    <div class="llm-fallback-badge">
+      ChatGPT (moln-LLM) otillgänglig — fallback aktiverad
+    </div>${
+      fallbackReason
+        ? `
+    <div class="llm-fallback-details">
+      Orsak: ${escapeHtmlForBadge(fallbackReason)}
+    </div>`
+        : ''
+    }`
+    : '';
+  const showFallbackBanner = fallbackUsed && finalProvider === 'local';
+  const fallbackBannerHtml = showFallbackBanner
+    ? `
+    <div class="llm-fallback-banner">
+      ChatGPT (moln-LLM) kunde inte nås. Detta dokument är genererat av lokal LLM (Ollama) som fallback.
+    </div>`
+    : '';
   
   return `<!DOCTYPE html>
 <html lang="sv">
@@ -274,10 +352,43 @@ export const wrapDocument = (
       font-weight: 600;
       margin-bottom: 8px;
     }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
   </style>
 </head>
 <body>
   <div${docShellAttrs}>
+    ${fallbackBadgeHtml}
+    ${fallbackBannerHtml}
     ${body}
   </div>
 </body>
@@ -1737,7 +1848,7 @@ export const renderFeatureGoalDocFromLlm = (
   context: NodeDocumentationContext,
   links: TemplateLinks,
   rawLlmContent: string,
-  llmMetadata?: LlmMetadata,
+  llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
 ) => {
   const node = context.node;
   const title = node.name || node.bpmnElementId || 'Feature Goal';
@@ -1755,7 +1866,7 @@ export const renderEpicDocFromLlm = (
   context: NodeDocumentationContext,
   links: TemplateLinks,
   rawLlmContent: string,
-  llmMetadata?: LlmMetadata,
+  llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
 ) => {
   const sections = mapEpicLlmToSections(rawLlmContent);
   const body = buildEpicDocHtmlFromModel(context, links, sections);

@@ -906,6 +906,8 @@ export interface GenerationResult {
     hierarchyDepth?: number;
     missingDependencies?: { parent: string; childProcess: string }[];
     skippedSubprocesses?: string[];
+    llmFallbackUsed?: boolean;
+    llmFinalProvider?: LlmProvider;
   };
 }
 
@@ -917,6 +919,7 @@ async function renderDocWithLlmFallback(
   llmAllowed: boolean,
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
+  onLlmResult?: (provider: LlmProvider, fallbackUsed: boolean) => void,
 ): Promise<string> {
   const llmActive = llmAllowed && isLlmEnabled();
   const basePayload = {
@@ -932,39 +935,72 @@ async function renderDocWithLlmFallback(
   }
 
   try {
-    const llmDoc = await generateDocumentationWithLlm(docType, context, links, llmProvider, localAvailable);
-    if (llmDoc && llmDoc.trim()) {
-      // Hämta provider-info för metadata
-      const effectiveProvider = llmProvider || getDefaultLlmProvider();
-      const llmClient = getLlmClient(effectiveProvider);
+    const llmResult = await generateDocumentationWithLlm(
+      docType,
+      context,
+      links,
+      llmProvider,
+      localAvailable
+    );
+    if (llmResult && llmResult.text && llmResult.text.trim()) {
+      onLlmResult?.(llmResult.provider, llmResult.fallbackUsed);
+      // Hämta provider-info för metadata från faktisk provider
+      const llmClient = getLlmClient(llmResult.provider);
       
       if (docType === 'feature') {
         // För Feature Goals använder vi samma HTML-layout som den lokala varianten,
         // men fyller sektionerna med LLM-innehåll via en dedikerad mapper.
-        return renderFeatureGoalDocFromLlm(context, links, llmDoc, {
-          provider: llmClient.provider,
-          model: llmClient.modelName,
-        });
+        return renderFeatureGoalDocFromLlm(
+          context,
+          links,
+          llmResult.text,
+          {
+            llmMetadata: {
+              provider: llmClient.provider,
+              model: llmClient.modelName,
+            },
+            fallbackUsed: llmResult.fallbackUsed,
+            finalProvider: llmResult.provider,
+          },
+        );
       }
 
       if (docType === 'epic') {
         // För Epics använder vi samma layout som lokalt, men fyller via EpicDocModel.
-        return renderEpicDocFromLlm(context, links, llmDoc, {
-          provider: llmClient.provider,
-          model: llmClient.modelName,
-        });
+        return renderEpicDocFromLlm(
+          context,
+          links,
+          llmResult.text,
+          {
+            llmMetadata: {
+              provider: llmClient.provider,
+              model: llmClient.modelName,
+            },
+            fallbackUsed: llmResult.fallbackUsed,
+            finalProvider: llmResult.provider,
+          },
+        );
       }
 
       if (docType === 'businessRule') {
         // För Business Rules används också modellbaserad layout.
-        return renderBusinessRuleDocFromLlm(context, links, llmDoc, {
-          provider: llmClient.provider,
-          model: llmClient.modelName,
-        });
+        return renderBusinessRuleDocFromLlm(
+          context,
+          links,
+          llmResult.text,
+          {
+            llmMetadata: {
+              provider: llmClient.provider,
+              model: llmClient.modelName,
+            },
+            fallbackUsed: llmResult.fallbackUsed,
+            finalProvider: llmResult.provider,
+          },
+        );
       }
 
       const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
-      await saveLlmDebugArtifact('doc', identifier, llmDoc);
+      await saveLlmDebugArtifact('doc', identifier, llmResult.text);
       const title =
         context.node.name ||
         context.node.bpmnElementId ||
@@ -973,7 +1009,7 @@ async function renderDocWithLlmFallback(
           : docType === 'epic'
           ? 'Epic'
           : 'Business Rule');
-      const wrapped = wrapLlmContentAsDocument(llmDoc, title, { docType });
+      const wrapped = wrapLlmContentAsDocument(llmResult.text, title, { docType });
       if (!/<html[\s>]/i.test(wrapped) || !/<body[\s>]/i.test(wrapped)) {
         await logLlmFallback({
           eventType: 'documentation',
@@ -1181,6 +1217,9 @@ export async function generateAllFromBpmnWithGraph(
     const hierarchyRootName = hierarchyRoot?.name || bpmnFileName.replace('.bpmn', '');
     const hierarchyChildren = hierarchyRoot ? hierarchyRoot.children.map(graphNodeToHierarchy) : [];
 
+    let llmFallbackUsed = false;
+    let llmFinalProvider: LlmProvider | undefined;
+
     for (const file of filesToGenerate) {
       try {
         await reportProgress('hier-tests:file', 'Hierarkitest', file);
@@ -1312,6 +1351,12 @@ export async function generateAllFromBpmnWithGraph(
                 useLlm,
                 llmProvider,
                 localAvailable,
+                (provider, fallbackUsed) => {
+                  if (fallbackUsed) {
+                    llmFallbackUsed = true;
+                    llmFinalProvider = provider;
+                  }
+                },
               );
               // Skapa även en separat feature goal-sida för matched subprocesser
               const featureDocPath = getFeatureGoalDocFileKey(node.bpmnFile, node.bpmnElementId);
@@ -1344,6 +1389,12 @@ export async function generateAllFromBpmnWithGraph(
                 useLlm,
                 llmProvider,
                 localAvailable,
+                (provider, fallbackUsed) => {
+                  if (fallbackUsed) {
+                    llmFallbackUsed = true;
+                    llmFinalProvider = provider;
+                  }
+                },
               );
               if (!(docLinks as any).dmnLink) {
                 nodeDocContent +=
@@ -1358,6 +1409,12 @@ export async function generateAllFromBpmnWithGraph(
                 useLlm,
                 llmProvider,
                 localAvailable,
+                (provider, fallbackUsed) => {
+                  if (fallbackUsed) {
+                    llmFallbackUsed = true;
+                    llmFinalProvider = provider;
+                  }
+                },
               );
             }
           } else {
@@ -1403,6 +1460,11 @@ export async function generateAllFromBpmnWithGraph(
       }
     }
     await reportProgress('docgen:complete', 'Dokumentation/testinstruktioner klara');
+
+    if (result.metadata) {
+      result.metadata.llmFallbackUsed = llmFallbackUsed;
+      result.metadata.llmFinalProvider = llmFinalProvider;
+    }
 
     return result;
   }

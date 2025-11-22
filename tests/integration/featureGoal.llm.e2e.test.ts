@@ -142,12 +142,12 @@ describe('Feature Goal LLM JSON → modell → HTML', () => {
       dmnLink: undefined,
     };
 
-    const raw = await generateDocumentationWithLlm('feature', context, links);
+    const result = await generateDocumentationWithLlm('feature', context, links);
 
     expect(generateChatCompletionMock).toHaveBeenCalledTimes(1);
-    expect(raw).toBeTruthy();
+    expect(result?.text).toBeTruthy();
 
-    const html = renderFeatureGoalDocFromLlm(context, links, raw || '');
+    const html = renderFeatureGoalDocFromLlm(context, links, result?.text || '');
 
     expect(html).toContain('Feature Goal');
     expect(html).toContain('Sammanfattning');

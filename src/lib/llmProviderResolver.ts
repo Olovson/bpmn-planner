@@ -90,7 +90,7 @@ export function resolveLlmProvider(
       return {
         chosen: 'cloud',
         source: 'user',
-        attempted: ['cloud'],
+        attempted: allowFallback ? ['cloud', 'local'] : ['cloud'],
       };
     }
   }
@@ -116,7 +116,7 @@ export function resolveLlmProvider(
       return {
         chosen: 'cloud',
         source: 'project',
-        attempted: ['cloud'],
+        attempted: allowFallback ? ['cloud', 'local'] : ['cloud'],
       };
     }
   }
@@ -141,8 +141,7 @@ export function resolveLlmProvider(
     return {
       chosen: 'cloud',
       source: 'global',
-      attempted: ['cloud'],
+      attempted: allowFallback ? ['cloud', 'local'] : ['cloud'],
     };
   }
 }
-

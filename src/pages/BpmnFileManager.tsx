@@ -834,6 +834,14 @@ export default function BpmnFileManager() {
         localAvailable
       );
       checkCancellation();
+
+      if (result.metadata?.llmFallbackUsed && result.metadata.llmFinalProvider === 'local') {
+        toast({
+          title: 'LLM-fallback använd',
+          description:
+            'ChatGPT (moln-LLM) var inte tillgänglig. Dokumentationen genererades i stället via lokal LLM (Ollama).',
+        });
+      }
       const nodeArtifacts = result.nodeArtifacts || [];
       const missingDependencies = result.metadata?.missingDependencies || [];
       const skippedSubprocesses = new Set<string>(result.metadata?.skippedSubprocesses || []);

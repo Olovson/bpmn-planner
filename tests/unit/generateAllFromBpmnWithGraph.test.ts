@@ -145,7 +145,11 @@ vi.mock('@/lib/wrapLlmContent', () => ({
 }));
 
 vi.mock('@/lib/llmDocumentation', () => ({
-  generateDocumentationWithLlm: vi.fn(async () => 'llm-doc'),
+  generateDocumentationWithLlm: vi.fn(async () => ({
+    text: 'llm-doc',
+    provider: 'cloud',
+    fallbackUsed: false,
+  })),
 }));
 
 vi.mock('@/lib/llmTests', () => ({

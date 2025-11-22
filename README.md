@@ -1,149 +1,58 @@
 # 🚀 BPMN Planner
 
-**BPMN Planner** är en intern plattform som tar BPMN-/DMN-filer, bygger en fullständig och deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar omfattande dokumentation, testunderlag och metadata för hela produkt- och utvecklingsteamet. Plattformen använder Supabase som backend och kan generera innehåll både via egna funktioner och via LLM i två olika lägen – ett snabbt och ett mer detaljerat.
+**BPMN Planner** tar BPMN-/DMN-filer, bygger en deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar dokumentation, testunderlag och metadata för produkt- och utvecklingsteamet. Supabase används som backend och innehåll kan genereras både via mallar (utan LLM) och via LLM (ChatGPT/Ollama).
+
+> Arkitektur & hierarki: `docs/bpmn-hierarchy-architecture.md`  
+> LLM-kontrakt & prompts: `prompts/llm/*`
 
 ---
 
-# 🧠 Grundlogiken i appen
+# 🧠 Översikt: hierarki, dokumentation & LLM
 
-Appen bygger på tre centrala datastrukturer:
+- **BPMN-hierarki**
+  - XML → `BpmnParser` → `BpmnMeta`
+  - `ProcessDefinition` + `SubprocessLink` → `buildProcessHierarchy`
+  - `buildBpmnProcessGraph` → `BpmnProcessGraph` (root, children, missingDependencies)
+  - denna graf används av UI, dokumentationsgeneratorn och testgeneratorn.
 
-### **ProcessDefinition**
-Beskriver en BPMN-process exakt som i filen (process-ID, namn, call activities, tasks, parse-diagnostics).
+- **Dokumentation**
+  - Feature Goals, Epics och Business Rules genereras via modellbaserade JSON-kontrakt:
+    - `FeatureGoalDocModel`, `EpicDocModel`, `BusinessRuleDocModel`
+  - LLM fyller JSON → mappers → HTML via templates i `src/lib/documentationTemplates.ts`.
+  - Samma HTML-layout används för lokal (mallbaserad) och LLM-baserad dokumentation.
 
-### **SubprocessLink**
-Representerar matchningen mellan en Call Activity och dess subprocess. Innehåller matchStatus, confidence score, matchkandidater och diagnostik. All matchning är deterministisk och transparent.
-
-### **HierarchyNode**
-Det logiska trädet som binder samman hela processen: process → subprocess → subprocess, call activities, tasks, länkar och diagnostik.  
-**Alla UI-vyer och all generering i appen baseras på detta träd.**
-
-> Arkitektur & hierarki: se `docs/bpmn-hierarchy-architecture.md` för detaljer om den deterministiska matchningsordningen (calledElement → process-ID/namn → call activity-namn → filnamn → fuzzy) och hur diagnostics följer med i varje steg.
-
----
-
-## 🔍 LLM‑kontrakt & modellbaserad dokumentation
-
-Dokumentationen för **Feature Goals**, **Epics** och **Business Rules** genereras nu via **modellbaserade domänmodeller**. LLM fyller ett JSON‑objekt, inte fri HTML, och samma HTML‑builder används för både lokalt innehåll och LLM‑innehåll.
-
-- Feature Goals:
-  - Modell: `FeatureGoalDocModel` (`src/lib/featureGoalLlmTypes.ts`)
-  - Mapper: `mapFeatureGoalLlmToSections` (`src/lib/featureGoalLlmMapper.ts`)
-  - HTML‑builder: `buildFeatureGoalDocHtmlFromModel` (`src/lib/documentationTemplates.ts`)
-  - Promptkontrakt: Feature‑delen i `prompts/llm/feature_epic_prompt.md`
-  - Sektionen **“Tekniska & externa beroenden”** har i dagsläget en statisk fallback‑lista (regelmotorer, interna datakällor, externa API:er, integrationslager, påverkade interna system) som används när modellen inte explicit fyller denna del.
-- Epics:
-  - Modell: `EpicDocModel` (`src/lib/epicDocTypes.ts`)
-  - Mapper: `mapEpicLlmToSections` (`src/lib/epicLlmMapper.ts`)
-  - HTML‑builder: `buildEpicDocHtmlFromModel`
-  - Promptkontrakt: Epic‑delen i `prompts/llm/feature_epic_prompt.md`
-- Business Rules:
-  - Modell: `BusinessRuleDocModel` (`src/lib/businessRuleDocTypes.ts`)
-  - Mapper: `mapBusinessRuleLlmToSections` (`src/lib/businessRuleLlmMapper.ts`)
-  - HTML‑builder: `buildBusinessRuleDocHtmlFromModel`
-  - Promptkontrakt: `prompts/llm/dmn_businessrule_prompt.md`
-
-LLM‑flow:
-
-- För varje dokumenttyp (`feature`, `epic`, `businessRule`) gäller:
-  1. Prompt instruerar LLM att returnera **ett JSON‑objekt** som matchar respektive modell.
-  2. Mappern försöker först tolka svaret som JSON → domänmodell.
-  3. Om JSON saknas eller är ogiltig används en enkel fallback (t.ex. allt i `summary`).
-  4. HTML byggs alltid via modell + common builder (inte fri HTML från LLM).
-
-> Övergripande kontrakt för LLM‑output finns dokumenterat i `prompts/llm/PROMPT_CONTRACT.md`.
+- **LLM-lägen & providers**
+  - Lokal generering (utan LLM): snabb, deterministisk, mallbaserad.
+  - Slow LLM Mode: rikare text via:
+    - ChatGPT (moln, gpt-4o) via `cloudLlmClient`.
+    - Lokal Llama 3.1 (Ollama) via `localLlmClient`.
+  - `generateWithFallback` väljer provider och kan falla över mellan ChatGPT och lokal LLM.
+  - HTML får metadata-attribut:
+    - `data-llm-provider` ("cloud" eller "local")
+    - `data-llm-model` (t.ex. "gpt-4o", "llama3.1:8b")
+    - `data-llm-fallback-used` ("true" / "false")
+  - När ChatGPT inte nås och lokal LLM tar över:
+    - sätts `fallbackUsed=true` och `finalProvider='local'`,
+    - en diskret banner visas i HTML,
+    - en toast visas i UI (BpmnFileManager).
 
 ---
 
-# 📝 Genererad dokumentation och artefakter
+# 📝 Vad som genereras
 
-En central funktion i BPMN Planner är att generera **automatiserad dokumentation och testartefakter direkt baserat på BPMN-hierarkin**. Detta möjliggör konsekvent, aktuell och spårbar information för alla roller:
+- Dokumentation per nod:
+  - Feature Goals / Epics / Business Rules.
+  - Effektmål, scenarier, inputs/outputs, beslutslogik, tekniska beroenden.
+  - DoR/DoD-kriterier och övrig nodmetadata.
+- Tester:
+  - Playwright-skelett per nod eller gren.
+  - Testscenarier via LLM i Slow LLM Mode (`generateTestSpecWithLlm`).
+  - Node tests i UI (kopplade till `node_test_links`).
+- Övrig metadata:
+  - Jira-typer/namn per nod.
+  - Subprocess-mappningar (`bpmn_dependencies`) + diagnostik (`missingDependencies`).
 
-### Dokumentationen inkluderar:
-- **Feature Goals / Epics / User Journeys**
-- **Beskrivningar av Business Rule Tasks**
-- **Effektmål per Feature Goal** (t.ex. automatisering, kvalitet, kundupplevelse, regelefterlevnad)
-- **Processöversikter och tekniska flöden**
-- **Kravsammanställningar** (funktionella & icke-funktionella)
-- **Arkitekturbeskrivningar kopplade till processtegen**
-- **Design-/Figma-referenser bundna till varje nod**
-- **Testfall och acceptanskriterier**
-- **DoR/DoD-kriterier**
-
-Dokumentationen genereras **en gång per körning**, och användaren väljer *vilket modus som ska användas för just den körningen*.  
-Man kan sedan alltid **återgenerera** dokumentationen om man önskar byta modus eller uppdatera efter ändringar — men det är inget krav.
-
-### Valbara genereringslägen
-
-#### **1. Lokal generering (snabbast)**
-Bygger dokument helt utan LLM – förutsägbart och snabbt, baserat på mallar och den deterministiska BPMN-hierarkin.
-
-#### **2. Slow LLM Mode (full kvalitet)**
-Använder LLM för att generera rikare innehåll:
-- Mer komplett affärslogik
-- Djupare produkt- och UX-innehåll
-- Rikare testscenarier
-- Fördjupade tekniska beskrivningar
-
-**LLM-provider val:**
-- **Standard (moln)**: Använder OpenAI/ChatGPT (gpt-4o) via molnet
-- **Lokal (Llama 3.1 8B)**: Använder lokal Llama-instans via Ollama eller annan HTTP-gateway
-
-När du väljer Slow LLM Mode i UI:t kan du välja mellan moln- och lokal LLM. Valet sparas i localStorage så att du slipper välja om varje gång.
-
-**Konfiguration för lokal LLM:**
-Sätt följande env-variabler i `.env.local`:
-```bash
-VITE_LLM_LOCAL_BASE_URL=http://localhost:11434  # Ollama default port
-VITE_LLM_LOCAL_MODEL=llama3.1:8b                # Modellnamn
-VITE_LLM_DEFAULT_PROVIDER=cloud                 # Standard-provider (cloud eller local)
-```
-
-**Metadata i genererade dokument:**
-Alla LLM-genererade HTML-dokument innehåller metadata-attribut:
-- `data-llm-provider`: "cloud" eller "local"
-- `data-llm-model`: Modellnamn (t.ex. "gpt-4o" eller "llama3.1:8b")
-
-Alla dokument sparas i Supabase Storage och versioneras genom mappar i `bpmn-files/docs/`.
-
----
-
-# 🧪 Testgenerering (Playwright + scenarier)
-
-BPMN Planner genererar även:
-
-- **Playwright-testfiler** per nod eller per processträdgren  
-- **Testscenarier och testlogik** kopplade till centrala noder  
-- **Node tests** som visas direkt i UI  
-- **LLM-genererade testfall** i Slow LLM Mode  
-- Debug-kopior av rå-LLM sparas i `llm-debug/tests/`
-
----
-
-# 🧩 Ytterligare metadata som genereras
-
-Plattformen genererar även följande automatiskt:
-
-- **Jira Issue Types och namn** (per BPMN-nod)
-- **Figma/Confluence-länkar** per nod
-- **Process-ID-register**
-- **Nodklassificeringar** (User Task, Service Task, System Task, Business Rule, m.m.)
-- **Kvalitetsdiagnostik** för matchning och subprocess-hierarki
-
----
-
-# 🖥️ Hur UI:t använder hierarkin
-
-### **BPMN-diagram**
-- Visar originaldiagrammet.  
-- Dubbelklick på Call Activity → öppnar subprocess (via deterministiskt hierarki-träd).  
-- Klick på task → öppnar detaljerad sidopanel.
-
-### **Strukturträd (D3.js)**
-- Visualiserar hela processen baserat på HierarchyNode.
-
-### **Listvy**
-- Visar alla noder i en platt, filtreringsbar, sökbar samt exporterbar lista.
+Alla artefakter lagras i Supabase (tabeller + storage) och kan regenereras från UI.
 
 ---
 
@@ -207,9 +116,11 @@ SEED_USER_EMAIL=seed-bot@local.test
 SEED_USER_PASSWORD=Passw0rd!
 VITE_USE_LLM=true
 VITE_OPENAI_API_KEY=<OpenAI key>
+VITE_LLM_LOCAL_BASE_URL=http://localhost:11434
+VITE_LLM_LOCAL_MODEL=llama3.1:8b-instruct
 ```
 
-> **Obs:** när `VITE_USE_LLM=true` och `VITE_OPENAI_API_KEY` är satt använder appen de JSON‑baserade LLM‑kontrakten ovan. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
+> **Obs:** när `VITE_USE_LLM=true` och `VITE_OPENAI_API_KEY` är satt används LLM-kontrakten för ChatGPT/Ollama. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
 
 ## 3. Edge Functions (valfritt)
 ```bash
@@ -266,13 +177,13 @@ och kör `tests/integration/llm.real.smoke.test.ts`, som:
   - Epic (`docType = "epic"`),
   - Business Rule (`docType = "businessRule"`),
 - kör både cloud- och local-LLM (om lokal LLM är tillgänglig) och skriver LLM- samt lokal HTML till `tests/llm-output/html/`:
-  - `llm-feature-goal-smoke.cloud.html` / `llm-feature-goal-smoke.local.html` / `local-feature-goal-smoke.html`
-  - `llm-epic-smoke.cloud.html` / `llm-epic-smoke.local.html` / `local-epic-smoke.html`
-  - `llm-business-rule-smoke.cloud.html` / `llm-business-rule-smoke.local.html` / `local-business-rule-smoke.html`
+  - `llm-feature-goal-chatgpt.html` / `llm-feature-goal-ollama.html` / `llm-feature-goal-fallback.html`
+  - `llm-epic-chatgpt.html` / `llm-epic-ollama.html` / `llm-epic-fallback.html`
+  - `llm-business-rule-chatgpt.html` / `llm-business-rule-ollama.html` / `llm-business-rule-fallback.html`
 - skriver även råa LLM-svar (texten/JSON-strängen som skickas tillbaka från respektive LLM) till `tests/llm-output/json/`:
-  - `llm-feature-goal-smoke.cloud.json` / `llm-feature-goal-smoke.local.json`
-  - `llm-epic-smoke.cloud.json` / `llm-epic-smoke.local.json`
-  - `llm-business-rule-smoke.cloud.json` / `llm-business-rule-smoke.local.json`
+  - `llm-feature-goal-chatgpt.json` / `llm-feature-goal-ollama.json`
+  - `llm-epic-chatgpt.json` / `llm-epic-ollama.json`
+  - `llm-business-rule-chatgpt.json` / `llm-business-rule-ollama.json`
 - markerar i den LLM-baserade HTML:en vilka sektioner som kommer från LLM kontra fallback (t.ex. `data-source-summary="llm|fallback"`, `data-source-scenarios="llm|fallback"` per `<section class="doc-section">`), vilket gör det enkelt att inspektera källan i browserns devtools.
 
 Om LLM inte är aktiverat i tests (t.ex. ingen API-nyckel) hoppar smoke-test-filen automatiskt över sina tester (`describe.skip`).

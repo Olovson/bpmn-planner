@@ -29,13 +29,19 @@ export type DocumentationDocType = 'feature' | 'epic' | 'businessRule';
 // via FEATURE_EPIC_PROMPT och DMN_BUSINESSRULE_PROMPT. Den här modulen
 // ansvarar för att bygga upp JSON-input från BPMN-kontexten.
 
+export interface DocumentationLlmResult {
+  text: string;
+  provider: LlmProvider;
+  fallbackUsed: boolean;
+}
+
 export async function generateDocumentationWithLlm(
   docType: DocumentationDocType,
   context: NodeDocumentationContext,
   links: TemplateLinks,
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
-): Promise<string | null> {
+): Promise<DocumentationLlmResult | null> {
   if (!isLlmEnabled()) return null;
 
   const payload = buildContextPayload(context, links);
@@ -76,7 +82,28 @@ export async function generateDocumentationWithLlm(
   // Valideringsfunktion för response
   const validateResponse = (response: string): { valid: boolean; errors: string[] } => {
     try {
-      const parsed = JSON.parse(response);
+      let jsonText = response.trim();
+
+      // Hantera vanliga markdown-fences, t.ex. ```json ... ```
+      if (jsonText.startsWith('```')) {
+        const fenceMatch = jsonText.match(/^```[a-zA-Z0-9_-]*\s*([\s\S]*?)```$/);
+        if (fenceMatch && fenceMatch[1]) {
+          jsonText = fenceMatch[1].trim();
+        } else {
+          // Ta bort första raden om den bara innehåller ``` eller ```json
+          const lines = jsonText.split('\n');
+          if (lines[0].trim().startsWith('```')) {
+            lines.shift();
+          }
+          // Ta bort sista raden om den är en avslutande fence
+          if (lines.length && lines[lines.length - 1].trim() === '```') {
+            lines.pop();
+          }
+          jsonText = lines.join('\n').trim();
+        }
+      }
+
+      const parsed = JSON.parse(jsonText);
       let validationResult;
       if (docType === 'businessRule') {
         validationResult = validateBusinessRuleJson(parsed, resolution.chosen);
@@ -144,7 +171,11 @@ export async function generateDocumentationWithLlm(
 
     const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
     await saveLlmDebugArtifact('doc', identifier, result.text);
-    return result.text;
+    return {
+      text: result.text,
+      provider: result.provider,
+      fallbackUsed: result.fallbackUsed,
+    };
   } catch (error) {
     // Logga fel-event
     const errorCode = extractErrorCode(error);

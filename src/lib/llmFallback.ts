@@ -23,6 +23,11 @@ const FALLBACK_TO_CLOUD_ENABLED =
     .trim()
     .toLowerCase() === 'true';
 
+const FALLBACK_TO_LOCAL_ENABLED =
+  String(import.meta.env.VITE_LLM_FALLBACK_TO_LOCAL_ON_CLOUD_ERROR ?? 'true')
+    .trim()
+    .toLowerCase() === 'true';
+
 export interface GenerateWithFallbackOptions {
   docType: DocType;
   resolution: LlmResolution;
@@ -58,12 +63,12 @@ export async function generateWithFallback(
   let lastError: Error | null = null;
   let lastResponse: string | null = null;
 
-  // Försök med chosen provider först
-  const chosenProvider = resolution.chosen;
-  const llmClient = getLlmClient(chosenProvider);
-  const profile = getLlmProfile(docType, chosenProvider);
-
   try {
+    // Försök med chosen provider först
+    const chosenProvider = resolution.chosen;
+    const llmClient = getLlmClient(chosenProvider);
+    const profile = getLlmProfile(docType, chosenProvider);
+
     const fullSystemPrompt = buildSystemPrompt(systemPrompt, profile.extraSystemPrefix);
     const response = await llmClient.generateText({
       systemPrompt: fullSystemPrompt,
@@ -98,50 +103,64 @@ export async function generateWithFallback(
     lastError = error instanceof Error ? error : new Error(String(error));
     lastResponse = null;
 
-    // Om chosen är local och fallback är tillåten, försök med cloud
-    if (
-      chosenProvider === 'local' &&
-      FALLBACK_TO_CLOUD_ENABLED &&
-      resolution.attempted.includes('cloud')
-    ) {
-      try {
-        const cloudClient = getLlmClient('cloud');
-        const cloudProfile = getLlmProfile(docType, 'cloud');
-        const cloudSystemPrompt = buildSystemPrompt(systemPrompt, cloudProfile.extraSystemPrefix);
+    // Försök med alternativ provider om fallback är aktiverad och möjlig
+    const chosenProvider = resolution.chosen;
+    const alternativeProvider =
+      resolution.attempted.find((p) => p !== chosenProvider) ?? null;
 
-        const cloudResponse = await cloudClient.generateText({
-          systemPrompt: cloudSystemPrompt,
+    const shouldFallbackToCloud =
+      chosenProvider === 'local' &&
+      alternativeProvider === 'cloud' &&
+      FALLBACK_TO_CLOUD_ENABLED;
+
+    const shouldFallbackToLocal =
+      chosenProvider === 'cloud' &&
+      alternativeProvider === 'local' &&
+      FALLBACK_TO_LOCAL_ENABLED;
+
+    if (alternativeProvider && (shouldFallbackToCloud || shouldFallbackToLocal)) {
+      try {
+        const altClient = getLlmClient(alternativeProvider);
+        const altProfile = getLlmProfile(docType, alternativeProvider);
+        const altSystemPrompt = buildSystemPrompt(systemPrompt, altProfile.extraSystemPrefix);
+
+        const altResponse = await altClient.generateText({
+          systemPrompt: altSystemPrompt,
           userPrompt,
-          maxTokens: cloudProfile.maxTokens,
-          temperature: cloudProfile.temperature,
+          maxTokens: altProfile.maxTokens,
+          temperature: altProfile.temperature,
         });
 
-        if (!cloudResponse) {
-          throw new Error('Cloud LLM returned null response');
+        if (!altResponse) {
+          throw new Error(`${alternativeProvider} LLM returned null response`);
         }
 
-        // Validera cloud response
         if (validateResponse) {
-          const validation = validateResponse(cloudResponse);
+          const validation = validateResponse(altResponse);
           if (!validation.valid) {
             throw new Error(
-              `Cloud validation failed: ${validation.errors.join(', ')}`
+              `${alternativeProvider} validation failed: ${validation.errors.join(', ')}`
             );
           }
         }
 
         const latencyMs = Date.now() - startTime;
         return {
-          text: cloudResponse,
-          provider: 'cloud',
+          text: altResponse,
+          provider: alternativeProvider,
           fallbackUsed: true,
-          attemptedProviders: ['local', 'cloud'],
+          attemptedProviders:
+            chosenProvider === alternativeProvider
+              ? [chosenProvider]
+              : [chosenProvider, alternativeProvider],
           latencyMs,
         };
-      } catch (cloudError) {
-        // Både local och cloud failade
+      } catch (altError) {
+        // Både first och alternativ provider failade
         throw new Error(
-          `Both local and cloud LLM failed. Local: ${lastError.message}, Cloud: ${cloudError instanceof Error ? cloudError.message : String(cloudError)}`
+          `Both ${chosenProvider} and ${alternativeProvider} LLM failed. ` +
+            `${chosenProvider}: ${lastError?.message ?? 'unknown error'}, ` +
+            `${alternativeProvider}: ${altError instanceof Error ? altError.message : String(altError)}`
         );
       }
     }
@@ -150,4 +169,3 @@ export async function generateWithFallback(
     throw lastError;
   }
 }
-

@@ -228,7 +228,10 @@ export function validateEpicJson(json: unknown, provider: LlmProvider): Validati
 
   const obj = json as Record<string, unknown>;
 
-  // EpicDocModel har liknande struktur som FeatureGoalDocModel
+  // EpicDocModel har liknande struktur som FeatureGoalDocModel.
+  // "technicalDependencies" används inte direkt i HTML-renderingen och
+  // saknas i många svar, så vi behandlar det som valfritt (warning istället
+  // för hard error) för att inte göra kontraktet onödigt sprött.
   const requiredFields = [
     'summary',
     'prerequisites',
@@ -241,13 +244,16 @@ export function validateEpicJson(json: unknown, provider: LlmProvider): Validati
     'testDescription',
     'implementationNotes',
     'relatedItems',
-    'technicalDependencies',
   ];
 
   for (const field of requiredFields) {
     if (!(field in obj)) {
       errors.push(`Missing required field: ${field}`);
     }
+  }
+
+  if (!('technicalDependencies' in obj)) {
+    warnings.push('Missing optional field: technicalDependencies');
   }
 
   return {
@@ -423,4 +429,3 @@ export function logValidationResult(
     }
   }
 }
-

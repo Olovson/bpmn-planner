@@ -142,12 +142,12 @@ describe('Epic LLM JSON → modell → HTML', () => {
       dmnLink: undefined,
     };
 
-    const raw = await generateDocumentationWithLlm('epic', context, links);
+    const result = await generateDocumentationWithLlm('epic', context, links);
 
     expect(generateChatCompletionMock).toHaveBeenCalledTimes(1);
-    expect(raw).toBeTruthy();
+    expect(result?.text).toBeTruthy();
 
-    const html = renderEpicDocFromLlm(context, links, raw || '');
+    const html = renderEpicDocFromLlm(context, links, result?.text || '');
 
     expect(html).toContain('Epic');
     // Rubriken i mallen är numera "Syfte & Effekt"

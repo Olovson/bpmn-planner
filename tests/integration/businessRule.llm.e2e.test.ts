@@ -119,12 +119,12 @@ describe('Business Rule LLM JSON → modell → HTML', () => {
       dmnLink: '/dmn/eligibility-rule.dmn',
     };
 
-    const raw = await generateDocumentationWithLlm('businessRule', context, links);
+    const result = await generateDocumentationWithLlm('businessRule', context, links);
 
     expect(generateChatCompletionMock).toHaveBeenCalledTimes(1);
-    expect(raw).toBeTruthy();
+    expect(result?.text).toBeTruthy();
 
-    const html = renderBusinessRuleDocFromLlm(context, links, raw || '');
+    const html = renderBusinessRuleDocFromLlm(context, links, result?.text || '');
 
     expect(html).toContain('Business Rule');
     expect(html).toContain('Sammanfattning &amp; scope');
@@ -133,4 +133,3 @@ describe('Business Rule LLM JSON → modell → HTML', () => {
     expect(html).toContain('Kund med hög skuldsättning');
   });
 });
-

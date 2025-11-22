@@ -14,17 +14,45 @@ import type { LlmProvider } from '@/lib/llmClientAbstraction';
 // Mock the LLM clients
 vi.mock('@/lib/llmClients', async () => {
   const actual = await vi.importActual('@/lib/llmClients');
+  const validFeatureJson = JSON.stringify({
+    summary: 'Summary',
+    effectGoals: [],
+    scopeIncluded: [],
+    scopeExcluded: [],
+    epics: [],
+    flowSteps: [],
+    dependencies: [],
+    scenarios: [],
+    testDescription: 'Tests',
+    implementationNotes: [],
+    relatedItems: [],
+  });
+
+  const validTestscriptJson = JSON.stringify({
+    scenarios: [
+      {
+        name: 'Scenario 1',
+        description: 'Desc',
+        expectedResult: 'OK',
+        type: 'happy-path',
+        steps: ['a', 'b', 'c'],
+      },
+    ],
+  });
+
   return {
     ...actual,
     getLlmClient: vi.fn((provider: LlmProvider) => {
       return {
         provider,
         modelName: provider === 'cloud' ? 'gpt-4o' : 'llama3.1:8b',
-        generateText: vi.fn().mockResolvedValue(
-          provider === 'cloud'
-            ? '{"summary": "Cloud-generated content"}'
-            : '{"summary": "Local-generated content"}'
-        ),
+        generateText: vi.fn().mockImplementation(async ({ userPrompt }) => {
+          // Heuristik: om input innehåller "TestScenarioObject" antar vi testscript
+          if (typeof userPrompt === 'string' && userPrompt.includes('TestScenarioObject')) {
+            return validTestscriptJson;
+          }
+          return validFeatureJson;
+        }),
       };
     }),
   };
@@ -69,7 +97,7 @@ describe('LLM Provider Integration', () => {
 
       // The actual implementation will call getLlmClient internally
       // This test structure shows the expected behavior
-      expect(result).toBeDefined();
+      expect(result?.text).toBeDefined();
     });
 
     it('should use local provider when specified', async () => {
@@ -96,7 +124,7 @@ describe('LLM Provider Integration', () => {
         'local'
       );
 
-      expect(result).toBeDefined();
+      expect(result?.text).toBeDefined();
     });
   });
 
@@ -126,4 +154,3 @@ describe('LLM Provider Integration', () => {
     });
   });
 });
-
