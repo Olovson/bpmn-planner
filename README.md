@@ -1,6 +1,6 @@
 # 🚀 BPMN Planner
 
-**BPMN Planner** är en intern plattform som tar BPMN-/DMN-filer, bygger en fullständig och deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar omfattande dokumentation, testunderlag och metadata för hela produkt- och utvecklingsteamet. Plattformen använder Supabase som backend och kan generera innehåll både via egna funktioner och via ChatGPT i två olika lägen – ett snabbt och ett mer detaljerat.
+**BPMN Planner** är en intern plattform som tar BPMN-/DMN-filer, bygger en fullständig och deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar omfattande dokumentation, testunderlag och metadata för hela produkt- och utvecklingsteamet. Plattformen använder Supabase som backend och kan generera innehåll både via egna funktioner och via LLM i två olika lägen – ett snabbt och ett mer detaljerat.
 
 ---
 
@@ -19,6 +19,38 @@ Det logiska trädet som binder samman hela processen: process → subprocess →
 **Alla UI-vyer och all generering i appen baseras på detta träd.**
 
 > Arkitektur & hierarki: se `docs/bpmn-hierarchy-architecture.md` för detaljer om den deterministiska matchningsordningen (calledElement → process-ID/namn → call activity-namn → filnamn → fuzzy) och hur diagnostics följer med i varje steg.
+
+---
+
+## 🔍 LLM‑kontrakt & modellbaserad dokumentation
+
+Dokumentationen för **Feature Goals**, **Epics** och **Business Rules** genereras nu via **modellbaserade domänmodeller**. LLM fyller ett JSON‑objekt, inte fri HTML, och samma HTML‑builder används för både lokalt innehåll och LLM‑innehåll.
+
+- Feature Goals:
+  - Modell: `FeatureGoalDocModel` (`src/lib/featureGoalLlmTypes.ts`)
+  - Mapper: `mapFeatureGoalLlmToSections` (`src/lib/featureGoalLlmMapper.ts`)
+  - HTML‑builder: `buildFeatureGoalDocHtmlFromModel` (`src/lib/documentationTemplates.ts`)
+  - Promptkontrakt: Feature‑delen i `prompts/llm/feature_epic_prompt.md`
+- Epics:
+  - Modell: `EpicDocModel` (`src/lib/epicDocTypes.ts`)
+  - Mapper: `mapEpicLlmToSections` (`src/lib/epicLlmMapper.ts`)
+  - HTML‑builder: `buildEpicDocHtmlFromModel`
+  - Promptkontrakt: Epic‑delen i `prompts/llm/feature_epic_prompt.md`
+- Business Rules:
+  - Modell: `BusinessRuleDocModel` (`src/lib/businessRuleDocTypes.ts`)
+  - Mapper: `mapBusinessRuleLlmToSections` (`src/lib/businessRuleLlmMapper.ts`)
+  - HTML‑builder: `buildBusinessRuleDocHtmlFromModel`
+  - Promptkontrakt: `prompts/llm/dmn_businessrule_prompt.md`
+
+LLM‑flow:
+
+- För varje dokumenttyp (`feature`, `epic`, `businessRule`) gäller:
+  1. Prompt instruerar LLM att returnera **ett JSON‑objekt** som matchar respektive modell.
+  2. Mappern försöker först tolka svaret som JSON → domänmodell.
+  3. Om JSON saknas eller är ogiltig används en enkel fallback (t.ex. allt i `summary`).
+  4. HTML byggs alltid via modell + common builder (inte fri HTML från LLM).
+
+> Övergripande kontrakt för LLM‑output finns dokumenterat i `prompts/llm/PROMPT_CONTRACT.md`.
 
 ---
 
@@ -44,7 +76,7 @@ Man kan sedan alltid **återgenerera** dokumentationen om man önskar byta modus
 #### **1. Lokal generering (snabbast)**
 Bygger dokument helt utan LLM – förutsägbart och snabbt, baserat på mallar och den deterministiska BPMN-hierarkin.
 
-#### **2. ChatGPT – Slow LLM Mode (full kvalitet)**
+#### **2. Slow LLM Mode (full kvalitet)**
 Använder LLM för att generera rikare innehåll:
 - Mer komplett affärslogik
 - Djupare produkt- och UX-innehåll
@@ -156,6 +188,8 @@ VITE_USE_LLM=true
 VITE_OPENAI_API_KEY=<OpenAI key>
 ```
 
+> **Obs:** när `VITE_USE_LLM=true` och `VITE_OPENAI_API_KEY` är satt använder appen de JSON‑baserade LLM‑kontrakten ovan. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
+
 ## 3. Edge Functions (valfritt)
 ```bash
 supabase functions serve build-process-tree --env-file supabase/.env --no-verify-jwt
@@ -258,6 +292,35 @@ När du kör `supabase db reset` i det här projektet är det normalt att se:
 
 - `NOTICE: trigger "<namn>" for relation "<tabell>" does not exist, skipping`  
   Dessa kommer från `DROP TRIGGER IF EXISTS ...` i migrations och betyder bara att det inte fanns någon trigger att ta bort – det är inte ett fel.
+
+---
+
+## 🧪 BPMN‑fixtures & hierarki‑tester (mortgage‑case)
+
+Det finns nu verkliga BPMN‑fixtures för mortgage‑processer under:
+
+- `tests/fixtures/bpmn/mortgage-se-application.bpmn`
+- `tests/fixtures/bpmn/mortgage-se-internal-data-gathering.bpmn`
+
+Dessa används i:
+
+- `tests/unit/bpmnHierarchy.integration.test.ts`
+  - Testar att `buildBpmnProcessGraph`:
+    - bygger graf för mortgage‑application med `internal-data-gathering` som root‑call activity,
+    - identifierar saknade subprocesser (Stakeholder/Object/Household) i `missingDependencies`,
+    - aldrig fastnar även när subprocess‑BPMN‑filer saknas (diagnostik istället för hang).
+- `tests/integration/bpmnRealParse.mortgage.test.ts`
+  - Läser de riktiga XML‑filerna och verifierar att de innehåller:
+    - rätt `bpmn:process`‑id:n,
+    - förväntade call activities (`internal-data-gathering`, `stakeholder`, `object`, `household`),
+    - centrala tasks i internal‑data‑gathering‑processen (`fetch-party-information`, `pre-screen-party`, `fetch-engagements`),
+    - en enkel derivation av mortgage‑hierarkin root → internal‑data‑gathering → Stakeholder/Object/Household.
+
+Syftet med dessa tester är att:
+
+- säkra att processhierarki‑motorn fungerar även i mortgage‑domänen,
+- få tidiga larm om förändringar i BPMN‑filerna som bryter struktur eller call activity‑kedjor,
+- garantera att subprocess‑synkning genererar diagnostik i stället för att blockera pipelinen.
 - `WARN: no files matched pattern: supabase/seed.sql`  
   Projektet använder ingen global `supabase/seed.sql` just nu; all viktig initiering sker via migrations. Den här varningen kan ignoreras.
 

@@ -978,27 +978,35 @@ export default function BpmnFileManager() {
         }
       }
       
-      // Helper: Bygg parentPath rekursivt från dependencies
-      const buildParentPath = async (fileName: string): Promise<string[]> => {
+      // Helper: Bygg parentPath rekursivt från dependencies.
+      // Robust mot saknade subprocess-filer och eventuella cycles i bpmn_dependencies.
+      const buildParentPath = async (
+        fileName: string,
+        visited: Set<string> = new Set(),
+      ): Promise<string[]> => {
+        if (visited.has(fileName)) {
+          console.warn(
+            '[Generation] Cykel upptäckt i bpmn_dependencies när parentPath byggdes för',
+            fileName,
+          );
+          return [];
+        }
+        visited.add(fileName);
+
         const dep = depsMap.get(fileName);
-        if (!dep) return []; // Toppnivåfil
-        
-        // Hämta förälderns context root
-        const parentUrl = `/bpmn/${dep.parentFile}`;
-        const parentParsed = await parseBpmnFile(parentUrl);
+        if (!dep) return []; // Toppnivåfil utan registrerad parent
+
         const parentRoot = dep.parentFile
           .replace('.bpmn', '')
           .replace(/^mortgage-se-/, '')
           .replace(/-/g, ' ')
-          .replace(/\b\w/g, c => c.toUpperCase());
-        
-        // Kapitalisera om det är "mortgage"
-        const capitalizedRoot = parentRoot.charAt(0).toUpperCase() + parentRoot.slice(1);
-        
-        // Rekursivt hitta förälderns föräldrar
-        const grandparentPath = await buildParentPath(dep.parentFile);
-        
-        // Returnera: [...grandparentPath, parentRoot, CallActivityName]
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+
+        const capitalizedRoot =
+          parentRoot.charAt(0).toUpperCase() + parentRoot.slice(1);
+
+        const grandparentPath = await buildParentPath(dep.parentFile, visited);
+
         return [...grandparentPath, capitalizedRoot];
       };
       

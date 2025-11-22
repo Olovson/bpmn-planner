@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.40.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:escalation id="Escalation_18ml9v9" name="sales-information-equity-too-low" escalationCode="sales-information-equity-too-low" />
+  <bpmn:escalation id="Escalation_2vm8k3e" name="securities-assessments-invalid" escalationCode="securities-assessments-invalid" />
+  <bpmn:collaboration id="Collaboration_1wun9s2">
+    <bpmn:participant id="Participant_02nn4nq" name="Internal data gathering" processRef="mortgage-se-internal-data-gathering" />
+    <bpmn:textAnnotation id="TextAnnotation_0yj6yh8">
+      <bpmn:text>Fetch existing information:
+- id
+- other available personal information...</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0onc8v0" associationDirection="None" sourceRef="fetch-party-information" targetRef="TextAnnotation_0yj6yh8" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-internal-data-gathering" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_07xv6rb">
+      <bpmn:lane id="Lane_11u0012" name="System">
+        <bpmn:flowNodeRef>Event_1iswmjx</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fetch-party-information</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>pre-screen-party</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>is-approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0rzxyhh</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fetch-engagements</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_02y6rvx</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Event_1iswmjx">
+      <bpmn:outgoing>Flow_1egytpc</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="fetch-party-information" name="Fetch party information">
+      <bpmn:incoming>Flow_1egytpc</bpmn:incoming>
+      <bpmn:outgoing>Flow_126zrwf</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_0ha0s2j">
+        <bpmn:targetRef>DataStoreReference_189vw1w</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:dataStoreReference id="DataStoreReference_189vw1w" name="Internal systems" />
+    <bpmn:businessRuleTask id="pre-screen-party" name="Pre-screen party">
+      <bpmn:incoming>Flow_126zrwf</bpmn:incoming>
+      <bpmn:outgoing>Flow_1sb7gov</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:exclusiveGateway id="is-approved" name="Approved?">
+      <bpmn:incoming>Flow_1sb7gov</bpmn:incoming>
+      <bpmn:outgoing>is-approved-no</bpmn:outgoing>
+      <bpmn:outgoing>is-approved-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_0rzxyhh" name="Pre-screening rejected">
+      <bpmn:incoming>is-approved-no</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_01onmvf" errorRef="Error_0w0e9fj" />
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="fetch-engagements" name="Fetch engagements">
+      <bpmn:incoming>is-approved-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_1jhxo77</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_0bsttd1">
+        <bpmn:targetRef>DataStoreReference_1fisaw1</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:dataStoreReference id="DataStoreReference_1fisaw1" name="Core System" />
+    <bpmn:endEvent id="Event_02y6rvx">
+      <bpmn:incoming>Flow_1jhxo77</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1egytpc" sourceRef="Event_1iswmjx" targetRef="fetch-party-information" />
+    <bpmn:sequenceFlow id="Flow_126zrwf" sourceRef="fetch-party-information" targetRef="pre-screen-party" />
+    <bpmn:sequenceFlow id="Flow_1sb7gov" sourceRef="pre-screen-party" targetRef="is-approved" />
+    <bpmn:sequenceFlow id="is-approved-no" name="No" sourceRef="is-approved" targetRef="Event_0rzxyhh" />
+    <bpmn:sequenceFlow id="is-approved-yes" name="Yes" sourceRef="is-approved" targetRef="fetch-engagements" />
+    <bpmn:sequenceFlow id="Flow_1jhxo77" sourceRef="fetch-engagements" targetRef="Event_02y6rvx" />
+  </bpmn:process>
+  <bpmn:error id="Error_0w0e9fj" name="pre-screen-rejected" errorCode="pre-screen-rejected" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1wun9s2">
+      <bpmndi:BPMNShape id="Participant_02nn4nq_di" bpmnElement="Participant_02nn4nq" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1080" height="390" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_11u0012_di" bpmnElement="Lane_11u0012" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="1050" height="390" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1iswmjx_di" bpmnElement="Event_1iswmjx">
+        <dc:Bounds x="232" y="257" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0z0r46w" bpmnElement="fetch-party-information">
+        <dc:Bounds x="350" y="235" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0vv42k0" bpmnElement="DataStoreReference_189vw1w">
+        <dc:Bounds x="375" y="365" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="360" y="422" width="81" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1d8vtqc_di" bpmnElement="pre-screen-party">
+        <dc:Bounds x="580" y="235" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_04bthkb_di" bpmnElement="is-approved" isMarkerVisible="true">
+        <dc:Bounds x="805" y="250" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="805" y="220" width="54" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_12t4q09_di" bpmnElement="Event_0rzxyhh" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="812" y="372" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="796" y="415" width="69" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1fqqesb" bpmnElement="fetch-engagements">
+        <dc:Bounds x="980" y="235" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1knq16t" bpmnElement="DataStoreReference_1fisaw1">
+        <dc:Bounds x="1005" y="365" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="998" y="422" width="64" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_02y6rvx_di" bpmnElement="Event_02y6rvx">
+        <dc:Bounds x="1162" y="257" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1egytpc_di" bpmnElement="Flow_1egytpc">
+        <di:waypoint x="268" y="275" />
+        <di:waypoint x="350" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_126zrwf_di" bpmnElement="Flow_126zrwf">
+        <di:waypoint x="450" y="275" />
+        <di:waypoint x="580" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1sb7gov_di" bpmnElement="Flow_1sb7gov">
+        <di:waypoint x="680" y="275" />
+        <di:waypoint x="805" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0a729ef_di" bpmnElement="is-approved-no">
+        <di:waypoint x="830" y="300" />
+        <di:waypoint x="830" y="372" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="838" y="333" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1fc0k29_di" bpmnElement="is-approved-yes">
+        <di:waypoint x="855" y="275" />
+        <di:waypoint x="980" y="275" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="910.9999999999998" y="257" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1jhxo77_di" bpmnElement="Flow_1jhxo77">
+        <di:waypoint x="1080" y="275" />
+        <di:waypoint x="1162" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_1rb0rz8" bpmnElement="Association_0onc8v0">
+        <di:waypoint x="377" y="235" />
+        <di:waypoint x="347" y="175" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0j63gpp" bpmnElement="DataOutputAssociation_0ha0s2j">
+        <di:waypoint x="400" y="315" />
+        <di:waypoint x="400" y="365" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_0bsttd1_di" bpmnElement="DataOutputAssociation_0bsttd1">
+        <di:waypoint x="1030" y="315" />
+        <di:waypoint x="1030" y="365" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_1fql78w" bpmnElement="TextAnnotation_0yj6yh8">
+        <dc:Bounds x="287" y="120" width="226" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

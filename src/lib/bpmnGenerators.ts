@@ -942,11 +942,6 @@ async function renderDocWithLlmFallback(
       }
 
       if (docType === 'businessRule') {
-        // För Business Rules använder vi också en modellbaserad layout.
-        return renderBusinessRuleDocFromLlm(context, links, llmDoc);
-      }
-
-      if (docType === 'businessRule') {
         // För Business Rules används också modellbaserad layout.
         return renderBusinessRuleDocFromLlm(context, links, llmDoc);
       }
