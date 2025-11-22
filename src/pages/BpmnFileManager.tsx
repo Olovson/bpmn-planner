@@ -821,6 +821,7 @@ export default function BpmnFileManager() {
         : false
         ? 'llm-fast'
         : 'llm-slow';
+      const localAvailable = llmHealth?.local.available ?? false;
       const result = await generateAllFromBpmnWithGraph(
         file.file_name,
         existingBpmnFiles,
@@ -829,7 +830,8 @@ export default function BpmnFileManager() {
         !isLocalMode,
         handleGeneratorPhase,
         generationSourceLabel,
-        !isLocalMode ? llmProvider : undefined
+        !isLocalMode ? llmProvider : undefined,
+        localAvailable
       );
       checkCancellation();
       const nodeArtifacts = result.nodeArtifacts || [];

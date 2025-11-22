@@ -10,9 +10,8 @@ import {
   getFeaturePrompt,
   getEpicPrompt,
   getBusinessRulePrompt,
-  buildSystemPrompt,
 } from './promptLoader';
-import { getLlmProfile, type DocType } from './llmProfiles';
+import type { DocType } from './llmProfiles';
 import {
   validateBusinessRuleJson,
   validateFeatureGoalJson,
@@ -20,6 +19,9 @@ import {
   validateHtmlContent,
   logValidationResult,
 } from './llmValidation';
+import { resolveLlmProvider } from './llmProviderResolver';
+import { generateWithFallback } from './llmFallback';
+import { logLlmEvent, extractErrorCode } from './llmLogging';
 
 export type DocumentationDocType = 'feature' | 'epic' | 'businessRule';
 
@@ -32,6 +34,7 @@ export async function generateDocumentationWithLlm(
   context: NodeDocumentationContext,
   links: TemplateLinks,
   llmProvider?: LlmProvider,
+  localAvailable: boolean = false,
 ): Promise<string | null> {
   if (!isLlmEnabled()) return null;
 
@@ -51,14 +54,16 @@ export async function generateDocumentationWithLlm(
       ? getFeaturePrompt()
       : getEpicPrompt();
 
-  // Hämta provider-specifik profil
-  const effectiveProvider = llmProvider || getDefaultLlmProvider();
+  // Resolvera provider med smart logik
+  const globalDefault = getDefaultLlmProvider();
+  const resolution = resolveLlmProvider({
+    userChoice: llmProvider,
+    globalDefault,
+    localAvailable,
+  });
+
   const profileDocType: DocType =
     docType === 'businessRule' ? 'businessRule' : docType === 'feature' ? 'feature' : 'epic';
-  const profile = getLlmProfile(profileDocType, effectiveProvider);
-
-  // Bygg system prompt med ev. extra prefix för provider
-  const systemPrompt = buildSystemPrompt(basePrompt, profile.extraSystemPrefix);
 
   // JSON-input som skickas till LLM enligt promptdefinitionerna.
   const llmInput = {
@@ -68,78 +73,92 @@ export async function generateDocumentationWithLlm(
 
   const userPrompt = JSON.stringify(llmInput, null, 2);
 
+  // Valideringsfunktion för response
+  const validateResponse = (response: string): { valid: boolean; errors: string[] } => {
+    try {
+      const parsed = JSON.parse(response);
+      let validationResult;
+      if (docType === 'businessRule') {
+        validationResult = validateBusinessRuleJson(parsed, resolution.chosen);
+      } else if (docType === 'feature') {
+        validationResult = validateFeatureGoalJson(parsed, resolution.chosen);
+      } else {
+        validationResult = validateEpicJson(parsed, resolution.chosen);
+      }
+
+      logValidationResult(
+        validationResult,
+        resolution.chosen,
+        docType,
+        context.node.bpmnElementId
+      );
+
+      return {
+        valid: validationResult.valid,
+        errors: validationResult.errors,
+      };
+    } catch (parseError) {
+      return {
+        valid: false,
+        errors: [`Failed to parse JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`],
+      };
+    }
+  };
+
   try {
-    const response = await generateChatCompletion(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      {
-        temperature: profile.temperature,
-        maxTokens: profile.maxTokens,
-        model: 'slow',
-      },
-      effectiveProvider
-    );
+    // Använd hybrid/fallback-strategi
+    const result = await generateWithFallback({
+      docType: profileDocType,
+      resolution,
+      systemPrompt: basePrompt,
+      userPrompt,
+      validateResponse,
+    });
 
-    if (response) {
-      // Validera JSON-struktur
-      try {
-        const parsed = JSON.parse(response);
-        let validationResult;
-        if (docType === 'businessRule') {
-          validationResult = validateBusinessRuleJson(parsed, effectiveProvider);
-        } else if (docType === 'feature') {
-          validationResult = validateFeatureGoalJson(parsed, effectiveProvider);
-        } else {
-          validationResult = validateEpicJson(parsed, effectiveProvider);
-        }
-
-        logValidationResult(
-          validationResult,
-          effectiveProvider,
-          docType,
-          context.node.bpmnElementId
-        );
-
-        if (!validationResult.valid) {
-          console.error(
-            `[LLM Documentation] JSON validation failed for ${docType} (${effectiveProvider}). Errors:`,
-            validationResult.errors
-          );
-          // Fortsätt ändå - validering är varning, inte blockerande
-        }
-      } catch (parseError) {
+    // Validera HTML-innehåll (om det finns HTML i svaret)
+    if (result.text.includes('<') && result.text.includes('>')) {
+      const htmlValidation = validateHtmlContent(result.text, result.provider, docType);
+      logValidationResult(
+        htmlValidation,
+        result.provider,
+        docType,
+        `${context.node.bpmnElementId}/html`
+      );
+      if (!htmlValidation.valid) {
         console.warn(
-          `[LLM Documentation] Failed to parse JSON response for ${docType} (${effectiveProvider}):`,
-          parseError
+          `[LLM Documentation] HTML validation warnings for ${docType} (${result.provider})`
         );
-        // Fortsätt med rå-text - mappern kan hantera detta
       }
-
-      // Validera HTML-innehåll (om det finns HTML i svaret)
-      if (response.includes('<') && response.includes('>')) {
-        const htmlValidation = validateHtmlContent(response, effectiveProvider, docType);
-        logValidationResult(
-          htmlValidation,
-          effectiveProvider,
-          docType,
-          `${context.node.bpmnElementId}/html`
-        );
-        if (!htmlValidation.valid) {
-          console.warn(
-            `[LLM Documentation] HTML validation warnings for ${docType} (${effectiveProvider})`
-          );
-        }
-      }
-
-      const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
-      await saveLlmDebugArtifact('doc', identifier, response);
-      return response;
     }
 
-    return null;
+    // Logga event
+    logLlmEvent({
+      docType: profileDocType,
+      attemptedProviders: result.attemptedProviders,
+      finalProvider: result.provider,
+      fallbackUsed: result.fallbackUsed,
+      success: true,
+      validationOk: true,
+      latencyMs: result.latencyMs,
+    });
+
+    const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
+    await saveLlmDebugArtifact('doc', identifier, result.text);
+    return result.text;
   } catch (error) {
+    // Logga fel-event
+    const errorCode = extractErrorCode(error);
+    logLlmEvent({
+      docType: profileDocType,
+      attemptedProviders: resolution.attempted,
+      finalProvider: resolution.chosen,
+      fallbackUsed: false,
+      success: false,
+      errorCode,
+      validationOk: false,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+
     // Hantera LocalLlmUnavailableError gracefully
     if (error instanceof LocalLlmUnavailableError) {
       console.warn('Local LLM unavailable during documentation generation:', error.message);

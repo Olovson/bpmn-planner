@@ -916,6 +916,7 @@ async function renderDocWithLlmFallback(
   fallback: () => string,
   llmAllowed: boolean,
   llmProvider?: LlmProvider,
+  localAvailable: boolean = false,
 ): Promise<string> {
   const llmActive = llmAllowed && isLlmEnabled();
   const basePayload = {
@@ -931,7 +932,7 @@ async function renderDocWithLlmFallback(
   }
 
   try {
-    const llmDoc = await generateDocumentationWithLlm(docType, context, links, llmProvider);
+    const llmDoc = await generateDocumentationWithLlm(docType, context, links, llmProvider, localAvailable);
     if (llmDoc && llmDoc.trim()) {
       // Hämta provider-info för metadata
       const effectiveProvider = llmProvider || getDefaultLlmProvider();
@@ -1121,6 +1122,7 @@ export async function generateAllFromBpmnWithGraph(
   progressCallback?: ProgressReporter,
   generationSource?: string,
   llmProvider?: LlmProvider,
+  localAvailable: boolean = false,
 ): Promise<GenerationResult> {
   const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
     if (progressCallback) {
@@ -1309,6 +1311,7 @@ export async function generateAllFromBpmnWithGraph(
                 () => renderFeatureGoalDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
+                localAvailable,
               );
               // Skapa även en separat feature goal-sida för matched subprocesser
               const featureDocPath = getFeatureGoalDocFileKey(node.bpmnFile, node.bpmnElementId);
@@ -1340,6 +1343,7 @@ export async function generateAllFromBpmnWithGraph(
                 () => renderBusinessRuleDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
+                localAvailable,
               );
               if (!(docLinks as any).dmnLink) {
                 nodeDocContent +=
@@ -1353,6 +1357,7 @@ export async function generateAllFromBpmnWithGraph(
                 () => renderEpicDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
+                localAvailable,
               );
             }
           } else {
@@ -1363,7 +1368,7 @@ export async function generateAllFromBpmnWithGraph(
             docFileKey,
             insertGenerationMeta(nodeDocContent, generationSourceLabel),
           );
-          const llmScenarios = useLlm ? await generateTestSpecWithLlm(node.element, llmProvider) : null;
+          const llmScenarios = useLlm ? await generateTestSpecWithLlm(node.element, llmProvider, localAvailable) : null;
           result.tests.set(
             testFileKey,
             generateTestSkeleton(node.element, llmScenarios || undefined),
@@ -1471,7 +1476,7 @@ export async function generateAllFromBpmn(
 
     // Generate test skeleton
     if (['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity'].includes(nodeType)) {
-      const llmScenarios = useLlm ? await generateTestSpecWithLlm(element, llmProvider) : null;
+      const llmScenarios = useLlm ? await generateTestSpecWithLlm(element, llmProvider, false) : null;
       const testContent = generateTestSkeleton(element, llmScenarios || undefined);
       const testFileKey = bpmnFileName
         ? getNodeTestFileKey(bpmnFileName, element.id)

@@ -19,6 +19,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BpmnSelectionProvider } from "./contexts/BpmnSelectionContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import DocViewer from "./pages/DocViewer";
+import LlmDebugView from "./pages/LlmDebugView";
 import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => {
                 <Route path="/node-test-script" element={<NodeTestScriptViewer />} />
                 <Route path="/files" element={<ProtectedRoute><BpmnFileManager /></ProtectedRoute>} />
                 <Route path="/registry-status" element={<ProtectedRoute><RegistryStatus /></ProtectedRoute>} />
+                <Route path="/llm-debug" element={<ProtectedRoute><LlmDebugView /></ProtectedRoute>} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/doc-viewer/:docId" element={<DocViewer />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

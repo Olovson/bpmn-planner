@@ -7,8 +7,10 @@ import { saveLlmDebugArtifact } from './llmDebugStorage';
 import type { LlmProvider } from './llmClientAbstraction';
 import { getDefaultLlmProvider } from './llmClients';
 import { LocalLlmUnavailableError } from './llmClients/localLlmClient';
-import { getTestscriptPrompt, buildSystemPrompt } from './promptLoader';
-import { getLlmProfile } from './llmProfiles';
+import { getTestscriptPrompt } from './promptLoader';
+import { resolveLlmProvider } from './llmProviderResolver';
+import { generateWithFallback } from './llmFallback';
+import { logLlmEvent, extractErrorCode } from './llmLogging';
 import { validateTestscriptJson, logValidationResult } from './llmValidation';
 
 interface LlmTestScenario {
@@ -56,21 +58,22 @@ const buildTestScenarioSchema = (minItems: number, maxItems: number) => ({
 export async function generateTestSpecWithLlm(
   element: BpmnElement,
   llmProvider?: LlmProvider,
+  localAvailable: boolean = false,
 ): Promise<LlmTestScenario[] | null> {
   if (!isLlmEnabled()) return null;
 
   // Hämta prompt via central promptLoader
   const basePrompt = getTestscriptPrompt();
 
-  // Hämta provider-specifik profil
-  const effectiveProvider = llmProvider || getDefaultLlmProvider();
-  const profile = getLlmProfile('testscript', effectiveProvider);
-
-  // Bygg system prompt med ev. extra prefix för provider
-  const systemPrompt = buildSystemPrompt(basePrompt, profile.extraSystemPrefix);
+  // Resolvera provider med smart logik
+  const globalDefault = getDefaultLlmProvider();
+  const resolution = resolveLlmProvider({
+    userChoice: llmProvider,
+    globalDefault,
+    localAvailable,
+  });
 
   // Bygg test scenario schema (använder standardvärden för nu)
-  // TODO: Detta kan ev. göras provider-aware i framtiden
   const scenarioSchema = buildTestScenarioSchema(3, 5);
 
   const summary = buildBpmnElementSummary(element);
@@ -86,59 +89,117 @@ export async function generateTestSpecWithLlm(
     rawSummary: summary,
   };
   const userPrompt = JSON.stringify(llmInput, null, 2);
-  const messages: ChatCompletionMessageParam[] = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userPrompt },
-  ];
+
+  // Valideringsfunktion för response
+  const validateResponse = (response: string, provider: LlmProvider): { valid: boolean; errors: string[] } => {
+    try {
+      const parsedJson = sanitizeJsonResponse(response);
+      const parsed = JSON.parse(parsedJson) as
+        | { scenarios: LlmTestScenario[] }
+        | LlmTestScenario[];
+
+      const validationResult = validateTestscriptJson(parsed, provider);
+      logValidationResult(validationResult, provider, 'testscript', element.id);
+
+      return {
+        valid: validationResult.valid,
+        errors: validationResult.errors,
+      };
+    } catch (parseError) {
+      return {
+        valid: false,
+        errors: [`Failed to parse JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`],
+      };
+    }
+  };
 
   try {
-    let response: string | null = null;
+    // Använd hybrid/fallback-strategi
+    // För testscript behöver vi hantera JSON schema response format
+    // Vi gör ett första försök med JSON schema, sedan fallback till plain text om det failar
+    let result;
     try {
-      response = await generateChatCompletion(
-        messages,
-        {
-          temperature: profile.temperature,
-          maxTokens: profile.maxTokens,
-          responseFormat: {
-            type: 'json_schema',
-            json_schema: scenarioSchema,
-          },
-          model: 'slow',
-        },
-        effectiveProvider
-      );
-    } catch (error) {
-      // Hantera LocalLlmUnavailableError
-      if (error instanceof LocalLlmUnavailableError) {
-        console.warn('Local LLM unavailable during test generation:', error.message);
-        return null;
-      }
-
-      if (isSchemaFormatError(error)) {
-        console.warn('JSON schema response_format unsupported, retrying with plain text:', error);
-        try {
-          response = await generateChatCompletion(
-            messages,
-            {
-              temperature: profile.temperature,
-              maxTokens: profile.maxTokens,
-              model: 'slow',
+      // Försök med JSON schema response format först (om cloud)
+      if (resolution.chosen === 'cloud') {
+        const { generateChatCompletion } = await import('./llmClient');
+        const response = await generateChatCompletion(
+          [
+            { role: 'system', content: basePrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          {
+            temperature: 0.3,
+            maxTokens: 900,
+            responseFormat: {
+              type: 'json_schema',
+              json_schema: scenarioSchema,
             },
-            effectiveProvider
-          );
-        } catch (retryError) {
-          if (retryError instanceof LocalLlmUnavailableError) {
-            console.warn('Local LLM unavailable during test generation (retry):', retryError.message);
-            return null;
+            model: 'slow',
+          },
+          resolution.chosen
+        );
+
+        if (response) {
+          const validation = validateResponse(response, resolution.chosen);
+          if (validation.valid) {
+            result = {
+              text: response,
+              provider: resolution.chosen as LlmProvider,
+              fallbackUsed: false,
+              attemptedProviders: [resolution.chosen],
+              latencyMs: 0, // Vi mäter inte latency här eftersom vi använder generateChatCompletion direkt
+            };
+          } else {
+            throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
           }
-          throw retryError;
+        } else {
+          throw new Error('LLM returned null response');
         }
       } else {
-        throw error;
+        // För local, använd generateWithFallback direkt (ingen JSON schema support)
+        result = await generateWithFallback({
+          docType: 'testscript',
+          resolution,
+          systemPrompt: basePrompt,
+          userPrompt,
+          validateResponse,
+        });
+      }
+    } catch (error) {
+      // Om JSON schema failar, försök med plain text
+      if (isSchemaFormatError(error) && resolution.chosen === 'cloud') {
+        result = await generateWithFallback({
+          docType: 'testscript',
+          resolution,
+          systemPrompt: basePrompt,
+          userPrompt,
+          validateResponse,
+        });
+      } else {
+        // Annars, använd generateWithFallback som hanterar fallback automatiskt
+        result = await generateWithFallback({
+          docType: 'testscript',
+          resolution,
+          systemPrompt: basePrompt,
+          userPrompt,
+          validateResponse,
+        });
       }
     }
 
-    if (!response) {
+    if (!result || !result.text) {
+      // Logga event
+      logLlmEvent({
+        docType: 'testscript',
+        attemptedProviders: result?.attemptedProviders || resolution.attempted,
+        finalProvider: result?.provider || resolution.chosen,
+        fallbackUsed: result?.fallbackUsed || false,
+        success: false,
+        errorCode: 'UNKNOWN_ERROR',
+        validationOk: false,
+        errorMessage: 'Empty response or invalid structure',
+      });
+
       await logLlmFallback({
         eventType: 'test',
         status: 'fallback',
@@ -151,26 +212,25 @@ export async function generateTestSpecWithLlm(
     }
 
     try {
-      const parsedJson = sanitizeJsonResponse(response);
+      const parsedJson = sanitizeJsonResponse(result.text);
       await saveLlmDebugArtifact('test', element.id || element.name || 'unknown', parsedJson);
       const parsed = JSON.parse(parsedJson) as
         | { scenarios: LlmTestScenario[] }
         | LlmTestScenario[];
 
-      // Validera JSON-struktur mot kontrakt
-      const validationResult = validateTestscriptJson(parsed, effectiveProvider);
-      logValidationResult(validationResult, effectiveProvider, 'testscript', element.id);
-
-      if (!validationResult.valid) {
-        console.error(
-          `[LLM Tests] JSON validation failed for testscript (${effectiveProvider}). Errors:`,
-          validationResult.errors
-        );
-        // Fortsätt ändå - validering är varning, inte blockerande
-      }
-
       const scenarios = Array.isArray(parsed) ? parsed : parsed?.scenarios;
       if (Array.isArray(scenarios)) {
+        // Logga event
+        logLlmEvent({
+          docType: 'testscript',
+          attemptedProviders: result.attemptedProviders,
+          finalProvider: result.provider,
+          fallbackUsed: result.fallbackUsed,
+          success: true,
+          validationOk: true,
+          latencyMs: result.latencyMs,
+        });
+
         return scenarios;
       }
       await logLlmFallback({
@@ -184,7 +244,21 @@ export async function generateTestSpecWithLlm(
       return null;
     } catch (error) {
       console.warn('Failed to parse LLM test scenarios:', error);
-      await saveLlmDebugArtifact('test', `${element.id || element.name || 'unknown'}-parse-error`, response);
+      await saveLlmDebugArtifact('test', `${element.id || element.name || 'unknown'}-parse-error`, result.text);
+      
+      // Logga event
+      const errorCode = extractErrorCode(error);
+      logLlmEvent({
+        docType: 'testscript',
+        attemptedProviders: result.attemptedProviders,
+        finalProvider: result.provider,
+        fallbackUsed: result.fallbackUsed,
+        success: false,
+        errorCode,
+        validationOk: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+
       await logLlmFallback({
         eventType: 'test',
         status: 'error',
@@ -197,6 +271,19 @@ export async function generateTestSpecWithLlm(
       return null;
     }
   } catch (error) {
+    // Logga fel-event
+    const errorCode = extractErrorCode(error);
+    logLlmEvent({
+      docType: 'testscript',
+      attemptedProviders: resolution.attempted,
+      finalProvider: resolution.chosen,
+      fallbackUsed: false,
+      success: false,
+      errorCode,
+      validationOk: false,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+
     await logLlmFallback({
       eventType: 'test',
       status: 'error',
