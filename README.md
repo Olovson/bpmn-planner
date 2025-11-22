@@ -20,6 +20,7 @@
     - `FeatureGoalDocModel`, `EpicDocModel`, `BusinessRuleDocModel`
   - LLM fyller JSON → mappers → HTML via templates i `src/lib/documentationTemplates.ts`.
   - Samma HTML-layout används för lokal (mallbaserad) och LLM-baserad dokumentation.
+  - Prompts i `prompts/llm/*` instruerar LLM att alltid svara med **ett JSON-objekt** (ingen HTML/markdown) och att markera numeriska tröskelvärden som **exempelvärden** (t.ex. `600 (exempelvärde)`).
 
 - **LLM-lägen & providers**
   - Lokal generering (utan LLM): snabb, deterministisk, mallbaserad.
@@ -117,7 +118,7 @@ SEED_USER_PASSWORD=Passw0rd!
 VITE_USE_LLM=true
 VITE_OPENAI_API_KEY=<OpenAI key>
 VITE_LLM_LOCAL_BASE_URL=http://localhost:11434
-VITE_LLM_LOCAL_MODEL=llama3.1:8b-instruct
+VITE_LLM_LOCAL_MODEL=llama3:latest
 ```
 
 > **Obs:** när `VITE_USE_LLM=true` och `VITE_OPENAI_API_KEY` är satt används LLM-kontrakten för ChatGPT/Ollama. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
@@ -176,7 +177,7 @@ och kör `tests/integration/llm.real.smoke.test.ts`, som:
   - Feature Goal (`docType = "feature"`),
   - Epic (`docType = "epic"`),
   - Business Rule (`docType = "businessRule"`),
-- kör både cloud- och local-LLM (om lokal LLM är tillgänglig) och skriver LLM- samt lokal HTML till `tests/llm-output/html/`:
+- kör både ChatGPT (moln-LLM) och Ollama (lokal LLM) (om lokal LLM är tillgänglig) och skriver LLM- samt lokal fallback-HTML till `tests/llm-output/html/`:
   - `llm-feature-goal-chatgpt.html` / `llm-feature-goal-ollama.html` / `llm-feature-goal-fallback.html`
   - `llm-epic-chatgpt.html` / `llm-epic-ollama.html` / `llm-epic-fallback.html`
   - `llm-business-rule-chatgpt.html` / `llm-business-rule-ollama.html` / `llm-business-rule-fallback.html`
@@ -216,7 +217,7 @@ Checklista:
 
 1. **Files** – ladda upp BPMN/DMN eller synka GitHub.  
 2. **Build hierarchy** – bygger deterministisk struktur.  
-3. **Generate documentation** – välj Local eller Slow LLM Mode.  
+3. **Generate documentation** – välj Lokal fallback (ingen LLM), ChatGPT (moln-LLM) eller Ollama (lokal LLM).  
 4. Visa resultat i **Viewer / Tree / List**.  
 5. Justera metadata i **Node Matrix**.  
 6. Öppna resultat i **Doc Viewer** eller **Node Tests**.  

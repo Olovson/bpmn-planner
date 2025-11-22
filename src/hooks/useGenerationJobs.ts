@@ -34,7 +34,7 @@ export const useGenerationJobs = () => {
       if (error) throw error;
 
       const rows = (data || []) as Array<
-        GenerationJob & { result?: { mode?: 'local' | 'slow' } }
+        GenerationJob & { result?: { mode?: 'local' | 'slow'; llmProvider?: 'cloud' | 'local' | 'fallback' } }
       >;
 
       return rows.map((row) => {

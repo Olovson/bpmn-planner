@@ -817,10 +817,10 @@ export default function BpmnFileManager() {
 
       // Generera alla artefakter med hierarkisk analys
       const generationSourceLabel = isLocalMode
-        ? 'local'
-        : false
-        ? 'llm-fast'
-        : 'llm-slow';
+        ? 'local-fallback'
+        : llmProvider === 'cloud'
+        ? 'llm-slow-chatgpt'
+        : 'llm-slow-ollama';
       const localAvailable = llmHealth?.local.available ?? false;
       const result = await generateAllFromBpmnWithGraph(
         file.file_name,
@@ -1331,7 +1331,8 @@ export default function BpmnFileManager() {
           checkCancellation();
           const { modePath: docPath, legacyPath: legacyDocPath } = buildDocStoragePaths(
             docFileName,
-            effectiveLlmMode ?? (isLocalMode ? 'local' : null)
+            effectiveLlmMode ?? (isLocalMode ? 'local' : null),
+            isLocalMode ? 'fallback' : llmProvider
           );
           const htmlBlob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
           const { error: uploadError } = await supabase.storage
@@ -1410,6 +1411,14 @@ export default function BpmnFileManager() {
       const resultMessage: string[] = [];
       if (isLocalMode) {
         resultMessage.push('Lokal körning (ingen LLM)');
+      } else {
+        resultMessage.push(
+          `LLM-provider: ${
+            llmProvider === 'cloud'
+              ? 'ChatGPT (moln)'
+              : 'Ollama (lokal)'
+          }`,
+        );
       }
       if (useHierarchy && result.metadata) {
         resultMessage.push(`Hierarkisk analys: ${result.metadata.totalFilesAnalyzed} filer`);
@@ -1436,19 +1445,20 @@ export default function BpmnFileManager() {
       }
       syncOverlayProgress('Generering klar');
       if (activeJob) {
-        await setJobStatus(activeJob.id, 'succeeded', {
-          finished_at: new Date().toISOString(),
-          progress: jobProgressCount,
-          result: {
-            dorDod: dorDodCount,
-            tests: totalTestCount,
-            docs: totalDocCount,
-            filesAnalyzed,
-            mode: isLocalMode ? 'local' : 'slow',
-            missingDependencies,
-            skippedSubprocesses: skippedList,
-          },
-        });
+          await setJobStatus(activeJob.id, 'succeeded', {
+            finished_at: new Date().toISOString(),
+            progress: jobProgressCount,
+            result: {
+              dorDod: dorDodCount,
+              tests: totalTestCount,
+              docs: totalDocCount,
+              filesAnalyzed,
+              mode: isLocalMode ? 'local' : 'slow',
+              llmProvider: isLocalMode ? 'fallback' : llmProvider,
+              missingDependencies,
+              skippedSubprocesses: skippedList,
+            },
+          });
       }
 
       // Refresh data (structure + artifacts) and give UI some time to re-render
@@ -1883,6 +1893,13 @@ export default function BpmnFileManager() {
     setOverlayDescription('');
   };
 
+  const currentGenerationLabel =
+    generationMode === 'local'
+      ? 'Lokal fallback (ingen LLM)'
+      : llmProvider === 'cloud'
+      ? 'ChatGPT (moln-LLM)'
+      : 'Ollama (lokal LLM)';
+
   return (
     <div className="flex min-h-screen bg-background overflow-hidden">
       <AppHeaderWithTabs
@@ -1973,67 +1990,13 @@ export default function BpmnFileManager() {
                 <Sparkles className="w-4 h-4 text-primary" />
                 <h2 className="text-lg font-semibold">Genereringsläge</h2>
                 <Badge variant="outline">
-                  {generationMode === 'local' ? 'Local' : 'Slow LLM'}
+                  {currentGenerationLabel}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                Välj hur dokumentation och tester ska genereras.
+                Välj om du vill använda endast lokala mallar (fallback), ChatGPT eller lokal LLM (Ollama) för generering.
               </p>
             </div>
-            {generationMode !== 'local' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">LLM-motor:</label>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Button
-                    size="sm"
-                    variant={llmProvider === 'cloud' ? 'default' : 'outline'}
-                    className="gap-2"
-                    onClick={() => setLlmProvider('cloud')}
-                    disabled={llmProvider === 'cloud'}
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    Standard (moln)
-                    {llmHealth?.cloud.available && (
-                      <Badge variant="outline" className="ml-1 text-xs">
-                        Tillgänglig
-                      </Badge>
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={llmProvider === 'local' ? 'default' : 'outline'}
-                    className="gap-2"
-                    onClick={() => setLlmProvider('local')}
-                    disabled={llmProvider === 'local' || !llmHealth?.local.available}
-                    title={
-                      !llmHealth?.local.available
-                        ? `Kan inte nå lokal LLM-motor – kontrollera att Ollama körs. ${llmHealth?.local.error ? `Fel: ${llmHealth.local.error}` : ''}`
-                        : undefined
-                    }
-                  >
-                    <FileCode className="w-4 h-4" />
-                    Lokal (Llama 3.1 8B)
-                    {llmHealthLoading ? (
-                      <Loader2 className="w-3 h-3 animate-spin ml-1" />
-                    ) : llmHealth?.local.available ? (
-                      <Badge variant="outline" className="ml-1 text-xs bg-green-50 text-green-700 border-green-200">
-                        Tillgänglig
-                        {llmHealth.local.latencyMs && ` (${llmHealth.local.latencyMs}ms)`}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="ml-1 text-xs bg-red-50 text-red-700 border-red-200">
-                        Ej tillgänglig
-                      </Badge>
-                    )}
-                  </Button>
-                </div>
-                {!llmHealth?.local.available && generationMode !== 'local' && (
-                  <p className="text-xs text-muted-foreground">
-                    Lokal LLM är inte tillgänglig. Kontrollera att Ollama körs på {import.meta.env.VITE_LLM_LOCAL_BASE_URL || 'http://localhost:11434'}
-                  </p>
-                )}
-              </div>
-            )}
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
@@ -2087,23 +2050,51 @@ export default function BpmnFileManager() {
               <FileText className="w-4 h-4" />
               Local (ingen LLM)
             </Button>
-            {LLM_MODE_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                size="sm"
-                variant={generationMode === option.value ? 'default' : 'outline'}
-                className="gap-2"
-                onClick={() => {
-                  // option.value är 'slow'
-                  setLlmMode(option.value as LlmGenerationMode);
-                  setGenerationMode(option.value as GenerationMode);
-                }}
-                disabled={generationMode === option.value}
-              >
-                <Sparkles className="w-4 h-4" />
-                {option.label}
-              </Button>
-            ))}
+            <Button
+              size="sm"
+              variant={generationMode === 'slow' && llmProvider === 'cloud' ? 'default' : 'outline'}
+              className="gap-2"
+              onClick={() => {
+                setLlmMode('slow');
+                setGenerationMode('slow');
+                setLlmProvider('cloud');
+              }}
+              disabled={generationMode === 'slow' && llmProvider === 'cloud'}
+            >
+              <Sparkles className="w-4 h-4" />
+              ChatGPT (moln-LLM)
+            </Button>
+            <Button
+              size="sm"
+              variant={generationMode === 'slow' && llmProvider === 'local' ? 'default' : 'outline'}
+              className="gap-2"
+              onClick={() => {
+                setLlmMode('slow');
+                setGenerationMode('slow');
+                setLlmProvider('local');
+              }}
+              disabled={generationMode === 'slow' && llmProvider === 'local'}
+              title={
+                !llmHealth?.local.available
+                  ? `Kan inte nå lokal LLM-motor – kontrollera att Ollama körs. ${llmHealth?.local.error ? `Fel: ${llmHealth.local.error}` : ''}`
+                  : undefined
+              }
+            >
+              <FileCode className="w-4 h-4" />
+              Ollama (lokal LLM)
+              {llmHealthLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin ml-1" />
+              ) : llmHealth?.local.available ? (
+                <Badge variant="outline" className="ml-1 text-xs bg-green-50 text-green-700 border-green-200">
+                  Tillgänglig
+                  {llmHealth.local.latencyMs && ` (${llmHealth.local.latencyMs}ms)`}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="ml-1 text-xs bg-red-50 text-red-700 border-red-200">
+                  Ej tillgänglig
+                </Badge>
+              )}
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
             <Button
@@ -2572,11 +2563,21 @@ export default function BpmnFileManager() {
                         mode?: string;
                         skippedSubprocesses?: string[];
                       };
+                        const providerLabel =
+                          jobResult.llmProvider === 'cloud'
+                            ? 'ChatGPT'
+                            : jobResult.llmProvider === 'local'
+                            ? 'Ollama'
+                            : jobResult.llmProvider === 'fallback' || job.mode === 'local'
+                            ? 'Lokal fallback'
+                            : undefined;
                         const modeLabel =
                           job.mode === 'slow'
-                            ? 'Slow LLM'
+                            ? providerLabel
+                              ? `LLM (${providerLabel})`
+                              : 'Slow LLM'
                             : job.mode === 'local'
-                            ? 'Local'
+                            ? 'Lokal fallback'
                             : 'Okänt';
                       const statusLabel = formatStatusLabel(job.status);
                       return (
@@ -2750,11 +2751,21 @@ export default function BpmnFileManager() {
                               if (snap.status === 'missing') {
                                 return 'Ingen dokumentation genererad ännu.';
                               }
+                              const providerLabel =
+                                (snap as any).llmProvider === 'cloud'
+                                  ? 'ChatGPT'
+                                  : (snap as any).llmProvider === 'local'
+                                  ? 'Ollama'
+                                  : (snap as any).llmProvider === 'fallback' || snap.mode === 'local'
+                                  ? 'Lokal fallback'
+                                  : undefined;
                               const modeLabel =
                                 snap.mode === 'slow'
-                                  ? 'Slow LLM'
+                                  ? providerLabel
+                                    ? `LLM (${providerLabel})`
+                                    : 'Slow LLM'
                                   : snap.mode === 'local'
-                                  ? 'Local'
+                                  ? 'Lokal fallback'
                                   : 'Okänt läge';
                               const timeStr = snap.generatedAt
                                 ? new Date(snap.generatedAt).toLocaleString('sv-SE')
@@ -2776,11 +2787,21 @@ export default function BpmnFileManager() {
                               if (snap.status === 'missing') {
                                 return 'Inga tester genererade ännu.';
                               }
+                              const providerLabel =
+                                (snap as any).llmProvider === 'cloud'
+                                  ? 'ChatGPT'
+                                  : (snap as any).llmProvider === 'local'
+                                  ? 'Ollama'
+                                  : (snap as any).llmProvider === 'fallback' || snap.mode === 'local'
+                                  ? 'Lokal fallback'
+                                  : undefined;
                               const modeLabel =
                                 snap.mode === 'slow'
-                                  ? 'Slow LLM'
+                                  ? providerLabel
+                                    ? `LLM (${providerLabel})`
+                                    : 'Slow LLM'
                                   : snap.mode === 'local'
-                                  ? 'Local'
+                                  ? 'Lokal fallback'
                                   : 'Okänt läge';
                               const timeStr = snap.generatedAt
                                 ? new Date(snap.generatedAt).toLocaleString('sv-SE')
@@ -2827,11 +2848,21 @@ export default function BpmnFileManager() {
                     {file.file_type === 'bpmn' && artifactStatusByFile.get(file.file_name)?.latestJob ? (
                       (() => {
                         const latest = artifactStatusByFile.get(file.file_name)!.latestJob!;
+                        const providerLabel =
+                          (latest.result as any)?.llmProvider === 'cloud'
+                            ? 'ChatGPT'
+                            : (latest.result as any)?.llmProvider === 'local'
+                            ? 'Ollama'
+                            : (latest.result as any)?.llmProvider === 'fallback' || latest.mode === 'local'
+                            ? 'Lokal fallback'
+                            : undefined;
                         const modeLabel =
                           latest.mode === 'slow'
-                            ? 'Slow LLM'
+                            ? providerLabel
+                              ? `LLM (${providerLabel})`
+                              : 'Slow LLM'
                             : latest.mode === 'local'
-                            ? 'Local'
+                            ? 'Lokal fallback'
                             : 'Okänt';
                         const statusLabel = formatStatusLabel(latest.status);
                         const timeStr = (latest.finishedAt || latest.startedAt)

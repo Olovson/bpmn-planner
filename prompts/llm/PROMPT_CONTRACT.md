@@ -115,6 +115,24 @@ Scenario: …; Typ: Happy/Edge/Error; Beskrivning: …; Förväntat utfall: …
 - `Typ` använder alltid exakt värdena `Happy`, `Edge`, `Error`.
 - Dessa scenarier är affärsnära och används som underlag för tester, men innehåller ingen teknisk testlogik.
 
+### 3.5 Numeriska tröskelvärden
+
+I dokumentationspromptarna (Feature/Epic/Business Rule) ska **konkreta numeriska tröskelvärden** (t.ex. kreditpoäng, belopp, belåningsgrad, skuldkvot, ålder) alltid markeras som exempel.
+
+- När ett tal används som tröskel anges det med suffixet:
+
+```text
+(exempelvärde)
+```
+
+Exempel:
+
+- `Skuldkvot över 6.0 (exempelvärde)`
+- `Kreditvärdighet under 620 (exempelvärde)`
+- `Belåningsgrad över 85 % (exempelvärde)`
+
+Detta påverkar endast **textinnehållet** – JSON-strukturen och fältnamnen är oförändrade.
+
 ## 4. Testscript JSON-kontrakt
 
 `testscript_prompt.md` styr **endast** generering av testscenarier i JSON, inte HTML.
@@ -166,4 +184,3 @@ Semantisk koppling:
 - uppdatering av relevanta promptar,
 - genomgång av SECTION_RENDERERS/renderFromSchema,
 - uppdatering av tester och ev. regressionssnapshots.
-

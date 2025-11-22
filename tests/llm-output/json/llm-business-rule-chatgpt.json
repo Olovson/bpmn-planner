@@ -1,0 +1,65 @@
+```json
+{
+  "summary": "Regeln fastställer om en kund är berättigad till ett bostadslån baserat på specifika kriterier. Den riktar sig mot privatpersoner som ansöker om nya bolån och används främst i förhandsbedömningen av låneansökningar. Regeln omfattar inte företagskunder eller andra typer av lån.",
+  "inputs": [
+    "Fält: Ålder; Datakälla: Kundregister; Typ: Heltal; Obligatoriskt: Ja; Validering: 18-65; Felhantering: Avvisa ansökan.",
+    "Fält: Inkomst; Datakälla: Inkomstregister; Typ: Decimal; Obligatoriskt: Ja; Validering: >0; Felhantering: Avvisa ansökan.",
+    "Fält: Kreditvärdighet; Datakälla: Extern kreditupplysning; Typ: Heltal; Obligatoriskt: Ja; Validering: 300-850; Felhantering: Avvisa ansökan."
+  ],
+  "decisionLogic": [
+    "Beslutet baseras på en kombination av ålder, inkomst och kreditvärdighet.",
+    "Kunder under 18 eller över 65 år avvisas automatiskt.",
+    "En inkomst under en viss tröskel resulterar i avslag.",
+    "Kreditvärdighet under 600 leder till avslag.",
+    "Regeln implementeras i en DMN-tabell för att säkerställa konsekventa beslut."
+  ],
+  "outputs": [
+    "Outputtyp: Beslut; Typ: APPROVE/DECLINE; Effekt: Godkännande eller avslag av låneansökan; Loggning: Beslut loggas för revision.",
+    "Outputtyp: Flaggor; Typ: Hög risk; Effekt: Indikerar potentiella risker; Loggning: Riskflagga loggas.",
+    "Outputtyp: Meddelande; Typ: Text; Effekt: Informerar kunden om beslutet; Loggning: Kundmeddelande loggas."
+  ],
+  "businessRulesPolicy": [
+    "Regeln stödjer principen om ansvarsfull kreditgivning.",
+    "Följer interna riktlinjer för skuldkvotstak och belåningsgrad.",
+    "Uppfyller krav enligt konsumentkreditlagen.",
+    "Säkerställer att kunder uppfyller minimikrav för kreditvärdighet.",
+    "Bidrar till att minska risken för kreditförluster."
+  ],
+  "scenarios": [
+    {
+      "id": "BR1",
+      "name": "Standardansökan",
+      "type": "Happy",
+      "input": "Kund är 30 år, har en inkomst på 500,000 SEK och en kreditvärdighet på 700.",
+      "outcome": "Ansökan godkänns."
+    },
+    {
+      "id": "BR2",
+      "name": "Ung kund",
+      "type": "Edge",
+      "input": "Kund är 17 år, har en inkomst på 200,000 SEK och en kreditvärdighet på 650.",
+      "outcome": "Ansökan avslås på grund av ålder."
+    },
+    {
+      "id": "BR3",
+      "name": "Låg kreditvärdighet",
+      "type": "Error",
+      "input": "Kund är 40 år, har en inkomst på 300,000 SEK och en kreditvärdighet på 550.",
+      "outcome": "Ansökan avslås på grund av låg kreditvärdighet."
+    }
+  ],
+  "testDescription": "Scenarierna mappas mot automatiska tester för att säkerställa korrekt funktionalitet. Scenario-ID och namn används i testfiler och testnamn för spårbarhet.",
+  "implementationNotes": [
+    "Regeln implementeras i en DMN-tabell för att möjliggöra enkel uppdatering av beslutslogik.",
+    "Exponeras via en intern beslutstjänst som hanterar låneansökningar.",
+    "Kräver realtidsuppdatering av kund- och inkomstdata för korrekt beslut.",
+    "Beroende av externa kreditupplysningsdata för att bedöma kreditvärdighet."
+  ],
+  "relatedItems": [
+    "Relaterad regel: Kreditvärdighetsbedömning.",
+    "Subprocess: Förhandsbedömning av låneansökan.",
+    "Övergripande dokumentation: Kreditpolicy-dokumentation.",
+    "Relaterad regel: Inkomstverifiering."
+  ]
+}
+```

@@ -1,8 +1,8 @@
 /**
  * LLM Debug View
  * 
- * Enkel intern vy för att se senaste LLM-anrop och vilken provider som använts.
- * Främst för utvecklare för att förstå hur lokal vs cloud beter sig.
+ * Enkel intern vy för att se senaste LLM-anrop och vilken provider som använts
+ * (ChatGPT som moln-LLM och Ollama som lokal LLM).
  */
 
 import { useLlmEvents, useLlmStats } from '@/hooks/useLlmEvents';
@@ -54,11 +54,11 @@ export function LlmDebugView() {
             </div>
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <div className="text-sm text-muted-foreground">Cloud</div>
+                <div className="text-sm text-muted-foreground">ChatGPT (moln)</div>
                 <div className="text-xl font-semibold">{stats.byProvider.cloud}</div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Local</div>
+                <div className="text-sm text-muted-foreground">Ollama (lokal)</div>
                 <div className="text-xl font-semibold">{stats.byProvider.local}</div>
               </div>
               <div>
@@ -176,4 +176,3 @@ export function LlmDebugView() {
     </div>
   );
 }
-

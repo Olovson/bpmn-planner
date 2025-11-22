@@ -17,7 +17,7 @@ const DocViewer = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generationSource, setGenerationSource] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'local' | 'slow' | 'auto'>('auto');
+  const [viewMode, setViewMode] = useState<'local' | 'chatgpt' | 'ollama' | 'auto'>('auto');
   const decoded = docId ? decodeURIComponent(docId) : '';
   const sanitizeDocId = (value: string) => value.replace(/[^a-zA-Z0-9/_-]/g, '');
   const rawSegments = decoded.split('/').filter(Boolean);
@@ -36,10 +36,17 @@ const DocViewer = () => {
     : '';
   const formatGenerationSource = () => {
     if (!generationSource) return 'Okänt (äldre dokument)';
-    if (generationSource === 'local') return 'Lokala mallar (utan LLM)';
+    if (generationSource === 'local' || generationSource === 'local-fallback') {
+      return 'Lokal fallback (utan LLM)';
+    }
+    if (generationSource === 'llm-slow-chatgpt') {
+      return 'LLM (ChatGPT)';
+    }
+    if (generationSource === 'llm-slow-ollama') {
+      return 'LLM (Ollama)';
+    }
     if (generationSource.startsWith('llm')) {
-      const mode = generationSource.replace('llm', '').replace(/^-/, '') || 'standard';
-      return `LLM (${mode})`;
+      return 'LLM (okänt läge)';
     }
     return generationSource;
   };
@@ -47,13 +54,18 @@ const DocViewer = () => {
   const resolveModeFolder = () => {
     if (viewMode === 'auto') {
       if (!generationSource) return null;
-      if (generationSource === 'local') return 'local';
+      if (generationSource === 'local' || generationSource === 'local-fallback') return 'local';
+      if (generationSource === 'llm-slow-chatgpt') return 'slow/chatgpt';
+      if (generationSource === 'llm-slow-ollama') return 'slow/ollama';
       if (generationSource.startsWith('llm-slow')) return 'slow';
       // Legacy: llm-fast behandlas som slow
       if (generationSource.startsWith('llm-fast')) return 'slow';
       return null;
     }
-    return viewMode;
+    if (viewMode === 'local') return 'local';
+    if (viewMode === 'chatgpt') return 'slow/chatgpt';
+    if (viewMode === 'ollama') return 'slow/ollama';
+    return null;
   };
 
   useEffect(() => {
@@ -68,11 +80,16 @@ const DocViewer = () => {
         }
 
         const modeFolder = resolveModeFolder();
-        const docPath =
-          modeFolder != null ? `docs/${modeFolder}/${safeDocId}.html` : `docs/${safeDocId}.html`;
-        const tryPaths = modeFolder != null
-          ? [`docs/${modeFolder}/${safeDocId}.html`, `docs/${safeDocId}.html`]
-          : [`docs/${safeDocId}.html`];
+        const tryPaths: string[] = [];
+        if (modeFolder) {
+          tryPaths.push(`docs/${modeFolder}/${safeDocId}.html`);
+          // Fallback till generiska LLM-/legacy-sökvägar
+          if (modeFolder.startsWith('slow/')) {
+            tryPaths.push(`docs/slow/${safeDocId}.html`);
+          }
+        }
+        // Sista fallback: legacy utan modesubkatalog
+        tryPaths.push(`docs/${safeDocId}.html`);
 
         let rawHtml: string | null = null;
         for (const path of tryPaths) {
@@ -155,18 +172,33 @@ const DocViewer = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex rounded-md border bg-muted/40 p-0.5 text-xs">
-                {(['local', 'slow'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    className={`px-2 py-1 rounded-sm ${
-                      viewMode === mode ? 'bg-background shadow-sm' : 'text-muted-foreground'
-                    }`}
-                    onClick={() => setViewMode(mode)}
-                  >
-                    {mode === 'local' ? 'Local' : 'Slow LLM'}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded-sm ${
+                    viewMode === 'local' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                  }`}
+                  onClick={() => setViewMode('local')}
+                >
+                  Lokal fallback
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded-sm ${
+                    viewMode === 'chatgpt' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                  }`}
+                  onClick={() => setViewMode('chatgpt')}
+                >
+                  ChatGPT
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded-sm ${
+                    viewMode === 'ollama' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                  }`}
+                  onClick={() => setViewMode('ollama')}
+                >
+                  Ollama
+                </button>
               </div>
             </div>
             <Button variant="outline" onClick={() => navigate(-1)} className="gap-2 shrink-0">

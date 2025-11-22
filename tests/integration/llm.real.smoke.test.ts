@@ -61,9 +61,9 @@ if (!isLlmEnabled()) {
 
     const body = `
     <section class="doc-section">
-      <h2>Cloud-LLM kunde inte nås</h2>
+      <h2>ChatGPT (moln-LLM) kunde inte nås</h2>
       <p>ChatGPT-genereringen misslyckades p.g.a. nätverksfel eller anslutningsproblem.</p>
-      <p>Detta dokument är endast en placeholder. Se local-LLM-varianten för faktisk output.</p>
+      <p>Detta dokument är endast en placeholder. Se Ollama-varianten (lokal LLM) för faktisk output.</p>
     </section>
     `;
 
@@ -80,12 +80,12 @@ if (!isLlmEnabled()) {
     const body = `
     <section class="doc-section">
       <div class="llm-fallback-local-note">
-        Denna version skulle genereras av lokal LLM (Llama), men det uppstod ett fel.
+        Denna version skulle genereras av lokal LLM (Ollama), men det uppstod ett fel.
       </div>
-      <h2>Local-LLM kunde inte användas</h2>
+      <h2>Lokal LLM (Ollama) kunde inte användas</h2>
       <p>Den lokala LLM-modellen (Ollama) kunde inte nås eller saknas:</p>
       <div class="llm-fallback-details">Orsak: ${escapeHtml(message)}</div>
-      <p>Detta dokument är endast en placeholder. Se cloud-LLM-varianten för faktisk output.</p>
+      <p>Detta dokument är endast en placeholder. Se ChatGPT-varianten (moln-LLM) för faktisk output.</p>
     </section>
     `;
 
@@ -100,7 +100,7 @@ if (!isLlmEnabled()) {
     const details =
       error instanceof Error ? error.message : typeof error === 'string' ? error : String(error);
     const payload = {
-      error: provider === 'cloud' ? 'Cloud LLM connection failed' : 'Local LLM unavailable',
+      error: provider === 'cloud' ? 'ChatGPT (moln-LLM) connection failed' : 'Lokal LLM (Ollama) unavailable',
       provider,
       details,
       timestamp: new Date().toISOString(),
