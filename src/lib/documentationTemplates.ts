@@ -1,7 +1,11 @@
 import { NodeDocumentationContext } from './documentationContext';
 import { getNodeDocViewerPath } from './nodeArtifactPaths';
 import { mapFeatureGoalLlmToSections } from './featureGoalLlmMapper';
-import type { FeatureGoalLlmSections } from './featureGoalLlmTypes';
+import type { FeatureGoalDocModel } from './featureGoalLlmTypes';
+import type { EpicDocModel } from './epicDocTypes';
+import { mapEpicLlmToSections } from './epicLlmMapper';
+import type { BusinessRuleDocModel } from './businessRuleDocTypes';
+import { mapBusinessRuleLlmToSections } from './businessRuleLlmMapper';
 
 export interface TemplateLinks {
   bpmnViewerLink?: string;
@@ -104,22 +108,31 @@ interface SectionRendererContext {
   links: TemplateLinks;
 }
 
-const SECTION_RENDERERS: Partial<Record<DocSectionId, (ctx: SectionRendererContext) => string>> = {
-  // I detta steg renderar vi hela dokument-body via title-metadata-sektionen
-  // per template. Övriga sektioner kan successivt brytas ut vid behov.
-  'title-metadata': (ctx) => {
-    switch (ctx.templateId) {
-      case 'feature-goal':
-        return buildFeatureGoalDocBody(ctx.context, ctx.links);
-      case 'epic':
-        return buildEpicDocBody(ctx.context, ctx.links);
-      case 'business-rule':
-        return buildBusinessRuleDocBody(ctx.context, ctx.links);
-      default:
-        return '';
-    }
-  },
-};
+const SECTION_RENDERERS: Partial<Record<DocSectionId, (ctx: SectionRendererContext) => string>> =
+  {
+    // I detta steg renderar vi hela dokument-body via title-metadata-sektionen
+    // per template. Övriga sektioner kan successivt brytas ut vid behov.
+    'title-metadata': (ctx) => {
+      switch (ctx.templateId) {
+        case 'feature-goal':
+          return buildFeatureGoalDocHtmlFromModel(
+            ctx.context,
+            ctx.links,
+            buildFeatureGoalDocModelFromContext(ctx.context),
+          );
+        case 'epic':
+          return buildEpicDocHtmlFromModel(
+            ctx.context,
+            ctx.links,
+            buildEpicDocModelFromContext(ctx.context),
+          );
+        case 'business-rule':
+          return buildBusinessRuleDocBody(ctx.context, ctx.links);
+        default:
+          return '';
+      }
+    },
+  };
 
 let USE_SCHEMA_RENDERING = true;
 
@@ -394,10 +407,9 @@ const inferTeamForNode = (type: NodeDocumentationContext['node']['type']) => {
   }
 };
 
-function buildFeatureGoalDocBody(
+function buildFeatureGoalDocModelFromContext(
   context: NodeDocumentationContext,
-  links: TemplateLinks,
-): string {
+): FeatureGoalDocModel {
   const node = context.node;
   const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
   const upstreamNode = context.parentChain.length
@@ -408,14 +420,10 @@ function buildFeatureGoalDocBody(
     : undefined;
   const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
   const downstreamName = downstreamNode ? formatNodeName(downstreamNode) : 'Nedströms leverans';
-  const inputNodes = context.parentChain.slice(-2);
-  const outputNodes = context.childNodes.slice(0, 3);
   const descendantEpics = context.childNodes.filter((child) =>
     ['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'].includes(child.type),
   );
   const initiative = node.bpmnFile.replace('.bpmn', '');
-  const owner = 'Produktägare Kredit / Risk & Policy';
-  const versionLabel = '1.0 (exempel) – uppdateras vid ändring';
 
   const scopePoints = [
     `Feature Goal <strong>${nodeName}</strong> binder ihop ${upstreamName} med ${downstreamName} i initiativet ${initiative}.`,
@@ -470,6 +478,152 @@ function buildFeatureGoalDocBody(
     },
   ];
 
+  return {
+    summary:
+      `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet. ` +
+      'Feature Goalet säkerställer att rätt data, regler och interaktioner finns på plats för att fatta välgrundade kreditbeslut.',
+    scopeIncluded: scopePoints,
+    scopeExcluded: boundaries,
+    epics: epicRows,
+    flowSteps,
+    dependencies: dependencyBullets,
+    scenarios: scenarioRows,
+    testDescription: '',
+    implementationNotes: [],
+    relatedItems: [],
+  };
+}
+
+function buildFeatureGoalDocHtmlFromModel(
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  model: FeatureGoalDocModel,
+): string {
+  const node = context.node;
+  const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
+  const upstreamNode = context.parentChain.length
+    ? context.parentChain[context.parentChain.length - 1]
+    : undefined;
+  const downstreamNode = context.childNodes.length
+    ? context.childNodes[context.childNodes.length - 1]
+    : undefined;
+  const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
+  const downstreamName = downstreamNode ? formatNodeName(downstreamNode) : 'Nedströms leverans';
+  const inputNodes = context.parentChain.slice(-2);
+  const descendantEpics = context.childNodes.filter((child) =>
+    ['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'].includes(child.type),
+  );
+  const initiative = node.bpmnFile.replace('.bpmn', '');
+  const owner = 'Produktägare Kredit / Risk & Policy';
+  const versionLabel = model.summary
+    ? '1.0 (LLM-validerad) – uppdateras vid ändring'
+    : '1.0 (exempel) – uppdateras vid ändring';
+
+  const epicRows =
+    model.epics.length > 0
+      ? model.epics
+      : descendantEpics.slice(0, 6).map((epic, index) => ({
+          id: `E${index + 1}`,
+          name: formatNodeName(epic),
+          description: `Delsteg som bidrar till att ${nodeName.toLowerCase()} uppnås.`,
+          team: inferTeamForNode(epic.type),
+        }));
+
+  const flowSteps =
+    model.flowSteps.length > 0
+      ? model.flowSteps
+      : [
+          `Initiativet startar i ${upstreamName} när en kreditprocess initieras.`,
+          `${nodeName} samlar in, koordinerar och kvalitetssäkrar data och beslut från ingående epics.`,
+          'Regler och policystöd appliceras på ett konsekvent sätt för att möjliggöra välgrundade kreditbeslut.',
+          `Resultat och status förs vidare till ${downstreamName} och vidare in i efterföljande processer.`,
+        ];
+
+  const dependencies =
+    model.dependencies.length > 0
+      ? model.dependencies
+      : [
+          'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
+          'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
+          'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
+        ];
+
+  const scenarioRows =
+    model.scenarios.length > 0
+      ? model.scenarios
+      : [
+          {
+            id: 'S1',
+            name: 'Normalflöde – komplett ansökan',
+            type: 'Happy',
+            outcome: 'Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.',
+          },
+          {
+            id: 'S2',
+            name: 'Ofullständig information',
+            type: 'Edge',
+            outcome:
+              'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
+          },
+          {
+            id: 'S3',
+            name: 'Hög riskprofil',
+            type: 'Edge',
+            outcome: 'Ärendet flaggas för extra granskning eller avslag enligt policy.',
+          },
+        ];
+
+  const summaryText =
+    model.summary ||
+    `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
+
+  const scopeIncluded = model.scopeIncluded.length ? model.scopeIncluded : [];
+  const scopeExcluded = model.scopeExcluded.length ? model.scopeExcluded : [];
+
+  const scopeBullets: string[] = [];
+  if (scopeIncluded.length) {
+    scopeBullets.push(`Ingår: ${scopeIncluded.join('; ')}`);
+  }
+  if (scopeExcluded.length) {
+    scopeBullets.push(`Ingår inte: ${scopeExcluded.join('; ')}`);
+  }
+  if (!scopeBullets.length) {
+    scopeBullets.push(
+      'Ingår: end-to-end-flöde för det specifika kreditinitiativet.',
+      'Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.',
+      'Ingår inte: tekniska implementationer i underliggande system – dessa dokumenteras separat.',
+    );
+  }
+
+  const implementationNotes =
+    model.implementationNotes.length > 0
+      ? model.implementationNotes
+      : [
+          'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
+          'Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.',
+          'Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.',
+          'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
+        ];
+
+  const relatedItems =
+    model.relatedItems.length > 0
+      ? model.relatedItems
+      : [
+          links.bpmnViewerLink
+            ? `Relaterad subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
+            : `Relaterad subprocess: BPMN-fil ${node.bpmnFile}`,
+          links.dmnLink
+            ? `Relaterade regler/DMN: <a href="${links.dmnLink}">${links.dmnLink.split('/').pop()}</a>`
+            : 'Relaterade regler/DMN dokumenteras per Business Rule.',
+          inputNodes.length
+            ? `Föregående noder: ${buildNodeNameList(inputNodes)}`
+            : 'Föregående noder: initierande steg i processen.',
+        ];
+
+  const testDescription =
+    model.testDescription ||
+    'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
+
   return `
     <section class="doc-section">
       <span class="doc-badge">Feature Goal</span>
@@ -485,14 +639,12 @@ function buildFeatureGoalDocBody(
 
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
-      <p>${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.</p>
-      <p>Feature Goalet säkerställer att rätt data, regler och interaktioner finns på plats för att fatta välgrundade kreditbeslut.</p>
-      ${renderList(scopePoints)}
+      <p>${summaryText}</p>
     </section>
 
     <section class="doc-section">
       <h2>Omfattning &amp; Avgränsningar</h2>
-      ${renderList(boundaries)}
+      ${renderList(scopeBullets)}
     </section>
 
     <section class="doc-section">
@@ -532,7 +684,7 @@ function buildFeatureGoalDocBody(
 
     <section class="doc-section">
       <h2>Kritiska beroenden</h2>
-      ${renderList(dependencyBullets)}
+      ${renderList(dependencies)}
     </section>
 
     <section class="doc-section">
@@ -561,11 +713,11 @@ function buildFeatureGoalDocBody(
     <section class="doc-section">
       <h2>Koppling till automatiska tester</h2>
       <p>
-        Scenarion ovan mappas mot automatiska tester i:
+        ${testDescription}
         ${
           links.testLink
-            ? `<code>${links.testLink}</code>`
-            : '<span class="muted">Testfil länkas via node_test_links</span>'
+            ? `<br />Testfil: <code>${links.testLink}</code>`
+            : '<br /><span class="muted">Testfil länkas via node_test_links</span>'
         }
         <br />
         Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
@@ -574,27 +726,12 @@ function buildFeatureGoalDocBody(
 
     <section class="doc-section">
       <h2>Implementation Notes (för dev)</h2>
-      ${renderList([
-        'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
-        'Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.',
-        'Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.',
-        'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
-      ])}
+      ${renderList(implementationNotes)}
     </section>
 
     <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
-      ${renderList([
-        links.bpmnViewerLink
-          ? `Relaterad subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
-          : `Relaterad subprocess: BPMN-fil ${node.bpmnFile}`,
-        links.dmnLink
-          ? `Relaterade regler/DMN: <a href="${links.dmnLink}">${links.dmnLink.split('/').pop()}</a>`
-          : 'Relaterade regler/DMN dokumenteras per Business Rule.',
-        inputNodes.length
-          ? `Föregående noder: ${buildNodeNameList(inputNodes)}`
-          : 'Föregående noder: initierande steg i processen.',
-      ])}
+      ${renderList(relatedItems)}
     </section>
   `;
 }
@@ -740,12 +877,11 @@ function buildFeatureGoalLlmDocBody(
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
       <p>${summaryText}</p>
-      ${renderList(scopeBullets)}
     </section>
 
     <section class="doc-section">
       <h2>Omfattning &amp; Avgränsningar</h2>
-      ${renderList([])}
+      ${renderList(scopeBullets)}
     </section>
 
     <section class="doc-section">
@@ -840,10 +976,9 @@ function buildFeatureGoalLlmDocBody(
   `;
 }
 
-function buildEpicDocBody(
+function buildEpicDocModelFromContext(
   context: NodeDocumentationContext,
-  links: TemplateLinks,
-): string {
+): EpicDocModel {
   const node = context.node;
   const nodeName = node.name || node.bpmnElementId || 'Epic';
   const previousNode = context.parentChain.length
@@ -967,6 +1102,227 @@ function buildEpicDocBody(
     ? relatedNodes.map((n) => `${formatNodeName(n)} (${n.type})`)
     : ['Inga närliggande noder identifierade.'];
 
+  const summary =
+    `${nodeName} är ett delsteg i kreditflödet som säkerställer att rätt data, regler och interaktioner hanteras innan processen går vidare. ` +
+    'Epiken bidrar till en spårbar och begriplig kreditprocess för både kund och interna användare.';
+
+  const prerequisites = triggerBullets;
+
+  const inputs = [
+    isUserTask
+      ? `Input: användarens/handläggarens uppgifter och val från ${upstreamName}.`
+      : `Input: data och status från föregående systemsteg (${upstreamName}).`,
+  ];
+
+  const flowSteps = (isUserTask ? highLevelStepsUser : highLevelStepsService).slice();
+
+  const interactions = isUserTask ? interactionBulletsUser : interactionBulletsService;
+
+  const dataContracts: string[] = [
+    `Input: ${previousNode ? formatNodeName(previousNode) : 'Ansökningsdata'} – underlag som triggar epiken.`,
+    `Output: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'} – status, flaggor och berikad data.`,
+  ];
+
+  const businessRulesPolicy = businessRuleRefs;
+
+  const scenarios: EpicScenario[] = [
+    {
+      id: 'EPIC-S1',
+      name: 'Happy path',
+      type: 'Happy',
+      description: testRows[0].description,
+      outcome: isUserTask
+        ? 'Epiken slutförs utan avvikelser och processen går vidare till nästa steg.'
+        : 'Tjänsten exekverar utan fel och uppdaterar processen enligt förväntan.',
+    },
+    {
+      id: 'EPIC-S2',
+      name: 'Valideringsfel',
+      type: 'Edge',
+      description: testRows[1].description,
+      outcome: 'Fel visas/loggas och användaren eller tjänsten kan hantera och rätta indata innan processen går vidare.',
+    },
+    {
+      id: 'EPIC-S3',
+      name: 'Tekniskt fel / beroende nere',
+      type: 'Error',
+      description: testRows[2].description,
+      outcome: 'Ärendet hanteras enligt felstrategi utan att data tappas, och fel loggas för uppföljning.',
+    },
+  ];
+
+  const testDescription =
+    'Scenarierna ovan bör mappas till automatiska tester där scenarionas namn används i testbeskrivningar.';
+
+  const implementationNotes = [
+    `Primära API:er/tjänster: t.ex. POST /api/${apiSlug} för exekvering.`,
+    'Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll.',
+    'Eventuella externa beroenden (kreditupplysning, folkbokföring, engagemangsdata) hanteras via plattformens integrationslager.',
+    'Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.',
+  ];
+
+  const relatedItems = [
+    relatedList.length ? `Närliggande noder: ${relatedList.join(', ')}` : 'Inga närliggande noder identifierade.',
+  ];
+
+  return {
+    summary,
+    prerequisites,
+    inputs,
+    flowSteps,
+    interactions,
+    dataContracts,
+    businessRulesPolicy,
+    scenarios,
+    testDescription,
+    implementationNotes,
+    relatedItems,
+  };
+}
+
+function buildEpicDocHtmlFromModel(
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  model: EpicDocModel,
+): string {
+  const node = context.node;
+  const nodeName = node.name || node.bpmnElementId || 'Epic';
+  const previousNode = context.parentChain.length
+    ? context.parentChain[context.parentChain.length - 1]
+    : undefined;
+  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
+  const relatedNodes = [
+    previousNode,
+    ...context.childNodes.slice(0, 3),
+    ...context.siblingNodes.slice(0, 2),
+  ].filter(Boolean) as NodeDocumentationContext['node'][];
+  const apiSlug = slugify(nodeName);
+  const upstreamName = previousNode ? formatNodeName(previousNode) : 'Processstart';
+  const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg';
+  const processStep = node.bpmnFile.replace('.bpmn', '');
+  const isUserTask = node.type === 'userTask';
+  const isServiceTask = node.type === 'serviceTask';
+  const swimlaneOwner = isUserTask
+    ? 'Kund / Rådgivare'
+    : isServiceTask
+    ? 'Backend & Integration'
+    : inferTeamForNode(node.type);
+  const versionLabel = '1.0 (exempel) – uppdateras vid ändring';
+  const ownerLabel = 'Produktteam Kredit / Arkitektur';
+
+  const summaryText =
+    model.summary ||
+    `${nodeName} är ett delsteg i kreditflödet som säkerställer att rätt data, regler och interaktioner hanteras innan processen går vidare.`;
+
+  const prerequisites = model.prerequisites.length
+    ? model.prerequisites
+    : [
+        previousNode
+          ? `Triggas normalt efter <strong>${formatNodeName(previousNode)}</strong>.`
+          : 'Triggas när föregående processsteg är klart.',
+        'Förutsätter att grundläggande kund- och ansökningsdata är validerade.',
+        'Eventuella föregående KYC/AML- och identitetskontroller ska vara godkända.',
+      ];
+
+  const inputs = model.inputs.length
+    ? model.inputs
+    : [
+        isUserTask
+          ? `Input: användarens/handläggarens uppgifter och val från ${upstreamName}.`
+          : `Input: data och status från föregående systemsteg (${upstreamName}).`,
+      ];
+
+  const flowSteps = model.flowSteps.length
+    ? model.flowSteps
+    : isUserTask
+    ? [
+        'Användaren öppnar vyn och ser sammanfattad ansöknings- och kundinformation.',
+        'Formulär eller val presenteras baserat på föregående steg och riskprofil.',
+        'Användaren fyller i eller bekräftar uppgifter och skickar vidare.',
+        'Systemet validerar indata och uppdaterar processens status samt triggar nästa steg.',
+      ]
+    : [
+        'Processmotorn triggar tjänsten med relevant ansöknings- och kunddata.',
+        'Tjänsten anropar interna och/eller externa system för att hämta eller berika data.',
+        'Svar kontrolleras mot förväntade format och felkoder hanteras på övergripande nivå.',
+        'Resultatet lagras och vidarebefordras till nästa BPMN-nod.',
+      ];
+
+  const interactions = model.interactions.length
+    ? model.interactions
+    : isUserTask
+    ? [
+        'Kanal: web/app eller internt handläggargränssnitt beroende på roll.',
+        'UI ska vara förklarande, med tydlig koppling till kreditbeslut och nästa steg.',
+        'Felmeddelanden ska vara begripliga och vägleda till rätt åtgärd.',
+      ]
+    : [
+        `Primära API:er: t.ex. POST /api/${apiSlug} för exekvering.`,
+        'Tjänsten ska hantera timeouts och felkoder från beroenden på ett kontrollerat sätt (retry/circuit breaker på plattformsnivå).',
+        'Respons ska vara deterministisk och innehålla tydliga statusfält som går att logga och följa upp.',
+      ];
+
+  const dataContracts = model.dataContracts.length
+    ? model.dataContracts
+    : [
+        `Input: ${previousNode ? formatNodeName(previousNode) : 'Ansökningsdata'} – underlag som triggar epiken.`,
+        `Output: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'} – status, flaggor och berikad data.`,
+      ];
+
+  const businessRulesPolicy = model.businessRulesPolicy.length
+    ? model.businessRulesPolicy
+    : [
+        'Regeln använder eller påverkas av relevanta Business Rule / DMN-beslut (se separat dokumentation).',
+        'Policykrav för risk, skuldsättning och produktvillkor ska vara spårbara via kopplade regler.',
+        'Eventuella AML/KYC-krav hanteras i samverkan med dedikerade kontrollnoder.',
+      ];
+
+  const scenarios =
+    model.scenarios.length > 0
+      ? model.scenarios
+      : [
+          {
+            id: 'EPIC-S1',
+            name: 'Happy path',
+            type: 'Happy',
+            description: isUserTask
+              ? 'Kunden/handläggaren fyller i korrekta uppgifter och flödet går vidare utan avvikelser.'
+              : 'Tjänsten får kompletta data, alla beroenden svarar OK och flödet går vidare.',
+            outcome:
+              'Epiken slutförs utan avvikelser och processen går vidare till nästa steg.',
+          },
+        ];
+
+  const testDescription =
+    model.testDescription ||
+    'Scenarierna ovan bör mappas till automatiska tester där scenarionas namn används i testbeskrivningar.';
+
+  const implementationNotes =
+    model.implementationNotes.length > 0
+      ? model.implementationNotes
+      : [
+          `Primära API:er/tjänster: t.ex. POST /api/${apiSlug} för exekvering.`,
+          'Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll.',
+          'Eventuella externa beroenden (kreditupplysning, folkbokföring, engagemangsdata) hanteras via plattformens integrationslager.',
+          'Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.',
+        ];
+
+  const relatedList = relatedNodes.length
+    ? relatedNodes.map((n) => `${formatNodeName(n)} (${n.type})`)
+    : ['Inga närliggande noder identifierade.'];
+
+  const relatedItems =
+    model.relatedItems.length > 0
+      ? model.relatedItems
+      : [
+          relatedList.length
+            ? `Närliggande noder: ${relatedList.join(', ')}`
+            : 'Inga närliggande noder identifierade.',
+          links.bpmnViewerLink
+            ? `Visa processen: <a href="${links.bpmnViewerLink}">BPMN viewer</a>`
+            : `BPMN-fil: ${node.bpmnFile}`,
+        ];
+
   return `
     <section class="doc-section">
       <span class="doc-badge">Epic</span>
@@ -983,40 +1339,35 @@ function buildEpicDocBody(
 
     <section class="doc-section">
       <h2>Syfte &amp; Scope</h2>
-      <p>${nodeName} är ett delsteg i kreditflödet som säkerställer att rätt data, regler och interaktioner hanteras innan processen går vidare.</p>
-      <p>Epiken bidrar till en spårbar och begriplig kreditprocess för både kund och interna användare.</p>
-      ${renderList(scopeBullets)}
+      <p>${summaryText}</p>
+      ${renderList(model.inputs)}
     </section>
 
     <section class="doc-section">
       <h2>Trigger &amp; Förutsättningar</h2>
-      ${renderList(triggerBullets)}
+      ${renderList(prerequisites)}
     </section>
 
     <section class="doc-section">
       <h2>Huvudflöde (High-level scenario)</h2>
       <ol>
-        ${(
-          isUserTask ? highLevelStepsUser : highLevelStepsService
-        )
-          .map((step) => `<li>${step}</li>`)
-          .join('')}
+        ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
     </section>
 
     <section class="doc-section">
       <h2>Interaktioner &amp; Kanaler</h2>
-      ${renderList(isUserTask ? interactionBulletsUser : interactionBulletsService)}
+      ${renderList(interactions)}
     </section>
 
     <section class="doc-section">
       <h2>Data &amp; Kontrakt</h2>
-      ${dataTable}
+      ${renderList(dataContracts)}
     </section>
 
     <section class="doc-section">
       <h2>Affärsregler &amp; Policykoppling</h2>
-      ${renderList(businessRuleRefs)}
+      ${renderList(businessRulesPolicy)}
     </section>
 
     <section class="doc-section">
@@ -1024,16 +1375,20 @@ function buildEpicDocBody(
       <p class="muted">Scenarierna nedan är affärsnära och ska mappas till automatiska tester.</p>
       <table>
         <tr>
+          <th>Scenario-ID</th>
           <th>Scenario</th>
-          <th>Beskrivning</th>
+          <th>Typ</th>
+          <th>Förväntat utfall</th>
           <th>Automatiskt test</th>
         </tr>
-        ${testRows
+        ${scenarios
           .map(
             (row) => `
         <tr>
+          <td>${row.id}</td>
           <td>${row.name}</td>
-          <td>${row.description}</td>
+          <td>${row.type}</td>
+          <td>${row.outcome}</td>
           <td>${
             links.testLink
               ? `<code>${links.testLink}</code>`
@@ -1047,22 +1402,12 @@ function buildEpicDocBody(
 
     <section class="doc-section">
       <h2>Implementation Notes (för dev/test)</h2>
-      ${renderList([
-        `Primära API:er/tjänster: t.ex. POST /api/${apiSlug} för exekvering.`,
-        'Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll.',
-        'Eventuella externa beroenden (kreditupplysning, folkbokföring, engagemangsdata) hanteras via plattformens integrationslager.',
-        'Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.',
-      ])}
+      ${renderList(implementationNotes)}
     </section>
 
     <section class="doc-section">
       <h2>Relaterade steg &amp; artefakter</h2>
-      ${renderList([
-        relatedList.length ? `Närliggande noder: ${relatedList.join(', ')}` : 'Inga närliggande noder identifierade.',
-        links.bpmnViewerLink
-          ? `Visa processen: <a href="${links.bpmnViewerLink}">BPMN viewer</a>`
-          : `BPMN-fil: ${node.bpmnFile}`,
-      ])}
+      ${renderList(relatedItems)}
     </section>
   `;
 }
@@ -1138,7 +1483,7 @@ function buildBusinessRuleDocBody(
     </section>
 
     <section class="doc-section">
-      <h2>Sammanfattning</h2>
+      <h2>Sammanfattning &amp; scope</h2>
       <p>${nodeName} kombinerar flera risk- och kreditparametrar för att avgöra om en ansökan kan godkännas, ska skickas till manuell granskning eller avslås.</p>
       <p>Regeln säkerställer konsekvent tillämpning av kreditpolicy och riskmandat för målgrupperna.</p>
       ${renderList(scopeBullets)}
@@ -1287,7 +1632,7 @@ export const renderFeatureGoalDocFromLlm = (
   const node = context.node;
   const title = node.name || node.bpmnElementId || 'Feature Goal';
   const sections = mapFeatureGoalLlmToSections(rawLlmContent);
-  const body = buildFeatureGoalLlmDocBody(context, links, sections);
+  const body = buildFeatureGoalDocHtmlFromModel(context, links, sections);
   return wrapDocument(title, body);
 };
 
@@ -1295,6 +1640,18 @@ export const renderEpicDoc = (
   context: NodeDocumentationContext,
   links: TemplateLinks,
 ) => renderDocWithSchema('epic', EPIC_DOC_SCHEMA, context, links);
+
+export const renderEpicDocFromLlm = (
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  rawLlmContent: string,
+) => {
+  const sections = mapEpicLlmToSections(rawLlmContent);
+  const body = buildEpicDocHtmlFromModel(context, links, sections);
+  const node = context.node;
+  const title = node.name || node.bpmnElementId || 'Epic';
+  return wrapDocument(title, body);
+};
 
 const renderBusinessRuleDocLegacy = (
   context: NodeDocumentationContext,
@@ -1528,3 +1885,203 @@ export const renderBusinessRuleDoc = (
   context: NodeDocumentationContext,
   links: TemplateLinks,
 ) => renderDocWithSchema('business-rule', BUSINESS_RULE_DOC_SCHEMA, context, links);
+
+function buildBusinessRuleDocHtmlFromModel(
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  model: BusinessRuleDocModel,
+): string {
+  const node = context.node;
+  const nodeName = node.name || node.bpmnElementId || 'Business Rule';
+  const upstreamNode = context.parentChain.length
+    ? context.parentChain[context.parentChain.length - 1]
+    : undefined;
+  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
+  const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
+  const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen';
+  const dmnLabel = links.dmnLink ? links.dmnLink.split('/').pop() : 'Beslutstabell';
+
+  const scopeBullets =
+    model.summary && !model.summary.includes('avgör om en ansökan ligger')
+      ? [model.summary]
+      : [
+          `${nodeName} avgör om en ansökan ligger inom bankens riktlinjer för kreditgivning.`,
+          'Regeln används för att automatisera delar av kreditbeslutet och säkerställa likabehandling.',
+          'Omfattar endast den aktuella kreditprodukten – andra produkter hanteras i separata regler.',
+        ];
+
+  const prerequisites = model.inputs.length
+    ? model.inputs
+    : [
+        upstreamNode
+          ? `Triggas normalt efter <strong>${formatNodeName(upstreamNode)}</strong>.`
+          : 'Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.',
+        'Kräver att central kund- och ansökningsdata är komplett och validerad.',
+        'Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.',
+      ];
+
+  const decisionBullets = model.decisionLogic.length
+    ? model.decisionLogic
+    : [
+        'Hög riskScore och måttlig skuldsättning ger normalt auto-approve.',
+        'Mellanrisk eller ofullständig data leder till manuell granskning.',
+        'Tydliga exklusionskriterier (t.ex. betalningsanmärkningar eller sanktionsflaggor) ger auto-decline.',
+      ];
+
+  const policySupportBullets = model.businessRulesPolicy.length
+    ? model.businessRulesPolicy
+    : [
+        'Stödjer intern kreditpolicy och mandat för respektive produkt och segment.',
+        'Bygger på dokumenterade riskramverk och beslutsmodeller.',
+        'Tar hänsyn till regulatoriska krav (t.ex. konsumentkreditlag, AML/KYC) på en övergripande nivå.',
+      ];
+
+  const scenariosRows =
+    model.scenarios.length > 0
+      ? model.scenarios
+      : [
+          {
+            id: 'BR1',
+            name: 'Standardkund med låg risk',
+            input: 'Stabil inkomst, låg skuldsättning, normal kreditdata.',
+            outcome: 'Beslut: APPROVE utan manuell granskning.',
+          },
+        ];
+
+  const testDescription =
+    model.testDescription ||
+    'Affärs-scenarierna ovan ska mappas mot automatiska tester där respektive scenario-ID och namn återanvänds i testfil och testbeskrivning.';
+
+  const implementationNotes =
+    model.implementationNotes.length > 0
+      ? model.implementationNotes
+      : [
+          links.dmnLink
+            ? `DMN-tabell: <a href="${links.dmnLink}">${dmnLabel}</a>`
+            : 'DMN-tabell: ej länkad – lägg till beslutstabell/DMN när den finns.',
+          `BPMN-koppling: Business Rule Task i filen ${node.bpmnFile}.`,
+          links.bpmnViewerLink
+            ? `BPMN viewer: <a href="${links.bpmnViewerLink}">Öppna noden i viewer</a>`
+            : 'BPMN viewer-länk sätts via applikationen.',
+          'API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).',
+          'Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.',
+        ];
+
+  const relatedItems =
+    model.relatedItems.length > 0
+      ? model.relatedItems
+      : [
+          links.dmnLink
+            ? `Relaterad DMN-modell: <a href="${links.dmnLink}">${dmnLabel}</a>`
+            : 'Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell/DMN när den finns.',
+          links.bpmnViewerLink
+            ? `Relaterad BPMN-subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
+            : 'Subprocess-länk sätts via BPMN viewer.',
+          context.parentChain.length
+            ? `Överordnad nod: ${buildNodeLink(
+                context.parentChain[context.parentChain.length - 1],
+              )}`
+            : 'Överordnad nod: Rotprocess',
+        ];
+
+  return `
+    <section class="doc-section">
+      <span class="doc-badge">Business Rule / DMN</span>
+      <h1>${nodeName}</h1>
+      <ul>
+        <li><strong>Regel-ID:</strong> ${node.bpmnElementId}</li>
+        <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Risk &amp; Kreditpolicy</li>
+        <li><strong>Kreditprocess-steg:</strong> ${node.bpmnFile.replace('.bpmn', '')}</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Sammanfattning &amp; scope</h2>
+      ${renderList(scopeBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Förutsättningar &amp; kontext</h2>
+      ${renderList(prerequisites)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs &amp; datakällor</h2>
+      ${renderList(model.inputs)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Beslutslogik (DMN / regler)</h2>
+      ${renderList(decisionBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Output &amp; effekter</h2>
+      ${renderList(model.outputs.length ? model.outputs : [
+        'Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.',
+        `Processpåverkan: fortsätter till ${downstreamName} vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE.`,
+        'Flaggor: t.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff.',
+        'Loggning: beslut, huvudparametrar och regelversion loggas för audit.',
+      ])}
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärsregler &amp; policystöd</h2>
+      ${renderList(policySupportBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
+      <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
+      <table>
+        <tr>
+          <th>Scenario-ID</th>
+          <th>Scenario</th>
+          <th>Input (kortfattat)</th>
+          <th>Förväntat beslut/flagga</th>
+          <th>Automatiskt test</th>
+        </tr>
+        ${scenariosRows
+          .map(
+            (row) => `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.name}</td>
+          <td>${row.input}</td>
+          <td>${row.outcome}</td>
+          <td>${
+            links.testLink
+              ? `<code>${links.testLink}</code>`
+              : '<span class="muted">Test mappas i node_test_links</span>'
+          }</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation &amp; integrationsnoter</h2>
+      ${renderList(implementationNotes)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade regler &amp; subprocesser</h2>
+      ${renderList(relatedItems)}
+    </section>
+  `;
+}
+
+export const renderBusinessRuleDocFromLlm = (
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  rawLlmContent: string,
+) => {
+  const sections = mapBusinessRuleLlmToSections(rawLlmContent);
+  const body = buildBusinessRuleDocHtmlFromModel(context, links, sections);
+  const node = context.node;
+  const title = node.name || node.bpmnElementId || 'Business Rule';
+  return wrapDocument(title, body);
+};

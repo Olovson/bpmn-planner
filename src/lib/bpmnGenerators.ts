@@ -8,6 +8,8 @@ import {
   renderEpicDoc,
   renderBusinessRuleDoc,
   renderFeatureGoalDocFromLlm,
+  renderEpicDocFromLlm,
+  renderBusinessRuleDocFromLlm,
   wrapLlmContentAsDocument,
   type TemplateLinks,
 } from '@/lib/documentationTemplates';
@@ -932,6 +934,21 @@ async function renderDocWithLlmFallback(
         // För Feature Goals använder vi samma HTML-layout som den lokala varianten,
         // men fyller sektionerna med LLM-innehåll via en dedikerad mapper.
         return renderFeatureGoalDocFromLlm(context, links, llmDoc);
+      }
+
+      if (docType === 'epic') {
+        // För Epics använder vi samma layout som lokalt, men fyller via EpicDocModel.
+        return renderEpicDocFromLlm(context, links, llmDoc);
+      }
+
+      if (docType === 'businessRule') {
+        // För Business Rules använder vi också en modellbaserad layout.
+        return renderBusinessRuleDocFromLlm(context, links, llmDoc);
+      }
+
+      if (docType === 'businessRule') {
+        // För Business Rules används också modellbaserad layout.
+        return renderBusinessRuleDocFromLlm(context, links, llmDoc);
       }
 
       const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;

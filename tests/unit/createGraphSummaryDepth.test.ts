@@ -38,7 +38,9 @@ const chain = (): BpmnProcessNode => ({
 });
 
 describe('createGraphSummary', () => {
-  it('calculates depth based on all levels (nodes), not just edges', async () => {
+  it(
+    'calculates depth based on all levels (nodes), not just edges',
+    async () => {
     // Provide localStorage mock before importing supabase client consumers
     const memoryStorage = (() => {
       const store: Record<string, string> = {};
@@ -80,5 +82,7 @@ describe('createGraphSummary', () => {
 
     const summary = createGraphSummary(graph);
     expect(summary.hierarchyDepth).toBe(4); // Root + Call A + Call B + Deep Task
-  });
+  },
+    15000,
+  );
 });

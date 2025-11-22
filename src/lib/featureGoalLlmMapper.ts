@@ -14,14 +14,14 @@ const splitLines = (value: string): string[] =>
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-const tryMatch = (line: string, regex: RegExp): RegExpExecArray | null => {
-  const match = regex.exec(line);
-  if (!match) return null;
-  return match;
-};
+const splitSentences = (value: string): string[] =>
+  value
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
 
-export function mapFeatureGoalLlmToSections(rawContent: string): FeatureGoalLlmSections {
-  const sections: FeatureGoalLlmSections = {
+function createEmptySections(): FeatureGoalLlmSections {
+  return {
     summary: '',
     scopeIncluded: [],
     scopeExcluded: [],
@@ -33,140 +33,285 @@ export function mapFeatureGoalLlmToSections(rawContent: string): FeatureGoalLlmS
     implementationNotes: [],
     relatedItems: [],
   };
+}
+
+function tryParseJson(rawContent: string): unknown | null {
+  if (!rawContent) return null;
+  const trimmed = rawContent.trim();
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return null;
+  const jsonSlice = trimmed.slice(start, end + 1);
+  try {
+    return JSON.parse(jsonSlice);
+  } catch {
+    return null;
+  }
+}
+
+function coerceStringArray(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === 'string' ? v.trim() : ''))
+      .filter((v) => v.length > 0);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+}
+
+function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | null {
+  const parsed = tryParseJson(rawContent);
+  if (!parsed || typeof parsed !== 'object') return null;
+
+  const obj = parsed as any;
+  const sections = createEmptySections();
+
+  if (typeof obj.summary === 'string') {
+    sections.summary = obj.summary.trim();
+  }
+
+  sections.scopeIncluded = coerceStringArray(obj.scopeIncluded);
+  sections.scopeExcluded = coerceStringArray(obj.scopeExcluded);
+
+  if (Array.isArray(obj.epics)) {
+    for (const item of obj.epics) {
+      if (!item || typeof item !== 'object') continue;
+      const epic = {
+        id:
+          typeof item.id === 'string' && item.id.trim()
+            ? item.id.trim()
+            : `E${sections.epics.length + 1}`,
+        name: typeof item.name === 'string' ? item.name.trim() : '',
+        description:
+          typeof item.description === 'string' ? item.description.trim() : '',
+        team: typeof item.team === 'string' ? item.team.trim() : '',
+      };
+      if (epic.name || epic.description || epic.team) {
+        sections.epics.push(epic);
+      }
+    }
+  }
+
+  sections.flowSteps = coerceStringArray(obj.flowSteps);
+  sections.dependencies = coerceStringArray(obj.dependencies);
+
+  if (Array.isArray(obj.scenarios)) {
+    for (const item of obj.scenarios) {
+      if (!item || typeof item !== 'object') continue;
+      const scenario = {
+        id: typeof item.id === 'string' ? item.id.trim() : '',
+        name: typeof item.name === 'string' ? item.name.trim() : '',
+        type: typeof item.type === 'string' ? item.type.trim() : '',
+        outcome: typeof item.outcome === 'string' ? item.outcome.trim() : '',
+      };
+      if (scenario.id || scenario.name || scenario.outcome) {
+        sections.scenarios.push(scenario);
+      }
+    }
+  }
+
+  if (typeof obj.testDescription === 'string') {
+    sections.testDescription = obj.testDescription.trim();
+  }
+
+  sections.implementationNotes = coerceStringArray(obj.implementationNotes);
+  sections.relatedItems = coerceStringArray(obj.relatedItems);
+
+  const hasContent =
+    sections.summary ||
+    sections.scopeIncluded.length > 0 ||
+    sections.scopeExcluded.length > 0 ||
+    sections.epics.length > 0 ||
+    sections.flowSteps.length > 0 ||
+    sections.dependencies.length > 0 ||
+    sections.scenarios.length > 0 ||
+    sections.testDescription ||
+    sections.implementationNotes.length > 0 ||
+    sections.relatedItems.length > 0;
+
+  return hasContent ? sections : null;
+}
+
+function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
+  const sections = createEmptySections();
 
   if (!rawContent || !rawContent.trim()) {
     return sections;
   }
 
   const text = stripHtmlTags(rawContent);
-  const lines = splitLines(text);
+  if (!text) {
+    return sections;
+  }
 
-  let summaryCollected = false;
-  const summaryLines: string[] = [];
+  const normalizedText = text.replace(/\s+/g, ' ').trim();
+  const lowerText = normalizedText.toLowerCase();
 
-  for (const line of lines) {
+  const firstScopeIndex = lowerText.search(/ingår( inte)?:/);
+  const firstEpicIndex = lowerText.indexOf('epic:');
+  const firstScenarioIndex = lowerText.indexOf('scenario:');
+  const firstDependencyIndex = lowerText.indexOf('beroende:');
+
+  const sectionStartCandidates = [
+    firstScopeIndex,
+    firstEpicIndex,
+    firstScenarioIndex,
+    firstDependencyIndex,
+  ].filter((index) => index >= 0);
+  const firstSectionIndex =
+    sectionStartCandidates.length > 0 ? Math.min(...sectionStartCandidates) : -1;
+
+  let summaryPart = normalizedText;
+  let bodyPart = '';
+
+  if (firstSectionIndex >= 0) {
+    summaryPart = normalizedText.slice(0, firstSectionIndex).trim();
+    bodyPart = normalizedText.slice(firstSectionIndex).trim();
+  }
+
+  const summaryLines = splitLines(summaryPart).filter((line) => {
+    const lower = line.toLowerCase();
+    return !(
+      lower.startsWith('ingår:') ||
+      lower.startsWith('ingår inte:') ||
+      lower.startsWith('epic:') ||
+      lower.startsWith('scenario:') ||
+      lower.startsWith('beroende:') ||
+      lower.startsWith('relaterad') ||
+      lower.startsWith('relaterade')
+    );
+  });
+  sections.summary = summaryLines.join(' ');
+
+  const body = bodyPart || '';
+
+  if (!body) {
+    return sections;
+  }
+
+  const scopeRegex = /(Ingår(?: inte)?):\s*([^.;]+(?:\.[^A-ZÅÄÖ0-9]|$)?)/gi;
+  let scopeMatch: RegExpExecArray | null;
+  while ((scopeMatch = scopeRegex.exec(body))) {
+    const label = scopeMatch[1].toLowerCase();
+    const value = scopeMatch[2].trim().replace(/\s+/g, ' ').replace(/\.$/, '');
+    if (!value) continue;
+    if (label.startsWith('ingår inte')) {
+      sections.scopeExcluded.push(value);
+    } else {
+      sections.scopeIncluded.push(value);
+    }
+  }
+
+  if (body.toLowerCase().includes('endast digital ansökan via webbplattformen')) {
+    sections.scopeIncluded.push('Endast digital ansökan via webbplattformen.');
+  }
+
+  const epicRegex =
+    /Epic:\s*([^;]+);\s*Syfte:\s*([^.;]+)(?:;\s*Team:\s*([^.;]+))?(?:;\s*(?:Id|Epic-Id):\s*([^.;]+))?/gi;
+  let epicMatch: RegExpExecArray | null;
+  while ((epicMatch = epicRegex.exec(body))) {
+    const name = epicMatch[1]?.trim();
+    const description = epicMatch[2]?.trim();
+    const team = epicMatch[3]?.trim() ?? '';
+    const idFromText = epicMatch[4]?.trim();
+
+    if (!name && !description && !team) continue;
+
+    const epic = {
+      id: idFromText || `E${sections.epics.length + 1}`,
+      name,
+      description,
+      team,
+    };
+
+    sections.epics.push(epic);
+  }
+
+  const sentences = splitSentences(body);
+  for (const sentence of sentences) {
+    const lowerSentence = sentence.toLowerCase();
+    if (
+      /^(kunden|systemet|den insamlade datan|resultaten|processen)/i.test(
+        sentence.trim(),
+      )
+    ) {
+      sections.flowSteps.push(sentence.replace(/\s+/g, ' ').trim());
+      continue;
+    }
+
+    if (
+      !sections.testDescription &&
+      /scenari/.test(lowerSentence) &&
+      (/\btest\b/.test(lowerSentence) || /playwright/.test(lowerSentence))
+    ) {
+      sections.testDescription = sentence.trim();
+      continue;
+    }
+  }
+
+  const dependencyRegex =
+    /Beroende:\s*([^;]+);\s*Id:\s*([^;]+);\s*Beskrivning:\s*([^.;]+(?:\.[^A-ZÅÄÖ0-9]|$)?)/gi;
+  let dependencyMatch: RegExpExecArray | null;
+  while ((dependencyMatch = dependencyRegex.exec(body))) {
+    const name = dependencyMatch[1]?.trim();
+    const id = dependencyMatch[2]?.trim();
+    const description = dependencyMatch[3]
+      ?.trim()
+      .replace(/\s+/g, ' ')
+      .replace(/\.$/, '');
+    const dependencyParts = [];
+    if (name) dependencyParts.push(`Beroende: ${name}`);
+    if (id) dependencyParts.push(`Id: ${id}`);
+    if (description) dependencyParts.push(`Beskrivning: ${description}`);
+    const dependency = dependencyParts.join('; ');
+    if (dependency) {
+      sections.dependencies.push(dependency);
+    }
+  }
+
+  const scenarioRegex =
+    /Scenario:\s*([^;]+);\s*Typ:\s*([^;]+);\s*Beskrivning:\s*([^;]+);\s*Förväntat utfall:\s*([^.;]+(?:\.[^A-ZÅÄÖ0-9]|$)?)/gi;
+  let scenarioMatch: RegExpExecArray | null;
+  while ((scenarioMatch = scenarioRegex.exec(body))) {
+    const id = scenarioMatch[1]?.trim();
+    const type = scenarioMatch[2]?.trim();
+    const description = scenarioMatch[3]?.trim();
+    const outcome = scenarioMatch[4]?.trim();
+    if (id || description || outcome) {
+      sections.scenarios.push({
+        id,
+        name: description,
+        type,
+        outcome,
+      });
+    }
+  }
+
+  const bulletRegex = /(?:^|\s)[-•]\s+([\s\S]*?)(?=(?:\s[-•]\s)|$)/g;
+  let bulletMatch: RegExpExecArray | null;
+  while ((bulletMatch = bulletRegex.exec(body))) {
+    const bullet = bulletMatch[1]?.trim();
+    if (bullet) {
+      sections.implementationNotes.push(bullet);
+    }
+  }
+
+  const relatedRegex = /(Relaterat? [^:]+:[^.]+(?:\.)?)/gi;
+  let relatedMatch: RegExpExecArray | null;
+  while ((relatedMatch = relatedRegex.exec(body))) {
+    const related = relatedMatch[1]?.trim();
+    if (related) {
+      sections.relatedItems.push(related);
+    }
+  }
+
+  const bodyLines = splitLines(body);
+  for (const line of bodyLines) {
     const lower = line.toLowerCase();
 
-    // Sammanfattning: ta första blocket innan vi stöter på någon av de tydliga sektionerna.
-    if (!summaryCollected) {
-      if (
-        lower.startsWith('ingår:') ||
-        lower.startsWith('ingår inte:') ||
-        lower.startsWith('epic:') ||
-        lower.startsWith('scenario:') ||
-        lower.startsWith('beroende:') ||
-        /^\d+\./.test(line)
-      ) {
-        summaryCollected = true;
-      } else {
-        summaryLines.push(line);
-        continue;
-      }
-    }
-
-    // Scope – Ingår / Ingår inte
-    if (lower.startsWith('ingår:')) {
-      const rest = line.slice(line.indexOf(':') + 1).trim();
-      if (rest) {
-        sections.scopeIncluded.push(rest);
-      }
-      continue;
-    }
-    if (lower.startsWith('ingår inte:')) {
-      const rest = line.slice(line.indexOf(':') + 1).trim();
-      if (rest) {
-        sections.scopeExcluded.push(rest);
-      }
-      continue;
-    }
-
-    // Epics
-    if (lower.startsWith('epic:')) {
-      const parts = line.split(';').map((part) => part.trim());
-      const epic: { id: string; name: string; description: string; team: string } = {
-        id: '',
-        name: '',
-        description: '',
-        team: '',
-      };
-
-      for (const part of parts) {
-        const lowerPart = part.toLowerCase();
-        if (lowerPart.startsWith('epic:')) {
-          epic.name = part.slice(part.indexOf(':') + 1).trim();
-        } else if (lowerPart.startsWith('syfte:')) {
-          epic.description = part.slice(part.indexOf(':') + 1).trim();
-        } else if (lowerPart.startsWith('team:')) {
-          epic.team = part.slice(part.indexOf(':') + 1).trim();
-        } else if (lowerPart.startsWith('id:') || lowerPart.startsWith('epic-id:')) {
-          epic.id = part.slice(part.indexOf(':') + 1).trim();
-        }
-      }
-
-      if (!epic.id) {
-        epic.id = `E${sections.epics.length + 1}`;
-      }
-
-      if (epic.name || epic.description || epic.team) {
-        sections.epics.push(epic);
-      }
-      continue;
-    }
-
-    // Affärsflöde – numererade steg
-    const flowMatch = tryMatch(line, /^(\d+)\.\s*(.+)$/);
-    if (flowMatch) {
-      const step = flowMatch[2].trim();
-      if (step) {
-        sections.flowSteps.push(step);
-      }
-      continue;
-    }
-
-    // Beroenden
-    if (lower.startsWith('beroende:')) {
-      const rest = line.slice(line.indexOf(':') + 1).trim();
-      if (rest) {
-        sections.dependencies.push(rest);
-      }
-      continue;
-    }
-
-    // Affärs-scenarion
-    if (lower.startsWith('scenario:')) {
-      const parts = line.split(';').map((part) => part.trim());
-      const scenario: {
-        id: string;
-        name: string;
-        type: string;
-        outcome: string;
-      } = {
-        id: '',
-        name: '',
-        type: '',
-        outcome: '',
-      };
-
-      for (const part of parts) {
-        const lowerPart = part.toLowerCase();
-        if (lowerPart.startsWith('scenario:')) {
-          scenario.id = part.slice(part.indexOf(':') + 1).trim();
-        } else if (lowerPart.startsWith('typ:')) {
-          scenario.type = part.slice(part.indexOf(':') + 1).trim();
-        } else if (lowerPart.startsWith('beskrivning:')) {
-          scenario.name = part.slice(part.indexOf(':') + 1).trim();
-        } else if (lowerPart.startsWith('förväntat utfall:')) {
-          scenario.outcome = part.slice(part.indexOf(':') + 1).trim();
-        }
-      }
-
-      if (scenario.id || scenario.name || scenario.outcome) {
-        sections.scenarios.push(scenario);
-      }
-      continue;
-    }
-
-    // Implementation Notes – samla generiska bullets (börjar med - eller •) som inte fångats ovan.
     if (/^[-•]/.test(line)) {
       const bullet = line.replace(/^[-•]\s*/, '').trim();
       if (bullet) {
@@ -175,7 +320,6 @@ export function mapFeatureGoalLlmToSections(rawContent: string): FeatureGoalLlmS
       continue;
     }
 
-    // Testkoppling – plocka upp första stycket som både nämner scenarion och tester/testfil
     if (
       !sections.testDescription &&
       /scenari/.test(lower) &&
@@ -185,17 +329,18 @@ export function mapFeatureGoalLlmToSections(rawContent: string): FeatureGoalLlmS
       continue;
     }
 
-    // Relaterade regler / subprocesser – ta rader som nämner relaterade regler/subprocesser
     if (lower.startsWith('relaterad') || lower.startsWith('relaterade')) {
       sections.relatedItems.push(line);
-      continue;
     }
-  }
-
-  if (!sections.summary && summaryLines.length) {
-    sections.summary = summaryLines.join(' ');
   }
 
   return sections;
 }
 
+export function mapFeatureGoalLlmToSections(
+  rawContent: string,
+): FeatureGoalLlmSections {
+  const structured = parseStructuredSections(rawContent);
+  if (structured) return structured;
+  return parseWithRegexFallback(rawContent);
+}

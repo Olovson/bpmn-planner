@@ -30,21 +30,53 @@ Allt nedan beskriver vad du ska skriva för respektive sektion, i rätt ordning.
 
 När `type = "Feature"` ska du:
 
-- generera **en enda HTML-body-fragment** som fyller sektionerna i följande ordning:
-  1. `summary`
-  2. `scope`
-  3. `epics-overview`
-  4. `flow`
-  5. `dependencies`
-  6. `business-scenarios`
-  7. `test-linking`
-  8. `implementation-notes`
-  9. `related-items`
-- följa gemensamma regler ovan (inga rubriker/tabeller/wrappers/metadata)
+- generera **en strukturerad JSON-liknande respons** som motsvarar modellen nedan (FeatureGoalDocModel), med fälten:
+  - `summary: string`
+  - `scopeIncluded: string[]`
+  - `scopeExcluded: string[]`
+  - `epics: { id: string; name: string; description: string; team: string; }[]`
+  - `flowSteps: string[]`
+  - `dependencies: string[]`
+  - `scenarios: { id: string; name: string; type: string; outcome: string; }[]`
+  - `testDescription: string`
+  - `implementationNotes: string[]`
+  - `relatedItems: string[]`
+- hålla dig till **endast detta objekt** i svaret (ingen extra fri text före eller efter)
 - beskriva Feature Goalet ur ett **affärs-, process- och kreditperspektiv**, inte på detaljnivå för kod
 - om du är osäker på om en viss epic, dependency eller ett scenario finns i underlaget ska du beskriva det generellt eller utelämna raden – hitta inte på specifika namn/ID:n
 
-Följande beskriver vad du ska skriva för varje sektion, i den ordning de ska förekomma i outputen. Du ska inte markera sektionerna i texten – endast följa ordningen.
+Exempel på övergripande format (illustrativt):
+
+```json
+{
+  "summary": "...",
+  "scopeIncluded": ["..."],
+  "scopeExcluded": ["..."],
+  "epics": [
+    {
+      "id": "E1",
+      "name": "...",
+      "description": "...",
+      "team": "..."
+    }
+  ],
+  "flowSteps": ["..."],
+  "dependencies": ["..."],
+  "scenarios": [
+    {
+      "id": "...",
+      "name": "...",
+      "type": "Happy",
+      "outcome": "..."
+    }
+  ],
+  "testDescription": "...",
+  "implementationNotes": ["..."],
+  "relatedItems": ["..."]
+}
+```
+
+Följande avsnitt beskriver vilket **innehåll** som ska hamna i respektive fält ovan. Du ska inte längre skriva HTML-fragment för Feature Goals, utan endast fylla JSON-objektet enligt modellen.
 
 ---
 
@@ -346,7 +378,7 @@ Förklara kort *vad* epiken gör, *varför* den finns och *hur* den påverkar ku
 
 ---
 
-#### SEKTION 2 – `inputs` (Inputs)
+#### Fält: `inputs` (Inputs)
 
 **Syfte:**  
 Beskriva de viktigaste indata epiken behöver för att fungera korrekt.
@@ -378,7 +410,7 @@ Beskriva de viktigaste indata epiken behöver för att fungera korrekt.
 
 ---
 
-#### SEKTION 3 – `flow` (Huvudflöde)
+#### Fält: `flowSteps` (Huvudflöde)
 
 **Syfte:**  
 Ge en översiktlig beskrivning av epikens normala flöde, steg för steg.
@@ -407,7 +439,7 @@ Ge en översiktlig beskrivning av epikens normala flöde, steg för steg.
 
 ---
 
-#### SEKTION 4 – `outputs` (Outputs)
+#### Fält: `dataContracts` (Outputs / Data & kontrakt)
 
 **Syfte:**  
 Beskriva vad epiken producerar och skickar vidare eller lagrar.
@@ -433,7 +465,7 @@ Beskriva vad epiken producerar och skickar vidare eller lagrar.
 
 ---
 
-#### SEKTION 5 – `business-rules-policy` (Affärsregler & policy)
+#### Fält: `businessRulesPolicy` (Affärsregler & policy)
 
 **Syfte:**  
 Beskriva vilka centrala affärsregler, DMN och policys epiken använder eller påverkas av.
@@ -458,7 +490,7 @@ Beskriva vilka centrala affärsregler, DMN och policys epiken använder eller p�
 
 ---
 
-#### SEKTION 6 – `business-scenarios` (Affärs-scenarion)
+#### Fält: `scenarios` (Affärs-scenarion)
 
 **Syfte:**  
 Ge ett litet antal typfall som speglar viktiga affärssituationer epiken måste klara.
@@ -489,7 +521,7 @@ Ge ett litet antal typfall som speglar viktiga affärssituationer epiken måste 
 
 ---
 
-#### SEKTION 7 – `test-linking` (Koppling till automatiska tester)
+#### Fält: `testDescription` (Koppling till automatiska tester)
 
 **Syfte:**  
 Förklara på hög nivå hur affärs-scenarierna mappas till automatiska tester.
@@ -511,7 +543,7 @@ Förklara på hög nivå hur affärs-scenarierna mappas till automatiska tester.
 
 ---
 
-#### SEKTION 8 – `implementation-notes` (Implementation Notes)
+#### Fält: `implementationNotes` (Implementation Notes)
 
 **Syfte:**  
 Ge kort teknisk kontext för utvecklare/testare, utan att bli full teknisk design.
@@ -538,7 +570,7 @@ Ge kort teknisk kontext för utvecklare/testare, utan att bli full teknisk desig
 
 ---
 
-#### SEKTION 9 – `related-items` (Relaterade steg & artefakter)
+#### Fält: `relatedItems` (Relaterade steg & artefakter)
 
 **Syfte:**  
 Hjälpa läsaren att förstå epikens sammanhang genom att peka på närliggande steg och artefakter.
