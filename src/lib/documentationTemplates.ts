@@ -2105,15 +2105,13 @@ function buildBusinessRuleDocHtmlFromModel(
           'Omfattar endast den aktuella kreditprodukten – andra produkter hanteras i separata regler.',
         ];
 
-  const prerequisites = model.inputs.length
-    ? model.inputs
-    : [
-        upstreamNode
-          ? `Triggas normalt efter <strong>${formatNodeName(upstreamNode)}</strong>.`
-          : 'Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.',
-        'Kräver att central kund- och ansökningsdata är komplett och validerad.',
-        'Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.',
-      ];
+  const prerequisites = [
+    upstreamNode
+      ? `Triggas normalt efter <strong>${formatNodeName(upstreamNode)}</strong>.`
+      : 'Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.',
+    'Kräver att central kund- och ansökningsdata är komplett och validerad.',
+    'Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.',
+  ];
 
   const decisionBullets = model.decisionLogic.length
     ? model.decisionLogic
@@ -2183,6 +2181,114 @@ function buildBusinessRuleDocHtmlFromModel(
        ];
   const relatedItemsSource = model.relatedItems.length > 0 ? 'llm' : 'fallback';
 
+  const renderInputsTable = () => {
+    const inputs = model.inputs;
+    if (!inputs.length) {
+      return `
+      <table>
+        <tr>
+          <th>Fält</th>
+          <th>Datakälla</th>
+          <th>Typ / format</th>
+          <th>Obligatoriskt</th>
+          <th>Validering</th>
+          <th>Felhantering</th>
+        </tr>
+        <tr>
+          <td>riskScore</td>
+          <td>Kreditmotor / UC</td>
+          <td>Tal (0–1000)</td>
+          <td>Ja</td>
+          <td>Inom definierat intervall</td>
+          <td>Avslå eller skicka till manuell granskning</td>
+        </tr>
+        <tr>
+          <td>debtToIncomeRatio</td>
+          <td>Intern beräkning</td>
+          <td>Decimal</td>
+          <td>Ja</td>
+          <td>&gt;= 0</td>
+          <td>Flagga för manuell granskning vid saknade data</td>
+        </tr>
+        <tr>
+          <td>loanToValue</td>
+          <td>Fastighetsvärdering</td>
+          <td>Procent</td>
+          <td>Ja</td>
+          <td>0–100 %</td>
+          <td>Avslå vid orimliga värden</td>
+        </tr>
+      </table>`;
+    }
+
+    const rows = inputs.map((raw) => {
+      const parts = raw.split(';').map((p) => p.trim()).filter(Boolean);
+      const row = {
+        field: '',
+        source: '',
+        type: '',
+        required: '',
+        validation: '',
+        errorHandling: '',
+      };
+
+      for (const part of parts) {
+        const [keyRaw, ...rest] = part.split(':');
+        if (!rest.length) {
+          if (!row.field) row.field = part;
+          continue;
+        }
+        const key = keyRaw.toLowerCase();
+        const value = rest.join(':').trim();
+        if (!value) continue;
+        if (key.includes('fält') || key.includes('attribut')) {
+          row.field = value;
+        } else if (key.includes('datakälla') || key.includes('källa')) {
+          row.source = value;
+        } else if (key.includes('typ') || key.includes('format')) {
+          row.type = value;
+        } else if (key.includes('obligatorisk')) {
+          row.required = value;
+        } else if (key.includes('validering')) {
+          row.validation = value;
+        } else if (key.includes('felhantering')) {
+          row.errorHandling = value;
+        }
+      }
+
+      if (!row.field) {
+        row.field = raw;
+      }
+
+      return row;
+    });
+
+    return `
+      <table>
+        <tr>
+          <th>Fält</th>
+          <th>Datakälla</th>
+          <th>Typ / format</th>
+          <th>Obligatoriskt</th>
+          <th>Validering</th>
+          <th>Felhantering</th>
+        </tr>
+        ${rows
+          .map(
+            (r) => `
+        <tr>
+          <td>${r.field}</td>
+          <td>${r.source}</td>
+          <td>${r.type}</td>
+          <td>${r.required}</td>
+          <td>${r.validation}</td>
+          <td>${r.errorHandling}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>`;
+  };
+
   return `
     <section class="doc-section">
       <span class="doc-badge">Business Rule / DMN</span>
@@ -2205,16 +2311,16 @@ function buildBusinessRuleDocHtmlFromModel(
       ${renderList(scopeBullets)}
     </section>
 
-    <section class="doc-section" data-source-inputs="${
-      model.inputs.length ? 'llm' : 'fallback'
-    }">
+    <section class="doc-section" data-source-prerequisites="fallback">
       <h2>Förutsättningar &amp; kontext</h2>
       ${renderList(prerequisites)}
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-inputs="${
+      model.inputs.length ? 'llm' : 'fallback'
+    }">
       <h2>Inputs &amp; datakällor</h2>
-      ${renderList(model.inputs)}
+      ${renderInputsTable()}
     </section>
 
     <section class="doc-section" data-source-decision-logic="${

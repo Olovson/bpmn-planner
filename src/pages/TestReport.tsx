@@ -18,6 +18,10 @@ import {
   type TestDocTypeFilter,
   type TestStatusFilter,
 } from '@/components/TestReportFilters';
+import {
+  applyExecutedTestsFilter,
+  applyPlannedNodesFilter,
+} from '@/lib/testReportFiltering';
 
 const TestReport = () => {
   const navigate = useNavigate();
@@ -142,19 +146,12 @@ const TestReport = () => {
   }, [testsWithDerivedProcess]);
 
   const filteredExecutedTests = useMemo(() => {
-    return testsWithDerivedProcess
-      .filter((t) => {
-        if (statusFilter !== 'all' && t.status !== statusFilter) return false;
-        if (processFilter !== 'all' && t.bpmnFile !== processFilter) return false;
-        if (executedTypeFilter !== 'all' && t.docType !== executedTypeFilter) return false;
-        return true;
-      })
-      .slice()
-      .sort((a, b) => {
-        const aTime = a.executed_at ? new Date(a.executed_at).getTime() : 0;
-        const bTime = b.executed_at ? new Date(b.executed_at).getTime() : 0;
-        return bTime - aTime;
-      });
+    return applyExecutedTestsFilter(
+      testsWithDerivedProcess,
+      statusFilter,
+      executedTypeFilter,
+      processFilter,
+    );
   }, [testsWithDerivedProcess, statusFilter, processFilter, executedTypeFilter]);
 
   const plannedProcessOptions = useMemo(() => {
@@ -168,37 +165,12 @@ const TestReport = () => {
   }, []);
 
   const filteredNodeIds = useMemo(() => {
-    return Object.entries(elementResourceMapping)
-      .filter(([nodeId, entry]) => {
-        const nodeType = nodeTypeById[nodeId];
-
-        if (plannedTypeFilter === 'feature-goal' && nodeType !== 'CallActivity') {
-          return false;
-        }
-        if (
-          plannedTypeFilter === 'epic' &&
-          nodeType !== 'UserTask' &&
-          nodeType !== 'ServiceTask'
-        ) {
-          return false;
-        }
-        if (
-          plannedTypeFilter === 'business-rule' &&
-          nodeType !== 'BusinessRuleTask'
-        ) {
-          return false;
-        }
-
-        if (
-          plannedProcessFilter !== 'all' &&
-          entry.bpmnFile !== plannedProcessFilter
-        ) {
-          return false;
-        }
-
-        return true;
-      })
-      .map(([nodeId]) => nodeId);
+    return applyPlannedNodesFilter(
+      elementResourceMapping,
+      nodeTypeById,
+      plannedTypeFilter,
+      plannedProcessFilter,
+    );
   }, [plannedTypeFilter, plannedProcessFilter, nodeTypeById]);
 
   const handleViewChange = (view: string) => {
