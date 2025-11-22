@@ -335,4 +335,3 @@ function sanitizeJsonResponse(raw: string): string {
 
   return result.trim();
 }
-

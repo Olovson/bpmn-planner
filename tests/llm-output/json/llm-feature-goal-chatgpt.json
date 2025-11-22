@@ -1,0 +1,78 @@
+```json
+{
+  "summary": "Syftet med detta Feature Goal är att effektivisera den interna datainsamlingsprocessen för bolåneansökningar. Det riktar sig mot privatkunder och småföretag som ansöker om bolån. Genom att automatisera insamlingen av nödvändig information förbättras både riskhanteringen och kundupplevelsen, vilket stödjer bankens övergripande kreditstrategi.",
+  "effectGoals": [
+    "Automatiseringen minskar det manuella arbetet och kortar ledtiderna för kreditbeslut.",
+    "Förbättrad kvalitet i kreditbedömningar genom korrekt och snabb datainsamling.",
+    "Kunderna får snabbare och tydligare besked om sina ansökningar.",
+    "Stärkt regelefterlevnad och riskkontroll genom konsekvent datainsamling."
+  ],
+  "scopeIncluded": [
+    "Ingår: Automatiserad insamling av kundens ekonomiska data från interna system.",
+    "Ingår: Validering av insamlad data mot aktuella kreditpolicys.",
+    "Ingår: Integration med bankens befintliga CRM-system för kunddata.",
+    "Ingår: Generering av rapporter för intern användning baserat på insamlad data."
+  ],
+  "scopeExcluded": [
+    "Ingår inte: Insamling av data från externa källor.",
+    "Ingår inte: Manuell datainmatning av kundrådgivare."
+  ],
+  "epics": [
+    {
+      "id": "E1",
+      "name": "Automatiserad datainsamling",
+      "description": "Denna epic fokuserar på att automatisera insamlingen av kunddata från interna system.",
+      "team": "Risk & Kredit"
+    },
+    {
+      "id": "E2",
+      "name": "Data validering",
+      "description": "Denna epic säkerställer att all insamlad data valideras mot bankens kreditpolicys.",
+      "team": "Compliance"
+    }
+  ],
+  "flowSteps": [
+    "Kunden initierar en bolåneansökan via bankens webbportal.",
+    "Systemet hämtar automatiskt kundens ekonomiska data från interna system.",
+    "Data valideras mot bankens kreditpolicys och eventuella avvikelser flaggas.",
+    "Ett preliminärt kreditbeslut genereras och kommuniceras till kunden."
+  ],
+  "dependencies": [
+    "Beroende: CRM-system; Id: kunddata; Beskrivning: används för att hämta och uppdatera kundinformation.",
+    "Beroende: Regelmotor/DMN; Id: kreditpolicys; Beskrivning: används för att validera insamlad data mot aktuella regler.",
+    "Beroende: Interna databaser; Id: ekonomisk data; Beskrivning: används för att samla in nödvändig ekonomisk information."
+  ],
+  "scenarios": [
+    {
+      "id": "S1",
+      "name": "Standardansökan",
+      "type": "Happy",
+      "outcome": "Preliminärt godkänd ansökan baserat på fullständig och korrekt data."
+    },
+    {
+      "id": "S2",
+      "name": "Ofullständig data",
+      "type": "Edge",
+      "outcome": "Ansökan skickas till manuell granskning på grund av ofullständig data."
+    },
+    {
+      "id": "S3",
+      "name": "Felaktig data",
+      "type": "Error",
+      "outcome": "Ansökan avslås automatiskt på grund av felaktig data."
+    }
+  ],
+  "testDescription": "Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester. Använd scenario-ID och namn i testfall och rapportering.",
+  "implementationNotes": [
+    "Använd RESTful API-mönster för datainhämtning och validering.",
+    "Implementera omfattande loggning och audit-spår för alla datainsamlingsaktiviteter.",
+    "Säkerställ robust felhantering för att hantera ofullständig eller felaktig data.",
+    "Uppfyll prestandakrav för att hantera hög volym av ansökningar utan fördröjning."
+  ],
+  "relatedItems": [
+    "Feature Goal: Extern datainsamling",
+    "Epic: Manuell datavalidering",
+    "Business Rule: Kreditvärdighetsbedömning"
+  ]
+}
+```

@@ -44,6 +44,20 @@ export interface GenerateWithFallbackResult {
   latencyMs: number;
 }
 
+export class LlmValidationError extends Error {
+  readonly provider: LlmProvider;
+  readonly rawResponse: string;
+  readonly validationErrors: string[];
+
+  constructor(message: string, provider: LlmProvider, rawResponse: string, validationErrors: string[]) {
+    super(message);
+    this.name = 'LlmValidationError';
+    this.provider = provider;
+    this.rawResponse = rawResponse;
+    this.validationErrors = validationErrors;
+  }
+}
+
 /**
  * Genererar text med LLM med automatisk fallback från local till cloud.
  * 
@@ -85,8 +99,11 @@ export async function generateWithFallback(
     if (validateResponse) {
       const validation = validateResponse(response);
       if (!validation.valid) {
-        throw new Error(
-          `Validation failed: ${validation.errors.join(', ')}`
+        throw new LlmValidationError(
+          `Validation failed: ${validation.errors.join(', ')}`,
+          chosenProvider,
+          response,
+          validation.errors
         );
       }
     }
@@ -138,8 +155,11 @@ export async function generateWithFallback(
         if (validateResponse) {
           const validation = validateResponse(altResponse);
           if (!validation.valid) {
-            throw new Error(
-              `${alternativeProvider} validation failed: ${validation.errors.join(', ')}`
+            throw new LlmValidationError(
+              `${alternativeProvider} validation failed: ${validation.errors.join(', ')}`,
+              alternativeProvider,
+              altResponse,
+              validation.errors
             );
           }
         }

@@ -9,6 +9,7 @@ Du fyller **endast** respektive modell som ett JSON-objekt – inga HTML-taggar,
 
 Gemensamma regler:
 - Svara alltid med **exakt ett JSON-objekt** (ingen fri text före/efter, ingen Markdown, ingen HTML).
+- Outputen ska börja direkt med `{` och avslutas med `}`. Ingen text före `{` och ingen text efter avslutande `}`.
 - Använd **ren text** i alla strängfält (inga `<p>`, `<ul>`, `<li>` osv).
 - Skriv på **svenska** med formell bank-/risk-ton, men var konkret och affärsnära.
 - Du får vara **generös** med innehåll inom rimliga gränser (hellre 4–7 välformulerade punkter än 1 tunn).
@@ -18,6 +19,7 @@ Alla list-fält (t.ex. `effectGoals`, `scopeIncluded`, `scopeExcluded`, `epics`,
 
 - Inga semikolon-separerade texter i samma arrayelement.
 - Skriv aldrig flera logiska punkter i samma sträng – varje punkt ska vara ett separat element i listan.
+- List-fält ska vara **strängar**, inte objekt. Skriv alltid hela raden i strängen (t.ex. för `inputs`), inte som ett inre JSON-objekt.
 
 Allt nedan beskriver vilken struktur och vilket innehåll som ska ligga i respektive JSON-fält.
 

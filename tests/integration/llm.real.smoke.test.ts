@@ -25,6 +25,7 @@ import {
   __setAllowBusinessRuleLlmFallbackForTests,
   mapBusinessRuleLlmToSections,
 } from '@/lib/businessRuleLlmMapper';
+import { LlmValidationError } from '@/lib/llmFallback';
 
 // Real LLM smoke-test: kör riktiga anrop mot LLM när
 // VITE_USE_LLM=true, VITE_ALLOW_LLM_IN_TESTS=true och VITE_OPENAI_API_KEY är satt.
@@ -199,18 +200,31 @@ if (!isLlmEnabled()) {
         );
 
         try {
+          const docType = 'feature';
+          const wallStart = Date.now();
           const result = await generateDocumentationWithLlm(
-            'feature',
+            docType,
             context,
             links,
             provider,
             provider === 'local',
+            false,
           );
+          const wallElapsed = Date.now() - wallStart;
 
           const raw = result?.text || '';
 
           if (!raw || !raw.trim().length) {
             throw new Error(`LLM returned null/empty response for provider=${provider}`);
+          }
+
+          console.log(
+            `[SMOKE] ${docType}/${provider} took ${wallElapsed}ms (wall)`,
+          );
+          if (typeof result?.latencyMs === 'number') {
+            console.log(
+              `[SMOKE] ${docType}/${provider} LLM latency: ${result.latencyMs}ms`,
+            );
           }
 
           const sections = mapFeatureGoalLlmToSections(raw || '');
@@ -250,6 +264,18 @@ if (!isLlmEnabled()) {
               : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
+          if (provider === 'local' && error instanceof LlmValidationError) {
+            const rawJsonPath = join(
+              dir,
+              'json',
+              `llm-feature-goal-${providerLabel}.raw.json`,
+            );
+            try {
+              writeFileSync(rawJsonPath, error.rawResponse, 'utf8');
+            } catch {
+              // ignore file write errors in tests
+            }
+          }
           if (STRICT_SMOKE) {
             throw error instanceof Error ? error : new Error(String(error));
           }
@@ -263,7 +289,7 @@ if (!isLlmEnabled()) {
         localHtml,
         'utf8',
       );
-    }, 60000);
+    }, 720000);
 
     it('genererar Epic-dokumentation med riktig LLM (cloud & local)', async () => {
       const context: NodeDocumentationContext = {
@@ -290,18 +316,31 @@ if (!isLlmEnabled()) {
         );
 
         try {
+          const docType = 'epic';
+          const wallStart = Date.now();
           const result = await generateDocumentationWithLlm(
-            'epic',
+            docType,
             context,
             links,
             provider,
             provider === 'local',
+            false,
           );
+          const wallElapsed = Date.now() - wallStart;
 
           const raw = result?.text || '';
 
           if (!raw || !raw.trim().length) {
             throw new Error(`LLM returned null/empty response for provider=${provider}`);
+          }
+
+          console.log(
+            `[SMOKE] ${docType}/${provider} took ${wallElapsed}ms (wall)`,
+          );
+          if (typeof result?.latencyMs === 'number') {
+            console.log(
+              `[SMOKE] ${docType}/${provider} LLM latency: ${result.latencyMs}ms`,
+            );
           }
 
           const sections = mapEpicLlmToSections(raw || '');
@@ -341,6 +380,18 @@ if (!isLlmEnabled()) {
               : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
+          if (provider === 'local' && error instanceof LlmValidationError) {
+            const rawJsonPath = join(
+              dir,
+              'json',
+              `llm-epic-${providerLabel}.raw.json`,
+            );
+            try {
+              writeFileSync(rawJsonPath, error.rawResponse, 'utf8');
+            } catch {
+              // ignore file write errors in tests
+            }
+          }
           if (STRICT_SMOKE) {
             throw error instanceof Error ? error : new Error(String(error));
           }
@@ -353,7 +404,7 @@ if (!isLlmEnabled()) {
         localHtml,
         'utf8',
       );
-    }, 60000);
+    }, 720000);
 
     it('genererar Business Rule-dokumentation med riktig LLM (cloud & local)', async () => {
       const context: NodeDocumentationContext = {
@@ -380,18 +431,31 @@ if (!isLlmEnabled()) {
         );
 
         try {
+          const docType = 'businessRule';
+          const wallStart = Date.now();
           const result = await generateDocumentationWithLlm(
-            'businessRule',
+            docType,
             context,
             links,
             provider,
             provider === 'local',
+            false,
           );
+          const wallElapsed = Date.now() - wallStart;
 
           const raw = result?.text || '';
 
           if (!raw || !raw.trim().length) {
             throw new Error(`LLM returned null/empty response for provider=${provider}`);
+          }
+
+          console.log(
+            `[SMOKE] ${docType}/${provider} took ${wallElapsed}ms (wall)`,
+          );
+          if (typeof result?.latencyMs === 'number') {
+            console.log(
+              `[SMOKE] ${docType}/${provider} LLM latency: ${result.latencyMs}ms`,
+            );
           }
 
           const sections = mapBusinessRuleLlmToSections(raw || '');
@@ -427,6 +491,18 @@ if (!isLlmEnabled()) {
               : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
+          if (provider === 'local' && error instanceof LlmValidationError) {
+            const rawJsonPath = join(
+              dir,
+              'json',
+              `llm-business-rule-${providerLabel}.raw.json`,
+            );
+            try {
+              writeFileSync(rawJsonPath, error.rawResponse, 'utf8');
+            } catch {
+              // ignore file write errors in tests
+            }
+          }
           if (STRICT_SMOKE) {
             throw error instanceof Error ? error : new Error(String(error));
           }
@@ -439,6 +515,6 @@ if (!isLlmEnabled()) {
         localHtml,
         'utf8',
       );
-    }, 60000);
+    }, 720000);
   });
 }

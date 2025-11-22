@@ -33,6 +33,7 @@ JSON-modellen är:
 
 1. **Endast JSON**
    - Svara med exakt **ett** JSON-objekt enligt modellen ovan.
+   - Outputen ska börja direkt med `{` och avslutas med `}`. Ingen text före `{` och ingen text efter avslutande `}`.
    - Ingen fri text, ingen Markdown, inga HTML-taggar utanför JSON:et.
 
 2. **Inga rubriker eller metadata i värdena**

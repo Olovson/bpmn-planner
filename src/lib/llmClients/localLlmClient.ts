@@ -14,6 +14,11 @@ const LOCAL_BASE_URL =
   import.meta.env.VITE_LLM_LOCAL_BASE_URL?.trim() || 'http://localhost:11434';
 const LOCAL_MODEL =
   import.meta.env.VITE_LLM_LOCAL_MODEL?.trim() || 'llama3.1:8b-instruct';
+const LOCAL_TIMEOUT_MS = (() => {
+  const raw = import.meta.env.VITE_LLM_LOCAL_TIMEOUT_MS?.toString().trim();
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 600000;
+})();
 
 import type { LlmClient } from '../llmClientAbstraction';
 
@@ -28,9 +33,9 @@ export class LocalLlmClient implements LlmClient {
   readonly modelName = LOCAL_MODEL;
   readonly provider: 'local' = 'local';
   private readonly baseUrl: string;
-  private readonly timeoutMs: number = 15000; // 15 seconds
+  private readonly timeoutMs: number;
 
-  constructor(baseUrl: string = LOCAL_BASE_URL, timeoutMs: number = 15000) {
+  constructor(baseUrl: string = LOCAL_BASE_URL, timeoutMs: number = LOCAL_TIMEOUT_MS) {
     this.baseUrl = baseUrl;
     this.timeoutMs = timeoutMs;
   }
@@ -155,4 +160,3 @@ export class LocalLlmClient implements LlmClient {
 }
 
 export const localLlmClientInstance = new LocalLlmClient();
-

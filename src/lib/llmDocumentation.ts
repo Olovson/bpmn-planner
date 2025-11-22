@@ -33,6 +33,7 @@ export interface DocumentationLlmResult {
   text: string;
   provider: LlmProvider;
   fallbackUsed: boolean;
+   latencyMs?: number;
 }
 
 export async function generateDocumentationWithLlm(
@@ -41,6 +42,7 @@ export async function generateDocumentationWithLlm(
   links: TemplateLinks,
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
+  allowFallback: boolean = true,
 ): Promise<DocumentationLlmResult | null> {
   if (!isLlmEnabled()) return null;
 
@@ -66,6 +68,7 @@ export async function generateDocumentationWithLlm(
     userChoice: llmProvider,
     globalDefault,
     localAvailable,
+    allowFallback,
   });
 
   const profileDocType: DocType =
@@ -101,6 +104,14 @@ export async function generateDocumentationWithLlm(
           }
           jsonText = lines.join('\n').trim();
         }
+      }
+
+      // Försök sanera bort ev. förklarande text före/efter JSON-objektet,
+      // t.ex. "Here is the JSON object:" eller kommentarer.
+      const firstBrace = jsonText.indexOf('{');
+      const lastBrace = jsonText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonText = jsonText.slice(firstBrace, lastBrace + 1).trim();
       }
 
       const parsed = JSON.parse(jsonText);
@@ -175,6 +186,8 @@ export async function generateDocumentationWithLlm(
       text: result.text,
       provider: result.provider,
       fallbackUsed: result.fallbackUsed,
+      // Exponera LLM-latens för t.ex. smoke-tester (inte del av JSON-kontraktet mot LLM)
+      ...(typeof result.latencyMs === 'number' ? { latencyMs: result.latencyMs } : {}),
     };
   } catch (error) {
     // Logga fel-event

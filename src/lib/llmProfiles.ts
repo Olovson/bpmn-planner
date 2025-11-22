@@ -38,10 +38,14 @@ const DEFAULT_PROFILES: LlmProfiles = {
       temperature: 0.35,
     },
     local: {
-      maxTokens: 1600,
+      maxTokens: 900,
       temperature: 0.3,
-      // Lokal modell kan behöva extra tydlighet om JSON-format
-      extraSystemPrefix: 'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences.',
+      // Lokal modell behöver extra tydlighet om JSON-format
+      extraSystemPrefix:
+        'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences. ' +
+        'Börja direkt med { och avsluta med }. ' +
+        'Ingen text före eller efter JSON-objektet. ' +
+        'Inga extra fält utöver de som finns i JSON-modellen (summary, inputs, decisionLogic, outputs, businessRulesPolicy, scenarios, testDescription, implementationNotes, relatedItems).',
     },
   },
   feature: {
@@ -50,9 +54,13 @@ const DEFAULT_PROFILES: LlmProfiles = {
       temperature: 0.35,
     },
     local: {
-      maxTokens: 1800,
+      maxTokens: 900,
       temperature: 0.3,
-      extraSystemPrefix: 'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences.',
+      extraSystemPrefix:
+        'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences. ' +
+        'Börja direkt med { och avsluta med }. ' +
+        'Ingen text före eller efter JSON-objektet. ' +
+        'Inga extra fält som bpmnContext eller liknande – endast fälten i Feature/Epic-modellen.',
     },
   },
   epic: {
@@ -61,9 +69,13 @@ const DEFAULT_PROFILES: LlmProfiles = {
       temperature: 0.35,
     },
     local: {
-      maxTokens: 1600,
+      maxTokens: 900,
       temperature: 0.3,
-      extraSystemPrefix: 'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences.',
+      extraSystemPrefix:
+        'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences. ' +
+        'Börja direkt med { och avsluta med }. ' +
+        'Ingen text före eller efter JSON-objektet. ' +
+        'Inga extra fält som bpmnContext eller liknande – endast fälten i Epic-modellen.',
     },
   },
   testscript: {
@@ -72,9 +84,13 @@ const DEFAULT_PROFILES: LlmProfiles = {
       temperature: 0.3,
     },
     local: {
-      maxTokens: 800,
+      maxTokens: 600,
       temperature: 0.25,
-      extraSystemPrefix: 'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences. JSON-objektet måste följa exakt schemat.',
+      extraSystemPrefix:
+        'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences. ' +
+        'Börja direkt med { och avsluta med }. ' +
+        'Ingen text före eller efter JSON-objektet. ' +
+        'JSON-objektet måste följa exakt schemat.',
     },
   },
 };
@@ -101,4 +117,3 @@ export function getLlmProfilesForProvider(provider: LlmProvider): Record<DocType
     testscript: DEFAULT_PROFILES.testscript[provider],
   };
 }
-
