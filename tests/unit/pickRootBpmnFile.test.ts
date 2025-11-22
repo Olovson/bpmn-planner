@@ -58,4 +58,33 @@ describe('pickRootBpmnFile', () => {
     ];
     expect(pickRootBpmnFile(customFiles, deps)).toBe('alpha.bpmn');
   });
+
+  it('prefers *-application.bpmn as root when mortgage.bpmn is missing and no dependencies', async () => {
+    const pickRootBpmnFile = await getPicker();
+    const customFiles = [
+      { file_name: 'mortgage-se-internal-data-gathering.bpmn' },
+      { file_name: 'mortgage-se-application.bpmn' },
+    ];
+    // Även om ordningen i listan sätter internal-data-gathering först ska
+    // root-väljaren preferera application-filen som rot.
+    expect(pickRootBpmnFile(customFiles, [])).toBe('mortgage-se-application.bpmn');
+  });
+
+  it('prefers *-main.bpmn as root when mortgage.bpmn is missing and no dependencies', async () => {
+    const pickRootBpmnFile = await getPicker();
+    const customFiles = [
+      { file_name: 'mortgage-se-internal-data-gathering.bpmn' },
+      { file_name: 'mortgage-se-main.bpmn' },
+    ];
+    expect(pickRootBpmnFile(customFiles, [])).toBe('mortgage-se-main.bpmn');
+  });
+
+  it('prefers *-root.bpmn as root when mortgage.bpmn is missing and no dependencies', async () => {
+    const pickRootBpmnFile = await getPicker();
+    const customFiles = [
+      { file_name: 'mortgage-se-internal-data-gathering.bpmn' },
+      { file_name: 'mortgage-se-root.bpmn' },
+    ];
+    expect(pickRootBpmnFile(customFiles, [])).toBe('mortgage-se-root.bpmn');
+  });
 });

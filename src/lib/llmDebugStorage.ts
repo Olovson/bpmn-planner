@@ -12,6 +12,12 @@ export async function saveLlmDebugArtifact(
   identifier: string,
   content: string
 ): Promise<void> {
+  // I test-läge undviker vi att skriva debug-artifacts till Supabase Storage
+  // för att inte stöta på RLS-policy eller påverka utvecklarens data.
+  if (import.meta.env.MODE === 'test') {
+    return;
+  }
+
   try {
     const { supabase } = await import('@/integrations/supabase/client');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

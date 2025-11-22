@@ -52,9 +52,23 @@ export function pickRootBpmnFile(
   if (!allFiles.length) return null;
 
   const mortgageExists = allFiles.some((f) => f.file_name === 'mortgage.bpmn');
+  const findPreferredRootFile = (candidates: string[]): string | undefined => {
+    const patterns = [
+      /(^|-)application\.bpmn$/i,
+      /(^|-)main\.bpmn$/i,
+      /(^|-)root\.bpmn$/i,
+    ];
+    for (const pattern of patterns) {
+      const match = candidates.find((name) => pattern.test(name));
+      if (match) return match;
+    }
+    return undefined;
+  };
 
   if (!dependencies || dependencies.length === 0) {
-    return mortgageExists ? 'mortgage.bpmn' : allFiles[0].file_name;
+    if (mortgageExists) return 'mortgage.bpmn';
+    const preferred = findPreferredRootFile(allFiles.map((f) => f.file_name));
+    return preferred ?? allFiles[0].file_name;
   }
 
   const parentFiles = new Set(dependencies.map((d) => d.parent_file));
@@ -66,9 +80,14 @@ export function pickRootBpmnFile(
 
   const rootFiles = Array.from(parentFiles).filter((parent) => !childFiles.has(parent));
   if (rootFiles.length > 0) {
-    // Prefer mortgage if it is one of the roots; otherwise first root
+    // Prefer mortgage if it is one of the roots
     const mortgageRoot = rootFiles.find((r) => r === 'mortgage.bpmn');
-    return mortgageRoot ?? rootFiles[0];
+    if (mortgageRoot) return mortgageRoot;
+
+    // Annars, försök hitta en root-fil som ser ut som en applikations-/huvud-rot,
+    // t.ex. mortgage-se-application.bpmn, mortgage-se-main.bpmn eller mortgage-se-root.bpmn.
+    const preferredRoot = findPreferredRootFile(rootFiles);
+    return preferredRoot ?? rootFiles[0];
   }
 
   // Fallback: if no clear root, prefer mortgage, else first available file

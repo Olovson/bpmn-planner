@@ -348,6 +348,17 @@ Dessa används i:
     - förväntade call activities (`internal-data-gathering`, `stakeholder`, `object`, `household`),
     - centrala tasks i internal‑data‑gathering‑processen (`fetch-party-information`, `pre-screen-party`, `fetch-engagements`),
     - en enkel derivation av mortgage‑hierarkin root → internal‑data‑gathering → Stakeholder/Object/Household.
+  - `tests/integration/bpmnProcessGraph.mortgage.integration.test.ts`
+    - Kör full kedja: real BPMN‑parse → `buildBpmnProcessGraph` → asserts på:
+      - rootFile (`mortgage-se-application.bpmn`),
+      - noder per fil (`fileNodes`),
+      - callActivities (inkl. `internal-data-gathering`, `stakeholder`, `object`, `household`),
+      - `missingDependencies` för saknade mortgage‑subprocesser (Stakeholder/Object/Household).
+  - `src/lib/bpmn/buildProcessHierarchy.test.ts` (mortgage-likt scenario)
+    - Innehåller ett mortgage‑inspirerat testfall som validerar:
+      - att callActivity `internal-data-gathering` matchas mot rätt process,
+      - att nested callActivities (`stakeholder`, `object`, `household`) blir icke‑matchade,
+      - att diagnostiken innehåller NO_MATCH/LOW_CONFIDENCE‑poster för dessa.
 
 Syftet med dessa tester är att:
 

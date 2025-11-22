@@ -402,4 +402,82 @@ describe('buildProcessHierarchy', () => {
     const callB = rootB?.children.find((c) => c.link?.matchedProcessId === 'ChildB');
     expect(callB?.children[0].processId).toBe('ChildB');
   });
+
+  it('builds mortgage-style hierarchy with unresolved nested call activities', () => {
+    const definitions: ProcessDefinition[] = [
+      baseProcess({
+        id: 'MortgageApplication',
+        name: 'Application Mortgage',
+        fileName: 'mortgage-se-application.bpmn',
+        callActivities: [
+          {
+            id: 'internal-data-gathering',
+            name: 'Internal data gathering',
+            calledElement: 'InternalDataGathering',
+          },
+          {
+            id: 'stakeholder',
+            name: 'Stakeholder',
+          },
+          {
+            id: 'object',
+            name: 'Object',
+          },
+          {
+            id: 'household',
+            name: 'Household',
+          },
+        ],
+      }),
+      baseProcess({
+        id: 'InternalDataGathering',
+        name: 'Internal data gathering',
+        fileName: 'mortgage-se-internal-data-gathering.bpmn',
+        // inga callActivities här – motsvarar mortgage-se-internal-data-gathering.bpmn
+        tasks: [
+          { id: 'fetch-party-information', name: 'Fetch party information', type: 'ServiceTask' },
+          { id: 'pre-screen-party', name: 'Pre-screen party', type: 'BusinessRuleTask' },
+          { id: 'fetch-engagements', name: 'Fetch engagements', type: 'ServiceTask' },
+        ],
+      }),
+    ];
+
+    const hierarchy = buildProcessHierarchy(definitions);
+
+    // Root ska vara MortgageApplication-processen.
+    expect(hierarchy.roots[0].processId).toBe('MortgageApplication');
+
+    const root = hierarchy.roots[0];
+    const internalCall = root.children.find(
+      (child) => child.bpmnType === 'callActivity' && child.link?.callActivityId === 'internal-data-gathering',
+    );
+    expect(internalCall?.link?.matchStatus).toBe('matched');
+    expect(internalCall?.children[0].processId).toBe('InternalDataGathering');
+
+    const stakeholderCall = root.children.find(
+      (child) => child.bpmnType === 'callActivity' && child.link?.callActivityId === 'stakeholder',
+    );
+    const objectCall = root.children.find(
+      (child) => child.bpmnType === 'callActivity' && child.link?.callActivityId === 'object',
+    );
+    const householdCall = root.children.find(
+      (child) => child.bpmnType === 'callActivity' && child.link?.callActivityId === 'household',
+    );
+
+    // För dessa finns ingen separat processdefinition – de ska inte bli "matched".
+    expect(stakeholderCall?.link?.matchStatus).not.toBe('matched');
+    expect(objectCall?.link?.matchStatus).not.toBe('matched');
+    expect(householdCall?.link?.matchStatus).not.toBe('matched');
+
+    // Diagnostiken ska innehålla LOW_CONFIDENCE_MATCH eller NO_MATCH för de olösta call activities.
+    const relevantDiagnostics = hierarchy.diagnostics.filter(
+      (d) => d.code === 'LOW_CONFIDENCE_MATCH' || d.code === 'NO_MATCH',
+    );
+    const contextIds = relevantDiagnostics
+      .map((d) => d.context?.callActivityId)
+      .filter((id): id is string => typeof id === 'string');
+    expect(contextIds).toContain('stakeholder');
+    expect(contextIds).toContain('object');
+    expect(contextIds).toContain('household');
+  });
 });
