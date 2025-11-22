@@ -14,6 +14,11 @@ Gemensamma regler:
 - Du får vara **generös** med innehåll inom rimliga gränser (hellre 4–7 välformulerade punkter än 1 tunn).
 - Hitta **inte på** interna systemnamn, verkliga ID:n, filpaths eller versionsnummer.
 
+Alla list-fält (t.ex. `effectGoals`, `scopeIncluded`, `scopeExcluded`, `epics`, `flowSteps`, `dependencies`, `scenarios`, `prerequisites`, `inputs`, `interactions`, `dataContracts`, `businessRulesPolicy`, `implementationNotes`, `relatedItems`) ska returneras som **EN LOGISK PUNKT PER ELEMENT** i arrayen.
+
+- Inga semikolon-separerade texter i samma arrayelement.
+- Skriv aldrig flera logiska punkter i samma sträng – varje punkt ska vara ett separat element i listan.
+
 Allt nedan beskriver vilken struktur och vilket innehåll som ska ligga i respektive JSON-fält.
 
 ---
@@ -69,9 +74,13 @@ JSON-modellen är:
 
 **scopeIncluded:**
 - 4–7 strängar, varje sträng en **full mening**.
+- Varje “Ingår: …” ska vara ett **separat element** i `scopeIncluded`‑arrayen.
+- Skriv inte flera “Ingår: …” på samma rad separerade med semikolon – dela upp dem i flera arrayelement.
 
 **scopeExcluded:**
 - 2–3 strängar, varje sträng en **full mening**.
+- Varje “Ingår inte: …” ska vara ett **separat element** i `scopeExcluded`‑arrayen.
+- Skriv inte flera “Ingår inte: …” i samma sträng; en logisk avgränsning per arrayelement.
 
 ### epics
 
@@ -213,6 +222,10 @@ JSON-modellen är:
 ```text
 Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; Felhantering: ...
 ```
+
+- Varje input ska vara ett **eget element** i `inputs`‑arrayen.
+- En input = en rad = ett fält.
+- Skriv aldrig flera “Fält: …” i samma sträng. Om det finns fyra inputfält ska `inputs` innehålla fyra separata strängar, en per rad.
 
 **Numeriska tröskelvärden:**
 - Om du anger ett numeriskt tröskelvärde (t.ex. kreditpoäng, belopp, belåningsgrad, ålder) ska du lägga till texten **"(exempelvärde)"** direkt efter värdet:
