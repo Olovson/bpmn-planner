@@ -51,26 +51,27 @@ describe('renderEpicDoc', () => {
     });
 
     const h1Index = html.indexOf('<h1>');
-    const scopeIndex = html.indexOf('Syfte &amp; Scope');
-    const triggerIndex = html.indexOf('Trigger &amp; Förutsättningar');
-    const flowIndex = html.indexOf('Huvudflöde (High-level scenario)');
-    const interactionsIndex = html.indexOf('Interaktioner &amp; Kanaler');
-    const dataIndex = html.indexOf('Data &amp; Kontrakt');
-    const rulesIndex = html.indexOf('Affärsregler &amp; Policykoppling');
-    const testsIndex = html.indexOf('Testkriterier (affärsnivå)');
-    const implIndex = html.indexOf('Implementation Notes (för dev/test)');
-    const relatedIndex = html.indexOf('Relaterade steg &amp; artefakter');
+    const scopeIndex = html.indexOf('Syfte &amp; Effekt');
+    const inputsIndex = html.indexOf('Inputs');
+    const flowIndex = html.indexOf('Funktionellt flöde');
+    const outputIndex = html.indexOf('Output');
+    const rulesIndex = html.indexOf('Affärsregler som triggas');
+    const scenariosIndex = html.indexOf('Affärs-scenarion (tabell)');
+    const testsIndex = html.indexOf('Koppling till automatiska tester');
+    const implIndex = html.indexOf('Implementation Notes');
+    const dorIndex = html.indexOf('Definition of Ready');
+    const dodIndex = html.indexOf('Definition of Done');
 
     expect(h1Index).toBeGreaterThan(-1);
     expect(scopeIndex).toBeGreaterThan(h1Index);
-    expect(triggerIndex).toBeGreaterThan(scopeIndex);
-    expect(flowIndex).toBeGreaterThan(triggerIndex);
-    expect(interactionsIndex).toBeGreaterThan(flowIndex);
-    expect(dataIndex).toBeGreaterThan(interactionsIndex);
-    expect(rulesIndex).toBeGreaterThan(dataIndex);
-    expect(testsIndex).toBeGreaterThan(rulesIndex);
+    expect(inputsIndex).toBeGreaterThan(scopeIndex);
+    expect(flowIndex).toBeGreaterThan(inputsIndex);
+    expect(outputIndex).toBeGreaterThan(flowIndex);
+    expect(rulesIndex).toBeGreaterThan(outputIndex);
+    expect(scenariosIndex).toBeGreaterThan(rulesIndex);
+    expect(testsIndex).toBeGreaterThan(scenariosIndex);
     expect(implIndex).toBeGreaterThan(testsIndex);
-    expect(relatedIndex).toBeGreaterThan(implIndex);
+    expect(dorIndex).toBeGreaterThan(implIndex);
+    expect(dodIndex).toBeGreaterThan(dorIndex);
   });
 });
-

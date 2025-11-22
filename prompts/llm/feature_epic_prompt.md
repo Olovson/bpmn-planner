@@ -25,6 +25,7 @@ Allt nedan beskriver vilket innehåll som ska ligga i respektive JSON‑fält.
 ```ts
 {
   "summary": string,
+  "effectGoals": string[],
   "scopeIncluded": string[],
   "scopeExcluded": string[],
   "epics": { "id": string; "name": string; "description": string; "team": string; }[],
@@ -49,7 +50,20 @@ Allt nedan beskriver vilket innehåll som ska ligga i respektive JSON‑fält.
 
 ---
 
-### Fält 2 – `scopeIncluded` / `scopeExcluded`
+### Fält 2 – `effectGoals`
+
+**Syfte:** Synliggöra konkreta effektmål med Feature Goalet – vilken nytta/förändring det ska skapa.
+
+**Innehåll (`effectGoals`):**
+- 3–5 strängar, varje sträng en **full mening** som beskriver t.ex.:
+  - automatisering (t.ex. minskat manuellt arbete, kortare ledtider),
+  - förbättrad kvalitet/säkerhet i kreditbedömningar,
+  - bättre kundupplevelse (tydligare besked, färre omtag),
+  - stärkt regelefterlevnad och riskkontroll.
+
+---
+
+### Fält 3 – `scopeIncluded` / `scopeExcluded`
 
 **Syfte:** Definiera omfattning och avgränsningar.
 
@@ -63,7 +77,7 @@ Allt nedan beskriver vilket innehåll som ska ligga i respektive JSON‑fält.
 
 ---
 
-### Fält 3 – `epics`
+### Fält 4 – `epics`
 
 **Syfte:** Lista de viktigaste epics som ingår i Feature Goalet.
 
@@ -76,7 +90,7 @@ Allt nedan beskriver vilket innehåll som ska ligga i respektive JSON‑fält.
 
 ---
 
-### Fält 4 – `flowSteps`
+### Fält 5 – `flowSteps`
 
 **Syfte:** Beskriva Feature Goal‑nivåns affärsflöde från start till slut.
 
@@ -88,7 +102,7 @@ Allt nedan beskriver vilket innehåll som ska ligga i respektive JSON‑fält.
 
 ---
 
-### Fält 5 – `dependencies`
+### Fält 6 – `dependencies`
 
 **Syfte:** Lista centrala beroenden för att Feature Goalet ska fungera.
 
@@ -101,7 +115,7 @@ Exempel (endast format, skriv egen text):
 
 ---
 
-### Fält 6 – `scenarios`
+### Fält 7 – `scenarios`
 
 **Syfte:** Definiera affärsscenarier som Feature Goalet måste hantera.
 
@@ -114,7 +128,7 @@ Exempel (endast format, skriv egen text):
 
 ---
 
-### Fält 7 – `testDescription`
+### Fält 8 – `testDescription`
 
 **Syfte:** Koppla affärsscenarierna till automatiska tester.
 
@@ -127,7 +141,7 @@ Inga filpaths eller konkreta filnamn här.
 
 ---
 
-### Fält 8 – `implementationNotes`
+### Fält 9 – `implementationNotes`
 
 **Syfte:** Ge högnivå‑guidance till utvecklare/testare.
 
@@ -139,7 +153,7 @@ Inga filpaths eller konkreta filnamn här.
 
 ---
 
-### Fält 9 – `relatedItems`
+### Fält 10 – `relatedItems`
 
 **Syfte:** Hjälpa läsaren att förstå sammanhanget.
 

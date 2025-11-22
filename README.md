@@ -61,6 +61,7 @@ En central funktion i BPMN Planner är att generera **automatiserad dokumentatio
 ### Dokumentationen inkluderar:
 - **Feature Goals / Epics / User Journeys**
 - **Beskrivningar av Business Rule Tasks**
+- **Effektmål per Feature Goal** (t.ex. automatisering, kvalitet, kundupplevelse, regelefterlevnad)
 - **Processöversikter och tekniska flöden**
 - **Kravsammanställningar** (funktionella & icke-funktionella)
 - **Arkitekturbeskrivningar kopplade till processtegen**

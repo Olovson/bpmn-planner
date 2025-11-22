@@ -52,26 +52,25 @@ describe('renderFeatureGoalDoc', () => {
 
     const h1Index = html.indexOf('<h1>');
     const summaryIndex = html.indexOf('Sammanfattning &amp; scope');
-    const scopeIndex = html.indexOf('Omfattning &amp; Avgränsningar');
+    const effectIndex = html.indexOf('Effektmål');
     const epicsIndex = html.indexOf('Ingående Epics');
     const flowIndex = html.indexOf('Affärsflöde');
-    const depsIndex = html.indexOf('Kritiska beroenden');
     const scenariosIndex = html.indexOf('Affärs-scenarion');
     const testsIndex = html.indexOf('Koppling till automatiska tester');
     const implIndex = html.indexOf('Implementation Notes (för dev)');
-    const relatedIndex = html.indexOf('Relaterade regler / subprocesser');
+    const dorIndex = html.indexOf('Definition of Ready');
+    const dodIndex = html.indexOf('Definition of Done');
 
     expect(h1Index).toBeGreaterThan(-1);
     expect(summaryIndex).toBeGreaterThan(h1Index);
-    expect(scopeIndex).toBeGreaterThan(summaryIndex);
-    expect(epicsIndex).toBeGreaterThan(scopeIndex);
+    expect(effectIndex).toBeGreaterThan(summaryIndex);
+    expect(epicsIndex).toBeGreaterThan(effectIndex);
     expect(flowIndex).toBeGreaterThan(epicsIndex);
-    expect(depsIndex).toBeGreaterThan(flowIndex);
-    expect(scenariosIndex).toBeGreaterThan(depsIndex);
+    expect(scenariosIndex).toBeGreaterThan(flowIndex);
     expect(testsIndex).toBeGreaterThan(scenariosIndex);
     expect(implIndex).toBeGreaterThan(testsIndex);
-    expect(relatedIndex).toBeGreaterThan(implIndex);
+    expect(dorIndex).toBeGreaterThan(implIndex);
+    expect(dodIndex).toBeGreaterThan(dorIndex);
   });
 }
 );
-

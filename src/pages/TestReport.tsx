@@ -51,6 +51,17 @@ const TestReport = () => {
     const allNodes = Object.keys(elementResourceMapping);
     const nodesWithPlannedScenarios = Object.keys(testMapping);
 
+    const latestRun =
+      testResults && testResults.length
+        ? testResults
+            .slice()
+            .sort((a, b) => {
+              const aTime = a.last_run ? new Date(a.last_run).getTime() : 0;
+              const bTime = b.last_run ? new Date(b.last_run).getTime() : 0;
+              return bTime - aTime;
+            })[0].last_run
+        : null;
+
     return {
       totalNodes,
       implementedNodes,
@@ -59,6 +70,7 @@ const TestReport = () => {
       executedCoverage,
       plannedNodesCount: nodesWithPlannedScenarios.length,
       passRate: stats.total > 0 ? (stats.passing / stats.total) * 100 : 0,
+      latestRun,
     };
   }, [coverageMap, testResults, stats]);
 
@@ -102,17 +114,6 @@ const TestReport = () => {
       });
   }, [testsWithDerivedProcess, statusFilter, processFilter]);
 
-  const processNodes = useMemo(() => {
-    // Grupp­era nod‑id per BPMN‑fil utifrån elementResourceMapping
-    const mapping: Record<string, string[]> = {};
-    Object.entries(elementResourceMapping).forEach(([nodeId, meta]) => {
-      const file = meta.bpmnFile || 'Okänd fil';
-      if (!mapping[file]) mapping[file] = [];
-      mapping[file].push(nodeId);
-    });
-    return mapping;
-  }, []);
-
   const handleViewChange = (view: string) => {
     if (view === 'diagram') navigate('/');
     else if (view === 'tree') navigate('/process-explorer');
@@ -142,16 +143,19 @@ const TestReport = () => {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Processnoder
+                  Planerade scenarion
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <div className="text-3xl font-bold text-foreground">
-                    {coverageSummary.totalNodes}
+                    {allTests.reduce(
+                      (sum, t) => sum + (t.scenarios?.length ?? 0),
+                      0,
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Totalt antal BPMN‑noder som kan ha tester
+                    Scenarion definierade i genererade testfiler (designnivå)
                   </p>
                 </div>
               </CardContent>
@@ -160,18 +164,25 @@ const TestReport = () => {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Noder med implementerade tester
+                  Noder med scenarion
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <div className="text-3xl font-bold text-foreground">
-                    {coverageSummary.implementedNodes}
+                    {coverageSummary.plannedNodesCount}
                   </div>
-                  <Progress value={coverageSummary.implementedCoverage} className="h-2" />
+                  <Progress
+                    value={
+                      coverageSummary.totalNodes > 0
+                        ? (coverageSummary.plannedNodesCount / coverageSummary.totalNodes) * 100
+                        : 0
+                    }
+                    className="h-2"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    🧪 Implementerad testfil för {coverageSummary.implementedNodes} /{' '}
-                    {coverageSummary.totalNodes} noder
+                    Noder med minst ett planerat scenario av{' '}
+                    {coverageSummary.totalNodes} möjliga
                   </p>
                 </div>
               </CardContent>
@@ -192,6 +203,15 @@ const TestReport = () => {
                   <p className="text-xs text-muted-foreground">
                     ✔ Minst ett testresultat för {coverageSummary.executedNodeCount} noder
                   </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {coverageSummary.latestRun
+                      ? `Senaste körning: ${new Date(
+                          coverageSummary.latestRun,
+                        ).toLocaleString()} – pass-rate ca ${coverageSummary.passRate.toFixed(
+                          0,
+                        )}%`
+                      : 'Inga körda tester ännu'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -199,19 +219,16 @@ const TestReport = () => {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Planerade scenarion
+                  Processnoder
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <div className="text-3xl font-bold text-foreground">
-                    {allTests.reduce(
-                      (sum, t) => sum + (t.scenarios?.length ?? 0),
-                      0,
-                    )}
+                    {coverageSummary.totalNodes}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Scenarion definierade i genererade testfiler (designnivå)
+                    Totalt antal BPMN‑noder som kan ha tester
                   </p>
                 </div>
               </CardContent>
@@ -414,63 +431,6 @@ const TestReport = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Coverage per BPMN‑fil */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Coverage per BPMN‑fil</p>
-                <div className="overflow-x-auto max-w-full">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>BPMN‑fil</TableHead>
-                        <TableHead>Total noder</TableHead>
-                        <TableHead>Noder med scenarion</TableHead>
-                        <TableHead>Noder med körda tester</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(processNodes)
-                        .map(([fileName, nodes]) => {
-                          const plannedNodes = nodes.filter((id) => testMapping[id]);
-                          const executedNodeIds = new Set(
-                            testResults
-                              .map((r) => r.node_id)
-                              .filter((id): id is string => Boolean(id)),
-                          );
-                          const executedNodes = nodes.filter((id) =>
-                            executedNodeIds.has(id),
-                          );
-                          return { fileName, nodes, plannedNodes, executedNodes };
-                        })
-                        .sort((a, b) => a.fileName.localeCompare(b.fileName))
-                        .map(({ fileName, nodes, plannedNodes, executedNodes }) => (
-                          <TableRow
-                            key={fileName}
-                            className={
-                              selectedProcess === fileName ? 'bg-muted/40' : ''
-                            }
-                            onClick={() =>
-                              setSelectedProcess((prev) =>
-                                prev === fileName ? 'all' : fileName,
-                              )
-                            }
-                          >
-                            <TableCell className="font-medium text-sm">
-                              {fileName}
-                            </TableCell>
-                            <TableCell className="text-sm">{nodes.length}</TableCell>
-                            <TableCell className="text-sm">
-                              {plannedNodes.length}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {executedNodes.length}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
               {/* Nod‑läge för vald process */}
               <div className="space-y-2">
                 <p className="text-sm font-medium">
@@ -563,4 +523,3 @@ const TestReport = () => {
 };
 
 export default TestReport;
-

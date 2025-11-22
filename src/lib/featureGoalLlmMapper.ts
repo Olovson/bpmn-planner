@@ -23,6 +23,7 @@ const splitSentences = (value: string): string[] =>
 function createEmptySections(): FeatureGoalLlmSections {
   return {
     summary: '',
+    effectGoals: [],
     scopeIncluded: [],
     scopeExcluded: [],
     epics: [],
@@ -73,6 +74,7 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
     sections.summary = obj.summary.trim();
   }
 
+  sections.effectGoals = coerceStringArray(obj.effectGoals);
   sections.scopeIncluded = coerceStringArray(obj.scopeIncluded);
   sections.scopeExcluded = coerceStringArray(obj.scopeExcluded);
 
@@ -185,6 +187,15 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
     );
   });
   sections.summary = summaryLines.join(' ');
+
+  // Derivera enkla effektmål från sammanfattningen om LLM inte levererat egna.
+  if (!sections.effectGoals || sections.effectGoals.length === 0) {
+    const summarySentences = splitSentences(sections.summary);
+    const effectCandidates = summarySentences.filter((s) => s.length > 0);
+    if (effectCandidates.length) {
+      sections.effectGoals = effectCandidates.slice(0, 3);
+    }
+  }
 
   const body = bodyPart || '';
 

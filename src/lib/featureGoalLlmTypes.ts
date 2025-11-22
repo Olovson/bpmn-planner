@@ -4,6 +4,8 @@
 export interface FeatureGoalDocModel {
   // Kort, ren sammanfattning av Feature Goalet – 2–5 meningar om syfte, värde och kontext.
   summary: string;
+  // Effektmål på affärsnivå – vilka beteenden/värden som ska förbättras (t.ex. automatisering, kvalitet, kundupplevelse).
+  effectGoals: string[];
   // Lista med "Ingår:"-punkter (omfattning, vad som täcks).
   scopeIncluded: string[];
   // Lista med "Ingår inte:"-punkter och explicita avgränsningar.

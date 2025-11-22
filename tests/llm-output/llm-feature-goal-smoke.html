@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Internal data gathering</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    <section class="doc-section">
+      <span class="doc-badge">Feature Goal</span>
+      <h1>Internal data gathering</h1>
+      <ul>
+        <li><strong>Initiativ:</strong> mortgage-se-application</li>
+        <li><strong>BPMN Call Activity:</strong> internal-data-gathering (Internal data gathering)</li>
+        <li><strong>Regel/affärsägare:</strong> Produktägare Kredit / Risk & Policy</li>
+        <li><strong>Kreditprocess-steg:</strong> mortgage-se-application</li>
+        <li><strong>Version / datum:</strong> 1.0 (LLM-validerad) – uppdateras vid ändring</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Sammanfattning &amp; scope</h2>
+      <p>Feature Goalet för intern datainsamling syftar till att effektivisera och automatisera insamlingen av kunddata för kreditbedömning. Det omfattar kunder som ansöker om bolån och stödjer bankens strategi för att förbättra riskhantering och kundupplevelse genom att säkerställa att all relevant information är tillgänglig och korrekt från början.</p>
+      <ul><li>Ingår: Ingår: insamling av intern kund- och engagemangsdata för kreditbedömning.; Ingår: automatiserad validering av insamlad data mot interna och externa källor.; Ingår: integration med befintliga system för att hämta nödvändig data.; Ingår: stöd för att identifiera och flagga avvikande data för manuell granskning.</li><li>Ingår inte: Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.; Ingår inte: hantering av kundklagomål och tvister.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Effektmål</h2>
+      <ul><li>Automatisering av datainsamling minskar manuellt arbete och kortar ledtider i kreditprocessen.</li><li>Förbättrad kvalitet och säkerhet i kreditbedömningar genom tillgång till korrekt och aktuell data.</li><li>Förbättrad kundupplevelse genom snabbare och mer precisa besked.</li><li>Stärkt regelefterlevnad och riskkontroll genom att säkerställa att all nödvändig data samlas in och granskas.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Ingående Epics</h2>
+      
+      <table>
+        <tr>
+          <th>Epic-ID</th>
+          <th>Epic-namn</th>
+          <th>Beskrivning</th>
+          <th>Team</th>
+        </tr>
+        
+        <tr>
+          <td>E1</td>
+          <td>Automatisk datainsamling</td>
+          <td>Automatisera insamlingen av kunddata från interna system för att minimera manuellt arbete.</td>
+          <td>Data & Integration</td>
+        </tr>
+        <tr>
+          <td>E2</td>
+          <td>Data validering</td>
+          <td>Validera insamlad data mot interna och externa källor för att säkerställa korrekthet och fullständighet.</td>
+          <td>Risk & Kredit</td>
+        </tr>
+        <tr>
+          <td>E3</td>
+          <td>Avvikelsehantering</td>
+          <td>Identifiera och flagga avvikande data för manuell granskning och åtgärd.</td>
+          <td>Compliance</td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärsflöde</h2>
+      <ol>
+        <li>Kunden påbörjar ansökan om bolån och lämnar grundläggande information.</li><li>Systemet samlar automatiskt in kompletterande data från interna system.</li><li>Insamlad data valideras mot interna och externa källor för att säkerställa korrekthet.</li><li>Eventuella avvikelser flaggas för manuell granskning av handläggare.</li><li>Slutlig kreditbedömning görs baserat på den validerade datan.</li>
+      </ol>
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärs-scenarion</h2>
+      <table>
+        <tr>
+          <th>Scenario</th>
+          <th>Beskrivning</th>
+          <th>Typ (Happy/Edge/Error)</th>
+          <th>Förväntat resultat</th>
+        </tr>
+        
+        <tr>
+          <td>S1</td>
+          <td>Fullständig data insamlad</td>
+          <td>Happy</td>
+          <td>All nödvändig data samlas in och valideras utan avvikelser, vilket leder till en snabb och smidig kreditbedömning.</td>
+        </tr>
+        <tr>
+          <td>S2</td>
+          <td>Ofullständig data</td>
+          <td>Edge</td>
+          <td>Viss data saknas, vilket leder till att ansökan flaggas för manuell granskning.</td>
+        </tr>
+        <tr>
+          <td>S3</td>
+          <td>Avvikande data</td>
+          <td>Error</td>
+          <td>Avvikelser upptäcks i den insamlade datan, vilket kräver ytterligare utredning av handläggare.</td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="doc-section">
+      <h2>Koppling till automatiska tester</h2>
+      <p>
+        Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester, och scenario-ID och namn bör återanvändas i testfiler och testnamn.
+        <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
+        <br />
+        Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
+      </p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes (för dev)</h2>
+      <ul><li>Använd standardiserade API-mönster för datainsamling och validering.</li><li>Implementera omfattande loggning och audit-funktioner för att spåra datainsamlingsprocessen.</li><li>Säkerställ att systemet kan hantera stora volymer av data utan prestandaförsämring.</li><li>Fokusera på robust felhantering för att hantera avvikelser och ofullständig data.</li><li>Integrera med befintliga system för att möjliggöra sömlös datainsamling.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade regler / subprocesser</h2>
+      <ul><li>Relaterat Feature Goal: Extern datainsamling för kompletterande kreditinformation.</li><li>Relaterad Epic: Manuell granskning av avvikande data.</li><li>Business Rule: Kreditvärdighetsbedömning baserad på intern och extern data.</li><li>Subprocess: Validering av kundinformation mot externa register.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Definition of Ready</h2>
+      <ul><li>Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.</li><li>Ingående epics och beroende huvudflöden är identifierade och övergripande beskrivna.</li><li>Centrala beroenden (regelmotor, datakällor, externa tjänster) är identifierade och ägarskap är tydliggjort.</li><li>Övergripande affärsscenarier och risk-/policykrav är kända och dokumenterade.</li><li>Tekniska förutsättningar (plattform, integrationer, miljöer) är klarlagda på en övergripande nivå.</li></ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Definition of Done</h2>
+      <ul><li>Feature Goalet stödjer de definierade affärsscenarierna och uppfyller beskrivna policys och regler.</li><li>Alla epics som ingår är implementerade, testade och dokumenterade med spårbarhet mot detta Feature Goal.</li><li>Automatiska tester täcker centrala flöden, felhantering och definierade risk-/policykrav.</li><li>Loggning och mätpunkter finns på plats för uppföljning, insikter och incidenthantering.</li><li>Dokumentation (Feature Goal, epics, regler) är uppdaterad och tillgänglig för berörda team.</li></ul>
+    </section>
+  
+  </div>
+</body>
+</html>

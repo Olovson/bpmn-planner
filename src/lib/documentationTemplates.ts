@@ -482,6 +482,13 @@ function buildFeatureGoalDocModelFromContext(
     summary:
       `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet. ` +
       'Feature Goalet säkerställer att rätt data, regler och interaktioner finns på plats för att fatta välgrundade kreditbeslut.',
+    effectGoals: [
+      'Ökad automatisering i kreditprocessen, med mindre manuellt arbete per ansökan.',
+      'Minskad handläggningstid per ansökan genom mer komplett och strukturerad datainsamling.',
+      'Förbättrad datakvalitet och minskade felkällor i underlag för kreditevaluering.',
+      'Säkrade och mer förutsägbara kreditevalueringar enligt kreditpolicy och riskramverk.',
+      'Högre kundnöjdhet genom snabbare och tydligare besked i tidiga steg av kundresan.',
+    ],
     scopeIncluded: scopePoints,
     scopeExcluded: boundaries,
     epics: epicRows,
@@ -577,6 +584,17 @@ function buildFeatureGoalDocHtmlFromModel(
     model.summary ||
     `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
 
+  const effectGoals =
+    model.effectGoals && model.effectGoals.length
+      ? model.effectGoals
+      : [
+          'Ökad automatisering i kreditprocessen, med mindre manuellt arbete per ansökan.',
+          'Minskad handläggningstid per ansökan genom mer komplett och strukturerad datainsamling.',
+          'Förbättrad datakvalitet och minskade felkällor i underlag för kreditevaluering.',
+          'Säkrade och mer förutsägbara kreditevalueringar enligt kreditpolicy och riskramverk.',
+          'Högre kundnöjdhet genom snabbare och tydligare besked i tidiga steg av kundresan.',
+        ];
+
   const scopeIncluded = model.scopeIncluded.length ? model.scopeIncluded : [];
   const scopeExcluded = model.scopeExcluded.length ? model.scopeExcluded : [];
 
@@ -624,6 +642,22 @@ function buildFeatureGoalDocHtmlFromModel(
     model.testDescription ||
     'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
 
+  const dorBullets = [
+    'Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.',
+    'Ingående epics och beroende huvudflöden är identifierade och övergripande beskrivna.',
+    'Centrala beroenden (regelmotor, datakällor, externa tjänster) är identifierade och ägarskap är tydliggjort.',
+    'Övergripande affärsscenarier och risk-/policykrav är kända och dokumenterade.',
+    'Tekniska förutsättningar (plattform, integrationer, miljöer) är klarlagda på en övergripande nivå.',
+  ];
+
+  const dodBullets = [
+    'Feature Goalet stödjer de definierade affärsscenarierna och uppfyller beskrivna policys och regler.',
+    'Alla epics som ingår är implementerade, testade och dokumenterade med spårbarhet mot detta Feature Goal.',
+    'Automatiska tester täcker centrala flöden, felhantering och definierade risk-/policykrav.',
+    'Loggning och mätpunkter finns på plats för uppföljning, insikter och incidenthantering.',
+    'Dokumentation (Feature Goal, epics, regler) är uppdaterad och tillgänglig för berörda team.',
+  ];
+
   return `
     <section class="doc-section">
       <span class="doc-badge">Feature Goal</span>
@@ -640,11 +674,12 @@ function buildFeatureGoalDocHtmlFromModel(
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
       <p>${summaryText}</p>
+      ${renderList(scopeBullets)}
     </section>
 
     <section class="doc-section">
-      <h2>Omfattning &amp; Avgränsningar</h2>
-      ${renderList(scopeBullets)}
+      <h2>Effektmål</h2>
+      ${renderList(effectGoals)}
     </section>
 
     <section class="doc-section">
@@ -680,11 +715,6 @@ function buildFeatureGoalDocHtmlFromModel(
       <ol>
         ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
-    </section>
-
-    <section class="doc-section">
-      <h2>Kritiska beroenden</h2>
-      ${renderList(dependencies)}
     </section>
 
     <section class="doc-section">
@@ -732,6 +762,16 @@ function buildFeatureGoalDocHtmlFromModel(
     <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
       ${renderList(relatedItems)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Definition of Ready</h2>
+      ${renderList(dorBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Definition of Done</h2>
+      ${renderList(dodBullets)}
     </section>
   `;
 }
@@ -817,6 +857,17 @@ function buildFeatureGoalLlmDocBody(
     sections.summary ||
     `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
 
+  const effectGoals =
+    sections.effectGoals && sections.effectGoals.length
+      ? sections.effectGoals
+      : [
+          'Ökad automatisering i kreditprocessen, med mindre manuellt arbete per ansökan.',
+          'Minskad handläggningstid per ansökan genom mer komplett och strukturerad datainsamling.',
+          'Förbättrad datakvalitet och minskade felkällor i underlag för kreditevaluering.',
+          'Säkrade och mer förutsägbara kreditevalueringar enligt kreditpolicy och riskramverk.',
+          'Högre kundnöjdhet genom snabbare och tydligare besked i tidiga steg av kundresan.',
+        ];
+
   const scopeBullets: string[] = [];
   if (sections.scopeIncluded.length) {
     scopeBullets.push(`Ingår: ${sections.scopeIncluded.join('; ')}`);
@@ -861,6 +912,22 @@ function buildFeatureGoalLlmDocBody(
     sections.testDescription ||
     'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
 
+  const dorBullets = [
+    'Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.',
+    'Ingående epics och beroende huvudflöden är identifierade och övergripande beskrivna.',
+    'Centrala beroenden (regelmotor, datakällor, externa tjänster) är identifierade och ägarskap är tydliggjort.',
+    'Övergripande affärsscenarier och risk-/policykrav är kända och dokumenterade.',
+    'Tekniska förutsättningar (plattform, integrationer, miljöer) är klarlagda på en övergripande nivå.',
+  ];
+
+  const dodBullets = [
+    'Feature Goalet stödjer de definierade affärsscenarierna och uppfyller beskrivna policys och regler.',
+    'Alla epics som ingår är implementerade, testade och dokumenterade med spårbarhet mot detta Feature Goal.',
+    'Automatiska tester täcker centrala flöden, felhantering och definierade risk-/policykrav.',
+    'Loggning och mätpunkter finns på plats för uppföljning, insikter och incidenthantering.',
+    'Dokumentation (Feature Goal, epics, regler) är uppdaterad och tillgänglig för berörda team.',
+  ];
+
   return `
     <section class="doc-section">
       <span class="doc-badge">Feature Goal</span>
@@ -877,11 +944,12 @@ function buildFeatureGoalLlmDocBody(
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
       <p>${summaryText}</p>
+      ${renderList(scopeBullets)}
     </section>
 
     <section class="doc-section">
-      <h2>Omfattning &amp; Avgränsningar</h2>
-      ${renderList(scopeBullets)}
+      <h2>Effektmål</h2>
+      ${renderList(effectGoals)}
     </section>
 
     <section class="doc-section">
@@ -917,11 +985,6 @@ function buildFeatureGoalLlmDocBody(
       <ol>
         ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
-    </section>
-
-    <section class="doc-section">
-      <h2>Kritiska beroenden</h2>
-      ${renderList(dependencies)}
     </section>
 
     <section class="doc-section">
@@ -972,6 +1035,16 @@ function buildFeatureGoalLlmDocBody(
     <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
       ${renderList(relatedItems)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Definition of Ready</h2>
+      ${renderList(dorBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Definition of Done</h2>
+      ${renderList(dodBullets)}
     </section>
   `;
 }
@@ -1323,6 +1396,22 @@ function buildEpicDocHtmlFromModel(
             : `BPMN-fil: ${node.bpmnFile}`,
         ];
 
+  const dorBullets = [
+    'Syfte, effektmål och förväntat affärsvärde för epiken är beskrivet och förankrat.',
+    'Upstream- och downstream-noder, beroenden och grundläggande affärsregler är identifierade.',
+    'Indata, gränssnitt och eventuella externa beroenden är kända och övergripande dokumenterade.',
+    'Affärs-scenarion och testkriterier är definierade på en nivå som möjliggör planering av automatiska tester.',
+    'Acceptanskriterier och icke‑funktionella krav (prestanda, robusthet, spårbarhet) är övergripande klarlagda.',
+  ];
+
+  const dodBullets = [
+    'Epiken levererar den avtalade effekten och stöder definierade affärsflöden utan kritiska gap.',
+    'Alla in- och utdataflöden fungerar, är testade och dokumenterade med spårbarhet mot beroende noder.',
+    'Affärsregler som triggas av epiken är implementerade, testade och dokumenterade.',
+    'Automatiska tester täcker huvudflöde, relevanta edge-cases och felhantering.',
+    'Monitorering/loggning är på plats och dokumentation är uppdaterad för berörda team.',
+  ];
+
   return `
     <section class="doc-section">
       <span class="doc-badge">Epic</span>
@@ -1338,40 +1427,57 @@ function buildEpicDocHtmlFromModel(
     </section>
 
     <section class="doc-section">
-      <h2>Syfte &amp; Scope</h2>
+      <h2>Syfte &amp; Effekt</h2>
       <p>${summaryText}</p>
-      ${renderList(model.inputs)}
     </section>
 
     <section class="doc-section">
-      <h2>Trigger &amp; Förutsättningar</h2>
-      ${renderList(prerequisites)}
+      <h2>Inputs</h2>
+      ${
+        model.inputs.length
+          ? `
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Format</th>
+          <th>Validering</th>
+        </tr>
+        ${model.inputs
+          .map(
+            (row) => `
+        <tr>
+          <td>${row}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>`,
+          )
+          .join('')}
+      </table>`
+          : '<p class="muted">Inga inputs specificerade ännu.</p>'
+      }
     </section>
 
     <section class="doc-section">
-      <h2>Huvudflöde (High-level scenario)</h2>
+      <h2>Funktionellt flöde</h2>
       <ol>
         ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
     </section>
 
     <section class="doc-section">
-      <h2>Interaktioner &amp; Kanaler</h2>
-      ${renderList(interactions)}
-    </section>
-
-    <section class="doc-section">
-      <h2>Data &amp; Kontrakt</h2>
+      <h2>Output</h2>
       ${renderList(dataContracts)}
     </section>
 
     <section class="doc-section">
-      <h2>Affärsregler &amp; Policykoppling</h2>
+      <h2>Affärsregler som triggas</h2>
       ${renderList(businessRulesPolicy)}
     </section>
 
     <section class="doc-section">
-      <h2>Testkriterier (affärsnivå)</h2>
+      <h2>Affärs-scenarion (tabell)</h2>
       <p class="muted">Scenarierna nedan är affärsnära och ska mappas till automatiska tester.</p>
       <table>
         <tr>
@@ -1401,13 +1507,35 @@ function buildEpicDocHtmlFromModel(
     </section>
 
     <section class="doc-section">
-      <h2>Implementation Notes (för dev/test)</h2>
+      <h2>Koppling till automatiska tester</h2>
+      <p>
+        ${testDescription}
+        ${
+          links.testLink
+            ? `<br />Testfil: <code>${links.testLink}</code>`
+            : '<br /><span class="muted">Testfil länkas via node_test_links</span>'
+        }
+      </p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
       ${renderList(implementationNotes)}
     </section>
 
     <section class="doc-section">
       <h2>Relaterade steg &amp; artefakter</h2>
       ${renderList(relatedItems)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Definition of Ready</h2>
+      ${renderList(dorBullets)}
+    </section>
+
+    <section class="doc-section">
+      <h2>Definition of Done</h2>
+      ${renderList(dodBullets)}
     </section>
   `;
 }
