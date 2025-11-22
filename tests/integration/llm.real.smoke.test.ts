@@ -31,6 +31,7 @@ import {
 // Om LLM inte är aktiverat i test-miljö, markeras hela describe-blocket som skip.
 //
 const PROVIDERS: LlmProvider[] = ['cloud', 'local'];
+const STRICT_SMOKE = process.env.LLM_SMOKE_STRICT === 'true';
 
 if (!isLlmEnabled()) {
   describe.skip('Real LLM smoke tests (skipped – LLM not enabled in tests)', () => {
@@ -249,6 +250,9 @@ if (!isLlmEnabled()) {
               : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
+          if (STRICT_SMOKE) {
+            throw error instanceof Error ? error : new Error(String(error));
+          }
         }
       }
 
@@ -337,6 +341,9 @@ if (!isLlmEnabled()) {
               : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
+          if (STRICT_SMOKE) {
+            throw error instanceof Error ? error : new Error(String(error));
+          }
         }
       }
 
@@ -420,6 +427,9 @@ if (!isLlmEnabled()) {
               : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
+          if (STRICT_SMOKE) {
+            throw error instanceof Error ? error : new Error(String(error));
+          }
         }
       }
 

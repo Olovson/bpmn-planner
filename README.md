@@ -123,10 +123,27 @@ VITE_LLM_LOCAL_MODEL=llama3:latest
 
 > **Obs:** när `VITE_USE_LLM=true` och `VITE_OPENAI_API_KEY` är satt används LLM-kontrakten för ChatGPT/Ollama. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
 
-## 3. Edge Functions (valfritt)
+## 3. Edge Functions (valfritt men rekommenderat vid LLM-utveckling)
+
+För att vissa delar av appen ska fungera fullt ut lokalt (t.ex. LLM‑health och process‑trädet) behöver du starta relevanta edge functions i egna terminalfönster:
+
 ```bash
-supabase functions serve build-process-tree --env-file supabase/.env --no-verify-jwt
+# Terminal 1 – LLM health (Ollama/ChatGPT-status)
+supabase functions serve llm-health --no-verify-jwt --env-file supabase/.env
+
+# Terminal 2 – build-process-tree (för processgrafen)
+supabase functions serve build-process-tree --no-verify-jwt --env-file supabase/.env
 ```
+
+Kör därefter dev-servern i en tredje terminal:
+
+```bash
+npm run dev
+```
+
+Så länge dessa tre terminaler är igång får du:
+- korrekt LLM‑status på sidan `#/files` (ChatGPT/Ollama tillgänglig/ej tillgänglig),
+- fungerande process‑träd/byggfunktioner i UI.
 
 ## 4. Dev-server
 ```bash
