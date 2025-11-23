@@ -136,6 +136,9 @@ const Index = () => {
 
   const handleBpmnFileChange = (newFileName: string) => {
     if (!newFileName) return;
+    // Undvik att trigga navigation i en loop om filen redan är aktiv
+    if (newFileName === currentBpmnFile && newFileName === urlFile) return;
+
     setCurrentBpmnFile(newFileName);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);

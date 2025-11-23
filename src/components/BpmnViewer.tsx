@@ -135,16 +135,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     [processTree],
   );
 
-  // Reset navigation/history when the root file changes
-  useEffect(() => {
-    if (!initialFileName) return;
-    setBpmnHistory([]);
-    setSelectedElement(null);
-    setSelectedElementId(null);
-    // Trigger a fresh load for the new root
-    setCurrentXml('');
-    setFileName(initialFileName);
-  }, [initialFileName, setSelectedElementId]);
   const parentHistoryItem = bpmnHistory.length > 0 ? bpmnHistory[bpmnHistory.length - 1] : null;
   const downloadFromStorage = useCallback(async (name: string) => {
     const { data: record } = await supabase
@@ -334,14 +324,11 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     };
   }, [fileName, loadSubProcess, toast]);
 
-  // Load initial BPMN file from Supabase Storage
+  // Load BPMN file from Supabase Storage for the "current" route/initial file
   useEffect(() => {
     if (isLoadingFiles || !bpmnFiles) return;
 
     const loadBpmn = async () => {
-      // Om vi redan visar önskad fil OCH har XML laddad, hoppa över
-      if (fileName && initialFileName && fileName === initialFileName && currentXml) return;
-
       const availableFiles = Array.isArray(bpmnFiles) ? bpmnFiles : [];
       const hasInitial = initialFileName && availableFiles.includes(initialFileName);
       const fileToLoad = hasInitial ? initialFileName! : availableFiles[0];
@@ -359,6 +346,13 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       try {
         const url = await getBpmnFileUrl(fileToLoad);
         console.log('Attempting to load BPMN from:', url);
+
+        // Nollställ navigationen när vi aktivt byter fil via route
+        if (fileToLoad !== fileName) {
+          setBpmnHistory([]);
+          setSelectedElement(null);
+          setSelectedElementId(null);
+        }
         
         let response = await fetch(url);
         let contentType = response.headers.get('content-type') || '';
@@ -395,7 +389,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     };
     
     loadBpmn();
-  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage, fileName, currentXml]);
+  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage, fileName, setSelectedElementId]);
 
   // Initialize viewer when container becomes available (after loading UI is gone)
   useEffect(() => {
@@ -631,7 +625,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         // Add click listener for elements
         const eventBus = viewerRef.current!.get('eventBus') as any;
         
-        // Single click - select element (+ hantera dubbelklick via originalEvent.detail)
+        // Single click - select element
         clickListener = (event: any) => {
           const { element } = event;
           // Resolve to actual element if a label was clicked
@@ -651,25 +645,24 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
             setSelectedElement(target.id);
             setSelectedElementId(target.id); // Update global context
             onElementSelect?.(target.id, type, elementName);
-
-            // Dubbelklicksdetektering: använd browserns klickräknare
-            const clickCount =
-              (event?.originalEvent as MouseEvent | undefined)?.detail ?? 1;
-            if (clickCount >= 2) {
-              handleSubprocessNavigation(target);
-            }
           }
         };
         
         eventBus.on('element.click', clickListener);
 
-        // Blockera bpmn-js standard dubbelklick-zoom (vi hanterar dubbelklick själva)
+        // Hantera dubbelklick separat: stoppa standard-zoom och använd vår subprocess-navigation
         dblclickListener = (event: any) => {
           const oe = event?.originalEvent as MouseEvent | undefined;
           if (oe) {
             oe.preventDefault();
             oe.stopPropagation();
           }
+
+          const rawElement = event?.element;
+          const target = rawElement?.labelTarget || rawElement;
+          if (!target) return;
+
+          handleSubprocessNavigation(target);
         };
         eventBus.on('element.dblclick', dblclickListener);
 
