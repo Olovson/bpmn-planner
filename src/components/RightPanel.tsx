@@ -415,11 +415,32 @@ export const RightPanel = ({
     elementId: selectedElement || undefined,
   });
 
-  const localPlannedScenarios = useMemo(() => {
-    const localSet = plannedScenariosByProvider.find(
-      (s) => s.provider === 'local-fallback',
-    );
-    return localSet?.scenarios ?? [];
+  const allPlannedScenarios = useMemo(() => {
+    const result: {
+      id: string;
+      name: string;
+      description?: string;
+      category?: string;
+      status?: string;
+      provider: string;
+      origin: string;
+    }[] = [];
+
+    plannedScenariosByProvider.forEach((set) => {
+      (set.scenarios ?? []).forEach((s: any) => {
+        result.push({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          category: s.category,
+          status: s.status,
+          provider: set.provider,
+          origin: set.origin,
+        });
+      });
+    });
+
+    return result;
   }, [plannedScenariosByProvider]);
 
   if (!shouldShowPanel) {
@@ -635,20 +656,17 @@ export const RightPanel = ({
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Testfil</p>
                   {testFileUrl ? (
-                    <div className="flex items-center justify-between gap-2 rounded border border-border/60 px-3 py-2 text-xs">
-                      <p className="truncate">
-                        <span className="font-medium">Kopplad testfil</span>
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-[11px]"
-                        onClick={() => openExternal(testFileUrl)}
-                      >
-                        <FileCode className="h-3 w-3 mr-1" />
-                        Öppna
-                      </Button>
-                    </div>
+                    <a
+                      href={testFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <FileCode className="h-3 w-3" />
+                      <span className="truncate max-w-[220px]">
+                        {testFilePath?.replace(/^tests\//, '') || 'Öppna testfil'}
+                      </span>
+                    </a>
                   ) : (
                     <p className="text-xs text-muted-foreground">
                       Ingen automatisk testfil är kopplad till denna nod ännu.
@@ -715,49 +733,48 @@ export const RightPanel = ({
                     </p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Planerade scenarion</CardTitle>
-                <CardDescription>
-                  Designade testscenarion för denna nod (Lokal fallback).
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {localPlannedScenarios.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    Inga planerade scenarion är kopplade till denna nod ännu.
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Planerade scenarion
                   </p>
-                ) : (
-                  <>
+                  {allPlannedScenarios.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      {localPlannedScenarios.length} scenario
-                      {localPlannedScenarios.length > 1 ? 'n' : ''} definierade.
+                      Inga planerade scenarion är kopplade till denna nod ännu.
                     </p>
-                    <div className="space-y-2 max-h-60 overflow-auto pr-1">
-                      {localPlannedScenarios.map((scenario) => (
-                        <div
-                          key={scenario.id}
-                          className="rounded border border-border/50 px-3 py-2"
-                        >
-                          <p className="text-xs font-medium">
-                            {scenario.name}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {scenario.category} • {scenario.status}
-                          </p>
-                          {scenario.description && (
-                            <p className="text-[11px] text-muted-foreground mt-1">
-                              {scenario.description}
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        {allPlannedScenarios.length} scenario
+                        {allPlannedScenarios.length > 1 ? 'n' : ''} definierade.
+                      </p>
+                      <div className="space-y-2">
+                        {allPlannedScenarios.map((scenario) => (
+                          <div
+                            key={scenario.id}
+                            className="rounded border border-border/50 px-3 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-medium">
+                                {scenario.name}
+                              </p>
+                              <span className="text-[10px] rounded bg-muted/60 px-1.5 py-0.5 text-muted-foreground">
+                                {scenario.provider}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              {scenario.category} • {scenario.status}
                             </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+                            {scenario.description && (
+                              <p className="text-[11px] text-muted-foreground mt-1">
+                                {scenario.description}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
