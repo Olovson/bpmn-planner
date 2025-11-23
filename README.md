@@ -418,6 +418,11 @@ En kort lista över förbättringsidéer som vi kan plocka upp senare:
 
 - **Selektiv körning**
   - Kör LLM‑generering endast för noder/filer som ändrats sedan senaste körning.
+
+- **Batch‑API för massgenerering + omdesign av filvy**
+  - Flytta stora genereringsjobb (docs/tests/testscript) från synkrona per‑nod‑anrop till OpenAI Batch‑API.
+  - Designa om filvyn så att den jobbar mot batch‑jobb (status, kö, progress) i stället för att trigga enstaka ChatGPT‑anrop direkt från UI.
+  - Lägg till serverflöde (Supabase function/cron) som bygger batchar, skickar till Batch‑API och skriver tillbaka resultat till DB.
   - Koppla mot t.ex. `bpmn_files.updated_at` och jobbhistorik för att avgöra vad som behöver regenereras.
 
 - **Lokal LLM‑profil / modellbyte**
