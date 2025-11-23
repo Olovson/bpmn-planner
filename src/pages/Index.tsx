@@ -68,15 +68,18 @@ const Index = () => {
   useEffect(() => {
     if (derivedRoot && derivedRoot !== baseRootRef.current) {
       baseRootRef.current = derivedRoot;
-      console.log('[Index] Setting currentBpmnFile to root:', derivedRoot);
-      setCurrentBpmnFile(derivedRoot);
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('file', derivedRoot);
-        return next;
-      }, { replace: true });
+      // Sätt bara rotfilen i URL/state om användaren inte redan har valt en specifik fil
+      if (!urlFile) {
+        console.log('[Index] Setting currentBpmnFile to root:', derivedRoot);
+        setCurrentBpmnFile(derivedRoot);
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('file', derivedRoot);
+          return next;
+        }, { replace: true });
+      }
     }
-  }, [derivedRoot, setSearchParams]);
+  }, [derivedRoot, setSearchParams, urlFile]);
 
   useEffect(() => {
     if (!loading && !user) {
