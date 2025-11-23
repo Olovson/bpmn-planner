@@ -17,6 +17,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { DocVariantBadges } from '@/components/DocVariantBadges';
 import { getNodeDocViewerPath } from '@/lib/nodeArtifactPaths';
+import {
+  filterNodesByType,
+  NODE_TYPE_FILTER_OPTIONS,
+  countNodesByType,
+  type NodeTypeFilterValue,
+} from '@/lib/nodeMatrixFiltering';
 
 type SortField = 'bpmnFile' | 'elementName' | 'nodeType';
 type SortDirection = 'asc' | 'desc';
@@ -37,9 +43,8 @@ const NodeMatrix = () => {
   // Local state for optimistic updates (avoids full page reload)
   const [localNodeUpdates, setLocalNodeUpdates] = useState<Record<string, Partial<BpmnNodeData>>>({});
   
-  // Simplified filters - only BPMN file and node type
-  const [selectedBpmnFile, setSelectedBpmnFile] = useState<string>('Alla');
-  const [selectedNodeType, setSelectedNodeType] = useState<string>('Alla');
+  // Filter för kolumnen "Typ" (NodeTypeFilter)
+  const [selectedNodeType, setSelectedNodeType] = useState<NodeTypeFilterValue>('Alla');
 
   // Merge fetched nodes with local optimistic updates
   const mergedNodes = useMemo(() => {
@@ -51,36 +56,12 @@ const NodeMatrix = () => {
     });
   }, [nodes, localNodeUpdates]);
 
-  // Get unique BPMN files from data
-  const uniqueBpmnFiles = useMemo(() => {
-    if (!mergedNodes) return [];
-    const files = new Set(mergedNodes.map(n => n.bpmnFile));
-    return ['Alla', ...Array.from(files).sort()];
-  }, [mergedNodes]);
+  // Sorterade noder (ofiltrerade; filter appliceras vid render)
+  const sortedNodes = useMemo(() => {
+    if (!mergedNodes || mergedNodes.length === 0) return [];
 
-  // Get unique node types from data
-  const uniqueNodeTypes = useMemo(() => {
-    if (!mergedNodes) return [];
-    const types = new Set(mergedNodes.map(n => n.nodeType));
-    return ['Alla', ...Array.from(types).sort()];
-  }, [mergedNodes]);
+    const result = [...mergedNodes];
 
-  const filteredAndSortedNodes = useMemo(() => {
-    // Guard against undefined or null nodes
-    if (!mergedNodes || mergedNodes.length === 0) {
-      return [];
-    }
-
-    let result = [...mergedNodes];
-
-    // Apply filters - "Alla" means no filter for that dimension
-    result = result.filter(node => {
-      const fileMatches = selectedBpmnFile === 'Alla' || node.bpmnFile === selectedBpmnFile;
-      const typeMatches = selectedNodeType === 'Alla' || node.nodeType === selectedNodeType;
-      return fileMatches && typeMatches;
-    });
-
-    // Sort
     result.sort((a, b) => {
       let aVal = a[sortField];
       let bVal = b[sortField];
@@ -94,7 +75,25 @@ const NodeMatrix = () => {
     });
 
     return result;
-  }, [mergedNodes, selectedBpmnFile, selectedNodeType, sortField, sortDirection]);
+  }, [mergedNodes, sortField, sortDirection]);
+
+  // Slutlig lista som visas i tabellen – filtrerad och sorterad
+  const filteredAndSortedNodes = useMemo(() => {
+    const result = filterNodesByType(sortedNodes, selectedNodeType);
+    // Debug logging
+    if (import.meta.env.DEV) {
+      console.log('[NodeMatrix Filter Debug]', {
+        selectedNodeType,
+        sortedNodesCount: sortedNodes.length,
+        filteredCount: result.length,
+        sampleNodeTypes: sortedNodes.slice(0, 5).map(n => n.nodeType),
+      });
+    }
+    return result;
+  }, [sortedNodes, selectedNodeType]);
+
+  // Kontrollera om det finns aktiva filter
+  const hasActiveFilters = selectedNodeType !== 'Alla';
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -104,13 +103,6 @@ const NodeMatrix = () => {
       setSortDirection('asc');
     }
   };
-
-  const clearAllFilters = () => {
-    setSelectedBpmnFile('Alla');
-    setSelectedNodeType('Alla');
-  };
-
-  const hasActiveFilters = selectedBpmnFile !== 'Alla' || selectedNodeType !== 'Alla';
 
   const exportToExcel = () => {
     try {
@@ -322,18 +314,17 @@ const NodeMatrix = () => {
             <p className="text-sm text-muted-foreground">
               {filteredAndSortedNodes.length} av {mergedNodes?.length || 0} noder
             </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Debug Typfilter: valt = {selectedNodeType} • UserTask =
+              {' '}{countNodesByType(filteredAndSortedNodes, 'UserTask')}
+              {' '}• CallActivity =
+              {' '}{countNodesByType(filteredAndSortedNodes, 'CallActivity')}
+              {' '}• BusinessRuleTask =
+              {' '}{countNodesByType(filteredAndSortedNodes, 'BusinessRuleTask')}
+              {' '}• ServiceTask =
+              {' '}{countNodesByType(filteredAndSortedNodes, 'ServiceTask')}
+            </p>
           </div>
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearAllFilters}
-              className="flex items-center gap-2"
-            >
-              <X className="h-4 w-4" />
-              Rensa filter
-            </Button>
-          )}
         </div>
 
         {loading ? (
@@ -348,28 +339,18 @@ const NodeMatrix = () => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={selectedBpmnFile} onValueChange={setSelectedBpmnFile}>
-                <SelectTrigger className="w-[300px]">
-                  <SelectValue placeholder="Välj BPMN-fil" />
+              <Select
+                value={selectedNodeType}
+                onValueChange={(value) => {
+                  console.log('[NodeMatrix] Filter changed:', value);
+                  setSelectedNodeType(value as NodeTypeFilterValue);
+                }}
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Filtrera på Typ" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
-                  {uniqueBpmnFiles.map(file => (
-                    <SelectItem key={file} value={file}>
-                      {file}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={selectedNodeType} onValueChange={setSelectedNodeType}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Välj nodtyp" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {uniqueNodeTypes.map(type => (
+                  {NODE_TYPE_FILTER_OPTIONS.map((type) => (
                     <SelectItem key={type} value={type}>
                       {type}
                     </SelectItem>

@@ -112,9 +112,20 @@ export const useAllBpmnNodes = () => {
           businessRuleTask: 'BusinessRuleTask',
         };
 
+        // Use a Map to deduplicate nodes by bpmnFile:elementId
+        // If a node appears multiple times (e.g., in parent and subprocess), keep the first occurrence
+        const nodeMap = new Map<string, BpmnNodeData>();
+
         for (const node of relevantNodes) {
           const elementId = node.bpmnElementId || node.id;
           const bpmnFile = node.bpmnFile;
+          const nodeKey = `${bpmnFile}:${elementId}`;
+
+          // Skip if we've already processed this node
+          if (nodeMap.has(nodeKey)) {
+            continue;
+          }
+
           const mapping = allMappings?.find(
             m => m.bpmn_file === bpmnFile && m.element_id === elementId
           );
@@ -142,7 +153,7 @@ export const useAllBpmnNodes = () => {
           const docPath = getNodeDocStoragePath(bpmnFile, elementId);
           const docUrl = getDocumentationUrl(bpmnFile, elementId);
 
-          allNodes.push({
+          const nodeData: BpmnNodeData = {
             bpmnFile,
             elementId,
             elementName: node.label,
@@ -162,8 +173,13 @@ export const useAllBpmnNodes = () => {
             hierarchyPath: defaultJiraName,
             subprocessMatchStatus: node.subprocessLink?.matchStatus,
             diagnosticsSummary,
-          });
+          };
+
+          nodeMap.set(nodeKey, nodeData);
         }
+
+        // Convert Map to array
+        allNodes.push(...Array.from(nodeMap.values()));
 
         // Resolve storage-based artifacts (docs + test reports)
         const enriched = await Promise.all(
