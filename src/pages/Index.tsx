@@ -134,6 +134,16 @@ const Index = () => {
     baseNavigate('/auth');
   };
 
+  const handleBpmnFileChange = (newFileName: string) => {
+    if (!newFileName) return;
+    setCurrentBpmnFile(newFileName);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('file', newFileName);
+      return next;
+    }, { replace: false });
+  };
+
   // Sync URL param to state if present
   useEffect(() => {
     if (urlFile && urlFile !== currentBpmnFile) {
@@ -210,7 +220,7 @@ const Index = () => {
                 <div className="flex-1 min-w-0">
                   <BpmnViewer
                     onElementSelect={handleElementSelect}
-                    onFileChange={setCurrentBpmnFile}
+                    onFileChange={handleBpmnFileChange}
                     bpmnMappings={mappings}
                     initialFileName={effectiveBpmnFile}
                   />
