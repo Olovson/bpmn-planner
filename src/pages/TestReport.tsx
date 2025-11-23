@@ -15,6 +15,7 @@ import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
 import { SUBPROCESS_REGISTRY, type NodeType } from '@/data/subprocessRegistry';
 import { useFilePlannedScenarios } from '@/hooks/useFilePlannedScenarios';
 import { useBpmnFileTestableNodes } from '@/hooks/useBpmnFileTestableNodes';
+import { useGlobalPlannedScenarios } from '@/hooks/useGlobalPlannedScenarios';
 
 type UiScenario = TestScenario & { _source?: string };
 type ProviderScope = 'all' | 'local-fallback' | 'chatgpt' | 'ollama';
@@ -65,6 +66,7 @@ const TestReport = () => {
 
   const { summary: plannedSummary } = useFilePlannedScenarios(activeBpmnFile);
   const { nodes: testableNodes } = useBpmnFileTestableNodes(activeBpmnFile || undefined);
+  const { summary: globalPlannedSummary } = useGlobalPlannedScenarios();
 
   const setProviderScope = (provider: ProviderScope) => {
     const next = new URLSearchParams(searchParams);
@@ -121,8 +123,8 @@ const TestReport = () => {
     const executedCoverage =
       totalNodes > 0 ? (executedNodeIds.size / totalNodes) * 100 : 0;
 
-    let plannedNodesCount: number;
-    if (plannedSummary && activeBpmnFile) {
+    let plannedNodesCount = 0;
+    if (activeBpmnFile && plannedSummary) {
       if (providerScope === 'all') {
         plannedNodesCount = plannedSummary.totalNodesWithPlannedScenarios;
       } else {
@@ -134,8 +136,20 @@ const TestReport = () => {
           ),
         ).length;
       }
+    } else if (globalPlannedSummary) {
+      if (providerScope === 'all') {
+        plannedNodesCount = globalPlannedSummary.totalNodesWithScenarios;
+      } else {
+        plannedNodesCount = globalPlannedSummary.nodes.filter((node) =>
+          node.byProvider.some(
+            (p) =>
+              p.provider === providerScope &&
+              (p.scenarios?.length ?? 0) > 0,
+          ),
+        ).length;
+      }
     } else {
-      plannedNodesCount = Object.keys(testMapping).length;
+      plannedNodesCount = 0;
     }
 
     const latestRun =
@@ -171,7 +185,7 @@ const TestReport = () => {
   const allTests = useMemo(() => getAllTests(), []);
 
   const plannedScenarioTotal = useMemo(() => {
-    if (plannedSummary && activeBpmnFile) {
+    if (activeBpmnFile && plannedSummary) {
       if (providerScope === 'all') {
         return plannedSummary.totalPlannedScenarios;
       }
@@ -183,11 +197,23 @@ const TestReport = () => {
       }, 0);
     }
 
+    if (globalPlannedSummary) {
+      if (providerScope === 'all') {
+        return globalPlannedSummary.totalPlannedScenarios;
+      }
+      return globalPlannedSummary.nodes.reduce((sum, node) => {
+        const providerEntry = node.byProvider.find(
+          (p) => p.provider === providerScope,
+        );
+        return sum + (providerEntry?.scenarios?.length ?? 0);
+      }, 0);
+    }
+
     return allTests.reduce(
       (sum, t) => sum + (t.scenarios?.length ?? 0),
       0,
     );
-  }, [plannedSummary, allTests, activeBpmnFile, providerScope]);
+  }, [plannedSummary, globalPlannedSummary, allTests, activeBpmnFile, providerScope]);
 
   const testsWithDerivedProcess = useMemo(() => {
     return testResults.map((result) => {
