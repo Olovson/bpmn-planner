@@ -63,6 +63,23 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
     const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
     clonedSvg.removeAttribute('class');
 
+    // Sätt explicita färger istället för CSS-variabler
+    clonedSvg.querySelectorAll('path.link').forEach((el) => {
+      (el as SVGPathElement).setAttribute('stroke', '#CBD5E1');
+    });
+    clonedSvg.querySelectorAll('circle').forEach((el) => {
+      const circle = el as SVGCircleElement;
+      if (circle.getAttribute('stroke')?.includes('var(')) {
+        circle.setAttribute('stroke', '#0F172A');
+      }
+    });
+    clonedSvg.querySelectorAll('text').forEach((el) => {
+      const text = el as SVGTextElement;
+      if (text.getAttribute('fill')?.includes('var(')) {
+        text.setAttribute('fill', '#0F172A');
+      }
+    });
+
     const width = svgElement.clientWidth || 1200;
     const height = svgElement.clientHeight || 800;
     clonedSvg.setAttribute('width', String(width));
