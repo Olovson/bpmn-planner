@@ -207,6 +207,7 @@ JSON-modellen är:
   "flowSteps": ["string"],
   "interactions": ["string"],
   "dataContracts": ["string"],
+  "technicalDependencies": ["string"],
   "businessRulesPolicy": ["string"],
   "scenarios": [
     { 
@@ -292,6 +293,17 @@ Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; F
   - vilka data som tas emot (input),
   - vilka data som skickas vidare (output),
   - vilka konsumenter som använder data.
+
+### technicalDependencies
+
+**Syfte:** Synliggöra viktiga tekniska beroenden för epiken.
+
+**Innehåll (`technicalDependencies`):**
+- 2–5 strängar om:
+  - interna tjänster/komponenter som epiken är beroende av (t.ex. kreditmotor, kunddata‑API, DMN/regelmotor),
+  - externa integrationer (t.ex. kreditupplysningsbolag, KYC‑leverantörer) på en generell nivå,
+  - övergripande tekniska risker eller begränsningar (t.ex. latens, tillgänglighet, batch‑beroenden).
+- Varje rad ska vara en **full mening**.
 
 ### businessRulesPolicy
 

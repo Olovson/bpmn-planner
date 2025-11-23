@@ -1,73 +1,78 @@
 ```json
 {
-  "summary": "Epiken 'Approve Application' hanterar godkännandet av låneansökningar, vilket är en kritisk del av kreditprocessen. Den säkerställer att alla nödvändiga kontroller och bedömningar är genomförda innan ett slutgiltigt beslut fattas. Epiken fungerar som en User Task där handläggaren spelar en central roll i beslutsfattandet.",
+  "summary": "Epiken 'Approve Application' hanterar godkännandet av låneansökningar och säkerställer att alla kriterier är uppfyllda innan ett slutligt beslut fattas. Den spelar en central roll i kreditprocessen genom att möjliggöra en strukturerad och effektiv bedömning av ansökningar. Detta är en User Task där handläggaren granskar och godkänner ansökningar baserat på fördefinierade kriterier.",
   "prerequisites": [
-    "Alla nödvändiga dokument och uppgifter från kunden måste vara insamlade och verifierade.",
-    "En preliminär kreditvärdering måste ha genomförts och godkänts.",
-    "Tidigare steg i kreditprocessen, inklusive riskbedömning, måste vara slutförda."
+    "Alla nödvändiga dokument och data måste vara insamlade och validerade.",
+    "Föregående process för kreditvärdering måste ha slutförts med ett positivt resultat.",
+    "Kundens identitet och KYC-kontroller måste vara genomförda och godkända."
   ],
   "inputs": [
-    "Fält: Ansöknings-ID; Datakälla: Intern databas; Typ: Sträng; Obligatoriskt: Ja; Validering: Kontrollera format; Felhantering: Avvisa ansökan vid fel.",
-    "Fält: Kreditvärderingspoäng; Datakälla: Extern kreditbyrå; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Poäng över 600 (exempelvärde); Felhantering: Flagga för manuell granskning.",
-    "Fält: Inkomstuppgifter; Datakälla: Kundens arbetsgivare; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Kontrollera mot deklarerade uppgifter; Felhantering: Begär komplettering.",
-    "Fält: Belåningsgrad; Datakälla: Intern kalkyl; Typ: Procent; Obligatoriskt: Ja; Validering: Under 85 % (exempelvärde); Felhantering: Avslag vid överträdelse."
+    "Fält: Ansöknings-ID; Datakälla: Intern databas; Typ: Sträng; Obligatoriskt: Ja; Validering: Kontrollera att ID är unikt; Felhantering: Meddela om dubblett hittas.",
+    "Fält: Kreditvärderingspoäng; Datakälla: Extern kreditupplysning; Typ: Numerisk; Obligatoriskt: Ja; Validering: Poäng över 600 (exempelvärde); Felhantering: Flagga för manuell granskning.",
+    "Fält: Inkomstnivå; Datakälla: Kundens självdeklaration; Typ: Numerisk; Obligatoriskt: Ja; Validering: Inkomst över 300,000 SEK (exempelvärde); Felhantering: Begär kompletterande uppgifter.",
+    "Fält: Belåningsgrad; Datakälla: Intern beräkning; Typ: Procent; Obligatoriskt: Ja; Validering: Belåningsgrad under 85 % (exempelvärde); Felhantering: Avslag eller justering av villkor."
   ],
   "flowSteps": [
-    "Handläggaren granskar alla inlämnade dokument och verifierar deras äkthet.",
-    "Systemet hämtar och presenterar kreditvärderingspoäng från extern kreditbyrå.",
-    "Handläggaren bedömer ansökan baserat på inkomstuppgifter och belåningsgrad.",
-    "Ett slutgiltigt beslut om godkännande eller avslag fattas och dokumenteras i systemet."
+    "Handläggaren loggar in i systemet och navigerar till avsnittet för godkännande av ansökningar.",
+    "Systemet hämtar och visar ansökningsdetaljer och kreditvärderingsinformation.",
+    "Handläggaren granskar ansökan och bekräftar att alla kriterier är uppfyllda.",
+    "Systemet registrerar beslutet och uppdaterar ansökningsstatusen till godkänd eller avslagen.",
+    "Om ansökan godkänns, initieras nästa steg i utbetalningsprocessen."
   ],
   "interactions": [
-    "Användargränssnittet är en intern klientapplikation som är tillgänglig för handläggare.",
-    "Felmeddelanden visas tydligt för handläggaren vid eventuella valideringsfel.",
-    "Integrationen med externa kreditbyråer sker sömlöst och resultaten visas direkt i applikationen."
+    "Användargränssnittet är tillgängligt via bankens interna webbportal.",
+    "Systemet ger tydliga felmeddelanden och guidning vid inmatningsfel.",
+    "Integration med externa kreditupplysningssystem sker transparent för användaren."
   ],
   "dataContracts": [
-    "Systemet tar emot kreditvärderingspoäng som input och skickar vidare beslutsstatus som output.",
-    "Inkomstuppgifter används för att beräkna belåningsgrad och beslutsunderlag.",
-    "Beslutsstatus delas med interna rapporteringsverktyg för vidare analys."
+    "Systemet tar emot ansökningsdata från interna och externa källor.",
+    "Beslutsdata skickas vidare till utbetalningssystemet vid godkännande.",
+    "Kundens kreditvärderingsinformation konsumeras av riskhanteringsmodulen."
+  ],
+  "technicalDependencies": [
+    "Epiken är beroende av bankens kreditmotor för att hämta och bearbeta kreditvärderingsdata.",
+    "Integration med externa kreditupplysningsbolag är nödvändig för att få aktuella kreditrapporter.",
+    "Systemet måste ha tillgång till kunddata-API för att validera inkomst och identitet."
   ],
   "businessRulesPolicy": [
-    "Epiken stödjer bankens kreditpolicy genom att säkerställa att alla ansökningar följer fastställda kreditgränser.",
-    "Belåningsgrad och skuldkvot kontrolleras mot bankens riskbedömningsregler.",
-    "AML/KYC-kontroller genomförs för att säkerställa efterlevnad av lagkrav.",
-    "Epiken säkerställer att alla beslut är dokumenterade och spårbara."
+    "Epiken stödjer bankens policy för kreditvärdering genom att säkerställa att endast ansökningar med tillräcklig kreditvärdighet godkänns.",
+    "Belåningsgrad och skuldkvot kontrolleras mot fastställda gränsvärden för att minimera risk.",
+    "AML/KYC-kontroller genomförs för att säkerställa att alla juridiska krav uppfylls."
   ],
   "scenarios": [
     {
       "id": "EPIC-S1",
-      "name": "Standard Approval",
+      "name": "Godkänd ansökan",
       "type": "Happy",
-      "description": "Ansökan uppfyller alla krav och godkänns utan manuell intervention.",
-      "outcome": "Ansökan godkänns och kunden informeras automatiskt."
+      "description": "Handläggaren godkänner en ansökan som uppfyller alla kriterier.",
+      "outcome": "Ansökan godkänns och vidarebefordras till utbetalning."
     },
     {
       "id": "EPIC-S2",
-      "name": "Manual Override",
+      "name": "Överstyrning av systemrekommendation",
       "type": "Edge",
-      "description": "Handläggaren överstyr systemets rekommendation och godkänner ansökan trots låg kreditvärdering.",
+      "description": "Handläggaren väljer att godkänna en ansökan trots låg kreditvärderingspoäng.",
       "outcome": "Ansökan godkänns efter manuell granskning och dokumentation av beslutet."
     },
     {
       "id": "EPIC-S3",
-      "name": "Application Rejection",
+      "name": "Avslagen ansökan",
       "type": "Error",
-      "description": "Ansökan avslås på grund av otillräcklig kreditvärdering och hög belåningsgrad.",
-      "outcome": "Ansökan avslås och kunden informeras om orsakerna till avslaget."
+      "description": "Ansökan avslås på grund av otillräcklig kreditvärdighet.",
+      "outcome": "Ansökan avslås och kunden informeras om beslutet."
     }
   ],
-  "testDescription": "Scenarierna mappas mot automatiska tester för att säkerställa korrekt funktionalitet. Scenario-ID och namn bör användas i testfall och rapportering.",
+  "testDescription": "Scenarierna mappas mot automatiska tester för att säkerställa korrekt funktionalitet. Återanvänd scenario-ID och namn i testfall och rapportering.",
   "implementationNotes": [
-    "Epiken använder interna tjänster för att hämta och validera kreditvärderingsdata.",
-    "Loggning och audit-spår är kritiska för att säkerställa fullständig spårbarhet av beslut.",
-    "Felhantering omfattar både systemfel och användarfel med tydliga återkopplingar.",
-    "Epiken måste uppfylla höga prestandakrav för att hantera stora volymer av ansökningar."
+    "Epiken använder bankens interna kreditmotor och kunddata-API.",
+    "Loggning och audit-spår är nödvändiga för att säkerställa regelefterlevnad.",
+    "Felhantering och timeouts måste hanteras för externa integrationer.",
+    "Prestandakrav inkluderar snabb bearbetning av ansökningar för att minimera väntetid."
   ],
   "relatedItems": [
-    "Feature Goal: Kreditvärdering och riskbedömning.",
-    "Epic: Dokumentinsamling och verifiering.",
-    "Business Rule: Kreditpolicy för belåningsgrad och skuldkvot."
+    "Relaterat Feature Goal: Automatiserad kreditvärdering.",
+    "Andra epics i samma flöde: Ansökningsgranskning och Utbetalningshantering.",
+    "Business Rules/DMN: Kreditvärderingsregler och belåningsgradspolicy."
   ]
 }
 ```

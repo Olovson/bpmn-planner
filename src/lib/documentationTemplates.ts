@@ -1519,19 +1519,13 @@ function buildEpicDocHtmlFromModel(
           ? `
       <table>
         <tr>
-          <th>Input</th>
-          <th>Källa</th>
-          <th>Format</th>
-          <th>Validering</th>
+          <th>Inputdefinition</th>
         </tr>
         ${model.inputs
           .map(
             (row) => `
         <tr>
           <td>${row}</td>
-          <td></td>
-          <td></td>
-          <td></td>
         </tr>`,
           )
           .join('')}

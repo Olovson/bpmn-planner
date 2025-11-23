@@ -95,7 +95,7 @@ För varje nod ska du välja scenarier som är logiska för nodens roll:
 - minst ett **error-case**-scenario som beskriver ett tydligt fel eller avvisningsfall,
 - minst ett **edge-case**-scenario som beskriver ett kantfall (t.ex. precis vid tröskelvärde, kombination av riskfaktorer).
 
-Om systemets schema tillåter fler scenarier kan du lägga till fler, men håll dig inom min/max-gränsen.
+Om systemets schema tillåter fler scenarier kan du lägga till fler, men håll dig inom min/max-gränsen (vanligtvis 3–5 scenarier totalt).
 
 ### 2. Fältsemantik
 
@@ -103,15 +103,18 @@ För varje scenario:
 
 - `name`  
   - Kort, beskrivande namn, t.ex. `"Happy path – komplett ansökan"` eller `"Error – för hög skuldkvot"`.
+  - Får inte vara generiskt som `"Scenario 1"` – namnet ska tala om vad som testas.
 
 - `description`  
   - Kort beskrivning av vad scenariot testar, på 1–2 meningar.
+  - Beskriv **varför** scenariot är viktigt (vilken del av kreditprocessen/verifieringen det täcker).
 
 - `expectedResult`  
   - Beskrivning av det förväntade utfallet ur test-/systemperspektiv, t.ex.:  
     - `"ansökan godkänns och går vidare till huvudbeslut"`,  
     - `"ansökan avslås med felkod för skuldkvot över gräns"`,  
     - `"användaren får felmeddelande och kan inte gå vidare"`.
+  - Försök alltid koppla till om systemet ska auto‑godkänna, kräva manuell granskning eller stoppa flödet.
 
 - `type`  
   - Måste vara exakt en av:

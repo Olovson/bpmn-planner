@@ -79,6 +79,9 @@ Ge en kort affärs- och riskinriktad sammanfattning av vad regeln gör, varför 
   - vilken del av kreditprocessen regeln stödjer (t.ex. förhandsbedömning, huvudbeslut),
   - vad som ingår respektive inte ingår på hög nivå.
 
+**Viktigt:**
+- `summary` får inte lämnas tomt eller vara en ren upprepning av nodnamnet – skriv en verklig sammanfattning.
+
 **Begränsningar:**
 - Ingen metadata, inga tekniska detaljer, inga HTML-taggar.
 
@@ -98,6 +101,10 @@ Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; F
 
 - Använd korta, konkreta formuleringar.
 - Om du anger tröskelvärden (t.ex. ålder, kreditpoäng, belåningsgrad, belopp) ska du lägga till **"(exempelvärde)"** direkt efter värdet.
+
+**Viktigt:**
+- `inputs` ska innehålla minst 3 rader (om det är rimligt utifrån regeln).
+- Varje rad ska ha ifyllda delar för både `Validering` och `Felhantering` – lämna inte dessa tomma.
 
 **Begränsningar:**
 - Ingen HTML, inga tabeller, inga verkliga systemnamn om de inte är generiska (håll det allmänt).
@@ -137,6 +144,9 @@ Outputtyp: ...; Typ: ...; Effekt: ...; Loggning: ...
   - beslut (APPROVE / REFER / DECLINE eller liknande),
   - flaggor (t.ex. hög skuldsättning, bristfällig data),
   - loggning/audit-spår (vad loggas vid beslutet).
+
+**Viktigt:**
+- `outputs` måste beskriva både huvudbeslutet och minst en flagga/effekt – skriv inte generiska texter utan konkret beslutsbeteende.
 
 **Begränsningar:**
 - Inga filpaths, inga systemnamn, ingen HTML.

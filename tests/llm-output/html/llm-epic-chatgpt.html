@@ -140,7 +140,7 @@
 
     <section class="doc-section" data-source-summary="llm">
       <h2>Syfte &amp; Effekt</h2>
-      <p>Epiken 'Approve Application' hanterar godkännandet av låneansökningar, vilket är en kritisk del av kreditprocessen. Den säkerställer att alla nödvändiga kontroller och bedömningar är genomförda innan ett slutgiltigt beslut fattas. Epiken fungerar som en User Task där handläggaren spelar en central roll i beslutsfattandet.</p>
+      <p>Epiken 'Approve Application' hanterar godkännandet av låneansökningar och säkerställer att alla kriterier är uppfyllda innan ett slutligt beslut fattas. Den spelar en central roll i kreditprocessen genom att möjliggöra en strukturerad och effektiv bedömning av ansökningar. Detta är en User Task där handläggaren granskar och godkänner ansökningar baserat på fördefinierade kriterier.</p>
     </section>
 
     <section class="doc-section" data-source-inputs="llm">
@@ -148,35 +148,20 @@
       
       <table>
         <tr>
-          <th>Input</th>
-          <th>Källa</th>
-          <th>Format</th>
-          <th>Validering</th>
+          <th>Inputdefinition</th>
         </tr>
         
         <tr>
-          <td>Fält: Ansöknings-ID; Datakälla: Intern databas; Typ: Sträng; Obligatoriskt: Ja; Validering: Kontrollera format; Felhantering: Avvisa ansökan vid fel.</td>
-          <td></td>
-          <td></td>
-          <td></td>
+          <td>Fält: Ansöknings-ID; Datakälla: Intern databas; Typ: Sträng; Obligatoriskt: Ja; Validering: Kontrollera att ID är unikt; Felhantering: Meddela om dubblett hittas.</td>
         </tr>
         <tr>
-          <td>Fält: Kreditvärderingspoäng; Datakälla: Extern kreditbyrå; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Poäng över 600 (exempelvärde); Felhantering: Flagga för manuell granskning.</td>
-          <td></td>
-          <td></td>
-          <td></td>
+          <td>Fält: Kreditvärderingspoäng; Datakälla: Extern kreditupplysning; Typ: Numerisk; Obligatoriskt: Ja; Validering: Poäng över 600 (exempelvärde); Felhantering: Flagga för manuell granskning.</td>
         </tr>
         <tr>
-          <td>Fält: Inkomstuppgifter; Datakälla: Kundens arbetsgivare; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Kontrollera mot deklarerade uppgifter; Felhantering: Begär komplettering.</td>
-          <td></td>
-          <td></td>
-          <td></td>
+          <td>Fält: Inkomstnivå; Datakälla: Kundens självdeklaration; Typ: Numerisk; Obligatoriskt: Ja; Validering: Inkomst över 300,000 SEK (exempelvärde); Felhantering: Begär kompletterande uppgifter.</td>
         </tr>
         <tr>
-          <td>Fält: Belåningsgrad; Datakälla: Intern kalkyl; Typ: Procent; Obligatoriskt: Ja; Validering: Under 85 % (exempelvärde); Felhantering: Avslag vid överträdelse.</td>
-          <td></td>
-          <td></td>
-          <td></td>
+          <td>Fält: Belåningsgrad; Datakälla: Intern beräkning; Typ: Procent; Obligatoriskt: Ja; Validering: Belåningsgrad under 85 % (exempelvärde); Felhantering: Avslag eller justering av villkor.</td>
         </tr>
       </table>
     </section>
@@ -184,18 +169,18 @@
     <section class="doc-section" data-source-flow="llm">
       <h2>Funktionellt flöde</h2>
       <ol>
-        <li>Handläggaren granskar alla inlämnade dokument och verifierar deras äkthet.</li><li>Systemet hämtar och presenterar kreditvärderingspoäng från extern kreditbyrå.</li><li>Handläggaren bedömer ansökan baserat på inkomstuppgifter och belåningsgrad.</li><li>Ett slutgiltigt beslut om godkännande eller avslag fattas och dokumenteras i systemet.</li>
+        <li>Handläggaren loggar in i systemet och navigerar till avsnittet för godkännande av ansökningar.</li><li>Systemet hämtar och visar ansökningsdetaljer och kreditvärderingsinformation.</li><li>Handläggaren granskar ansökan och bekräftar att alla kriterier är uppfyllda.</li><li>Systemet registrerar beslutet och uppdaterar ansökningsstatusen till godkänd eller avslagen.</li><li>Om ansökan godkänns, initieras nästa steg i utbetalningsprocessen.</li>
       </ol>
     </section>
 
     <section class="doc-section" data-source-outputs="llm">
       <h2>Output</h2>
-      <ul><li>Systemet tar emot kreditvärderingspoäng som input och skickar vidare beslutsstatus som output.</li><li>Inkomstuppgifter används för att beräkna belåningsgrad och beslutsunderlag.</li><li>Beslutsstatus delas med interna rapporteringsverktyg för vidare analys.</li></ul>
+      <ul><li>Systemet tar emot ansökningsdata från interna och externa källor.</li><li>Beslutsdata skickas vidare till utbetalningssystemet vid godkännande.</li><li>Kundens kreditvärderingsinformation konsumeras av riskhanteringsmodulen.</li></ul>
     </section>
 
     <section class="doc-section" data-source-business-rules="llm">
       <h2>Affärsregler som triggas</h2>
-      <ul><li>Epiken stödjer bankens kreditpolicy genom att säkerställa att alla ansökningar följer fastställda kreditgränser.</li><li>Belåningsgrad och skuldkvot kontrolleras mot bankens riskbedömningsregler.</li><li>AML/KYC-kontroller genomförs för att säkerställa efterlevnad av lagkrav.</li><li>Epiken säkerställer att alla beslut är dokumenterade och spårbara.</li></ul>
+      <ul><li>Epiken stödjer bankens policy för kreditvärdering genom att säkerställa att endast ansökningar med tillräcklig kreditvärdighet godkänns.</li><li>Belåningsgrad och skuldkvot kontrolleras mot fastställda gränsvärden för att minimera risk.</li><li>AML/KYC-kontroller genomförs för att säkerställa att alla juridiska krav uppfylls.</li></ul>
     </section>
 
     <section class="doc-section" data-source-scenarios="llm">
@@ -212,23 +197,23 @@
         
         <tr>
           <td>EPIC-S1</td>
-          <td>Standard Approval</td>
+          <td>Godkänd ansökan</td>
           <td>Happy</td>
-          <td>Ansökan godkänns och kunden informeras automatiskt.</td>
+          <td>Ansökan godkänns och vidarebefordras till utbetalning.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>EPIC-S2</td>
-          <td>Manual Override</td>
+          <td>Överstyrning av systemrekommendation</td>
           <td>Edge</td>
           <td>Ansökan godkänns efter manuell granskning och dokumentation av beslutet.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>EPIC-S3</td>
-          <td>Application Rejection</td>
+          <td>Avslagen ansökan</td>
           <td>Error</td>
-          <td>Ansökan avslås och kunden informeras om orsakerna till avslaget.</td>
+          <td>Ansökan avslås och kunden informeras om beslutet.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
       </table>
@@ -237,14 +222,14 @@
     <section class="doc-section" data-source-test-description="llm">
       <h2>Koppling till automatiska tester</h2>
       <p>
-        Scenarierna mappas mot automatiska tester för att säkerställa korrekt funktionalitet. Scenario-ID och namn bör användas i testfall och rapportering.
+        Scenarierna mappas mot automatiska tester för att säkerställa korrekt funktionalitet. Återanvänd scenario-ID och namn i testfall och rapportering.
         <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
       </p>
     </section>
 
     <section class="doc-section" data-source-implementation-notes="llm">
       <h2>Implementation Notes</h2>
-      <ul><li>Epiken använder interna tjänster för att hämta och validera kreditvärderingsdata.</li><li>Loggning och audit-spår är kritiska för att säkerställa fullständig spårbarhet av beslut.</li><li>Felhantering omfattar både systemfel och användarfel med tydliga återkopplingar.</li><li>Epiken måste uppfylla höga prestandakrav för att hantera stora volymer av ansökningar.</li></ul>
+      <ul><li>Epiken använder bankens interna kreditmotor och kunddata-API.</li><li>Loggning och audit-spår är nödvändiga för att säkerställa regelefterlevnad.</li><li>Felhantering och timeouts måste hanteras för externa integrationer.</li><li>Prestandakrav inkluderar snabb bearbetning av ansökningar för att minimera väntetid.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -254,7 +239,7 @@
 
     <section class="doc-section" data-source-related-items="llm">
       <h2>Relaterade steg &amp; artefakter</h2>
-      <ul><li>Feature Goal: Kreditvärdering och riskbedömning.</li><li>Epic: Dokumentinsamling och verifiering.</li><li>Business Rule: Kreditpolicy för belåningsgrad och skuldkvot.</li></ul>
+      <ul><li>Relaterat Feature Goal: Automatiserad kreditvärdering.</li><li>Andra epics i samma flöde: Ansökningsgranskning och Utbetalningshantering.</li><li>Business Rules/DMN: Kreditvärderingsregler och belåningsgradspolicy.</li></ul>
     </section>
 
     <section class="doc-section">
