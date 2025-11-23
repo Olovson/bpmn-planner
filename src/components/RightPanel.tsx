@@ -470,7 +470,14 @@ export const RightPanel = ({
                     variant="outline"
                     size="sm"
                     disabled={!hasDocs || loadingArtifacts}
-                    onClick={() => hasDocs && openExternal(displayConfluenceUrl)}
+                    onClick={() => {
+                      if (!hasDocs || loadingArtifacts) return;
+                      if (displayConfluenceUrl.startsWith('#/')) {
+                        navigate(displayConfluenceUrl.replace(/^#/, ''));
+                      } else {
+                        openExternal(displayConfluenceUrl);
+                      }
+                    }}
                     className="justify-start gap-2"
                   >
                     <ExternalLink className="h-4 w-4" />

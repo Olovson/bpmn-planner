@@ -39,9 +39,6 @@ const TestReport = () => {
   const { data: coverageMap } = useAllFilesArtifactCoverage();
   const { testResults, isLoading, stats } = useTestResults();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const urlFile =
-    searchParams.get('file') || searchParams.get('bpmnFile') || null;
   const urlProvider =
     (searchParams.get('provider') as ProviderScope | null) || null;
 
@@ -59,7 +56,7 @@ const TestReport = () => {
   const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
 
   const activeBpmnFile =
-    plannedProcessFilter !== 'all' ? plannedProcessFilter : urlFile;
+    plannedProcessFilter !== 'all' ? plannedProcessFilter : null;
 
   const { summary: plannedSummary } = useFilePlannedScenarios(activeBpmnFile);
   const { nodes: testableNodes } = useBpmnFileTestableNodes(activeBpmnFile || undefined);
