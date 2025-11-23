@@ -23,7 +23,7 @@ import { useGlobalPlannedScenarios } from '@/hooks/useGlobalPlannedScenarios';
 import { useAllBpmnNodes } from '@/hooks/useAllBpmnNodes';
 
 type UiScenario = TestScenario & { _source?: string };
-type ProviderScope = 'all' | 'local-fallback' | 'chatgpt' | 'ollama';
+type ProviderScope = 'local-fallback' | 'chatgpt' | 'ollama';
 import {
   TestReportFilters,
   type TestDocTypeFilter,
@@ -43,10 +43,9 @@ const TestReport = () => {
   const { data: coverageMap } = useAllFilesArtifactCoverage();
   const { testResults, isLoading, stats } = useTestResults();
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlProvider =
-    (searchParams.get('provider') as ProviderScope | null) || null;
+  const urlProvider = searchParams.get('provider') as ProviderScope | null;
 
-  const providerScope: ProviderScope = urlProvider || 'all';
+  const providerScope: ProviderScope = urlProvider || 'local-fallback';
 
   const [statusFilter, setStatusFilter] = useState<TestStatusFilter>('all');
   const [processFilter, setProcessFilter] = useState<string>('all');
@@ -69,11 +68,7 @@ const TestReport = () => {
 
   const setProviderScope = (provider: ProviderScope) => {
     const next = new URLSearchParams(searchParams);
-    if (provider === 'all') {
-      next.delete('provider');
-    } else {
-      next.set('provider', provider);
-    }
+    next.set('provider', provider);
     setSearchParams(next, { replace: false });
   };
 
@@ -106,8 +101,7 @@ const TestReport = () => {
     const filteredResults = (testResults || []).filter((r) => {
       const matchesFile = activeBpmnFile ? r.bpmn_file === activeBpmnFile : true;
       const provider = (r.script_provider ?? null) as ProviderScope | null;
-      const matchesProvider =
-        providerScope === 'all' ? true : provider === providerScope;
+      const matchesProvider = provider === providerScope;
       return matchesFile && matchesProvider;
     });
 
@@ -124,29 +118,21 @@ const TestReport = () => {
 
     let plannedNodesCount = 0;
     if (activeBpmnFile && plannedSummary) {
-      if (providerScope === 'all') {
-        plannedNodesCount = plannedSummary.totalNodesWithPlannedScenarios;
-      } else {
-        plannedNodesCount = plannedSummary.byNode.filter((node) =>
-          node.byProvider.some(
-            (p) =>
-              p.provider === providerScope &&
-              (p.scenarios?.length ?? 0) > 0,
-          ),
-        ).length;
-      }
+      plannedNodesCount = plannedSummary.byNode.filter((node) =>
+        node.byProvider.some(
+          (p) =>
+            p.provider === providerScope &&
+            (p.scenarios?.length ?? 0) > 0,
+        ),
+      ).length;
     } else if (globalPlannedSummary) {
-      if (providerScope === 'all') {
-        plannedNodesCount = globalPlannedSummary.totalNodesWithScenarios;
-      } else {
-        plannedNodesCount = globalPlannedSummary.nodes.filter((node) =>
-          node.byProvider.some(
-            (p) =>
-              p.provider === providerScope &&
-              (p.scenarios?.length ?? 0) > 0,
-          ),
-        ).length;
-      }
+      plannedNodesCount = globalPlannedSummary.nodes.filter((node) =>
+        node.byProvider.some(
+          (p) =>
+            p.provider === providerScope &&
+            (p.scenarios?.length ?? 0) > 0,
+        ),
+      ).length;
     } else {
       plannedNodesCount = 0;
     }
@@ -185,9 +171,6 @@ const TestReport = () => {
 
   const plannedScenarioTotal = useMemo(() => {
     if (activeBpmnFile && plannedSummary) {
-      if (providerScope === 'all') {
-        return plannedSummary.totalPlannedScenarios;
-      }
       return plannedSummary.byNode.reduce((sum, node) => {
         const providerEntry = node.byProvider.find(
           (p) => p.provider === providerScope,
@@ -197,9 +180,6 @@ const TestReport = () => {
     }
 
     if (globalPlannedSummary) {
-      if (providerScope === 'all') {
-        return globalPlannedSummary.totalPlannedScenarios;
-      }
       return globalPlannedSummary.nodes.reduce((sum, node) => {
         const providerEntry = node.byProvider.find(
           (p) => p.provider === providerScope,
@@ -266,8 +246,6 @@ const TestReport = () => {
       processFilter,
     );
 
-    if (providerScope === 'all') return base;
-
     return base.filter((t) => {
       if (!('script_provider' in t)) return false;
       const provider = (t as any).script_provider as
@@ -330,11 +308,7 @@ const TestReport = () => {
           const planned = plannedById.get(node.id);
           const providerScopedCount =
             planned?.byProvider
-              .filter((p) =>
-                providerScope === 'all'
-                  ? true
-                  : p.provider === providerScope,
-              )
+              .filter((p) => p.provider === providerScope)
               .reduce(
                 (sum, p) => sum + (p.scenarios?.length ?? 0),
                 0,
@@ -367,12 +341,7 @@ const TestReport = () => {
           const plannedScenarios: UiScenario[] = [];
           if (planned) {
             for (const providerSet of planned.byProvider) {
-              if (
-                providerScope !== 'all' &&
-                providerSet.provider !== providerScope
-              ) {
-                continue;
-              }
+              if (providerSet.provider !== providerScope) continue;
               const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
               for (const scenario of providerSet.scenarios) {
                 plannedScenarios.push({
@@ -386,9 +355,8 @@ const TestReport = () => {
             (r) =>
               r.bpmn_file === activeBpmnFile &&
               r.node_id === node.id &&
-              (providerScope === 'all' ||
-                ((r.script_provider ?? null) as ProviderScope | null) ===
-                  providerScope),
+              ((r.script_provider ?? null) as ProviderScope | null) ===
+                providerScope,
           );
 
           const meta = elementResourceMapping[node.id];
@@ -456,11 +424,7 @@ const TestReport = () => {
 
           const providerScopedCount =
             node.byProvider
-              .filter((p) =>
-                providerScope === 'all'
-                  ? true
-                  : p.provider === providerScope,
-              )
+              .filter((p) => p.provider === providerScope)
               .reduce(
                 (sum, p) => sum + (p.scenarios?.length ?? 0),
                 0,
@@ -492,12 +456,7 @@ const TestReport = () => {
 
           const plannedScenarios: UiScenario[] = [];
           for (const providerSet of node.byProvider) {
-            if (
-              providerScope !== 'all' &&
-              providerSet.provider !== providerScope
-            ) {
-              continue;
-            }
+            if (providerSet.provider !== providerScope) continue;
             const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
             for (const scenario of providerSet.scenarios) {
               plannedScenarios.push({
@@ -618,17 +577,6 @@ const TestReport = () => {
               </Badge>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="text-muted-foreground">Provider:</span>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded border ${
-                    providerScope === 'all'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border'
-                  }`}
-                  onClick={() => setProviderScope('all')}
-                >
-                  Alla
-                </button>
                 <button
                   type="button"
                   className={`px-2 py-1 rounded border ${

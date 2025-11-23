@@ -187,14 +187,7 @@ export default function BpmnFileManager() {
     if (view === 'diagram') navigate('/');
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') {
-      const fileParam = selectedFile?.file_name;
-      if (fileParam) {
-        navigate(`/test-report?file=${encodeURIComponent(fileParam)}`);
-      } else {
-        navigate('/test-report');
-      }
-    }
+    else if (view === 'tests') navigate('/test-report');
     else navigate('/files');
   };
   

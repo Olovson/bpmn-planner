@@ -48,12 +48,7 @@ const Index = () => {
     } else if (value === 'tree') {
       baseNavigate('/process-explorer');
     } else if (value === 'tests') {
-      const fileParam = urlFile || currentBpmnFile || derivedRoot;
-      if (fileParam) {
-        baseNavigate(`/test-report?file=${encodeURIComponent(fileParam)}`);
-      } else {
-        baseNavigate('/test-report');
-      }
+      baseNavigate('/test-report');
     } else if (value === 'files') {
       baseNavigate('/files');
     } else {

@@ -466,22 +466,16 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     // Add click listener to badges
     setTimeout(() => {
       const badges = document.querySelectorAll('.test-status-badge');
-      badges.forEach((badge) => {
-        badge.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const elId = (e.currentTarget as HTMLElement).dataset.elementId;
-          if (elId) {
-            highlightElement(elId);
-          }
-          const params = new URLSearchParams(window.location.search);
-          const fileParam = params.get('file');
-          if (fileParam) {
-            navigate(`/test-report?file=${encodeURIComponent(fileParam)}`);
-          } else {
-            navigate('/test-report');
-          }
-        });
-      });
+          badges.forEach((badge) => {
+            badge.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const elId = (e.currentTarget as HTMLElement).dataset.elementId;
+              if (elId) {
+                highlightElement(elId);
+              }
+              navigate('/test-report');
+            });
+          });
     }, 100);
   }, [navigate]);
 

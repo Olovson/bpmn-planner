@@ -133,14 +133,7 @@ const NodeTestsPage = () => {
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'files') navigate('/files');
-    else {
-      const fileParam = bpmnFile;
-      if (fileParam) {
-        navigate(`/test-report?file=${encodeURIComponent(fileParam)}`);
-      } else {
-        navigate('/test-report');
-      }
-    }
+    else navigate('/test-report');
   };
 
   if (isLoading) {
