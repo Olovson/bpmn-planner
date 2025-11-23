@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import * as d3 from 'd3';
 import { ProcessTreeNode, ProcessNodeType, NodeArtifact, getProcessNodeStyle, PROCESS_NODE_STYLES } from '@/lib/processTree';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,10 @@ interface ProcessTreeD3Props {
   /** Externt kollaps-state (delas mellan instanser) */
   collapsedIds?: Set<string>;
   onCollapsedIdsChange?: (ids: Set<string>) => void;
+}
+
+export interface ProcessTreeD3Api {
+  zoomToFitCurrentTree: () => void;
 }
 
 const getColorForNodeType = (type: ProcessNodeType): string => {
@@ -59,7 +63,7 @@ const summarizeDiagnostics = (node: ProcessTreeNode): string | null => {
   return parts.length ? parts.join(' • ') : null;
 };
 
-export function ProcessTreeD3({
+export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
   root,
   selectedNodeId,
   onSelectNode,
@@ -68,9 +72,13 @@ export function ProcessTreeD3({
   showTree = true,
   collapsedIds: externalCollapsedIds,
   onCollapsedIdsChange,
-}: ProcessTreeD3Props) {
+}, ref) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
+  const treeDataRef = useRef<d3.HierarchyPointNode<ProcessTreeNode> | null>(null);
   const [internalCollapsedIds, setInternalCollapsedIds] = useState<Set<string>>(new Set());
+  const [fitOnNextLayout, setFitOnNextLayout] = useState(false);
   const collapsedIds = externalCollapsedIds ?? internalCollapsedIds;
   const setCollapsedIds = onCollapsedIdsChange ?? setInternalCollapsedIds;
 
@@ -142,6 +150,56 @@ export function ProcessTreeD3({
     printWindow.document.close();
   };
 
+  // Imperative API: zoom to fit current tree
+  const zoomToFitCurrentTree = useCallback(() => {
+    const svgElement = svgRef.current;
+    const zoomBehavior = zoomBehaviorRef.current;
+    const g = gRef.current;
+    const treeData = treeDataRef.current;
+
+    if (!svgElement || !zoomBehavior || !g || !treeData) {
+      console.warn('[ProcessTreeD3] Cannot zoom to fit: missing refs');
+      return;
+    }
+
+    const width = svgElement.clientWidth;
+    const height = svgElement.clientHeight;
+
+    // Calculate bounds from current tree data
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    treeData.descendants().forEach(d => {
+      if (d.x < minX) minX = d.x;
+      if (d.x > maxX) maxX = d.x;
+      if (d.y < minY) minY = d.y;
+      if (d.y > maxY) maxY = d.y;
+    });
+
+    const treeWidth = maxY - minY + 200;
+    const treeHeight = maxX - minX + 100;
+
+    // Calculate scale to fit the entire tree
+    const scaleX = (width - 100) / treeWidth;
+    const scaleY = (height - 100) / treeHeight;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't zoom in more than 1x
+
+    // Create transform to center and fit tree
+    const transform = d3.zoomIdentity
+      .translate(width / 2, height / 2)
+      .scale(scale)
+      .translate(-minY - treeWidth / 2, -minX - treeHeight / 2);
+
+    // Apply transform with transition
+    const svg = d3.select(svgElement);
+    svg.transition()
+      .duration(750)
+      .call(zoomBehavior.transform as any, transform);
+  }, []);
+
+  // Expose API via ref
+  useImperativeHandle(ref, () => ({
+    zoomToFitCurrentTree,
+  }), [zoomToFitCurrentTree]);
+
   const handleCollapseAll = () => {
     const allIds = new Set<string>();
     const traverse = (node: ProcessTreeNode, isRoot: boolean) => {
@@ -154,10 +212,12 @@ export function ProcessTreeD3({
     };
     traverse(root, true);
     setCollapsedIds(allIds);
+    setFitOnNextLayout(true);
   };
 
   const handleExpandAll = () => {
     setCollapsedIds(new Set());
+    setFitOnNextLayout(true);
   };
 
   useEffect(() => {
@@ -203,6 +263,9 @@ export function ProcessTreeD3({
     // Layout
     const treeLayout = d3.tree<ProcessTreeNode>().nodeSize([50, 220]);
     const treeData = treeLayout(hierarchy);
+    
+    // Save treeData reference for zoomToFit function
+    treeDataRef.current = treeData;
 
     // Calculate bounds
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -234,12 +297,23 @@ export function ProcessTreeD3({
         g.attr('transform', event.transform.toString());
       });
 
+    // Save references for zoomToFit function
+    zoomBehaviorRef.current = zoomBehavior;
+    gRef.current = g;
+
     svg.call(zoomBehavior as any);
 
-    // Återställ tidigare zoom/pan om den finns, annars använd initial centering
-    const transformToApply = previousTransform ?? initialTransform;
+    // Återställ tidigare zoom/pan om den finns, men om vi just har kollapsat/expanderat
+    // vill vi göra en ny "fit to content".
+    const transformToApply =
+      fitOnNextLayout || !previousTransform ? initialTransform : previousTransform;
+
     svg.call(zoomBehavior.transform as any, transformToApply);
     g.attr('transform', transformToApply.toString());
+
+    if (fitOnNextLayout) {
+      setFitOnNextLayout(false);
+    }
     // Inaktivera dubbelklick-zoom så att vi kan använda dubbelklick på noder
     svg.on('dblclick.zoom', null);
 
@@ -334,7 +408,7 @@ export function ProcessTreeD3({
       }
     });
 
-  }, [root, selectedNodeId, collapsedIds, onSelectNode, onArtifactClick]);
+  }, [root, selectedNodeId, collapsedIds, onSelectNode, onArtifactClick, fitOnNextLayout]);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -384,4 +458,6 @@ export function ProcessTreeD3({
       )}
     </div>
   );
-}
+});
+
+ProcessTreeD3.displayName = 'ProcessTreeD3';

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useProcessTree } from '@/hooks/useProcessTree';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
-import { ProcessTreeD3 } from '@/components/ProcessTreeD3';
+import { ProcessTreeD3, ProcessTreeD3Api } from '@/components/ProcessTreeD3';
 import { ProcessTreeNode, NodeArtifact, getProcessNodeStyle } from '@/lib/processTree';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +29,8 @@ export function ProcessExplorerView({
   const [selectedNode, setSelectedNode] = useState<ProcessTreeNode | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const { nodes: allNodes } = useAllBpmnNodes();
+  const treeRef = useRef<ProcessTreeD3Api | null>(null);
+  const [treeLayoutTrigger, setTreeLayoutTrigger] = useState(0);
 
   const isLoading = isLoadingRoot || isLoadingTree;
 
@@ -78,6 +80,40 @@ export function ProcessExplorerView({
     selectedNodeId = findNode(tree);
   }
 
+  // Handle collapse/expand with zoom to fit
+  const handleCollapseAll = () => {
+    const allIds = new Set<string>();
+    const traverse = (node: ProcessTreeNode, isRoot: boolean) => {
+      if (!isRoot) {
+        allIds.add(node.id);
+      }
+      if (node.children && node.children.length > 0) {
+        node.children.forEach((child) => traverse(child, false));
+      }
+    };
+    if (tree) {
+      traverse(tree, true);
+      setCollapsedIds(allIds);
+      setTreeLayoutTrigger(prev => prev + 1);
+    }
+  };
+
+  const handleExpandAll = () => {
+    setCollapsedIds(new Set());
+    setTreeLayoutTrigger(prev => prev + 1);
+  };
+
+  // Trigger zoom to fit after layout updates
+  useEffect(() => {
+    if (treeLayoutTrigger > 0) {
+      // Wait for D3 layout to complete before zooming
+      const timeoutId = setTimeout(() => {
+        treeRef.current?.zoomToFitCurrentTree?.();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [treeLayoutTrigger, collapsedIds]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -109,6 +145,7 @@ export function ProcessExplorerView({
       {/* Rad 1: legend som spänner över hela bredden */}
       <div>
         <ProcessTreeD3
+          ref={null}
           root={tree}
           selectedNodeId={selectedNodeId}
           onSelectNode={handleNodeSelect}
@@ -123,13 +160,17 @@ export function ProcessExplorerView({
       <div className="flex gap-4 flex-1 min-h-0">
         <div className="flex-[0.8] min-w-0">
           <ProcessTreeD3
+            ref={treeRef}
             root={tree}
             selectedNodeId={selectedNodeId}
             onSelectNode={handleNodeSelect}
             onArtifactClick={handleArtifactClick}
             showLegend={false}
             collapsedIds={collapsedIds}
-            onCollapsedIdsChange={setCollapsedIds}
+            onCollapsedIdsChange={(ids) => {
+              setCollapsedIds(ids);
+              setTreeLayoutTrigger(prev => prev + 1);
+            }}
           />
         </div>
         <aside className="flex-[0.2] min-w-[16rem] max-w-xs">

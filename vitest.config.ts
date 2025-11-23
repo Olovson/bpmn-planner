@@ -9,6 +9,7 @@ export default defineConfig({
       ['**/bpmnParser*.test.ts', 'jsdom'],
       ['**/bpmnRealParse*.test.ts', 'jsdom'],
       ['**/bpmnHierarchy*.test.ts', 'jsdom'],
+      ['**/processExplorer*.test.ts', 'jsdom'],
     ],
     setupFiles: ['./tests/setup/vitest.setup.ts'],
     alias: {
