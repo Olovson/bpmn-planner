@@ -80,6 +80,49 @@ const TestReport = () => {
     return map;
   }, []);
 
+  // Används för att aktivera/inaktivera provider-knappar baserat på om det finns data
+  const providerHasData = useMemo(() => {
+    const flags: Record<ProviderScope, boolean> = {
+      'local-fallback': false,
+      chatgpt: false,
+      ollama: false,
+    };
+
+    // Körda tester
+    (testResults || []).forEach((r) => {
+      const p = (r.script_provider ?? null) as ProviderScope | null;
+      if (p && p in flags) {
+        flags[p] = true;
+      }
+    });
+
+    // Planerade scenarion per fil
+    if (plannedSummary) {
+      plannedSummary.byNode.forEach((node) => {
+        node.byProvider.forEach((p) => {
+          const prov = p.provider as ProviderScope;
+          if (prov in flags && (p.scenarios?.length ?? 0) > 0) {
+            flags[prov] = true;
+          }
+        });
+      });
+    }
+
+    // Globala planerade scenarion
+    if (globalPlannedSummary) {
+      globalPlannedSummary.nodes.forEach((node) => {
+        node.byProvider.forEach((p) => {
+          const prov = p.provider as ProviderScope;
+          if (prov in flags && (p.scenarios?.length ?? 0) > 0) {
+            flags[prov] = true;
+          }
+        });
+      });
+    }
+
+    return flags;
+  }, [testResults, plannedSummary, globalPlannedSummary]);
+
   // KPI: coverage från coverageMap + test_results + node_planned_scenarios (per fil om vald, annars global)
   const coverageSummary = useMemo(() => {
     let totalNodes = 0;
@@ -584,7 +627,8 @@ const TestReport = () => {
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
                   }`}
-                  onClick={() => setProviderScope('local-fallback')}
+                  onClick={() => providerHasData['local-fallback'] && setProviderScope('local-fallback')}
+                  disabled={!providerHasData['local-fallback']}
                 >
                   Lokal fallback
                 </button>
@@ -595,7 +639,8 @@ const TestReport = () => {
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
                   }`}
-                  onClick={() => setProviderScope('chatgpt')}
+                  onClick={() => providerHasData['chatgpt'] && setProviderScope('chatgpt')}
+                  disabled={!providerHasData['chatgpt']}
                 >
                   ChatGPT
                 </button>
@@ -606,7 +651,8 @@ const TestReport = () => {
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
                   }`}
-                  onClick={() => setProviderScope('ollama')}
+                  onClick={() => providerHasData['ollama'] && setProviderScope('ollama')}
+                  disabled={!providerHasData['ollama']}
                 >
                   Ollama
                 </button>
