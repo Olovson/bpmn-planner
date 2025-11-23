@@ -152,6 +152,22 @@ export default function BpmnFileManager() {
   const [overlayMessage, setOverlayMessage] = useState('');
   const [overlayDescription, setOverlayDescription] = useState('');
   const [generationProgress, setGenerationProgress] = useState<{ step: string; detail?: string } | null>(null);
+  const [graphTotals, setGraphTotals] = useState<{ files: number; nodes: number }>({
+    files: 0,
+    nodes: 0,
+  });
+  const [docgenProgress, setDocgenProgress] = useState<{ completed: number; total: number }>({
+    completed: 0,
+    total: 0,
+  });
+  const [docUploadProgress, setDocUploadProgress] = useState<{ planned: number; completed: number }>({
+    planned: 0,
+    completed: 0,
+  });
+  const [testUploadProgress, setTestUploadProgress] = useState<{ planned: number; completed: number }>({
+    planned: 0,
+    completed: 0,
+  });
   const cancelGenerationRef = useRef(false);
   const [cancelGeneration, setCancelGeneration] = useState(false);
   const [llmMode, setLlmMode] = useState<LlmGenerationMode>(() => getLlmGenerationMode());
@@ -373,6 +389,10 @@ export default function BpmnFileManager() {
     cancelGenerationRef.current = false;
     setCancelGeneration(false);
     setGenerationProgress(null);
+    setGraphTotals({ files: 0, nodes: 0 });
+    setDocgenProgress({ completed: 0, total: 0 });
+    setDocUploadProgress({ planned: 0, completed: 0 });
+    setTestUploadProgress({ planned: 0, completed: 0 });
   };
 
   const checkCancellation = () => {
@@ -738,6 +758,10 @@ export default function BpmnFileManager() {
         case 'docgen:file':
           // Här sker den tunga logiken (mallar/LLM per nod), så koppla framsteg till verkligt antal noder.
           docgenCompleted += 1;
+          setDocgenProgress((prev) => ({
+            completed: docgenCompleted,
+            total: totalGraphNodes || prev.total || docgenCompleted,
+          }));
           if (totalGraphNodes > 0) {
             await incrementJobProgress(
               `Dokumentation ${docgenCompleted} av ${totalGraphNodes} noder`
@@ -754,6 +778,8 @@ export default function BpmnFileManager() {
               const extraNodes = Number(parsed.nodes) || 0;
               totalGraphFiles = extraFiles;
               totalGraphNodes = extraNodes;
+              setGraphTotals({ files: extraFiles, nodes: extraNodes });
+              setDocgenProgress({ completed: 0, total: extraNodes });
               // Lägg till ett steg per fil och ett steg per nod (docgen),
               // tidiga faser (graf/nodanalyser) förblir en liten del av den totala bilden.
               const extraSteps = extraFiles + extraNodes;
@@ -1152,6 +1178,10 @@ export default function BpmnFileManager() {
       logGenerationProgress(modeLabel, 'Genererar testfiler', file.file_name);
       testUploadsPlanned = result.tests.size;
       testUploadsCompleted = 0;
+      setTestUploadProgress({
+        planned: testUploadsPlanned,
+        completed: 0,
+      });
       setOverlayDescription(
         testUploadsPlanned > 0
           ? `Genererar testfiler – laddar upp och mappar tester (0 av ${testUploadsPlanned})`
@@ -1239,6 +1269,10 @@ export default function BpmnFileManager() {
             });
           }
           testUploadsCompleted += 1;
+          setTestUploadProgress((prev) => ({
+            planned: prev.planned || testUploadsPlanned,
+            completed: testUploadsCompleted,
+          }));
           const label =
             testUploadsPlanned > 0
               ? `Testfil ${testUploadsCompleted} av ${testUploadsPlanned}`
@@ -1345,6 +1379,10 @@ export default function BpmnFileManager() {
       logGenerationProgress(modeLabel, 'Publicerar dokumentation', file.file_name);
       docUploadsPlanned = result.docs.size;
       docUploadsCompleted = 0;
+      setDocUploadProgress({
+        planned: docUploadsPlanned,
+        completed: 0,
+      });
       setOverlayDescription(
         docUploadsPlanned > 0
           ? `Publicerar dokumentation – laddar upp HTML (0 av ${docUploadsPlanned})`
@@ -1393,6 +1431,10 @@ export default function BpmnFileManager() {
           }
           checkCancellation();
           docUploadsCompleted += 1;
+          setDocUploadProgress((prev) => ({
+            planned: prev.planned || docUploadsPlanned,
+            completed: docUploadsCompleted,
+          }));
           const label =
             docUploadsPlanned > 0
               ? `Dokumentation ${docUploadsCompleted} av ${docUploadsPlanned} filer`
@@ -2195,6 +2237,36 @@ export default function BpmnFileManager() {
                 <p className="text-muted-foreground">{generationProgress.step}</p>
                 {generationProgress.detail && (
                   <p className="text-xs text-muted-foreground/80 mt-1">{generationProgress.detail}</p>
+                )}
+              </div>
+            )}
+            {(graphTotals.nodes > 0 ||
+              docUploadProgress.planned > 0 ||
+              testUploadProgress.planned > 0) && (
+              <div className="w-full text-xs bg-muted/30 rounded-md p-3 space-y-1">
+                {graphTotals.nodes > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Noder i process (dokumentation)</span>
+                    <span className="font-medium">
+                      {docgenProgress.completed}/{graphTotals.nodes}
+                    </span>
+                  </div>
+                )}
+                {docUploadProgress.planned > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Dokumentation (HTML-filer)</span>
+                    <span className="font-medium">
+                      {docUploadProgress.completed}/{docUploadProgress.planned}
+                    </span>
+                  </div>
+                )}
+                {testUploadProgress.planned > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Testfiler</span>
+                    <span className="font-medium">
+                      {testUploadProgress.completed}/{testUploadProgress.planned}
+                    </span>
+                  </div>
                 )}
               </div>
             )}

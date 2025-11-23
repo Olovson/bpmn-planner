@@ -124,9 +124,39 @@ VITE_LLM_LOCAL_MODEL=llama3:latest
 
 > **Obs:** när `VITE_USE_LLM=true` och `VITE_OPENAI_API_KEY` är satt används LLM-kontrakten för ChatGPT/Ollama. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
 
-## 2.5. Fusklapp – LLM‑utveckling (starta allt)
+## 2.5. Snabbstart – Starta hela utvecklingsmiljön
 
-När du ska jobba med LLM (ChatGPT/Ollama), använd alltid samma grundsekvens:
+**Enklaste sättet att starta allt:**
+
+```bash
+npm run start:dev
+```
+
+Detta script startar automatiskt:
+- ✅ Supabase (om den inte redan körs)
+- ✅ Edge functions (`llm-health` och `build-process-tree`) i bakgrunden
+- ✅ Dev-server (`npm run dev`) i bakgrunden
+- ✅ Verifierar schema
+
+**Viktigt om processer:**
+- Processerna körs i bakgrunden, så du kan stänga terminalen eller Cursor och de fortsätter köra.
+- Supabase körs i Docker, så den fortsätter köra även om du stänger Cursor (så länge Docker Desktop är igång).
+- Edge functions och dev-server måste startas om nästa gång du öppnar Cursor (använd `npm run start:dev` igen).
+- För att stoppa allt: `npm run stop:dev`
+
+**För att stoppa allt:**
+
+```bash
+npm run stop:dev
+```
+
+Detta stoppar Supabase, edge functions och dev-server.
+
+---
+
+**Manuell start (om du föredrar separata terminaler):**
+
+När du ska jobba med LLM (ChatGPT/Ollama), kan du också starta allt manuellt:
 
 1. Gå till projektet
 ```bash
@@ -138,19 +168,29 @@ cd /Users/magnusolovson/Documents/Projects/bpmn-planner
 npm run start:supabase   # guidat start/reset-flöde för Supabase
 ```
 
-3. Starta dev‑server (frontend)
+3. Starta edge functions i separata terminaler:
+
+```bash
+# Terminal 1 – LLM health (Ollama/ChatGPT-status)
+supabase functions serve llm-health --no-verify-jwt --env-file supabase/.env
+
+# Terminal 2 – build-process-tree (för processgrafen)
+supabase functions serve build-process-tree --no-verify-jwt --env-file supabase/.env
+```
+
+4. Starta dev‑server (Terminal 3)
 ```bash
 npm run dev   # http://localhost:8080/
 ```
 
-4. Snabbkolla att Ollama svarar (valfritt men bra vid strul)
+5. Snabbkolla att Ollama svarar (valfritt men bra vid strul)
 ```bash
 curl -s http://localhost:11434/api/generate \
   -H 'Content-Type: application/json' \
   -d '{"model":"llama3:latest","prompt":"ping","stream":false,"options":{"num_predict":5}}'
 ```
 
-5. Lokal LLM health‑test via Supabase‑funktion
+6. Lokal LLM health‑test via Supabase‑funktion
 ```bash
 LLM_HEALTH_TEST=true npx vitest run tests/integration/llm.health.local.test.ts
 ```
@@ -161,7 +201,7 @@ LLM_HEALTH_TEST=true npx vitest run tests/integration/llm.health.local.test.ts
 
 ## 3. Edge Functions (valfritt men rekommenderat vid LLM-utveckling)
 
-För att vissa delar av appen ska fungera fullt ut lokalt (t.ex. LLM‑health och process‑trädet) behöver du starta relevanta edge functions i egna terminalfönster:
+För att vissa delar av appen ska fungera fullt ut lokalt (t.ex. LLM‑health och process‑trädet) behöver du starta relevanta edge functions. Detta görs automatiskt med `npm run start:dev`, men du kan också starta dem manuellt i egna terminalfönster:
 
 ```bash
 # Terminal 1 – LLM health (Ollama/ChatGPT-status)
@@ -171,13 +211,7 @@ supabase functions serve llm-health --no-verify-jwt --env-file supabase/.env
 supabase functions serve build-process-tree --no-verify-jwt --env-file supabase/.env
 ```
 
-Kör därefter dev-servern i en tredje terminal:
-
-```bash
-npm run dev
-```
-
-Så länge dessa tre terminaler är igång får du:
+Så länge dessa edge functions är igång får du:
 - korrekt LLM‑status på sidan `#/files` (ChatGPT/Ollama tillgänglig/ej tillgänglig),
 - fungerande process‑träd/byggfunktioner i UI.
 
@@ -194,6 +228,30 @@ npm run dev   # http://localhost:8080/
 **Testmiljö:**
 - **Vitest** för unit- och integrationstester.
 - Standard environment är `node`. jsdom används selektivt i de testfiler som behöver DOM (t.ex. parser-tester).
+
+## 🔍 Snabb fusklapp – testkommandon
+
+Kör alltid dessa från projektroten: `cd /Users/magnusolovson/Documents/Projects/bpmn-planner`
+
+- **Alla tester (snabb sanity‑check):**
+  - `npm test`
+  - `npm run test:watch` – interaktivt läge under utveckling
+
+- **Generatorns enhetstest (generateAllFromBpmnWithGraph):**
+  - `npm run check:generator`
+  - (direkt via Vitest om du vill):  
+    `npx vitest run tests/unit/generateAllFromBpmnWithGraph.test.ts`
+
+- **LLM smoke – ChatGPT (cloud, “gold standard”):**
+  - `npm run test:llm:smoke` – kort smoke mot ChatGPT
+  - `npm run test:llm:smoke:cloud` – strict‑läge med `LLM_SMOKE_STRICT=true`
+
+- **LLM smoke – Ollama (lokal, best‑effort):**
+  - `npm run test:llm:smoke:local`
+  - Används för att se hur den lokala modellen beter sig; får gärna vara röd utan att blockera ChatGPT‑flödet.
+
+- **Lokal LLM health‑test (via Supabase‑funktion):**
+  - `LLM_HEALTH_TEST=true npx vitest run tests/integration/llm.health.local.test.ts`
 
 **Kör tester (snabb, deterministisk svit utan riktiga LLM-anrop):**
 ```bash
@@ -447,3 +505,33 @@ npm run build:dev    # Utvecklingsbygg (med source maps)
 
 Bygget lägger statiska filer under `dist/` som kan deployas bakom valfri reverse proxy.  
 Se till att Supabase-URL/nycklar och edge-funktioner är korrekt konfigurerade i den miljö du deployar till.
+
+---
+
+# 🔄 Synka till GitHub
+
+För att synka dina lokala ändringar till GitHub på ett säkert sätt:
+
+```bash
+npm run sync:github
+```
+
+Detta script:
+- ✅ Verifierar att du är på `main` branch
+- ✅ Kontrollerar divergence mot remote (stoppar om remote ligger före)
+- ✅ Committar alla lokala ändringar
+- ✅ Pushar till GitHub
+
+**Säkerhet:**
+- Scriptet skriver **aldrig över** lokala ändringar
+- Om remote ligger före stoppar scriptet och rapporterar
+- Lokal kod är alltid source of truth
+
+**Manuell synkning:**
+Om du föredrar att göra det manuellt:
+```bash
+git status
+git add .
+git commit -m "chore: sync local changes to origin"
+git push origin main
+```
