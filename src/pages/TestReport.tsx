@@ -213,8 +213,18 @@ const TestReport = () => {
   const allTests = useMemo(() => getAllTests(), []);
 
   const plannedScenarioTotal = useMemo(() => {
+    // Försök först använda DB-baserad sammanfattning
+    let totalFromDb = 0;
+
     if (activeBpmnFile && plannedSummary) {
-      return plannedSummary.byNode.reduce((sum, node) => {
+      totalFromDb = plannedSummary.byNode.reduce((sum, node) => {
+        const providerEntry = node.byProvider.find(
+          (p) => p.provider === providerScope,
+        );
+        return sum + (providerEntry?.scenarios?.length ?? 0);
+      }, 0);
+    } else if (globalPlannedSummary) {
+      totalFromDb = globalPlannedSummary.nodes.reduce((sum, node) => {
         const providerEntry = node.byProvider.find(
           (p) => p.provider === providerScope,
         );
@@ -222,19 +232,21 @@ const TestReport = () => {
       }, 0);
     }
 
-    if (globalPlannedSummary) {
-      return globalPlannedSummary.nodes.reduce((sum, node) => {
-        const providerEntry = node.byProvider.find(
-          (p) => p.provider === providerScope,
-        );
-        return sum + (providerEntry?.scenarios?.length ?? 0);
-      }, 0);
+    // Om vi har DB-data för vald provider, använd den.
+    if (totalFromDb > 0) {
+      return totalFromDb;
     }
 
-    return allTests.reduce(
-      (sum, t) => sum + (t.scenarios?.length ?? 0),
-      0,
-    );
+    // Fallback: för Lokal fallback, använd statiska scenarion från testMapping
+    if (providerScope === 'local-fallback') {
+      return allTests.reduce(
+        (sum, t) => sum + (t.scenarios?.length ?? 0),
+        0,
+      );
+    }
+
+    // För ChatGPT/Ollama utan DB-data: visa 0
+    return 0;
   }, [plannedSummary, globalPlannedSummary, allTests, activeBpmnFile, providerScope]);
 
   const testsWithDerivedProcess = useMemo(() => {
@@ -319,7 +331,7 @@ const TestReport = () => {
 
   const plannedNodesForView = useMemo(() => {
     // När vi har en aktiv fil och DB-data + BPMN-noder, använd dessa som sanning.
-    if (activeBpmnFile && plannedSummary && testableNodes.length > 0) {
+    if (activeBpmnFile && plannedSummary && plannedSummary.totalPlannedScenarios > 0 && testableNodes.length > 0) {
       const plannedById = new Map(
         plannedSummary.byNode.map((n) => [n.elementId, n]),
       );
@@ -422,7 +434,7 @@ const TestReport = () => {
     }
 
     // Global vy: använd globalPlannedSummary + alla BPMN-noder när ingen aktiv fil är vald.
-    if (globalPlannedSummary && allBpmnNodes.length > 0) {
+    if (globalPlannedSummary && globalPlannedSummary.totalPlannedScenarios > 0 && allBpmnNodes.length > 0) {
       const nodesByKey = new Map(
         allBpmnNodes.map((n) => [
           `${n.bpmnFile}::${n.elementId}`,
@@ -537,36 +549,42 @@ const TestReport = () => {
         });
     }
 
-    // Fallback: använd legacy elementResourceMapping/testMapping om inget annat finns.
-    const filteredNodeIds = applyPlannedNodesFilter(
-      elementResourceMapping,
-      nodeTypeById,
-      plannedTypeFilter,
-      plannedProcessFilter,
-    );
+    // Fallback: använd legacy elementResourceMapping/testMapping **endast** för Lokal fallback
+    // när det inte finns några planerade scenarion i DB.
+    if (providerScope === 'local-fallback') {
+      const filteredNodeIds = applyPlannedNodesFilter(
+        elementResourceMapping,
+        nodeTypeById,
+        plannedTypeFilter,
+        plannedProcessFilter,
+      );
 
-    return filteredNodeIds.map((nodeId) => {
-      const meta = elementResourceMapping[nodeId];
-      const testInfo = testMapping[nodeId];
-      const plannedScenarios: UiScenario[] =
-        testInfo?.scenarios?.map((s) => ({
-          ...s,
-          _source: 'design/local-fallback',
-        })) ?? [];
-      const hasExecuted = testResults.some((r) => r.node_id === nodeId);
-      const docId =
-        meta?.bpmnFile && nodeId
-          ? getNodeDocViewerPath(meta.bpmnFile, nodeId)
-          : null;
+      return filteredNodeIds.map((nodeId) => {
+        const meta = elementResourceMapping[nodeId];
+        const testInfo = testMapping[nodeId];
+        const plannedScenarios: UiScenario[] =
+          testInfo?.scenarios?.map((s) => ({
+            ...s,
+            _source: 'design/local-fallback',
+          })) ?? [];
+        const hasExecuted = testResults.some((r) => r.node_id === nodeId);
+        const docId =
+          meta?.bpmnFile && nodeId
+            ? getNodeDocViewerPath(meta.bpmnFile, nodeId)
+            : null;
 
-      return {
-        id: nodeId,
-        displayName: meta?.displayName || nodeId,
-        plannedScenarios,
-        hasExecuted,
-        docId,
-      };
-    });
+        return {
+          id: nodeId,
+          displayName: meta?.displayName || nodeId,
+          plannedScenarios,
+          hasExecuted,
+          docId,
+        };
+      });
+    }
+
+    // Ingen data i DB och ingen fallback för vald provider
+    return [];
   }, [
     activeBpmnFile,
     plannedSummary,
