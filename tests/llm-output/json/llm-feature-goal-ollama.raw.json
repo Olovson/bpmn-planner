@@ -1,0 +1,63 @@
+{
+  "type": "Feature",
+  "processContext": {
+    "processName": "Internal data gathering",
+    "fileName": "mortgage-se-application.bpmn",
+    "entryPoints": [
+      {
+        "id": "internal-data-gathering",
+        "name": "Internal data gathering",
+        "type": "callActivity",
+        "file": "mortgage-se-application.bpmn"
+      }
+    ],
+    "endPoints": [],
+    "keyNodes": [
+      {
+        "id": "internal-data-gathering",
+        "name": "Internal data gathering",
+        "type": "callActivity",
+        "file": "mortgage-se-application.bpmn"
+      }
+    ]
+  },
+  "currentNodeContext": {
+    "node": {
+      "id": "internal-data-gathering",
+      "name": "Internal data gathering",
+      "type": "callActivity",
+      "file": "mortgage-se-application.bpmn"
+    },
+    "hierarchy": [
+      {
+        "id": "internal-data-gathering",
+        "name": "Internal data gathering (callActivity)",
+        "depthFromRoot": 0,
+        "featureGoalAncestor": null,
+        "parentProcess": {
+          "id": "internal-data-gathering",
+          "name": "Internal data gathering"
+        }
+      }
+    ],
+    "parents": [],
+    "siblings": [],
+    "children": [],
+    "descendantHighlights": [],
+    "descendantTypeCounts": {},
+    "flows": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "documentation": [],
+    "jiraGuidance": {
+      "hierarchy": "Projekt → Initiativ → Feature Goal",
+      "nodeJiraType": null,
+      "derivedJiraName": "",
+      "notes": ""
+    },
+    "links": {
+      "bpmnViewerLink": "#/bpmn/mortgage.bpmn"
+    }
+  }
+}

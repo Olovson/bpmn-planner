@@ -1,0 +1,18 @@
+```json
+{
+  "type": "Epic",
+  "processContext": {
+    "processName": "Approve Application",
+    "fileName": "mortgage.bpmn",
+dependent on the process name and file, which are not provided in your input text but should be included here if known:
+"filePath": "/path/to/mortgage.bpmn", // Replace with actual path to BPMN diagram for 'Approve Application'
+  },
+  "currentNodeContext": {
+    "nodeId": "Task_Approve",
+    "name": "Approve Application",
+    "type": "userTask",
+    "filePath": "/path/to/mortgage.bpmn" // Replace with actual path to BPMN diagram for 'Approve Application' if necessary, or remove this field as it is not required in the output format provided by you:
+  },
+  ... (rest of your JSON object)
+}
+```

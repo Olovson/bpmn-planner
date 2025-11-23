@@ -139,7 +139,7 @@
 
     <section class="doc-section" data-source-summary="llm">
       <h2>Sammanfattning &amp; scope</h2>
-      <ul><li>Regeln för behörighet bedömer om en kund är berättigad till ett hypotekslån baserat på fördefinierade kriterier. Den stödjer riskbedömningsfasen och automatiserar beslut för att effektivisera processen. Typiska kunder omfattar både nya och befintliga låntagare som ansöker om hypotekslån. Regeln fokuserar på att säkerställa att endast kunder med tillräcklig kreditvärdighet och ekonomisk stabilitet går vidare i processen.</li></ul>
+      <ul><li>Regeln bedömer låntagarnas berättigande till bolån baserat på riskbedömning. Den används främst för att avgöra om en kund uppfyller de grundläggande kraven för att gå vidare i kreditprocessen. Fokus ligger på att identifiera kunder med låg risk och säkerställa att de uppfyller bankens kreditpolicy. Regeln är en del av riskbedömningsfasen och hanteras av regelmotorn.</li></ul>
     </section>
 
     <section class="doc-section" data-source-prerequisites="fallback">
@@ -164,35 +164,35 @@
         </tr>
         
         <tr>
-          <td>Kreditvärdighet</td>
+          <td>Kreditpoäng</td>
           <td>Kreditregister</td>
           <td>Numeriskt</td>
           <td>Ja</td>
-          <td>Kreditvärdighet över 620 (exempelvärde)</td>
+          <td>Minst 300 (exempelvärde)</td>
           <td>Avvisa ansökan.</td>
         </tr>
         <tr>
-          <td>Skuldkvot</td>
-          <td>Interna beräkningar</td>
+          <td>Ålder</td>
+          <td>Befolkningsregister</td>
           <td>Numeriskt</td>
           <td>Ja</td>
-          <td>Skuldkvot under 6.0 (exempelvärde)</td>
-          <td>Flagga för manuell granskning.</td>
+          <td>Minst 18 år (exempelvärde)</td>
+          <td>Avvisa ansökan.</td>
         </tr>
         <tr>
           <td>Inkomst</td>
-          <td>Löneintyg</td>
+          <td>Skatteverket</td>
           <td>Numeriskt</td>
           <td>Ja</td>
-          <td>Inkomst över 300 000 kr (exempelvärde)</td>
-          <td>Begär kompletterande dokumentation.</td>
+          <td>Minst 200 000 kr/år (exempelvärde)</td>
+          <td>Avvisa ansökan.</td>
         </tr>
       </table>
     </section>
 
     <section class="doc-section" data-source-decision-logic="llm">
       <h2>Beslutslogik (DMN / regler)</h2>
-      <ul><li>Beslutet baseras på en kombination av kreditvärdighet, skuldkvot och inkomst.</li><li>Kreditvärdighet under 620 (exempelvärde) leder till automatisk avslag.</li><li>Skuldkvot över 6.0 (exempelvärde) kräver manuell granskning.</li><li>Inkomst under 300 000 kr (exempelvärde) resulterar i begäran om ytterligare dokumentation.</li><li>Låg kreditvärdighet + hög skuldsättning → manuell granskning.</li></ul>
+      <ul><li>Regeln kombinerar kreditpoäng, ålder och inkomst för att avgöra berättigande.</li><li>Kreditpoäng under 600 (exempelvärde) leder till automatisk avslag.</li><li>Ålder under 18 år (exempelvärde) leder till automatisk avslag.</li><li>Inkomst under 200 000 kr/år (exempelvärde) leder till manuell granskning.</li><li>Låg kreditpoäng + låg inkomst → manuell granskning.</li></ul>
     </section>
 
     <section class="doc-section" data-source-outputs="llm">
@@ -208,28 +208,28 @@
         
         <tr>
           <td>Beslut</td>
-          <td>APPROVE/DECLINE</td>
-          <td>Automatisk godkännande eller avslag av ansökan</td>
-          <td>Beslutslogg med tidstämpel.</td>
+          <td>APPROVE/REFER/DECLINE</td>
+          <td>Avgör om ansökan går vidare</td>
+          <td>Beslutsloggning med tidsstämpel.</td>
         </tr>
         <tr>
           <td>Flaggor</td>
           <td>Riskindikator</td>
-          <td>Indikerar behov av manuell granskning</td>
-          <td>Riskflagga loggas för granskning.</td>
+          <td>Markerar hög risk</td>
+          <td>Riskflagga loggas.</td>
         </tr>
         <tr>
-          <td>Dokumentationsbegäran</td>
-          <td>Åtgärd</td>
-          <td>Begäran om kompletterande dokumentation</td>
-          <td>Dokumentationsbegäran loggas.</td>
+          <td>Notifikation</td>
+          <td>Intern</td>
+          <td>Informerar handläggare vid manuell granskning</td>
+          <td>Notifieringslogg.</td>
         </tr>
       </table>
     </section>
 
     <section class="doc-section" data-source-business-rules="llm">
       <h2>Affärsregler &amp; policystöd</h2>
-      <ul><li>Regeln stödjer interna policyer för kreditvärdering genom att säkerställa att endast kunder med tillräcklig kreditvärdighet godkänns.</li><li>Följer principer för skuldkvotstak för att minimera riskexponering.</li><li>Stödjer regulatoriska krav enligt konsumentkreditlagen genom att säkerställa rättvis och transparent bedömning.</li><li>Implementerar exklusionskriterier för kunder med hög riskprofil.</li><li>Säkerställer att alla beslut är spårbara och dokumenterade i enlighet med interna revisionskrav.</li></ul>
+      <ul><li>Stödjer interna kreditpolicys gällande kreditpoäng och ålderskrav.</li><li>Säkerställer efterlevnad av konsumentkreditlagens krav på kreditvärdighet.</li><li>Bidrar till att identifiera och exkludera högriskkunder i ett tidigt skede.</li><li>Följer principerna för ansvarsfull långivning enligt bankens riktlinjer.</li></ul>
     </section>
 
     <section class="doc-section" data-source-scenarios="llm">
@@ -246,23 +246,23 @@
         
         <tr>
           <td>BR1</td>
-          <td>Godkänd ansökan</td>
-          <td>Kreditvärdighet 700 (exempelvärde), skuldkvot 4.0 (exempelvärde), inkomst 400 000 kr (exempelvärde)</td>
-          <td>Automatisk godkännande</td>
+          <td>Standardberättigande</td>
+          <td>Kund med kreditpoäng 700 (exempelvärde), ålder 30 år (exempelvärde), inkomst 300 000 kr/år (exempelvärde).</td>
+          <td>Godkänd ansökan.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>BR2</td>
-          <td>Avslag på grund av låg kreditvärdighet</td>
-          <td>Kreditvärdighet 600 (exempelvärde), skuldkvot 5.0 (exempelvärde), inkomst 350 000 kr (exempelvärde)</td>
-          <td>Automatiskt avslag</td>
+          <td>Låg kreditpoäng</td>
+          <td>Kund med kreditpoäng 580 (exempelvärde), ålder 25 år (exempelvärde), inkomst 250 000 kr/år (exempelvärde).</td>
+          <td>Manuell granskning krävs.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>BR3</td>
-          <td>Manuell granskning krävs</td>
-          <td>Kreditvärdighet 650 (exempelvärde), skuldkvot 7.0 (exempelvärde), inkomst 320 000 kr (exempelvärde)</td>
-          <td>Manuell granskning</td>
+          <td>Underårig sökande</td>
+          <td>Kund med kreditpoäng 650 (exempelvärde), ålder 17 år (exempelvärde), inkomst 220 000 kr/år (exempelvärde).</td>
+          <td>Ansökan avslagen.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
       </table>
@@ -270,12 +270,12 @@
 
     <section class="doc-section" data-source-implementation-notes="llm">
       <h2>Implementation &amp; integrationsnoter</h2>
-      <ul><li>Regeln implementeras i en DMN-tabell och hanteras av en regelmotor för att automatisera beslutsfattandet.</li><li>Exponeras via en intern beslutstjänst/API för integration med andra system.</li><li>Kritiska beroenden inkluderar kreditmotor och kunddataregister.</li><li>Loggning av alla beslut och flaggor sker för att säkerställa audit-spårbarhet.</li><li>Prestandaoptimering är nödvändig för att hantera stora volymer av ansökningar effektivt.</li></ul>
+      <ul><li>Regeln implementeras i en DMN-tabell som hanteras av regelmotorn.</li><li>Exponeras via intern beslutstjänst för realtidsbedömning.</li><li>Beroende av externa kreditregister för datavalidering.</li><li>Loggning av alla beslut för audit-spårbarhet.</li><li>Prestandaoptimering krävs för att hantera hög volym av ansökningar.</li></ul>
     </section>
 
     <section class="doc-section" data-source-related-items="llm">
       <h2>Relaterade regler &amp; subprocesser</h2>
-      <ul><li>Relaterad regel: Kreditvärdering</li><li>Subprocess: Huvudbeslut</li><li>Dokumentation: Kreditpolicy-dokumentation</li><li>Subprocess: Utbetalning</li></ul>
+      <ul><li>Relaterad regel: Kreditpoängsbedömning.</li><li>Subprocess: Huvudbeslut i kreditprocessen.</li><li>Dokumentation: Intern kreditpolicy och riktlinjer.</li></ul>
     </section>
   
   </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { ProcessTreeNode, ProcessNodeType, NodeArtifact, getProcessNodeStyle, PROCESS_NODE_STYLES } from '@/lib/processTree';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface ProcessTreeD3Props {
   root: ProcessTreeNode;
@@ -54,6 +55,57 @@ const summarizeDiagnostics = (node: ProcessTreeNode): string | null => {
 export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactClick }: ProcessTreeD3Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+
+  const handleExportPdf = () => {
+    const svgElement = svgRef.current;
+    if (!svgElement) return;
+
+    const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+    clonedSvg.removeAttribute('class');
+
+    const width = svgElement.clientWidth || 1200;
+    const height = svgElement.clientHeight || 800;
+    clonedSvg.setAttribute('width', String(width));
+    clonedSvg.setAttribute('height', String(height));
+
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(clonedSvg);
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <title>Processträd</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      svg {
+        max-width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    ${svgString}
+    <script>
+      window.onload = function () {
+        window.focus();
+        window.print();
+      };
+    <\/script>
+  </body>
+</html>`);
+    printWindow.document.close();
+  };
 
   useEffect(() => {
     if (!root || !svgRef.current) return;
@@ -228,8 +280,11 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
     <div className="flex flex-col h-full gap-4">
       {/* Legend */}
       <Card className="flex-shrink-0">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 flex items-center justify-between">
           <CardTitle className="text-sm">Förklaring</CardTitle>
+          <Button variant="outline" size="sm" onClick={handleExportPdf}>
+            Exportera till PDF
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3 text-xs">
