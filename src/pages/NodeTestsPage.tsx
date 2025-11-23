@@ -124,7 +124,14 @@ const NodeTestsPage = () => {
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'files') navigate('/files');
-    else navigate('/test-report');
+    else {
+      const fileParam = bpmnFile;
+      if (fileParam) {
+        navigate(`/test-report?file=${encodeURIComponent(fileParam)}`);
+      } else {
+        navigate('/test-report');
+      }
+    }
   };
 
   if (isLoading) {
@@ -181,7 +188,13 @@ const NodeTestsPage = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/test-report')}
+            onClick={() => {
+              if (bpmnFile) {
+                navigate(`/test-report?file=${encodeURIComponent(bpmnFile)}`);
+              } else {
+                navigate('/test-report');
+              }
+            }}
           >
             Tillbaka till testrapport
           </Button>

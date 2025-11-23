@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, XCircle, FileCode, Clock, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
 import { SUBPROCESS_REGISTRY, type NodeType } from '@/data/subprocessRegistry';
+import { useFilePlannedScenarios } from '@/hooks/useFilePlannedScenarios';
+import { useBpmnFileTestableNodes } from '@/hooks/useBpmnFileTestableNodes';
 import {
   TestReportFilters,
   type TestDocTypeFilter,
@@ -31,6 +33,10 @@ const TestReport = () => {
   const { hasTests } = useArtifactAvailability();
   const { data: coverageMap } = useAllFilesArtifactCoverage();
   const { testResults, isLoading, stats } = useTestResults();
+  const [searchParams] = useSearchParams();
+
+  const urlFile =
+    searchParams.get('file') || searchParams.get('bpmnFile') || null;
 
   const [statusFilter, setStatusFilter] = useState<TestStatusFilter>('all');
   const [processFilter, setProcessFilter] = useState<string>('all');
@@ -47,6 +53,12 @@ const TestReport = () => {
   const [plannedProcessFilter, setPlannedProcessFilter] = useState<string>('all');
   const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
 
+  const activeBpmnFile =
+    plannedProcessFilter !== 'all' ? plannedProcessFilter : urlFile;
+
+  const { summary: plannedSummary } = useFilePlannedScenarios(activeBpmnFile);
+  const { nodes: testableNodes } = useBpmnFileTestableNodes(activeBpmnFile || undefined);
+
   const nodeTypeById = useMemo(() => {
     const map: Record<string, NodeType> = {};
     SUBPROCESS_REGISTRY.forEach((sp) => {
@@ -55,20 +67,29 @@ const TestReport = () => {
     return map;
   }, []);
 
-  // KPI: coverage från coverageMap + test_results + testMapping
+  // KPI: coverage från coverageMap + test_results + node_planned_scenarios (per fil om vald, annars global)
   const coverageSummary = useMemo(() => {
     let totalNodes = 0;
     let implementedNodes = 0;
 
     if (coverageMap) {
-      for (const coverage of coverageMap.values()) {
-        totalNodes += coverage.total_nodes;
-        implementedNodes += coverage.tests.covered;
+      if (activeBpmnFile && coverageMap.has(activeBpmnFile)) {
+        const coverage = coverageMap.get(activeBpmnFile)!;
+        totalNodes = coverage.total_nodes;
+        implementedNodes = coverage.tests.covered;
+      } else {
+        for (const coverage of coverageMap.values()) {
+          totalNodes += coverage.total_nodes;
+          implementedNodes += coverage.tests.covered;
+        }
       }
     }
 
     const executedNodeIds = new Set(
       (testResults || [])
+        .filter((r) =>
+          activeBpmnFile ? r.bpmn_file === activeBpmnFile : true,
+        )
         .map((r) => r.node_id)
         .filter((id): id is string => Boolean(id)),
     );
@@ -78,12 +99,16 @@ const TestReport = () => {
     const executedCoverage =
       totalNodes > 0 ? (executedNodeIds.size / totalNodes) * 100 : 0;
 
-    const allNodes = Object.keys(elementResourceMapping);
-    const nodesWithPlannedScenarios = Object.keys(testMapping);
+    const plannedNodesCount =
+      plannedSummary?.totalNodesWithPlannedScenarios ??
+      Object.keys(testMapping).length;
 
     const latestRun =
-      testResults && testResults.length
-        ? testResults
+      (testResults || []).length
+        ? (testResults || [])
+            .filter((r) =>
+              activeBpmnFile ? r.bpmn_file === activeBpmnFile : true,
+            )
             .slice()
             .sort((a, b) => {
               const aTime = a.last_run ? new Date(a.last_run).getTime() : 0;
@@ -98,13 +123,23 @@ const TestReport = () => {
       executedNodeCount: executedNodeIds.size,
       implementedCoverage,
       executedCoverage,
-      plannedNodesCount: nodesWithPlannedScenarios.length,
+      plannedNodesCount,
       passRate: stats.total > 0 ? (stats.passing / stats.total) * 100 : 0,
       latestRun,
     };
-  }, [coverageMap, testResults, stats]);
+  }, [coverageMap, testResults, stats, activeBpmnFile, plannedSummary]);
 
   const allTests = useMemo(() => getAllTests(), []);
+
+  const plannedScenarioTotal = useMemo(() => {
+    if (plannedSummary) {
+      return plannedSummary.totalPlannedScenarios;
+    }
+    return allTests.reduce(
+      (sum, t) => sum + (t.scenarios?.length ?? 0),
+      0,
+    );
+  }, [plannedSummary, allTests]);
 
   const testsWithDerivedProcess = useMemo(() => {
     return testResults.map((result) => {
@@ -174,22 +209,134 @@ const TestReport = () => {
 
   const plannedProcessOptions = useMemo(() => {
     const files = new Set<string>();
-    Object.values(elementResourceMapping).forEach((entry) => {
-      if (entry.bpmnFile) {
-        files.add(entry.bpmnFile);
+    if (coverageMap) {
+      for (const key of coverageMap.keys()) {
+        files.add(key);
       }
-    });
+    }
     return Array.from(files).sort();
-  }, []);
+  }, [coverageMap]);
 
-  const filteredNodeIds = useMemo(() => {
-    return applyPlannedNodesFilter(
+  const plannedNodesForView = useMemo(() => {
+    // När vi har en aktiv fil och DB-data + BPMN-noder, använd dessa som sanning.
+    if (activeBpmnFile && plannedSummary && testableNodes.length > 0) {
+      const plannedById = new Map(
+        plannedSummary.byNode.map((n) => [n.elementId, n]),
+      );
+
+      return testableNodes
+        .filter((node) => {
+          // Filtrera på typ
+          const nodeType = node.type;
+          if (
+            plannedTypeFilter === 'feature-goal' &&
+            nodeType !== 'CallActivity'
+          ) {
+            return false;
+          }
+          if (
+            plannedTypeFilter === 'epic' &&
+            nodeType !== 'UserTask' &&
+            nodeType !== 'ServiceTask'
+          ) {
+            return false;
+          }
+          if (
+            plannedTypeFilter === 'business-rule' &&
+            nodeType !== 'BusinessRuleTask'
+          ) {
+            return false;
+          }
+
+          // Filtrera på att noden antingen har planerade scenarion eller, om statusfiltret är 'all',
+          // får visas även utan scenarion.
+          const planned = plannedById.get(node.id);
+          const hasPlanned = Boolean(planned && planned.totalScenarios > 0);
+
+          if (plannedStatusFilter === 'all') {
+            return true;
+          }
+          if (plannedStatusFilter === 'pending') {
+            return hasPlanned;
+          }
+          if (plannedStatusFilter === 'passing') {
+            // För planerade scenarion finns ännu inget explicit statusbegrepp,
+            // så vi behandlar alla med scenarion som "aktiva".
+            return hasPlanned;
+          }
+          if (plannedStatusFilter === 'failing') {
+            return hasPlanned;
+          }
+          if (plannedStatusFilter === 'skipped') {
+            return hasPlanned;
+          }
+
+          return true;
+        })
+        .map((node) => {
+          const planned = plannedById.get(node.id);
+          const plannedScenarios =
+            planned?.byProvider.flatMap((p) => p.scenarios) ?? [];
+          const hasExecuted = testResults.some(
+            (r) =>
+              r.bpmn_file === activeBpmnFile && r.node_id === node.id,
+          );
+
+          const meta = elementResourceMapping[node.id];
+          const docId =
+            (meta?.bpmnFile || activeBpmnFile) && node.id
+              ? getNodeDocViewerPath(
+                  meta?.bpmnFile || activeBpmnFile,
+                  node.id,
+                )
+              : null;
+
+          return {
+            id: node.id,
+            displayName: node.name || node.id,
+            plannedScenarios,
+            hasExecuted,
+            docId,
+          };
+        });
+    }
+
+    // Fallback: använd legacy elementResourceMapping/testMapping när ingen aktiv fil eller ingen DB-data finns.
+    const filteredNodeIds = applyPlannedNodesFilter(
       elementResourceMapping,
       nodeTypeById,
       plannedTypeFilter,
       plannedProcessFilter,
     );
-  }, [plannedTypeFilter, plannedProcessFilter, nodeTypeById]);
+
+    return filteredNodeIds.map((nodeId) => {
+      const meta = elementResourceMapping[nodeId];
+      const testInfo = testMapping[nodeId];
+      const plannedScenarios = testInfo?.scenarios ?? [];
+      const hasExecuted = testResults.some((r) => r.node_id === nodeId);
+      const docId =
+        meta?.bpmnFile && nodeId
+          ? getNodeDocViewerPath(meta.bpmnFile, nodeId)
+          : null;
+
+      return {
+        id: nodeId,
+        displayName: meta?.displayName || nodeId,
+        plannedScenarios,
+        hasExecuted,
+        docId,
+      };
+    });
+  }, [
+    activeBpmnFile,
+    plannedSummary,
+    testableNodes,
+    plannedTypeFilter,
+    plannedStatusFilter,
+    nodeTypeById,
+    plannedProcessFilter,
+    testResults,
+  ]);
 
   const handleViewChange = (view: string) => {
     if (view === 'diagram') navigate('/');
@@ -226,13 +373,11 @@ const TestReport = () => {
               <CardContent>
                 <div className="space-y-2">
                   <div className="text-3xl font-bold text-foreground">
-                    {allTests.reduce(
-                      (sum, t) => sum + (t.scenarios?.length ?? 0),
-                      0,
-                    )}
+                    {plannedScenarioTotal}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Scenarion definierade i genererade testfiler (designnivå)
+                    Scenarion definierade för valda BPMN-filen
+                    {activeBpmnFile ? '' : ' (global designnivå)'}
                   </p>
                 </div>
               </CardContent>
@@ -354,137 +499,128 @@ const TestReport = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredNodeIds.map((nodeId) => {
-                        const meta = elementResourceMapping[nodeId];
-                        const testInfo = testMapping[nodeId];
-                        const plannedScenarios = testInfo?.scenarios ?? [];
-                        const plannedScenarioCount = plannedScenarios.length;
-                        const hasExecuted = testResults.some(
-                          (r) => r.node_id === nodeId,
-                        );
-                        const isExpanded = expandedNodeId === nodeId;
-                        const docId =
-                          meta?.bpmnFile && nodeId
-                            ? getNodeDocViewerPath(meta.bpmnFile, nodeId)
-                            : null;
+                      {plannedNodesForView.map((node) => {
+                        const plannedScenarioCount = node.plannedScenarios.length;
+                        const isExpanded = expandedNodeId === node.id;
 
-                          return (
-                            <>
-                              <TableRow
-                                key={nodeId}
-                                className="cursor-pointer"
-                                onClick={() => {
-                                  setExpandedNodeId((prev) =>
-                                    prev === nodeId ? null : nodeId,
-                                  );
-                                }}
-                              >
-                                <TableCell className="w-8 align-top text-center">
+                        return (
+                          <>
+                            <TableRow
+                              key={node.id}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                setExpandedNodeId((prev) =>
+                                  prev === node.id ? null : node.id,
+                                );
+                              }}
+                            >
+                              <TableCell className="w-8 align-top text-center">
+                                <span className="text-xs text-muted-foreground">
+                                  {isExpanded ? '▾' : '▸'}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium">
+                                      {node.displayName}
+                                    </span>
+                                    <span className="text-[11px] font-mono text-muted-foreground">
+                                      {node.id}
+                                    </span>
+                                  </div>
+                                  {node.docId && (
+                                    <DocVariantBadges docId={node.docId} compact />
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {plannedScenarioCount > 0 ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs bg-blue-500/10 text-blue-700 border-blue-200"
+                                  >
+                                    {plannedScenarioCount} scenarion
+                                  </Badge>
+                                ) : (
                                   <span className="text-xs text-muted-foreground">
-                                    {isExpanded ? '▾' : '▸'}
+                                    Inga scenarion definierade
                                   </span>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col gap-1">
-                                    <div className="flex flex-col">
-                                      <span className="text-sm font-medium">
-                                        {meta.displayName || nodeId}
-                                      </span>
-                                      <span className="text-[11px] font-mono text-muted-foreground">
-                                        {nodeId}
-                                      </span>
-                                    </div>
-                                    {docId && (
-                                      <DocVariantBadges docId={docId} compact />
-                                    )}
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {node.hasExecuted ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-200"
+                                  >
+                                    Minst ett testresultat
+                                  </Badge>
+                                ) : plannedScenarioCount > 0 ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    Scenarion finns, men inga körda tester
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    Inga tester definierade
+                                  </span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && plannedScenarioCount > 0 && (
+                              <TableRow>
+                                <TableCell colSpan={4} className="bg-muted/40">
+                                  <div className="py-3">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                                      Planerade scenarion för denna nod
+                                    </p>
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead className="w-24 text-xs">
+                                            Scenario-ID
+                                          </TableHead>
+                                          <TableHead className="text-xs">
+                                            Beskrivning
+                                          </TableHead>
+                                          <TableHead className="w-24 text-xs">
+                                            Typ
+                                          </TableHead>
+                                          <TableHead className="w-40 text-xs">
+                                            Källa
+                                          </TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {node.plannedScenarios.map((scenario) => (
+                                          <TableRow
+                                            key={scenario.id || scenario.name}
+                                          >
+                                            <TableCell className="text-xs font-mono">
+                                              {scenario.id || '–'}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                              {scenario.description ||
+                                                scenario.name ||
+                                                '–'}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                              {scenario.type || '–'}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                              {scenario.category || '–'}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-sm">
-                                  {plannedScenarioCount > 0 ? (
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-xs bg-blue-500/10 text-blue-700 border-blue-200"
-                                    >
-                                      {plannedScenarioCount} scenarion
-                                    </Badge>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">
-                                      Inga scenarion definierade
-                                    </span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-sm">
-                                  {hasExecuted ? (
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-200"
-                                    >
-                                      Minst ett testresultat
-                                    </Badge>
-                                  ) : plannedScenarioCount > 0 ? (
-                                    <span className="text-xs text-muted-foreground">
-                                      Scenarion finns, men inga körda tester
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">
-                                      Inga tester definierade
-                                    </span>
-                                  )}
-                                </TableCell>
                               </TableRow>
-                              {isExpanded && plannedScenarioCount > 0 && (
-                                <TableRow>
-                                  <TableCell colSpan={4} className="bg-muted/40">
-                                    <div className="py-3">
-                                      <p className="text-xs font-medium text-muted-foreground mb-2">
-                                        Planerade scenarion för denna nod
-                                      </p>
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow>
-                                            <TableHead className="w-24 text-xs">
-                                              Scenario-ID
-                                            </TableHead>
-                                            <TableHead className="text-xs">
-                                              Beskrivning
-                                            </TableHead>
-                                            <TableHead className="w-24 text-xs">
-                                              Typ
-                                            </TableHead>
-                                            <TableHead className="w-40 text-xs">
-                                              Testfil
-                                            </TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {plannedScenarios.map((scenario) => (
-                                            <TableRow key={scenario.id || scenario.name}>
-                                              <TableCell className="text-xs font-mono">
-                                                {scenario.id || '–'}
-                                              </TableCell>
-                                              <TableCell className="text-xs">
-                                                {scenario.description ||
-                                                  scenario.name ||
-                                                  '–'}
-                                              </TableCell>
-                                              <TableCell className="text-xs">
-                                                {scenario.type || '–'}
-                                              </TableCell>
-                                              <TableCell className="text-xs font-mono">
-                                                {testInfo?.testFile?.replace('tests/', '') ||
-                                                  '–'}
-                                              </TableCell>
-                                            </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </>
-                          );
-                        })}
+                            )}
+                          </>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

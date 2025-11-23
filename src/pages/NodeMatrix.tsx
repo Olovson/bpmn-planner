@@ -302,7 +302,15 @@ const NodeMatrix = () => {
         onViewChange={(v) => {
           if (v === 'diagram') navigate('/');
           else if (v === 'tree') navigate('/process-explorer');
-          else if (v === 'tests') navigate('/test-report');
+          else if (v === 'tests') {
+            const fileParam =
+              selectedBpmnFile !== 'Alla' ? selectedBpmnFile : null;
+            if (fileParam) {
+              navigate(`/test-report?file=${encodeURIComponent(fileParam)}`);
+            } else {
+              navigate('/test-report');
+            }
+          }
           else if (v === 'files') navigate('/files');
           else navigate('/node-matrix');
         }}

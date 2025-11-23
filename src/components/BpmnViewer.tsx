@@ -473,7 +473,13 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
           if (elId) {
             highlightElement(elId);
           }
-          navigate('/test-report');
+          const params = new URLSearchParams(window.location.search);
+          const fileParam = params.get('file');
+          if (fileParam) {
+            navigate(`/test-report?file=${encodeURIComponent(fileParam)}`);
+          } else {
+            navigate('/test-report');
+          }
         });
       });
     }, 100);

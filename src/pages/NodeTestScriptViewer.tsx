@@ -116,7 +116,13 @@ const NodeTestScriptViewer = () => {
     if (view === 'diagram') navigate('/');
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
+    else if (view === 'tests') {
+      if (bpmnFile) {
+        navigate(`/test-report?file=${encodeURIComponent(bpmnFile)}`);
+      } else {
+        navigate('/test-report');
+      }
+    }
     else navigate('/files');
   };
 
@@ -154,7 +160,13 @@ const NodeTestScriptViewer = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/test-report')}
+              onClick={() => {
+                if (bpmnFile) {
+                  navigate(`/test-report?file=${encodeURIComponent(bpmnFile)}`);
+                } else {
+                  navigate('/test-report');
+                }
+              }}
             >
               Tillbaka till testrapport
             </Button>

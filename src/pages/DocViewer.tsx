@@ -168,7 +168,14 @@ const DocViewer = () => {
           if (view === 'diagram') navigate('/');
           else if (view === 'tree') navigate('/process-explorer');
           else if (view === 'listvy') navigate('/node-matrix');
-          else if (view === 'tests') navigate('/test-report');
+          else if (view === 'tests') {
+            const base = baseName ? `${baseName}.bpmn` : null;
+            if (base) {
+              navigate(`/test-report?file=${encodeURIComponent(base)}`);
+            } else {
+              navigate('/test-report');
+            }
+          }
           else navigate('/files');
         }}
         onOpenVersions={() => navigate('/')}
