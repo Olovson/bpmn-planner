@@ -712,7 +712,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     viewerReady,
     currentXml,
     toast,
-    onElementSelect,
     nodeMappings,
     bpmnMappings,
     loadSubProcess,
