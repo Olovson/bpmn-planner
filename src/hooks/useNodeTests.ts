@@ -33,6 +33,15 @@ interface UseNodeTestsParams {
 
 type NodeTestVariant = 'local-fallback' | 'llm' | 'unknown';
 
+// Alias-mappning mellan BPMN-element-id och testMapping-nycklar.
+// Används när nodens id inte matchar direkt mot testMapping men vi vet
+// vilken testmall som hör till noden.
+const TEST_TEMPLATE_ALIASES: Record<string, string> = {
+  // Appeal-processen: nod-id "screen-appeal" använder scenarion från
+  // "appeal-handling-manual" i testMapping.
+  'screen-appeal': 'appeal-handling-manual',
+};
+
 export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams) => {
   const { testResults, isLoading: resultsLoading } = useTestResults();
   const { data: linkEntries = [], isLoading: linksLoading } = useNodeTestLinks();
@@ -70,7 +79,13 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
 
     // First try to get from database using nodeId or elementId
     const dbTests = testResults.filter(result => result.node_id === effectiveNodeId);
-    const template = testMapping[effectiveNodeId];
+
+    // Försök först hitta direkt mall på nod-id, annars via alias.
+    const templateKey =
+      testMapping[effectiveNodeId]
+        ? effectiveNodeId
+        : TEST_TEMPLATE_ALIASES[effectiveNodeId] ?? null;
+    const template = templateKey ? testMapping[templateKey] : undefined;
 
     // Bygg plannedScenariosByProvider med fallback:
     const plannedSets: ProviderScenarioSet[] = [];

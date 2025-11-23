@@ -1,3 +1,7 @@
+// Global test report page:
+// - Aggregated view over all BPMN-filer och noder
+// - Filtrering på provider (local/chatgpt/ollama), process, status m.m.
+// - Ska INTE vara nodspecifik – det hanteras av NodeTestsPage (/node-tests)
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, XCircle, FileCode, Clock, Package } from 'lucide-react';

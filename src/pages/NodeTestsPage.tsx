@@ -1,3 +1,7 @@
+// Node-specific test report page:
+// - Detaljerad vy för en enskild nod (bpmnFile + elementId/nodeId)
+// - Visar planerade scenarion och körda tester för just den noden
+// - Kompletterar den globala rapporten i TestReport (/test-report)
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileCode, CheckCircle2, XCircle, Clock, AlertCircle, ExternalLink } from 'lucide-react';
@@ -26,32 +30,31 @@ const NodeTestsPage = () => {
     elementId: elementId || undefined,
   });
   const [implementedTestFile, setImplementedTestFile] = useState<string | null>(null);
-  const [variantFilter, setVariantFilter] = useState<'all' | 'local-fallback' | 'chatgpt' | 'ollama'>('all');
-  const [plannedProvider, setPlannedProvider] = useState<'local-fallback' | 'chatgpt' | 'ollama'>('local-fallback');
+  // Gemensamt läge för provider (matchar dokumentationsvyerna: Lokal fallback / ChatGPT / Ollama)
+  const [providerMode, setProviderMode] = useState<'local-fallback' | 'chatgpt' | 'ollama'>('local-fallback');
 
   const filteredTests = useMemo(
     () =>
       tests.filter((test) => {
-        if (variantFilter === 'all') return true;
-        if (variantFilter === 'local-fallback') {
-          return test.variant === 'local-fallback';
+        if (providerMode === 'local-fallback') {
+          return test.variant === 'local-fallback' || test.scriptProvider === 'local-fallback';
         }
-        if (variantFilter === 'chatgpt') {
+        if (providerMode === 'chatgpt') {
           return test.scriptProvider === 'chatgpt';
         }
-        if (variantFilter === 'ollama') {
+        if (providerMode === 'ollama') {
           return test.scriptProvider === 'ollama';
         }
         return true;
       }),
-    [tests, variantFilter],
+    [tests, providerMode],
   );
 
   const plannedScenarioCountForCurrentProvider = useMemo(() => {
     return plannedScenariosByProvider
-      .filter((set) => set.provider === plannedProvider)
+      .filter((set) => set.provider === providerMode)
       .reduce((sum, set) => sum + (set.scenarios?.length ?? 0), 0);
-  }, [plannedScenariosByProvider, plannedProvider]);
+  }, [plannedScenariosByProvider, providerMode]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -175,173 +178,159 @@ const NodeTestsPage = () => {
         isTestsEnabled={hasTests}
       />
 
-      <main className="flex-1 min-w-0 overflow-auto container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Testrapport för {nodeInfo?.name || elementId || nodeId || 'okänd nod'}
-            </h1>
-            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-              {elementId && <span className="font-mono">{elementId}</span>}
-              {bpmnFile && (
-                <>
-                  {elementId && <span>•</span>}
-                  <span>{bpmnFile}</span>
-                </>
-              )}
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (bpmnFile) {
-                navigate(`/test-report?file=${encodeURIComponent(bpmnFile)}`);
-              } else {
-                navigate('/test-report');
-              }
-            }}
-          >
-            Tillbaka till testrapport
-          </Button>
-        </div>
-
-        {/* Summary section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{filteredTests.length}</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {filteredTests.length === 1 ? 'Kört test' : 'Körda tester'}
-                </div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  {filteredTests.filter(t => t.status === 'passing').length} passerade • {filteredTests.filter(t => t.status === 'failing').length} misslyckade
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{implementedTestFile ? 1 : 0}</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Implementerade testfiler
-                </div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  {implementedTestFile && tests.length === 0 ? 'Ej körda ännu' : implementedTestFile ? 'Körda' : 'Inga'}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold">
-                  {plannedScenarioCountForCurrentProvider}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Planerade scenarion (vald provider)
-                </div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  Designade men ej implementerade
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {tests.length === 0 && !implementedTestFile && plannedScenariosByProvider.length === 0 && (
-          <Card>
-            <CardContent className="py-8">
-              <div className="text-center text-muted-foreground">
-                Inga tester är kopplade till den här noden ännu.
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {implementedTestFile && tests.length === 0 && (
-          <Card className="mb-6 border-dashed border-amber-400/70 bg-amber-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <span>🧪 Test implementerat men ej kört</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Det finns en genererad testfil för denna nod, men inga körda testresultat är inrapporterade ännu.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-mono text-xs truncate">{implementedTestFile}</p>
-                {bpmnFile && elementId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() =>
-                      navigate(
-                        `/node-test-script?bpmnFile=${encodeURIComponent(
-                          bpmnFile,
-                        )}&elementId=${encodeURIComponent(elementId)}`,
-                      )
-                    }
-                  >
-                    Visa testscript
-                  </Button>
+      <main className="flex-1 min-w-0 overflow-auto">
+        <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Testrapport (nod)
+              </p>
+              <p className="text-sm text-foreground mt-1">
+                {nodeInfo?.name || elementId || nodeId || 'Okänd nod'}
+              </p>
+              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                {elementId && <span className="font-mono">{elementId}</span>}
+                {bpmnFile && (
+                  <>
+                    {elementId && <span>•</span>}
+                    <span>{bpmnFile}</span>
+                  </>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {tests.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileCode className="h-5 w-5" />
-                    Testfall ({filteredTests.length})
-                  </CardTitle>
-                  <CardDescription>
-                    Detaljerad lista över alla testfall som är kopplade till denna BPMN-nod
-                  </CardDescription>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <Button
-                    size="sm"
-                    variant={variantFilter === 'all' ? 'default' : 'outline'}
-                    onClick={() => setVariantFilter('all')}
-                  >
-                    Alla
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={variantFilter === 'local-fallback' ? 'default' : 'outline'}
-                    onClick={() => setVariantFilter('local-fallback')}
-                  >
-                    Lokal fallback
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={variantFilter === 'chatgpt' ? 'default' : 'outline'}
-                    onClick={() => setVariantFilter('chatgpt')}
-                  >
-                    ChatGPT
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={variantFilter === 'ollama' ? 'default' : 'outline'}
-                    onClick={() => setVariantFilter('ollama')}
-                  >
-                    Ollama
-                  </Button>
-                </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <Button
+                  size="sm"
+                  variant={providerMode === 'local-fallback' ? 'default' : 'outline'}
+                  onClick={() => setProviderMode('local-fallback')}
+                >
+                  Lokal fallback
+                </Button>
+                <Button
+                  size="sm"
+                  variant={providerMode === 'chatgpt' ? 'default' : 'outline'}
+                  onClick={() => setProviderMode('chatgpt')}
+                >
+                  ChatGPT
+                </Button>
+                <Button
+                  size="sm"
+                  variant={providerMode === 'ollama' ? 'default' : 'outline'}
+                  onClick={() => setProviderMode('ollama')}
+                >
+                  Ollama
+                </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
+            </div>
+          </div>
+
+          {/* Summary section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{filteredTests.length}</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {filteredTests.length === 1 ? 'Kört test' : 'Körda tester'}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {filteredTests.filter(t => t.status === 'passing').length} passerade • {filteredTests.filter(t => t.status === 'failing').length} misslyckade
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{implementedTestFile ? 1 : 0}</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Implementerade testfiler
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {implementedTestFile && tests.length === 0 ? 'Ej körda ännu' : implementedTestFile ? 'Körda' : 'Inga'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">
+                    {plannedScenarioCountForCurrentProvider}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Planerade scenarion (vald provider)
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Designade men ej implementerade
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {tests.length === 0 && !implementedTestFile && plannedScenariosByProvider.length === 0 && (
+            <Card>
+              <CardContent className="py-8">
+                <div className="text-center text-muted-foreground">
+                  Inga tester är kopplade till den här noden ännu.
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {implementedTestFile && tests.length === 0 && (
+            <Card className="mb-6 border-dashed border-amber-400/70 bg-amber-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <span>🧪 Test implementerat men ej kört</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Det finns en genererad testfil för denna nod, men inga körda testresultat är inrapporterade ännu.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-mono text-xs truncate">{implementedTestFile}</p>
+                  {bpmnFile && elementId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() =>
+                        navigate(
+                          `/node-test-script?bpmnFile=${encodeURIComponent(
+                            bpmnFile,
+                          )}&elementId=${encodeURIComponent(elementId)}`,
+                        )
+                      }
+                    >
+                      Visa testscript
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {tests.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileCode className="h-5 w-5" />
+                      Testfall ({filteredTests.length})
+                    </CardTitle>
+                    <CardDescription>
+                      Detaljerad lista över alla testfall som är kopplade till denna BPMN-nod
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Testnamn</TableHead>
@@ -460,98 +449,76 @@ const NodeTestsPage = () => {
           </Card>
         )}
 
-        {plannedScenariosByProvider.length > 0 && (
-          <Card className="mt-6">
-            <CardHeader>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <span>📝 Planerade scenarion</span>
-                </CardTitle>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <Button
-                    size="sm"
-                    variant={plannedProvider === 'local-fallback' ? 'default' : 'outline'}
-                    onClick={() => setPlannedProvider('local-fallback')}
-                  >
-                    Lokal fallback
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={plannedProvider === 'chatgpt' ? 'default' : 'outline'}
-                    onClick={() => setPlannedProvider('chatgpt')}
-                  >
-                    ChatGPT
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={plannedProvider === 'ollama' ? 'default' : 'outline'}
-                    onClick={() => setPlannedProvider('ollama')}
-                  >
-                    Ollama
-                  </Button>
+          {plannedScenariosByProvider.length > 0 && (
+            <Card className="mt-6">
+              <CardHeader>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <span>📝 Planerade scenarion</span>
+                  </CardTitle>
                 </div>
-              </div>
-              <CardDescription className="text-sm text-muted-foreground">
-                Designade testscenarion kopplade till denna nod. Dessa representerar målbilden och är
-                inte nödvändigtvis implementerade eller körda ännu.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                const currentSet = plannedScenariosByProvider.find(
-                  (s) => s.provider === plannedProvider,
-                );
-                const scenarios = currentSet?.scenarios ?? [];
-
-                if (!scenarios.length) {
-                  return (
-                    <div className="text-xs text-muted-foreground py-4">
-                      Inga planerade scenarion lagrade för{' '}
-                      {plannedProvider === 'local-fallback'
-                        ? 'Lokal fallback'
-                        : plannedProvider === 'chatgpt'
-                        ? 'ChatGPT'
-                        : 'Ollama'}
-                      . Generera dokumentation/tester med denna provider för att fylla dem.
-                    </div>
+                <CardDescription className="text-sm text-muted-foreground">
+                  Designade testscenarion kopplade till denna nod. Dessa representerar målbilden och är
+                  inte nödvändigtvis implementerade eller körda ännu.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const currentSet = plannedScenariosByProvider.find(
+                    (s) => s.provider === providerMode,
                   );
-                }
+                  const scenarios = currentSet?.scenarios ?? [];
 
-                return (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Namn</TableHead>
-                        <TableHead>Typ</TableHead>
-                        <TableHead>Beskrivning</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {scenarios.map((scenario) => (
-                        <TableRow key={scenario.id}>
-                          <TableCell className="font-medium text-sm">
-                            {scenario.name}
-                            {scenario.contextWarning && (
-                              <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide bg-amber-100 text-amber-800">
-                                Kontext-osäker
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {scenario.category}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {scenario.description}
-                          </TableCell>
+                  if (!scenarios.length) {
+                    return (
+                      <div className="text-xs text-muted-foreground py-4">
+                        Inga planerade scenarion lagrade för{' '}
+                        {providerMode === 'local-fallback'
+                          ? 'Lokal fallback'
+                          : providerMode === 'chatgpt'
+                          ? 'ChatGPT'
+                          : 'Ollama'}
+                        . Generera dokumentation/tester med denna provider för att fylla dem.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Namn</TableHead>
+                          <TableHead>Typ</TableHead>
+                          <TableHead>Beskrivning</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                );
-              })()}
-            </CardContent>
-          </Card>
-       )}
+                      </TableHeader>
+                      <TableBody>
+                        {scenarios.map((scenario) => (
+                          <TableRow key={scenario.id}>
+                            <TableCell className="font-medium text-sm">
+                              {scenario.name}
+                              {scenario.contextWarning && (
+                                <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide bg-amber-100 text-amber-800">
+                                  Kontext-osäker
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {scenario.category}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {scenario.description}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </main>
     </div>
   );
