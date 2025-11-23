@@ -8,7 +8,7 @@
 import { useLlmEvents, useLlmStats } from '@/hooks/useLlmEvents';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import { getProviderLabel } from '@/lib/llmLogging';
 
 export function LlmDebugView() {
@@ -51,6 +51,12 @@ export function LlmDebugView() {
               <div>
                 <div className="text-sm text-muted-foreground">Fallback Used</div>
                 <div className="text-2xl font-bold text-orange-600">{stats.fallbackUsed}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Token Warnings</div>
+                <div className="text-2xl font-bold text-amber-500">
+                  {stats.tokenWarnings}
+                </div>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -97,6 +103,7 @@ export function LlmDebugView() {
                     <th className="text-left p-2">Status</th>
                     <th className="text-left p-2">Validation</th>
                     <th className="text-left p-2">Latency</th>
+                    <th className="text-left p-2">Tokens</th>
                     <th className="text-left p-2">Error</th>
                   </tr>
                 </thead>
@@ -139,19 +146,24 @@ export function LlmDebugView() {
                             <span className="text-muted-foreground">No</span>
                           )}
                         </td>
-                      <td className="p-2">
-                        {event.success ? (
-                          <div className="flex items-center gap-1 text-green-600">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>Success</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-red-600">
-                            <XCircle className="w-4 h-4" />
-                            <span>Failed</span>
-                          </div>
-                        )}
-                      </td>
+                        <td className="p-2">
+                          {event.eventType === 'TOKEN_WARNING' ? (
+                            <div className="flex items-center gap-1 text-amber-500">
+                              <AlertTriangle className="w-4 h-4" />
+                              <span>Token warning</span>
+                            </div>
+                          ) : event.success ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Success</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-red-600">
+                              <XCircle className="w-4 h-4" />
+                              <span>Failed</span>
+                            </div>
+                          )}
+                        </td>
                       <td className="p-2">
                         {event.validationOk !== undefined ? (
                           event.validationOk ? (
@@ -165,6 +177,20 @@ export function LlmDebugView() {
                       </td>
                         <td className="p-2">
                           {event.latencyMs !== undefined ? `${event.latencyMs}ms` : '-'}
+                        </td>
+                        <td className="p-2">
+                          {event.eventType === 'TOKEN_WARNING' &&
+                          typeof event.estimatedTokens === 'number' &&
+                          typeof event.maxTokens === 'number' ? (
+                            <span className="text-xs text-amber-600 font-mono">
+                              {event.estimatedTokens} / {event.maxTokens}
+                              {typeof event.warningFactor === 'number'
+                                ? ` @ ${Math.round(event.warningFactor * 100)}%`
+                                : ''}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="p-2">
                           {event.errorCode ? (

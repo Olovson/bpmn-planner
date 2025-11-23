@@ -190,6 +190,7 @@ export async function generateTestSpecWithLlm(
     if (!result || !result.text) {
       // Logga event
       logLlmEvent({
+        eventType: 'ERROR',
         docType: 'testscript',
         attemptedProviders: result?.attemptedProviders || resolution.attempted,
         finalProvider: result?.provider || resolution.chosen,
@@ -222,6 +223,7 @@ export async function generateTestSpecWithLlm(
       if (Array.isArray(scenarios)) {
         // Logga event
         logLlmEvent({
+          eventType: 'INFO',
           docType: 'testscript',
           attemptedProviders: result.attemptedProviders,
           finalProvider: result.provider,
@@ -249,6 +251,7 @@ export async function generateTestSpecWithLlm(
       // Logga event
       const errorCode = extractErrorCode(error);
       logLlmEvent({
+        eventType: 'ERROR',
         docType: 'testscript',
         attemptedProviders: result.attemptedProviders,
         finalProvider: result.provider,
@@ -274,6 +277,7 @@ export async function generateTestSpecWithLlm(
     // Logga fel-event
     const errorCode = extractErrorCode(error);
     logLlmEvent({
+      eventType: 'ERROR',
       docType: 'testscript',
       attemptedProviders: resolution.attempted,
       finalProvider: resolution.chosen,

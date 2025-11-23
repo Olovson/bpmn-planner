@@ -139,7 +139,7 @@
 
     <section class="doc-section" data-source-summary="llm">
       <h2>Sammanfattning &amp; scope</h2>
-      <ul><li>Regeln bedömer kundens berättigande till bolån baserat på kreditvärdighet och ekonomisk profil. Den riktar sig främst till privatpersoner som ansöker om bolån och används i förhandsbedömningen av låneansökningar. Regeln inkluderar kreditvärdighet och skuldsättning men exkluderar specifika produktvillkor och kundpreferenser.</li></ul>
+      <ul><li>Regeln bedömer kundens lämplighet för ett bostadslån baserat på riskbedömning. Den riktar sig mot kunder som ansöker om hypotekslån och stödjer processen för att säkerställa att endast kreditvärdiga kunder går vidare till nästa steg. Fokus ligger på att identifiera riskfaktorer tidigt i processen för att minimera kreditrisker.</li></ul>
     </section>
 
     <section class="doc-section" data-source-prerequisites="fallback">
@@ -165,44 +165,44 @@
         
         <tr>
           <td>Kreditvärdighet</td>
-          <td>Kreditregister</td>
-          <td>Numeriskt</td>
+          <td>Intern kreditmotor</td>
+          <td>Numerisk</td>
           <td>Ja</td>
-          <td>Kreditvärdighet över 600 (exempelvärde)</td>
-          <td>Avslag vid ogiltigt värde.</td>
+          <td>Kreditvärdighet över 620 (exempelvärde)</td>
+          <td>Avvisa ansökan.</td>
         </tr>
         <tr>
           <td>Skuldkvot</td>
-          <td>Interna beräkningar</td>
-          <td>Numeriskt</td>
+          <td>Kunddataregister</td>
+          <td>Procent</td>
           <td>Ja</td>
           <td>Skuldkvot under 6.0 (exempelvärde)</td>
-          <td>Manuell granskning vid ogiltigt värde.</td>
+          <td>Flagga för manuell granskning.</td>
         </tr>
         <tr>
-          <td>Ålder</td>
-          <td>Befolkningsregister</td>
-          <td>Numeriskt</td>
+          <td>Belåningsgrad</td>
+          <td>Externa upplysningar</td>
+          <td>Procent</td>
           <td>Ja</td>
-          <td>Ålder över 18 år</td>
-          <td>Avslag vid ogiltigt värde.</td>
+          <td>Belåningsgrad under 85 % (exempelvärde)</td>
+          <td>Avvisa ansökan.</td>
         </tr>
       </table>
     </section>
 
     <section class="doc-section" data-source-decision-logic="llm">
       <h2>Beslutslogik (DMN / regler)</h2>
-      <ul><li>Regeln utvärderar kundens kreditvärdighet och skuldsättning för att avgöra berättigande.</li><li>Kreditvärdighet över 700 (exempelvärde) leder till automatisk godkännande.</li><li>Skuldkvot över 5.0 (exempelvärde) leder till manuell granskning.</li><li>Låg kreditvärdighet + hög skuldsättning → manuell granskning.</li><li>Ålder under 18 år leder till automatiskt avslag.</li></ul>
+      <ul><li>Regeln kombinerar kreditvärdighet, skuldkvot och belåningsgrad för att avgöra kundens lämplighet.</li><li>Kreditvärdighet under 620 (exempelvärde) leder till automatisk avslag.</li><li>Skuldkvot över 6.0 (exempelvärde) kräver manuell granskning.</li><li>Belåningsgrad över 85 % (exempelvärde) leder till automatisk avslag.</li><li>Låg kreditvärdighet + hög skuldsättning → manuell granskning.</li></ul>
     </section>
 
     <section class="doc-section" data-source-outputs="llm">
       <h2>Output &amp; effekter</h2>
-      <ul><li>Outputtyp: Beslut; Typ: APPROVE; Effekt: Låneansökan godkänd; Loggning: Beslut loggas med tidsstämpel.</li><li>Outputtyp: Beslut; Typ: REFER; Effekt: Manuell granskning krävs; Loggning: Flagga för manuell granskning loggas.</li><li>Outputtyp: Beslut; Typ: DECLINE; Effekt: Låneansökan avslagen; Loggning: Avslagsorsak loggas.</li></ul>
+      <ul><li>Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Bestämmer om ansökan går vidare eller avslås; Loggning: Beslutsloggning med tidsstämpel.</li><li>Outputtyp: Flaggor; Typ: Riskindikator; Effekt: Indikerar behov av manuell granskning; Loggning: Riskflaggor loggas för uppföljning.</li><li>Outputtyp: Notifiering; Typ: Intern; Effekt: Informerar handläggare om beslut; Loggning: Notifieringsloggning.</li></ul>
     </section>
 
     <section class="doc-section" data-source-business-rules="llm">
       <h2>Affärsregler &amp; policystöd</h2>
-      <ul><li>Regeln stödjer interna kreditpolicys genom att säkerställa att endast kreditvärdiga kunder beviljas lån.</li><li>Följer principen om att hålla skuldkvoten under ett visst tak för att minska kreditrisk.</li><li>Säkerställer att kunder under 18 år inte kan få lån, i enlighet med konsumentkreditlagstiftningen.</li><li>Regeln bidrar till att uppfylla AML/KYC-krav genom att verifiera kundens identitet och ekonomiska profil.</li></ul>
+      <ul><li>Regeln stödjer interna principer för kreditvärdering och minimala risknivåer.</li><li>Säkerställer att ansökningar med hög skuldkvot eller belåningsgrad inte godkänns automatiskt.</li><li>Följer regulatoriska krav för konsumentkreditlagstiftning.</li><li>Stödjer bankens policy för ansvarsfull utlåning.</li><li>Bidrar till att upprätthålla bankens riskmandat.</li></ul>
     </section>
 
     <section class="doc-section" data-source-scenarios="llm">
@@ -219,23 +219,23 @@
         
         <tr>
           <td>BR1</td>
-          <td>Automatiskt godkännande</td>
-          <td>Kund med kreditvärdighet 750 och skuldkvot 3.0</td>
-          <td>Automatiskt godkännande</td>
+          <td>Godkänd ansökan</td>
+          <td>Kreditvärdighet över 620 (exempelvärde), skuldkvot under 6.0 (exempelvärde), belåningsgrad under 85 % (exempelvärde).</td>
+          <td>Automatisk godkännande.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>BR2</td>
           <td>Manuell granskning</td>
-          <td>Kund med kreditvärdighet 650 och skuldkvot 5.5</td>
-          <td>Manuell granskning</td>
+          <td>Kreditvärdighet över 620 (exempelvärde), skuldkvot över 6.0 (exempelvärde), belåningsgrad under 85 % (exempelvärde).</td>
+          <td>Manuell granskning krävs.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>BR3</td>
-          <td>Automatiskt avslag</td>
-          <td>Kund under 18 år</td>
-          <td>Automatiskt avslag</td>
+          <td>Avslagen ansökan</td>
+          <td>Kreditvärdighet under 620 (exempelvärde).</td>
+          <td>Automatisk avslag.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
       </table>
@@ -243,12 +243,12 @@
 
     <section class="doc-section" data-source-implementation-notes="llm">
       <h2>Implementation &amp; integrationsnoter</h2>
-      <ul><li>Regeln implementeras i en DMN-tabell för att möjliggöra flexibel beslutslogik.</li><li>Exponeras via intern beslutstjänst/API för integration med andra system.</li><li>Viktigt att säkerställa att kreditvärdighetsdata är uppdaterad och korrekt.</li><li>Loggning av beslut och flaggor är kritiskt för audit-spårbarhet.</li><li>Beroende av externa kreditregister för att hämta kreditvärdighetsinformation.</li></ul>
+      <ul><li>Regeln implementeras i en DMN-tabell och körs i regelmotorn.</li><li>Exponeras via intern beslutstjänst för realtidsbedömning.</li><li>Kritiska beroenden inkluderar kreditmotor och kunddataregister.</li><li>Loggning av beslut och riskflaggor för audit-spårbarhet.</li><li>Prestandaoptimering krävs för att hantera stora volymer ansökningar.</li></ul>
     </section>
 
     <section class="doc-section" data-source-related-items="llm">
       <h2>Relaterade regler &amp; subprocesser</h2>
-      <ul><li>Relaterad regel: Inkomstverifiering</li><li>Subprocess: Huvudbeslut i kreditprocessen</li><li>Dokumentation: Övergripande kreditpolicy</li><li>Subprocess: Utbetalning och avtalshantering</li></ul>
+      <ul><li>Relaterade regler: Kreditvärdering, Skuldkvotbedömning.</li><li>Relevanta subprocesser: Förhandsbedömning, Huvudbeslut.</li><li>Övergripande dokumentation: Kreditpolicy-dokumentation.</li></ul>
     </section>
   
   </div>

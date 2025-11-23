@@ -502,30 +502,35 @@ const NodeTestsPage = () => {
                 }
 
                 return (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Namn</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Beskrivning</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scenarios.map((scenario) => (
-                    <TableRow key={scenario.id}>
-                      <TableCell className="font-medium text-sm">
-                        {scenario.name}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {scenario.category}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {scenario.description}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Namn</TableHead>
+                        <TableHead>Typ</TableHead>
+                        <TableHead>Beskrivning</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {scenarios.map((scenario) => (
+                        <TableRow key={scenario.id}>
+                          <TableCell className="font-medium text-sm">
+                            {scenario.name}
+                            {scenario.contextWarning && (
+                              <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide bg-amber-100 text-amber-800">
+                                Kontext-osäker
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {scenario.category}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {scenario.description}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 );
               })()}
             </CardContent>

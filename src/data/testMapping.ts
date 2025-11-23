@@ -8,6 +8,11 @@ export interface TestScenario {
   status: 'passing' | 'failing' | 'pending' | 'skipped';
   duration?: number;
   category: 'happy-path' | 'error-case' | 'edge-case';
+  /**
+   * Markerar scenarion som inte verkar använda känd nod-/processkontext
+   * (sätts av LLM-valideringen, påverkar inte körning utan bara UI).
+   */
+  contextWarning?: boolean;
 }
 
 export interface TestInfo {

@@ -7,6 +7,16 @@ Systemet använder två modeller:
 
 Du fyller **endast** respektive modell som ett JSON-objekt – inga HTML-taggar, inga rubriker, ingen metadata.
 
+Inputen består av:
+- `processContext`: en kondenserad översikt av hela kreditprocessen (processnamn, BPMN-fil, entrypoints, några nyckelnoder samt grov fas (`phase`) och lane/roll (`lane`) per nyckelnod).
+- `currentNodeContext`: detaljer för just den nod du dokumenterar (hierarki runt noden, inkommande/utgående flöden, dokumentationstext och länkar).
+
+Du ska:
+- använda `processContext` för att förstå **vilken fas (`phase`)** i kreditprocessen noden tillhör (t.ex. Ansökan, Datainsamling, Riskbedömning, Beslut) och vilken **lane/roll (`lane`)** som är huvudaktör (t.ex. Kund, Handläggare, Regelmotor),
+- använda `currentNodeContext` för att beskriva exakt vad noden ansvarar för i denna fas och denna roll,
+- låta `summary`, `flowSteps`, `effectGoals` och `scenarios` spegla rätt fas/roll i processen,
+- **inte hitta på** nya processsteg, faser eller system utanför det som går att härleda från `processContext` och `currentNodeContext`.
+
 Gemensamma regler:
 - Svara alltid med **exakt ett JSON-objekt** (ingen fri text före/efter, ingen Markdown, ingen HTML).
 - Outputen ska börja direkt med `{` och avslutas med `}`. Ingen text före `{` och ingen text efter avslutande `}`.
@@ -157,6 +167,13 @@ Exempel (endast format, skriv egen text):
   - `name`: kort scenarionamn.
   - `type`: `"Happy"`, `"Edge"` eller `"Error"`.
   - `outcome`: 1–2 meningar om förväntat affärsutfall (t.ex. preliminärt godkänd, manuell granskning, avslag).
+
+Scenarierna ska vara **testbara**:
+- Ta alltid utgångspunkt i verkliga steg och data som går att härleda från `processContext` och `currentNodeContext`.
+- Hitta inte på steg eller faser som inte finns i kontexten.
+- `type` måste vara exakt `"Happy"`, `"Edge"` eller `"Error"` (korrekt case).
+- `name` ska kunna användas som testnamn.
+- `outcome` ska beskriva ett tydligt, verifierbart affärsutfall (vad som händer när scenariot körs: godkännande, manuell granskning, avslag, etc.).
 
 ### testDescription
 
@@ -328,6 +345,12 @@ Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; F
   - `outcome`: förväntat utfall (1–2 meningar).
 - Minst 1 scenario där handläggaren **överstyr** systemets rekommendation.
 - Minst 1 `Happy`, 1 `Edge` och 1 `Error`.
+
+Scenarierna ska vara **tydligt kopplade till aktuell nod och fas**:
+- Använd information från `currentNodeContext.node.name` och dess `phase`/`lane` i `processContext`:
+  - låt minst några scenarion nämna epikens faktiska ansvar (t.ex. “Ansökan”, “Datainsamling”, “Riskbedömning”, “Beslut”) och vad noden gör där,
+  - undvik helt generiska scenarier som lika gärna skulle kunna gälla vilken annan nod som helst.
+- Hitta inte på steg som inte finns i processkontexten – scenarierna ska beskriva verkliga kombinationer av inputs/outputs och beslut som går att härleda från `processContext` och `currentNodeContext`.
 
 ### testDescription
 

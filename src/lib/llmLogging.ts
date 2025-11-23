@@ -16,8 +16,11 @@ export type LlmErrorCode =
   | 'CLOUD_UNAVAILABLE'
   | 'UNKNOWN_ERROR';
 
+export type LlmEventType = 'INFO' | 'ERROR' | 'TOKEN_WARNING';
+
 export interface LlmLogEvent {
   timestamp: string;
+  eventType: LlmEventType;
   docType: DocType;
   attemptedProviders: LlmProvider[];
   finalProvider: LlmProvider;
@@ -27,6 +30,9 @@ export interface LlmLogEvent {
   validationOk?: boolean;
   latencyMs?: number;
   errorMessage?: string;
+  estimatedTokens?: number;
+  maxTokens?: number;
+  warningFactor?: number;
 }
 
 const MAX_EVENTS = 200;
@@ -59,16 +65,42 @@ export function logLlmEvent(event: Omit<LlmLogEvent, 'timestamp'>): void {
   }
 
   // Logga till console också (strukturerat)
-  const logLevel = event.success ? 'info' : 'error';
+  const logLevel =
+    event.eventType === 'TOKEN_WARNING'
+      ? 'warning'
+      : event.success
+      ? 'info'
+      : 'error';
   const providerLabel = getProviderLabel(event.finalProvider, event.fallbackUsed);
-  const logMessage = `[LLM ${logLevel.toUpperCase()}] ${event.docType} via ${providerLabel} - ${
+  const baseMessage = `[LLM ${logLevel.toUpperCase()}] ${event.docType} via ${providerLabel}`;
+
+  if (event.eventType === 'TOKEN_WARNING') {
+    const tokenInfoParts: string[] = [];
+    if (typeof event.estimatedTokens === 'number')
+      tokenInfoParts.push(`estimated=${event.estimatedTokens}`);
+    if (typeof event.maxTokens === 'number')
+      tokenInfoParts.push(`max=${event.maxTokens}`);
+    if (typeof event.warningFactor === 'number')
+      tokenInfoParts.push(`threshold=${event.warningFactor}`);
+    const tokenInfo =
+      tokenInfoParts.length > 0
+        ? `: token budget risk: ${tokenInfoParts.join(', ')}`
+        : ': token budget risk';
+    console.warn(baseMessage + tokenInfo);
+    return;
+  }
+
+  const logMessage = `${baseMessage} - ${
     event.success ? 'Success' : `Failed: ${event.errorCode || 'Unknown'}`
   }${event.latencyMs ? ` (${event.latencyMs}ms)` : ''}`;
 
   if (event.success) {
     console.log(logMessage);
   } else {
-    console.error(logMessage, event.errorMessage ? `- ${event.errorMessage}` : '');
+    console.error(
+      logMessage,
+      event.errorMessage ? `- ${event.errorMessage}` : '',
+    );
   }
 }
 
@@ -94,6 +126,7 @@ export function getLlmStats(): {
   success: number;
   failed: number;
   fallbackUsed: number;
+  tokenWarnings: number;
   byProvider: Record<LlmProvider, number>;
   byDocType: Record<DocType, number>;
   avgLatencyMs: number;
@@ -103,6 +136,7 @@ export function getLlmStats(): {
     success: 0,
     failed: 0,
     fallbackUsed: 0,
+    tokenWarnings: 0,
     byProvider: { cloud: 0, local: 0 } as Record<LlmProvider, number>,
     byDocType: {
       businessRule: 0,
@@ -117,6 +151,10 @@ export function getLlmStats(): {
   let latencyCount = 0;
 
   for (const event of recentLlmEvents) {
+    if (event.eventType === 'TOKEN_WARNING') {
+      stats.tokenWarnings++;
+    }
+
     if (event.success) {
       stats.success++;
     } else {

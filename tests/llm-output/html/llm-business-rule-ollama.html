@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eligibility Rule</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <section class="doc-section">
+      <div class="llm-fallback-local-note">
+        Denna version skulle genereras av lokal LLM (Ollama), men det uppstod ett fel.
+      </div>
+      <h2>Lokal LLM (Ollama) kunde inte användas</h2>
+      <p>Den lokala LLM-modellen (Ollama) kunde inte nås eller saknas:</p>
+      <div class="llm-fallback-details">Orsak: LLM returned null/empty response for provider=local</div>
+      <p>Detta dokument är endast en placeholder. Se ChatGPT-varianten (moln-LLM) för faktisk output.</p>
+    </section>
+    
+  </div>
+</body>
+</html>

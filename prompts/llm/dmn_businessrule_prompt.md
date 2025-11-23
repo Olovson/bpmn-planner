@@ -3,6 +3,16 @@ Du ska generera **ett enda JSON-objekt på svenska** enligt modellen nedan.
 
 Systemet använder modellen `BusinessRuleDocModel` för att rendera Business Rule-dokumentation.
 
+Inputen innehåller:
+- `processContext`: en kondenserad översikt av hela kreditprocessen (processnamn, BPMN-fil, entrypoints, några nyckelnoder samt grov fas (`phase`) och lane/roll (`lane`) per nyckelnod).
+- `currentNodeContext`: detaljer för just den Business Rule‑noden (hierarki runt noden, inkommande/utgående flöden, dokumentationstext och länkar).
+
+Du ska:
+- använda `processContext` för att förstå **vilken fas (`phase`)** i kreditprocessen regeln stödjer (t.ex. Datainsamling, Riskbedömning, Beslut) och vilken **lane/roll (`lane`)** som är huvudaktör (t.ex. Handläggare, Regelmotor),
+- använda `currentNodeContext` för att beskriva vilka indata/utdata och beslut som hör till just denna regel i den fasen och rollen,
+- låta `summary`, `decisionLogic`, `outputs` och `scenarios` spegla rätt fas/roll i processen,
+- **inte hitta på** nya faser, steg eller system utanför det som går att härleda från kontexten.
+
 JSON-modellen är:
 
 ```json
@@ -188,6 +198,14 @@ Definiera ett litet antal affärsnära scenarier som kan användas som grund fö
 - Minst 1 `Error`-scenario.
 - Minst ett scenario ska visa **automatisk bedömning** (t.ex. auto-approve/auto-decline).
 - Minst ett scenario ska visa **manuell bedömning** p.g.a. kombination av riskfaktorer.
+
+Scenarierna ska vara **testbara**:
+- Utgå från verkliga kombinationer av inputs/outputs och beslutslogik som går att härleda från kontexten.
+- `type` måste vara exakt `"Happy"`, `"Edge"` eller `"Error"`.
+- Beskriv tydligt:
+  - vilka inputvärden som gäller (med "(exempelvärde)" efter tal),
+  - vilken regel/logik som triggas,
+  - vilket beslut/utfall som förväntas (automatisk vs manuell bedömning, godkänd/avslagen).
 
 **Begränsningar:**
 - Beskriv på affärsnivå, inte tekniska teststeg.

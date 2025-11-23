@@ -2317,6 +2317,80 @@ function buildBusinessRuleDocHtmlFromModel(
       </table>`;
   };
 
+  const renderOutputsTable = () => {
+    const outputs = model.outputs;
+    const rowsSource = outputs.length
+      ? outputs
+      : [
+          'Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Kreditprocessen fortsätter, pausas eller avslutas; Loggning: Beslut, huvudparametrar och regelversion loggas för audit.',
+          `Outputtyp: Processpåverkan; Typ: Flödesstyrning; Effekt: Fortsätter till ${downstreamName} vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE; Loggning: Flödesbeslut loggas med tidsstämpel.`,
+          'Outputtyp: Flagga; Typ: Risk/Datakvalitet; Effekt: T.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff; Loggning: Flagga + orsak loggas för spårbarhet.',
+          'Outputtyp: Loggning; Typ: Audit; Effekt: Underlag för revision och efterhandskontroll; Loggning: Beslut, inputparametrar och regelversion.',
+        ];
+
+    const rows = rowsSource.map((raw) => {
+      if (typeof raw !== 'string') {
+        return {
+          outputType: '',
+          type: '',
+          effect: '',
+          logging: '',
+        };
+      }
+      const parts = raw.split(';').map((p) => p.trim());
+      const row: { outputType: string; type: string; effect: string; logging: string } = {
+        outputType: '',
+        type: '',
+        effect: '',
+        logging: '',
+      };
+
+      for (const part of parts) {
+        const [label, ...rest] = part.split(':');
+        const value = rest.join(':').trim();
+        if (!label || !value) continue;
+        const key = label.toLowerCase();
+        if (key.startsWith('outputtyp')) {
+          row.outputType = value;
+        } else if (key.startsWith('typ')) {
+          row.type = value;
+        } else if (key.startsWith('effekt')) {
+          row.effect = value;
+        } else if (key.startsWith('loggning')) {
+          row.logging = value;
+        }
+      }
+
+      // Om parsing misslyckas helt – lägg hela raden i outputType
+      if (!row.outputType && !row.type && !row.effect && !row.logging) {
+        row.outputType = raw;
+      }
+
+      return row;
+    });
+
+    return `
+      <table>
+        <tr>
+          <th>Outputtyp</th>
+          <th>Typ</th>
+          <th>Effekt</th>
+          <th>Loggning</th>
+        </tr>
+        ${rows
+          .map(
+            (r) => `
+        <tr>
+          <td>${r.outputType}</td>
+          <td>${r.type}</td>
+          <td>${r.effect}</td>
+          <td>${r.logging}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>`;
+  };
+
   return `
     <section class="doc-section">
       <span class="doc-badge">Business Rule / DMN</span>
@@ -2369,12 +2443,7 @@ function buildBusinessRuleDocHtmlFromModel(
       model.outputs.length ? 'llm' : 'fallback'
     }">
       <h2>Output &amp; effekter</h2>
-      ${renderList(model.outputs.length ? model.outputs : [
-        'Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.',
-        `Processpåverkan: fortsätter till ${downstreamName} vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE.`,
-        'Flaggor: t.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff.',
-        'Loggning: beslut, huvudparametrar och regelversion loggas för audit.',
-      ])}
+      ${renderOutputsTable()}
     </section>
 
     <section class="doc-section" data-source-business-rules="${

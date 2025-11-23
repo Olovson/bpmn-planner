@@ -1,0 +1,6 @@
+{
+  "error": "Lokal LLM (Ollama) unavailable",
+  "provider": "local",
+  "details": "LLM returned null/empty response for provider=local",
+  "timestamp": "2025-11-23T11:16:42.502Z"
+}

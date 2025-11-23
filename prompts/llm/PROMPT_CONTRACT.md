@@ -20,6 +20,23 @@ Detta är **utvecklardokumentation** – inte en prompt som skickas till modelle
 - Vid osäkerhet:
   - **utelämna hellre en rad än att hitta på** specifika namn, ID:n eller policydetaljer.
 
+### 1.1 processContext och currentNodeContext
+
+- Alla dokumentationspromptar för Feature, Epic och Business Rule får idag en input payload med:
+  - `processContext`: kondenserad översikt för hela processen:
+    - `processName`, `fileName`,
+    - `entryPoints[]`, `keyNodes[]` med minst: id, name, type, file,
+    - samt grov fas (`phase`, t.ex. "Ansökan", "Datainsamling", "Riskbedömning", "Beslut") och lane/roll (`lane`, t.ex. "Kund", "Handläggare", "Regelmotor") per nyckelnod.
+  - `currentNodeContext`: detaljer för aktuell BPMN‑nod:
+    - `node` (id, name, type, file, jiraType, derivedJiraName),
+    - `hierarchy` (trail/path, featureGoalAncestor, parentProcess),
+    - `parents`, `siblings`, `children`, `descendantHighlights`, `flows`, `documentation`, `jiraGuidance`, `links`.
+
+- Promptarna instruerar modellen att:
+  - använda `processContext.phase` och `processContext.lane` för att placera noden i rätt fas/roll i kreditprocessen,
+  - låta `summary`, `flowSteps`, `effectGoals`, `decisionLogic`, `scenarios` spegla denna fas/roll,
+  - **inte hitta på** egna faser/roller eller system utanför det som går att härleda från dessa fält.
+
 ## 2. DocSectionId per dokumenttyp (ordning)
 
 ### 2.1 Feature Goal (type = "Feature")

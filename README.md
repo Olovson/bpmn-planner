@@ -21,21 +21,19 @@
   - LLM fyller JSON → mappers → HTML via templates i `src/lib/documentationTemplates.ts`.
   - Samma HTML-layout används för lokal (mallbaserad) och LLM-baserad dokumentation.
   - Prompts i `prompts/llm/*` instruerar LLM att alltid svara med **ett JSON-objekt** (ingen HTML/markdown) och att markera numeriska tröskelvärden som **exempelvärden** (t.ex. `600 (exempelvärde)`).
+  - Input till LLM består av ett `processContext` (kondenserad processöversikt inkl. fas `phase` och roll `lane` per nyckelnod) och ett `currentNodeContext` (hierarki, flöden, dokumentation, länkar) så att dokumentation och scenarier alltid förankras i rätt fas/roll.
 
 - **LLM-lägen & providers**
   - Lokal generering (utan LLM): snabb, deterministisk, mallbaserad.
   - Slow LLM Mode: rikare text via:
     - ChatGPT (moln, gpt-4o) via `cloudLlmClient`.
-    - Lokal Llama 3.1 (Ollama) via `localLlmClient`.
-  - `generateWithFallback` väljer provider och kan falla över mellan ChatGPT och lokal LLM.
-  - HTML får metadata-attribut:
-    - `data-llm-provider` ("cloud" eller "local")
-    - `data-llm-model` (t.ex. "gpt-4o", "llama3.1:8b")
-    - `data-llm-fallback-used` ("true" / "false")
-  - När ChatGPT inte nås och lokal LLM tar över:
-    - sätts `fallbackUsed=true` och `finalProvider='local'`,
-    - en diskret banner visas i HTML,
-    - en toast visas i UI (BpmnFileManager).
+    - Lokal modell via Ollama (t.ex. `llama3:latest`) via `localLlmClient`.
+  - Internt används providers som `'cloud'` och `'local'`, men i loggar/UI visas alltid:
+    - `ChatGPT` (cloud),
+    - `Ollama` (local),
+    - `Local-fallback` (local när den tagit över efter ett misslyckat ChatGPT-försök).
+  - `generateDocumentationWithLlm` bygger JSON-input (processContext/currentNodeContext), använder `generateWithFallback` per docType/provider och loggar LLM-events (inkl. latency, tokenbudget-varningar) som kan inspekteras i LLM Debug-vyn.
+  - HTML-dokument får metadata om LLM-användning och visar en diskret banner när lokal LLM används som fallback istället för ChatGPT.
 
 ---
 

@@ -979,6 +979,48 @@ function buildScenariosFromDocJson(
   return scenarios;
 }
 
+/**
+ * Bygger enklare LLM-scenarion för test-skeletons direkt från docJson.scenarios.
+ * Används som första steg i pipen:
+ *   docJson.scenarios → Playwright-skelett
+ * utan att göra ett separat LLM-anrop för testscript.
+ */
+function buildTestSkeletonScenariosFromDocJson(
+  docType: DocumentationDocType,
+  docJson: any,
+): { name: string; description: string; expectedResult?: string; steps?: string[] }[] {
+  if (!docJson || typeof docJson !== 'object') return [];
+  const rawScenarios = Array.isArray(docJson.scenarios) ? docJson.scenarios : [];
+  const scenarios: { name: string; description: string; expectedResult?: string; steps?: string[] }[] = [];
+
+  for (const raw of rawScenarios) {
+    if (!raw) continue;
+    const index = scenarios.length;
+    const name =
+      typeof raw.name === 'string' && raw.name.trim().length
+        ? raw.name
+        : `Scenario ${index + 1}`;
+
+    let description = '';
+    if (typeof raw.outcome === 'string' && raw.outcome.trim().length) {
+      description = raw.outcome.trim();
+    } else if (typeof raw.description === 'string' && raw.description.trim().length) {
+      description = raw.description.trim();
+    } else {
+      description = 'Scenario utan detaljerad beskrivning.';
+    }
+
+    scenarios.push({
+      name,
+      description,
+      expectedResult: description,
+      // steps lämnas tomma så generateTestSkeleton genererar generiska TODO-kommentarer
+    });
+  }
+
+  return scenarios;
+}
+
 async function renderDocWithLlmFallback(
   docType: DocumentationDocType,
   context: NodeDocumentationContext,
@@ -1409,9 +1451,9 @@ export async function generateAllFromBpmnWithGraph(
           const dorDodForNode = result.dorDod.get(dorDodKey) || [];
 
           let nodeDocContent: string;
-          if (nodeContext) {
-            let lastDocJson: unknown | undefined;
-            if (node.type === 'callActivity') {
+      if (nodeContext) {
+        let lastDocJson: unknown | undefined;
+        if (node.type === 'callActivity') {
               nodeDocContent = await renderDocWithLlmFallback(
                 'feature',
                 nodeContext,
@@ -1425,11 +1467,13 @@ export async function generateAllFromBpmnWithGraph(
                     llmFallbackUsed = true;
                     llmFinalProvider = provider;
                   }
-                  lastDocJson = docJson;
                   const scenarioProvider = mapProviderToScenarioProvider(
                     provider,
                     fallbackUsed,
                   );
+                  if (docJson) {
+                    lastDocJson = docJson;
+                  }
                   if (
                     useLlm &&
                     !fallbackUsed &&
@@ -1503,6 +1547,9 @@ export async function generateAllFromBpmnWithGraph(
                     provider,
                     fallbackUsed,
                   );
+                  if (docJson) {
+                    lastDocJson = docJson;
+                  }
                   if (
                     useLlm &&
                     !fallbackUsed &&
@@ -1561,6 +1608,9 @@ export async function generateAllFromBpmnWithGraph(
                     provider,
                     fallbackUsed,
                   );
+                  if (docJson) {
+                    lastDocJson = docJson;
+                  }
                   if (
                     useLlm &&
                     !fallbackUsed &&
@@ -1603,7 +1653,41 @@ export async function generateAllFromBpmnWithGraph(
             docFileKey,
             insertGenerationMeta(nodeDocContent, generationSourceLabel),
           );
-          const llmScenarios = useLlm ? await generateTestSpecWithLlm(node.element, llmProvider, localAvailable) : null;
+
+          // Bygg testskelett. Försök först använda docJson.scenarios (om de finns),
+          // annars fall back till separat LLM-anrop för testscript.
+          let llmScenarios: { name: string; description: string; expectedResult?: string; steps?: string[] }[] | null =
+            null;
+
+          if (useLlm && lastDocJson) {
+            const docTypeForNode: DocumentationDocType =
+              node.type === 'callActivity'
+                ? 'feature'
+                : node.type === 'businessRuleTask'
+                ? 'businessRule'
+                : 'epic';
+            llmScenarios = buildTestSkeletonScenariosFromDocJson(
+              docTypeForNode,
+              lastDocJson,
+            );
+          }
+
+          if (useLlm && (!llmScenarios || llmScenarios.length === 0)) {
+            const generated = await generateTestSpecWithLlm(
+              node.element,
+              llmProvider,
+              localAvailable,
+            );
+            if (generated && generated.length) {
+              llmScenarios = generated.map((s) => ({
+                name: s.name,
+                description: s.description,
+                expectedResult: s.expectedResult,
+                steps: s.steps,
+              }));
+            }
+          }
+
           result.tests.set(
             testFileKey,
             generateTestSkeleton(node.element, llmScenarios || undefined),

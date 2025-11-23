@@ -10,6 +10,7 @@ export interface TestScenario {
   status: 'passing' | 'failing' | 'pending' | 'skipped';
   duration?: number;
   category: 'happy-path' | 'error-case' | 'edge-case';
+  contextWarning?: boolean;
 }
 
 export interface TestResult {

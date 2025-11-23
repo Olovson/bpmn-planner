@@ -7,7 +7,7 @@
 import type { LlmProvider } from './llmClientAbstraction';
 import type { DocType } from './llmProfiles';
 import { getLlmClient } from './llmClients';
-import { getLlmProfile } from './llmProfiles';
+import { getLlmProfile, getTokenWarningThresholdForProvider } from './llmProfiles';
 import {
   getFeaturePrompt,
   getEpicPrompt,
@@ -17,6 +17,8 @@ import {
 } from './promptLoader';
 import { LocalLlmUnavailableError } from './llmClients/localLlmClient';
 import type { LlmResolution } from './llmProviderResolver';
+import { estimatePromptTokens } from './tokenUtils';
+import { getProviderLabel, logLlmEvent } from './llmLogging';
 
 const FALLBACK_TO_CLOUD_ENABLED =
   String(import.meta.env.VITE_LLM_FALLBACK_TO_CLOUD_ON_LOCAL_ERROR ?? 'true')
@@ -76,6 +78,38 @@ export async function generateWithFallback(
   const startTime = Date.now();
   let lastError: Error | null = null;
   let lastResponse: string | null = null;
+
+  // Tokenbudget-varning (approx) för vald provider/docType
+  try {
+    const chosenProvider = resolution.chosen;
+    const profile = getLlmProfile(docType, chosenProvider);
+    const estimatedTokens = estimatePromptTokens(systemPrompt, userPrompt);
+    const maxTokens = profile.maxTokens;
+    const warningFactor = getTokenWarningThresholdForProvider(chosenProvider);
+    const warningLimit = maxTokens * warningFactor;
+    if (estimatedTokens > warningLimit) {
+      const providerLabel = getProviderLabel(chosenProvider, false);
+      console.warn(
+        `[LLM WARNING] token budget risk for ${docType}/${providerLabel}: ` +
+          `estimated=${estimatedTokens}, max=${maxTokens}, threshold=${warningFactor}`,
+      );
+      logLlmEvent({
+        eventType: 'TOKEN_WARNING',
+        docType,
+        attemptedProviders: resolution.attempted,
+        finalProvider: chosenProvider,
+        fallbackUsed: false,
+        success: true,
+        validationOk: undefined,
+        latencyMs: undefined,
+        estimatedTokens,
+        maxTokens,
+        warningFactor,
+      });
+    }
+  } catch {
+    // Token-estimat får aldrig stoppa anropet
+  }
 
   try {
     // Försök med chosen provider först

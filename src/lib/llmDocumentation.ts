@@ -12,6 +12,7 @@ import {
   getBusinessRulePrompt,
 } from './promptLoader';
 import type { DocType } from './llmProfiles';
+import { getLlmProfile } from './llmProfiles';
 import {
   validateBusinessRuleJson,
   validateFeatureGoalJson,
@@ -22,6 +23,7 @@ import {
 import { resolveLlmProvider } from './llmProviderResolver';
 import { generateWithFallback } from './llmFallback';
 import { logLlmEvent, extractErrorCode } from './llmLogging';
+import { estimatePromptTokens } from './tokenUtils';
 
 export type DocumentationDocType = 'feature' | 'epic' | 'businessRule';
 
@@ -51,7 +53,7 @@ export async function generateDocumentationWithLlm(
 ): Promise<DocumentationLlmResult | null> {
   if (!isLlmEnabled()) return null;
 
-  const payload = buildContextPayload(context, links);
+  const { processContext, currentNodeContext } = buildContextPayload(context, links);
   const docLabel =
     docType === 'feature'
       ? 'Feature'
@@ -82,7 +84,8 @@ export async function generateDocumentationWithLlm(
   // JSON-input som skickas till LLM enligt promptdefinitionerna.
   const llmInput = {
     type: docLabel,
-    bpmnContext: payload,
+    processContext,
+    currentNodeContext,
   };
 
   const userPrompt = JSON.stringify(llmInput, null, 2);
@@ -140,7 +143,17 @@ export async function generateDocumentationWithLlm(
       );
 
       if (validationResult.valid) {
+        // Spara senaste validerade JSON-modell för vidare användning (t.ex. scenariolagring)
         lastValidDoc = parsed;
+        // Kör extra, kontextmedveten scenariovalidering mot processContext/currentNodeContext
+        runScenarioContextChecks(
+          docType,
+          parsed,
+          processContext,
+          currentNodeContext,
+          resolution.chosen,
+          context.node.bpmnElementId
+        );
       }
 
       return {
@@ -181,8 +194,20 @@ export async function generateDocumentationWithLlm(
       }
     }
 
+    // Beräkna enkel token-telemetri för loggning (påverkar inte själva anropet)
+    let estimatedTokens: number | undefined;
+    let maxTokens: number | undefined;
+    try {
+      const profile = getLlmProfile(profileDocType, result.provider);
+      maxTokens = profile.maxTokens;
+      estimatedTokens = estimatePromptTokens(basePrompt, userPrompt);
+    } catch {
+      // Telemetrifel ska aldrig stoppa flödet
+    }
+
     // Logga event
     logLlmEvent({
+      eventType: 'INFO',
       docType: profileDocType,
       attemptedProviders: result.attemptedProviders,
       finalProvider: result.provider,
@@ -190,6 +215,8 @@ export async function generateDocumentationWithLlm(
       success: true,
       validationOk: true,
       latencyMs: result.latencyMs,
+      estimatedTokens,
+      maxTokens,
     });
 
     const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
@@ -206,6 +233,7 @@ export async function generateDocumentationWithLlm(
     // Logga fel-event
     const errorCode = extractErrorCode(error);
     logLlmEvent({
+      eventType: 'ERROR',
       docType: profileDocType,
       attemptedProviders: resolution.attempted,
       finalProvider: resolution.chosen,
@@ -249,7 +277,47 @@ function buildContextPayload(context: NodeDocumentationContext, links: TemplateL
   const outgoingFlows = extractFlowRefs(context.node.element?.businessObject?.outgoing, 'outgoing');
   const documentationSnippets = extractDocumentationSnippets(context.node.element);
 
-  return {
+  const mapPhaseAndLane = (node: BpmnProcessNode) => ({
+    phase: inferPhase(node),
+    lane: inferLane(node),
+  });
+
+  const processContext = {
+    processName: hierarchyTrail[0]?.name || context.node.bpmnFile || 'Okänd process',
+    fileName: context.node.bpmnFile,
+    entryPoints: hierarchyTrail.length
+      ? [
+          {
+            ...hierarchyTrail[0],
+            ...mapPhaseAndLane(context.parentChain[0] || context.node),
+          },
+        ]
+      : [],
+    endPoints: [], // kan utökas senare vid behov
+    keyNodes: [
+      ...hierarchyTrail,
+      ...context.childNodes.map((node) => ({
+        id: node.bpmnElementId,
+        name: formatNodeName(node),
+        type: node.type,
+        file: node.bpmnFile,
+      })),
+    ]
+      .filter((n, index, arr) => n && n.id && arr.findIndex((m) => m.id === n.id) === index)
+      .map((n) => ({
+        ...n,
+        ...mapPhaseAndLane(
+          n.id === context.node.bpmnElementId
+            ? context.node
+            : context.childNodes.find((c) => c.bpmnElementId === n.id) ||
+              context.parentChain.find((p) => p.bpmnElementId === n.id) ||
+              context.node,
+        ),
+      }))
+      .slice(0, 12),
+  };
+
+  const currentNodeContext = {
     node: {
       id: context.node.bpmnElementId,
       name: context.node.name,
@@ -281,7 +349,6 @@ function buildContextPayload(context: NodeDocumentationContext, links: TemplateL
       type: node.type,
     })),
     descendantHighlights: descendantPaths.slice(0, 10),
-    descendantPaths,
     descendantTypeCounts,
     flows: {
       incoming: incomingFlows,
@@ -299,6 +366,8 @@ function buildContextPayload(context: NodeDocumentationContext, links: TemplateL
     },
     links,
   };
+
+  return { processContext, currentNodeContext };
 }
 
 function formatNodeName(node: BpmnProcessNode) {
@@ -371,6 +440,176 @@ function inferJiraType(nodeType: BpmnProcessNode['type']) {
   if (nodeType === 'callActivity') return 'feature goal';
   if (nodeType === 'businessRuleTask') return 'epic (business rule)';
   return 'epic';
+}
+
+/**
+ * Enkel, kontextmedveten sanity-check av scenarion i LLM-output.
+ * 
+ * Syfte: flagga scenarion som inte verkar använda någon känd nod-/processkontext
+ * (men aldrig stoppa flödet eller ändra JSON).
+ */
+function runScenarioContextChecks(
+  docType: DocumentationDocType,
+  docJson: unknown,
+  processContext: any,
+  currentNodeContext: any,
+  provider: LlmProvider,
+  elementId?: string,
+) {
+  if (!docJson || typeof docJson !== 'object') return;
+  const obj = docJson as any;
+  const scenarios = Array.isArray(obj.scenarios) ? obj.scenarios : null;
+  if (!scenarios || !scenarios.length) return;
+
+  const labels = new Set<string>();
+
+  if (processContext?.processName) {
+    labels.add(String(processContext.processName).toLowerCase());
+  }
+  if (Array.isArray(processContext?.keyNodes)) {
+    processContext.keyNodes.forEach((node: any) => {
+      if (node?.name) labels.add(String(node.name).toLowerCase());
+    });
+  }
+
+  if (currentNodeContext?.node?.name) {
+    labels.add(String(currentNodeContext.node.name).toLowerCase());
+  }
+  const addRelNames = (collection?: any[]) => {
+    if (!Array.isArray(collection)) return;
+    collection.forEach((n) => {
+      if (n?.name) labels.add(String(n.name).toLowerCase());
+    });
+  };
+  addRelNames(currentNodeContext?.parents);
+  addRelNames(currentNodeContext?.siblings);
+  addRelNames(currentNodeContext?.children);
+
+  const knownLabels = Array.from(labels).filter((s) => s.length > 0);
+  if (!knownLabels.length) return;
+
+  const warnings: string[] = [];
+
+  scenarios.forEach((scenario: any, index: number) => {
+    if (!scenario || typeof scenario !== 'object') return;
+    const textParts = [
+      scenario.name,
+      scenario.description,
+      scenario.input,
+      scenario.outcome,
+    ]
+      .filter(Boolean)
+      .map((v: unknown) => String(v).toLowerCase());
+
+    if (!textParts.length) return;
+    const combined = textParts.join(' ');
+
+    const hasKnownLabel = knownLabels.some((label) =>
+      label.length > 3 ? combined.includes(label) : false,
+    );
+
+    if (!hasKnownLabel) {
+      warnings.push(
+        `scenarios[${index}] verkar inte referera till någon känd nod/processterm i processContext/currentNodeContext`,
+      );
+      // Markera scenariot i JSON som kontext-osäkert så vi kan visualisera det i UI senare.
+      (scenario as any).contextWarning = true;
+    } else {
+      // Säkerställ att vi inte lämnar kvar gammal flagga om förutsättningarna ändras
+      if ('contextWarning' in scenario) {
+        delete (scenario as any).contextWarning;
+      }
+    }
+  });
+
+  if (warnings.length) {
+    const prefix = `[LLM Scenario Validation] ${provider}/${docType}${
+      elementId ? `/${elementId}` : ''
+    }`;
+    console.warn(`${prefix} Context warnings:`, warnings);
+  }
+}
+
+/**
+ * Enkel heuristik för att mappa BPMN-noder till kreditprocess-faser.
+ * Syftet är att ge LLM:et en grov fasindikation, inte exakt processmodellering.
+ */
+function inferPhase(node: BpmnProcessNode): string {
+  const name = (node.name || '').toLowerCase();
+
+  // Namnbaserade hints går först
+  if (name.includes('ansökan') || name.includes('application')) {
+    return 'Ansökan';
+  }
+
+  if (
+    name.includes('insamling') ||
+    name.includes('collect') ||
+    name.includes('gather') ||
+    name.includes('register') ||
+    name.includes('data')
+  ) {
+    return 'Datainsamling';
+  }
+
+  if (name.includes('risk') || name.includes('kreditvärdighet') || name.includes('score')) {
+    return 'Riskbedömning';
+  }
+
+  if (
+    name.includes('beslut') ||
+    name.includes('decision') ||
+    name.includes('approve') ||
+    name.includes('avslag')
+  ) {
+    return 'Beslut';
+  }
+
+  // Typbaserade fall-back-regler
+  if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
+    return 'Riskbedömning';
+  }
+
+  if (node.type === 'callActivity' && name.includes('approve')) {
+    return 'Beslut';
+  }
+
+  return 'Okänd fas';
+}
+
+/**
+ * Enkel heuristik för att mappa noder till "lane"/roll i kreditprocessen.
+ * Vi skiljer grovt på Kund, Handläggare och Regelmotor.
+ */
+function inferLane(node: BpmnProcessNode): string {
+  const name = (node.name || '').toLowerCase();
+
+  // Kund-centrerade aktiviteter
+  if (
+    name.includes('kund') ||
+    name.includes('customer') ||
+    name.includes('applicant') ||
+    name.includes('ansökan')
+  ) {
+    return 'Kund';
+  }
+
+  // Regelmotor / system
+  if (node.type === 'businessRuleTask' || node.type === 'serviceTask' || node.type === 'dmnDecision') {
+    return 'Regelmotor';
+  }
+
+  // Användaruppgifter hamnar normalt hos handläggare
+  if (node.type === 'userTask') {
+    return 'Handläggare';
+  }
+
+  // Call activities utan tydlig signal behandlas som system/regelmotor
+  if (node.type === 'callActivity') {
+    return 'Regelmotor';
+  }
+
+  return 'Handläggare';
 }
 
 function extractFlowRefs(flows: any, direction: 'incoming' | 'outgoing') {

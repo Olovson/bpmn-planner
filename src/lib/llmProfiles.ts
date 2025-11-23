@@ -25,6 +25,22 @@ export type LlmProfiles = {
   [K in DocType]: Record<LlmProvider, LlmProfile>;
 };
 
+export const TOKEN_WARNING_THRESHOLDS = {
+  // ChatGPT har generöst context-fönster, så vi varnar först när
+  // prompt-estimatet är mer än ca 2.2x output-budgeten (maxTokens).
+  chatgpt: 2.2,
+  // Lokal/Ollama hålls striktare för att undvika tunga prompts.
+  ollama: 0.6,
+} as const;
+
+export function getTokenWarningThresholdForProvider(
+  provider: LlmProvider,
+): number {
+  if (provider === 'cloud') return TOKEN_WARNING_THRESHOLDS.chatgpt;
+  if (provider === 'local') return TOKEN_WARNING_THRESHOLDS.ollama;
+  return 0.75;
+}
+
 /**
  * Default LLM-profiler per dokumenttyp och provider.
  * 
@@ -67,7 +83,7 @@ const DEFAULT_PROFILES: LlmProfiles = {
   },
   epic: {
     cloud: {
-      maxTokens: 1800,
+      maxTokens: 2200,
       temperature: 0.35,
     },
     local: {
