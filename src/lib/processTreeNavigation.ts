@@ -13,8 +13,16 @@ export function buildSubprocessNavigationMap(root?: ProcessTreeNode | null): Sub
   if (!root) return map;
 
   const walk = (node: ProcessTreeNode) => {
-    if (node.type === 'callActivity' && node.subprocessFile && node.bpmnElementId) {
-      map.set(mapKey(node.bpmnFile, node.bpmnElementId), node.subprocessFile);
+    if (node.type === 'callActivity' && node.bpmnElementId) {
+      const link = node.subprocessLink as any;
+      const matchedFile: string | undefined =
+        node.subprocessFile ||
+        (link && typeof link.matchedFileName === 'string' && link.matchedFileName) ||
+        undefined;
+
+      if (matchedFile) {
+        map.set(mapKey(node.bpmnFile, node.bpmnElementId), matchedFile);
+      }
     }
     node.children.forEach(walk);
   };

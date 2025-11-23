@@ -544,7 +544,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
 
         // (Removed mousedown highlight; rely on click/selection)
         
-        // Double click - navigate to subprocess only when a resolved subprocess exists
+        // Double click - navigate to subprocess när en resolved subprocess kan härledas
         dblclickListener = (event: any) => {
           const rawElement = event?.element;
           const target = rawElement?.labelTarget || rawElement;
@@ -557,16 +557,20 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
           const diagnosticsSummary = summarizeDiagnostics(callActivityNode);
           const dbMapping = bpmnMappings?.[elementId];
           const localMapping = nodeMappings[elementId]?.bpmnFile;
+          
+          const link = callActivityNode?.subprocessLink as any;
+          const linkCandidate: string | null =
+            (link && typeof link.matchedFileName === 'string' && link.matchedFileName) ||
+            (callActivityNode?.subprocessFile ?? null);
 
-          const linkMatched =
-            callActivityNode?.subprocessLink?.matchStatus === 'matched'
-              ? (callActivityNode?.subprocessLink as any)?.matchedFileName || callActivityNode?.subprocessFile || null
-              : null;
+          const resolvedFile =
+            hierarchyMatch ||
+            linkCandidate ||
+            dbMapping?.subprocess_bpmn_file ||
+            localMapping ||
+            null;
 
-          const resolvedFile = hierarchyMatch || linkMatched || dbMapping?.subprocess_bpmn_file || localMapping;
-          const hasMatchedLink = Boolean(resolvedFile);
-
-          if (!hasMatchedLink || !resolvedFile) {
+          if (!resolvedFile) {
             console.warn(`No resolved subprocess for element ${elementId} in file ${fileName}`);
             toast({
               title: 'Ingen subprocess kopplad',
@@ -585,10 +589,13 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
             return;
           }
 
-          if (diagnosticsSummary) {
+          const matchStatus = callActivityNode?.subprocessLink?.matchStatus;
+          if (diagnosticsSummary || (matchStatus && matchStatus !== 'matched')) {
             toast({
               title: 'Subprocessdiagnostik',
-              description: diagnosticsSummary,
+              description:
+                diagnosticsSummary ||
+                `Subprocess‑matchning: ${matchStatus}. Kontrollera att rätt BPMN‑fil öppnades.`,
             });
           }
 
