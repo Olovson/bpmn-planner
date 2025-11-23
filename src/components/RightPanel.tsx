@@ -109,6 +109,11 @@ export const RightPanel = ({
     fetchTestFileUrl();
   }, [selectedElement, bpmnFile]);
 
+  const testFileUrl = useMemo(() => {
+    if (!testFilePath) return null;
+    return getTestFileUrl(testFilePath);
+  }, [testFilePath]);
+
   // Update inputs when selected element changes
   useEffect(() => {
     if (selectedElement) {
