@@ -16,6 +16,7 @@ import { useProcessTree } from '@/hooks/useProcessTree';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { buildSubprocessNavigationMap } from '@/lib/processTreeNavigation';
 import type { ProcessTreeNode } from '@/lib/processTree';
+import { elementResourceMapping } from '@/data/elementResourceMapping';
 
 interface BpmnViewerProps {
   onElementSelect?: (elementId: string | null, elementType?: string | null, elementName?: string | null) => void;
@@ -479,6 +480,102 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     }, 100);
   }, [navigate]);
 
+  // Track last click to emulate double-click reliably
+  const lastClickRef = useRef<{ id: string | null; time: number }>({
+    id: null,
+    time: 0,
+  });
+
+  const handleSubprocessNavigation = useCallback(
+    (target: any) => {
+      const type = target?.businessObject?.$type || target?.type;
+      if (type !== 'bpmn:CallActivity') return;
+
+      const elementId = target.id;
+      const hierarchyMatch = subprocessNavMap.get(`${fileName}:${elementId}`);
+      const callActivityNode = findCallActivityNode(fileName, elementId);
+      const diagnosticsSummary = summarizeDiagnostics(callActivityNode);
+      const dbMapping = bpmnMappings?.[elementId];
+      const localMapping = nodeMappings[elementId]?.bpmnFile;
+      const registryMapping = elementResourceMapping[elementId]?.bpmnFile;
+
+      const link = callActivityNode?.subprocessLink as any;
+      const linkCandidate: string | null =
+        (link && typeof link.matchedFileName === 'string' && link.matchedFileName) ||
+        (callActivityNode?.subprocessFile ?? null);
+
+      const resolvedFile =
+        hierarchyMatch ||
+        linkCandidate ||
+        dbMapping?.subprocess_bpmn_file ||
+        localMapping ||
+        registryMapping ||
+        null;
+
+      console.log('[BpmnViewer] navigateSubprocess', {
+        elementId,
+        type,
+        fileName,
+        hierarchyMatch,
+        hasCallActivityNode: !!callActivityNode,
+        dbMappingFile: dbMapping?.subprocess_bpmn_file,
+        localMappingFile: localMapping,
+        registryMappingFile: registryMapping,
+        resolvedFile,
+      });
+
+      if (!resolvedFile) {
+        console.warn(`No resolved subprocess for element ${elementId} in file ${fileName}`);
+        toast({
+          title: 'Ingen subprocess kopplad',
+          description:
+            diagnosticsSummary ||
+            `Ingen subprocess hittades för ${target?.businessObject?.name || elementId}.`,
+        });
+        return;
+      }
+
+      const needsHierarchy =
+        !dbMapping?.subprocess_bpmn_file && !localMapping && !registryMapping;
+      if (
+        needsHierarchy &&
+        !hierarchyMatch &&
+        !callActivityNode &&
+        (processTreeLoading || !processTree)
+      ) {
+        toast({
+          title: 'Hierarki laddas',
+          description: 'Vänta några sekunder och försök igen.',
+        });
+        return;
+      }
+
+      const matchStatus = callActivityNode?.subprocessLink?.matchStatus;
+      if (diagnosticsSummary || (matchStatus && matchStatus !== 'matched')) {
+        toast({
+          title: 'Subprocessdiagnostik',
+          description:
+            diagnosticsSummary ||
+            `Subprocess‑matchning: ${matchStatus}. Kontrollera att rätt BPMN‑fil öppnades.`,
+        });
+      }
+
+      loadSubProcess(resolvedFile);
+    },
+    [
+      subprocessNavMap,
+      fileName,
+      findCallActivityNode,
+      summarizeDiagnostics,
+      bpmnMappings,
+      nodeMappings,
+      toast,
+      processTreeLoading,
+      processTree,
+      loadSubProcess,
+    ],
+  );
+
   // Import XML when currentXml changes
   useEffect(() => {
     if (!viewerReady || !viewerRef.current || !currentXml) {
@@ -489,7 +586,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     console.log('Importing XML, length:', currentXml.length);
 
     let clickListener: any = null;
-    let dblclickListener: any = null;
     let canvasClickListener: any = null;
     let selectionChangedListener: any = null;
 
@@ -506,7 +602,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         // Add click listener for elements
         const eventBus = viewerRef.current!.get('eventBus') as any;
         
-        // Single click - select element
+        // Single click - select element (+ emulerad dubbelklick för subprocess-navigering)
         clickListener = (event: any) => {
           const { element } = event;
           // Resolve to actual element if a label was clicked
@@ -526,6 +622,19 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
             setSelectedElement(target.id);
             setSelectedElementId(target.id); // Update global context
             onElementSelect?.(target.id, type, elementName);
+
+            // Emulera dubbelklick: två klick på samma element inom 400ms
+            const now = Date.now();
+            if (
+              lastClickRef.current.id === target.id &&
+              now - lastClickRef.current.time < 400
+            ) {
+              handleSubprocessNavigation(target);
+              // Nollställ så att inte tredje klick direkt triggar igen
+              lastClickRef.current = { id: null, time: 0 };
+            } else {
+              lastClickRef.current = { id: target.id, time: now };
+            }
           }
         };
         
@@ -542,67 +651,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         };
         eventBus.on('selection.changed', selectionChangedListener);
 
-        // (Removed mousedown highlight; rely on click/selection)
-        
-        // Double click - navigate to subprocess när en resolved subprocess kan härledas
-        dblclickListener = (event: any) => {
-          const rawElement = event?.element;
-          const target = rawElement?.labelTarget || rawElement;
-          const type = target?.businessObject?.$type || target?.type;
-          if (type !== 'bpmn:CallActivity') return;
-
-          const elementId = target.id;
-          const hierarchyMatch = subprocessNavMap.get(`${fileName}:${elementId}`);
-          const callActivityNode = findCallActivityNode(fileName, elementId);
-          const diagnosticsSummary = summarizeDiagnostics(callActivityNode);
-          const dbMapping = bpmnMappings?.[elementId];
-          const localMapping = nodeMappings[elementId]?.bpmnFile;
-          
-          const link = callActivityNode?.subprocessLink as any;
-          const linkCandidate: string | null =
-            (link && typeof link.matchedFileName === 'string' && link.matchedFileName) ||
-            (callActivityNode?.subprocessFile ?? null);
-
-          const resolvedFile =
-            hierarchyMatch ||
-            linkCandidate ||
-            dbMapping?.subprocess_bpmn_file ||
-            localMapping ||
-            null;
-
-          if (!resolvedFile) {
-            console.warn(`No resolved subprocess for element ${elementId} in file ${fileName}`);
-            toast({
-              title: 'Ingen subprocess kopplad',
-              description:
-                diagnosticsSummary ||
-                `Ingen subprocess hittades för ${target?.businessObject?.name || elementId}.`,
-            });
-            return;
-          }
-
-          if (!hierarchyMatch && (processTreeLoading || !processTree)) {
-            toast({
-              title: 'Hierarki laddas',
-              description: 'Vänta några sekunder och försök igen.',
-            });
-            return;
-          }
-
-          const matchStatus = callActivityNode?.subprocessLink?.matchStatus;
-          if (diagnosticsSummary || (matchStatus && matchStatus !== 'matched')) {
-            toast({
-              title: 'Subprocessdiagnostik',
-              description:
-                diagnosticsSummary ||
-                `Subprocess‑matchning: ${matchStatus}. Kontrollera att rätt BPMN‑fil öppnades.`,
-            });
-          }
-
-          loadSubProcess(resolvedFile);
-        };
-        
-        eventBus.on('element.dblclick', dblclickListener);
+        // (Removed mousedown highlight; rely on click/selection + emulerad dubbelklick)
 
         // Canvas click - clear selection
         canvasClickListener = () => {
@@ -627,10 +676,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       if (viewerRef.current && clickListener) {
         const eventBus = viewerRef.current.get('eventBus') as any;
         eventBus.off('element.click', clickListener);
-      }
-      if (viewerRef.current && dblclickListener) {
-        const eventBus = viewerRef.current.get('eventBus') as any;
-        eventBus.off('element.dblclick', dblclickListener);
       }
       if (viewerRef.current && canvasClickListener) {
         const eventBus = viewerRef.current.get('eventBus') as any;
