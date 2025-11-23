@@ -339,8 +339,8 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     if (isLoadingFiles || !bpmnFiles) return;
 
     const loadBpmn = async () => {
-      // If already showing the requested file, skip
-      if (fileName && initialFileName && fileName === initialFileName) return;
+      // Om vi redan visar önskad fil OCH har XML laddad, hoppa över
+      if (fileName && initialFileName && fileName === initialFileName && currentXml) return;
 
       const availableFiles = Array.isArray(bpmnFiles) ? bpmnFiles : [];
       const hasInitial = initialFileName && availableFiles.includes(initialFileName);
@@ -395,7 +395,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     };
     
     loadBpmn();
-  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage]);
+  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage, fileName, currentXml]);
 
   // Initialize viewer when container becomes available (after loading UI is gone)
   useEffect(() => {
@@ -614,6 +614,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     console.log('Importing XML, length:', currentXml.length);
 
     let clickListener: any = null;
+    let dblclickListener: any = null;
     let canvasClickListener: any = null;
     let selectionChangedListener: any = null;
 
@@ -662,6 +663,16 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         
         eventBus.on('element.click', clickListener);
 
+        // Blockera bpmn-js standard dubbelklick-zoom (vi hanterar dubbelklick själva)
+        dblclickListener = (event: any) => {
+          const oe = event?.originalEvent as MouseEvent | undefined;
+          if (oe) {
+            oe.preventDefault();
+            oe.stopPropagation();
+          }
+        };
+        eventBus.on('element.dblclick', dblclickListener);
+
         // Keep marker in sync with selection changes
         selectionChangedListener = (e: any) => {
           const selected = e?.newSelection?.[0];
@@ -698,6 +709,10 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       if (viewerRef.current && clickListener) {
         const eventBus = viewerRef.current.get('eventBus') as any;
         eventBus.off('element.click', clickListener);
+      }
+      if (viewerRef.current && dblclickListener) {
+        const eventBus = viewerRef.current.get('eventBus') as any;
+        eventBus.off('element.dblclick', dblclickListener);
       }
       if (viewerRef.current && canvasClickListener) {
         const eventBus = viewerRef.current.get('eventBus') as any;
