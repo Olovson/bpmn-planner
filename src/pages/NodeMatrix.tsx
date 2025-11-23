@@ -415,6 +415,7 @@ const NodeMatrix = () => {
                 </TableHead>
                 <TableHead>Figma</TableHead>
                 <TableHead>Dokumentation</TableHead>
+                <TableHead>Doc-varianter</TableHead>
                 <TableHead>Testrapport</TableHead>
                 <TableHead>Jira Namn</TableHead>
                 <TableHead>Jira Typ</TableHead>
@@ -504,31 +505,35 @@ const NodeMatrix = () => {
                     </TableCell>
                     <TableCell>
                       {node.hasDocs ? (
-                        <div className="flex flex-col gap-1">
-                          <a
-                            href={
-                              node.documentationUrl ??
-                              getDocumentationUrl(node.bpmnFile, node.elementId)
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline flex items-center gap-1"
-                            title={`Dokumentation för ${node.elementName}`}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span className="truncate max-w-[150px]">
-                              Visa docs
-                            </span>
-                            <ExternalLink className="h-3 w-3 shrink-0" />
-                          </a>
-                          <DocVariantBadges
-                            docId={getNodeDocViewerPath(
-                              node.bpmnFile,
-                              node.elementId,
-                            )}
-                            compact
-                          />
-                        </div>
+                        <a
+                          href={
+                            node.documentationUrl ??
+                            getDocumentationUrl(node.bpmnFile, node.elementId)
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                          title={`Dokumentation för ${node.elementName}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="truncate max-w-[150px]">
+                            Visa docs
+                          </span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {node.hasDocs ? (
+                        <DocVariantBadges
+                          docId={getNodeDocViewerPath(
+                            node.bpmnFile,
+                            node.elementId,
+                          )}
+                          compact
+                        />
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
