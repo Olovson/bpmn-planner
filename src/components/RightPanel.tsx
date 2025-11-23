@@ -16,6 +16,7 @@ import { getDocumentationUrl, getTestFileUrl, getNodeDocStoragePath, getNodeTest
 import { supabase } from '@/integrations/supabase/client';
 import { checkDocsAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
 import { useNodeTests } from '@/hooks/useNodeTests';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface RightPanelProps {
   selectedElement?: string | null;
@@ -63,6 +64,7 @@ export const RightPanel = ({
   const [dmnFileInput, setDmnFileInput] = useState('');
   const [figmaUrl, setFigmaUrl] = useState('');
   const [jiraType, setJiraType] = useState<'feature goal' | 'epic' | ''>('');
+  const [subprocessFileInput, setSubprocessFileInput] = useState<string>('');
   const { toast } = useToast();
   const { data: availableBpmnFiles = [] } = useDynamicBpmnFiles();
   const { data: availableDmnFiles = [] } = useDynamicDmnFiles();
@@ -122,6 +124,7 @@ export const RightPanel = ({
       setDmnFileInput(mapping?.dmn_file || '');
       setFigmaUrl(mapping?.figma_url || '');
       setJiraType(mapping?.jira_type || '');
+      setSubprocessFileInput(mapping?.subprocess_bpmn_file || '');
     }
   }, [selectedElement, mappings]);
 
@@ -197,6 +200,41 @@ export const RightPanel = ({
       });
     } catch (error) {
       // Error handled in hook
+    }
+  };
+
+  const handleSaveSubprocessFile = async () => {
+    if (!selectedElement) return;
+
+    try {
+      await saveMapping(selectedElement, {
+        subprocess_bpmn_file: subprocessFileInput.trim() || '',
+      });
+
+      toast({
+        title: 'Subprocess-fil sparad',
+        description: `Subprocess-BPMN kopplad till ${selectedElement}`,
+      });
+    } catch (error) {
+      // Error handled i hook
+    }
+  };
+
+  const handleDeleteSubprocessFile = async () => {
+    if (!selectedElement) return;
+
+    try {
+      await saveMapping(selectedElement, {
+        subprocess_bpmn_file: '',
+      });
+      setSubprocessFileInput('');
+
+      toast({
+        title: 'Subprocess-fil borttagen',
+        description: 'Manuell subprocess-koppling har tagits bort',
+      });
+    } catch (error) {
+      // Error handled i hook
     }
   };
 
@@ -564,6 +602,76 @@ export const RightPanel = ({
                 </div>
               </CardContent>
             </Card>
+
+            {selectedElementType === 'bpmn:CallActivity' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Subprocess-BPMN</CardTitle>
+                  <CardDescription>
+                    Automatisk matchning från hierarkin, med möjlighet att manuellt ange BPMN-fil som subprocess.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Automatisk subprocess</p>
+                    <p className="text-xs rounded bg-muted/40 px-3 py-2">
+                      {displaySubprocessFile || 'Ingen automatisk subprocess matchad ännu.'}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Manuell override</p>
+                    <Select
+                      value={subprocessFileInput || ''}
+                      onValueChange={(value) => setSubprocessFileInput(value)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Välj BPMN-fil eller lämna tom för auto" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background">
+                        <SelectItem value="">(Ingen – använd automatisk matchning)</SelectItem>
+                        {availableBpmnFiles.map((file) => (
+                          <SelectItem key={file} value={file}>
+                            {file}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      disabled={!selectedElement}
+                      onClick={handleSaveSubprocessFile}
+                    >
+                      Spara
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!selectedElement || !subprocessFileInput}
+                      onClick={handleDeleteSubprocessFile}
+                    >
+                      Rensa override
+                    </Button>
+                    {subprocessFileInput && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const event = new CustomEvent('loadBpmnFile', {
+                            detail: { fileName: subprocessFileInput },
+                          });
+                          window.dispatchEvent(event);
+                        }}
+                      >
+                        Öppna subprocess
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>
