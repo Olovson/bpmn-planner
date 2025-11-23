@@ -160,6 +160,60 @@ async function main() {
   const porcelainResult = runCommand('git status --porcelain', 'Ocommittade ändringar', { silent: true });
   
   if (porcelainResult.success && porcelainResult.output && porcelainResult.output.trim()) {
+    // Kontrollera om det finns borttagna filer
+    // Git status --porcelain format:
+    //   "D " = deleted, staged (kommer committas)
+    //   " D" = deleted, not staged (kommer committas efter git add)
+    //   "??" = untracked
+    const lines = porcelainResult.output.trim().split('\n');
+    const stagedDeletions = [];
+    const unstagedDeletions = [];
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('D ')) {
+        // Staged deletion
+        const file = trimmed.substring(2).trim();
+        if (file) stagedDeletions.push(file);
+      } else if (trimmed.startsWith(' D')) {
+        // Unstaged deletion
+        const file = trimmed.substring(2).trim();
+        if (file) unstagedDeletions.push(file);
+      }
+    });
+    
+    if (stagedDeletions.length > 0 || unstagedDeletions.length > 0) {
+      console.log('');
+      error('⚠️  VARNING: Filer kommer att tas bort!');
+      log('═══════════════════════════════════════════════════════════');
+      
+      if (stagedDeletions.length > 0) {
+        log('Filer som redan är staged för borttagning:');
+        stagedDeletions.forEach(file => {
+          console.log(`  ❌ ${file} (staged)`);
+        });
+        console.log('');
+      }
+      
+      if (unstagedDeletions.length > 0) {
+        log('Filer som kommer att tas bort vid "git add .":');
+        unstagedDeletions.forEach(file => {
+          console.log(`  ❌ ${file} (kommer att stagas)`);
+        });
+        console.log('');
+      }
+      
+      log('═══════════════════════════════════════════════════════════');
+      console.log('');
+      error('Scriptet stoppas för att förhindra oavsiktlig borttagning.');
+      log('Om du verkligen vill ta bort dessa filer:');
+      log('  1. Granska listan ovan noggrant');
+      log('  2. Kör scriptet igen om du är säker');
+      log('  3. Eller committa manuellt med: git add . && git commit -m "..."');
+      console.log('');
+      process.exit(1);
+    }
+    
     log('Hittade ocommittade ändringar. Committar...');
     
     const addResult = runCommand('git add .', 'Lägger till alla ändringar', { silent: false });
