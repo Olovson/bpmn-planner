@@ -401,6 +401,32 @@ Detta problem uppstår när PostgREST schema-cache är utdaterad efter migration
 
 ---
 
+# 🧭 TODO / Idébank (framtida förbättringar)
+
+En kort lista över förbättringsidéer som vi kan plocka upp senare:
+
+- **Parallellisering av LLM‑generering**
+  - Lägg till en enkel concurrency‑pool i `generateAllFromBpmnWithGraph` så att flera noder kan genereras parallellt (t.ex. 3–5 samtidiga anrop per provider).
+  - Var försiktig med ordning/loggning/aggregation av HTML så resultatet blir deterministiskt.
+
+- **Caching av LLM‑resultat**
+  - Spara LLM‑output i Supabase per `(bpmnFile, nodeId, provider, promptVersion)` så att noder inte behöver köras om om inget ändrats.
+  - Använd cache både i UI (“regenerera bara ändrade noder”) och i batch‑körningar.
+
+- **Selektiv körning**
+  - Kör LLM‑generering endast för noder/filer som ändrats sedan senaste körning.
+  - Koppla mot t.ex. `bpmn_files.updated_at` och jobbhistorik för att avgöra vad som behöver regenereras.
+
+- **Lokal LLM‑profil / modellbyte**
+  - Utvärdera alternativ lokal modell (t.ex. `mistral:latest`) som kanske är snabbare/stabilare än `llama3:latest` på svagare hårdvara.
+  - Håll ChatGPT‑kontrakten oförändrade; behandla lokal modell som best‑effort fallback.
+
+- **Bättre LLM‑progress & statistik**
+  - Utöka `LlmDebugView`/LLM‑events med tydligare progress för batch‑körningar:
+    - totalt antal noder,
+    - hur många som är klara per provider/docType,
+    - uppskattad kvarvarande tid vid större körningar (300+ noder).
+
 # 📍 Lokal URL
 `http://localhost:8080/`
 
