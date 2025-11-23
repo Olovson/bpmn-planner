@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getDocumentationUrl, getTestFileUrl, getNodeDocStoragePath, getNodeTestReportUrl } from '@/lib/artifactUrls';
 import { supabase } from '@/integrations/supabase/client';
 import { checkDocsAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
+import { useNodeTests } from '@/hooks/useNodeTests';
 
 interface RightPanelProps {
   selectedElement?: string | null;
@@ -407,6 +408,20 @@ export const RightPanel = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  // Hämta planerade scenarion för denna nod (inkl. fallback från testMapping)
+  const { plannedScenariosByProvider } = useNodeTests({
+    nodeId: selectedElement || undefined,
+    bpmnFile,
+    elementId: selectedElement || undefined,
+  });
+
+  const localPlannedScenarios = useMemo(() => {
+    const localSet = plannedScenariosByProvider.find(
+      (s) => s.provider === 'local-fallback',
+    );
+    return localSet?.scenarios ?? [];
+  }, [plannedScenariosByProvider]);
+
   if (!shouldShowPanel) {
     return null;
   }
@@ -560,6 +575,57 @@ export const RightPanel = ({
 
             <Card>
               <CardHeader>
+                <CardTitle className="text-base">Figma</CardTitle>
+                <CardDescription>
+                  Länk till design i Figma för denna nod. Länken sätts manuellt.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Figma-URL</p>
+                  <Input
+                    value={figmaUrl}
+                    onChange={(e) => setFigmaUrl(e.target.value)}
+                    placeholder="https://www.figma.com/..."
+                    className="text-xs"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    disabled={!selectedElement || !figmaUrl.trim()}
+                    onClick={handleSaveFigmaUrl}
+                  >
+                    Spara
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!selectedElement || !displayFigmaUrl}
+                    onClick={handleDeleteFigmaUrl}
+                  >
+                    Ta bort
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!displayFigmaUrl}
+                    onClick={() => openExternal(displayFigmaUrl)}
+                  >
+                    Öppna i ny flik
+                  </Button>
+                </div>
+                {displayFigmaUrl && (
+                  <p className="text-[11px] text-muted-foreground break-all">
+                    Aktiv länk: {displayFigmaUrl}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-base">Tester</CardTitle>
                 <CardDescription>
                   Datadriven status för tester kopplade till denna nod.
@@ -649,6 +715,49 @@ export const RightPanel = ({
                     </p>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Planerade scenarion</CardTitle>
+                <CardDescription>
+                  Designade testscenarion för denna nod (Lokal fallback).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {localPlannedScenarios.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Inga planerade scenarion är kopplade till denna nod ännu.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      {localPlannedScenarios.length} scenario
+                      {localPlannedScenarios.length > 1 ? 'n' : ''} definierade.
+                    </p>
+                    <div className="space-y-2 max-h-60 overflow-auto pr-1">
+                      {localPlannedScenarios.map((scenario) => (
+                        <div
+                          key={scenario.id}
+                          className="rounded border border-border/50 px-3 py-2"
+                        >
+                          <p className="text-xs font-medium">
+                            {scenario.name}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {scenario.category} • {scenario.status}
+                          </p>
+                          {scenario.description && (
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                              {scenario.description}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
