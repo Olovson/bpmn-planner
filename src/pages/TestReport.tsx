@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { elementResourceMapping } from '@/data/elementResourceMapping';
-import { testMapping, getAllTests } from '@/data/testMapping';
+import { testMapping, getAllTests, type TestScenario } from '@/data/testMapping';
 import { useTestResults } from '@/hooks/useTestResults';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,8 @@ import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
 import { SUBPROCESS_REGISTRY, type NodeType } from '@/data/subprocessRegistry';
 import { useFilePlannedScenarios } from '@/hooks/useFilePlannedScenarios';
 import { useBpmnFileTestableNodes } from '@/hooks/useBpmnFileTestableNodes';
+
+type UiScenario = TestScenario & { _source?: string };
 import {
   TestReportFilters,
   type TestDocTypeFilter,
@@ -275,8 +277,19 @@ const TestReport = () => {
         })
         .map((node) => {
           const planned = plannedById.get(node.id);
-          const plannedScenarios =
-            planned?.byProvider.flatMap((p) => p.scenarios) ?? [];
+
+          const plannedScenarios: UiScenario[] = [];
+          if (planned) {
+            for (const providerSet of planned.byProvider) {
+              const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
+              for (const scenario of providerSet.scenarios) {
+                plannedScenarios.push({
+                  ...scenario,
+                  _source: sourceLabel,
+                });
+              }
+            }
+          }
           const hasExecuted = testResults.some(
             (r) =>
               r.bpmn_file === activeBpmnFile && r.node_id === node.id,
@@ -312,7 +325,11 @@ const TestReport = () => {
     return filteredNodeIds.map((nodeId) => {
       const meta = elementResourceMapping[nodeId];
       const testInfo = testMapping[nodeId];
-      const plannedScenarios = testInfo?.scenarios ?? [];
+      const plannedScenarios: UiScenario[] =
+        testInfo?.scenarios?.map((s) => ({
+          ...s,
+          _source: 'design/local-fallback',
+        })) ?? [];
       const hasExecuted = testResults.some((r) => r.node_id === nodeId);
       const docId =
         meta?.bpmnFile && nodeId
@@ -362,6 +379,16 @@ const TestReport = () => {
 
       <main className="flex-1 min-w-0 overflow-auto">
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold text-foreground">
+              Testrapport
+            </h1>
+            <Badge variant="outline" className="text-xs">
+              {activeBpmnFile
+                ? `Scope: ${activeBpmnFile}`
+                : 'Scope: alla BPMN-filer'}
+            </Badge>
+          </div>
           {/* Top-summary (KPI-rad) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
@@ -592,26 +619,28 @@ const TestReport = () => {
                                         </TableRow>
                                       </TableHeader>
                                       <TableBody>
-                                        {node.plannedScenarios.map((scenario) => (
-                                          <TableRow
-                                            key={scenario.id || scenario.name}
-                                          >
-                                            <TableCell className="text-xs font-mono">
-                                              {scenario.id || '–'}
-                                            </TableCell>
-                                            <TableCell className="text-xs">
-                                              {scenario.description ||
-                                                scenario.name ||
-                                                '–'}
-                                            </TableCell>
-                                            <TableCell className="text-xs">
-                                              {scenario.type || '–'}
-                                            </TableCell>
-                                            <TableCell className="text-xs">
-                                              {scenario.category || '–'}
-                                            </TableCell>
-                                          </TableRow>
-                                        ))}
+                                        {node.plannedScenarios.map(
+                                          (scenario) => (
+                                            <TableRow
+                                              key={scenario.id || scenario.name}
+                                            >
+                                              <TableCell className="text-xs font-mono">
+                                                {scenario.id || '–'}
+                                              </TableCell>
+                                              <TableCell className="text-xs">
+                                                {scenario.description ||
+                                                  scenario.name ||
+                                                  '–'}
+                                              </TableCell>
+                                              <TableCell className="text-xs">
+                                                {scenario.type || '–'}
+                                              </TableCell>
+                                              <TableCell className="text-xs">
+                                                {scenario._source || '–'}
+                                              </TableCell>
+                                            </TableRow>
+                                          ),
+                                        )}
                                       </TableBody>
                                     </Table>
                                   </div>
