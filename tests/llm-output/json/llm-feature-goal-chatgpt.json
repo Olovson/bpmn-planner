@@ -1,92 +1,85 @@
 ```json
 {
-  "summary": "Detta Feature Goal syftar till att förbättra den interna datainsamlingen för kreditansökningar, vilket möjliggör en mer effektiv och korrekt bedömning av kunders kreditvärdighet. Det omfattar kunder inom bolånesegmentet och stödjer bankens strategi för att minska kreditrisker och förbättra kundupplevelsen genom snabbare och mer transparenta beslut. Genom att automatisera datainsamlingen kan banken säkerställa en högre kvalitet i kreditbedömningarna och samtidigt upprätthålla en stark regelefterlevnad.",
+  "summary": "Feature Goalet syftar till att effektivisera intern datainsamling för kreditbedömningar, vilket möjliggör snabbare och mer precisa beslut. Det omfattar privatkunder som ansöker om bolån och stödjer bankens strategi för att förbättra riskhantering och kundupplevelse genom att minska manuellt arbete. Genom att automatisera datainsamlingen kan banken säkerställa att alla relevanta uppgifter är korrekta och aktuella, vilket stärker regelefterlevnaden.",
   "effectGoals": [
-    "Automatisering av datainsamling minskar manuellt arbete och kortar ledtider.",
-    "Förbättrad kvalitet och säkerhet i kreditbedömningar genom mer tillförlitliga data.",
-    "Bättre kundupplevelse genom snabbare och tydligare besked.",
-    "Stärkt regelefterlevnad och riskkontroll genom korrekt och aktuell data."
+    "Automatiseringen minskar det manuella arbetet och kortar ledtiderna för kreditbeslut.",
+    "Förbättrad kvalitet och säkerhet i kreditbedömningar genom korrekt och aktuell data.",
+    "Bättre kundupplevelse genom snabbare besked och färre omtag i processen.",
+    "Stärkt regelefterlevnad och riskkontroll genom automatiserad datainsamling."
   ],
   "scopeIncluded": [
     "Ingår: Automatiserad insamling av kunddata från interna system.",
-    "Ingår: Integration med befintliga kreditvärderingsverktyg.",
-    "Ingår: Förbättring av datakvalitet och konsistenskontroller.",
-    "Ingår: Stöd för realtidsuppdateringar av kundinformation.",
-    "Ingår: Säkerställande av dataskydd och sekretess enligt gällande regler.",
-    "Ingår: Användning av insamlade data för preliminär kreditvärdering.",
-    "Ingår: Samarbete med Risk & Kredit-teamet för kontinuerlig förbättring."
+    "Ingår: Integration med befintliga kreditbedömningsverktyg.",
+    "Ingår: Validering av insamlad data mot aktuella regelverk.",
+    "Ingår: Generering av rapporter för intern användning.",
+    "Ingår: Stöd för både nya och befintliga kunder.",
+    "Ingår: Användargränssnitt för handläggare att granska insamlad data.",
+    "Ingår: Loggning av datainsamlingsaktiviteter för auditändamål."
   ],
   "scopeExcluded": [
-    "Ingår inte: Manuell insamling av data från externa källor.",
-    "Ingår inte: Utveckling av nya kreditvärderingsmodeller.",
-    "Ingår inte: Direkt kundinteraktion för datainsamling."
+    "Ingår inte: Insamling av data från externa källor.",
+    "Ingår inte: Manuell datainmatning av handläggare.",
+    "Ingår inte: Direkt kundinteraktion genom systemet."
   ],
   "epics": [
     {
       "id": "E1",
       "name": "Data Integration",
-      "description": "Integrerar interna system för att samla in och harmonisera kunddata.",
-      "team": "IT Integration"
-    },
-    {
-      "id": "E2",
-      "name": "Data Quality Assurance",
-      "description": "Säkerställer att insamlad data är korrekt och uppdaterad.",
+      "description": "Integrerar olika interna datakällor för att möjliggöra sömlös datainsamling.",
       "team": "Data Management"
     },
     {
-      "id": "E3",
-      "name": "Real-time Updates",
-      "description": "Implementerar realtidsuppdateringar av kundinformation i systemet.",
+      "id": "E2",
+      "name": "Data Validation",
+      "description": "Säkerställer att all insamlad data är korrekt och uppdaterad enligt gällande regelverk.",
       "team": "Risk & Kredit"
     }
   ],
   "flowSteps": [
-    "Kunden ansöker om kredit via bankens webbportal.",
-    "Systemet hämtar automatiskt kunddata från interna databaser.",
-    "Kreditvärderingsverktyget analyserar insamlad data för preliminär bedömning.",
-    "Handläggaren får en sammanfattning av kreditvärderingen för vidare beslut.",
-    "Eventuella avvikelser flaggas för manuell granskning av handläggaren.",
-    "Beslutet kommuniceras till kunden via webbportalen."
+    "Kunden ansöker om bolån via bankens webbportal.",
+    "Systemet initierar automatiserad insamling av kunddata från interna system.",
+    "Insamlad data valideras mot aktuella regelverk och policyer.",
+    "Handläggaren granskar den insamlade och validerade datan.",
+    "Kreditbeslut fattas baserat på den insamlade och validerade datan.",
+    "Beslutet kommuniceras till kunden via bankens portal."
   ],
   "dependencies": [
-    "Beroende: Interna databaser; Id: kunddata; Beskrivning: Används för att hämta nödvändig kundinformation.",
-    "Beroende: Kreditvärderingsverktyg; Id: analysmotor; Beskrivning: Analyserar insamlad data för kreditbeslut.",
-    "Beroende: Regelmotor/DMN; Id: beslutsstöd; Beskrivning: Stödjer automatiserade beslut baserat på insamlad data."
+    "Beroende: Interna datakällor; Id: kunddatabas; Beskrivning: används för att hämta kundinformation.",
+    "Beroende: Regelmotor/DMN; Id: datavalidering; Beskrivning: säkerställer att insamlad data följer regelverk.",
+    "Beroende: Kreditbedömningsverktyg; Id: kreditvärdering; Beskrivning: används för att fatta kreditbeslut."
   ],
   "scenarios": [
     {
       "id": "S1",
-      "name": "Successful Data Gathering",
+      "name": "Automatiserad datainsamling lyckas",
       "type": "Happy",
-      "outcome": "All nödvändig data samlas in automatiskt och kreditvärderingen genomförs utan problem."
+      "outcome": "Data samlas in och valideras framgångsrikt, vilket leder till ett snabbt kreditbeslut."
     },
     {
       "id": "S2",
-      "name": "Partial Data Availability",
+      "name": "Valideringsfel upptäckt",
       "type": "Edge",
-      "outcome": "Viss data saknas och handläggaren måste komplettera manuellt för fullständig bedömning."
+      "outcome": "Ett fel i datavalideringen upptäcks, vilket kräver manuell granskning av handläggaren."
     },
     {
       "id": "S3",
-      "name": "Data Retrieval Error",
+      "name": "Misslyckad datainsamling",
       "type": "Error",
-      "outcome": "Systemet misslyckas med att hämta data och ansökan pausas för teknisk granskning."
+      "outcome": "Datainsamlingen misslyckas på grund av systemfel, vilket fördröjer kreditbeslutet."
     }
   ],
-  "testDescription": "Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester. Scenario-ID och namn bör återanvändas i testfiler och testnamn för spårbarhet.",
+  "testDescription": "Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester. Återanvänd scenario-ID och namn i testfil och testnamn för spårbarhet.",
   "implementationNotes": [
-    "API-anrop till interna databaser bör optimeras för att minimera latens.",
-    "Loggning och audit-spår måste implementeras för alla datainsamlingsaktiviteter.",
-    "Felhantering bör inkludera återförsök och notifiering till tekniskt team vid misslyckanden.",
-    "Data måste valideras mot aktuella regelverk för att säkerställa compliance.",
-    "Prestandatester bör genomföras för att säkerställa att systemet klarar hög belastning."
+    "Använd RESTful API-mönster för integration med interna system.",
+    "Loggning av alla datainsamlingsaktiviteter ska ske för att möjliggöra fullständig auditspårning.",
+    "Felhantering bör inkludera återförsök vid tillfälliga nätverksfel.",
+    "Säkerställ att alla dataöverföringar är krypterade för att skydda kundinformation.",
+    "Prestandatester bör genomföras för att säkerställa att systemet klarar av hög belastning."
   ],
   "relatedItems": [
-    "Relaterat Feature Goal: Förbättrad kreditvärdering.",
-    "Relaterad epic: Kunddatahantering.",
-    "Relaterad Business Rule: Kreditvärderingspolicy.",
-    "Relaterad subprocess: Interna datakontroller."
+    "Relaterat Feature Goal: Extern datainsamling för kreditbedömningar.",
+    "Relaterad Epic: Kreditvärderingsprocessen.",
+    "Relaterad Business Rule: Regelverk för datavalidering."
   ]
 }
 ```

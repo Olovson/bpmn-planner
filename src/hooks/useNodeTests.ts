@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTestResults } from './useTestResults';
 import { useNodeTestLinks, type NodeTestLinkVariant } from './useNodeTestLinks';
+import { useNodePlannedScenarios, type ProviderScenarioSet } from './useNodePlannedScenarios';
 import { testMapping, TestInfo, TestScenario as TemplateScenario } from '@/data/testMapping';
 
 export interface NodeTestCase {
@@ -35,12 +36,18 @@ type NodeTestVariant = 'local-fallback' | 'llm' | 'unknown';
 export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams) => {
   const { testResults, isLoading: resultsLoading } = useTestResults();
   const { data: linkEntries = [], isLoading: linksLoading } = useNodeTestLinks();
+  const { variants: plannedScenarioVariants, isLoading: plannedLoading } =
+    useNodePlannedScenarios({ bpmnFile, elementId });
 
-  const { tests, nodeInfo, plannedScenarios } = useMemo(() => {
+  const { tests, nodeInfo, plannedScenariosByProvider } = useMemo(() => {
     const effectiveNodeId = nodeId || elementId;
     
     if (!effectiveNodeId) {
-      return { tests: [] as NodeTestCase[], nodeInfo: null as NodeInfo | null, plannedScenarios: [] as TemplateScenario[] };
+      return {
+        tests: [] as NodeTestCase[],
+        nodeInfo: null as NodeInfo | null,
+        plannedScenariosByProvider: [] as ProviderScenarioSet[],
+      };
     }
 
     // Försök hitta testlänkar/varianter för aktuell nod
@@ -64,6 +71,28 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
     // First try to get from database using nodeId or elementId
     const dbTests = testResults.filter(result => result.node_id === effectiveNodeId);
     const template = testMapping[effectiveNodeId];
+
+    // Bygg plannedScenariosByProvider med fallback:
+    const plannedSets: ProviderScenarioSet[] = [];
+
+    // 1) Lägg in alla varianter som finns i node_planned_scenarios
+    for (const v of plannedScenarioVariants) {
+      plannedSets.push(v);
+    }
+
+    // 2) Fallback: om vi har testMapping, se till att local-fallback alltid finns
+    if (template) {
+      const hasLocalFallback = plannedSets.some(
+        (v) => v.provider === 'local-fallback',
+      );
+      if (!hasLocalFallback && template.scenarios?.length) {
+        plannedSets.push({
+          provider: 'local-fallback',
+          origin: 'design',
+          scenarios: template.scenarios,
+        });
+      }
+    }
     
     if (dbTests.length > 0) {
       const firstTest = dbTests[0];
@@ -101,7 +130,11 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
         };
       });
 
-      return { tests: testCases, nodeInfo: info, plannedScenarios: template?.scenarios ?? [] };
+      return {
+        tests: testCases,
+        nodeInfo: info,
+        plannedScenariosByProvider: plannedSets,
+      };
     }
 
     if (template) {
@@ -111,17 +144,25 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
         elementId: effectiveNodeId,
         bpmnFile: bpmnFile,
       };
-      return { tests: [] as NodeTestCase[], nodeInfo: info, plannedScenarios: template.scenarios };
+      return {
+        tests: [] as NodeTestCase[],
+        nodeInfo: info,
+        plannedScenariosByProvider: plannedSets,
+      };
     }
 
-    return { tests: [] as NodeTestCase[], nodeInfo: null as NodeInfo | null, plannedScenarios: [] as TemplateScenario[] };
-  }, [testResults, linkEntries, nodeId, bpmnFile, elementId]);
+    return {
+      tests: [] as NodeTestCase[],
+      nodeInfo: null as NodeInfo | null,
+      plannedScenariosByProvider: plannedSets,
+    };
+  }, [testResults, linkEntries, plannedScenarioVariants, nodeId, bpmnFile, elementId]);
 
   return {
     tests,
     nodeInfo,
-    plannedScenarios,
-    isLoading: resultsLoading || linksLoading,
+    plannedScenariosByProvider,
+    isLoading: resultsLoading || linksLoading || plannedLoading,
     error: null,
   };
 };

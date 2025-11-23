@@ -20,13 +20,14 @@ const NodeTestsPage = () => {
   const bpmnFile = searchParams.get('bpmnFile');
   const elementId = searchParams.get('elementId');
 
-  const { tests, nodeInfo, plannedScenarios, isLoading } = useNodeTests({ 
+  const { tests, nodeInfo, plannedScenariosByProvider, isLoading } = useNodeTests({ 
     nodeId: nodeId || undefined,
     bpmnFile: bpmnFile || undefined,
     elementId: elementId || undefined,
   });
   const [implementedTestFile, setImplementedTestFile] = useState<string | null>(null);
   const [variantFilter, setVariantFilter] = useState<'all' | 'local-fallback' | 'chatgpt' | 'ollama'>('all');
+  const [plannedProvider, setPlannedProvider] = useState<'local-fallback' | 'chatgpt' | 'ollama'>('local-fallback');
 
   const filteredTests = useMemo(
     () =>
@@ -217,9 +218,14 @@ const NodeTestsPage = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold">{plannedScenarios.length}</div>
+                <div className="text-2xl font-bold">
+                  {plannedScenariosByProvider.reduce(
+                    (sum, set) => sum + (set.scenarios?.length ?? 0),
+                    0,
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  {plannedScenarios.length === 1 ? 'Planerat scenario' : 'Planerade scenarion'}
+                  Planerade scenarion (alla providers)
                 </div>
                 <div className="text-xs text-muted-foreground mt-2">
                   Designade men ej implementerade
@@ -229,7 +235,7 @@ const NodeTestsPage = () => {
           </Card>
         </div>
 
-        {tests.length === 0 && !implementedTestFile && plannedScenarios.length === 0 && (
+        {tests.length === 0 && !implementedTestFile && plannedScenariosByProvider.length === 0 && (
           <Card>
             <CardContent className="py-8">
               <div className="text-center text-muted-foreground">
@@ -438,18 +444,64 @@ const NodeTestsPage = () => {
           </Card>
         )}
 
-        {plannedScenarios.length > 0 && (
+        {plannedScenariosByProvider.length > 0 && (
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span>📝 Planerade scenarion</span>
-              </CardTitle>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <span>📝 Planerade scenarion</span>
+                </CardTitle>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Button
+                    size="sm"
+                    variant={plannedProvider === 'local-fallback' ? 'default' : 'outline'}
+                    onClick={() => setPlannedProvider('local-fallback')}
+                  >
+                    Lokal fallback
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={plannedProvider === 'chatgpt' ? 'default' : 'outline'}
+                    onClick={() => setPlannedProvider('chatgpt')}
+                  >
+                    ChatGPT
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={plannedProvider === 'ollama' ? 'default' : 'outline'}
+                    onClick={() => setPlannedProvider('ollama')}
+                  >
+                    Ollama
+                  </Button>
+                </div>
+              </div>
               <CardDescription className="text-sm text-muted-foreground">
                 Designade testscenarion kopplade till denna nod. Dessa representerar målbilden och är
                 inte nödvändigtvis implementerade eller körda ännu.
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {(() => {
+                const currentSet = plannedScenariosByProvider.find(
+                  (s) => s.provider === plannedProvider,
+                );
+                const scenarios = currentSet?.scenarios ?? [];
+
+                if (!scenarios.length) {
+                  return (
+                    <div className="text-xs text-muted-foreground py-4">
+                      Inga planerade scenarion lagrade för{' '}
+                      {plannedProvider === 'local-fallback'
+                        ? 'Lokal fallback'
+                        : plannedProvider === 'chatgpt'
+                        ? 'ChatGPT'
+                        : 'Ollama'}
+                      . Generera dokumentation/tester med denna provider för att fylla dem.
+                    </div>
+                  );
+                }
+
+                return (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -459,7 +511,7 @@ const NodeTestsPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {plannedScenarios.map((scenario) => (
+                  {scenarios.map((scenario) => (
                     <TableRow key={scenario.id}>
                       <TableCell className="font-medium text-sm">
                         {scenario.name}
@@ -474,9 +526,11 @@ const NodeTestsPage = () => {
                   ))}
                 </TableBody>
               </Table>
+                );
+              })()}
             </CardContent>
           </Card>
-        )}
+       )}
       </main>
     </div>
   );

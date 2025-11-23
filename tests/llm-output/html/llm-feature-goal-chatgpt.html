@@ -139,13 +139,13 @@
 
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
-      <p>Detta Feature Goal syftar till att förbättra den interna datainsamlingen för kreditansökningar, vilket möjliggör en mer effektiv och korrekt bedömning av kunders kreditvärdighet. Det omfattar kunder inom bolånesegmentet och stödjer bankens strategi för att minska kreditrisker och förbättra kundupplevelsen genom snabbare och mer transparenta beslut. Genom att automatisera datainsamlingen kan banken säkerställa en högre kvalitet i kreditbedömningarna och samtidigt upprätthålla en stark regelefterlevnad.</p>
-      <ul><li>Ingår: Ingår: Automatiserad insamling av kunddata från interna system.; Ingår: Integration med befintliga kreditvärderingsverktyg.; Ingår: Förbättring av datakvalitet och konsistenskontroller.; Ingår: Stöd för realtidsuppdateringar av kundinformation.; Ingår: Säkerställande av dataskydd och sekretess enligt gällande regler.; Ingår: Användning av insamlade data för preliminär kreditvärdering.; Ingår: Samarbete med Risk & Kredit-teamet för kontinuerlig förbättring.</li><li>Ingår inte: Ingår inte: Manuell insamling av data från externa källor.; Ingår inte: Utveckling av nya kreditvärderingsmodeller.; Ingår inte: Direkt kundinteraktion för datainsamling.</li></ul>
+      <p>Feature Goalet syftar till att effektivisera intern datainsamling för kreditbedömningar, vilket möjliggör snabbare och mer precisa beslut. Det omfattar privatkunder som ansöker om bolån och stödjer bankens strategi för att förbättra riskhantering och kundupplevelse genom att minska manuellt arbete. Genom att automatisera datainsamlingen kan banken säkerställa att alla relevanta uppgifter är korrekta och aktuella, vilket stärker regelefterlevnaden.</p>
+      <ul><li>Ingår: Ingår: Automatiserad insamling av kunddata från interna system.; Ingår: Integration med befintliga kreditbedömningsverktyg.; Ingår: Validering av insamlad data mot aktuella regelverk.; Ingår: Generering av rapporter för intern användning.; Ingår: Stöd för både nya och befintliga kunder.; Ingår: Användargränssnitt för handläggare att granska insamlad data.; Ingår: Loggning av datainsamlingsaktiviteter för auditändamål.</li><li>Ingår inte: Ingår inte: Insamling av data från externa källor.; Ingår inte: Manuell datainmatning av handläggare.; Ingår inte: Direkt kundinteraktion genom systemet.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Effektmål</h2>
-      <ul><li>Automatisering av datainsamling minskar manuellt arbete och kortar ledtider.</li><li>Förbättrad kvalitet och säkerhet i kreditbedömningar genom mer tillförlitliga data.</li><li>Bättre kundupplevelse genom snabbare och tydligare besked.</li><li>Stärkt regelefterlevnad och riskkontroll genom korrekt och aktuell data.</li></ul>
+      <ul><li>Automatiseringen minskar det manuella arbetet och kortar ledtiderna för kreditbeslut.</li><li>Förbättrad kvalitet och säkerhet i kreditbedömningar genom korrekt och aktuell data.</li><li>Bättre kundupplevelse genom snabbare besked och färre omtag i processen.</li><li>Stärkt regelefterlevnad och riskkontroll genom automatiserad datainsamling.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -162,19 +162,13 @@
         <tr>
           <td>E1</td>
           <td>Data Integration</td>
-          <td>Integrerar interna system för att samla in och harmonisera kunddata.</td>
-          <td>IT Integration</td>
-        </tr>
-        <tr>
-          <td>E2</td>
-          <td>Data Quality Assurance</td>
-          <td>Säkerställer att insamlad data är korrekt och uppdaterad.</td>
+          <td>Integrerar olika interna datakällor för att möjliggöra sömlös datainsamling.</td>
           <td>Data Management</td>
         </tr>
         <tr>
-          <td>E3</td>
-          <td>Real-time Updates</td>
-          <td>Implementerar realtidsuppdateringar av kundinformation i systemet.</td>
+          <td>E2</td>
+          <td>Data Validation</td>
+          <td>Säkerställer att all insamlad data är korrekt och uppdaterad enligt gällande regelverk.</td>
           <td>Risk & Kredit</td>
         </tr>
       </table>
@@ -183,7 +177,7 @@
     <section class="doc-section">
       <h2>Affärsflöde</h2>
       <ol>
-        <li>Kunden ansöker om kredit via bankens webbportal.</li><li>Systemet hämtar automatiskt kunddata från interna databaser.</li><li>Kreditvärderingsverktyget analyserar insamlad data för preliminär bedömning.</li><li>Handläggaren får en sammanfattning av kreditvärderingen för vidare beslut.</li><li>Eventuella avvikelser flaggas för manuell granskning av handläggaren.</li><li>Beslutet kommuniceras till kunden via webbportalen.</li>
+        <li>Kunden ansöker om bolån via bankens webbportal.</li><li>Systemet initierar automatiserad insamling av kunddata från interna system.</li><li>Insamlad data valideras mot aktuella regelverk och policyer.</li><li>Handläggaren granskar den insamlade och validerade datan.</li><li>Kreditbeslut fattas baserat på den insamlade och validerade datan.</li><li>Beslutet kommuniceras till kunden via bankens portal.</li>
       </ol>
     </section>
 
@@ -199,21 +193,21 @@
         
         <tr>
           <td>S1</td>
-          <td>Successful Data Gathering</td>
+          <td>Automatiserad datainsamling lyckas</td>
           <td>Happy</td>
-          <td>All nödvändig data samlas in automatiskt och kreditvärderingen genomförs utan problem.</td>
+          <td>Data samlas in och valideras framgångsrikt, vilket leder till ett snabbt kreditbeslut.</td>
         </tr>
         <tr>
           <td>S2</td>
-          <td>Partial Data Availability</td>
+          <td>Valideringsfel upptäckt</td>
           <td>Edge</td>
-          <td>Viss data saknas och handläggaren måste komplettera manuellt för fullständig bedömning.</td>
+          <td>Ett fel i datavalideringen upptäcks, vilket kräver manuell granskning av handläggaren.</td>
         </tr>
         <tr>
           <td>S3</td>
-          <td>Data Retrieval Error</td>
+          <td>Misslyckad datainsamling</td>
           <td>Error</td>
-          <td>Systemet misslyckas med att hämta data och ansökan pausas för teknisk granskning.</td>
+          <td>Datainsamlingen misslyckas på grund av systemfel, vilket fördröjer kreditbeslutet.</td>
         </tr>
       </table>
     </section>
@@ -221,7 +215,7 @@
     <section class="doc-section">
       <h2>Koppling till automatiska tester</h2>
       <p>
-        Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester. Scenario-ID och namn bör återanvändas i testfiler och testnamn för spårbarhet.
+        Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester. Återanvänd scenario-ID och namn i testfil och testnamn för spårbarhet.
         <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
         <br />
         Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
@@ -230,7 +224,7 @@
 
     <section class="doc-section">
       <h2>Implementation Notes (för dev)</h2>
-      <ul><li>API-anrop till interna databaser bör optimeras för att minimera latens.</li><li>Loggning och audit-spår måste implementeras för alla datainsamlingsaktiviteter.</li><li>Felhantering bör inkludera återförsök och notifiering till tekniskt team vid misslyckanden.</li><li>Data måste valideras mot aktuella regelverk för att säkerställa compliance.</li><li>Prestandatester bör genomföras för att säkerställa att systemet klarar hög belastning.</li></ul>
+      <ul><li>Använd RESTful API-mönster för integration med interna system.</li><li>Loggning av alla datainsamlingsaktiviteter ska ske för att möjliggöra fullständig auditspårning.</li><li>Felhantering bör inkludera återförsök vid tillfälliga nätverksfel.</li><li>Säkerställ att alla dataöverföringar är krypterade för att skydda kundinformation.</li><li>Prestandatester bör genomföras för att säkerställa att systemet klarar av hög belastning.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -240,7 +234,7 @@
 
     <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
-      <ul><li>Relaterat Feature Goal: Förbättrad kreditvärdering.</li><li>Relaterad epic: Kunddatahantering.</li><li>Relaterad Business Rule: Kreditvärderingspolicy.</li><li>Relaterad subprocess: Interna datakontroller.</li></ul>
+      <ul><li>Relaterat Feature Goal: Extern datainsamling för kreditbedömningar.</li><li>Relaterad Epic: Kreditvärderingsprocessen.</li><li>Relaterad Business Rule: Regelverk för datavalidering.</li></ul>
     </section>
 
     <section class="doc-section">

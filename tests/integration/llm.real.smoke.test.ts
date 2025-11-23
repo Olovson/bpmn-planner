@@ -26,6 +26,7 @@ import {
   mapBusinessRuleLlmToSections,
 } from '@/lib/businessRuleLlmMapper';
 import { LlmValidationError } from '@/lib/llmFallback';
+import { supabase } from '@/integrations/supabase/client';
 
 // Real LLM smoke-test: kör riktiga anrop mot LLM när
 // VITE_USE_LLM=true, VITE_ALLOW_LLM_IN_TESTS=true och VITE_OPENAI_API_KEY är satt.
@@ -263,6 +264,22 @@ if (!isLlmEnabled()) {
 
           writeFileSync(htmlPath, llmHtml, 'utf8');
           writeFileSync(jsonPath, raw, 'utf8');
+
+          // Verifiera att node_planned_scenarios uppdateras för ChatGPT
+          if (provider === 'cloud' && result?.docJson) {
+            const { data, error } = await supabase
+              .from('node_planned_scenarios')
+              .select('provider, scenarios')
+              .eq('bpmn_file', featureNode.bpmnFile)
+              .eq('bpmn_element_id', featureNode.bpmnElementId)
+              .eq('provider', 'chatgpt')
+              .maybeSingle();
+
+            if (!error && data) {
+              expect(Array.isArray(data.scenarios)).toBe(true);
+              expect((data.scenarios as any[]).length).toBeGreaterThan(0);
+            }
+          }
         } catch (error) {
           const title =
             context.node.name || context.node.bpmnElementId || 'Feature Goal (LLM-fel)';

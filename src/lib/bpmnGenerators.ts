@@ -18,6 +18,7 @@ import { generateDocumentationWithLlm, type DocumentationDocType } from '@/lib/l
 import { generateTestSpecWithLlm } from '@/lib/llmTests';
 import type { LlmProvider } from './llmClientAbstraction';
 import { getLlmClient, getDefaultLlmProvider } from './llmClients';
+import { supabase } from '@/integrations/supabase/client';
 import { isLlmEnabled } from '@/lib/llmClient';
 import { logLlmFallback } from '@/lib/llmMonitoring';
 import { saveLlmDebugArtifact } from '@/lib/llmDebugStorage';
@@ -911,6 +912,73 @@ export interface GenerationResult {
   };
 }
 
+type PlannedScenarioProvider = 'local-fallback' | 'chatgpt' | 'ollama';
+
+function mapProviderToScenarioProvider(
+  provider: LlmProvider,
+  fallbackUsed: boolean,
+): PlannedScenarioProvider | null {
+  if (provider === 'cloud') return 'chatgpt';
+  if (provider === 'local' && !fallbackUsed) return 'ollama';
+  if (provider === 'local' && fallbackUsed) return 'local-fallback';
+  return null;
+}
+
+function buildScenariosFromDocJson(
+  docType: DocumentationDocType,
+  docJson: any,
+): import('@/data/testMapping').TestScenario[] {
+  if (!docJson || typeof docJson !== 'object') return [];
+  const rawScenarios = Array.isArray(docJson.scenarios) ? docJson.scenarios : [];
+  const scenarios: import('@/data/testMapping').TestScenario[] = [];
+
+  for (const raw of rawScenarios) {
+    if (!raw) continue;
+    const id = typeof raw.id === 'string' && raw.id.trim().length
+      ? raw.id
+      : `${docType}-${scenarios.length + 1}`;
+
+    const name = typeof raw.name === 'string' && raw.name.trim().length
+      ? raw.name
+      : `Scenario ${scenarios.length + 1}`;
+
+    let description = '';
+    if (docType === 'epic') {
+      const parts: string[] = [];
+      if (typeof raw.description === 'string' && raw.description.trim().length) {
+        parts.push(raw.description.trim());
+      }
+      if (typeof raw.outcome === 'string' && raw.outcome.trim().length) {
+        parts.push(`Utfallet: ${raw.outcome.trim()}`);
+      }
+      description = parts.join(' ');
+    } else {
+      if (typeof raw.outcome === 'string' && raw.outcome.trim().length) {
+        description = raw.outcome.trim();
+      } else if (typeof raw.description === 'string' && raw.description.trim().length) {
+        description = raw.description.trim();
+      } else {
+        description = 'Scenario utan detaljerad beskrivning.';
+      }
+    }
+
+    const type = typeof raw.type === 'string' ? raw.type : '';
+    let category: 'happy-path' | 'edge-case' | 'error-case' = 'happy-path';
+    if (type.toLowerCase() === 'edge') category = 'edge-case';
+    else if (type.toLowerCase() === 'error') category = 'error-case';
+
+    scenarios.push({
+      id,
+      name,
+      description,
+      status: 'pending',
+      category,
+    });
+  }
+
+  return scenarios;
+}
+
 async function renderDocWithLlmFallback(
   docType: DocumentationDocType,
   context: NodeDocumentationContext,
@@ -919,7 +987,7 @@ async function renderDocWithLlmFallback(
   llmAllowed: boolean,
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
-  onLlmResult?: (provider: LlmProvider, fallbackUsed: boolean) => void,
+  onLlmResult?: (provider: LlmProvider, fallbackUsed: boolean, docJson?: unknown) => void,
 ): Promise<string> {
   const llmActive = llmAllowed && isLlmEnabled();
   const basePayload = {
@@ -943,7 +1011,7 @@ async function renderDocWithLlmFallback(
       localAvailable
     );
     if (llmResult && llmResult.text && llmResult.text.trim()) {
-      onLlmResult?.(llmResult.provider, llmResult.fallbackUsed);
+      onLlmResult?.(llmResult.provider, llmResult.fallbackUsed, llmResult.docJson);
       // Hämta provider-info för metadata från faktisk provider
       const llmClient = getLlmClient(llmResult.provider);
       
@@ -1342,6 +1410,7 @@ export async function generateAllFromBpmnWithGraph(
 
           let nodeDocContent: string;
           if (nodeContext) {
+            let lastDocJson: unknown | undefined;
             if (node.type === 'callActivity') {
               nodeDocContent = await renderDocWithLlmFallback(
                 'feature',
@@ -1351,10 +1420,46 @@ export async function generateAllFromBpmnWithGraph(
                 useLlm,
                 llmProvider,
                 localAvailable,
-                (provider, fallbackUsed) => {
+                async (provider, fallbackUsed, docJson) => {
                   if (fallbackUsed) {
                     llmFallbackUsed = true;
                     llmFinalProvider = provider;
+                  }
+                  lastDocJson = docJson;
+                  const scenarioProvider = mapProviderToScenarioProvider(
+                    provider,
+                    fallbackUsed,
+                  );
+                  if (
+                    useLlm &&
+                    !fallbackUsed &&
+                    scenarioProvider &&
+                    docJson &&
+                    node.bpmnFile &&
+                    node.bpmnElementId
+                  ) {
+                    const scenarios = buildScenariosFromDocJson('feature', docJson);
+                    if (scenarios.length) {
+                      try {
+                        await supabase.from('node_planned_scenarios').upsert(
+                          {
+                            bpmn_file: node.bpmnFile,
+                            bpmn_element_id: node.bpmnElementId,
+                            provider: scenarioProvider,
+                            origin: 'llm-doc',
+                            scenarios,
+                          },
+                          {
+                            onConflict: 'bpmn_file,bpmn_element_id,provider',
+                          },
+                        );
+                      } catch (e) {
+                        console.warn(
+                          '[bpmnGenerators] Failed to upsert node_planned_scenarios for feature',
+                          e,
+                        );
+                      }
+                    }
                   }
                 },
               );
@@ -1389,10 +1494,48 @@ export async function generateAllFromBpmnWithGraph(
                 useLlm,
                 llmProvider,
                 localAvailable,
-                (provider, fallbackUsed) => {
+                async (provider, fallbackUsed, docJson) => {
                   if (fallbackUsed) {
                     llmFallbackUsed = true;
                     llmFinalProvider = provider;
+                  }
+                  const scenarioProvider = mapProviderToScenarioProvider(
+                    provider,
+                    fallbackUsed,
+                  );
+                  if (
+                    useLlm &&
+                    !fallbackUsed &&
+                    scenarioProvider &&
+                    docJson &&
+                    node.bpmnFile &&
+                    node.bpmnElementId
+                  ) {
+                    const scenarios = buildScenariosFromDocJson(
+                      'businessRule',
+                      docJson,
+                    );
+                    if (scenarios.length) {
+                      try {
+                        await supabase.from('node_planned_scenarios').upsert(
+                          {
+                            bpmn_file: node.bpmnFile,
+                            bpmn_element_id: node.bpmnElementId,
+                            provider: scenarioProvider,
+                            origin: 'llm-doc',
+                            scenarios,
+                          },
+                          {
+                            onConflict: 'bpmn_file,bpmn_element_id,provider',
+                          },
+                        );
+                      } catch (e) {
+                        console.warn(
+                          '[bpmnGenerators] Failed to upsert node_planned_scenarios for businessRule',
+                          e,
+                        );
+                      }
+                    }
                   }
                 },
               );
@@ -1409,10 +1552,45 @@ export async function generateAllFromBpmnWithGraph(
                 useLlm,
                 llmProvider,
                 localAvailable,
-                (provider, fallbackUsed) => {
+                async (provider, fallbackUsed, docJson) => {
                   if (fallbackUsed) {
                     llmFallbackUsed = true;
                     llmFinalProvider = provider;
+                  }
+                  const scenarioProvider = mapProviderToScenarioProvider(
+                    provider,
+                    fallbackUsed,
+                  );
+                  if (
+                    useLlm &&
+                    !fallbackUsed &&
+                    scenarioProvider &&
+                    docJson &&
+                    node.bpmnFile &&
+                    node.bpmnElementId
+                  ) {
+                    const scenarios = buildScenariosFromDocJson('epic', docJson);
+                    if (scenarios.length) {
+                      try {
+                        await supabase.from('node_planned_scenarios').upsert(
+                          {
+                            bpmn_file: node.bpmnFile,
+                            bpmn_element_id: node.bpmnElementId,
+                            provider: scenarioProvider,
+                            origin: 'llm-doc',
+                            scenarios,
+                          },
+                          {
+                            onConflict: 'bpmn_file,bpmn_element_id,provider',
+                          },
+                        );
+                      } catch (e) {
+                        console.warn(
+                          '[bpmnGenerators] Failed to upsert node_planned_scenarios for epic',
+                          e,
+                        );
+                      }
+                    }
                   }
                 },
               );

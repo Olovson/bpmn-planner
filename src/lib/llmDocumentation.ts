@@ -33,7 +33,12 @@ export interface DocumentationLlmResult {
   text: string;
   provider: LlmProvider;
   fallbackUsed: boolean;
-   latencyMs?: number;
+  latencyMs?: number;
+  /**
+   * Validerad JSON-modell (Feature/Epic/BusinessRule) om valideringen lyckades.
+   * Används för t.ex. scenariomapping/testdesign, inte för HTML-renderingen.
+   */
+  docJson?: unknown;
 }
 
 export async function generateDocumentationWithLlm(
@@ -81,6 +86,9 @@ export async function generateDocumentationWithLlm(
   };
 
   const userPrompt = JSON.stringify(llmInput, null, 2);
+
+  // Håller senaste validerade JSON-modellen (om vi lyckas parsa + validera)
+  let lastValidDoc: unknown | null = null;
 
   // Valideringsfunktion för response
   const validateResponse = (response: string): { valid: boolean; errors: string[] } => {
@@ -130,6 +138,10 @@ export async function generateDocumentationWithLlm(
         docType,
         context.node.bpmnElementId
       );
+
+      if (validationResult.valid) {
+        lastValidDoc = parsed;
+      }
 
       return {
         valid: validationResult.valid,
@@ -188,6 +200,7 @@ export async function generateDocumentationWithLlm(
       fallbackUsed: result.fallbackUsed,
       // Exponera LLM-latens för t.ex. smoke-tester (inte del av JSON-kontraktet mot LLM)
       ...(typeof result.latencyMs === 'number' ? { latencyMs: result.latencyMs } : {}),
+      ...(lastValidDoc ? { docJson: lastValidDoc } : {}),
     };
   } catch (error) {
     // Logga fel-event

@@ -1,64 +1,63 @@
 {
-  "summary": "Regeln bedömer kundens kreditvärdighet och lämplighet för bolån. Den riktar sig mot privatpersoner som ansöker om bolån och används i förhandsbedömningen av kreditansökningar. Regeln säkerställer att endast kunder som uppfyller grundläggande kreditkrav går vidare till huvudbeslutet. Den omfattar inte företagskunder eller andra låneprodukter.",
+  "summary": "Regeln bedömer kundens berättigande till bolån baserat på kreditvärdighet och ekonomisk profil. Den riktar sig främst till privatpersoner som ansöker om bolån och används i förhandsbedömningen av låneansökningar. Regeln inkluderar kreditvärdighet och skuldsättning men exkluderar specifika produktvillkor och kundpreferenser.",
   "inputs": [
-    "Fält: Kreditvärdighet; Datakälla: Kreditregister; Typ: Numerisk; Obligatoriskt: Ja; Validering: Minst 600 (exempelvärde); Felhantering: Avvisa ansökan.",
-    "Fält: Skuldkvot; Datakälla: Interna beräkningar; Typ: Numerisk; Obligatoriskt: Ja; Validering: Max 6.0 (exempelvärde); Felhantering: Manuell granskning.",
-    "Fält: Ålder; Datakälla: Kundregister; Typ: Numerisk; Obligatoriskt: Ja; Validering: Minst 18 år (exempelvärde); Felhantering: Avvisa ansökan."
+    "Fält: Kreditvärdighet; Datakälla: Kreditregister; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Kreditvärdighet över 600 (exempelvärde); Felhantering: Avslag vid ogiltigt värde.",
+    "Fält: Skuldkvot; Datakälla: Interna beräkningar; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Skuldkvot under 6.0 (exempelvärde); Felhantering: Manuell granskning vid ogiltigt värde.",
+    "Fält: Ålder; Datakälla: Befolkningsregister; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Ålder över 18 år; Felhantering: Avslag vid ogiltigt värde."
   ],
   "decisionLogic": [
-    "Regeln använder kundens kreditvärdighet och skuldkvot för att bedöma kreditansökan.",
-    "Kreditvärdighet under 620 (exempelvärde) leder till avslag.",
-    "Skuldkvot över 6.0 (exempelvärde) leder till manuell granskning.",
-    "Ålder under 18 år (exempelvärde) leder till avslag.",
-    "Låg kreditvärdighet + hög skuldsättning → manuell granskning."
+    "Regeln utvärderar kundens kreditvärdighet och skuldsättning för att avgöra berättigande.",
+    "Kreditvärdighet över 700 (exempelvärde) leder till automatisk godkännande.",
+    "Skuldkvot över 5.0 (exempelvärde) leder till manuell granskning.",
+    "Låg kreditvärdighet + hög skuldsättning → manuell granskning.",
+    "Ålder under 18 år leder till automatiskt avslag."
   ],
   "outputs": [
-    "Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Beslut om kreditansökan; Loggning: Beslut och underlag loggas.",
-    "Outputtyp: Flaggor; Typ: Riskindikatorer; Effekt: Identifierar hög risk; Loggning: Riskindikatorer loggas.",
-    "Outputtyp: Flaggor; Typ: Bristfällig data; Effekt: Kräver komplettering; Loggning: Bristfällig data loggas."
+    "Outputtyp: Beslut; Typ: APPROVE; Effekt: Låneansökan godkänd; Loggning: Beslut loggas med tidsstämpel.",
+    "Outputtyp: Beslut; Typ: REFER; Effekt: Manuell granskning krävs; Loggning: Flagga för manuell granskning loggas.",
+    "Outputtyp: Beslut; Typ: DECLINE; Effekt: Låneansökan avslagen; Loggning: Avslagsorsak loggas."
   ],
   "businessRulesPolicy": [
-    "Regeln stödjer bankens policy för kreditvärdighetsbedömning.",
-    "Säkerställer efterlevnad av skuldkvotstak enligt interna riktlinjer.",
-    "Stödjer regler för ålderskrav vid kreditgivning.",
-    "Efterlever konsumentkreditlagen genom att säkerställa ansvarsfull kreditgivning.",
-    "Bidrar till AML/KYC genom att verifiera kundens identitet och ålder."
+    "Regeln stödjer interna kreditpolicys genom att säkerställa att endast kreditvärdiga kunder beviljas lån.",
+    "Följer principen om att hålla skuldkvoten under ett visst tak för att minska kreditrisk.",
+    "Säkerställer att kunder under 18 år inte kan få lån, i enlighet med konsumentkreditlagstiftningen.",
+    "Regeln bidrar till att uppfylla AML/KYC-krav genom att verifiera kundens identitet och ekonomiska profil."
   ],
   "scenarios": [
     {
       "id": "BR1",
-      "name": "Godkänd kreditansökan",
+      "name": "Automatiskt godkännande",
       "type": "Happy",
-      "input": "Kund med kreditvärdighet 700 (exempelvärde) och skuldkvot 4.0 (exempelvärde).",
-      "outcome": "Automatisk godkännande."
+      "input": "Kund med kreditvärdighet 750 och skuldkvot 3.0",
+      "outcome": "Automatiskt godkännande"
     },
     {
       "id": "BR2",
-      "name": "Manuell granskning krävs",
+      "name": "Manuell granskning",
       "type": "Edge",
-      "input": "Kund med kreditvärdighet 610 (exempelvärde) och skuldkvot 6.5 (exempelvärde).",
-      "outcome": "Manuell granskning."
+      "input": "Kund med kreditvärdighet 650 och skuldkvot 5.5",
+      "outcome": "Manuell granskning"
     },
     {
       "id": "BR3",
-      "name": "Avslag på grund av låg kreditvärdighet",
+      "name": "Automatiskt avslag",
       "type": "Error",
-      "input": "Kund med kreditvärdighet 580 (exempelvärde).",
-      "outcome": "Automatiskt avslag."
+      "input": "Kund under 18 år",
+      "outcome": "Automatiskt avslag"
     }
   ],
-  "testDescription": "Scenarierna mappas mot automatiska tester som använder verktyg som Playwright för att säkerställa korrekt beslutsfattande. Scenario-ID och namn bör återfinnas i testfiler och testnamn.",
+  "testDescription": "Scenarierna mappas mot automatiska tester som utförs med hjälp av verktyg som Playwright. Scenario-ID och namn bör återfinnas i testfil och testnamn för spårbarhet.",
   "implementationNotes": [
-    "Regeln implementeras i en DMN-tabell för beslutsfattande.",
-    "Den exponeras via en intern beslutstjänst/API för integration.",
-    "Kräver tillgång till kreditregister och kunddataregister för att fungera korrekt.",
-    "Loggning av beslut och riskindikatorer är kritisk för audit-spårbarhet.",
-    "Prestandaoptimering kan behövas vid hög ansökningsvolym."
+    "Regeln implementeras i en DMN-tabell för att möjliggöra flexibel beslutslogik.",
+    "Exponeras via intern beslutstjänst/API för integration med andra system.",
+    "Viktigt att säkerställa att kreditvärdighetsdata är uppdaterad och korrekt.",
+    "Loggning av beslut och flaggor är kritiskt för audit-spårbarhet.",
+    "Beroende av externa kreditregister för att hämta kreditvärdighetsinformation."
   ],
   "relatedItems": [
-    "Relaterade regler inkluderar huvudbeslutsregeln för bolån.",
-    "Förhandsbedömningsprocessen i kreditresan är relevant.",
-    "Övergripande kreditpolicy-dokumentation ger kontext för regeln.",
-    "Utbetalningsprocessen kan påverkas av beslutet i denna regel."
+    "Relaterad regel: Inkomstverifiering",
+    "Subprocess: Huvudbeslut i kreditprocessen",
+    "Dokumentation: Övergripande kreditpolicy",
+    "Subprocess: Utbetalning och avtalshantering"
   ]
 }
