@@ -16,6 +16,7 @@ import { SUBPROCESS_REGISTRY, type NodeType } from '@/data/subprocessRegistry';
 import { useFilePlannedScenarios } from '@/hooks/useFilePlannedScenarios';
 import { useBpmnFileTestableNodes } from '@/hooks/useBpmnFileTestableNodes';
 import { useGlobalPlannedScenarios } from '@/hooks/useGlobalPlannedScenarios';
+import { useAllBpmnNodes } from '@/hooks/useAllBpmnNodes';
 
 type UiScenario = TestScenario & { _source?: string };
 type ProviderScope = 'all' | 'local-fallback' | 'chatgpt' | 'ollama';
@@ -50,10 +51,6 @@ const TestReport = () => {
   const [processFilter, setProcessFilter] = useState<string>('all');
   const [executedTypeFilter, setExecutedTypeFilter] =
     useState<TestDocTypeFilter>('all');
-  const [providerFilter, setProviderFilter] = useState<
-    'all' | 'local-fallback' | 'chatgpt' | 'ollama'
-  >('all');
-
   const [plannedStatusFilter, setPlannedStatusFilter] =
     useState<TestStatusFilter>('all');
   const [plannedTypeFilter, setPlannedTypeFilter] =
@@ -67,6 +64,7 @@ const TestReport = () => {
   const { summary: plannedSummary } = useFilePlannedScenarios(activeBpmnFile);
   const { nodes: testableNodes } = useBpmnFileTestableNodes(activeBpmnFile || undefined);
   const { summary: globalPlannedSummary } = useGlobalPlannedScenarios();
+  const { nodes: allBpmnNodes } = useAllBpmnNodes();
 
   const setProviderScope = (provider: ProviderScope) => {
     const next = new URLSearchParams(searchParams);
@@ -411,7 +409,135 @@ const TestReport = () => {
         });
     }
 
-    // Fallback: använd legacy elementResourceMapping/testMapping när ingen aktiv fil eller ingen DB-data finns.
+    // Global vy: använd globalPlannedSummary + alla BPMN-noder när ingen aktiv fil är vald.
+    if (globalPlannedSummary && allBpmnNodes.length > 0) {
+      const nodesByKey = new Map(
+        allBpmnNodes.map((n) => [
+          `${n.bpmnFile}::${n.elementId}`,
+          n,
+        ]),
+      );
+
+      return globalPlannedSummary.nodes
+        .filter((node) => {
+          // Filfilter
+          if (
+            plannedProcessFilter !== 'all' &&
+            node.bpmnFile !== plannedProcessFilter
+          ) {
+            return false;
+          }
+
+          const bpmnNode = nodesByKey.get(
+            `${node.bpmnFile}::${node.elementId}`,
+          );
+          const nodeType = bpmnNode?.nodeType;
+
+          if (
+            plannedTypeFilter === 'feature-goal' &&
+            nodeType !== 'CallActivity'
+          ) {
+            return false;
+          }
+          if (
+            plannedTypeFilter === 'epic' &&
+            nodeType !== 'UserTask' &&
+            nodeType !== 'ServiceTask'
+          ) {
+            return false;
+          }
+          if (
+            plannedTypeFilter === 'business-rule' &&
+            nodeType !== 'BusinessRuleTask'
+          ) {
+            return false;
+          }
+
+          const providerScopedCount =
+            node.byProvider
+              .filter((p) =>
+                providerScope === 'all'
+                  ? true
+                  : p.provider === providerScope,
+              )
+              .reduce(
+                (sum, p) => sum + (p.scenarios?.length ?? 0),
+                0,
+              ) ?? 0;
+          const hasPlanned = providerScopedCount > 0;
+
+          if (plannedStatusFilter === 'all') {
+            return true;
+          }
+          if (plannedStatusFilter === 'pending') {
+            return hasPlanned;
+          }
+          if (plannedStatusFilter === 'passing') {
+            return hasPlanned;
+          }
+          if (plannedStatusFilter === 'failing') {
+            return hasPlanned;
+          }
+          if (plannedStatusFilter === 'skipped') {
+            return hasPlanned;
+          }
+
+          return true;
+        })
+        .map((node) => {
+          const bpmnNode = nodesByKey.get(
+            `${node.bpmnFile}::${node.elementId}`,
+          );
+
+          const plannedScenarios: UiScenario[] = [];
+          for (const providerSet of node.byProvider) {
+            if (
+              providerScope !== 'all' &&
+              providerSet.provider !== providerScope
+            ) {
+              continue;
+            }
+            const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
+            for (const scenario of providerSet.scenarios) {
+              plannedScenarios.push({
+                ...scenario,
+                _source: sourceLabel,
+              });
+            }
+          }
+
+          const hasExecuted = testResults.some((r) => {
+            const matchesFile =
+              (r as any).bpmn_file === node.bpmnFile;
+            const matchesNode = r.node_id === node.elementId;
+            const provider = (r.script_provider ??
+              null) as ProviderScope | null;
+            const matchesProvider =
+              providerScope === 'all'
+                ? true
+                : provider === providerScope;
+            return matchesFile && matchesNode && matchesProvider;
+          });
+
+          const docId =
+            bpmnNode &&
+            getNodeDocViewerPath(
+              bpmnNode.bpmnFile,
+              bpmnNode.elementId,
+            );
+
+          return {
+            id: node.elementId,
+            displayName:
+              bpmnNode?.elementName || node.elementId,
+            plannedScenarios,
+            hasExecuted,
+            docId,
+          };
+        });
+    }
+
+    // Fallback: använd legacy elementResourceMapping/testMapping om inget annat finns.
     const filteredNodeIds = applyPlannedNodesFilter(
       elementResourceMapping,
       nodeTypeById,
@@ -445,6 +571,8 @@ const TestReport = () => {
     activeBpmnFile,
     plannedSummary,
     testableNodes,
+    globalPlannedSummary,
+    allBpmnNodes,
     plannedTypeFilter,
     plannedStatusFilter,
     nodeTypeById,
@@ -846,54 +974,6 @@ const TestReport = () => {
                 onTypeChange={setExecutedTypeFilter}
                 onBpmnChange={setProcessFilter}
               />
-
-              <div className="flex flex-wrap items-center gap-2 text-xs mb-4">
-                <span className="text-muted-foreground">Provider:</span>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded border ${
-                    providerScope === 'all'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border'
-                  }`}
-                  onClick={() => setProviderScope('all')}
-                >
-                  Alla
-                </button>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded border ${
-                    providerScope === 'local-fallback'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border'
-                  }`}
-                  onClick={() => setProviderScope('local-fallback')}
-                >
-                  Lokal fallback
-                </button>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded border ${
-                    providerScope === 'chatgpt'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border'
-                  }`}
-                  onClick={() => setProviderScope('chatgpt')}
-                >
-                  ChatGPT
-                </button>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded border ${
-                    providerScope === 'ollama'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border'
-                  }`}
-                  onClick={() => setProviderScope('ollama')}
-                >
-                  Ollama
-                </button>
-              </div>
 
               {isLoading && (
                 <div className="text-center py-8 text-muted-foreground">
