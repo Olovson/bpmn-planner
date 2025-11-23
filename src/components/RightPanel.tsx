@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { checkDocsAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
 import { useNodeTests } from '@/hooks/useNodeTests';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NodeSummaryCard } from '@/components/NodeSummaryCard';
 
 interface RightPanelProps {
   selectedElement?: string | null;
@@ -483,101 +484,47 @@ export const RightPanel = ({
       {!isCollapsed && (
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-4 pb-20">
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base">
-                      {currentMapping?.jira_name || selectedElement}
-                    </CardTitle>
-                    <CardDescription className="font-mono text-xs mt-1">
-                      {selectedElement}
-                    </CardDescription>
-                  </div>
-                  {selectedElementType && (
-                    <Badge variant="secondary" className="text-xs">
-                      {selectedElementType.replace('bpmn:', '')}
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-2 text-xs">
-                  {testResult && (
-                    <Badge variant={testResult.status === 'passing' ? 'default' : 'destructive'}>
-                      Test: {testResult.status}
-                    </Badge>
-                  )}
-                  {jiraType && (
-                    <Badge variant="outline">Jira: {jiraType}</Badge>
-                  )}
-                  {displaySubprocessFile && selectedElementType === 'bpmn:CallActivity' && (
-                    <Badge variant="outline">Har subprocess</Badge>
-                  )}
-                </div>
-                <div className="grid gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!hasDocs || loadingArtifacts}
-                    onClick={() => {
-                      if (!hasDocs || loadingArtifacts) return;
+            <NodeSummaryCard
+              title={currentMapping?.jira_name || selectedElementName || selectedElement}
+              elementId={selectedElement || undefined}
+              elementTypeLabel={selectedElementType?.replace('bpmn:', '') || undefined}
+              testStatus={testResult?.status ?? null}
+              jiraType={jiraType || null}
+              hasSubprocess={Boolean(displaySubprocessFile && selectedElementType === 'bpmn:CallActivity')}
+              onOpenDocs={
+                hasDocs && !loadingArtifacts
+                  ? () => {
                       if (displayConfluenceUrl.startsWith('#/')) {
                         navigate(displayConfluenceUrl.replace(/^#/, ''));
                       } else {
                         openExternal(displayConfluenceUrl);
                       }
-                    }}
-                    className="justify-start gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Dokumentation
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!testFilePath}
-                    onClick={() => {
-                      if (bpmnFile && selectedElement && testFilePath) {
-                        navigate(
-                          `/node-test-script?bpmnFile=${encodeURIComponent(
-                            bpmnFile,
-                          )}&elementId=${encodeURIComponent(selectedElement)}`,
-                        );
-                      }
-                    }}
-                    className="justify-start gap-2"
-                  >
-                    <FileCode className="h-4 w-4" />
-                    Testscript (Local/Full)
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!selectedElement || loadingArtifacts}
-                    onClick={() => {
-                      if (selectedElement && bpmnFile) {
-                        navigate(getNodeTestReportUrl(bpmnFile, selectedElement).replace('#', ''));
-                      }
-                    }}
-                    className="justify-start gap-2"
-                    title={selectedElement ? `Visa testrapport för ${selectedElementName || selectedElement}` : 'Välj en nod för att visa testrapport'}
-                  >
-                    <Clock className="h-4 w-4" />
-                    Testrapport
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/node-matrix')}
-                    className="justify-start gap-2"
-                  >
-                    <FileCode className="h-4 w-4" />
-                    Öppna node-matrix
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                    }
+                  : undefined
+              }
+              canOpenDocs={hasDocs && !loadingArtifacts}
+              onOpenTestScript={
+                bpmnFile && selectedElement && testFilePath
+                  ? () =>
+                      navigate(
+                        `/node-test-script?bpmnFile=${encodeURIComponent(
+                          bpmnFile,
+                        )}&elementId=${encodeURIComponent(selectedElement)}`,
+                      )
+                  : undefined
+              }
+              canOpenTestScript={Boolean(testFilePath)}
+              onOpenTestReport={
+                selectedElement && bpmnFile
+                  ? () =>
+                      navigate(
+                        getNodeTestReportUrl(bpmnFile, selectedElement).replace('#', ''),
+                      )
+                  : undefined
+              }
+              canOpenTestReport={Boolean(selectedElement && !loadingArtifacts)}
+              onOpenNodeMatrix={() => navigate('/node-matrix')}
+            />
 
             {selectedElementType === 'bpmn:CallActivity' && (
               <Card>

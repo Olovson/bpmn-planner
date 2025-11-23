@@ -9,6 +9,13 @@ interface ProcessTreeD3Props {
   selectedNodeId?: string;
   onSelectNode?: (node: ProcessTreeNode) => void;
   onArtifactClick?: (artifact: NodeArtifact, node: ProcessTreeNode) => void;
+  /** Visa legend-kortet ovanför trädet (default: true) */
+  showLegend?: boolean;
+  /** Visa själva D3-trädet (default: true) */
+  showTree?: boolean;
+  /** Externt kollaps-state (delas mellan instanser) */
+  collapsedIds?: Set<string>;
+  onCollapsedIdsChange?: (ids: Set<string>) => void;
 }
 
 const getColorForNodeType = (type: ProcessNodeType): string => {
@@ -52,9 +59,20 @@ const summarizeDiagnostics = (node: ProcessTreeNode): string | null => {
   return parts.length ? parts.join(' • ') : null;
 };
 
-export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactClick }: ProcessTreeD3Props) {
+export function ProcessTreeD3({
+  root,
+  selectedNodeId,
+  onSelectNode,
+  onArtifactClick,
+  showLegend = true,
+  showTree = true,
+  collapsedIds: externalCollapsedIds,
+  onCollapsedIdsChange,
+}: ProcessTreeD3Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [internalCollapsedIds, setInternalCollapsedIds] = useState<Set<string>>(new Set());
+  const collapsedIds = externalCollapsedIds ?? internalCollapsedIds;
+  const setCollapsedIds = onCollapsedIdsChange ?? setInternalCollapsedIds;
 
   const handleExportPdf = () => {
     const svgElement = svgRef.current;
@@ -145,9 +163,13 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
   useEffect(() => {
     if (!root || !svgRef.current) return;
 
-    const svg = d3.select(svgRef.current);
-    const width = svgRef.current.clientWidth;
-    const height = svgRef.current.clientHeight;
+    const svgElement = svgRef.current;
+    const svg = d3.select(svgElement);
+    const width = svgElement.clientWidth;
+    const height = svgElement.clientHeight;
+
+    // Spara ev. tidigare zoom/pan så att vi kan behålla den över interaktioner
+    const previousTransform = (svg as any).property('__zoom') as d3.ZoomTransform | undefined;
 
     svg.selectAll('*').remove();
 
@@ -199,13 +221,11 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
     const scaleY = (height - 100) / treeHeight;
     const scale = Math.min(scaleX, scaleY, 1); // Don't zoom in more than 1x
 
-    // Center the tree initially
+    // Center the tree (första gången) baserat på bounds
     const initialTransform = d3.zoomIdentity
       .translate(width / 2, height / 2)
       .scale(scale)
       .translate(-minY - treeWidth / 2, -minX - treeHeight / 2);
-
-    g.attr('transform', initialTransform.toString());
 
     // Zoom behavior
     const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
@@ -215,7 +235,11 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
       });
 
     svg.call(zoomBehavior as any);
-    svg.call(zoomBehavior.transform as any, initialTransform);
+
+    // Återställ tidigare zoom/pan om den finns, annars använd initial centering
+    const transformToApply = previousTransform ?? initialTransform;
+    svg.call(zoomBehavior.transform as any, transformToApply);
+    g.attr('transform', transformToApply.toString());
     // Inaktivera dubbelklick-zoom så att vi kan använda dubbelklick på noder
     svg.on('dblclick.zoom', null);
 
@@ -243,12 +267,12 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
       .attr('transform', (d: any) => `translate(${d.y},${d.x})`)
       .on('click', (event, d: any) => {
         event.stopPropagation();
-        
+
         const originalNode = d.data as ProcessTreeNode;
         const hasChildren = (d.data as any)._hasChildren;
 
-        // Shift + klick togglar kollaps
-        if (hasChildren && event.shiftKey) {
+        // Shift + klick eller dubbelklick togglar kollaps
+        if (hasChildren && (event.shiftKey || event.detail >= 2)) {
           setCollapsedIds(prev => {
             const newSet = new Set(prev);
             if (newSet.has(originalNode.id)) {
@@ -261,26 +285,8 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
           return;
         }
 
-        // Vanligt klick väljer nod
+        // Vanligt enkelklick väljer nod
         onSelectNode?.(originalNode);
-      })
-      .on('dblclick', (event, d: any) => {
-        event.stopPropagation();
-
-        const originalNode = d.data as ProcessTreeNode;
-        const hasChildren = (d.data as any)._hasChildren;
-        if (!hasChildren) return;
-
-        // Dubbelklick expanderar/kollapsar noden
-        setCollapsedIds(prev => {
-          const newSet = new Set(prev);
-          if (newSet.has(originalNode.id)) {
-            newSet.delete(originalNode.id);
-          } else {
-            newSet.add(originalNode.id);
-          }
-          return newSet;
-        });
       });
 
     // Node circle
@@ -332,48 +338,50 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
 
   return (
     <div className="flex flex-col h-full gap-4">
-      {/* Legend */}
-      <Card className="flex-shrink-0">
-        <CardHeader className="pb-3 flex items-center justify-between">
-          <div />
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleCollapseAll}>
-              Kollapsa allt
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExpandAll}>
-              Expandera allt
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportPdf}>
-              Exportera till PDF
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3 text-xs">
-            {getLegendItems().map(item => (
-              <div key={item.type} className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
-                <span className="text-muted-foreground">{item.label}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            Klicka för att välja nod • Dubbelklick eller Shift+klick för att expandera/kollapsa • Scrolla för zoom • Dra för att panorera
-          </p>
-        </CardContent>
-      </Card>
+      {showLegend && (
+        <Card className="flex-shrink-0">
+          <CardHeader className="pb-3 flex items-center justify-between">
+            <div />
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleCollapseAll}>
+                Kollapsa allt
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExpandAll}>
+                Expandera allt
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPdf}>
+                Exportera till PDF
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3 text-xs">
+              {getLegendItems().map(item => (
+                <div key={item.type} className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="text-muted-foreground">{item.label}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Klicka för att välja nod • Dubbelklick eller Shift+klick för att expandera/kollapsa • Scrolla för zoom • Dra för att panorera
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Tree visualization */}
-      <div className="flex-1 relative">
-        <svg
-          ref={svgRef}
-          className="w-full h-full border rounded bg-background"
-          style={{ minHeight: '500px' }}
-        />
-      </div>
+      {showTree && (
+        <div className="flex-1 relative">
+          <svg
+            ref={svgRef}
+            className="w-full h-full border rounded bg-background"
+            style={{ minHeight: '500px' }}
+          />
+        </div>
+      )}
     </div>
   );
 }

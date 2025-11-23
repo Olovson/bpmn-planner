@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { useProcessTree } from '@/hooks/useProcessTree';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { ProcessTreeD3 } from '@/components/ProcessTreeD3';
-import { ProcessTreeNode, NodeArtifact } from '@/lib/processTree';
+import { ProcessTreeNode, NodeArtifact, getProcessNodeStyle } from '@/lib/processTree';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
+import { NodeSummaryCard } from '@/components/NodeSummaryCard';
+import { useAllBpmnNodes } from '@/hooks/useAllBpmnNodes';
+import { getNodeTestReportUrl } from '@/lib/artifactUrls';
 
 interface ProcessExplorerProps {
   onNodeSelect: (bpmnFile: string, elementId?: string) => void;
@@ -22,10 +26,14 @@ export function ProcessExplorerView({
   const { data: rootFile, isLoading: isLoadingRoot } = useRootBpmnFile();
   const { data: tree, isLoading: isLoadingTree, error } = useProcessTree(rootFile || 'mortgage.bpmn');
   const navigate = useNavigate();
+  const [selectedNode, setSelectedNode] = useState<ProcessTreeNode | null>(null);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const { nodes: allNodes } = useAllBpmnNodes();
 
   const isLoading = isLoadingRoot || isLoadingTree;
 
   const handleNodeSelect = (node: ProcessTreeNode) => {
+    setSelectedNode(node);
     onNodeSelect(node.bpmnFile, node.bpmnElementId);
   };
 
@@ -97,13 +105,125 @@ export function ProcessExplorerView({
   }
 
   return (
-    <div className="h-full p-4">
-      <ProcessTreeD3
-        root={tree}
-        selectedNodeId={selectedNodeId}
-        onSelectNode={handleNodeSelect}
-        onArtifactClick={handleArtifactClick}
-      />
+    <div className="h-full p-4 flex flex-col gap-4">
+      {/* Rad 1: legend som spänner över hela bredden */}
+      <div>
+        <ProcessTreeD3
+          root={tree}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={handleNodeSelect}
+          onArtifactClick={handleArtifactClick}
+          showTree={false}
+          collapsedIds={collapsedIds}
+          onCollapsedIdsChange={setCollapsedIds}
+        />
+      </div>
+
+      {/* Rad 2: trädvyn till vänster, infokort till höger */}
+      <div className="flex gap-4 flex-1 min-h-0">
+        <div className="flex-[0.8] min-w-0">
+          <ProcessTreeD3
+            root={tree}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={handleNodeSelect}
+            onArtifactClick={handleArtifactClick}
+            showLegend={false}
+            collapsedIds={collapsedIds}
+            onCollapsedIdsChange={setCollapsedIds}
+          />
+        </div>
+        <aside className="flex-[0.2] min-w-[16rem] max-w-xs">
+          {(() => {
+            if (!selectedNode) {
+              return (
+                <NodeSummaryCard
+                  title={null}
+                  elementId={null}
+                  elementTypeLabel={null}
+                  testStatus={null}
+                  jiraType={null}
+                  hasSubprocess={false}
+                />
+              );
+            }
+
+            const elementId =
+              selectedNode.bpmnElementId && selectedNode.bpmnElementId !== ''
+                ? selectedNode.bpmnElementId
+                : selectedNode.id;
+
+            const selectedBpmnNode =
+              allNodes?.find(
+                (n) =>
+                  n.bpmnFile === selectedNode.bpmnFile &&
+                  n.elementId === elementId,
+              ) ?? null;
+
+            const elementTypeLabel = getProcessNodeStyle(
+              selectedNode.type,
+            ).label;
+
+            const jiraType = selectedBpmnNode?.jiraType ?? null;
+            const hasSubprocess =
+              Boolean(selectedNode.subprocessFile) ||
+              Boolean(selectedBpmnNode?.subprocessMatchStatus === 'matched');
+
+            const canOpenDocs = Boolean(selectedBpmnNode?.hasDocs);
+            const canOpenTestScript = Boolean(selectedBpmnNode?.testFilePath);
+            const canOpenTestReport = Boolean(selectedBpmnNode?.hasTestReport);
+
+            return (
+              <NodeSummaryCard
+                title={
+                  selectedBpmnNode?.jiraName ||
+                  selectedBpmnNode?.elementName ||
+                  selectedNode.label
+                }
+                elementId={elementId}
+                elementTypeLabel={elementTypeLabel}
+                testStatus={null}
+                jiraType={jiraType}
+                hasSubprocess={hasSubprocess}
+                onOpenDocs={
+                  canOpenDocs && selectedBpmnNode?.documentationUrl
+                    ? () =>
+                        navigate(
+                          selectedBpmnNode.documentationUrl!.replace(/^#/, ''),
+                        )
+                    : undefined
+                }
+                canOpenDocs={canOpenDocs}
+                onOpenTestScript={
+                  canOpenTestScript && selectedBpmnNode?.testFilePath
+                    ? () =>
+                        navigate(
+                          `/node-test-script?bpmnFile=${encodeURIComponent(
+                            selectedBpmnNode.bpmnFile,
+                          )}&elementId=${encodeURIComponent(
+                            selectedBpmnNode.elementId,
+                          )}`,
+                        )
+                    : undefined
+                }
+                canOpenTestScript={canOpenTestScript}
+                onOpenTestReport={
+                  canOpenTestReport
+                    ? () =>
+                        navigate(
+                          getNodeTestReportUrl(
+                            selectedBpmnNode!.bpmnFile,
+                            selectedBpmnNode!.elementId,
+                          ).replace('#', ''),
+                        )
+                    : undefined
+                }
+                canOpenTestReport={canOpenTestReport}
+                onOpenNodeMatrix={() => navigate('/node-matrix')}
+              />
+            );
+          })()}
+        </aside>
+      </div>
     </div>
   );
 }
