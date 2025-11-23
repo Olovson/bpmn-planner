@@ -34,6 +34,9 @@ const TestReport = () => {
   const [processFilter, setProcessFilter] = useState<string>('all');
   const [executedTypeFilter, setExecutedTypeFilter] =
     useState<TestDocTypeFilter>('all');
+  const [providerFilter, setProviderFilter] = useState<
+    'all' | 'local-fallback' | 'chatgpt' | 'ollama'
+  >('all');
 
   const [plannedStatusFilter, setPlannedStatusFilter] =
     useState<TestStatusFilter>('all');
@@ -146,13 +149,26 @@ const TestReport = () => {
   }, [testsWithDerivedProcess]);
 
   const filteredExecutedTests = useMemo(() => {
-    return applyExecutedTestsFilter(
+    const base = applyExecutedTestsFilter(
       testsWithDerivedProcess,
       statusFilter,
       executedTypeFilter,
       processFilter,
     );
-  }, [testsWithDerivedProcess, statusFilter, processFilter, executedTypeFilter]);
+
+    if (providerFilter === 'all') return base;
+
+    return base.filter((t) => {
+      if (!('script_provider' in t)) return false;
+      const provider = (t as any).script_provider as
+        | 'local-fallback'
+        | 'chatgpt'
+        | 'ollama'
+        | null
+        | undefined;
+      return provider === providerFilter;
+    });
+  }, [testsWithDerivedProcess, statusFilter, processFilter, executedTypeFilter, providerFilter]);
 
   const plannedProcessOptions = useMemo(() => {
     const files = new Set<string>();
@@ -508,6 +524,54 @@ const TestReport = () => {
                 onBpmnChange={setProcessFilter}
               />
 
+              <div className="flex flex-wrap items-center gap-2 text-xs mb-4">
+                <span className="text-muted-foreground">Provider:</span>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${
+                    providerFilter === 'all'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border'
+                  }`}
+                  onClick={() => setProviderFilter('all')}
+                >
+                  Alla
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${
+                    providerFilter === 'local-fallback'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border'
+                  }`}
+                  onClick={() => setProviderFilter('local-fallback')}
+                >
+                  Lokal fallback
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${
+                    providerFilter === 'chatgpt'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border'
+                  }`}
+                  onClick={() => setProviderFilter('chatgpt')}
+                >
+                  ChatGPT
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${
+                    providerFilter === 'ollama'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border'
+                  }`}
+                  onClick={() => setProviderFilter('ollama')}
+                >
+                  Ollama
+                </button>
+              </div>
+
               {isLoading && (
                 <div className="text-center py-8 text-muted-foreground">
                   Laddar testresultat...
@@ -528,6 +592,7 @@ const TestReport = () => {
                       <TableHead>Process/BPMN‑fil</TableHead>
                       <TableHead>Nod</TableHead>
                       <TableHead>Testfil</TableHead>
+                      <TableHead>Provider</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Senast körd</TableHead>
                       <TableHead>Antal testfall</TableHead>
@@ -554,6 +619,20 @@ const TestReport = () => {
                         </TableCell>
                         <TableCell className="text-sm font-mono">
                           {result.test_file?.replace('tests/', '') || '–'}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {(() => {
+                            const provider = (result as any).script_provider as
+                              | 'local-fallback'
+                              | 'chatgpt'
+                              | 'ollama'
+                              | null
+                              | undefined;
+                            if (provider === 'local-fallback') return 'Lokal fallback';
+                            if (provider === 'chatgpt') return 'ChatGPT';
+                            if (provider === 'ollama') return 'Ollama';
+                            return '–';
+                          })()}
                         </TableCell>
                         <TableCell className="text-sm">
                           <Badge

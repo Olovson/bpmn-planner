@@ -19,6 +19,8 @@ export interface TestResult {
   node_name: string | null;
   // Valfritt fält i test_results som pekar ut BPMN-filen direkt om det finns
   bpmn_file?: string | null;
+  script_mode?: 'local' | 'slow' | null;
+  script_provider?: 'local-fallback' | 'chatgpt' | 'ollama' | null;
   status: 'passing' | 'failing' | 'pending' | 'skipped';
   test_count: number;
   duration: number | null;

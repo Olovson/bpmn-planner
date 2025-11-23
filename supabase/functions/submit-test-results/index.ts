@@ -26,6 +26,30 @@ interface TestResult {
   githubRunUrl?: string
 }
 
+type ScriptMode = 'local' | 'slow' | null
+type ScriptProvider = 'local-fallback' | 'chatgpt' | 'ollama' | null
+
+function inferScriptModeFromPath(testFile: string): ScriptMode {
+  if (testFile.startsWith('tests/local/')) return 'local'
+  if (testFile.startsWith('tests/slow/')) return 'slow'
+  return null
+}
+
+function normalizeProvider(raw: string | null): ScriptProvider {
+  if (!raw) return null
+  const value = raw.toLowerCase()
+  if (value === 'local-fallback' || value === 'fallback' || value === 'local_fallback') {
+    return 'local-fallback'
+  }
+  if (value === 'chatgpt' || value === 'cloud') {
+    return 'chatgpt'
+  }
+  if (value === 'ollama' || value === 'local') {
+    return 'ollama'
+  }
+  return null
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -55,6 +79,26 @@ Deno.serve(async (req) => {
 
     // Upsert all test results
     const upsertPromises = results.map(async (result) => {
+      // Försök hitta script_mode och script_provider via node_test_links
+      let scriptMode: ScriptMode = inferScriptModeFromPath(result.testFile)
+      let scriptProvider: ScriptProvider = null
+
+      const { data: linkRow, error: linkError } = await supabase
+        .from('node_test_links')
+        .select('mode, provider')
+        .eq('test_file_path', result.testFile)
+        .maybeSingle()
+
+      if (linkError) {
+        console.warn(
+          `submit-test-results: kunde inte läsa node_test_links för ${result.testFile}:`,
+          linkError,
+        )
+      } else if (linkRow) {
+        scriptMode = (linkRow.mode as ScriptMode) ?? scriptMode
+        scriptProvider = normalizeProvider(linkRow.provider as string | null)
+      }
+
       const { error } = await supabase
         .from('test_results')
         .upsert({
@@ -68,6 +112,8 @@ Deno.serve(async (req) => {
           error_message: result.errorMessage,
           github_run_url: result.githubRunUrl,
           last_run: new Date().toISOString(),
+          script_mode: scriptMode,
+          script_provider: scriptProvider,
         }, {
           onConflict: 'test_file'
         })

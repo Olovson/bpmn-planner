@@ -26,7 +26,7 @@ const NodeTestsPage = () => {
     elementId: elementId || undefined,
   });
   const [implementedTestFile, setImplementedTestFile] = useState<string | null>(null);
-  const [variantFilter, setVariantFilter] = useState<'all' | 'local-fallback' | 'llm'>('all');
+  const [variantFilter, setVariantFilter] = useState<'all' | 'local-fallback' | 'chatgpt' | 'ollama'>('all');
 
   const filteredTests = useMemo(
     () =>
@@ -35,8 +35,11 @@ const NodeTestsPage = () => {
         if (variantFilter === 'local-fallback') {
           return test.variant === 'local-fallback';
         }
-        if (variantFilter === 'llm') {
-          return test.variant === 'llm';
+        if (variantFilter === 'chatgpt') {
+          return test.scriptProvider === 'chatgpt';
+        }
+        if (variantFilter === 'ollama') {
+          return test.scriptProvider === 'ollama';
         }
         return true;
       }),
@@ -277,7 +280,7 @@ const NodeTestsPage = () => {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <FileCode className="h-5 w-5" />
-                    Testfall ({tests.length})
+                    Testfall ({filteredTests.length})
                   </CardTitle>
                   <CardDescription>
                     Detaljerad lista över alla testfall som är kopplade till denna BPMN-nod
@@ -300,10 +303,17 @@ const NodeTestsPage = () => {
                   </Button>
                   <Button
                     size="sm"
-                    variant={variantFilter === 'llm' ? 'default' : 'outline'}
-                    onClick={() => setVariantFilter('llm')}
+                    variant={variantFilter === 'chatgpt' ? 'default' : 'outline'}
+                    onClick={() => setVariantFilter('chatgpt')}
                   >
-                    LLM (ChatGPT/Ollama)
+                    ChatGPT
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={variantFilter === 'ollama' ? 'default' : 'outline'}
+                    onClick={() => setVariantFilter('ollama')}
+                  >
+                    Ollama
                   </Button>
                 </div>
               </div>
@@ -321,18 +331,7 @@ const NodeTestsPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tests
-                    .filter((test) => {
-                      if (variantFilter === 'all') return true;
-                      if (variantFilter === 'local-fallback') {
-                        return test.variant === 'local-fallback';
-                      }
-                      if (variantFilter === 'llm') {
-                        return test.variant === 'llm';
-                      }
-                      return true;
-                    })
-                    .map(test => (
+                  {filteredTests.map(test => (
                     <TableRow 
                       key={test.id} 
                       className="hover:bg-muted/50 cursor-pointer"
@@ -346,10 +345,16 @@ const NodeTestsPage = () => {
                         {test.title}
                         {test.variant && (
                           <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide bg-muted text-muted-foreground">
-                            {test.variant === 'local-fallback'
+                            {test.scriptProvider === 'local-fallback'
+                              ? 'Lokal fallback'
+                              : test.scriptProvider === 'chatgpt'
+                              ? 'ChatGPT'
+                              : test.scriptProvider === 'ollama'
+                              ? 'Ollama'
+                              : test.variant === 'local-fallback'
                               ? 'Lokal fallback'
                               : test.variant === 'llm'
-                              ? 'LLM (ChatGPT/Ollama)'
+                              ? 'LLM'
                               : 'Okänd'}
                           </span>
                         )}

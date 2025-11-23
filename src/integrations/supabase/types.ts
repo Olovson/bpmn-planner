@@ -435,6 +435,8 @@ export type Database = {
           last_run: string
           node_id: string | null
           node_name: string | null
+          script_mode: string | null
+          script_provider: string | null
           scenarios: Json | null
           status: string
           test_count: number
@@ -450,6 +452,8 @@ export type Database = {
           last_run?: string
           node_id?: string | null
           node_name?: string | null
+          script_mode?: string | null
+          script_provider?: string | null
           scenarios?: Json | null
           status: string
           test_count?: number
@@ -465,6 +469,8 @@ export type Database = {
           last_run?: string
           node_id?: string | null
           node_name?: string | null
+          script_mode?: string | null
+          script_provider?: string | null
           scenarios?: Json | null
           status?: string
           test_count?: number

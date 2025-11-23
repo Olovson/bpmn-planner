@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS public.node_test_links (
   bpmn_element_id text NOT NULL,
   test_file_path text NOT NULL,
   test_name text,
+  -- Optional mode (local/fast/slow) and provider (chatgpt/ollama/local-fallback)
+  mode text,
+  provider text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   UNIQUE(bpmn_file, bpmn_element_id, test_file_path)

@@ -14,6 +14,7 @@ export interface NodeTestCase {
   bpmnFile?: string;
   bpmnElementId?: string;
   variant?: NodeTestVariant;
+   scriptProvider?: 'local-fallback' | 'chatgpt' | 'ollama' | null;
 }
 
 export interface NodeInfo {
@@ -75,8 +76,17 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
 
       const testCases: NodeTestCase[] = dbTests.map(test => {
         const fileName = test.test_file.replace('tests/', '');
-        const variant: NodeTestVariant =
-          variantByTestFile[test.test_file] ?? 'unknown';
+        let variant: NodeTestVariant = 'unknown';
+
+        // Försök först använda script_provider/script_mode från test_results
+        if (test.script_provider === 'local-fallback') {
+          variant = 'local-fallback';
+        } else if (test.script_provider === 'chatgpt' || test.script_provider === 'ollama') {
+          variant = 'llm';
+        } else {
+          // Fallback till node_test_links.mode -> variantByTestFile
+          variant = variantByTestFile[test.test_file] ?? 'unknown';
+        }
         return {
           id: test.id,
           title: test.node_name || test.test_file,
@@ -87,6 +97,7 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
           bpmnElementId: effectiveNodeId,
           bpmnFile: bpmnFile,
           variant,
+          scriptProvider: (test.script_provider as 'local-fallback' | 'chatgpt' | 'ollama' | null) ?? null,
         };
       });
 

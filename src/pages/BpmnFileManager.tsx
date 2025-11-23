@@ -1205,11 +1205,20 @@ export default function BpmnFileManager() {
           // För noder med explicita testfiler
           const nodeArtifact = testArtifactMap.get(testFileName);
           if (nodeArtifact) {
+            const providerLabel =
+              isLocalMode
+                ? 'local-fallback'
+                : llmProvider === 'cloud'
+                ? 'chatgpt'
+                : llmProvider === 'local'
+                ? 'ollama'
+                : null;
             testLinksToInsert.push({
               bpmn_file: nodeArtifact.bpmnFile || file.file_name,
               bpmn_element_id: nodeArtifact.elementId,
               test_file_path: testPath,
               test_name: `Test for ${nodeArtifact.elementName || nodeArtifact.elementId}`,
+              provider: providerLabel,
             });
             testFileElements.push({
               id: nodeArtifact.elementId,
