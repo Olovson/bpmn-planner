@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, FileCode, CheckCircle2, XCircle, Clock, AlertCircle, ExternalLink } from 'lucide-react';
+import { FileCode, CheckCircle2, XCircle, Clock, AlertCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,6 +8,9 @@ import { useNodeTests } from '@/hooks/useNodeTests';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { useAuth } from '@/hooks/useAuth';
+import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 
 const NodeTestsPage = () => {
   const navigate = useNavigate();
@@ -23,6 +26,22 @@ const NodeTestsPage = () => {
     elementId: elementId || undefined,
   });
   const [implementedTestFile, setImplementedTestFile] = useState<string | null>(null);
+  const [variantFilter, setVariantFilter] = useState<'all' | 'local-fallback' | 'llm'>('all');
+
+  const filteredTests = useMemo(
+    () =>
+      tests.filter((test) => {
+        if (variantFilter === 'all') return true;
+        if (variantFilter === 'local-fallback') {
+          return test.variant === 'local-fallback';
+        }
+        if (variantFilter === 'llm') {
+          return test.variant === 'llm';
+        }
+        return true;
+      }),
+    [tests, variantFilter],
+  );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -93,67 +112,88 @@ const NodeTestsPage = () => {
     };
   }, [bpmnFile, elementId]);
 
+  const { user, signOut } = useAuth();
+  const { hasTests } = useArtifactAvailability();
+
+  const handleViewChange = (view: string) => {
+    if (view === 'diagram') navigate('/');
+    else if (view === 'tree') navigate('/process-explorer');
+    else if (view === 'listvy') navigate('/node-matrix');
+    else if (view === 'files') navigate('/files');
+    else navigate('/test-report');
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Laddar tester...</div>
+      <div className="flex min-h-screen bg-background overflow-hidden">
+        <AppHeaderWithTabs
+          userEmail={user?.email ?? ''}
+          currentView="tests"
+          onViewChange={handleViewChange}
+          onOpenVersions={() => navigate('/')}
+          onSignOut={async () => {
+            await signOut();
+            navigate('/auth');
+          }}
+          isTestsEnabled={hasTests}
+        />
+        <main className="flex-1 min-w-0 flex items-center justify-center">
+          <div className="text-muted-foreground">Laddar tester...</div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/test-report')}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  Testrapport för {nodeInfo?.name || elementId || nodeId || 'okänd nod'}
-                </h1>
-                <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                  {elementId && (
-                    <span className="font-mono">{elementId}</span>
-                  )}
-                  {bpmnFile && (
-                    <>
-                      {elementId && <span>•</span>}
-                      <span>{bpmnFile}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/test-report')}
-            >
-              Tillbaka till testrapport
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="flex min-h-screen bg-background overflow-hidden">
+      <AppHeaderWithTabs
+        userEmail={user?.email ?? ''}
+        currentView="tests"
+        onViewChange={handleViewChange}
+        onOpenVersions={() => navigate('/')}
+        onSignOut={async () => {
+          await signOut();
+          navigate('/auth');
+        }}
+        isTestsEnabled={hasTests}
+      />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-1 min-w-0 overflow-auto container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              Testrapport för {nodeInfo?.name || elementId || nodeId || 'okänd nod'}
+            </h1>
+            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+              {elementId && <span className="font-mono">{elementId}</span>}
+              {bpmnFile && (
+                <>
+                  {elementId && <span>•</span>}
+                  <span>{bpmnFile}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/test-report')}
+          >
+            Tillbaka till testrapport
+          </Button>
+        </div>
+
         {/* Summary section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold">{tests.length}</div>
+                <div className="text-2xl font-bold">{filteredTests.length}</div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  {tests.length === 1 ? 'Kört test' : 'Körda tester'}
+                  {filteredTests.length === 1 ? 'Kört test' : 'Körda tester'}
                 </div>
                 <div className="text-xs text-muted-foreground mt-2">
-                  {tests.filter(t => t.status === 'passing').length} passerade • {tests.filter(t => t.status === 'failing').length} misslyckade
+                  {filteredTests.filter(t => t.status === 'passing').length} passerade • {filteredTests.filter(t => t.status === 'failing').length} misslyckade
                 </div>
               </div>
             </CardContent>
@@ -207,7 +247,25 @@ const NodeTestsPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="font-mono text-xs">{implementedTestFile}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-mono text-xs truncate">{implementedTestFile}</p>
+                {bpmnFile && elementId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() =>
+                      navigate(
+                        `/node-test-script?bpmnFile=${encodeURIComponent(
+                          bpmnFile,
+                        )}&elementId=${encodeURIComponent(elementId)}`,
+                      )
+                    }
+                  >
+                    Visa testscript
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -215,13 +273,40 @@ const NodeTestsPage = () => {
         {tests.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileCode className="h-5 w-5" />
-                Testfall ({tests.length})
-              </CardTitle>
-              <CardDescription>
-                Detaljerad lista över alla testfall som är kopplade till denna BPMN-nod
-              </CardDescription>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileCode className="h-5 w-5" />
+                    Testfall ({tests.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Detaljerad lista över alla testfall som är kopplade till denna BPMN-nod
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Button
+                    size="sm"
+                    variant={variantFilter === 'all' ? 'default' : 'outline'}
+                    onClick={() => setVariantFilter('all')}
+                  >
+                    Alla
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={variantFilter === 'local-fallback' ? 'default' : 'outline'}
+                    onClick={() => setVariantFilter('local-fallback')}
+                  >
+                    Lokal fallback
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={variantFilter === 'llm' ? 'default' : 'outline'}
+                    onClick={() => setVariantFilter('llm')}
+                  >
+                    LLM (ChatGPT/Ollama)
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -236,7 +321,18 @@ const NodeTestsPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tests.map(test => (
+                  {tests
+                    .filter((test) => {
+                      if (variantFilter === 'all') return true;
+                      if (variantFilter === 'local-fallback') {
+                        return test.variant === 'local-fallback';
+                      }
+                      if (variantFilter === 'llm') {
+                        return test.variant === 'llm';
+                      }
+                      return true;
+                    })
+                    .map(test => (
                     <TableRow 
                       key={test.id} 
                       className="hover:bg-muted/50 cursor-pointer"
@@ -246,9 +342,48 @@ const NodeTestsPage = () => {
                         }
                       }}
                     >
-                      <TableCell className="font-medium">{test.title}</TableCell>
+                      <TableCell className="font-medium">
+                        {test.title}
+                        {test.variant && (
+                          <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide bg-muted text-muted-foreground">
+                            {test.variant === 'local-fallback'
+                              ? 'Lokal fallback'
+                              : test.variant === 'llm'
+                              ? 'LLM (ChatGPT/Ollama)'
+                              : 'Okänd'}
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground font-mono text-xs">
-                        {test.fileName}
+                        <button
+                          type="button"
+                          className="underline hover:text-primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const file = test.bpmnFile || bpmnFile;
+                            const element = test.bpmnElementId || elementId;
+                            if (file && element) {
+                              const variantParam =
+                                test.variant === 'local-fallback'
+                                  ? 'local'
+                                  : test.variant === 'llm'
+                                  ? 'llm'
+                                  : undefined;
+                              const baseUrl = `/node-test-script?bpmnFile=${encodeURIComponent(
+                                file,
+                              )}&elementId=${encodeURIComponent(element)}`;
+                              const url = variantParam
+                                ? `${baseUrl}&variant=${variantParam}`
+                                : baseUrl;
+                              navigate(
+                                url,
+                              );
+                            }
+                          }}
+                          title="Visa testscript för denna nod"
+                        >
+                          {test.fileName}
+                        </button>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className="text-lg">{getStatusIcon(test.status)}</span>
@@ -268,10 +403,20 @@ const NodeTestsPage = () => {
                             const file = test.bpmnFile || bpmnFile;
                             const element = test.bpmnElementId || elementId;
                             if (file && element) {
+                              const variantParam =
+                                test.variant === 'local-fallback'
+                                  ? 'local'
+                                  : test.variant === 'llm'
+                                  ? 'llm'
+                                  : undefined;
+                              const baseUrl = `/node-test-script?bpmnFile=${encodeURIComponent(
+                                file,
+                              )}&elementId=${encodeURIComponent(element)}`;
+                              const url = variantParam
+                                ? `${baseUrl}&variant=${variantParam}`
+                                : baseUrl;
                               navigate(
-                                `/node-test-script?bpmnFile=${encodeURIComponent(
-                                  file,
-                                )}&elementId=${encodeURIComponent(element)}`,
+                                url,
                               );
                             }
                           }}

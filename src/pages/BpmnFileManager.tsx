@@ -83,6 +83,15 @@ const formatFileRootName = (fileName: string) =>
     .replace(/-/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
+const formatDuration = (ms: number): string => {
+  if (!Number.isFinite(ms) || ms < 0) return '';
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+};
+
 const JOB_PHASES = ['graph', 'hierTests', 'dor', 'dependencies', 'mappings'] as const;
 type JobPhaseKey = typeof JOB_PHASES[number];
 const JOB_PHASE_TOTAL = JOB_PHASES.length;
@@ -215,6 +224,7 @@ export default function BpmnFileManager() {
     generatedAt: string | null;
     jobId: string | null;
     outdated: boolean;
+    durationMs?: number;
   }
   interface FileArtifactStatusSummary {
     fileName: string;
@@ -284,6 +294,11 @@ export default function BpmnFileManager() {
         : latestGenJob?.created_at
         ? new Date(latestGenJob.created_at).getTime()
         : 0;
+      const durationMs =
+        latestGenJob?.started_at && latestGenJob.finished_at
+          ? new Date(latestGenJob.finished_at).getTime() -
+            new Date(latestGenJob.started_at).getTime()
+          : undefined;
 
       const baseMode = latestGenJob?.mode ?? null;
       const baseGeneratedAt = latestGenJob?.finished_at ?? latestGenJob?.created_at ?? null;
@@ -314,6 +329,7 @@ export default function BpmnFileManager() {
         generatedAt: baseGeneratedAt,
         jobId: latestGenJob?.id ?? null,
         outdated: outdatedBase,
+        durationMs,
       };
       const test: ArtifactSnapshot = {
         status: testStatus,
@@ -321,6 +337,7 @@ export default function BpmnFileManager() {
         generatedAt: baseGeneratedAt,
         jobId: latestGenJob?.id ?? null,
         outdated: outdatedBase,
+        durationMs,
       };
       const hierarchy: ArtifactSnapshot = {
         status: hierarchyStatus,
@@ -1191,7 +1208,7 @@ export default function BpmnFileManager() {
             testLinksToInsert.push({
               bpmn_file: nodeArtifact.bpmnFile || file.file_name,
               bpmn_element_id: nodeArtifact.elementId,
-              test_file_path: legacyTestPath,
+              test_file_path: testPath,
               test_name: `Test for ${nodeArtifact.elementName || nodeArtifact.elementId}`,
             });
             testFileElements.push({
@@ -2562,24 +2579,30 @@ export default function BpmnFileManager() {
                         filesAnalyzed?: string[];
                         mode?: string;
                         skippedSubprocesses?: string[];
+                        llmProvider?: 'cloud' | 'local' | 'fallback';
                       };
-                        const providerLabel =
-                          jobResult.llmProvider === 'cloud'
-                            ? 'ChatGPT'
-                            : jobResult.llmProvider === 'local'
-                            ? 'Ollama'
-                            : jobResult.llmProvider === 'fallback' || job.mode === 'local'
-                            ? 'Lokal fallback'
-                            : undefined;
-                        const modeLabel =
-                          job.mode === 'slow'
-                            ? providerLabel
-                              ? `LLM (${providerLabel})`
-                              : 'Slow LLM'
-                            : job.mode === 'local'
-                            ? 'Lokal fallback'
-                            : 'Okänt';
+                      const providerLabel =
+                        jobResult.llmProvider === 'cloud'
+                          ? 'ChatGPT'
+                          : jobResult.llmProvider === 'local'
+                          ? 'Ollama'
+                          : jobResult.llmProvider === 'fallback' || job.mode === 'local'
+                          ? 'Lokal fallback'
+                          : undefined;
+                      const modeLabel =
+                        job.mode === 'slow'
+                          ? providerLabel
+                            ? `LLM (${providerLabel})`
+                            : 'Slow LLM'
+                          : job.mode === 'local'
+                          ? 'Lokal fallback'
+                          : 'Okänt';
                       const statusLabel = formatStatusLabel(job.status);
+                      const durationMs =
+                        job.started_at && job.finished_at
+                          ? new Date(job.finished_at).getTime() -
+                            new Date(job.started_at).getTime()
+                          : undefined;
                       return (
                         <>
                           <div className="flex-1">
@@ -2587,15 +2610,23 @@ export default function BpmnFileManager() {
                               {job.file_name} · {modeLabel} · {statusLabel}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {formatOperationLabel(job.operation)} · Start: {job.created_at ? new Date(job.created_at).toLocaleTimeString('sv-SE', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                              }) : 'okänd'}
+                              {formatOperationLabel(job.operation)} · Start:{' '}
+                              {job.created_at
+                                ? new Date(job.created_at).toLocaleTimeString('sv-SE', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                  })
+                                : 'okänd'}
+                              {durationMs !== undefined && (
+                                <> · Körtid: {formatDuration(durationMs)}</>
+                              )}
                             </p>
                             <div className="text-xs text-muted-foreground mt-1 space-y-1">
                               {job.status === 'running' && job.total ? (
-                                <p>Steg {job.progress ?? 0} av {job.total}</p>
+                                <p>
+                                  Steg {job.progress ?? 0} av {job.total}
+                                </p>
                               ) : null}
                               {job.status === 'succeeded' && (
                                 <p>
@@ -2607,11 +2638,12 @@ export default function BpmnFileManager() {
                                   Filer: {jobResult.filesAnalyzed.join(', ')}
                                 </p>
                               )}
-                              {Array.isArray(jobResult.skippedSubprocesses) && jobResult.skippedSubprocesses.length > 0 && (
-                                <p className="text-amber-600">
-                                  Hoppade över {jobResult.skippedSubprocesses.length} subprocesser
-                                </p>
-                              )}
+                              {Array.isArray(jobResult.skippedSubprocesses) &&
+                                jobResult.skippedSubprocesses.length > 0 && (
+                                  <p className="text-amber-600">
+                                    Hoppade över {jobResult.skippedSubprocesses.length} subprocesser
+                                  </p>
+                                )}
                               {job.error && (
                                 <p className="text-red-600">{job.error}</p>
                               )}
@@ -2770,8 +2802,16 @@ export default function BpmnFileManager() {
                               const timeStr = snap.generatedAt
                                 ? new Date(snap.generatedAt).toLocaleString('sv-SE')
                                 : '';
-                              const outdatedText = snap.outdated ? ' (inaktuell – BPMN har ändrats efter generering)' : '';
-                              return `Dokumentation: ${modeLabel}${timeStr ? ` · ${timeStr}` : ''}${outdatedText}`;
+                              const durationText =
+                                snap.durationMs !== undefined && snap.durationMs > 0
+                                  ? ` · Körtid: ${formatDuration(snap.durationMs)}`
+                                  : '';
+                              const outdatedText = snap.outdated
+                                ? ' (inaktuell – BPMN har ändrats efter generering)'
+                                : '';
+                              return `Dokumentation: ${modeLabel}${
+                                timeStr ? ` · ${timeStr}` : ''
+                              }${durationText}${outdatedText}`;
                             })()}
                           />
                           <ArtifactStatusBadge

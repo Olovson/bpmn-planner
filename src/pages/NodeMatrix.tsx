@@ -405,7 +405,7 @@ const NodeMatrix = () => {
                 </TableHead>
                 <TableHead>Figma</TableHead>
                 <TableHead>Dokumentation</TableHead>
-                <TableHead>Testfil</TableHead>
+                <TableHead>Testrapport</TableHead>
                 <TableHead>Jira Namn</TableHead>
                 <TableHead>Jira Typ</TableHead>
               </TableRow>
@@ -511,51 +511,24 @@ const NodeMatrix = () => {
                     </TableCell>
                     <TableCell>
                       {node.elementId && node.bpmnFile ? (
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(
-                                getNodeTestReportUrl(
-                                  node.bpmnFile,
-                                  node.elementId,
-                                ).replace('#', ''),
-                              );
-                            }}
-                            className="text-xs text-primary hover:underline flex items-center gap-1"
-                            title="Visa testrapport för denna nod"
-                          >
-                            <FileCode className="h-3 w-3 shrink-0" />
-                            <span>Testrapport</span>
-                          </button>
-                          {node.testFilePath ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-primary hover:underline flex items-center gap-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(
-                                  `/node-test-script?bpmnFile=${encodeURIComponent(
-                                    node.bpmnFile,
-                                  )}&elementId=${encodeURIComponent(
-                                    node.elementId,
-                                  )}`,
-                                );
-                              }}
-                              title="Visa testscript (Local/Full LLM mode)"
-                            >
-                              <ExternalLink className="h-3 w-3 shrink-0" />
-                              <span>Testscript</span>
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Ingen fil
-                            </span>
-                          )}
-                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(
+                              getNodeTestReportUrl(
+                                node.bpmnFile,
+                                node.elementId,
+                              ).replace('#', ''),
+                            );
+                          }}
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                          title="Visa testrapport för denna nod"
+                        >
+                          <FileCode className="h-3 w-3 shrink-0" />
+                          <span>Testrapport</span>
+                        </button>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Ingen fil</span>
+                        <span className="text-xs text-muted-foreground">Ingen testrapport</span>
                       )}
                     </TableCell>
                     <TableCell>

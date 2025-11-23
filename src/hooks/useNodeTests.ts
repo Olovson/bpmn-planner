@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTestResults } from './useTestResults';
+import { useNodeTestLinks, type NodeTestLinkVariant } from './useNodeTestLinks';
 import { testMapping, TestInfo, TestScenario as TemplateScenario } from '@/data/testMapping';
 
 export interface NodeTestCase {
@@ -12,6 +13,7 @@ export interface NodeTestCase {
   duration?: number;
   bpmnFile?: string;
   bpmnElementId?: string;
+  variant?: NodeTestVariant;
 }
 
 export interface NodeInfo {
@@ -27,14 +29,35 @@ interface UseNodeTestsParams {
   elementId?: string;
 }
 
+type NodeTestVariant = 'local-fallback' | 'llm' | 'unknown';
+
 export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams) => {
-  const { testResults, isLoading } = useTestResults();
+  const { testResults, isLoading: resultsLoading } = useTestResults();
+  const { data: linkEntries = [], isLoading: linksLoading } = useNodeTestLinks();
 
   const { tests, nodeInfo, plannedScenarios } = useMemo(() => {
     const effectiveNodeId = nodeId || elementId;
     
     if (!effectiveNodeId) {
       return { tests: [] as NodeTestCase[], nodeInfo: null as NodeInfo | null, plannedScenarios: [] as TemplateScenario[] };
+    }
+
+    // Försök hitta testlänkar/varianter för aktuell nod
+    let variants: NodeTestLinkVariant[] = [];
+    if (bpmnFile && elementId) {
+      const entry = linkEntries.find(
+        (e) => e.bpmnFile === bpmnFile && e.elementId === elementId,
+      );
+      if (entry) {
+        variants = entry.variants;
+      }
+    }
+
+    const variantByTestFile: Record<string, NodeTestVariant> = {};
+    for (const v of variants) {
+      const variant: NodeTestVariant =
+        v.mode === 'slow' ? 'llm' : 'local-fallback';
+      variantByTestFile[v.testFilePath] = variant;
     }
 
     // First try to get from database using nodeId or elementId
@@ -50,16 +73,22 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
         bpmnFile: bpmnFile,
       };
 
-      const testCases: NodeTestCase[] = dbTests.map(test => ({
-        id: test.id,
-        title: test.node_name || test.test_file,
-        fileName: test.test_file.replace('tests/', ''),
-        status: test.status,
-        lastRunAt: test.last_run,
-        duration: test.duration || undefined,
-        bpmnElementId: effectiveNodeId,
-        bpmnFile: bpmnFile,
-      }));
+      const testCases: NodeTestCase[] = dbTests.map(test => {
+        const fileName = test.test_file.replace('tests/', '');
+        const variant: NodeTestVariant =
+          variantByTestFile[test.test_file] ?? 'unknown';
+        return {
+          id: test.id,
+          title: test.node_name || test.test_file,
+          fileName,
+          status: test.status,
+          lastRunAt: test.last_run,
+          duration: test.duration || undefined,
+          bpmnElementId: effectiveNodeId,
+          bpmnFile: bpmnFile,
+          variant,
+        };
+      });
 
       return { tests: testCases, nodeInfo: info, plannedScenarios: template?.scenarios ?? [] };
     }
@@ -75,13 +104,13 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
     }
 
     return { tests: [] as NodeTestCase[], nodeInfo: null as NodeInfo | null, plannedScenarios: [] as TemplateScenario[] };
-  }, [testResults, nodeId, bpmnFile, elementId]);
+  }, [testResults, linkEntries, nodeId, bpmnFile, elementId]);
 
   return {
     tests,
     nodeInfo,
     plannedScenarios,
-    isLoading,
+    isLoading: resultsLoading || linksLoading,
     error: null,
   };
 };

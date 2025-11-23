@@ -27,6 +27,7 @@ const NodeTestScriptViewer = () => {
 
   const bpmnFile = searchParams.get('bpmnFile') || undefined;
   const elementId = searchParams.get('elementId') || undefined;
+   const variantParam = searchParams.get('variant');
 
   const { nodes } = useAllBpmnNodes();
   const { data: linkEntries = [], isLoading } = useNodeTestLinks();
@@ -74,7 +75,9 @@ const NodeTestScriptViewer = () => {
     return variants;
   }, [linkEntries, bpmnFile, elementId]);
 
-  const [activeMode, setActiveMode] = useState<NormalizedMode>('local');
+  const [activeMode, setActiveMode] = useState<NormalizedMode>(
+    variantParam === 'llm' ? 'full' : 'local',
+  );
 
   const hasLocalVariant = useMemo(
     () => normalizedVariants.some((v) => v.mode === 'local'),
