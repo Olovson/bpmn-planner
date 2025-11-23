@@ -22,6 +22,8 @@ import {
   applyExecutedTestsFilter,
   applyPlannedNodesFilter,
 } from '@/lib/testReportFiltering';
+import { DocVariantBadges } from '@/components/DocVariantBadges';
+import { getNodeDocViewerPath } from '@/lib/nodeArtifactPaths';
 
 const TestReport = () => {
   const navigate = useNavigate();
@@ -354,13 +356,17 @@ const TestReport = () => {
                     <TableBody>
                       {filteredNodeIds.map((nodeId) => {
                         const meta = elementResourceMapping[nodeId];
-                          const testInfo = testMapping[nodeId];
-                          const plannedScenarios = testInfo?.scenarios ?? [];
-                          const plannedScenarioCount = plannedScenarios.length;
-                          const hasExecuted = testResults.some(
-                            (r) => r.node_id === nodeId,
-                          );
-                          const isExpanded = expandedNodeId === nodeId;
+                        const testInfo = testMapping[nodeId];
+                        const plannedScenarios = testInfo?.scenarios ?? [];
+                        const plannedScenarioCount = plannedScenarios.length;
+                        const hasExecuted = testResults.some(
+                          (r) => r.node_id === nodeId,
+                        );
+                        const isExpanded = expandedNodeId === nodeId;
+                        const docId =
+                          meta?.bpmnFile && nodeId
+                            ? getNodeDocViewerPath(meta.bpmnFile, nodeId)
+                            : null;
 
                           return (
                             <>
@@ -379,13 +385,18 @@ const TestReport = () => {
                                   </span>
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex flex-col">
-                                    <span className="text-sm font-medium">
-                                      {meta.displayName || nodeId}
-                                    </span>
-                                    <span className="text-[11px] font-mono text-muted-foreground">
-                                      {nodeId}
-                                    </span>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">
+                                        {meta.displayName || nodeId}
+                                      </span>
+                                      <span className="text-[11px] font-mono text-muted-foreground">
+                                        {nodeId}
+                                      </span>
+                                    </div>
+                                    {docId && (
+                                      <DocVariantBadges docId={docId} compact />
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-sm">

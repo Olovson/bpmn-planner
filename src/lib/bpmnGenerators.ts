@@ -1451,9 +1451,10 @@ export async function generateAllFromBpmnWithGraph(
           const dorDodForNode = result.dorDod.get(dorDodKey) || [];
 
           let nodeDocContent: string;
-      if (nodeContext) {
-        let lastDocJson: unknown | undefined;
-        if (node.type === 'callActivity') {
+          let lastDocJson: unknown | undefined;
+
+          if (nodeContext) {
+            if (node.type === 'callActivity') {
               nodeDocContent = await renderDocWithLlmFallback(
                 'feature',
                 nodeContext,

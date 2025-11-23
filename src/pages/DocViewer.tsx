@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
+import { useDocVariantAvailability } from '@/hooks/useDocVariantAvailability';
 
 const DocViewer = () => {
   const { user, signOut } = useAuth();
@@ -51,14 +52,36 @@ const DocViewer = () => {
     return generationSource;
   };
 
+  const { isLoading: variantsLoading, hasLocal, hasChatgpt, hasOllama } =
+    useDocVariantAvailability(safeDocId);
+  const anyVariant = hasLocal || hasChatgpt || hasOllama;
+
+  useEffect(() => {
+    if (viewMode !== 'auto' || variantsLoading) return;
+    // Om vi vet att minst en variant finns, välj den i prioriterad ordning.
+    if (anyVariant) {
+      if (hasChatgpt) {
+        setViewMode('chatgpt');
+      } else if (hasLocal) {
+        setViewMode('local');
+      } else if (hasOllama) {
+        setViewMode('ollama');
+      }
+    }
+  }, [viewMode, variantsLoading, anyVariant, hasChatgpt, hasLocal, hasOllama]);
+
+  const activeMode: 'local' | 'chatgpt' | 'ollama' =
+    viewMode === 'auto' ? 'local' : viewMode;
+
   const resolveModeFolder = () => {
     if (viewMode === 'auto') {
+      // Auto-läge används endast innan vi vet vilka varianter som finns.
+      // Tills dess: försök med legacy-sökning.
       if (!generationSource) return null;
       if (generationSource === 'local' || generationSource === 'local-fallback') return 'local';
       if (generationSource === 'llm-slow-chatgpt') return 'slow/chatgpt';
       if (generationSource === 'llm-slow-ollama') return 'slow/ollama';
       if (generationSource.startsWith('llm-slow')) return 'slow';
-      // Legacy: llm-fast behandlas som slow
       if (generationSource.startsWith('llm-fast')) return 'slow';
       return null;
     }
@@ -134,7 +157,7 @@ const DocViewer = () => {
         blobUrlRef.current = null;
       }
     };
-  }, [docId, decoded, viewMode]);
+  }, [docId, decoded, viewMode, variantsLoading]);
 
   return (
     <div className="flex min-h-screen bg-background overflow-hidden">
@@ -171,40 +194,45 @@ const DocViewer = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-md border bg-muted/40 p-0.5 text-xs">
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded-sm ${
-                    viewMode === 'local' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-                  }`}
-                  onClick={() => setViewMode('local')}
+              <div className="flex flex-wrap gap-2 text-xs">
+                <Button
+                  size="sm"
+                  variant={activeMode === 'local' ? 'default' : 'outline'}
+                  disabled={anyVariant && !hasLocal}
+                  onClick={() => {
+                    if (!anyVariant || hasLocal) {
+                      setViewMode('local');
+                    }
+                  }}
                 >
                   Lokal fallback
-                </button>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded-sm ${
-                    viewMode === 'chatgpt' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-                  }`}
-                  onClick={() => setViewMode('chatgpt')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={activeMode === 'chatgpt' ? 'default' : 'outline'}
+                  disabled={anyVariant && !hasChatgpt}
+                  onClick={() => {
+                    if (!anyVariant || hasChatgpt) {
+                      setViewMode('chatgpt');
+                    }
+                  }}
                 >
                   ChatGPT
-                </button>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded-sm ${
-                    viewMode === 'ollama' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-                  }`}
-                  onClick={() => setViewMode('ollama')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={activeMode === 'ollama' ? 'default' : 'outline'}
+                  disabled={anyVariant && !hasOllama}
+                  onClick={() => {
+                    if (!anyVariant || hasOllama) {
+                      setViewMode('ollama');
+                    }
+                  }}
                 >
                   Ollama
-                </button>
+                </Button>
               </div>
             </div>
-            <Button variant="outline" onClick={() => navigate(-1)} className="gap-2 shrink-0">
-              <ArrowLeft className="h-4 w-4" />
-              Tillbaka
-            </Button>
           </div>
 
           {loading && (

@@ -1,77 +1,95 @@
 ```json
 {
-  "summary": "Internal data gathering syftar till att effektivisera datainsamlingen under kreditprocessens datainsamlingsfas. Detta Feature Goal möjliggör automatiserad insamling av interna data, vilket minskar behovet av manuella insatser och förbättrar datakvaliteten. Det stödjer bankens strategi för riskhantering genom att säkerställa att all relevant information är tillgänglig för riskbedömning och beslut. Kunder inom bolånesegmentet omfattas av denna process, vilket förbättrar kundupplevelsen genom snabbare och mer pålitliga besked.",
+  "summary": "Detta Feature Goal möjliggör effektiv och automatiserad intern datainsamling under kreditprocessens datainsamlingsfas. Regelmotorn spelar en central roll i att samla in och bearbeta nödvändig information för att stödja en korrekt och snabb kreditbedömning. Genom att fokusera på interna data säkerställs att banken kan fatta välgrundade beslut baserade på tillförlitlig information, vilket stärker bankens kreditstrategi och riskhantering.",
   "effectGoals": [
-    "Automatiseringen av datainsamling minskar manuellt arbete och kortar ledtider.",
-    "Förbättrad datakvalitet och säkerhet i kreditbedömningar genom korrekt och fullständig information.",
-    "Förbättrad kundupplevelse genom snabbare och mer pålitliga besked.",
-    "Stärkt regelefterlevnad och riskkontroll genom tillgång till korrekt data."
+    "Automatisering av datainsamling minskar manuellt arbete och kortar ledtider.",
+    "Förbättrad kvalitet och säkerhet i kreditbedömningar genom tillgång till korrekt och aktuell data.",
+    "Förbättrad kundupplevelse genom snabbare och mer precisa besked.",
+    "Stärkt regelefterlevnad och riskkontroll genom systematiserad datainsamling."
   ],
   "scopeIncluded": [
-    "Ingår: Automatiserad insamling av interna data från bankens system.",
-    "Ingår: Integrering av datainsamlingsprocessen med regelmotorn.",
-    "Ingår: Validering av insamlad data för att säkerställa korrekthet och fullständighet.",
-    "Ingår: Tillhandahållande av insamlad data för vidare riskbedömning och beslut."
+    "Ingår: Automatiserad insamling av interna data för kreditbedömning.",
+    "Ingår: Användning av regelmotor för att bearbeta insamlad data.",
+    "Ingår: Integration med interna datakällor för att säkerställa datakvalitet.",
+    "Ingår: Stöd för att fatta preliminära kreditbeslut baserat på insamlad data."
   ],
   "scopeExcluded": [
-    "Ingår inte: Insamling av externa data från tredjepartskällor.",
-    "Ingår inte: Manuell datainsamling av handläggare."
+    "Ingår inte: Manuell datainsamling från externa källor.",
+    "Ingår inte: Slutgiltiga kreditbeslut som kräver ytterligare manuell granskning."
   ],
   "epics": [
     {
       "id": "E1",
       "name": "Automated Data Collection",
-      "description": "Automatisera insamlingen av interna data för att minska manuellt arbete och förbättra datakvaliteten.",
-      "team": "Data & Automation"
+      "description": "Automatiserar insamlingen av interna data för att stödja kreditbedömning.",
+      "team": "Data & Analytics"
     },
     {
       "id": "E2",
-      "name": "Data Validation",
-      "description": "Validera insamlad data för att säkerställa korrekthet och fullständighet innan vidare bearbetning.",
+      "name": "Rule Engine Integration",
+      "description": "Integrerar regelmotor för att bearbeta och analysera insamlad data.",
       "team": "Risk & Kredit"
     }
   ],
   "flowSteps": [
-    "Systemet initierar automatiserad insamling av interna data från bankens system.",
-    "Insamlad data valideras för korrekthet och fullständighet.",
-    "Validerad data integreras med regelmotorn för vidare bearbetning.",
-    "Resultaten av datainsamlingen tillhandahålls för riskbedömning och beslut."
+    "Systemet initierar datainsamling från interna källor.",
+    "Regelmotorn bearbetar den insamlade datan för att säkerställa kvalitet.",
+    "Systemet genererar en preliminär kreditbedömning baserat på tillgänglig data.",
+    "Resultatet av datainsamlingen skickas vidare för ytterligare analys vid behov."
   ],
   "dependencies": [
-    "Beroende: Regelmotor/DMN; Id: datavalidering; Beskrivning: används för att säkerställa att insamlad data är korrekt och fullständig.",
-    "Beroende: Interna system; Id: datakällor; Beskrivning: källor för intern data som samlas in automatiskt.",
-    "Beroende: IT-infrastruktur; Id: systemintegration; Beskrivning: nödvändig för att möjliggöra automatiserad insamling och bearbetning av data."
+    "Beroende: Regelmotor/DMN; Id: databehandling; Beskrivning: används för att bearbeta insamlad data och stödja kreditbedömning.",
+    "Beroende: Interna datakällor; Id: dataintegration; Beskrivning: krävs för att samla in nödvändig information för kreditbedömning.",
+    "Beroende: Systemintegration; Id: API-kopplingar; Beskrivning: möjliggör kommunikation mellan olika interna system."
   ],
   "scenarios": [
     {
       "id": "S1",
-      "name": "Successful Data Gathering",
+      "name": "Successful Data Collection",
       "type": "Happy",
-      "outcome": "Data samlas in och valideras korrekt, vilket leder till en smidig och effektiv process."
+      "outcome": "Data samlas in och bearbetas framgångsrikt, vilket leder till en preliminär kreditbedömning."
     },
     {
       "id": "S2",
-      "name": "Data Validation Error",
+      "name": "Partial Data Availability",
       "type": "Edge",
-      "outcome": "Fel upptäcks under datavalideringen, vilket kräver manuell granskning och korrigering."
+      "outcome": "Endast delvis data är tillgänglig, vilket kräver manuell komplettering för fullständig bedömning."
     },
     {
       "id": "S3",
-      "name": "System Integration Failure",
+      "name": "Data Source Unavailable",
       "type": "Error",
-      "outcome": "Misslyckad integration med interna system leder till att datainsamlingen avbryts och måste omstartas."
+      "outcome": "En eller flera datakällor är otillgängliga, vilket förhindrar fullständig datainsamling."
+    },
+    {
+      "id": "S4",
+      "name": "Rule Engine Failure",
+      "type": "Error",
+      "outcome": "Regelmotorn misslyckas med att bearbeta data, vilket kräver felsökning och manuell intervention."
+    },
+    {
+      "id": "S5",
+      "name": "Data Quality Issue",
+      "type": "Edge",
+      "outcome": "Data innehåller felaktigheter som kräver manuell granskning och korrigering."
+    },
+    {
+      "id": "S6",
+      "name": "Successful Integration",
+      "type": "Happy",
+      "outcome": "Integration med alla datakällor fungerar smidigt, vilket möjliggör en snabb och korrekt bedömning."
     }
   ],
-  "testDescription": "Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester, för att säkerställa korrekt funktionalitet. Återanvänd scenario-ID och namn i testfiler och testnamn.",
+  "testDescription": "Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester. Återanvänd scenario-ID och namn i testfiler och rapportering.",
   "implementationNotes": [
-    "Använd API-mönster för att möjliggöra effektiv datainsamling och integration.",
-    "Implementera loggning och audit-spår för att säkerställa spårbarhet och regelefterlevnad.",
-    "Hantera fel och undantag på ett sätt som minimerar påverkan på användarupplevelsen.",
-    "Säkerställ att datakvalitet och prestandakrav uppfylls genom kontinuerlig övervakning och optimering."
+    "Använd RESTful API-mönster för att integrera med interna datakällor.",
+    "Loggning och audit-spår ska implementeras för att säkerställa regelefterlevnad.",
+    "Felhantering bör inkludera återförsök och notifieringar vid misslyckade datainsamlingar.",
+    "Prestandaoptimering krävs för att hantera stora datamängder effektivt."
   ],
   "relatedItems": [
-    "Feature Goal: Extern datainsamling för kompletterande information.",
-    "Epic: Dataanalys och rapportering för insikter och beslut.",
+    "Feature Goal: Extern datainsamling för att komplettera interna data.",
+    "Epic: Data Quality Assurance för att säkerställa korrekthet i insamlad data.",
     "Business Rule: Kreditvärdighetsbedömning baserad på insamlad data."
   ]
 }

@@ -21,7 +21,10 @@
   - LLM fyller JSON → mappers → HTML via templates i `src/lib/documentationTemplates.ts`.
   - Samma HTML-layout används för lokal (mallbaserad) och LLM-baserad dokumentation.
   - Prompts i `prompts/llm/*` instruerar LLM att alltid svara med **ett JSON-objekt** (ingen HTML/markdown) och att markera numeriska tröskelvärden som **exempelvärden** (t.ex. `600 (exempelvärde)`).
-  - Input till LLM består av ett `processContext` (kondenserad processöversikt inkl. fas `phase` och roll `lane` per nyckelnod) och ett `currentNodeContext` (hierarki, flöden, dokumentation, länkar) så att dokumentation och scenarier alltid förankras i rätt fas/roll.
+  - Input till LLM består av:
+    - ett `processContext` (kondenserad processöversikt med processnamn, nyckelnoder samt fas `phase` och roll `lane` per nyckelnod),
+    - ett `currentNodeContext` (aktuellt BPMN‑element med hierarki, släktnoder, flöden, dokumentation och länkar).
+    Dokumentation och scenarier ska alltid förankras i dessa fält – promptkontrakten finns i `prompts/llm/PROMPT_CONTRACT.md`.
 
 - **LLM-lägen & providers**
   - Lokal generering (utan LLM): snabb, deterministisk, mallbaserad.

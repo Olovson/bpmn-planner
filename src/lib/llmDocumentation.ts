@@ -589,7 +589,9 @@ function inferLane(node: BpmnProcessNode): string {
     name.includes('kund') ||
     name.includes('customer') ||
     name.includes('applicant') ||
-    name.includes('ansökan')
+    name.includes('ansökan') ||
+    name.includes('stakeholder') ||
+    name.includes('household')
   ) {
     return 'Kund';
   }

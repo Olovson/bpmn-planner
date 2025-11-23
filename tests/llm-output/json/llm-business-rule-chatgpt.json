@@ -1,65 +1,64 @@
-```json
 {
-  "summary": "Regeln bedömer kundens lämplighet för ett bostadslån baserat på riskbedömning. Den riktar sig mot kunder som ansöker om hypotekslån och stödjer processen för att säkerställa att endast kreditvärdiga kunder går vidare till nästa steg. Fokus ligger på att identifiera riskfaktorer tidigt i processen för att minimera kreditrisker.",
+  "summary": "Regeln för behörighet bedömer om en kund är berättigad till ett hypotekslån baserat på fördefinierade kriterier. Den stödjer riskbedömningsfasen och automatiserar beslut för att effektivisera processen. Typiska kunder omfattar både nya och befintliga låntagare som ansöker om hypotekslån. Regeln fokuserar på att säkerställa att endast kunder med tillräcklig kreditvärdighet och ekonomisk stabilitet går vidare i processen.",
   "inputs": [
-    "Fält: Kreditvärdighet; Datakälla: Intern kreditmotor; Typ: Numerisk; Obligatoriskt: Ja; Validering: Kreditvärdighet över 620 (exempelvärde); Felhantering: Avvisa ansökan.",
-    "Fält: Skuldkvot; Datakälla: Kunddataregister; Typ: Procent; Obligatoriskt: Ja; Validering: Skuldkvot under 6.0 (exempelvärde); Felhantering: Flagga för manuell granskning.",
-    "Fält: Belåningsgrad; Datakälla: Externa upplysningar; Typ: Procent; Obligatoriskt: Ja; Validering: Belåningsgrad under 85 % (exempelvärde); Felhantering: Avvisa ansökan."
+    "Fält: Kreditvärdighet; Datakälla: Kreditregister; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Kreditvärdighet över 620 (exempelvärde); Felhantering: Avvisa ansökan.",
+    "Fält: Skuldkvot; Datakälla: Interna beräkningar; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Skuldkvot under 6.0 (exempelvärde); Felhantering: Flagga för manuell granskning.",
+    "Fält: Inkomst; Datakälla: Löneintyg; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Inkomst över 300 000 kr (exempelvärde); Felhantering: Begär kompletterande dokumentation."
   ],
   "decisionLogic": [
-    "Regeln kombinerar kreditvärdighet, skuldkvot och belåningsgrad för att avgöra kundens lämplighet.",
+    "Beslutet baseras på en kombination av kreditvärdighet, skuldkvot och inkomst.",
     "Kreditvärdighet under 620 (exempelvärde) leder till automatisk avslag.",
     "Skuldkvot över 6.0 (exempelvärde) kräver manuell granskning.",
-    "Belåningsgrad över 85 % (exempelvärde) leder till automatisk avslag.",
+    "Inkomst under 300 000 kr (exempelvärde) resulterar i begäran om ytterligare dokumentation.",
     "Låg kreditvärdighet + hög skuldsättning → manuell granskning."
   ],
   "outputs": [
-    "Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Bestämmer om ansökan går vidare eller avslås; Loggning: Beslutsloggning med tidsstämpel.",
-    "Outputtyp: Flaggor; Typ: Riskindikator; Effekt: Indikerar behov av manuell granskning; Loggning: Riskflaggor loggas för uppföljning.",
-    "Outputtyp: Notifiering; Typ: Intern; Effekt: Informerar handläggare om beslut; Loggning: Notifieringsloggning."
+    "Outputtyp: Beslut; Typ: APPROVE/DECLINE; Effekt: Automatisk godkännande eller avslag av ansökan; Loggning: Beslutslogg med tidstämpel.",
+    "Outputtyp: Flaggor; Typ: Riskindikator; Effekt: Indikerar behov av manuell granskning; Loggning: Riskflagga loggas för granskning.",
+    "Outputtyp: Dokumentationsbegäran; Typ: Åtgärd; Effekt: Begäran om kompletterande dokumentation; Loggning: Dokumentationsbegäran loggas."
   ],
   "businessRulesPolicy": [
-    "Regeln stödjer interna principer för kreditvärdering och minimala risknivåer.",
-    "Säkerställer att ansökningar med hög skuldkvot eller belåningsgrad inte godkänns automatiskt.",
-    "Följer regulatoriska krav för konsumentkreditlagstiftning.",
-    "Stödjer bankens policy för ansvarsfull utlåning.",
-    "Bidrar till att upprätthålla bankens riskmandat."
+    "Regeln stödjer interna policyer för kreditvärdering genom att säkerställa att endast kunder med tillräcklig kreditvärdighet godkänns.",
+    "Följer principer för skuldkvotstak för att minimera riskexponering.",
+    "Stödjer regulatoriska krav enligt konsumentkreditlagen genom att säkerställa rättvis och transparent bedömning.",
+    "Implementerar exklusionskriterier för kunder med hög riskprofil.",
+    "Säkerställer att alla beslut är spårbara och dokumenterade i enlighet med interna revisionskrav."
   ],
   "scenarios": [
     {
       "id": "BR1",
       "name": "Godkänd ansökan",
       "type": "Happy",
-      "input": "Kreditvärdighet över 620 (exempelvärde), skuldkvot under 6.0 (exempelvärde), belåningsgrad under 85 % (exempelvärde).",
-      "outcome": "Automatisk godkännande."
+      "input": "Kreditvärdighet 700 (exempelvärde), skuldkvot 4.0 (exempelvärde), inkomst 400 000 kr (exempelvärde)",
+      "outcome": "Automatisk godkännande"
     },
     {
       "id": "BR2",
-      "name": "Manuell granskning",
+      "name": "Avslag på grund av låg kreditvärdighet",
       "type": "Edge",
-      "input": "Kreditvärdighet över 620 (exempelvärde), skuldkvot över 6.0 (exempelvärde), belåningsgrad under 85 % (exempelvärde).",
-      "outcome": "Manuell granskning krävs."
+      "input": "Kreditvärdighet 600 (exempelvärde), skuldkvot 5.0 (exempelvärde), inkomst 350 000 kr (exempelvärde)",
+      "outcome": "Automatiskt avslag"
     },
     {
       "id": "BR3",
-      "name": "Avslagen ansökan",
+      "name": "Manuell granskning krävs",
       "type": "Error",
-      "input": "Kreditvärdighet under 620 (exempelvärde).",
-      "outcome": "Automatisk avslag."
+      "input": "Kreditvärdighet 650 (exempelvärde), skuldkvot 7.0 (exempelvärde), inkomst 320 000 kr (exempelvärde)",
+      "outcome": "Manuell granskning"
     }
   ],
-  "testDescription": "Scenarierna mappas mot automatiska tester för att säkerställa korrekt beslutsfattande. Scenario-ID och namn bör återfinnas i testfil och testnamn för spårbarhet.",
+  "testDescription": "Scenarierna mappas mot automatiska tester för att säkerställa korrekt funktionalitet. Scenario-ID och namn bör återfinnas i testfil och testnamn för spårbarhet.",
   "implementationNotes": [
-    "Regeln implementeras i en DMN-tabell och körs i regelmotorn.",
-    "Exponeras via intern beslutstjänst för realtidsbedömning.",
+    "Regeln implementeras i en DMN-tabell och hanteras av en regelmotor för att automatisera beslutsfattandet.",
+    "Exponeras via en intern beslutstjänst/API för integration med andra system.",
     "Kritiska beroenden inkluderar kreditmotor och kunddataregister.",
-    "Loggning av beslut och riskflaggor för audit-spårbarhet.",
-    "Prestandaoptimering krävs för att hantera stora volymer ansökningar."
+    "Loggning av alla beslut och flaggor sker för att säkerställa audit-spårbarhet.",
+    "Prestandaoptimering är nödvändig för att hantera stora volymer av ansökningar effektivt."
   ],
   "relatedItems": [
-    "Relaterade regler: Kreditvärdering, Skuldkvotbedömning.",
-    "Relevanta subprocesser: Förhandsbedömning, Huvudbeslut.",
-    "Övergripande dokumentation: Kreditpolicy-dokumentation."
+    "Relaterad regel: Kreditvärdering",
+    "Subprocess: Huvudbeslut",
+    "Dokumentation: Kreditpolicy-dokumentation",
+    "Subprocess: Utbetalning"
   ]
 }
-```

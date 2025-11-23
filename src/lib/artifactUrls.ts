@@ -50,6 +50,19 @@ export const getNodeDocStoragePath = (bpmnFile: string, elementId: string) =>
   // Docs lagras i Supabase Storage under 'docs/<node-doc-key>'
   `docs/${getNodeDocFileKey(bpmnFile, elementId)}`;
 
+export function getDocVariantPaths(docId: string): {
+  local: string;
+  chatgpt: string;
+  ollama: string;
+} {
+  const safe = docId.replace(/^\/+/, '');
+  return {
+    local: `docs/local/${safe}.html`,
+    chatgpt: `docs/slow/chatgpt/${safe}.html`,
+    ollama: `docs/slow/ollama/${safe}.html`,
+  };
+}
+
 /**
  * Build URL for node-specific test report page
  * @param bpmnFile - The BPMN file name (e.g., 'mortgage-se-application.bpmn')

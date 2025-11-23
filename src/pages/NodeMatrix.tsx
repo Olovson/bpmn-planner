@@ -15,6 +15,8 @@ import { getTestFileUrl, getDocumentationUrl, getNodeTestReportUrl } from '@/lib
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
+import { DocVariantBadges } from '@/components/DocVariantBadges';
+import { getNodeDocViewerPath } from '@/lib/nodeArtifactPaths';
 
 type SortField = 'bpmnFile' | 'elementName' | 'nodeType';
 type SortDirection = 'asc' | 'desc';
@@ -494,17 +496,31 @@ const NodeMatrix = () => {
                     </TableCell>
                     <TableCell>
                       {node.hasDocs ? (
-                        <a
-                          href={node.documentationUrl ?? getDocumentationUrl(node.bpmnFile, node.elementId)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline flex items-center gap-1"
-                          title={`Dokumentation för ${node.elementName}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span className="truncate max-w-[150px]">Visa docs</span>
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
+                        <div className="flex flex-col gap-1">
+                          <a
+                            href={
+                              node.documentationUrl ??
+                              getDocumentationUrl(node.bpmnFile, node.elementId)
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                            title={`Dokumentation för ${node.elementName}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className="truncate max-w-[150px]">
+                              Visa docs
+                            </span>
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </a>
+                          <DocVariantBadges
+                            docId={getNodeDocViewerPath(
+                              node.bpmnFile,
+                              node.elementId,
+                            )}
+                            compact
+                          />
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
