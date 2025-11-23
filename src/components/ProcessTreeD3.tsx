@@ -24,7 +24,7 @@ const getLegendItems = () => {
   }));
 };
 
-const nodeHasIssues = (node: ProcessTreeNode): boolean => {
+  const nodeHasIssues = (node: ProcessTreeNode): boolean => {
   const linkIssue =
     node.subprocessLink &&
     node.subprocessLink.matchStatus &&
@@ -124,6 +124,24 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
     printWindow.document.close();
   };
 
+  const handleCollapseAll = () => {
+    const allIds = new Set<string>();
+    const traverse = (node: ProcessTreeNode, isRoot: boolean) => {
+      if (!isRoot) {
+        allIds.add(node.id);
+      }
+      if (node.children && node.children.length > 0) {
+        node.children.forEach((child) => traverse(child, false));
+      }
+    };
+    traverse(root, true);
+    setCollapsedIds(allIds);
+  };
+
+  const handleExpandAll = () => {
+    setCollapsedIds(new Set());
+  };
+
   useEffect(() => {
     if (!root || !svgRef.current) return;
 
@@ -138,13 +156,19 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
       .append('g')
       .attr('class', 'tree-root');
 
-    // Filter collapsed nodes
+    // Filter collapsed nodes, men behåll info om huruvida noden har barn i originalträdet
     const filterCollapsed = (node: ProcessTreeNode): any => {
-      const filtered = { ...node };
+      const hasChildren = node.children && node.children.length > 0;
+      const filtered: any = { ...node };
+      // Markera om noden kan ha barn, oavsett kollaps-state
+      filtered._hasChildren = hasChildren;
+
       if (collapsedIds.has(node.id)) {
         filtered.children = [];
-      } else if (node.children && node.children.length > 0) {
-        filtered.children = node.children.map(filterCollapsed);
+      } else if (hasChildren) {
+        filtered.children = node.children!.map(filterCollapsed);
+      } else {
+        filtered.children = [];
       }
       return filtered;
     };
@@ -192,6 +216,8 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
 
     svg.call(zoomBehavior as any);
     svg.call(zoomBehavior.transform as any, initialTransform);
+    // Inaktivera dubbelklick-zoom så att vi kan använda dubbelklick på noder
+    svg.on('dblclick.zoom', null);
 
     // Draw links
     g.selectAll('.link')
@@ -218,12 +244,11 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
       .on('click', (event, d: any) => {
         event.stopPropagation();
         
-        // Check if node has children in original data
         const originalNode = d.data as ProcessTreeNode;
-        const hasChildren = originalNode.children && originalNode.children.length > 0;
-        
+        const hasChildren = (d.data as any)._hasChildren;
+
+        // Shift + klick togglar kollaps
         if (hasChildren && event.shiftKey) {
-          // Shift + click toggles collapse
           setCollapsedIds(prev => {
             const newSet = new Set(prev);
             if (newSet.has(originalNode.id)) {
@@ -233,19 +258,34 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
             }
             return newSet;
           });
-        } else {
-          // Regular click selects node
-          onSelectNode?.(originalNode);
+          return;
         }
+
+        // Vanligt klick väljer nod
+        onSelectNode?.(originalNode);
+      })
+      .on('dblclick', (event, d: any) => {
+        event.stopPropagation();
+
+        const originalNode = d.data as ProcessTreeNode;
+        const hasChildren = (d.data as any)._hasChildren;
+        if (!hasChildren) return;
+
+        // Dubbelklick expanderar/kollapsar noden
+        setCollapsedIds(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(originalNode.id)) {
+            newSet.delete(originalNode.id);
+          } else {
+            newSet.add(originalNode.id);
+          }
+          return newSet;
+        });
       });
 
     // Node circle
     node.append('circle')
-      .attr('r', (d: any) => {
-        const originalNode = d.data as ProcessTreeNode;
-        const hasChildren = originalNode.children && originalNode.children.length > 0;
-        return hasChildren ? 12 : 8;
-      })
+      .attr('r', (d: any) => ((d.data as any)._hasChildren ? 12 : 8))
       .attr('fill', (d: any) => getColorForNodeType(d.data.type))
       .attr('stroke', (d: any) => {
         const isSelected = d.data.id === selectedNodeId;
@@ -258,10 +298,7 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
       .attr('opacity', 0.9);
 
     // Collapse indicator
-    node.filter((d: any) => {
-      const originalNode = d.data as ProcessTreeNode;
-      return originalNode.children && originalNode.children.length > 0;
-    })
+    node.filter((d: any) => (d.data as any)._hasChildren)
       .append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', 4)
@@ -298,10 +335,18 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
       {/* Legend */}
       <Card className="flex-shrink-0">
         <CardHeader className="pb-3 flex items-center justify-between">
-          <CardTitle className="text-sm">Förklaring</CardTitle>
-          <Button variant="outline" size="sm" onClick={handleExportPdf}>
-            Exportera till PDF
-          </Button>
+          <div />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleCollapseAll}>
+              Kollapsa allt
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExpandAll}>
+              Expandera allt
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportPdf}>
+              Exportera till PDF
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3 text-xs">
@@ -316,7 +361,7 @@ export function ProcessTreeD3({ root, selectedNodeId, onSelectNode, onArtifactCl
             ))}
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            Klicka för att välja nod • Shift+klick för att expandera/kollapsa • Scrolla för zoom • Dra för att panorera
+            Klicka för att välja nod • Dubbelklick eller Shift+klick för att expandera/kollapsa • Scrolla för zoom • Dra för att panorera
           </p>
         </CardContent>
       </Card>
