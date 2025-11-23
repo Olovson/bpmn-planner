@@ -288,32 +288,8 @@ export const RightPanel = ({
     if (elementResources?.bpmnFile) {
       return elementResources.bpmnFile;
     }
-    if (selectedElementType === 'bpmn:CallActivity') {
-      const sourceName = mapping?.jira_name || selectedElementName || selectedElement;
-      const files = Array.isArray(availableBpmnFiles) ? availableBpmnFiles : [];
-      if (sourceName && files.length > 0) {
-        const normalized = sourceName
-          .toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/_/g, '-');
-        const direct = files.find(file =>
-          file.toLowerCase().includes(normalized)
-        );
-        if (direct) return direct;
-        const nameParts = normalized.split('-').filter(part => part.length > 3);
-        if (nameParts.length > 0) {
-          for (const file of files) {
-            const lower = file.toLowerCase();
-            const matchedParts = nameParts.filter(part => lower.includes(part));
-            if (matchedParts.length >= Math.ceil(nameParts.length / 2)) {
-              return file;
-            }
-          }
-        }
-      }
-    }
     return '';
-  }, [selectedElement, selectedElementType, selectedElementName, mappings, elementResources, availableBpmnFiles]);
+  }, [selectedElement, mappings, elementResources]);
 
   const displayConfluenceUrl = useMemo(() => {
     if (!selectedElement) return '';
