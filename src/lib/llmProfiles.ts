@@ -117,3 +117,16 @@ export function getLlmProfilesForProvider(provider: LlmProvider): Record<DocType
     testscript: DEFAULT_PROFILES.testscript[provider],
   };
 }
+
+/**
+ * Returnerar en faktor (0–1) för när vi ska börja varna för hög token-budget
+ * för en given provider. Local har lägre gräns än cloud eftersom maxTokens är lägre.
+ */
+export function getTokenWarningThresholdForProvider(provider: LlmProvider): number {
+  if (provider === 'local') {
+    // Varna tidigare för lokal modell för att undvika out-of-memory/problem
+    return 0.7;
+  }
+  // Cloud-tjänster klarar sig oftast närmare maxTokens
+  return 0.85;
+}
