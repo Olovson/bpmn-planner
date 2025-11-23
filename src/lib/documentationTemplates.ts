@@ -526,6 +526,13 @@ function buildFeatureGoalDocModelFromContext(
   };
 }
 
+function cleanScopeItem(text: string): string {
+  let result = text.trim();
+  result = result.replace(/^Ingår inte:\s*/i, '');
+  result = result.replace(/^Ingår:\s*/i, '');
+  return result.trim();
+}
+
 function buildFeatureGoalDocHtmlFromModel(
   context: NodeDocumentationContext,
   links: TemplateLinks,
@@ -622,20 +629,16 @@ function buildFeatureGoalDocHtmlFromModel(
 
   const scopeIncluded = model.scopeIncluded.length ? model.scopeIncluded : [];
   const scopeExcluded = model.scopeExcluded.length ? model.scopeExcluded : [];
-
-  const scopeBullets: string[] = [];
-  if (scopeIncluded.length) {
-    scopeBullets.push(`Ingår: ${scopeIncluded.join('; ')}`);
-  }
-  if (scopeExcluded.length) {
-    scopeBullets.push(`Ingår inte: ${scopeExcluded.join('; ')}`);
-  }
-  if (!scopeBullets.length) {
-    scopeBullets.push(
+  let effectiveScopeIncluded = scopeIncluded;
+  let effectiveScopeExcluded = scopeExcluded;
+  if (!effectiveScopeIncluded.length && !effectiveScopeExcluded.length) {
+    effectiveScopeIncluded = [
       'Ingår: end-to-end-flöde för det specifika kreditinitiativet.',
+    ];
+    effectiveScopeExcluded = [
       'Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.',
       'Ingår inte: tekniska implementationer i underliggande system – dessa dokumenteras separat.',
-    );
+    ];
   }
 
   const implementationNotes =
@@ -699,7 +702,28 @@ function buildFeatureGoalDocHtmlFromModel(
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
       <p>${summaryText}</p>
-      ${renderList(scopeBullets)}
+      ${
+        effectiveScopeIncluded.length
+          ? `
+      <h3>Ingår</h3>
+      <ul>
+        ${effectiveScopeIncluded
+          .map((item) => `<li>${cleanScopeItem(item)}</li>`)
+          .join('')}
+      </ul>`
+          : ''
+      }
+      ${
+        effectiveScopeExcluded.length
+          ? `
+      <h3>Ingår inte</h3>
+      <ul>
+        ${effectiveScopeExcluded
+          .map((item) => `<li>${cleanScopeItem(item)}</li>`)
+          .join('')}
+      </ul>`
+          : ''
+      }
     </section>
 
     <section class="doc-section">
@@ -917,19 +941,18 @@ function buildFeatureGoalLlmDocBody(
   const effectGoalsSource =
     sections.effectGoals && sections.effectGoals.length ? 'llm' : 'fallback';
 
-  const scopeBullets: string[] = [];
-  if (sections.scopeIncluded.length) {
-    scopeBullets.push(`Ingår: ${sections.scopeIncluded.join('; ')}`);
-  }
-  if (sections.scopeExcluded.length) {
-    scopeBullets.push(`Ingår inte: ${sections.scopeExcluded.join('; ')}`);
-  }
-  if (!scopeBullets.length) {
-    scopeBullets.push(
+  const scopeIncludedLLm = sections.scopeIncluded.length ? sections.scopeIncluded : [];
+  const scopeExcludedLLm = sections.scopeExcluded.length ? sections.scopeExcluded : [];
+  let effectiveScopeIncludedLLm = scopeIncludedLLm;
+  let effectiveScopeExcludedLLm = scopeExcludedLLm;
+  if (!effectiveScopeIncludedLLm.length && !effectiveScopeExcludedLLm.length) {
+    effectiveScopeIncludedLLm = [
       'Ingår: end-to-end-flöde för det specifika kreditinitiativet.',
+    ];
+    effectiveScopeExcludedLLm = [
       'Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.',
       'Ingår inte: tekniska implementationer i underliggande system – dessa dokumenteras separat.',
-    );
+    ];
   }
 
   const implementationNotes =
@@ -1001,7 +1024,28 @@ function buildFeatureGoalLlmDocBody(
     <section class="doc-section" data-source-summary="${summarySource}">
       <h2>Sammanfattning &amp; scope</h2>
       <p>${summaryText}</p>
-      ${renderList(scopeBullets)}
+      ${
+        effectiveScopeIncludedLLm.length
+          ? `
+      <h3>Ingår</h3>
+      <ul>
+        ${effectiveScopeIncludedLLm
+          .map((item) => `<li>${cleanScopeItem(item)}</li>`)
+          .join('')}
+      </ul>`
+          : ''
+      }
+      ${
+        effectiveScopeExcludedLLm.length
+          ? `
+      <h3>Ingår inte</h3>
+      <ul>
+        ${effectiveScopeExcludedLLm
+          .map((item) => `<li>${cleanScopeItem(item)}</li>`)
+          .join('')}
+      </ul>`
+          : ''
+      }
     </section>
 
     <section class="doc-section" data-source-effect-goals="${effectGoalsSource}">
@@ -1370,11 +1414,107 @@ function buildEpicDocHtmlFromModel(
   const inputs = model.inputs.length
     ? model.inputs
     : [
-        isUserTask
-          ? `Input: användarens/handläggarens uppgifter och val från ${upstreamName}.`
-          : `Input: data och status från föregående systemsteg (${upstreamName}).`,
-      ];
+      isUserTask
+        ? `Input: användarens/handläggarens uppgifter och val från ${upstreamName}.`
+        : `Input: data och status från föregående systemsteg (${upstreamName}).`,
+    ];
   const inputsSource = model.inputs.length ? 'llm' : 'fallback';
+  const renderEpicInputsTable = () => {
+    const rowsSource = inputs;
+
+    if (!rowsSource.length) {
+      return '<p class="muted">Inga inputs specificerade ännu.</p>';
+    }
+
+    const rows = rowsSource.map((raw) => {
+      if (typeof raw !== 'string') {
+        return {
+          field: '',
+          source: '',
+          type: '',
+          required: '',
+          validation: '',
+          errorHandling: '',
+        };
+      }
+
+      const parts = raw.split(';').map((p) => p.trim());
+      const row: {
+        field: string;
+        source: string;
+        type: string;
+        required: string;
+        validation: string;
+        errorHandling: string;
+      } = {
+        field: '',
+        source: '',
+        type: '',
+        required: '',
+        validation: '',
+        errorHandling: '',
+      };
+
+      for (const part of parts) {
+        const [label, ...rest] = part.split(':');
+        const value = rest.join(':').trim();
+        if (!label || !value) continue;
+        const key = label.toLowerCase();
+        if (key.startsWith('fält')) {
+          row.field = value;
+        } else if (key.startsWith('datakälla')) {
+          row.source = value;
+        } else if (key.startsWith('typ')) {
+          row.type = value;
+        } else if (key.startsWith('obligatoriskt')) {
+          row.required = value;
+        } else if (key.startsWith('validering')) {
+          row.validation = value;
+        } else if (key.startsWith('felhantering')) {
+          row.errorHandling = value;
+        }
+      }
+
+      // Om parsing misslyckas helt – lägg hela raden i fält-kolumnen
+      if (
+        !row.field &&
+        !row.source &&
+        !row.type &&
+        !row.required &&
+        !row.validation &&
+        !row.errorHandling
+      ) {
+        row.field = raw;
+      }
+
+      return row;
+    });
+
+    return `
+      <table>
+        <tr>
+          <th>Fält</th>
+          <th>Datakälla</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Validering</th>
+          <th>Felhantering</th>
+        </tr>
+        ${rows
+          .map(
+            (r) => `
+        <tr>
+          <td>${r.field}</td>
+          <td>${r.source}</td>
+          <td>${r.type}</td>
+          <td>${r.required}</td>
+          <td>${r.validation}</td>
+          <td>${r.errorHandling}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>`;
+  };
 
   const flowSteps = model.flowSteps.length
     ? model.flowSteps
@@ -1521,24 +1661,7 @@ function buildEpicDocHtmlFromModel(
             : 'Exempelinputs (fallback – mallbaserad tabell) används eftersom inga LLM-inputs finns.'
         }
       </p>
-      ${
-        model.inputs.length
-          ? `
-      <table>
-        <tr>
-          <th>Inputdefinition</th>
-        </tr>
-        ${model.inputs
-          .map(
-            (row) => `
-        <tr>
-          <td>${row}</td>
-        </tr>`,
-          )
-          .join('')}
-      </table>`
-          : '<p class="muted">Inga inputs specificerade ännu.</p>'
-      }
+      ${renderEpicInputsTable()}
     </section>
 
     <section class="doc-section" data-source-flow="${flowStepsSource}">

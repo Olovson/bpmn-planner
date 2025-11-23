@@ -158,7 +158,7 @@ Exempel (endast format, skriv egen text):
 **Syfte:** Definiera affärsscenarier som Feature Goalet måste hantera.
 
 **Innehåll (`scenarios`):**
-- Minst 3 scenarier.
+- Minst 6 scenarier.
 - Minst 1 med `type = "Happy"`.
 - Minst 1 med `type = "Edge"`.
 - Minst 1 med `type = "Error"`.
