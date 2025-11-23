@@ -47,6 +47,12 @@ const NodeTestsPage = () => {
     [tests, variantFilter],
   );
 
+  const plannedScenarioCountForCurrentProvider = useMemo(() => {
+    return plannedScenariosByProvider
+      .filter((set) => set.provider === plannedProvider)
+      .reduce((sum, set) => sum + (set.scenarios?.length ?? 0), 0);
+  }, [plannedScenariosByProvider, plannedProvider]);
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'passing':
@@ -136,7 +142,7 @@ const NodeTestsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-background overflow-hidden">
+      <div className="flex min-h-screen bg-background overflow-hidden pl-16">
         <AppHeaderWithTabs
           userEmail={user?.email ?? ''}
           currentView="tests"
@@ -156,7 +162,7 @@ const NodeTestsPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background overflow-hidden">
+    <div className="flex min-h-screen bg-background overflow-hidden pl-16">
       <AppHeaderWithTabs
         userEmail={user?.email ?? ''}
         currentView="tests"
@@ -232,13 +238,10 @@ const NodeTestsPage = () => {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-2xl font-bold">
-                  {plannedScenariosByProvider.reduce(
-                    (sum, set) => sum + (set.scenarios?.length ?? 0),
-                    0,
-                  )}
+                  {plannedScenarioCountForCurrentProvider}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  Planerade scenarion (alla providers)
+                  Planerade scenarion (vald provider)
                 </div>
                 <div className="text-xs text-muted-foreground mt-2">
                   Designade men ej implementerade

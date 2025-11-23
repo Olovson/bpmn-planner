@@ -28,7 +28,7 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
   };
 
   return (
-    <aside className="h-screen w-16 border-r border-border bg-card flex flex-col items-center justify-between py-4">
+    <aside className="fixed inset-y-0 left-0 w-16 border-r border-border bg-card flex flex-col items-center justify-between py-4 z-40">
       {/* Top: brand + main navigation */}
       <div className="flex flex-col items-center gap-6">
         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">

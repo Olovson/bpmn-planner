@@ -17,6 +17,7 @@ import { useFilePlannedScenarios } from '@/hooks/useFilePlannedScenarios';
 import { useBpmnFileTestableNodes } from '@/hooks/useBpmnFileTestableNodes';
 
 type UiScenario = TestScenario & { _source?: string };
+type ProviderScope = 'all' | 'local-fallback' | 'chatgpt' | 'ollama';
 import {
   TestReportFilters,
   type TestDocTypeFilter,
@@ -35,10 +36,14 @@ const TestReport = () => {
   const { hasTests } = useArtifactAvailability();
   const { data: coverageMap } = useAllFilesArtifactCoverage();
   const { testResults, isLoading, stats } = useTestResults();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const urlFile =
     searchParams.get('file') || searchParams.get('bpmnFile') || null;
+  const urlProvider =
+    (searchParams.get('provider') as ProviderScope | null) || null;
+
+  const providerScope: ProviderScope = urlProvider || 'all';
 
   const [statusFilter, setStatusFilter] = useState<TestStatusFilter>('all');
   const [processFilter, setProcessFilter] = useState<string>('all');
@@ -60,6 +65,16 @@ const TestReport = () => {
 
   const { summary: plannedSummary } = useFilePlannedScenarios(activeBpmnFile);
   const { nodes: testableNodes } = useBpmnFileTestableNodes(activeBpmnFile || undefined);
+
+  const setProviderScope = (provider: ProviderScope) => {
+    const next = new URLSearchParams(searchParams);
+    if (provider === 'all') {
+      next.delete('provider');
+    } else {
+      next.set('provider', provider);
+    }
+    setSearchParams(next, { replace: false });
+  };
 
   const nodeTypeById = useMemo(() => {
     const map: Record<string, NodeType> = {};
@@ -87,11 +102,16 @@ const TestReport = () => {
       }
     }
 
+    const filteredResults = (testResults || []).filter((r) => {
+      const matchesFile = activeBpmnFile ? r.bpmn_file === activeBpmnFile : true;
+      const provider = (r.script_provider ?? null) as ProviderScope | null;
+      const matchesProvider =
+        providerScope === 'all' ? true : provider === providerScope;
+      return matchesFile && matchesProvider;
+    });
+
     const executedNodeIds = new Set(
-      (testResults || [])
-        .filter((r) =>
-          activeBpmnFile ? r.bpmn_file === activeBpmnFile : true,
-        )
+      filteredResults
         .map((r) => r.node_id)
         .filter((id): id is string => Boolean(id)),
     );
@@ -101,16 +121,26 @@ const TestReport = () => {
     const executedCoverage =
       totalNodes > 0 ? (executedNodeIds.size / totalNodes) * 100 : 0;
 
-    const plannedNodesCount =
-      plannedSummary?.totalNodesWithPlannedScenarios ??
-      Object.keys(testMapping).length;
+    let plannedNodesCount: number;
+    if (plannedSummary && activeBpmnFile) {
+      if (providerScope === 'all') {
+        plannedNodesCount = plannedSummary.totalNodesWithPlannedScenarios;
+      } else {
+        plannedNodesCount = plannedSummary.byNode.filter((node) =>
+          node.byProvider.some(
+            (p) =>
+              p.provider === providerScope &&
+              (p.scenarios?.length ?? 0) > 0,
+          ),
+        ).length;
+      }
+    } else {
+      plannedNodesCount = Object.keys(testMapping).length;
+    }
 
     const latestRun =
-      (testResults || []).length
-        ? (testResults || [])
-            .filter((r) =>
-              activeBpmnFile ? r.bpmn_file === activeBpmnFile : true,
-            )
+      filteredResults.length
+        ? filteredResults
             .slice()
             .sort((a, b) => {
               const aTime = a.last_run ? new Date(a.last_run).getTime() : 0;
@@ -119,6 +149,10 @@ const TestReport = () => {
             })[0].last_run
         : null;
 
+    const passingCount = filteredResults.filter(
+      (r) => r.status === 'passing',
+    ).length;
+
     return {
       totalNodes,
       implementedNodes,
@@ -126,22 +160,34 @@ const TestReport = () => {
       implementedCoverage,
       executedCoverage,
       plannedNodesCount,
-      passRate: stats.total > 0 ? (stats.passing / stats.total) * 100 : 0,
+      passRate:
+        filteredResults.length > 0
+          ? (passingCount / filteredResults.length) * 100
+          : 0,
       latestRun,
     };
-  }, [coverageMap, testResults, stats, activeBpmnFile, plannedSummary]);
+  }, [coverageMap, testResults, activeBpmnFile, plannedSummary, providerScope]);
 
   const allTests = useMemo(() => getAllTests(), []);
 
   const plannedScenarioTotal = useMemo(() => {
-    if (plannedSummary) {
-      return plannedSummary.totalPlannedScenarios;
+    if (plannedSummary && activeBpmnFile) {
+      if (providerScope === 'all') {
+        return plannedSummary.totalPlannedScenarios;
+      }
+      return plannedSummary.byNode.reduce((sum, node) => {
+        const providerEntry = node.byProvider.find(
+          (p) => p.provider === providerScope,
+        );
+        return sum + (providerEntry?.scenarios?.length ?? 0);
+      }, 0);
     }
+
     return allTests.reduce(
       (sum, t) => sum + (t.scenarios?.length ?? 0),
       0,
     );
-  }, [plannedSummary, allTests]);
+  }, [plannedSummary, allTests, activeBpmnFile, providerScope]);
 
   const testsWithDerivedProcess = useMemo(() => {
     return testResults.map((result) => {
@@ -195,7 +241,7 @@ const TestReport = () => {
       processFilter,
     );
 
-    if (providerFilter === 'all') return base;
+    if (providerScope === 'all') return base;
 
     return base.filter((t) => {
       if (!('script_provider' in t)) return false;
@@ -205,9 +251,15 @@ const TestReport = () => {
         | 'ollama'
         | null
         | undefined;
-      return provider === providerFilter;
+      return provider === providerScope;
     });
-  }, [testsWithDerivedProcess, statusFilter, processFilter, executedTypeFilter, providerFilter]);
+  }, [
+    testsWithDerivedProcess,
+    statusFilter,
+    processFilter,
+    executedTypeFilter,
+    providerScope,
+  ]);
 
   const plannedProcessOptions = useMemo(() => {
     const files = new Set<string>();
@@ -250,10 +302,19 @@ const TestReport = () => {
             return false;
           }
 
-          // Filtrera på att noden antingen har planerade scenarion eller, om statusfiltret är 'all',
-          // får visas även utan scenarion.
           const planned = plannedById.get(node.id);
-          const hasPlanned = Boolean(planned && planned.totalScenarios > 0);
+          const providerScopedCount =
+            planned?.byProvider
+              .filter((p) =>
+                providerScope === 'all'
+                  ? true
+                  : p.provider === providerScope,
+              )
+              .reduce(
+                (sum, p) => sum + (p.scenarios?.length ?? 0),
+                0,
+              ) ?? 0;
+          const hasPlanned = providerScopedCount > 0;
 
           if (plannedStatusFilter === 'all') {
             return true;
@@ -281,6 +342,12 @@ const TestReport = () => {
           const plannedScenarios: UiScenario[] = [];
           if (planned) {
             for (const providerSet of planned.byProvider) {
+              if (
+                providerScope !== 'all' &&
+                providerSet.provider !== providerScope
+              ) {
+                continue;
+              }
               const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
               for (const scenario of providerSet.scenarios) {
                 plannedScenarios.push({
@@ -292,7 +359,11 @@ const TestReport = () => {
           }
           const hasExecuted = testResults.some(
             (r) =>
-              r.bpmn_file === activeBpmnFile && r.node_id === node.id,
+              r.bpmn_file === activeBpmnFile &&
+              r.node_id === node.id &&
+              (providerScope === 'all' ||
+                ((r.script_provider ?? null) as ProviderScope | null) ===
+                  providerScope),
           );
 
           const meta = elementResourceMapping[node.id];
@@ -353,6 +424,7 @@ const TestReport = () => {
     nodeTypeById,
     plannedProcessFilter,
     testResults,
+    providerScope,
   ]);
 
   const handleViewChange = (view: string) => {
@@ -364,7 +436,7 @@ const TestReport = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-background overflow-hidden">
+    <div className="flex min-h-screen bg-background overflow-hidden pl-16">
       <AppHeaderWithTabs
         userEmail={user?.email ?? ''}
         currentView="tests"
@@ -379,15 +451,64 @@ const TestReport = () => {
 
       <main className="flex-1 min-w-0 overflow-auto">
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-lg font-semibold text-foreground">
               Testrapport
             </h1>
-            <Badge variant="outline" className="text-xs">
-              {activeBpmnFile
-                ? `Scope: ${activeBpmnFile}`
-                : 'Scope: alla BPMN-filer'}
-            </Badge>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <Badge variant="outline" className="text-xs">
+                {activeBpmnFile
+                  ? `Scope: ${activeBpmnFile}`
+                  : 'Scope: alla BPMN-filer'}
+              </Badge>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Provider:</span>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${
+                    providerScope === 'all'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border'
+                  }`}
+                  onClick={() => setProviderScope('all')}
+                >
+                  Alla
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${
+                    providerScope === 'local-fallback'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border'
+                  }`}
+                  onClick={() => setProviderScope('local-fallback')}
+                >
+                  Lokal fallback
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${
+                    providerScope === 'chatgpt'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border'
+                  }`}
+                  onClick={() => setProviderScope('chatgpt')}
+                >
+                  ChatGPT
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded border ${
+                    providerScope === 'ollama'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border'
+                  }`}
+                  onClick={() => setProviderScope('ollama')}
+                >
+                  Ollama
+                </button>
+              </div>
+            </div>
           </div>
           {/* Top-summary (KPI-rad) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -705,44 +826,44 @@ const TestReport = () => {
                 <button
                   type="button"
                   className={`px-2 py-1 rounded border ${
-                    providerFilter === 'all'
+                    providerScope === 'all'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
                   }`}
-                  onClick={() => setProviderFilter('all')}
+                  onClick={() => setProviderScope('all')}
                 >
                   Alla
                 </button>
                 <button
                   type="button"
                   className={`px-2 py-1 rounded border ${
-                    providerFilter === 'local-fallback'
+                    providerScope === 'local-fallback'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
                   }`}
-                  onClick={() => setProviderFilter('local-fallback')}
+                  onClick={() => setProviderScope('local-fallback')}
                 >
                   Lokal fallback
                 </button>
                 <button
                   type="button"
                   className={`px-2 py-1 rounded border ${
-                    providerFilter === 'chatgpt'
+                    providerScope === 'chatgpt'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
                   }`}
-                  onClick={() => setProviderFilter('chatgpt')}
+                  onClick={() => setProviderScope('chatgpt')}
                 >
                   ChatGPT
                 </button>
                 <button
                   type="button"
                   className={`px-2 py-1 rounded border ${
-                    providerFilter === 'ollama'
+                    providerScope === 'ollama'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
                   }`}
-                  onClick={() => setProviderFilter('ollama')}
+                  onClick={() => setProviderScope('ollama')}
                 >
                   Ollama
                 </button>

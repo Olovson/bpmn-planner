@@ -127,7 +127,7 @@ const NodeTestScriptViewer = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-background overflow-hidden">
+    <div className="flex min-h-screen bg-background overflow-hidden pl-16">
       <AppHeaderWithTabs
         userEmail={user?.email ?? ''}
         currentView="tests"
