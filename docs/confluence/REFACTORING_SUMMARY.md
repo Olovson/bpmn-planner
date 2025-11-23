@@ -188,6 +188,12 @@ All use SAME hierarchy model
 - Clear inputs and outputs
 - No side effects in core functions
 
+## Kända begränsningar / TODO
+
+- BPMN‑viewerns navigation mellan subprocesser:
+  - Dubbelklick + knappen **Gå upp en nivå** fungerar, men kan upplevas som instabil om användaren klickar mycket snabbt mellan olika subprocesser.
+  - TODO: stabilisera historikhanteringen (viewer‑history vs. URL‑parametrar) så att navigationen är helt deterministisk även vid snabb växling.
+
 ## Migration Path
 
 ### For Existing Tests
