@@ -139,7 +139,7 @@
 
     <section class="doc-section" data-source-summary="llm">
       <h2>Sammanfattning &amp; scope</h2>
-      <ul><li>Regeln bedömer kunders berättigande till bolån baserat på deras ekonomiska profil och kreditvärdighet. Den riktar sig främst till privatpersoner som ansöker om nya bolån. Regeln används i förhandsbedömningen för att snabbt avgöra om en kund är berättigad till vidare prövning. Den omfattar inte företagskunder eller befintliga lånejusteringar.</li></ul>
+      <ul><li>Regeln bedömer kunders berättigande för bolån baserat på kreditvärdighet och ekonomisk profil. Den riktar sig mot privatkunder som ansöker om bolån och används främst i förhandsbedömningen av ansökningar. Regelverket inkluderar kreditvärdighetskontroller och skuldkvotsberäkningar, men exkluderar detaljerade inkomstanalyser.</li></ul>
     </section>
 
     <section class="doc-section" data-source-prerequisites="fallback">
@@ -162,52 +162,44 @@
         
         <tr>
           <td>Kreditvärdighet</td>
-          <td>Extern kreditbyrå</td>
-          <td>Numeriskt</td>
+          <td>Kreditupplysningsföretag</td>
+          <td>Numerisk</td>
           <td>Ja</td>
-          <td>Minsta värde 300 (exempelvärde)</td>
-          <td>Avvisa ansökan.</td>
-        </tr>
-        <tr>
-          <td>Ålder</td>
-          <td>Kundregister</td>
-          <td>Numeriskt</td>
-          <td>Ja</td>
-          <td>Minsta värde 18 (exempelvärde)</td>
-          <td>Avvisa ansökan.</td>
-        </tr>
-        <tr>
-          <td>Inkomst</td>
-          <td>Skattedeklaration</td>
-          <td>Numeriskt</td>
-          <td>Ja</td>
-          <td>Minsta värde 200 000 kr (exempelvärde)</td>
+          <td>>= 300 (exempelvärde)</td>
           <td>Avvisa ansökan.</td>
         </tr>
         <tr>
           <td>Skuldkvot</td>
-          <td>Intern beräkning</td>
-          <td>Numeriskt</td>
+          <td>Interna beräkningar</td>
+          <td>Numerisk</td>
           <td>Ja</td>
-          <td>Maxvärde 6.0 (exempelvärde)</td>
+          <td><= 6.0 (exempelvärde)</td>
           <td>Manuell granskning.</td>
+        </tr>
+        <tr>
+          <td>Ålder</td>
+          <td>Kundregister</td>
+          <td>Numerisk</td>
+          <td>Ja</td>
+          <td>>= 18 (exempelvärde)</td>
+          <td>Avvisa ansökan.</td>
         </tr>
       </table>
     </section>
 
     <section class="doc-section" data-source-decision-logic="llm">
       <h2>Beslutslogik (DMN / regler)</h2>
-      <ul><li>Regeln använder en poängbaserad metod för att bedöma kreditvärdighet.</li><li>Kunder med kreditvärdighet under 620 (exempelvärde) avvisas automatiskt.</li><li>Kunder med ålder under 18 (exempelvärde) avvisas automatiskt.</li><li>Kunder med en skuldkvot över 6.0 (exempelvärde) skickas till manuell granskning.</li><li>Låg kreditvärdighet + hög skuldsättning → manuell granskning.</li></ul>
+      <ul><li>Regeln avgör om en kund är berättigad till bolån baserat på kreditvärdighet och skuldkvot.</li><li>Kreditvärdighet under 620 (exempelvärde) leder till avslag.</li><li>Skuldkvot över 6.0 (exempelvärde) kräver manuell granskning.</li><li>Ålder under 18 (exempelvärde) leder till avslag.</li><li>Låg kreditvärdighet + hög skuldsättning → manuell granskning.</li></ul>
     </section>
 
     <section class="doc-section" data-source-outputs="llm">
       <h2>Output &amp; effekter</h2>
-      <ul><li>Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Godkännande eller avvisning av ansökan; Loggning: Beslutsresultat och orsaker loggas.</li><li>Outputtyp: Flaggor; Typ: Riskindikatorer; Effekt: Indikerar hög risk vid manuell granskning; Loggning: Riskfaktorer loggas.</li><li>Outputtyp: Notifiering; Typ: Intern kommunikation; Effekt: Informerar kreditavdelningen vid manuell granskning; Loggning: Notifieringsdetaljer loggas.</li></ul>
+      <ul><li>Outputtyp: Beslut; Typ: APPROVE; Effekt: Ansökan godkänns; Loggning: Beslut loggas med tidsstämpel.</li><li>Outputtyp: Beslut; Typ: DECLINE; Effekt: Ansökan avslås; Loggning: Avslagsorsak loggas.</li><li>Outputtyp: Flaggor; Typ: Hög skuldsättning; Effekt: Manuell granskning; Loggning: Flagga loggas för vidare åtgärd.</li><li>Outputtyp: Beslut; Typ: REFER; Effekt: Ansökan skickas för manuell granskning; Loggning: Referensbeslut loggas.</li></ul>
     </section>
 
     <section class="doc-section" data-source-business-rules="llm">
       <h2>Affärsregler &amp; policystöd</h2>
-      <ul><li>Stödjer interna principer för kreditvärdighetsbedömning.</li><li>Följer riktlinjer för skuldkvotstak och belåningsgradstak.</li><li>Säkerställer efterlevnad av konsumentkreditlagen.</li><li>Implementerar exklusionskriterier för minderåriga låntagare.</li></ul>
+      <ul><li>Regeln stödjer interna policys för kreditvärdighetsbedömning.</li><li>Följer principer för skuldkvotstak enligt bankens riskmandat.</li><li>Anpassad efter konsumentkreditlagens krav på ansvarsfull kreditgivning.</li><li>Säkerställer att minderåriga inte beviljas lån.</li><li>Stödjer AML/KYC-krav genom att verifiera kundens identitet.</li></ul>
     </section>
 
     <section class="doc-section" data-source-scenarios="llm">
@@ -224,23 +216,23 @@
         
         <tr>
           <td>BR1</td>
-          <td>Godkänd kreditvärdighet</td>
-          <td>Kund med kreditvärdighet på 700 (exempelvärde), ålder 30 (exempelvärde), inkomst 400 000 kr (exempelvärde), skuldkvot 3.0 (exempelvärde).</td>
-          <td>APPROVE</td>
+          <td>Godkänd ansökan</td>
+          <td>Kund med kreditvärdighet 700 (exempelvärde) och skuldkvot 4.0 (exempelvärde).</td>
+          <td>Ansökan godkänns automatiskt.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>BR2</td>
-          <td>Hög skuldkvot</td>
-          <td>Kund med kreditvärdighet på 650 (exempelvärde), ålder 45 (exempelvärde), inkomst 300 000 kr (exempelvärde), skuldkvot 7.0 (exempelvärde).</td>
-          <td>REFER</td>
+          <td>Avvisad ansökan</td>
+          <td>Kund med kreditvärdighet 580 (exempelvärde) och skuldkvot 5.0 (exempelvärde).</td>
+          <td>Ansökan avslås.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
         <tr>
           <td>BR3</td>
-          <td>Underkänd kreditvärdighet</td>
-          <td>Kund med kreditvärdighet på 580 (exempelvärde), ålder 25 (exempelvärde), inkomst 250 000 kr (exempelvärde), skuldkvot 4.0 (exempelvärde).</td>
-          <td>DECLINE</td>
+          <td>Manuell granskning</td>
+          <td>Kund med kreditvärdighet 630 (exempelvärde) och skuldkvot 7.0 (exempelvärde).</td>
+          <td>Ansökan skickas för manuell granskning.</td>
           <td><code>tests/mortgage.smoke.spec.ts</code></td>
         </tr>
       </table>
@@ -248,12 +240,12 @@
 
     <section class="doc-section" data-source-implementation-notes="llm">
       <h2>Implementation &amp; integrationsnoter</h2>
-      <ul><li>Regeln implementeras i en DMN-tabell för beslutsfattande.</li><li>Exponeras via intern beslutstjänst för realtidsbedömning.</li><li>Kräver integration med externa kreditbyråer för data.</li><li>Loggning av alla beslut och riskfaktorer för audit-spårbarhet.</li></ul>
+      <ul><li>Regeln implementeras i en DMN-tabell för beslutsfattande.</li><li>Exponeras via en intern beslutstjänst/API för realtidsbedömningar.</li><li>Beroende av externa kreditupplysningar och interna kunddataregister.</li><li>Loggning av alla beslut och flaggor för audit-spårbarhet.</li><li>Prestandaoptimering krävs för att hantera stora volymer av ansökningar.</li></ul>
     </section>
 
     <section class="doc-section" data-source-related-items="llm">
       <h2>Relaterade regler &amp; subprocesser</h2>
-      <ul><li>Relaterad regel: Kreditriskbedömning.</li><li>Subprocess: Förhandsbedömning av kreditansökan.</li><li>Övergripande dokumentation: Kreditpolicy-dokumentation.</li></ul>
+      <ul><li>Relaterad regel: Kreditvärdighetskontroll.</li><li>Subprocess: Förhandsbedömning av ansökningar.</li><li>Subprocess: Huvudbeslut i kreditprocessen.</li><li>Dokumentation: Övergripande kreditpolicy.</li></ul>
     </section>
   
   </div>

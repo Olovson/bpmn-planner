@@ -32,6 +32,15 @@ export interface LlmLogEvent {
 const MAX_EVENTS = 200;
 const recentLlmEvents: LlmLogEvent[] = [];
 
+export function getProviderLabel(
+  finalProvider: LlmProvider,
+  fallbackUsed: boolean
+): 'ChatGPT' | 'Ollama' | 'Local-fallback' {
+  if (finalProvider === 'cloud') return 'ChatGPT';
+  if (fallbackUsed) return 'Local-fallback';
+  return 'Ollama';
+}
+
 /**
  * Lägger till ett nytt LLM-event i loggen.
  */
@@ -51,7 +60,10 @@ export function logLlmEvent(event: Omit<LlmLogEvent, 'timestamp'>): void {
 
   // Logga till console också (strukturerat)
   const logLevel = event.success ? 'info' : 'error';
-  const logMessage = `[LLM ${logLevel.toUpperCase()}] ${event.docType} via ${event.finalProvider}${event.fallbackUsed ? ' (fallback)' : ''} - ${event.success ? 'Success' : `Failed: ${event.errorCode || 'Unknown'}`}${event.latencyMs ? ` (${event.latencyMs}ms)` : ''}`;
+  const providerLabel = getProviderLabel(event.finalProvider, event.fallbackUsed);
+  const logMessage = `[LLM ${logLevel.toUpperCase()}] ${event.docType} via ${providerLabel} - ${
+    event.success ? 'Success' : `Failed: ${event.errorCode || 'Unknown'}`
+  }${event.latencyMs ? ` (${event.latencyMs}ms)` : ''}`;
 
   if (event.success) {
     console.log(logMessage);
@@ -152,4 +164,3 @@ export function extractErrorCode(error: unknown): LlmErrorCode {
   }
   return 'UNKNOWN_ERROR';
 }
-

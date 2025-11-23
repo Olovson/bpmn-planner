@@ -9,6 +9,7 @@ import { useLlmEvents, useLlmStats } from '@/hooks/useLlmEvents';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { getProviderLabel } from '@/lib/llmLogging';
 
 export function LlmDebugView() {
   const { data: events, isLoading: eventsLoading } = useLlmEvents(100);
@@ -54,11 +55,11 @@ export function LlmDebugView() {
             </div>
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <div className="text-sm text-muted-foreground">ChatGPT (moln)</div>
+                <div className="text-sm text-muted-foreground">ChatGPT</div>
                 <div className="text-xl font-semibold">{stats.byProvider.cloud}</div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Ollama (lokal)</div>
+                <div className="text-sm text-muted-foreground">Ollama</div>
                 <div className="text-xl font-semibold">{stats.byProvider.local}</div>
               </div>
               <div>
@@ -100,30 +101,44 @@ export function LlmDebugView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map((event, index) => (
-                    <tr key={index} className="border-b hover:bg-muted/50">
-                      <td className="p-2">
-                        {new Date(event.timestamp).toLocaleTimeString()}
-                      </td>
-                      <td className="p-2">
-                        <Badge variant="outline">{event.docType}</Badge>
-                      </td>
-                      <td className="p-2">
-                        <Badge
-                          variant={event.finalProvider === 'cloud' ? 'default' : 'secondary'}
-                        >
-                          {event.finalProvider}
-                        </Badge>
-                      </td>
-                      <td className="p-2">
-                        {event.fallbackUsed ? (
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                            Yes
+                  {events.map((event, index) => {
+                    const providerLabel = getProviderLabel(
+                      event.finalProvider,
+                      event.fallbackUsed
+                    );
+                    return (
+                      <tr key={index} className="border-b hover:bg-muted/50">
+                        <td className="p-2">
+                          {new Date(event.timestamp).toLocaleTimeString()}
+                        </td>
+                        <td className="p-2">
+                          <Badge variant="outline">{event.docType}</Badge>
+                        </td>
+                        <td className="p-2">
+                          <Badge
+                            variant={
+                              providerLabel === 'ChatGPT'
+                                ? 'default'
+                                : providerLabel === 'Local-fallback'
+                                ? 'destructive'
+                                : 'secondary'
+                            }
+                          >
+                            {providerLabel}
                           </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">No</span>
-                        )}
-                      </td>
+                        </td>
+                        <td className="p-2">
+                          {event.fallbackUsed ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-orange-50 text-orange-700 border-orange-200"
+                            >
+                              Yes
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">No</span>
+                          )}
+                        </td>
                       <td className="p-2">
                         {event.success ? (
                           <div className="flex items-center gap-1 text-green-600">
@@ -148,25 +163,26 @@ export function LlmDebugView() {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </td>
-                      <td className="p-2">
-                        {event.latencyMs !== undefined ? `${event.latencyMs}ms` : '-'}
-                      </td>
-                      <td className="p-2">
-                        {event.errorCode ? (
-                          <div className="text-xs">
-                            <div className="font-mono text-red-600">{event.errorCode}</div>
-                            {event.errorMessage && (
-                              <div className="text-muted-foreground truncate max-w-xs">
-                                {event.errorMessage}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="p-2">
+                          {event.latencyMs !== undefined ? `${event.latencyMs}ms` : '-'}
+                        </td>
+                        <td className="p-2">
+                          {event.errorCode ? (
+                            <div className="text-xs">
+                              <div className="font-mono text-red-600">{event.errorCode}</div>
+                              {event.errorMessage && (
+                                <div className="text-muted-foreground truncate max-w-xs">
+                                  {event.errorMessage}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

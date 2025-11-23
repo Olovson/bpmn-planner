@@ -208,16 +208,19 @@ npx vitest run \
 
 **Riktiga LLM-smoke-tester (opt-in):**
 
-Det finns ett dedikerat script för att köra ett litet antal riktiga LLM-tester (Feature Goal + Epic + Business Rule) utan att påverka resten av sviten:
+Det finns dedikerade script för att köra ett litet antal riktiga LLM-tester (Feature Goal + Epic + Business Rule) utan att påverka resten av sviten:
 
 ```bash
-npm run test:llm:smoke
+npm run test:llm:smoke        # endast ChatGPT (cloud)
+npm run test:llm:smoke:cloud  # strikt ChatGPT-smoke med LLM_SMOKE_STRICT=true
+npm run test:llm:smoke:local  # endast Ollama (lokal), best-effort
 ```
 
-Scriptet sätter:
+Scriptet `test:llm:smoke` sätter:
 
 - `VITE_USE_LLM=true`
 - `VITE_ALLOW_LLM_IN_TESTS=true`
+- `LLM_PROVIDER=cloud`
 
 och kör `tests/integration/llm.real.smoke.test.ts`, som:
 
@@ -229,7 +232,7 @@ och kör `tests/integration/llm.real.smoke.test.ts`, som:
   - Feature Goal (`docType = "feature"`),
   - Epic (`docType = "epic"`),
   - Business Rule (`docType = "businessRule"`),
-- kör både ChatGPT (moln-LLM) och Ollama (lokal LLM) (om lokal LLM är tillgänglig) och skriver LLM- samt lokal fallback-HTML till `tests/llm-output/html/`:
+- skriver LLM-baserad HTML (ChatGPT) och mallbaserad fallback-HTML till `tests/llm-output/html/`:
   - `llm-feature-goal-chatgpt.html` / `llm-feature-goal-ollama.html` / `llm-feature-goal-fallback.html`
   - `llm-epic-chatgpt.html` / `llm-epic-ollama.html` / `llm-epic-fallback.html`
   - `llm-business-rule-chatgpt.html` / `llm-business-rule-ollama.html` / `llm-business-rule-fallback.html`
