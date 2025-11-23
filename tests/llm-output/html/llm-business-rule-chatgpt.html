@@ -121,163 +121,21 @@
 </head>
 <body>
   <div class="doc-shell">
-  <!-- LLM_SECTION_ORIGIN: summary=llm, inputs=llm, decisionLogic=llm, outputs=llm, businessRulesPolicy=llm, scenarios=llm, testDescription=llm, implementationNotes=llm, relatedItems=llm -->
     
+    <div class="llm-fallback-badge">
+      ChatGPT (moln-LLM) otillgänglig — fallback aktiverad
+    </div>
+    <div class="llm-fallback-details">
+      Orsak: LLM returned null response
+    </div>
     
     
     <section class="doc-section">
-      <span class="doc-badge">Business Rule / DMN</span>
-      <h1>Eligibility Rule</h1>
-      <ul>
-        <li><strong>Regel-ID:</strong> Rule_Eligibility</li>
-        <li><strong>BPMN-element:</strong> Rule_Eligibility (businessRuleTask)</li>
-        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
-        <li><strong>Ägare:</strong> Risk &amp; Kreditpolicy</li>
-        <li><strong>Kreditprocess-steg:</strong> mortgage</li>
-      </ul>
+      <h2>ChatGPT (moln-LLM) kunde inte nås</h2>
+      <p>ChatGPT-genereringen misslyckades p.g.a. nätverksfel eller anslutningsproblem.</p>
+      <p>Detta dokument är endast en placeholder. Se Ollama-varianten (lokal LLM) för faktisk output.</p>
     </section>
-
-    <section class="doc-section" data-source-summary="llm">
-      <h2>Sammanfattning &amp; scope</h2>
-      <ul><li>Regeln bedömer låntagarnas berättigande till bolån baserat på riskbedömning. Den används främst för att avgöra om en kund uppfyller de grundläggande kraven för att gå vidare i kreditprocessen. Fokus ligger på att identifiera kunder med låg risk och säkerställa att de uppfyller bankens kreditpolicy. Regeln är en del av riskbedömningsfasen och hanteras av regelmotorn.</li></ul>
-    </section>
-
-    <section class="doc-section" data-source-prerequisites="fallback">
-      <h2>Förutsättningar &amp; kontext</h2>
-      <ul><li>Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.</li><li>Kräver att central kund- och ansökningsdata är komplett och validerad.</li><li>Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.</li></ul>
-    </section>
-
-    <section class="doc-section" data-source-inputs="llm">
-      <h2>Inputs &amp; datakällor</h2>
-      <p class="muted">
-        Inputs genererade av LLM (ChatGPT/Ollama) enligt inputformatet i kontraktet.
-      </p>
-      
-      <table>
-        <tr>
-          <th>Fält</th>
-          <th>Datakälla</th>
-          <th>Typ / format</th>
-          <th>Obligatoriskt</th>
-          <th>Validering</th>
-          <th>Felhantering</th>
-        </tr>
-        
-        <tr>
-          <td>Kreditpoäng</td>
-          <td>Kreditregister</td>
-          <td>Numeriskt</td>
-          <td>Ja</td>
-          <td>Minst 300 (exempelvärde)</td>
-          <td>Avvisa ansökan.</td>
-        </tr>
-        <tr>
-          <td>Ålder</td>
-          <td>Befolkningsregister</td>
-          <td>Numeriskt</td>
-          <td>Ja</td>
-          <td>Minst 18 år (exempelvärde)</td>
-          <td>Avvisa ansökan.</td>
-        </tr>
-        <tr>
-          <td>Inkomst</td>
-          <td>Skatteverket</td>
-          <td>Numeriskt</td>
-          <td>Ja</td>
-          <td>Minst 200 000 kr/år (exempelvärde)</td>
-          <td>Avvisa ansökan.</td>
-        </tr>
-      </table>
-    </section>
-
-    <section class="doc-section" data-source-decision-logic="llm">
-      <h2>Beslutslogik (DMN / regler)</h2>
-      <ul><li>Regeln kombinerar kreditpoäng, ålder och inkomst för att avgöra berättigande.</li><li>Kreditpoäng under 600 (exempelvärde) leder till automatisk avslag.</li><li>Ålder under 18 år (exempelvärde) leder till automatisk avslag.</li><li>Inkomst under 200 000 kr/år (exempelvärde) leder till manuell granskning.</li><li>Låg kreditpoäng + låg inkomst → manuell granskning.</li></ul>
-    </section>
-
-    <section class="doc-section" data-source-outputs="llm">
-      <h2>Output &amp; effekter</h2>
-      
-      <table>
-        <tr>
-          <th>Outputtyp</th>
-          <th>Typ</th>
-          <th>Effekt</th>
-          <th>Loggning</th>
-        </tr>
-        
-        <tr>
-          <td>Beslut</td>
-          <td>APPROVE/REFER/DECLINE</td>
-          <td>Avgör om ansökan går vidare</td>
-          <td>Beslutsloggning med tidsstämpel.</td>
-        </tr>
-        <tr>
-          <td>Flaggor</td>
-          <td>Riskindikator</td>
-          <td>Markerar hög risk</td>
-          <td>Riskflagga loggas.</td>
-        </tr>
-        <tr>
-          <td>Notifikation</td>
-          <td>Intern</td>
-          <td>Informerar handläggare vid manuell granskning</td>
-          <td>Notifieringslogg.</td>
-        </tr>
-      </table>
-    </section>
-
-    <section class="doc-section" data-source-business-rules="llm">
-      <h2>Affärsregler &amp; policystöd</h2>
-      <ul><li>Stödjer interna kreditpolicys gällande kreditpoäng och ålderskrav.</li><li>Säkerställer efterlevnad av konsumentkreditlagens krav på kreditvärdighet.</li><li>Bidrar till att identifiera och exkludera högriskkunder i ett tidigt skede.</li><li>Följer principerna för ansvarsfull långivning enligt bankens riktlinjer.</li></ul>
-    </section>
-
-    <section class="doc-section" data-source-scenarios="llm">
-      <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
-      <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
-      <table>
-        <tr>
-          <th>Scenario-ID</th>
-          <th>Scenario</th>
-          <th>Input (kortfattat)</th>
-          <th>Förväntat beslut/flagga</th>
-          <th>Automatiskt test</th>
-        </tr>
-        
-        <tr>
-          <td>BR1</td>
-          <td>Standardberättigande</td>
-          <td>Kund med kreditpoäng 700 (exempelvärde), ålder 30 år (exempelvärde), inkomst 300 000 kr/år (exempelvärde).</td>
-          <td>Godkänd ansökan.</td>
-          <td><code>tests/mortgage.smoke.spec.ts</code></td>
-        </tr>
-        <tr>
-          <td>BR2</td>
-          <td>Låg kreditpoäng</td>
-          <td>Kund med kreditpoäng 580 (exempelvärde), ålder 25 år (exempelvärde), inkomst 250 000 kr/år (exempelvärde).</td>
-          <td>Manuell granskning krävs.</td>
-          <td><code>tests/mortgage.smoke.spec.ts</code></td>
-        </tr>
-        <tr>
-          <td>BR3</td>
-          <td>Underårig sökande</td>
-          <td>Kund med kreditpoäng 650 (exempelvärde), ålder 17 år (exempelvärde), inkomst 220 000 kr/år (exempelvärde).</td>
-          <td>Ansökan avslagen.</td>
-          <td><code>tests/mortgage.smoke.spec.ts</code></td>
-        </tr>
-      </table>
-    </section>
-
-    <section class="doc-section" data-source-implementation-notes="llm">
-      <h2>Implementation &amp; integrationsnoter</h2>
-      <ul><li>Regeln implementeras i en DMN-tabell som hanteras av regelmotorn.</li><li>Exponeras via intern beslutstjänst för realtidsbedömning.</li><li>Beroende av externa kreditregister för datavalidering.</li><li>Loggning av alla beslut för audit-spårbarhet.</li><li>Prestandaoptimering krävs för att hantera hög volym av ansökningar.</li></ul>
-    </section>
-
-    <section class="doc-section" data-source-related-items="llm">
-      <h2>Relaterade regler &amp; subprocesser</h2>
-      <ul><li>Relaterad regel: Kreditpoängsbedömning.</li><li>Subprocess: Huvudbeslut i kreditprocessen.</li><li>Dokumentation: Intern kreditpolicy och riktlinjer.</li></ul>
-    </section>
-  
+    
   </div>
 </body>
 </html>

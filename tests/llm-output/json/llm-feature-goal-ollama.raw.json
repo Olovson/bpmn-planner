@@ -33,31 +33,32 @@
         "id": "internal-data-gathering",
         "name": "Internal data gathering (callActivity)",
         "depthFromRoot": 0,
-        "featureGoalAncestor": null,
-        "parentProcess": {
-          "id": "internal-data-gathering",
-          "name": "Internal data gathering"
-        }
+        "featureGoalAncestor": null
       }
     ],
     "parents": [],
-    "siblings": [],
-    "children": [],
-    "descendantHighlights": [],
-    "descendantTypeCounts": {},
-    "flows": {
-      "incoming": [],
-      "outgoing": []
-    },
-    "documentation": [],
-    "jiraGuidance": {
-      "hierarchy": "Projekt → Initiativ → Feature Goal",
-      "nodeJiraType": null,
-      "derivedJiraName": "",
-      "notes": ""
-    },
-    "links": {
-      "bpmnViewerLink": "#/bpmn/mortgage.bpmn"
-    }
+    "siblings": [
+      {
+        "id": "internal-data-gathering",
+        "name": "Internal data gathering"
+      }
+    ],
+    "children": []
+  },
+  "flows": {
+    "incoming": [],
+    "outgoing": []
+  },
+  "documentation": [
+    "<p>The Internal Data Gathering feature goal is a multi-team leverançer that should be described by several epics.</p>"
+  ],
+  "jiraGuidance": {
+    "hierarchy": "#/bpmn",
+    "nodeJiraType": "feature goal"
+  },
+  "links": {
+    "bpmnViewerLink": "/#/bpmn/mortgage.bpmn",
+    "testLink": "tests/mortgage.smoke.spec.ts",
+    "dmnLink": "/dmn/example.dmn"
   }
 }

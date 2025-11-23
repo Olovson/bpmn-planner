@@ -1,0 +1,70 @@
+```json
+{
+  "type": "BusinessRule",
+  "processContext": {
+    "processName": "Eligibility Rule for Mortgage Approvals Process",
+    "fileName": "mortgage-eligibility.bpmn",
+    "entryPoints": [
+      {
+        "id": "Mortgage_Approval_Rule",
+        "name": "Eligibility Rule"
+      }
+    ],
+    "endPoints": []
+  },
+  
+  "currentNodeContext": {
+    "node": {
+      "id": "Mortgage_Approval_Rule",
+      "name": "Eligibility Rule for Mortgage Approvals Process",
+      "type": "businessRuleTask"
+    },
+    "hierarchy": [
+      {
+        "id": "Mortgage_Approval_Rule",
+        "name": "Eligibility Rule for Mortgage Applications",
+        "depthFromRoot": 0,
+        "type": "businessRuleTask"
+      }
+    ],
+    "links": {
+      "bpmnViewerLink": "#/bpmn/mortgage-eligibility.bpmn",
+      "testLink": "tests/mortgage_approval_rule_spec.tsx",
+      "dmnLink": "/dmn/mortgageEligibilityRuleModel"
+    }
+  },
+  
+  "scenarios": [
+    {
+      "id": "BR1-HappyScenario",
+      "name": "Automated Approval for Standard Mortgage Application with Good Credit and Income Above $50,000"
+    },
+    
+    {
+      "id": "BR2-EdgeScenario",
+      "type": "Happy",
+      "inputs": [
+        {"name": "creditScore", "(exempelvärde)", 750},
+        {"name": "annualIncome", "(exempelvärde)"}
+      ],
+      "outcome": {
+        "approve": true,
+        "comment": "The scenario assumes a customer with good credit and an annual income above $50,000 will be automatically approved."
+      }
+    },
+    
+    {
+      "id": "BR3-ErrorScenario",
+      "type": "Error",
+      "inputs": [
+        {"name": "creditScore", "(exempelvärde)"},
+        {"name0": "annualIncome", "(exempelvärde)", "comment": "This scenario tests the rule when credit score is below 650."}
+      ],
+      "outcome": {
+        "approve": false,
+        "comment": "The customer with a low credit score should be declined automatically due to insufficient risk assessment criteria being met."
+      }
+    }
+  ]
+}
+```

@@ -1,64 +1,6 @@
-```json
 {
-  "summary": "Regeln bedömer låntagarnas berättigande till bolån baserat på riskbedömning. Den används främst för att avgöra om en kund uppfyller de grundläggande kraven för att gå vidare i kreditprocessen. Fokus ligger på att identifiera kunder med låg risk och säkerställa att de uppfyller bankens kreditpolicy. Regeln är en del av riskbedömningsfasen och hanteras av regelmotorn.",
-  "inputs": [
-    "Fält: Kreditpoäng; Datakälla: Kreditregister; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Minst 300 (exempelvärde); Felhantering: Avvisa ansökan.",
-    "Fält: Ålder; Datakälla: Befolkningsregister; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Minst 18 år (exempelvärde); Felhantering: Avvisa ansökan.",
-    "Fält: Inkomst; Datakälla: Skatteverket; Typ: Numeriskt; Obligatoriskt: Ja; Validering: Minst 200 000 kr/år (exempelvärde); Felhantering: Avvisa ansökan."
-  ],
-  "decisionLogic": [
-    "Regeln kombinerar kreditpoäng, ålder och inkomst för att avgöra berättigande.",
-    "Kreditpoäng under 600 (exempelvärde) leder till automatisk avslag.",
-    "Ålder under 18 år (exempelvärde) leder till automatisk avslag.",
-    "Inkomst under 200 000 kr/år (exempelvärde) leder till manuell granskning.",
-    "Låg kreditpoäng + låg inkomst → manuell granskning."
-  ],
-  "outputs": [
-    "Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Avgör om ansökan går vidare; Loggning: Beslutsloggning med tidsstämpel.",
-    "Outputtyp: Flaggor; Typ: Riskindikator; Effekt: Markerar hög risk; Loggning: Riskflagga loggas.",
-    "Outputtyp: Notifikation; Typ: Intern; Effekt: Informerar handläggare vid manuell granskning; Loggning: Notifieringslogg."
-  ],
-  "businessRulesPolicy": [
-    "Stödjer interna kreditpolicys gällande kreditpoäng och ålderskrav.",
-    "Säkerställer efterlevnad av konsumentkreditlagens krav på kreditvärdighet.",
-    "Bidrar till att identifiera och exkludera högriskkunder i ett tidigt skede.",
-    "Följer principerna för ansvarsfull långivning enligt bankens riktlinjer."
-  ],
-  "scenarios": [
-    {
-      "id": "BR1",
-      "name": "Standardberättigande",
-      "type": "Happy",
-      "input": "Kund med kreditpoäng 700 (exempelvärde), ålder 30 år (exempelvärde), inkomst 300 000 kr/år (exempelvärde).",
-      "outcome": "Godkänd ansökan."
-    },
-    {
-      "id": "BR2",
-      "name": "Låg kreditpoäng",
-      "type": "Edge",
-      "input": "Kund med kreditpoäng 580 (exempelvärde), ålder 25 år (exempelvärde), inkomst 250 000 kr/år (exempelvärde).",
-      "outcome": "Manuell granskning krävs."
-    },
-    {
-      "id": "BR3",
-      "name": "Underårig sökande",
-      "type": "Error",
-      "input": "Kund med kreditpoäng 650 (exempelvärde), ålder 17 år (exempelvärde), inkomst 220 000 kr/år (exempelvärde).",
-      "outcome": "Ansökan avslagen."
-    }
-  ],
-  "testDescription": "Scenarierna mappas mot automatiska tester i systemet, där scenario-ID och namn återfinns i testfiler och testnamn för att säkerställa korrekt validering.",
-  "implementationNotes": [
-    "Regeln implementeras i en DMN-tabell som hanteras av regelmotorn.",
-    "Exponeras via intern beslutstjänst för realtidsbedömning.",
-    "Beroende av externa kreditregister för datavalidering.",
-    "Loggning av alla beslut för audit-spårbarhet.",
-    "Prestandaoptimering krävs för att hantera hög volym av ansökningar."
-  ],
-  "relatedItems": [
-    "Relaterad regel: Kreditpoängsbedömning.",
-    "Subprocess: Huvudbeslut i kreditprocessen.",
-    "Dokumentation: Intern kreditpolicy och riktlinjer."
-  ]
+  "error": "ChatGPT (moln-LLM) connection failed",
+  "provider": "cloud",
+  "details": "LLM returned null response",
+  "timestamp": "2025-11-23T22:13:26.277Z"
 }
-```

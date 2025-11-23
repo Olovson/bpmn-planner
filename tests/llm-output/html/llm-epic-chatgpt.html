@@ -121,157 +121,21 @@
 </head>
 <body>
   <div class="doc-shell">
-  <!-- LLM_SECTION_ORIGIN: summary=llm, prerequisites=llm, inputs=llm, flowSteps=llm, interactions=llm, dataContracts=llm, businessRulesPolicy=llm, scenarios=llm, testDescription=llm, implementationNotes=llm, relatedItems=llm, technicalDependencies=fallback -->
+    
+    <div class="llm-fallback-badge">
+      ChatGPT (moln-LLM) otillgänglig — fallback aktiverad
+    </div>
+    <div class="llm-fallback-details">
+      Orsak: LLM returned null response
+    </div>
     
     
+    <section class="doc-section">
+      <h2>ChatGPT (moln-LLM) kunde inte nås</h2>
+      <p>ChatGPT-genereringen misslyckades p.g.a. nätverksfel eller anslutningsproblem.</p>
+      <p>Detta dokument är endast en placeholder. Se Ollama-varianten (lokal LLM) för faktisk output.</p>
+    </section>
     
-    <section class="doc-section">
-      <span class="doc-badge">Epic</span>
-      <h1>Approve Application</h1>
-      <p class="muted">userTask i mortgage mellan Processstart → Nästa steg.</p>
-      <ul>
-        <li><strong>BPMN-element:</strong> Task_Approve (userTask)</li>
-        <li><strong>Kreditprocess-steg:</strong> mortgage</li>
-        <li><strong>Swimlane/ägare:</strong> Kund / Rådgivare</li>
-        <li><strong>Version &amp; datum:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
-        <li><strong>Ansvarig:</strong> Produktteam Kredit / Arkitektur</li>
-      </ul>
-    </section>
-
-    <section class="doc-section" data-source-summary="llm">
-      <h2>Syfte &amp; Effekt</h2>
-      <p>Epiken 'Approve Application' syftar till att säkerställa att alla inkomna låneansökningar granskas och godkänns enligt bankens kreditpolicy. Den fungerar som en användaruppgift där handläggaren bedömer ansökningar baserat på fördefinierade kriterier. Detta steg är avgörande för att säkerställa att endast kreditvärdiga kunder beviljas lån.</p>
-    </section>
-
-    <section class="doc-section" data-source-inputs="llm">
-      <h2>Inputs</h2>
-      <p class="muted">
-        Inputs genererade av LLM (ChatGPT/Ollama) enligt inputformatet i kontraktet.
-      </p>
-      
-      <table>
-        <tr>
-          <th>Fält</th>
-          <th>Datakälla</th>
-          <th>Typ</th>
-          <th>Obligatoriskt</th>
-          <th>Validering</th>
-          <th>Felhantering</th>
-        </tr>
-        
-        <tr>
-          <td>Ansöknings-ID</td>
-          <td>Intern databas</td>
-          <td>Sträng</td>
-          <td>Ja</td>
-          <td>Kontrollera format</td>
-          <td>Avvisa ansökan.</td>
-        </tr>
-        <tr>
-          <td>Kreditvärdighet</td>
-          <td>Extern kreditbyrå</td>
-          <td>Numerisk</td>
-          <td>Ja</td>
-          <td>Kontrollera mot tröskelvärde</td>
-          <td>Flagga för manuell granskning.</td>
-        </tr>
-        <tr>
-          <td>Inkomstuppgifter</td>
-          <td>Kundens arbetsgivare</td>
-          <td>Numerisk</td>
-          <td>Ja</td>
-          <td>Kontrollera mot deklarerade uppgifter</td>
-          <td>Begär kompletterande dokumentation.</td>
-        </tr>
-      </table>
-    </section>
-
-    <section class="doc-section" data-source-flow="llm">
-      <h2>Funktionellt flöde</h2>
-      <ol>
-        <li>Handläggaren loggar in i systemet och navigerar till listan över inkomna ansökningar.</li><li>Systemet presenterar ansökningsdetaljer och relevant kreditinformation för handläggaren.</li><li>Handläggaren granskar ansökan och jämför mot bankens kreditpolicy.</li><li>Baserat på granskningen fattar handläggaren beslut om att godkänna eller avslå ansökan.</li><li>Systemet registrerar beslutet och uppdaterar ansökningsstatusen.</li>
-      </ol>
-    </section>
-
-    <section class="doc-section" data-source-outputs="llm">
-      <h2>Output</h2>
-      <ul><li>Ansökningsdata tas emot från interna system och valideras mot aktuella regler.</li><li>Beslutsdata skickas till bankens centrala databas för vidare bearbetning.</li><li>Kreditbeslut delas med kundens profil för uppdatering av kreditstatus.</li></ul>
-    </section>
-
-    <section class="doc-section" data-source-business-rules="llm">
-      <h2>Affärsregler som triggas</h2>
-      <ul><li>Epiken stödjer bankens kreditpolicy genom att säkerställa att alla ansökningar granskas mot fastställda kriterier.</li><li>Kreditvärdighetsbedömningar genomförs enligt bankens interna regler och externa kreditrapporter.</li><li>Epiken förhåller sig till belåningsgrad och skuldkvot genom att kontrollera dessa mot policygränser.</li></ul>
-    </section>
-
-    <section class="doc-section" data-source-scenarios="llm">
-      <h2>Affärs-scenarion (tabell)</h2>
-      <p class="muted">Scenarierna nedan är affärsnära och ska mappas till automatiska tester.</p>
-      <table>
-        <tr>
-          <th>Scenario-ID</th>
-          <th>Scenario</th>
-          <th>Typ</th>
-          <th>Förväntat utfall</th>
-          <th>Automatiskt test</th>
-        </tr>
-        
-        <tr>
-          <td>EPIC-S1</td>
-          <td>Standard Approval</td>
-          <td>Happy</td>
-          <td>Ansökan godkänns och kunden meddelas om beviljat lån.</td>
-          <td><code>tests/mortgage.smoke.spec.ts</code></td>
-        </tr>
-        <tr>
-          <td>EPIC-S2</td>
-          <td>Manual Override</td>
-          <td>Edge</td>
-          <td>Ansökan godkänns manuellt och dokumentation av beslutet sparas.</td>
-          <td><code>tests/mortgage.smoke.spec.ts</code></td>
-        </tr>
-        <tr>
-          <td>EPIC-S3</td>
-          <td>Rejection Due to Low Credit Score</td>
-          <td>Error</td>
-          <td>Ansökan avslås och kunden informeras om orsaken till avslaget.</td>
-          <td><code>tests/mortgage.smoke.spec.ts</code></td>
-        </tr>
-      </table>
-    </section>
-
-    <section class="doc-section" data-source-test-description="llm">
-      <h2>Koppling till automatiska tester</h2>
-      <p>
-        Scenarierna mappas mot automatiska tester för att säkerställa korrekt funktionalitet. Scenario-ID och namn bör återanvändas i testfall och rapportering.
-        <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
-      </p>
-    </section>
-
-    <section class="doc-section" data-source-implementation-notes="llm">
-      <h2>Implementation Notes</h2>
-      <ul><li>Epiken använder interna tjänster för att hämta och uppdatera ansökningsdata.</li><li>Loggning och audit-spår är implementerade för alla beslut som fattas.</li><li>Felhantering inkluderar timeout-mekanismer för externa systemanrop.</li><li>Prestandakrav inkluderar snabb bearbetning av ansökningar för att minimera handläggningstider.</li></ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Tekniska &amp; externa beroenden</h2>
-      <ul><li>Beroende tjänster och API:er som epiken anropar eller är beroende av.</li><li>Datakällor (tabeller, domäner och register) som epiken läser eller uppdaterar.</li><li>Externa system eller tredjepartstjänster som påverkar epikens flöde och tillgänglighet.</li><li>Påverkade komponenter i backend, frontend och integrationslager som behöver samspela.</li><li>Tekniska risker och känsliga beroenden som kräver särskild övervakning eller fallback-hantering.</li></ul>
-    </section>
-
-    <section class="doc-section" data-source-related-items="llm">
-      <h2>Relaterade steg &amp; artefakter</h2>
-      <ul><li>Feature Goal: Effektivisera kreditprocessen.</li><li>Epic: Initial Credit Assessment.</li><li>Business Rule: Kreditvärdighetskontroll och godkännandeprocess.</li></ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Ready</h2>
-      <ul><li>Syfte, effektmål och förväntat affärsvärde för epiken är beskrivet och förankrat.</li><li>Upstream- och downstream-noder, beroenden och grundläggande affärsregler är identifierade.</li><li>Indata, gränssnitt och eventuella externa beroenden är kända och övergripande dokumenterade.</li><li>Affärs-scenarion och testkriterier är definierade på en nivå som möjliggör planering av automatiska tester.</li><li>Acceptanskriterier och icke‑funktionella krav (prestanda, robusthet, spårbarhet) är övergripande klarlagda.</li></ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Done</h2>
-      <ul><li>Epiken levererar den avtalade effekten och stöder definierade affärsflöden utan kritiska gap.</li><li>Alla in- och utdataflöden fungerar, är testade och dokumenterade med spårbarhet mot beroende noder.</li><li>Affärsregler som triggas av epiken är implementerade, testade och dokumenterade.</li><li>Automatiska tester täcker huvudflöde, relevanta edge-cases och felhantering.</li><li>Monitorering/loggning är på plats och dokumentation är uppdaterad för berörda team.</li></ul>
-    </section>
-  
   </div>
 </body>
 </html>

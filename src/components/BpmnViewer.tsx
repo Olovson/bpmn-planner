@@ -51,6 +51,22 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [bpmnHistory, setBpmnHistory] = useState<BpmnHistoryItem[]>([]);
   const [nodeMappings, setNodeMappings] = useState<Record<string, { bpmnFile?: string }>>(loadMappings());
+  
+  // Click/dblclick controller to prevent conflicts and race conditions
+  const clickControllerRef = useRef<{
+    lastClickTime: number;
+    lastClickTarget: string | null;
+    doubleClickTimeout: ReturnType<typeof setTimeout> | null;
+    isNavigating: boolean;
+    currentDiagramVersion: number;
+  }>({
+    lastClickTime: 0,
+    lastClickTarget: null,
+    doubleClickTimeout: null,
+    isNavigating: false,
+    currentDiagramVersion: 0,
+  });
+  
   const { toast } = useToast();
   const { getTestResultByNodeId } = useTestResults();
   const { setSelectedElementId } = useBpmnSelection();
@@ -155,6 +171,11 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
 
   // Define loadSubProcess before it's used in useEffects
   const loadSubProcess = useCallback(async (bpmnFileName: string) => {
+    // Mark navigation as in progress to prevent race conditions
+    clickControllerRef.current.isNavigating = true;
+    clickControllerRef.current.currentDiagramVersion += 1;
+    const navigationVersion = clickControllerRef.current.currentDiagramVersion;
+    
     try {
       const url = await getBpmnFileUrl(bpmnFileName);
       console.log('Loading subprocess:', url);
@@ -186,9 +207,12 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       }
 
       // Only update state after validation so we don't blank the viewer on bad content
-      setBpmnHistory((prev) => [...prev, { fileName, xml: currentXml }]);
-      setCurrentXml(xml);
-      setFileName(bpmnFileName);
+      // Verify we're still on the same navigation version (not superseded by another navigation)
+      if (clickControllerRef.current.currentDiagramVersion === navigationVersion) {
+        setBpmnHistory((prev) => [...prev, { fileName, xml: currentXml }]);
+        setCurrentXml(xml);
+        setFileName(bpmnFileName);
+      }
 
       toast({
         title: 'Subprocess loaded',
@@ -201,12 +225,26 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         description: `Failed to load ${bpmnFileName}. ${error instanceof Error ? error.message : ''}`,
         variant: 'destructive',
       });
+    } finally {
+      // Only clear navigation flag if this is still the current navigation
+      if (clickControllerRef.current.currentDiagramVersion === navigationVersion) {
+        clickControllerRef.current.isNavigating = false;
+      }
     }
   }, [fileName, currentXml, toast, downloadFromStorage]);
 
-  // Centralized highlight function
-  const highlightElement = useCallback((elementId: string | null) => {
+  // Centralized highlight function with navigation guard
+  const highlightElement = useCallback((elementId: string | null, diagramVersion?: number) => {
     if (!viewerRef.current) return;
+    
+    // Guard: Don't highlight if navigation is in progress or if diagram version doesn't match
+    const controller = clickControllerRef.current;
+    if (controller.isNavigating) {
+      // If diagramVersion is provided, check if it matches current version
+      if (diagramVersion !== undefined && diagramVersion !== controller.currentDiagramVersion) {
+        return; // This highlight is for an old diagram
+      }
+    }
     
     const canvas = viewerRef.current.get('canvas') as any;
     const elementRegistry = viewerRef.current.get('elementRegistry') as any;
@@ -612,6 +650,10 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     let canvasClickListener: any = null;
     let selectionChangedListener: any = null;
 
+    // Increment diagram version when new XML is loaded
+    clickControllerRef.current.currentDiagramVersion += 1;
+    clickControllerRef.current.isNavigating = false; // Reset navigation flag on new diagram
+    
     viewerRef.current!
       .importXML(currentXml)
       .then(() => {
@@ -625,25 +667,67 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         // Add click listener for elements
         const eventBus = viewerRef.current!.get('eventBus') as any;
         
-        // Single click - select element
+        // Single click - select element with double-click detection
         clickListener = (event: any) => {
           const { element } = event;
           // Resolve to actual element if a label was clicked
           const target = (element as any).labelTarget || element;
-          if (target?.businessObject && target.type !== 'bpmn:Process') {
-            const type = target.businessObject?.$type || target.type || null;
-            console.log('Element clicked:', target.id, type);
+          if (!target?.businessObject || target.type === 'bpmn:Process') return;
 
-            // Use selection service to persist highlight after click
+          const controller = clickControllerRef.current;
+          const now = Date.now();
+          const timeSinceLastClick = now - controller.lastClickTime;
+          const isSameTarget = controller.lastClickTarget === target.id;
+          const isPotentialDoubleClick = isSameTarget && timeSinceLastClick < 300; // 300ms window
+
+          // If navigation is in progress, ignore click
+          if (controller.isNavigating) {
+            return;
+          }
+
+          // Clear any pending double-click timeout
+          if (controller.doubleClickTimeout) {
+            clearTimeout(controller.doubleClickTimeout);
+            controller.doubleClickTimeout = null;
+          }
+
+          // Update click tracking
+          controller.lastClickTime = now;
+          controller.lastClickTarget = target.id;
+
+          // If this might be part of a double-click, delay the click handling
+          if (isPotentialDoubleClick) {
+            // Set a timeout - if dblclick doesn't fire within 300ms, treat as single click
+            controller.doubleClickTimeout = setTimeout(() => {
+              // This was a single click after all
+              const type = target.businessObject?.$type || target.type || null;
+              const elementName = target.businessObject?.name || target.id;
+              
+              const selection = viewerRef.current!.get('selection') as any;
+              selection?.select(target);
+              
+              const diagramVersion = controller.currentDiagramVersion;
+              requestAnimationFrame(() => highlightElement(target.id, diagramVersion));
+              
+              setSelectedElement(target.id);
+              setSelectedElementId(target.id);
+              onElementSelect?.(target.id, type, elementName);
+              
+              controller.doubleClickTimeout = null;
+            }, 300);
+          } else {
+            // Clear single click - handle immediately
+            const type = target.businessObject?.$type || target.type || null;
+            const elementName = target.businessObject?.name || target.id;
+            
             const selection = viewerRef.current!.get('selection') as any;
             selection?.select(target);
-
-            // Highlight the element (after selection has updated)
-            requestAnimationFrame(() => highlightElement(target.id));
-
-            const elementName = target.businessObject?.name || target.id;
+            
+            const diagramVersion = controller.currentDiagramVersion;
+            requestAnimationFrame(() => highlightElement(target.id, diagramVersion));
+            
             setSelectedElement(target.id);
-            setSelectedElementId(target.id); // Update global context
+            setSelectedElementId(target.id);
             onElementSelect?.(target.id, type, elementName);
           }
         };
@@ -662,17 +746,59 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
           const target = rawElement?.labelTarget || rawElement;
           if (!target) return;
 
-          handleSubprocessNavigation(target);
+          const controller = clickControllerRef.current;
+          
+          // Cancel any pending single-click timeout
+          if (controller.doubleClickTimeout) {
+            clearTimeout(controller.doubleClickTimeout);
+            controller.doubleClickTimeout = null;
+          }
+
+          // Guard: Don't trigger navigation if already navigating
+          if (controller.isNavigating) {
+            return;
+          }
+
+          // Verify this is a double-click on the same target as last click
+          const isSameTarget = controller.lastClickTarget === target.id;
+          const timeSinceLastClick = Date.now() - controller.lastClickTime;
+          
+          if (isSameTarget && timeSinceLastClick < 500) {
+            // This is a valid double-click
+            // Set selection once for visual feedback before navigation
+            const selection = viewerRef.current!.get('selection') as any;
+            selection?.select(target);
+            
+            const elementName = target.businessObject?.name || target.id;
+            setSelectedElement(target.id);
+            setSelectedElementId(target.id);
+            
+            // Highlight once before navigation
+            const diagramVersion = controller.currentDiagramVersion;
+            requestAnimationFrame(() => highlightElement(target.id, diagramVersion));
+            
+            // Trigger navigation
+            handleSubprocessNavigation(target);
+          }
         };
         eventBus.on('element.dblclick', dblclickListener);
 
         // Keep marker in sync with selection changes
         selectionChangedListener = (e: any) => {
+          const controller = clickControllerRef.current;
+          
+          // Don't update highlight if navigation is in progress
+          if (controller.isNavigating) {
+            return;
+          }
+          
           const selected = e?.newSelection?.[0];
+          const diagramVersion = controller.currentDiagramVersion;
+          
           if (selected?.id) {
-            requestAnimationFrame(() => highlightElement(selected.id));
+            requestAnimationFrame(() => highlightElement(selected.id, diagramVersion));
           } else {
-            highlightElement(null);
+            highlightElement(null, diagramVersion);
           }
         };
         eventBus.on('selection.changed', selectionChangedListener);
@@ -699,6 +825,13 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
 
     // Cleanup event listeners on unmount or when currentXml changes
     return () => {
+      // Clear any pending click timeout
+      const controller = clickControllerRef.current;
+      if (controller.doubleClickTimeout) {
+        clearTimeout(controller.doubleClickTimeout);
+        controller.doubleClickTimeout = null;
+      }
+      
       if (viewerRef.current && clickListener) {
         const eventBus = viewerRef.current.get('eventBus') as any;
         eventBus.off('element.click', clickListener);

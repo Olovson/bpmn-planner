@@ -121,141 +121,21 @@
 </head>
 <body>
   <div class="doc-shell">
-  <!-- LLM_SECTION_ORIGIN: summary=llm, effectGoals=llm, scopeIncluded=llm, scopeExcluded=llm, epics=llm, flowSteps=llm, dependencies=llm, scenarios=llm, testDescription=llm, implementationNotes=llm, relatedItems=llm, technicalDependencies=fallback -->
+    
+    <div class="llm-fallback-badge">
+      ChatGPT (moln-LLM) otillgänglig — fallback aktiverad
+    </div>
+    <div class="llm-fallback-details">
+      Orsak: LLM returned null response
+    </div>
     
     
+    <section class="doc-section">
+      <h2>ChatGPT (moln-LLM) kunde inte nås</h2>
+      <p>ChatGPT-genereringen misslyckades p.g.a. nätverksfel eller anslutningsproblem.</p>
+      <p>Detta dokument är endast en placeholder. Se Ollama-varianten (lokal LLM) för faktisk output.</p>
+    </section>
     
-    <section class="doc-section">
-      <span class="doc-badge">Feature Goal</span>
-      <h1>Internal data gathering</h1>
-      <ul>
-        <li><strong>Initiativ:</strong> mortgage-se-application</li>
-        <li><strong>BPMN Call Activity:</strong> internal-data-gathering (Internal data gathering)</li>
-        <li><strong>Regel/affärsägare:</strong> Produktägare Kredit / Risk & Policy</li>
-        <li><strong>Kreditprocess-steg:</strong> mortgage-se-application</li>
-        <li><strong>Version / datum:</strong> 1.0 (LLM-validerad) – uppdateras vid ändring</li>
-      </ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Sammanfattning &amp; scope</h2>
-      <p>Feature Goalet syftar till att effektivisera den interna datainsamlingen för bolåneansökningar. Målet är att säkerställa att all relevant information om kunden samlas in automatiskt, vilket minskar behovet av manuella insatser. Detta stödjer bankens strategi för att förbättra kreditbedömningar och kundupplevelser genom snabbare och mer precisa beslut.</p>
-      
-      <h3>Ingår</h3>
-      <ul>
-        <li>Automatiserad insamling av kundens ekonomiska data från interna system.</li><li>Integration med externa datakällor för att verifiera kundinformation.</li><li>Validering av insamlad data mot bankens regelverk.</li><li>Uppdatering av kundprofiler med den insamlade informationen.</li><li>Generering av rapporter för kreditbedömningsändamål.</li>
-      </ul>
-      
-      <h3>Ingår inte</h3>
-      <ul>
-        <li>Manuell insamling av data från kunder.</li><li>Bearbetning av data för marknadsföringsändamål.</li>
-      </ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Effektmål</h2>
-      <ul><li>Automatiseringen av datainsamlingen minskar manuellt arbete och ledtider.</li><li>Förbättrad kvalitet och säkerhet i kreditbedömningar genom korrekt och fullständig data.</li><li>Kunderna får snabbare och tydligare besked om sina ansökningar.</li><li>Stärkt regelefterlevnad och riskkontroll genom noggrann datainsamling.</li></ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Ingående Epics</h2>
-      
-      <table>
-        <tr>
-          <th>Epic-ID</th>
-          <th>Epic-namn</th>
-          <th>Beskrivning</th>
-          <th>Team</th>
-        </tr>
-        
-        <tr>
-          <td>E1</td>
-          <td>Automatiserad datainsamling</td>
-          <td>Automatisera insamlingen av kunddata från interna och externa källor.</td>
-          <td>Data & Integration</td>
-        </tr>
-        <tr>
-          <td>E2</td>
-          <td>Datavalidering</td>
-          <td>Validera insamlad data mot bankens interna regelverk.</td>
-          <td>Risk & Kredit</td>
-        </tr>
-      </table>
-    </section>
-
-    <section class="doc-section">
-      <h2>Affärsflöde</h2>
-      <ol>
-        <li>Kunden lämnar en ansökan om bolån via bankens digitala plattform.</li><li>Systemet initierar en automatisk insamling av kundens ekonomiska data.</li><li>Den insamlade datan valideras mot bankens regelverk.</li><li>Eventuella avvikelser flaggas för manuell granskning.</li><li>Godkänd data uppdateras i kundens profil och används för kreditbedömning.</li>
-      </ol>
-    </section>
-
-    <section class="doc-section">
-      <h2>Affärs-scenarion</h2>
-      <table>
-        <tr>
-          <th>Scenario</th>
-          <th>Beskrivning</th>
-          <th>Typ (Happy/Edge/Error)</th>
-          <th>Förväntat resultat</th>
-        </tr>
-        
-        <tr>
-          <td>S1</td>
-          <td>Fullständig datainsamling</td>
-          <td>Happy</td>
-          <td>All nödvändig data samlas in och valideras utan avvikelser.</td>
-        </tr>
-        <tr>
-          <td>S2</td>
-          <td>Delvis datainsamling</td>
-          <td>Edge</td>
-          <td>Viss data saknas och flaggas för manuell uppföljning.</td>
-        </tr>
-        <tr>
-          <td>S3</td>
-          <td>Ogiltig data</td>
-          <td>Error</td>
-          <td>Insamlad data valideras inte korrekt och ansökan avvisas.</td>
-        </tr>
-      </table>
-    </section>
-
-    <section class="doc-section">
-      <h2>Koppling till automatiska tester</h2>
-      <p>
-        Scenarierna ska mappas mot automatiska tester, inklusive E2E och API-tester, för att säkerställa korrekt funktionalitet. Återanvänd scenario-ID och namn i testfall och rapportering.
-        <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
-        <br />
-        Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
-      </p>
-    </section>
-
-    <section class="doc-section">
-      <h2>Implementation Notes (för dev)</h2>
-      <ul><li>Använd RESTful API-mönster för datainsamling från externa källor.</li><li>Loggning och audit-spår ska implementeras för alla datainsamlingsaktiviteter.</li><li>Felhantering ska inkludera återförsök vid tillfälliga nätverksfel.</li><li>Prestandakrav inkluderar att datainsamlingen ska slutföras inom 5 sekunder.</li><li>Kvalitetssäkring ska säkerställa att all insamlad data är korrekt och uppdaterad.</li></ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Tekniska &amp; externa beroenden</h2>
-      <ul><li>Regelmotor(er) och beslutsmotorer kopplade till Feature Goalet.</li><li>Datakällor (interna register, databaser och domäntjänster) som används i flödet.</li><li>Externa API:er och tjänster som tillhandahåller kredit-, person- eller objektsdata.</li><li>Integrationer och integrationslager som hanterar kommunikation mot interna/externa system.</li><li>Påverkade interna system, moduler och komponenter som behöver anpassas eller övervakas.</li></ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Relaterade regler / subprocesser</h2>
-      <ul><li>Feature Goal: Förbättrad kreditbedömning</li><li>Epic: Datavalidering</li><li>Business Rule: Kreditvärdighetskontroll</li></ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Ready</h2>
-      <ul><li>Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.</li><li>Ingående epics och beroende huvudflöden är identifierade och övergripande beskrivna.</li><li>Centrala beroenden (regelmotor, datakällor, externa tjänster) är identifierade och ägarskap är tydliggjort.</li><li>Övergripande affärsscenarier och risk-/policykrav är kända och dokumenterade.</li><li>Tekniska förutsättningar (plattform, integrationer, miljöer) är klarlagda på en övergripande nivå.</li></ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Done</h2>
-      <ul><li>Feature Goalet stödjer de definierade affärsscenarierna och uppfyller beskrivna policys och regler.</li><li>Alla epics som ingår är implementerade, testade och dokumenterade med spårbarhet mot detta Feature Goal.</li><li>Automatiska tester täcker centrala flöden, felhantering och definierade risk-/policykrav.</li><li>Loggning och mätpunkter finns på plats för uppföljning, insikter och incidenthantering.</li><li>Dokumentation (Feature Goal, epics, regler) är uppdaterad och tillgänglig för berörda team.</li></ul>
-    </section>
-  
   </div>
 </body>
 </html>

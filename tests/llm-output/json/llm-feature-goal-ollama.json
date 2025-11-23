@@ -2,5 +2,5 @@
   "error": "Lokal LLM (Ollama) unavailable",
   "provider": "local",
   "details": "Validation failed: Missing required field: summary, Missing required field: effectGoals, Missing required field: scopeIncluded, Missing required field: scopeExcluded, Missing required field: epics, Missing required field: flowSteps, Missing required field: dependencies, Missing required field: scenarios, Missing required field: testDescription, Missing required field: implementationNotes, Missing required field: relatedItems",
-  "timestamp": "2025-11-23T14:46:45.178Z"
+  "timestamp": "2025-11-23T22:12:02.147Z"
 }
