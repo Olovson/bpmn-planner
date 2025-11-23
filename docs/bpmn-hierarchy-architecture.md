@@ -40,6 +40,12 @@ Viktiga filer:
 - Root‑val i UI:
   - `src/hooks/useRootBpmnFile.ts`
 
+Utöver själva grafen används hierarkin också för att:
+
+- skapa hierarkiska testfiler (Playwright) med kontextspårning,
+- seeda tabellen `node_planned_scenarios` med bas‑scenarion per nod/provider (`local-fallback`),
+- mata testrapportvyerna med coverage‑data per nod.
+
 ---
 
 ## 3. Datamodeller
@@ -344,4 +350,3 @@ För att undvika regressions och falsk trygghet används både syntetiska och ve
 
 LLM‑lager (`generateDocumentationWithLlm`) ligger **ovanpå** grafen och är avstängt i tester som rör hierarki/graf, så hierarkilogiken kan testas snabbt och deterministiskt utan nätverksanrop.  
 Eventuella riktiga LLM‑smoke‑tester körs separat via `npm run test:llm:smoke` och använder samma graf som input. 
-

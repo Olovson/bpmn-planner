@@ -162,12 +162,9 @@ The application process includes five critical DMN (Decision Model and Notation)
 | **Evaluate Fastighet** | House property evaluation | Property Value, Condition, LTV, Location | APPROVED / REJECTED + Risk Level |
 | **Evaluate Bostadsrätt** | Apartment evaluation | Apartment Value, Association Debt, LTV | APPROVED / REJECTED + Risk Level |
 
-**Detailed DMN Documentation:**
-- [Pre-screen Party Rules](../../public/docs/pre-screen-party.html)
-- [Personal Information Evaluation](../../public/docs/evaluate-personal-information.html)
-- [Stakeholder Assessment](../../public/docs/assess-stakeholder.html)
-- [Fastighet Evaluation](../../public/docs/evaluate-fastighet.html)
-- [Bostadsrätt Evaluation](../../public/docs/evaluate-bostadsratt.html)
+**Detailed DMN Documentation (i appen):**
+- visas via DocViewer baserat på BPMN‑fil + elementId, t.ex. `#/doc-viewer/...`
+- de underliggande HTML‑filerna (t.ex. `docs/pre-screen-party.html`, `docs/evaluate-fastighet.html`, …) ligger i Supabase Storage och nås via `SubprocessRegistry.htmlDoc`.
 
 Each DMN document includes:
 - Complete decision table structure
@@ -176,7 +173,7 @@ Each DMN document includes:
 - Test cases and examples
 - Regulatory constraints
 
-[Link to complete process flowchart]
+[Link to complete process flowchart eller DocViewer‑URL]
 
 ## Dependencies
 

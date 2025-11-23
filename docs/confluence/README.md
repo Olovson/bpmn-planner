@@ -38,22 +38,20 @@ Each documentation page should include:
 
 ## DMN Documentation
 
-For BusinessRuleTask nodes (decision points), additional detailed documentation is maintained in `public/docs/` as HTML files:
-- `pre-screen-party.html`
-- `evaluate-fastighet.html`
-- `evaluate-bostadsratt.html`
-- `evaluate-personal-information.html`
-- `assess-stakeholder.html`
+För BusinessRuleTask‑noder (decision points) finns detaljerad DMN‑dokumentation som HTML i samma Supabase‑bucket som övriga docs. I koden refereras de via `SubprocessRegistry.htmlDoc` (t.ex. `/docs/pre-screen-party.html`), men i praktiken visas de alltid genom appens DocViewer:
 
-These DMN documents contain:
-- Complete decision table structures
-- Business rules and validation logic
-- All input/output specifications
-- Comprehensive test cases and examples
-- Regulatory constraints
-- Change logs
+- `#/doc-viewer/<docId>` – för nodspecifika docs.
+- `#/doc-viewer/...`‑länkar genereras automatiskt från BPMN‑fil + elementId.
 
-The Confluence documentation should reference these detailed DMN documents but maintain a higher-level overview suitable for stakeholders.
+Dessa DMN‑dokument innehåller bl.a.:
+- kompletta decision tables,
+- regler och valideringslogik,
+- input/output‑specifikationer,
+- testfall och exempel,
+- regulatoriska begränsningar,
+- enklare ändringslogg.
+
+Confluence‑dokumentationen ska länka till dessa DMN‑dokument (antingen via appens DocViewer‑URL eller direkta docs‑URL:er) men hålla sig på en mer sammanfattande nivå anpassad för stakeholders.
 
 ## Linking
 

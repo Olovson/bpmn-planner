@@ -242,7 +242,8 @@ och kör `tests/integration/llm.real.smoke.test.ts`, som:
   - `llm-epic-chatgpt.json` / `llm-epic-ollama.json`
   - `llm-business-rule-chatgpt.json` / `llm-business-rule-ollama.json`
 - markerar i den LLM-baserade HTML:en vilka sektioner som kommer från LLM kontra fallback (t.ex. `data-source-summary="llm|fallback"`, `data-source-scenarios="llm|fallback"` per `<section class="doc-section">`), vilket gör det enkelt att inspektera källan i browserns devtools.
-- vid Feature Goal‑körning verifierar den även att LLM‑scenarion (ChatGPT) lagras i tabellen `node_planned_scenarios` och därmed blir tillgängliga i nodens testrapport.
+ - vid Feature Goal‑körning verifierar den även att LLM‑scenarion (ChatGPT) lagras i tabellen `node_planned_scenarios` och därmed blir tillgängliga i nodens testrapport.  
+   Den hierarkiska BPMN‑generatorn seedar dessutom alltid bas‑scenarion för `local-fallback` per nod till samma tabell, så att Lokal fallback‑läget i testrapporten har ett tydligt utgångsläge även utan LLM.
 
 Om LLM inte är aktiverat i tests (t.ex. ingen API-nyckel) hoppar smoke-test-filen automatiskt över sina tester (`describe.skip`).
 

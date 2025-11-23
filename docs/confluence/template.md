@@ -55,7 +55,7 @@
 ## DMN Decision Logic
 _Note: This section is only applicable for BusinessRuleTask nodes. Remove if not applicable._
 
-**Decision Model:** [Link to DMN documentation in public/docs/]
+**Decision Model:** [Länk till DMN-dokumentation i appen, t.ex. via `#/doc-viewer/...`]
 
 ### Decision Table Overview
 
@@ -80,7 +80,7 @@ _Note: This section is only applicable for BusinessRuleTask nodes. Remove if not
 - Maximum threshold: [value]  
 - Edge case boundaries: [values]
 
-**Detailed Documentation:** See [DMN document](../../public/docs/node-name.html) for complete decision table, test cases, and validation constraints.
+**Detailed Documentation:** Se DMN‑dokumentet (via DocViewer eller direkt HTML‑länk) för fullständig decision table, testfall och validerings‑/tröskelkriterier.
 
 ---
 

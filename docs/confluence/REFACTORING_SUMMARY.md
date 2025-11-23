@@ -37,7 +37,7 @@ Created a **central hierarchy model** (`src/lib/bpmnHierarchy.ts`) that:
    - Core data structures: `BpmnHierarchy`, `BpmnHierarchyNode`
    - ~300 lines of well-documented code
 
-2. **`docs/confluence/hierarchy-architecture.md`** ✨ NEW
+2. **`docs/bpmn-hierarchy-architecture.md`** ✨ NEW
    - Comprehensive documentation of hierarchical architecture
    - Usage examples and best practices
    - Migration guide from flat to hierarchical structure
@@ -64,10 +64,10 @@ Created a **central hierarchy model** (`src/lib/bpmnHierarchy.ts`) that:
    - ~20 lines modified
 
 3. **`src/pages/TestReport.tsx`** ✏️ MODIFIED
-   - Refactored test grouping to be hierarchical
-   - Groups by file, then by node within file
-   - Shows hierarchical paths: `Context → Feature Goal → Test`
-   - ~40 lines modified
+   - Refaktorerad testrapport med tydligare KPI:er (planerade scenarion, körda tester, coverage) per provider (`local-fallback`, `chatgpt`, `ollama`)
+   - Vyer för både global överblick (`/test-report`) och nodspecifik drill‑down (`/node-tests`)
+   - Använder indirekt hierarkin via coverage‑data och tabellen `node_planned_scenarios`
+   - ~40 rader modifierade
 
 ### Backward Compatibility
 
@@ -153,7 +153,7 @@ All use SAME hierarchy model
 
 - [x] BPMN Parser → Hierarchy Builder
 - [x] Hierarchy → Test Generator
-- [x] Hierarchy → Test Dashboard
+- [x] Hierarchy → Testrapport (via coverage och node_planned_scenarios)
 - [x] Hierarchy → Jira Name Generator
 - [x] Edge Function artifact generation
 - [x] Documentation generation
@@ -253,7 +253,7 @@ The hierarchical model ensures that as BPMN processes evolve, all artifacts (tes
 - **Test Generation**: `src/lib/bpmnGenerators.ts`
 - **Test Dashboard**: `src/pages/TestReport.tsx`
 - **Edge Function**: `supabase/functions/generate-artifacts/index.ts`
-- **Architecture Doc**: `docs/confluence/hierarchy-architecture.md`
+- **Architecture Doc**: `docs/bpmn-hierarchy-architecture.md`
 - **This Summary**: `docs/confluence/REFACTORING_SUMMARY.md`
 
 ---
