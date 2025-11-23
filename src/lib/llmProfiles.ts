@@ -25,22 +25,6 @@ export type LlmProfiles = {
   [K in DocType]: Record<LlmProvider, LlmProfile>;
 };
 
-export const TOKEN_WARNING_THRESHOLDS = {
-  // ChatGPT har generöst context-fönster, så vi varnar först när
-  // prompt-estimatet är mer än ca 2.2x output-budgeten (maxTokens).
-  chatgpt: 2.2,
-  // Lokal/Ollama hålls striktare för att undvika tunga prompts.
-  ollama: 0.6,
-} as const;
-
-export function getTokenWarningThresholdForProvider(
-  provider: LlmProvider,
-): number {
-  if (provider === 'cloud') return TOKEN_WARNING_THRESHOLDS.chatgpt;
-  if (provider === 'local') return TOKEN_WARNING_THRESHOLDS.ollama;
-  return 0.75;
-}
-
 /**
  * Default LLM-profiler per dokumenttyp och provider.
  * 
@@ -76,14 +60,12 @@ const DEFAULT_PROFILES: LlmProfiles = {
         'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences. ' +
         'Börja direkt med { och avsluta med }. ' +
         'Ingen text före eller efter JSON-objektet. ' +
-        'För Feature Goal måste du inkludera ALLA följande fält: summary, effectGoals, scopeIncluded, scopeExcluded, epics, flowSteps, dependencies, scenarios, testDescription, implementationNotes, relatedItems. ' +
-        'Inga extra fält som "type", "bpmnContext", "prerequisites", "inputs", "interactions", "dataContracts" – dessa är för Epic eller input, inte Feature Goal output. ' +
-        'List-fält (effectGoals, scopeIncluded, scopeExcluded, flowSteps, dependencies, implementationNotes, relatedItems) måste vara arrays av strängar, inte objekt.',
+        'Inga extra fält som bpmnContext eller liknande – endast fälten i Feature/Epic-modellen.',
     },
   },
   epic: {
     cloud: {
-      maxTokens: 2200,
+      maxTokens: 1800,
       temperature: 0.35,
     },
     local: {

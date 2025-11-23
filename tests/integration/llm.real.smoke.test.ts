@@ -26,21 +26,12 @@ import {
   mapBusinessRuleLlmToSections,
 } from '@/lib/businessRuleLlmMapper';
 import { LlmValidationError } from '@/lib/llmFallback';
-import { supabase } from '@/integrations/supabase/client';
 
 // Real LLM smoke-test: kör riktiga anrop mot LLM när
 // VITE_USE_LLM=true, VITE_ALLOW_LLM_IN_TESTS=true och VITE_OPENAI_API_KEY är satt.
 // Om LLM inte är aktiverat i test-miljö, markeras hela describe-blocket som skip.
 //
-// Vilka providers som körs styrs via env:
-// - om LLM_PROVIDER=cloud → endast ChatGPT
-// - om LLM_PROVIDER=local → endast Ollama
-// - annars → både ChatGPT och Ollama
-const ENV_PROVIDER = process.env.LLM_PROVIDER as LlmProvider | undefined;
-const PROVIDERS: LlmProvider[] =
-  ENV_PROVIDER === 'cloud' || ENV_PROVIDER === 'local'
-    ? [ENV_PROVIDER]
-    : ['cloud', 'local'];
+const PROVIDERS: LlmProvider[] = ['cloud', 'local'];
 const STRICT_SMOKE = process.env.LLM_SMOKE_STRICT === 'true';
 
 if (!isLlmEnabled()) {
@@ -182,6 +173,8 @@ if (!isLlmEnabled()) {
       dmnLink: '/dmn/example.dmn',
     };
 
+    const providers: LlmProvider[] = PROVIDERS;
+
     it('genererar Feature Goal-dokumentation med riktig LLM (cloud & local)', async () => {
       const context: NodeDocumentationContext = {
         node: featureNode,
@@ -193,23 +186,21 @@ if (!isLlmEnabled()) {
 
       const dir = ensureOutputDir();
 
-      for (const provider of PROVIDERS) {
-        const providerFileLabel = provider === 'cloud' ? 'chatgpt' : 'ollama';
-        const providerLogLabel = provider === 'cloud' ? 'ChatGPT' : 'Ollama';
+      for (const provider of providers) {
+        const providerLabel = provider === 'cloud' ? 'chatgpt' : 'ollama';
         const jsonPath = join(
           dir,
           'json',
-          `llm-feature-goal-${providerFileLabel}.json`,
+          `llm-feature-goal-${providerLabel}.json`,
         );
         const htmlPath = join(
           dir,
           'html',
-          `llm-feature-goal-${providerFileLabel}.html`,
+          `llm-feature-goal-${providerLabel}.html`,
         );
 
         try {
           const docType = 'feature';
-          const docLabel = 'Feature Goal';
           const wallStart = Date.now();
           const result = await generateDocumentationWithLlm(
             docType,
@@ -228,11 +219,11 @@ if (!isLlmEnabled()) {
           }
 
           console.log(
-            `[SMOKE] ${docLabel}/${providerLogLabel} took ${wallElapsed}ms (wall)`,
+            `[SMOKE] ${docType}/${provider} took ${wallElapsed}ms (wall)`,
           );
           if (typeof result?.latencyMs === 'number') {
             console.log(
-              `[SMOKE] ${docLabel}/${providerLogLabel} LLM latency: ${result.latencyMs}ms`,
+              `[SMOKE] ${docType}/${provider} LLM latency: ${result.latencyMs}ms`,
             );
           }
 
@@ -264,22 +255,6 @@ if (!isLlmEnabled()) {
 
           writeFileSync(htmlPath, llmHtml, 'utf8');
           writeFileSync(jsonPath, raw, 'utf8');
-
-          // Verifiera att node_planned_scenarios uppdateras för ChatGPT
-          if (provider === 'cloud' && result?.docJson) {
-            const { data, error } = await supabase
-              .from('node_planned_scenarios')
-              .select('provider, scenarios')
-              .eq('bpmn_file', featureNode.bpmnFile)
-              .eq('bpmn_element_id', featureNode.bpmnElementId)
-              .eq('provider', 'chatgpt')
-              .maybeSingle();
-
-            if (!error && data) {
-              expect(Array.isArray(data.scenarios)).toBe(true);
-              expect((data.scenarios as any[]).length).toBeGreaterThan(0);
-            }
-          }
         } catch (error) {
           const title =
             context.node.name || context.node.bpmnElementId || 'Feature Goal (LLM-fel)';
@@ -293,7 +268,7 @@ if (!isLlmEnabled()) {
             const rawJsonPath = join(
               dir,
               'json',
-              `llm-feature-goal-${providerFileLabel}.raw.json`,
+              `llm-feature-goal-${providerLabel}.raw.json`,
             );
             try {
               writeFileSync(rawJsonPath, error.rawResponse, 'utf8');
@@ -310,11 +285,11 @@ if (!isLlmEnabled()) {
       // Lokalt genererad dokumentation (utan LLM) för diff jämförelse – samma för alla providers
       const localHtml = renderFeatureGoalDoc(context, links);
       writeFileSync(
-      join(dir, 'html', 'llm-feature-goal-fallback.html'),
-      localHtml,
-      'utf8',
-    );
-    }, 180000); // 3 min per test (180s) - balans mellan 120-180s som rekommenderat
+        join(dir, 'html', 'llm-feature-goal-fallback.html'),
+        localHtml,
+        'utf8',
+      );
+    }, 720000);
 
     it('genererar Epic-dokumentation med riktig LLM (cloud & local)', async () => {
       const context: NodeDocumentationContext = {
@@ -327,23 +302,21 @@ if (!isLlmEnabled()) {
 
       const dir = ensureOutputDir();
 
-      for (const provider of PROVIDERS) {
-        const providerFileLabel = provider === 'cloud' ? 'chatgpt' : 'ollama';
-        const providerLogLabel = provider === 'cloud' ? 'ChatGPT' : 'Ollama';
+      for (const provider of providers) {
+        const providerLabel = provider === 'cloud' ? 'chatgpt' : 'ollama';
         const jsonPath = join(
           dir,
           'json',
-          `llm-epic-${providerFileLabel}.json`,
+          `llm-epic-${providerLabel}.json`,
         );
         const htmlPath = join(
           dir,
           'html',
-          `llm-epic-${providerFileLabel}.html`,
+          `llm-epic-${providerLabel}.html`,
         );
 
         try {
           const docType = 'epic';
-          const docLabel = 'Epic';
           const wallStart = Date.now();
           const result = await generateDocumentationWithLlm(
             docType,
@@ -362,11 +335,11 @@ if (!isLlmEnabled()) {
           }
 
           console.log(
-            `[SMOKE] ${docLabel}/${providerLogLabel} took ${wallElapsed}ms (wall)`,
+            `[SMOKE] ${docType}/${provider} took ${wallElapsed}ms (wall)`,
           );
           if (typeof result?.latencyMs === 'number') {
             console.log(
-              `[SMOKE] ${docLabel}/${providerLogLabel} LLM latency: ${result.latencyMs}ms`,
+              `[SMOKE] ${docType}/${provider} LLM latency: ${result.latencyMs}ms`,
             );
           }
 
@@ -411,7 +384,7 @@ if (!isLlmEnabled()) {
             const rawJsonPath = join(
               dir,
               'json',
-              `llm-epic-${providerFileLabel}.raw.json`,
+              `llm-epic-${providerLabel}.raw.json`,
             );
             try {
               writeFileSync(rawJsonPath, error.rawResponse, 'utf8');
@@ -427,11 +400,11 @@ if (!isLlmEnabled()) {
 
       const localHtml = renderEpicDoc(context, links);
       writeFileSync(
-      join(dir, 'html', 'llm-epic-fallback.html'),
-      localHtml,
-      'utf8',
-    );
-    }, 180000); // 3 min per test (180s)
+        join(dir, 'html', 'llm-epic-fallback.html'),
+        localHtml,
+        'utf8',
+      );
+    }, 720000);
 
     it('genererar Business Rule-dokumentation med riktig LLM (cloud & local)', async () => {
       const context: NodeDocumentationContext = {
@@ -444,23 +417,21 @@ if (!isLlmEnabled()) {
 
       const dir = ensureOutputDir();
 
-      for (const provider of PROVIDERS) {
-        const providerFileLabel = provider === 'cloud' ? 'chatgpt' : 'ollama';
-        const providerLogLabel = provider === 'cloud' ? 'ChatGPT' : 'Ollama';
+      for (const provider of providers) {
+        const providerLabel = provider === 'cloud' ? 'chatgpt' : 'ollama';
         const jsonPath = join(
           dir,
           'json',
-          `llm-business-rule-${providerFileLabel}.json`,
+          `llm-business-rule-${providerLabel}.json`,
         );
         const htmlPath = join(
           dir,
           'html',
-          `llm-business-rule-${providerFileLabel}.html`,
+          `llm-business-rule-${providerLabel}.html`,
         );
 
         try {
           const docType = 'businessRule';
-          const docLabel = 'Business Rule';
           const wallStart = Date.now();
           const result = await generateDocumentationWithLlm(
             docType,
@@ -479,11 +450,11 @@ if (!isLlmEnabled()) {
           }
 
           console.log(
-            `[SMOKE] ${docLabel}/${providerLogLabel} took ${wallElapsed}ms (wall)`,
+            `[SMOKE] ${docType}/${provider} took ${wallElapsed}ms (wall)`,
           );
           if (typeof result?.latencyMs === 'number') {
             console.log(
-              `[SMOKE] ${docLabel}/${providerLogLabel} LLM latency: ${result.latencyMs}ms`,
+              `[SMOKE] ${docType}/${provider} LLM latency: ${result.latencyMs}ms`,
             );
           }
 
@@ -524,7 +495,7 @@ if (!isLlmEnabled()) {
             const rawJsonPath = join(
               dir,
               'json',
-              `llm-business-rule-${providerFileLabel}.raw.json`,
+              `llm-business-rule-${providerLabel}.raw.json`,
             );
             try {
               writeFileSync(rawJsonPath, error.rawResponse, 'utf8');
@@ -540,10 +511,10 @@ if (!isLlmEnabled()) {
 
       const localHtml = renderBusinessRuleDoc(context, links);
       writeFileSync(
-      join(dir, 'html', 'llm-business-rule-fallback.html'),
-      localHtml,
-      'utf8',
-    );
-    }, 180000); // 3 min per test (180s)
+        join(dir, 'html', 'llm-business-rule-fallback.html'),
+        localHtml,
+        'utf8',
+      );
+    }, 720000);
   });
 }

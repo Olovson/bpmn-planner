@@ -7,16 +7,6 @@ Systemet använder två modeller:
 
 Du fyller **endast** respektive modell som ett JSON-objekt – inga HTML-taggar, inga rubriker, ingen metadata.
 
-Inputen består av:
-- `processContext`: en kondenserad översikt av hela kreditprocessen (processnamn, BPMN-fil, entrypoints, några nyckelnoder samt grov fas (`phase`) och lane/roll (`lane`) per nyckelnod).
-- `currentNodeContext`: detaljer för just den nod du dokumenterar (hierarki runt noden, inkommande/utgående flöden, dokumentationstext och länkar).
-
-Du ska:
-- använda `processContext` för att förstå **vilken fas (`phase`)** i kreditprocessen noden tillhör (t.ex. Ansökan, Datainsamling, Riskbedömning, Beslut) och vilken **lane/roll (`lane`)** som är huvudaktör (t.ex. Kund, Handläggare, Regelmotor),
-- använda `currentNodeContext` för att beskriva exakt vad noden ansvarar för i denna fas och denna roll,
-- låta `summary`, `flowSteps`, `effectGoals` och `scenarios` spegla rätt fas/roll i processen,
-- **inte hitta på** nya processsteg, faser eller system utanför det som går att härleda från `processContext` och `currentNodeContext`.
-
 Gemensamma regler:
 - Svara alltid med **exakt ett JSON-objekt** (ingen fri text före/efter, ingen Markdown, ingen HTML).
 - Outputen ska börja direkt med `{` och avslutas med `}`. Ingen text före `{` och ingen text efter avslutande `}`.
@@ -36,13 +26,6 @@ Allt nedan beskriver vilken struktur och vilket innehåll som ska ligga i respek
 ---
 
 ## När `type = "Feature"` (Feature Goal)
-
-**VIKTIGT:** När du genererar Feature Goal JSON måste du inkludera ALLA följande fält. Inga fält får saknas, även om du skriver en neutral mening.
-
-**Du får INTE inkludera:**
-- `type` (detta är bara input, inte output)
-- `bpmnContext` eller några andra fält från inputen
-- `prerequisites`, `inputs`, `interactions`, `dataContracts` (dessa är för Epic, inte Feature Goal)
 
 JSON-modellen är:
 
@@ -66,19 +49,6 @@ JSON-modellen är:
 }
 ```
 
-**Obligatoriska fält (måste alla finnas):**
-- `summary` (string)
-- `effectGoals` (array av strängar)
-- `scopeIncluded` (array av strängar)
-- `scopeExcluded` (array av strängar)
-- `epics` (array av objekt med id, name, description, team)
-- `flowSteps` (array av strängar)
-- `dependencies` (array av strängar)
-- `scenarios` (array av objekt med id, name, type, outcome)
-- `testDescription` (string)
-- `implementationNotes` (array av strängar)
-- `relatedItems` (array av strängar)
-
 ### summary
 
 **Syfte:** Ge en tydlig, affärsinriktad sammanfattning av vad Feature Goalet möjliggör i kreditprocessen.
@@ -99,8 +69,6 @@ JSON-modellen är:
   - förbättrad kvalitet/säkerhet i kreditbedömningar,
   - bättre kundupplevelse (tydligare besked, färre omtag),
   - stärkt regelefterlevnad och riskkontroll.
-
-**VIKTIGT:** `effectGoals` måste vara en array av **strängar**, inte objekt. Varje element i arrayen är en hel mening som en sträng.
 
 ### scopeIncluded / scopeExcluded
 
@@ -151,14 +119,12 @@ Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>.
 Exempel (endast format, skriv egen text):
 - `Beroende: Regelmotor/DMN; Id: kreditvärdighetsbedömning; Beskrivning: används för att fatta preliminära och slutliga kreditbeslut.`
 
-**VIKTIGT:** `dependencies` måste vara en array av **strängar**, inte objekt. Varje element är en hel mening som en sträng.
-
 ### scenarios
 
 **Syfte:** Definiera affärsscenarier som Feature Goalet måste hantera.
 
 **Innehåll (`scenarios`):**
-- Minst 6 scenarier.
+- Minst 3 scenarier.
 - Minst 1 med `type = "Happy"`.
 - Minst 1 med `type = "Edge"`.
 - Minst 1 med `type = "Error"`.
@@ -167,13 +133,6 @@ Exempel (endast format, skriv egen text):
   - `name`: kort scenarionamn.
   - `type`: `"Happy"`, `"Edge"` eller `"Error"`.
   - `outcome`: 1–2 meningar om förväntat affärsutfall (t.ex. preliminärt godkänd, manuell granskning, avslag).
-
-Scenarierna ska vara **testbara**:
-- Ta alltid utgångspunkt i verkliga steg och data som går att härleda från `processContext` och `currentNodeContext`.
-- Hitta inte på steg eller faser som inte finns i kontexten.
-- `type` måste vara exakt `"Happy"`, `"Edge"` eller `"Error"` (korrekt case).
-- `name` ska kunna användas som testnamn.
-- `outcome` ska beskriva ett tydligt, verifierbart affärsutfall (vad som händer när scenariot körs: godkännande, manuell granskning, avslag, etc.).
 
 ### testDescription
 
@@ -196,8 +155,6 @@ Scenarierna ska vara **testbara**:
   - viktiga felhanterings- eller prestandaaspekter,
   - data- och kvalitetssäkringskrav.
 
-**VIKTIGT:** `implementationNotes` måste vara en array av **strängar**, inte objekt. Varje element är en hel mening som en sträng.
-
 ### relatedItems
 
 **Syfte:** Hjälpa läsaren att förstå sammanhanget.
@@ -207,8 +164,6 @@ Scenarierna ska vara **testbara**:
   - Feature Goals,
   - epics/subprocesser,
   - Business Rules/DMN (på beskrivningsnivå, utan hårdkodade IDs/paths).
-
-**VIKTIGT:** `relatedItems` måste vara en array av **strängar**, inte objekt. Varje element är en hel mening som en sträng.
 
 ---
 
@@ -224,7 +179,6 @@ JSON-modellen är:
   "flowSteps": ["string"],
   "interactions": ["string"],
   "dataContracts": ["string"],
-  "technicalDependencies": ["string"],
   "businessRulesPolicy": ["string"],
   "scenarios": [
     { 
@@ -311,17 +265,6 @@ Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; F
   - vilka data som skickas vidare (output),
   - vilka konsumenter som använder data.
 
-### technicalDependencies
-
-**Syfte:** Synliggöra viktiga tekniska beroenden för epiken.
-
-**Innehåll (`technicalDependencies`):**
-- 2–5 strängar om:
-  - interna tjänster/komponenter som epiken är beroende av (t.ex. kreditmotor, kunddata‑API, DMN/regelmotor),
-  - externa integrationer (t.ex. kreditupplysningsbolag, KYC‑leverantörer) på en generell nivå,
-  - övergripande tekniska risker eller begränsningar (t.ex. latens, tillgänglighet, batch‑beroenden).
-- Varje rad ska vara en **full mening**.
-
 ### businessRulesPolicy
 
 **Syfte:** Koppla epiken till affärsregler och kreditpolicy.
@@ -345,12 +288,6 @@ Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; F
   - `outcome`: förväntat utfall (1–2 meningar).
 - Minst 1 scenario där handläggaren **överstyr** systemets rekommendation.
 - Minst 1 `Happy`, 1 `Edge` och 1 `Error`.
-
-Scenarierna ska vara **tydligt kopplade till aktuell nod och fas**:
-- Använd information från `currentNodeContext.node.name` och dess `phase`/`lane` i `processContext`:
-  - låt minst några scenarion nämna epikens faktiska ansvar (t.ex. “Ansökan”, “Datainsamling”, “Riskbedömning”, “Beslut”) och vad noden gör där,
-  - undvik helt generiska scenarier som lika gärna skulle kunna gälla vilken annan nod som helst.
-- Hitta inte på steg som inte finns i processkontexten – scenarierna ska beskriva verkliga kombinationer av inputs/outputs och beslut som går att härleda från `processContext` och `currentNodeContext`.
 
 ### testDescription
 

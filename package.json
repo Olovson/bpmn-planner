@@ -22,8 +22,6 @@
     "check:supabase-status": "node scripts/check-supabase-status.mjs",
     "fix:supabase-profile": "node scripts/fix-supabase-profile.mjs",
     "start:supabase": "node scripts/start-supabase.mjs",
-    "start:dev": "node scripts/start-dev.mjs",
-    "stop:dev": "node scripts/stop-dev.mjs",
     "sync:github": "node scripts/sync-to-github.mjs"
   },
   "dependencies": {

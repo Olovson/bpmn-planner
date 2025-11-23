@@ -65,7 +65,7 @@ function runCommand(command, description, options = {}) {
   }
 }
 
-function main() {
+async function main() {
   console.log('');
   log('═══════════════════════════════════════════════════════════');
   log('Safe Sync to GitHub');

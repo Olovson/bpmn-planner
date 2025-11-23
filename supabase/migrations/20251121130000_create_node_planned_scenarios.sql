@@ -19,15 +19,9 @@ create policy "Anyone can view node planned scenarios"
   for select
   using (true);
 
-create policy "Service role can insert node planned scenarios"
+create policy "Service role can insert/update node planned scenarios"
   on public.node_planned_scenarios
-  for insert
-  with check (true);
-
-create policy "Service role can update node planned scenarios"
-  on public.node_planned_scenarios
-  for update
-  using (true)
+  for insert, update
   with check (true);
 
 create trigger update_node_planned_scenarios_updated_at

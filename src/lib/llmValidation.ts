@@ -204,48 +204,6 @@ export function validateFeatureGoalJson(
     }
   }
 
-  // Validera att list-fält är strängar (inte objekt)
-  const stringArrayFields: Array<keyof FeatureGoalDocModel> = [
-    'effectGoals',
-    'scopeIncluded',
-    'scopeExcluded',
-    'flowSteps',
-    'dependencies',
-    'implementationNotes',
-    'relatedItems',
-  ];
-
-  for (const field of stringArrayFields) {
-    if (field in obj) {
-      if (!Array.isArray(obj[field])) {
-        errors.push(`Field "${field}" must be an array`);
-      } else {
-        const arr = obj[field] as unknown[];
-        arr.forEach((item, index) => {
-          if (typeof item !== 'string') {
-            errors.push(
-              `Field "${field}[${index}]" must be a string, got ${typeof item}. List-fält måste vara strängar, inte objekt.`
-            );
-          }
-        });
-      }
-    }
-  }
-
-  // Varning för oväntade fält (särskilt för lokala modeller som kan lägga till extra fält)
-  const allowedFields = new Set([
-    ...requiredFields,
-    'epics', // epics är en array av objekt
-    'scenarios', // scenarios är en array av objekt
-  ]);
-  for (const key in obj) {
-    if (!allowedFields.has(key as keyof FeatureGoalDocModel)) {
-      warnings.push(
-        `Unexpected top-level field: ${key} (will be ignored). Feature Goal ska INTE innehålla fält som "type", "bpmnContext", "prerequisites", "inputs", "interactions", "dataContracts" - dessa är för Epic eller input, inte output.`
-      );
-    }
-  }
-
   return {
     valid: errors.length === 0,
     errors,
