@@ -621,14 +621,17 @@ export const RightPanel = ({
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">Manuell override</p>
                     <Select
-                      value={subprocessFileInput || ''}
-                      onValueChange={(value) => setSubprocessFileInput(value)}
+                      value={subprocessFileInput || '__none__'}
+                      onValueChange={(value) => {
+                        if (value === '__none__') setSubprocessFileInput('');
+                        else setSubprocessFileInput(value);
+                      }}
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Välj BPMN-fil eller lämna tom för auto" />
                       </SelectTrigger>
                       <SelectContent className="bg-background">
-                        <SelectItem value="">(Ingen – använd automatisk matchning)</SelectItem>
+                        <SelectItem value="__none__">(Ingen – använd automatisk matchning)</SelectItem>
                         {availableBpmnFiles.map((file) => (
                           <SelectItem key={file} value={file}>
                             {file}
