@@ -314,16 +314,6 @@ const NodeMatrix = () => {
             <p className="text-sm text-muted-foreground">
               {filteredAndSortedNodes.length} av {mergedNodes?.length || 0} noder
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Debug Typfilter: valt = {selectedNodeType} • UserTask =
-              {' '}{countNodesByType(filteredAndSortedNodes, 'UserTask')}
-              {' '}• CallActivity =
-              {' '}{countNodesByType(filteredAndSortedNodes, 'CallActivity')}
-              {' '}• BusinessRuleTask =
-              {' '}{countNodesByType(filteredAndSortedNodes, 'BusinessRuleTask')}
-              {' '}• ServiceTask =
-              {' '}{countNodesByType(filteredAndSortedNodes, 'ServiceTask')}
-            </p>
           </div>
         </div>
 
@@ -339,6 +329,9 @@ const NodeMatrix = () => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">
+                Nodtypsfilter:
+              </span>
               <Select
                 value={selectedNodeType}
                 onValueChange={(value) => {
@@ -347,7 +340,7 @@ const NodeMatrix = () => {
                 }}
               >
                 <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Filtrera på Typ" />
+                  <SelectValue placeholder="Välj nodtyp att visa" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
                   {NODE_TYPE_FILTER_OPTIONS.map((type) => (
@@ -389,6 +382,7 @@ const NodeMatrix = () => {
                 <TableHead>Figma</TableHead>
                 <TableHead>Dokumentation</TableHead>
                 <TableHead>Doc-varianter</TableHead>
+                <TableHead>Testscript</TableHead>
                 <TableHead>Testrapport</TableHead>
                 <TableHead>Jira Namn</TableHead>
                 <TableHead>Jira Typ</TableHead>
@@ -509,6 +503,27 @@ const NodeMatrix = () => {
                         />
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {node.elementId && node.bpmnFile && node.testFilePath ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(
+                              `/node-test-script?bpmnFile=${encodeURIComponent(
+                                node.bpmnFile,
+                              )}&elementId=${encodeURIComponent(node.elementId)}`,
+                            );
+                          }}
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                          title="Visa testscript för denna nod"
+                        >
+                          <FileCode className="h-3 w-3 shrink-0" />
+                          <span>Testscript</span>
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Inget testscript</span>
                       )}
                     </TableCell>
                     <TableCell>
