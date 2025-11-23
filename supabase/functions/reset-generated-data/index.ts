@@ -116,6 +116,12 @@ Deno.serve(async (req) => {
       await supabase.from('e2e_scenarios').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       deleted.e2e_scenarios = e2eCount || 0;
       console.log(`Deleted ${e2eCount} rows from e2e_scenarios`);
+
+      // And delete node_planned_scenarios (planerade scenarion per nod/provider)
+      const { count: plannedCount } = await supabase.from('node_planned_scenarios').select('*', { count: 'exact', head: true });
+      await supabase.from('node_planned_scenarios').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      deleted.node_planned_scenarios = plannedCount || 0;
+      console.log(`Deleted ${plannedCount} rows from node_planned_scenarios`);
     }
 
     if (shouldDeleteAllTables || shouldDeleteDocs) {

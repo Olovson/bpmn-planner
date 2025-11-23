@@ -515,10 +515,7 @@ const TestReport = () => {
             const matchesNode = r.node_id === node.elementId;
             const provider = (r.script_provider ??
               null) as ProviderScope | null;
-            const matchesProvider =
-              providerScope === 'all'
-                ? true
-                : provider === providerScope;
+            const matchesProvider = provider === providerScope;
             return matchesFile && matchesNode && matchesProvider;
           });
 
@@ -627,8 +624,7 @@ const TestReport = () => {
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
                   }`}
-                  onClick={() => providerHasData['local-fallback'] && setProviderScope('local-fallback')}
-                  disabled={!providerHasData['local-fallback']}
+                  onClick={() => setProviderScope('local-fallback')}
                 >
                   Lokal fallback
                 </button>
