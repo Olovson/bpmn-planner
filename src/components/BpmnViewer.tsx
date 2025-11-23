@@ -101,6 +101,40 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     return parts.length ? parts.join(' • ') : null;
   }, []);
 
+  // Find parent BPMN file in hierarchy for the current diagram
+  const findParentProcessFile = useCallback(
+    (targetFile: string | null): string | null => {
+      if (!targetFile || !processTree) return null;
+
+      let parentFile: string | null = null;
+
+      const walk = (node: ProcessTreeNode) => {
+        if (parentFile) return;
+
+        node.children.forEach((child) => {
+          if (parentFile) return;
+
+          const link = child.subprocessLink as any;
+          const matchedFile: string | undefined =
+            child.subprocessFile ||
+            (link && typeof link.matchedFileName === 'string' && link.matchedFileName) ||
+            undefined;
+
+          if (matchedFile === targetFile) {
+            parentFile = child.bpmnFile;
+            return;
+          }
+
+          walk(child);
+        });
+      };
+
+      walk(processTree);
+      return parentFile;
+    },
+    [processTree],
+  );
+
   // Reset navigation/history when the root file changes
   useEffect(() => {
     if (!initialFileName) return;
@@ -480,12 +514,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     }, 100);
   }, [navigate]);
 
-  // Track last click to emulate double-click reliably
-  const lastClickRef = useRef<{ id: string | null; time: number }>({
-    id: null,
-    time: 0,
-  });
-
   const handleSubprocessNavigation = useCallback(
     (target: any) => {
       const type = target?.businessObject?.$type || target?.type;
@@ -602,7 +630,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         // Add click listener for elements
         const eventBus = viewerRef.current!.get('eventBus') as any;
         
-        // Single click - select element (+ emulerad dubbelklick för subprocess-navigering)
+        // Single click - select element (+ hantera dubbelklick via originalEvent.detail)
         clickListener = (event: any) => {
           const { element } = event;
           // Resolve to actual element if a label was clicked
@@ -623,17 +651,11 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
             setSelectedElementId(target.id); // Update global context
             onElementSelect?.(target.id, type, elementName);
 
-            // Emulera dubbelklick: två klick på samma element inom 400ms
-            const now = Date.now();
-            if (
-              lastClickRef.current.id === target.id &&
-              now - lastClickRef.current.time < 400
-            ) {
+            // Dubbelklicksdetektering: använd browserns klickräknare
+            const clickCount =
+              (event?.originalEvent as MouseEvent | undefined)?.detail ?? 1;
+            if (clickCount >= 2) {
               handleSubprocessNavigation(target);
-              // Nollställ så att inte tredje klick direkt triggar igen
-              lastClickRef.current = { id: null, time: 0 };
-            } else {
-              lastClickRef.current = { id: target.id, time: now };
             }
           }
         };
@@ -796,22 +818,42 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         </div>
       </div>
       <div className="flex-1 relative bg-muted/30">
-        {parentHistoryItem && (
-          <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="shadow-md"
-              onClick={() => navigateBack(bpmnHistory.length - 1)}
-            >
-              <ArrowUp className="w-4 h-4 mr-2" />
-              Gå upp en nivå
-            </Button>
-            <span className="text-xs text-muted-foreground bg-card/80 px-2 py-1 rounded shadow">
-              Tillbaka till {parentHistoryItem.fileName.replace('.bpmn', '')}
-            </span>
-          </div>
-        )}
+        {(() => {
+          const hasHistoryParent = !!parentHistoryItem;
+          const treeParentFile = !hasHistoryParent ? findParentProcessFile(fileName) : null;
+          const canGoUp = hasHistoryParent || !!treeParentFile;
+
+          if (!canGoUp) return null;
+
+          const targetLabelFile = hasHistoryParent
+            ? parentHistoryItem.fileName
+            : treeParentFile!;
+
+          const handleGoUp = () => {
+            if (hasHistoryParent) {
+              navigateBack(bpmnHistory.length - 1);
+            } else if (treeParentFile) {
+              loadSubProcess(treeParentFile);
+            }
+          };
+
+          return (
+            <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shadow-md"
+                onClick={handleGoUp}
+              >
+                <ArrowUp className="w-4 h-4 mr-2" />
+                Gå upp en nivå
+              </Button>
+              <span className="text-xs text-muted-foreground bg-card/80 px-2 py-1 rounded shadow">
+                Tillbaka till {targetLabelFile.replace('.bpmn', '')}
+              </span>
+            </div>
+          );
+        })()}
         <div ref={containerRef} className="absolute inset-0" />
       </div>
     </div>
