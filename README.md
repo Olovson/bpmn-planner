@@ -186,6 +186,11 @@ Så länge dessa tre terminaler är igång får du:
 npm run dev   # http://localhost:8080/
 ```
 
+> **Not om hierarki & generering:**  
+> Full hierarkianalys (`buildBpmnProcessGraph`) körs idag bara för **toppfilen** (root, t.ex. `mortgage.bpmn`).  
+> Övriga BPMN‑filer genereras per fil (docs/tester/DoR/DoD) och kopplas in via `bpmn_dependencies`, `bpmn_element_mappings`, `node_test_links` m.m.  
+> Process Explorer/Node Matrix bygger alltid sin hierarki från rootfilen och ser cross‑fil‑kopplingar där, så du får en sammanhängande struktur även om genereringen sker per fil.
+
 ## 5. Inloggning
 `seed-bot@local.test / Passw0rd!`
 
@@ -408,6 +413,12 @@ Detta problem uppstår när PostgREST schema-cache är utdaterad efter migration
 # 🧭 TODO / Idébank (framtida förbättringar)
 
 En kort lista över förbättringsidéer som vi kan plocka upp senare:
+
+- **Aktuellt arbete (mortgage‑hierarki / 2025‑11)**  
+  - Finslipa subprocesskedjan `Object → Object information` så att callActivity `object-information` alltid matchar `mortgage-se-object-information.bpmn` med tydlig diagnostik när det inte går.  
+  - Låta Node Matrix visa noder från alla relevanta BPMN‑filer i mortgage‑kedjan (inte bara rootfilen), t.ex. `mortgage-se-application` och `mortgage-se-internal-data-gathering`.  
+  - Utforska att flytta tunga hierarki/graf‑beräkningar till en Supabase‑funktion (server‑side) för att minska CPU/minne i browsern vid “Generera allt”.  
+  - Förenkla “Generera allt” ytterligare genom att återanvända en gemensam processgraf per root i stället för att bygga nya grafer per subprocess‑fil.
 
 - **Parallellisering av LLM‑generering**
   - Lägg till en enkel concurrency‑pool i `generateAllFromBpmnWithGraph` så att flera noder kan genereras parallellt (t.ex. 3–5 samtidiga anrop per provider).

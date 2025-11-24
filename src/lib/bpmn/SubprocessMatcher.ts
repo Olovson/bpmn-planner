@@ -59,6 +59,7 @@ export function matchCallActivityToProcesses(
     'stakeholder',
     'object',
     'household',
+    'object-information',
   ]);
 
   const bestCandidate = evaluatedCandidates[0];
