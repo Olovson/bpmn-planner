@@ -30,6 +30,7 @@ export function matchCallActivityToProcesses(
     id: string;
     name?: string;
     calledElement?: string;
+    kind?: 'callActivity' | 'subProcess';
   },
   candidates: ProcessDefinition[],
   config: SubprocessMatcherConfig = {},
@@ -205,6 +206,7 @@ function evaluateCandidate(
     id: string;
     name?: string;
     calledElement?: string;
+    kind?: 'callActivity' | 'subProcess';
   },
   candidate: ProcessDefinition,
 ): MatchCandidate {

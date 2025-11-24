@@ -32,6 +32,11 @@ export function collectProcessDefinitionsFromMeta(
             name: ca.name,
             calledElement: ca.calledElement ?? undefined,
           })) ?? [],
+        subprocessCandidates: proc.subprocessCandidates?.map((candidate) => ({
+          id: candidate.id,
+          name: candidate.name,
+          kind: candidate.kind,
+        })),
         tasks:
           proc.tasks?.map((task) => ({
             id: task.id,
@@ -55,6 +60,7 @@ export function collectProcessDefinitionsFromMeta(
         name: ca.name,
         calledElement: ca.calledElement ?? undefined,
       })),
+      subprocessCandidates: undefined,
       tasks: (meta.tasks ?? []).map((task) => ({
         id: task.id,
         name: task.name,
@@ -76,6 +82,7 @@ export function collectProcessDefinitionsFromMeta(
           name: ca.name,
           calledElement: ca.calledElement ?? undefined,
         })) ?? [],
+      subprocessCandidates: undefined,
       tasks:
         meta?.tasks?.map((task) => ({
           id: task.id,
@@ -96,4 +103,3 @@ export function buildProcessDefinitionsFromRegistry(
     collectProcessDefinitionsFromMeta(entry.fileName, entry.meta, entry.storagePath),
   );
 }
-

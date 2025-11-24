@@ -71,6 +71,7 @@ export function buildProcessHierarchy(
     name: proc.name,
     fileName: proc.fileName,
     callActivities: proc.callActivities,
+    subprocessCandidates: proc.subprocessCandidates,
     tasks: proc.tasks,
     parseDiagnostics: proc.parseDiagnostics,
   }));
@@ -89,7 +90,12 @@ export function buildProcessHierarchy(
       indegree.set(proc.internalId, 0);
     }
 
-    proc.callActivities.forEach((callActivity) => {
+    const effectiveCallActivities =
+      proc.subprocessCandidates && proc.subprocessCandidates.length > 0
+        ? proc.subprocessCandidates
+        : proc.callActivities;
+
+    effectiveCallActivities.forEach((callActivity) => {
       const linkKey = `${proc.internalId}:${callActivity.id}`;
       const matcherCandidates = allCandidates
         .filter((candidate) => candidate.internalId !== proc.internalId)
@@ -105,7 +111,8 @@ export function buildProcessHierarchy(
         {
           id: callActivity.id,
           name: callActivity.name,
-          calledElement: callActivity.calledElement,
+          calledElement: (callActivity as any).calledElement,
+          kind: (callActivity as any).kind,
         },
         matcherCandidates,
         matcherConfig,

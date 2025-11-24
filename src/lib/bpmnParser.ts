@@ -74,6 +74,7 @@ export class BpmnParser {
             name: nameHint || id,
             callActivities: [],
             tasks: [],
+            subprocessCandidates: [],
             parseDiagnostics: [],
           };
           processMetaMap.set(id, entry);
@@ -133,6 +134,16 @@ export class BpmnParser {
             id: element.id,
             name: bo.name || element.id,
           });
+          const owningProcessId = findOwningProcessId(bo) || firstProcessId || processId;
+          const owningProcess = ensureProcessMeta(owningProcessId, processName);
+          if (owningProcess) {
+            owningProcess.subprocessCandidates ??= [];
+            owningProcess.subprocessCandidates.push({
+              id: element.id,
+              name: bo.name || element.id,
+              kind: 'subProcess',
+            });
+          }
         } else if (bo.$type === 'bpmn:CallActivity') {
           callActivities.push(bpmnElement);
           const calledElement = bo.calledElement || null;
@@ -154,20 +165,38 @@ export class BpmnParser {
               name: bo.name || element.id,
               calledElement,
             });
-          } else {
-            const fallback = ensureProcessMeta(processId || firstProcessId || element.id);
-            fallback?.callActivities.push({
+            if (!owningProcess.subprocessCandidates) {
+              owningProcess.subprocessCandidates = [];
+            }
+            owningProcess.subprocessCandidates.push({
               id: element.id,
               name: bo.name || element.id,
-              calledElement,
+              kind: 'callActivity',
             });
-            fallback?.parseDiagnostics?.push({
-              severity: 'warning',
-              code: 'PROCESS_ASSIGNMENT_FAILED',
-              message: 'Kunde inte koppla Call Activity till en specifik process. Använder filens huvudprocess.',
-              context: { elementId: element.id },
-              timestamp: timestamp(),
-            });
+          } else {
+            const fallback = ensureProcessMeta(processId || firstProcessId || element.id);
+            if (fallback) {
+              fallback.callActivities.push({
+                id: element.id,
+                name: bo.name || element.id,
+                calledElement,
+              });
+              if (!fallback.subprocessCandidates) {
+                fallback.subprocessCandidates = [];
+              }
+              fallback.subprocessCandidates.push({
+                id: element.id,
+                name: bo.name || element.id,
+                kind: 'callActivity',
+              });
+              fallback.parseDiagnostics?.push({
+                severity: 'warning',
+                code: 'PROCESS_ASSIGNMENT_FAILED',
+                message: 'Kunde inte koppla Call Activity till en specifik process. Använder filens huvudprocess.',
+                context: { elementId: element.id },
+                timestamp: timestamp(),
+              });
+            }
           }
         } else if (bo.$type === 'bpmn:ServiceTask') {
           serviceTasks.push(bpmnElement);

@@ -17,6 +17,16 @@ export interface BpmnProcessMeta {
     name: string;
     type: 'UserTask' | 'ServiceTask' | 'BusinessRuleTask';
   }>;
+  /**
+   * Union av tekniska callActivities och andra noder (t.ex. SubProcess)
+   * som kan behandlas som subprocess-kandidater. Detta fält är till
+   * för framtida utökningar av hierarkimatchningen.
+   */
+  subprocessCandidates?: Array<{
+    id: string;
+    name: string;
+    kind: 'callActivity' | 'subProcess';
+  }>;
   parseDiagnostics?: DiagnosticsEntry[];
 }
 

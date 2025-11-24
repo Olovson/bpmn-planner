@@ -52,6 +52,16 @@ export type ProcessDefinition = {
     name?: string;
     calledElement?: string;
   }>;
+  /**
+   * Utökad lista över subprocess-kandidater. Innehåller både riktiga
+   * CallActivities och vissa SubProcess-noder. Denna används inte
+   * fullt ut ännu, men fylls av parsern för framtida hierarkistöd.
+   */
+  subprocessCandidates?: Array<{
+    id: string;
+    name?: string;
+    kind?: 'callActivity' | 'subProcess';
+  }>;
   /** Task-like nodes (UserTask, ServiceTask, BusinessRuleTask, etc.). */
   tasks: Array<{
     id: string;
@@ -82,4 +92,3 @@ export type HierarchyNode = {
   link?: SubprocessLink;
   diagnostics?: DiagnosticsEntry[];
 };
-
