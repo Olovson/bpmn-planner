@@ -377,7 +377,8 @@ Dessa används i:
       - rootFile (`mortgage-se-application.bpmn`),
       - noder per fil (`fileNodes`),
       - callActivities (inkl. `internal-data-gathering`, `stakeholder`, `object`, `household`),
-      - `missingDependencies` för saknade mortgage‑subprocesser (Stakeholder/Object/Household).
+      - `missingDependencies` för saknade mortgage‑subprocesser (Stakeholder/Object/Household),
+      - att cross‑fil‑subprocesser (t.ex. `signing`, `disbursement`) får rätt `subprocessFile`.
   - `src/lib/bpmn/buildProcessHierarchy.test.ts` (mortgage-likt scenario)
     - Innehåller ett mortgage‑inspirerat testfall som validerar:
       - att callActivity `internal-data-gathering` matchas mot rätt process,

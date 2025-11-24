@@ -220,21 +220,25 @@ Det här steget är **ren in‑memory logik** – ingen fetch/Supabase här.
 
 1. Använder `parseBpmnFile` på alla filer i `existingBpmnFiles` (med cache).
 2. Bygger `ProcessDefinition[]` via `collectProcessDefinitionsFromMeta`.
-3. Kör `buildProcessHierarchy` med `preferredRootProcessIds` satta till alla processer som hör till `rootFile`.
+3. Kör `buildProcessModelFromDefinitions` (som internt använder `buildProcessHierarchy`) med `preferredRootFile = rootFile`.
 4. Väljer root‑process (helst den som tillhör `rootFile`, annars första root).
 5. Bygger en element‑index (`elementsByFile`) från `BpmnParseResult`.
-6. Konverterar `HierarchyNode`‑trädet till en `BpmnProcessNode`‑graf:
+6. Konverterar `ProcessModel` till en `BpmnProcessNode`‑graf:
    - Processnoder → `type: 'process'`, `bpmnFile = filnamn`, `bpmnElementId = processId`.
-   - Call Activities → `type: 'callActivity'`, `subprocessFile`, `subprocessMatchStatus`, `missingDefinition`.
+   - Call Activities → `type: 'callActivity'`, `subprocessFile` (upplöst via subprocess‑edge), `subprocessMatchStatus`, `missingDefinition`.
    - Task‑noder → `type: 'userTask' | 'serviceTask' | 'businessRuleTask'`.
 7. Fyller `missingDependencies` när en Call Activity saknar matchad subprocessfil eller fått `matchStatus !== 'matched'`:
 
 ```ts
 missingDependencies.push({
   parent: currentFile,
-  childProcess: node.displayName, // t.ex. "Stakeholder", "Object", "Household"
+  childProcess: node.name, // t.ex. "Stakeholder", "Object", "Household"
 });
 ```
+
+För att undvika stack‑overflow på komplexa/loopiga processer använder `buildBpmnProcessGraph`
+en **iterativ** traversal när `assignExecutionOrder` räknar ut `orderIndex`/`scenarioPath`
+per nod, med ett begränsat antal besök per nod/branch.
 
 Grafen används sedan i:
 
