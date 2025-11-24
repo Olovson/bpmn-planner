@@ -466,13 +466,17 @@ export default function BpmnFileManager() {
           null;
 
         const metaCallActivities = metaProcess?.callActivities || [];
-        const metaCaIds = new Set<string>(metaCallActivities.map((ca: any) => ca.id));
+        const metaSubprocesses = Array.isArray(meta.subprocesses) ? meta.subprocesses : [];
+        const metaIds = new Set<string>([
+          ...metaCallActivities.map((ca: any) => ca.id),
+          ...metaSubprocesses.map((sp: any) => sp.id),
+        ]);
 
         const calls = Array.isArray(proc.call_activities) ? proc.call_activities : [];
         for (const ca of calls) {
           if (!ca || !ca.bpmn_id) continue;
 
-          if (!metaCaIds.has(ca.bpmn_id)) {
+          if (!metaIds.has(ca.bpmn_id)) {
             mapInconsistencies.push({
               type: 'map_bpmn_id_not_in_meta',
               bpmn_file: bpmnFile,

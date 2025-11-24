@@ -4,6 +4,14 @@
 
 > Arkitektur & hierarki: `docs/bpmn-hierarchy-architecture.md`  
 > LLM-kontrakt & prompts: `prompts/llm/*`
+>
+> **Not om subprocesser (callActivity vs subProcess)**  
+> I många modeller används både `bpmn:callActivity` (tydlig extern subprocess) och `bpmn:subProcess` (inlinad subprocess) för att beskriva logiken.  
+> För BPMN Planner betraktas vissa `subProcess`-noder som “subprocess-kandidater” på samma sätt som `callActivity`, och kan därför få kopplingar i `bpmn-map.json` till separata BPMN-filer.  
+> – Root-processen (`mortgage.bpmn`) använder främst `callActivity` som subprocess-indikator.  
+> – I subprocess-filerna (t.ex. `mortgage-se-application.bpmn`, `mortgage-se-manual-credit-evaluation.bpmn`) används `subProcess` eller andra aktivitetsnoder (`stakeholder`, `object`, `household`, `documentation-assessment`, `credit-evaluation` etc.) som logiska subprocesser.  
+> – `bpmn-map.json` är sanningen för vilka av dessa noder som faktiskt ska länkas till egna `.bpmn`-filer.  
+> Parsern och valideringen utökas stegvis för att behandla både `callActivity` och utpekade `subProcess`-noder som subprocesser, så att hierarki, dokumentation och tester alltid utgår från samma explicita karta.
 
 ---
 
@@ -53,6 +61,7 @@
 - Övrig metadata:
   - Jira-typer/namn per nod.
   - Subprocess-mappningar (`bpmn_dependencies`) + diagnostik (`missingDependencies`).
+  - Explicit BPMN-karta (`bpmn-map.json`) med kopplingar mellan BPMN-filer och subprocess-noder (både `callActivity` och vissa `subProcess`-noder) – används för att tydligt deklarera vilka delar av modellen som ska tolkas som externa subprocesser.
 
 Alla artefakter lagras i Supabase (tabeller + storage) och kan regenereras från UI.
 

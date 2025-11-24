@@ -57,7 +57,7 @@ Utöver själva grafen används hierarkin också för att:
 - `processId`, `name`
 - `processes`: lista över alla `<process>` i filen
   - `id`, `name`
-  - `callActivities` (id, name, calledElement)
+  - `callActivities` (id, name, calledElement) – idag baserat på `<bpmn:callActivity>`
   - `tasks` (id, name, type – UserTask, ServiceTask, BusinessRuleTask, …)
   - `parseDiagnostics`
 - `callActivities` och `tasks` på filnivå (fallback).
