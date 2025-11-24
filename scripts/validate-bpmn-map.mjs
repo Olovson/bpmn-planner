@@ -118,11 +118,16 @@ async function validateBpmnMap() {
       processesMeta[0] ||
       null;
 
-    const metaCallActivities = metaProcess?.callActivities || [];
     const metaSubprocesses = Array.isArray(meta.subprocesses) ? meta.subprocesses : [];
+
+    // Om vi har process-specifik meta, använd den; annars fall tillbaka till fil-nivåmeta.
+    const metaCallActivities = metaProcess?.callActivities || meta.callActivities || [];
+    const metaTasks = metaProcess?.tasks || meta.tasks || [];
+
     const metaIds = new Set([
       ...metaCallActivities.map((ca) => ca.id),
       ...metaSubprocesses.map((sp) => sp.id),
+      ...metaTasks.map((t) => t.id),
     ]);
 
     const calls = Array.isArray(proc.call_activities) ? proc.call_activities : [];

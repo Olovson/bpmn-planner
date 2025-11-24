@@ -465,11 +465,20 @@ export default function BpmnFileManager() {
           processesMeta[0] ||
           null;
 
-        const metaCallActivities = metaProcess?.callActivities || [];
         const metaSubprocesses = Array.isArray(meta.subprocesses) ? meta.subprocesses : [];
+        const metaCallActivities =
+          (metaProcess?.callActivities as any[]) ||
+          (meta.callActivities as any[]) ||
+          [];
+        const metaTasks =
+          (metaProcess?.tasks as any[]) ||
+          (meta.tasks as any[]) ||
+          [];
+
         const metaIds = new Set<string>([
           ...metaCallActivities.map((ca: any) => ca.id),
           ...metaSubprocesses.map((sp: any) => sp.id),
+          ...metaTasks.map((t: any) => t.id),
         ]);
 
         const calls = Array.isArray(proc.call_activities) ? proc.call_activities : [];

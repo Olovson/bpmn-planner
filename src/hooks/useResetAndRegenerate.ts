@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
 import { generateAllFromBpmnWithGraph } from '@/lib/bpmnGenerators';
+import { parseBpmnFile } from '@/lib/bpmnParser';
 import { invalidateAllBpmnQueries } from '@/lib/queryInvalidation';
 
 interface ResetOptions {
@@ -215,6 +216,24 @@ export const useResetAndRegenerate = () => {
                 onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
               });
             }
+          }
+
+          // Uppdatera bpmn_files.meta så att processträdet speglar den faktiska BPMN-strukturen
+          try {
+            const parseResult = await parseBpmnFile(`/bpmn/${file.file_name}`);
+            await supabase
+              .from('bpmn_files')
+              .update({ meta: parseResult.meta })
+              .eq('file_name', file.file_name);
+          } catch (metaError) {
+            console.error(`Error updating meta for ${file.file_name}:`, metaError);
+            errors.push({
+              file: file.file_name,
+              error:
+                metaError instanceof Error
+                  ? `Kunde inte uppdatera meta: ${metaError.message}`
+                  : 'Kunde inte uppdatera meta (okänt fel)',
+            });
           }
 
         } catch (error) {

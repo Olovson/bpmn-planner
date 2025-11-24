@@ -120,6 +120,9 @@ function convertHierarchyChild(
 ): ProcessTreeNode[] {
   if (node.bpmnType === 'process') {
     const nextFile = resolveProcessFileName(node, context.processes) ?? context.currentFile;
+    // Vi skippar att lägga in en separat process-nod i trädet här för att undvika
+    // dubbelvisning (filnamn + callActivities). I stället går vi direkt vidare
+    // till barn-noderna med uppdaterat currentFile.
     return node.children.flatMap((child) =>
       convertHierarchyChild(child, { ...context, currentFile: nextFile }),
     );
@@ -156,26 +159,9 @@ function convertHierarchyChild(
     node.bpmnType === 'businessRuleTask' ||
     node.bpmnType === 'task'
   ) {
-    const typeMap: Record<string, ProcessTreeNode['type']> = {
-      userTask: 'userTask',
-      serviceTask: 'serviceTask',
-      businessRuleTask: 'businessRuleTask',
-      task: 'userTask',
-    };
-    const nodeType = typeMap[node.bpmnType] ?? 'userTask';
-    const elementId = node.nodeId.split(':').pop();
-    return [
-      {
-        id: node.nodeId,
-        label: node.displayName,
-        type: nodeType,
-        bpmnFile: context.currentFile,
-        bpmnElementId: elementId,
-        children: [],
-        artifacts: context.artifactBuilder(context.currentFile, elementId),
-        diagnostics: node.diagnostics,
-      },
-    ];
+    // För processträdet vill vi enbart visa subprocesser / callActivities
+    // (plus root-processen). Vanliga task-noder visas därför inte här.
+    return [];
   }
 
   return [];

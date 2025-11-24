@@ -93,9 +93,9 @@ function buildCallActivityNode(
   const children = buildChildren(node, model, artifactBuilder, visitedProcesses);
   const elementId = node.bpmnElementId;
 
-  // If this Call Activity has a resolved subprocess, embed the subprocess'
-  // process node (and its children) explicitly in the tree so that the full
-  // cross-file hierarchy becomes visible.
+  // If this Call Activity has a resolved subprocess, embed subprocessens innehåll
+  // direkt under callActivity-noden. Vi undviker att lägga till en separat
+  // process-nod med samma namn för att slippa dubbelvisning (filnamn + callActivity).
   if (subprocessFile) {
     const subprocessEdge = model.edges.find(
       (e) => e.kind === 'subprocess' && e.fromId === node.id,
@@ -110,19 +110,7 @@ function buildCallActivityNode(
           artifactBuilder,
           visitedProcesses,
         );
-        const subprocessNode: ProcessTreeNode = {
-          id: targetProcess.id,
-          label: targetProcess.name,
-          type: 'process',
-          bpmnFile: targetProcess.bpmnFile,
-          bpmnElementId: targetProcess.processId,
-          orderIndex: targetProcess.primaryPathIndex,
-          branchId: targetProcess.branchId,
-          scenarioPath: targetProcess.scenarioPath,
-          children: subprocessChildren,
-          diagnostics: targetProcess.diagnostics,
-        };
-        children.push(subprocessNode);
+        children.push(...subprocessChildren);
       }
     }
   }

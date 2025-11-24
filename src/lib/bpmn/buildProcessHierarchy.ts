@@ -277,7 +277,12 @@ function buildProcessNode(
 
   const childAncestors = [...context.ancestorStack, processInternalId];
 
-  for (const callActivity of proc.callActivities) {
+  const effectiveCallActivities =
+    proc.subprocessCandidates && proc.subprocessCandidates.length > 0
+      ? proc.subprocessCandidates
+      : proc.callActivities;
+
+  for (const callActivity of effectiveCallActivities) {
     const linkKey = `${processInternalId}:${callActivity.id}`;
     const link = context.links.get(linkKey);
     if (!link) continue;
