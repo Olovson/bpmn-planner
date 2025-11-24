@@ -17,8 +17,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
 import { SUBPROCESS_REGISTRY, type NodeType } from '@/data/subprocessRegistry';
-import { useFilePlannedScenarios } from '@/hooks/useFilePlannedScenarios';
-import { useBpmnFileTestableNodes } from '@/hooks/useBpmnFileTestableNodes';
 import { useGlobalPlannedScenarios } from '@/hooks/useGlobalPlannedScenarios';
 import { useAllBpmnNodes } from '@/hooks/useAllBpmnNodes';
 
@@ -58,11 +56,6 @@ const TestReport = () => {
   const [plannedProcessFilter, setPlannedProcessFilter] = useState<string>('all');
   const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
 
-  const activeBpmnFile =
-    plannedProcessFilter !== 'all' ? plannedProcessFilter : null;
-
-  const { summary: plannedSummary } = useFilePlannedScenarios(activeBpmnFile);
-  const { nodes: testableNodes } = useBpmnFileTestableNodes(activeBpmnFile || undefined);
   const { summary: globalPlannedSummary } = useGlobalPlannedScenarios();
   const { nodes: allBpmnNodes } = useAllBpmnNodes();
 
@@ -96,18 +89,6 @@ const TestReport = () => {
       }
     });
 
-    // Planerade scenarion per fil
-    if (plannedSummary) {
-      plannedSummary.byNode.forEach((node) => {
-        node.byProvider.forEach((p) => {
-          const prov = p.provider as ProviderScope;
-          if (prov in flags && (p.scenarios?.length ?? 0) > 0) {
-            flags[prov] = true;
-          }
-        });
-      });
-    }
-
     // Globala planerade scenarion
     if (globalPlannedSummary) {
       globalPlannedSummary.nodes.forEach((node) => {
@@ -121,31 +102,26 @@ const TestReport = () => {
     }
 
     return flags;
-  }, [testResults, plannedSummary, globalPlannedSummary]);
+  }, [testResults, globalPlannedSummary]);
 
-  // KPI: coverage från coverageMap + test_results + node_planned_scenarios (per fil om vald, annars global)
+  // KPI: coverage från coverageMap + test_results + node_planned_scenarios (alltid global)
   const coverageSummary = useMemo(() => {
     let totalNodes = 0;
     let implementedNodes = 0;
 
+    // Alltid räkna alla filer globalt
     if (coverageMap) {
-      if (activeBpmnFile && coverageMap.has(activeBpmnFile)) {
-        const coverage = coverageMap.get(activeBpmnFile)!;
-        totalNodes = coverage.total_nodes;
-        implementedNodes = coverage.tests.covered;
-      } else {
-        for (const coverage of coverageMap.values()) {
-          totalNodes += coverage.total_nodes;
-          implementedNodes += coverage.tests.covered;
-        }
+      for (const coverage of coverageMap.values()) {
+        totalNodes += coverage.total_nodes;
+        implementedNodes += coverage.tests.covered;
       }
     }
 
+    // Alltid visa alla testresultat globalt (filtreras bara på provider)
     const filteredResults = (testResults || []).filter((r) => {
-      const matchesFile = activeBpmnFile ? r.bpmn_file === activeBpmnFile : true;
       const provider = (r.script_provider ?? null) as ProviderScope | null;
       const matchesProvider = provider === providerScope;
-      return matchesFile && matchesProvider;
+      return matchesProvider;
     });
 
     const executedNodeIds = new Set(
@@ -159,16 +135,9 @@ const TestReport = () => {
     const executedCoverage =
       totalNodes > 0 ? (executedNodeIds.size / totalNodes) * 100 : 0;
 
+    // Alltid räkna alla noder med planerade scenarion globalt
     let plannedNodesCount = 0;
-    if (activeBpmnFile && plannedSummary) {
-      plannedNodesCount = plannedSummary.byNode.filter((node) =>
-        node.byProvider.some(
-          (p) =>
-            p.provider === providerScope &&
-            (p.scenarios?.length ?? 0) > 0,
-        ),
-      ).length;
-    } else if (globalPlannedSummary) {
+    if (globalPlannedSummary) {
       plannedNodesCount = globalPlannedSummary.nodes.filter((node) =>
         node.byProvider.some(
           (p) =>
@@ -176,8 +145,6 @@ const TestReport = () => {
             (p.scenarios?.length ?? 0) > 0,
         ),
       ).length;
-    } else {
-      plannedNodesCount = 0;
     }
 
     const latestRun =
@@ -208,17 +175,11 @@ const TestReport = () => {
           : 0,
       latestRun,
     };
-  }, [coverageMap, testResults, activeBpmnFile, plannedSummary, providerScope]);
+  }, [coverageMap, testResults, globalPlannedSummary, providerScope]);
 
   const plannedScenarioTotal = useMemo(() => {
-    if (activeBpmnFile && plannedSummary) {
-      return plannedSummary.byNode.reduce((sum, node) => {
-        const providerEntry = node.byProvider.find(
-          (p) => p.provider === providerScope,
-        );
-        return sum + (providerEntry?.scenarios?.length ?? 0);
-      }, 0);
-    } else if (globalPlannedSummary) {
+    // Alltid räkna alla planerade scenarion globalt
+    if (globalPlannedSummary) {
       return globalPlannedSummary.nodes.reduce((sum, node) => {
         const providerEntry = node.byProvider.find(
           (p) => p.provider === providerScope,
@@ -227,7 +188,7 @@ const TestReport = () => {
       }, 0);
     }
     return 0;
-  }, [plannedSummary, globalPlannedSummary, activeBpmnFile, providerScope]);
+  }, [globalPlannedSummary, providerScope]);
 
   const testsWithDerivedProcess = useMemo(() => {
     return testResults.map((result) => {
@@ -310,111 +271,9 @@ const TestReport = () => {
   }, [coverageMap]);
 
   const plannedNodesForView = useMemo(() => {
-    // När vi har en aktiv fil och DB-data + BPMN-noder, använd dessa som sanning.
-    if (activeBpmnFile && plannedSummary && plannedSummary.totalPlannedScenarios > 0 && testableNodes.length > 0) {
-      const plannedById = new Map(
-        plannedSummary.byNode.map((n) => [n.elementId, n]),
-      );
-
-      return testableNodes
-        .filter((node) => {
-          // Filtrera på typ
-          const nodeType = node.type;
-          if (
-            plannedTypeFilter === 'feature-goal' &&
-            nodeType !== 'CallActivity'
-          ) {
-            return false;
-          }
-          if (
-            plannedTypeFilter === 'epic' &&
-            nodeType !== 'UserTask' &&
-            nodeType !== 'ServiceTask'
-          ) {
-            return false;
-          }
-          if (
-            plannedTypeFilter === 'business-rule' &&
-            nodeType !== 'BusinessRuleTask'
-          ) {
-            return false;
-          }
-
-          const planned = plannedById.get(node.id);
-          const providerScopedCount =
-            planned?.byProvider
-              .filter((p) => p.provider === providerScope)
-              .reduce(
-                (sum, p) => sum + (p.scenarios?.length ?? 0),
-                0,
-              ) ?? 0;
-          const hasPlanned = providerScopedCount > 0;
-
-          if (plannedStatusFilter === 'all') {
-            return true;
-          }
-          if (plannedStatusFilter === 'pending') {
-            return hasPlanned;
-          }
-          if (plannedStatusFilter === 'passing') {
-            // För planerade scenarion finns ännu inget explicit statusbegrepp,
-            // så vi behandlar alla med scenarion som "aktiva".
-            return hasPlanned;
-          }
-          if (plannedStatusFilter === 'failing') {
-            return hasPlanned;
-          }
-          if (plannedStatusFilter === 'skipped') {
-            return hasPlanned;
-          }
-
-          return true;
-        })
-        .map((node) => {
-          const planned = plannedById.get(node.id);
-
-          const plannedScenarios: UiScenario[] = [];
-          if (planned) {
-            for (const providerSet of planned.byProvider) {
-              if (providerSet.provider !== providerScope) continue;
-              const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
-              for (const scenario of providerSet.scenarios) {
-                plannedScenarios.push({
-                  ...scenario,
-                  _source: sourceLabel,
-                });
-              }
-            }
-          }
-          const hasExecuted = testResults.some(
-            (r) =>
-              r.bpmn_file === activeBpmnFile &&
-              r.node_id === node.id &&
-              ((r.script_provider ?? null) as ProviderScope | null) ===
-                providerScope,
-          );
-
-          const meta = elementResourceMapping[node.id];
-          const docId =
-            (meta?.bpmnFile || activeBpmnFile) && node.id
-              ? getNodeDocViewerPath(
-                  meta?.bpmnFile || activeBpmnFile,
-                  node.id,
-                )
-              : null;
-
-          return {
-            id: node.id,
-            displayName: node.name || node.id,
-            plannedScenarios,
-            hasExecuted,
-            docId,
-          };
-        });
-    }
-
-    // Global vy: använd globalPlannedSummary + alla BPMN-noder när ingen aktiv fil är vald.
-    if (globalPlannedSummary && globalPlannedSummary.totalPlannedScenarios > 0 && allBpmnNodes.length > 0) {
+    // Alltid använd alla BPMN-noder för att visa alla noder globalt
+    // Filtreringen sker via plannedProcessFilter, men alla noder från alla filer ska visas
+    if (allBpmnNodes.length > 0) {
       const nodesByKey = new Map(
         allBpmnNodes.map((n) => [
           `${n.bpmnFile}::${n.elementId}`,
@@ -422,7 +281,18 @@ const TestReport = () => {
         ]),
       );
 
-      return globalPlannedSummary.nodes
+      // Bygg en map av planerade scenarion från globalPlannedSummary om den finns
+      const plannedByNodeKey = globalPlannedSummary
+        ? new Map(
+            globalPlannedSummary.nodes.map((n) => [
+              `${n.bpmnFile}::${n.elementId}`,
+              n,
+            ]),
+          )
+        : new Map();
+
+      // Använd alla noder från allBpmnNodes, inte bara de med planerade scenarion
+      return allBpmnNodes
         .filter((node) => {
           // Filfilter
           if (
@@ -432,10 +302,7 @@ const TestReport = () => {
             return false;
           }
 
-          const bpmnNode = nodesByKey.get(
-            `${node.bpmnFile}::${node.elementId}`,
-          );
-          const nodeType = bpmnNode?.nodeType;
+          const nodeType = node.nodeType;
 
           if (
             plannedTypeFilter === 'feature-goal' &&
@@ -457,8 +324,12 @@ const TestReport = () => {
             return false;
           }
 
+          // Hämta planerade scenarion från globalPlannedSummary om den finns
+          const plannedNode = plannedByNodeKey.get(
+            `${node.bpmnFile}::${node.elementId}`,
+          );
           const providerScopedCount =
-            node.byProvider
+            plannedNode?.byProvider
               .filter((p) => p.provider === providerScope)
               .reduce(
                 (sum, p) => sum + (p.scenarios?.length ?? 0),
@@ -485,19 +356,22 @@ const TestReport = () => {
           return true;
         })
         .map((node) => {
-          const bpmnNode = nodesByKey.get(
+          // Hämta planerade scenarion från globalPlannedSummary om den finns
+          const plannedNode = plannedByNodeKey.get(
             `${node.bpmnFile}::${node.elementId}`,
           );
 
           const plannedScenarios: UiScenario[] = [];
-          for (const providerSet of node.byProvider) {
-            if (providerSet.provider !== providerScope) continue;
-            const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
-            for (const scenario of providerSet.scenarios) {
-              plannedScenarios.push({
-                ...scenario,
-                _source: sourceLabel,
-              });
+          if (plannedNode) {
+            for (const providerSet of plannedNode.byProvider) {
+              if (providerSet.provider !== providerScope) continue;
+              const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
+              for (const scenario of providerSet.scenarios) {
+                plannedScenarios.push({
+                  ...scenario,
+                  _source: sourceLabel,
+                });
+              }
             }
           }
 
@@ -511,17 +385,14 @@ const TestReport = () => {
             return matchesFile && matchesNode && matchesProvider;
           });
 
-          const docId =
-            bpmnNode &&
-            getNodeDocViewerPath(
-              bpmnNode.bpmnFile,
-              bpmnNode.elementId,
-            );
+          const docId = getNodeDocViewerPath(
+            node.bpmnFile,
+            node.elementId,
+          );
 
           return {
             id: node.elementId,
-            displayName:
-              bpmnNode?.elementName || node.elementId,
+            displayName: node.elementName || node.elementId,
             plannedScenarios,
             hasExecuted,
             docId,
@@ -532,9 +403,6 @@ const TestReport = () => {
     // Ingen data i DB
     return [];
   }, [
-    activeBpmnFile,
-    plannedSummary,
-    testableNodes,
     globalPlannedSummary,
     allBpmnNodes,
     plannedTypeFilter,
@@ -576,9 +444,7 @@ const TestReport = () => {
             </h1>
             <div className="flex flex-col items-start gap-2 sm:items-end">
               <Badge variant="outline" className="text-xs">
-                {activeBpmnFile
-                  ? `Scope: ${activeBpmnFile}`
-                  : 'Scope: alla BPMN-filer'}
+                Scope: alla BPMN-filer
               </Badge>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="text-muted-foreground">Provider:</span>
@@ -634,8 +500,7 @@ const TestReport = () => {
                     {plannedScenarioTotal}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Scenarion definierade för valda BPMN-filen
-                    {activeBpmnFile ? '' : ' (global designnivå)'}
+                    Scenarion definierade globalt (alla BPMN-filer)
                   </p>
                 </div>
               </CardContent>

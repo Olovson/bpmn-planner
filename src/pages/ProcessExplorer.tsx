@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useProcessTree } from '@/hooks/useProcessTree';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { ProcessTreeD3, ProcessTreeD3Api } from '@/components/ProcessTreeD3';
-import { ProcessTreeNode, NodeArtifact, getProcessNodeStyle } from '@/lib/processTree';
+import { ProcessTreeNode, NodeArtifact, getProcessNodeStyle, ProcessNodeType } from '@/lib/processTree';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
@@ -28,7 +28,9 @@ export function ProcessExplorerView({
   const navigate = useNavigate();
   const [selectedNode, setSelectedNode] = useState<ProcessTreeNode | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
-  const { nodes: allNodes } = useAllBpmnNodes();
+  const [nodeTypeFilter, setNodeTypeFilter] = useState<Set<ProcessNodeType>>(
+    new Set(['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'])
+  );
   const treeRef = useRef<ProcessTreeD3Api | null>(null);
   const [treeLayoutTrigger, setTreeLayoutTrigger] = useState(0);
 
@@ -178,6 +180,8 @@ export function ProcessExplorerView({
           showTree={false}
           collapsedIds={collapsedIds}
           onCollapsedIdsChange={setCollapsedIds}
+          nodeTypeFilter={nodeTypeFilter}
+          onNodeTypeFilterChange={setNodeTypeFilter}
         />
         {hasDiagnostics && (
           <div className="diagnostics-summary bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
@@ -208,114 +212,26 @@ export function ProcessExplorerView({
         )}
       </div>
 
-      {/* Rad 2: trädvyn till vänster, infokort till höger */}
-      <div className="flex gap-4 flex-1 min-h-0">
-        <div className="flex-[0.8] min-w-0">
-          <ProcessTreeD3
-            ref={treeRef}
-            root={tree}
-            selectedNodeId={selectedNodeId}
-            onSelectNode={handleNodeSelect}
-            onArtifactClick={handleArtifactClick}
-            showLegend={false}
-            collapsedIds={collapsedIds}
-            onCollapsedIdsChange={(ids) => {
-              setCollapsedIds(ids);
-              setTreeLayoutTrigger(prev => prev + 1);
-            }}
-          />
-        </div>
-        <aside className="flex-[0.2] min-w-[16rem] max-w-xs">
-          {(() => {
-            if (!selectedNode) {
-              return (
-                <NodeSummaryCard
-                  title={null}
-                  elementId={null}
-                  elementTypeLabel={null}
-                  testStatus={null}
-                  jiraType={null}
-                  hasSubprocess={false}
-                />
-              );
-            }
-
-            const elementId =
-              selectedNode.bpmnElementId && selectedNode.bpmnElementId !== ''
-                ? selectedNode.bpmnElementId
-                : selectedNode.id;
-
-            const selectedBpmnNode =
-              allNodes?.find(
-                (n) =>
-                  n.bpmnFile === selectedNode.bpmnFile &&
-                  n.elementId === elementId,
-              ) ?? null;
-
-            const elementTypeLabel = getProcessNodeStyle(
-              selectedNode.type,
-            ).label;
-
-            const jiraType = selectedBpmnNode?.jiraType ?? null;
-            const hasSubprocess =
-              Boolean(selectedNode.subprocessFile) ||
-              Boolean(selectedBpmnNode?.subprocessMatchStatus === 'matched');
-
-            const canOpenDocs = Boolean(selectedBpmnNode?.hasDocs);
-            const canOpenTestScript = Boolean(selectedBpmnNode?.testFilePath);
-            const canOpenTestReport = Boolean(selectedBpmnNode?.hasTestReport);
-
-            return (
-              <NodeSummaryCard
-                title={
-                  selectedBpmnNode?.jiraName ||
-                  selectedBpmnNode?.elementName ||
-                  selectedNode.label
-                }
-                elementId={elementId}
-                elementTypeLabel={elementTypeLabel}
-                testStatus={null}
-                jiraType={jiraType}
-                hasSubprocess={hasSubprocess}
-                onOpenDocs={
-                  canOpenDocs && selectedBpmnNode?.documentationUrl
-                    ? () =>
-                        navigate(
-                          selectedBpmnNode.documentationUrl!.replace(/^#/, ''),
-                        )
-                    : undefined
-                }
-                canOpenDocs={canOpenDocs}
-                onOpenTestScript={
-                  canOpenTestScript && selectedBpmnNode?.testFilePath
-                    ? () =>
-                        navigate(
-                          `/node-test-script?bpmnFile=${encodeURIComponent(
-                            selectedBpmnNode.bpmnFile,
-                          )}&elementId=${encodeURIComponent(
-                            selectedBpmnNode.elementId,
-                          )}`,
-                        )
-                    : undefined
-                }
-                canOpenTestScript={canOpenTestScript}
-                onOpenTestReport={
-                  canOpenTestReport
-                    ? () =>
-                        navigate(
-                          getNodeTestReportUrl(
-                            selectedBpmnNode!.bpmnFile,
-                            selectedBpmnNode!.elementId,
-                          ).replace('#', ''),
-                        )
-                    : undefined
-                }
-                canOpenTestReport={canOpenTestReport}
-                onOpenNodeMatrix={() => navigate('/node-matrix')}
-              />
-            );
-          })()}
-        </aside>
+      {/* Rad 2: trädvyn */}
+      <div className="flex-1 min-h-0">
+        <ProcessTreeD3
+          ref={treeRef}
+          root={tree}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={handleNodeSelect}
+          onArtifactClick={handleArtifactClick}
+          showLegend={false}
+          collapsedIds={collapsedIds}
+          onCollapsedIdsChange={(ids) => {
+            setCollapsedIds(ids);
+            setTreeLayoutTrigger(prev => prev + 1);
+          }}
+          nodeTypeFilter={nodeTypeFilter}
+          onNodeTypeFilterChange={(filter) => {
+            setNodeTypeFilter(filter);
+            setTreeLayoutTrigger(prev => prev + 1);
+          }}
+        />
       </div>
     </div>
   );

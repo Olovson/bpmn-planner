@@ -16,6 +16,10 @@ interface ProcessTreeD3Props {
   /** Externt kollaps-state (delas mellan instanser) */
   collapsedIds?: Set<string>;
   onCollapsedIdsChange?: (ids: Set<string>) => void;
+  /** Filtrera nodtyper - om satt, visas bara noder med dessa typer */
+  nodeTypeFilter?: Set<ProcessNodeType>;
+  /** Callback när nodeTypeFilter ändras */
+  onNodeTypeFilterChange?: (filter: Set<ProcessNodeType>) => void;
 }
 
 export interface ProcessTreeD3Api {
@@ -72,6 +76,8 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
   showTree = true,
   collapsedIds: externalCollapsedIds,
   onCollapsedIdsChange,
+  nodeTypeFilter,
+  onNodeTypeFilterChange,
 }, ref) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -238,8 +244,14 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       .append('g')
       .attr('class', 'tree-root');
 
-    // Filter collapsed nodes, men behåll info om huruvida noden har barn i originalträdet
-    const filterCollapsed = (node: ProcessTreeNode): any => {
+    // Filter collapsed nodes and node types, men behåll info om huruvida noden har barn i originalträdet
+    const filterCollapsed = (node: ProcessTreeNode, isRoot: boolean = false): any => {
+      // Process-noder (root) ska alltid visas, annars filtrera på nodtyp om filter är satt
+      if (!isRoot && nodeTypeFilter && nodeTypeFilter.size > 0 && !nodeTypeFilter.has(node.type)) {
+        // Om noden inte matchar filtret, returnera null så att den hoppas över
+        return null;
+      }
+
       const hasChildren = node.children && node.children.length > 0;
       const filtered: any = { ...node };
       // Markera om noden kan ha barn, oavsett kollaps-state
@@ -248,14 +260,22 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       if (collapsedIds.has(node.id)) {
         filtered.children = [];
       } else if (hasChildren) {
-        filtered.children = node.children!.map(filterCollapsed);
+        // Filtrera barn och ta bort null-värden
+        filtered.children = node.children!
+          .map((child) => filterCollapsed(child, false))
+          .filter((child: any) => child !== null);
       } else {
         filtered.children = [];
       }
       return filtered;
     };
 
-    const filteredRoot = filterCollapsed(root);
+    const filteredRoot = filterCollapsed(root, true);
+    
+    // Om root-noden filtrerades bort, använd en tom root
+    if (!filteredRoot) {
+      return;
+    }
 
     // Create hierarchy
     const hierarchy = d3.hierarchy(filteredRoot, (d: any) => d.children);
@@ -408,25 +428,14 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       }
     });
 
-  }, [root, selectedNodeId, collapsedIds, onSelectNode, onArtifactClick, fitOnNextLayout]);
+  }, [root, selectedNodeId, collapsedIds, nodeTypeFilter, onSelectNode, onArtifactClick, fitOnNextLayout]);
 
   return (
     <div className="flex flex-col h-full gap-4">
       {showLegend && (
         <Card className="flex-shrink-0">
-          <CardHeader className="pb-3 flex items-center justify-between">
+          <CardHeader className="pb-3">
             <div />
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleCollapseAll}>
-                Kollapsa allt
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExpandAll}>
-                Expandera allt
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExportPdf}>
-                Exportera till PDF
-              </Button>
-            </div>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-3 text-xs">
@@ -443,6 +452,50 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
             <p className="text-xs text-muted-foreground mt-3">
               Klicka för att välja nod • Dubbelklick eller Shift+klick för att expandera/kollapsa • Scrolla för zoom • Dra för att panorera
             </p>
+            <div className="flex items-center justify-between mt-3">
+              {onNodeTypeFilterChange && (
+                <div className="flex flex-wrap gap-2">
+                  {(['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'] as ProcessNodeType[]).map(type => {
+                    const isActive = !nodeTypeFilter || nodeTypeFilter.has(type);
+                    const style = getProcessNodeStyle(type);
+                    return (
+                      <Button
+                        key={type}
+                        variant={isActive ? 'default' : 'outline'}
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={() => {
+                          const newFilter = new Set(nodeTypeFilter || []);
+                          if (isActive) {
+                            newFilter.delete(type);
+                          } else {
+                            newFilter.add(type);
+                          }
+                          onNodeTypeFilterChange(newFilter);
+                        }}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full mr-1.5"
+                          style={{ backgroundColor: style.hexColor }}
+                        />
+                        {style.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleCollapseAll}>
+                  Kollapsa allt
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExpandAll}>
+                  Expandera allt
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportPdf}>
+                  Exportera till PDF
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
