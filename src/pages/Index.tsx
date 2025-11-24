@@ -138,11 +138,16 @@ const Index = () => {
     baseNavigate('/auth');
   };
 
+  // Track last synced URL file to prevent loops
+  const lastSyncedUrlFileRef = useRef<string | null>(null);
+
   const handleBpmnFileChange = (newFileName: string) => {
     if (!newFileName) return;
     // Undvik att trigga navigation i en loop om filen redan är aktiv
     if (newFileName === currentBpmnFile && newFileName === urlFile) return;
-
+    
+    // Update lastSyncedUrlFileRef to prevent useEffect from syncing back
+    lastSyncedUrlFileRef.current = newFileName;
     setCurrentBpmnFile(newFileName);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -151,9 +156,10 @@ const Index = () => {
     }, { replace: false });
   };
 
-  // Sync URL param to state if present
+  // Sync URL param to state if present (but avoid loops)
   useEffect(() => {
-    if (urlFile && urlFile !== currentBpmnFile) {
+    if (urlFile && urlFile !== currentBpmnFile && urlFile !== lastSyncedUrlFileRef.current) {
+      lastSyncedUrlFileRef.current = urlFile;
       setCurrentBpmnFile(urlFile);
     }
     if (urlElement && urlElement !== selectedElement) {

@@ -198,12 +198,23 @@ function buildProcessNodeRecursive(
     const artifacts = artifactBuilder(ca.bpmnFile, ca.bpmnElementId);
 
     if (!subprocessTarget) {
+      // Try to find missing dependency info from graph
+      const missingDep = graph.missingDependencies.find(
+        (m) => m.fromNodeId === ca.id
+      );
+      const missingFileName = missingDep?.missingFileName;
+
       subprocessDiagnostics = [
         {
           severity: 'warning',
           code: 'MISSING_SUBPROCESS',
           message: `CallActivity ${ca.name ?? ca.bpmnElementId} has no matched subprocess`,
-          context: { callActivityId: ca.id, bpmnFile: ca.bpmnFile },
+          context: {
+            callActivityId: ca.id,
+            bpmnFile: ca.bpmnFile,
+            missingFileName,
+            reason: missingDep?.context?.reason,
+          },
         },
       ];
     } else {

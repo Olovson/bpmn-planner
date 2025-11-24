@@ -22,7 +22,12 @@ Deno.serve(async (req) => {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (filesError) throw filesError;
+    if (filesError) {
+      console.error('Error fetching files from database:', filesError);
+      throw filesError;
+    }
+
+    console.log(`[list-bpmn-files] Found ${files?.length || 0} files in database`);
 
     // For each file, get usage stats
     const filesWithStats = await Promise.all(

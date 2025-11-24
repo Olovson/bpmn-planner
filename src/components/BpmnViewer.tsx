@@ -169,6 +169,9 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     return xml.includes('<bpmn:definitions') ? xml : null;
   }, []);
 
+  // Track the last loaded initialFileName to prevent unnecessary reloads
+  const lastLoadedInitialFileRef = useRef<string | null>(null);
+  
   // Define loadSubProcess before it's used in useEffects
   const loadSubProcess = useCallback(async (bpmnFileName: string) => {
     // Mark navigation as in progress to prevent race conditions
@@ -178,7 +181,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     
     try {
       const url = await getBpmnFileUrl(bpmnFileName);
-      console.log('Loading subprocess:', url);
+      console.log('[BpmnViewer] Loading subprocess:', bpmnFileName, url);
 
       let response = await fetch(url);
       if (!response.ok) {
@@ -209,6 +212,8 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       // Only update state after validation so we don't blank the viewer on bad content
       // Verify we're still on the same navigation version (not superseded by another navigation)
       if (clickControllerRef.current.currentDiagramVersion === navigationVersion) {
+        // Update lastLoadedInitialFileRef to prevent initialFileName useEffect from reloading
+        lastLoadedInitialFileRef.current = bpmnFileName;
         setBpmnHistory((prev) => [...prev, { fileName, xml: currentXml }]);
         setCurrentXml(xml);
         setFileName(bpmnFileName);
@@ -219,7 +224,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         description: `Loaded ${bpmnFileName}`,
       });
     } catch (error) {
-      console.error('Error loading subprocess:', error);
+      console.error('[BpmnViewer] Error loading subprocess:', error);
       toast({
         title: 'Error',
         description: `Failed to load ${bpmnFileName}. ${error instanceof Error ? error.message : ''}`,
@@ -263,9 +268,13 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     }
   }, []);
 
-  // Notify parent when fileName changes
+  // Notify parent when fileName changes (but only if it's a meaningful change)
+  const lastNotifiedFileRef = useRef<string>('');
   useEffect(() => {
-    onFileChange?.(fileName);
+    if (fileName && fileName !== lastNotifiedFileRef.current) {
+      lastNotifiedFileRef.current = fileName;
+      onFileChange?.(fileName);
+    }
   }, [fileName, onFileChange]);
 
   // Listen for mapping updates from sidebar
@@ -360,7 +369,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     return () => {
       window.removeEventListener('highlightBpmnElement', handleHighlightElement as EventListener);
     };
-  }, [fileName, loadSubProcess, toast]);
+  }, [fileName, loadSubProcess, toast, highlightElement, setSelectedElementId]);
 
   // Load BPMN file from Supabase Storage for the "current" route/initial file
   useEffect(() => {
@@ -374,6 +383,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       if (!fileToLoad) {
         setCurrentXml('');
         setFileName('');
+        lastLoadedInitialFileRef.current = null;
         toast({
           title: 'Inga BPMN-filer',
           description: 'Lägg till filer via Filer-sidan för att börja.',
@@ -381,9 +391,20 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         return;
       }
 
+      // Skip if we're already loading/loaded this file
+      if (fileToLoad === lastLoadedInitialFileRef.current && fileToLoad === fileName) {
+        return;
+      }
+
+      // Skip if navigation is in progress (user is navigating via double-click)
+      if (clickControllerRef.current.isNavigating) {
+        return;
+      }
+
       try {
+        lastLoadedInitialFileRef.current = fileToLoad;
         const url = await getBpmnFileUrl(fileToLoad);
-        console.log('Attempting to load BPMN from:', url);
+        console.log('[BpmnViewer] Loading BPMN from initialFileName:', fileToLoad, url);
 
         // Nollställ navigationen när vi aktivt byter fil via route
         if (fileToLoad !== fileName) {
@@ -413,11 +434,12 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
           );
         }
 
-        console.log('BPMN loaded successfully, length:', xml.length);
+        console.log('[BpmnViewer] BPMN loaded successfully, length:', xml.length);
         setCurrentXml(xml);
         setFileName(fileToLoad);
       } catch (error) {
-        console.error('Error loading BPMN file:', error);
+        console.error('[BpmnViewer] Error loading BPMN file:', error);
+        lastLoadedInitialFileRef.current = null;
         toast({
           title: 'Kunde inte ladda BPMN',
           description: error instanceof Error ? error.message : 'Okänt fel',
@@ -427,7 +449,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     };
     
     loadBpmn();
-  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage, fileName, setSelectedElementId]);
+  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage, setSelectedElementId]);
 
   // Initialize viewer when container becomes available (after loading UI is gone)
   useEffect(() => {

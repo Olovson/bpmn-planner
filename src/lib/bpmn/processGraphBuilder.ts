@@ -200,6 +200,12 @@ function matchSubprocesses(
   const matches: SubprocessMatch[] = [];
   const missing: MissingDependency[] = [];
 
+  // Log available process definitions for debugging
+  if (import.meta.env.DEV) {
+    const availableFiles = new Set(processDefs.map(p => p.fileName));
+    console.log('[matchSubprocesses] Available process files:', Array.from(availableFiles).sort());
+  }
+
   for (const ca of callActivities) {
     let match: SubprocessMatch | undefined;
 
@@ -220,6 +226,12 @@ function matchSubprocesses(
             matchSource: 'bpmn-map',
           };
         } else {
+          if (import.meta.env.DEV) {
+            console.warn(
+              `[matchSubprocesses] Map points to ${mapRes.matchedFileName} but file not found in processDefs.`,
+              `Call activity: ${ca.id} in ${ca.fileName}`
+            );
+          }
           missing.push({
             fromNodeId: `callActivity:${ca.fileName}:${ca.id}`,
             missingFileName: mapRes.matchedFileName,
@@ -244,6 +256,10 @@ function matchSubprocesses(
     }
 
     matches.push(match);
+  }
+
+  if (import.meta.env.DEV) {
+    console.log(`[matchSubprocesses] Matched ${matches.filter(m => m.targetProcessDef).length} subprocesses, ${missing.length} missing`);
   }
 
   return { matches, missing };

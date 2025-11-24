@@ -29,6 +29,9 @@ export const useBpmnFiles = () => {
       if (error) throw error;
       return data.files as BpmnFile[];
     },
+    staleTime: 0, // Always refetch to ensure fresh data
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -48,9 +51,11 @@ export const useUploadBpmnFile = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       invalidateStructureQueries(queryClient);
       queryClient.invalidateQueries({ queryKey: ['root-bpmn-file'] });
+      // Force refetch of bpmn-files immediately
+      await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
 
       toast({
         title: 'Fil uppladdad',

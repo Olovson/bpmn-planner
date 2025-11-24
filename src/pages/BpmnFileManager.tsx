@@ -102,6 +102,16 @@ type GenerationScope = 'file' | 'node';
 export default function BpmnFileManager() {
   // TODO: Add a UI test to assert AppHeaderWithTabs renders on /files and stays visible across navigations.
   const { data: files = [], isLoading } = useBpmnFiles();
+  
+  // Debug logging to verify files are loaded correctly
+  useEffect(() => {
+    if (files.length > 0) {
+      console.log('[BpmnFileManager] Files loaded:', {
+        count: files.length,
+        fileNames: files.map(f => f.file_name),
+      });
+    }
+  }, [files]);
   const uploadMutation = useUploadBpmnFile();
   const deleteMutation = useDeleteBpmnFile();
   const syncMutation = useSyncFromGithub();
@@ -1757,6 +1767,8 @@ export default function BpmnFileManager() {
         queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
         queryClient.invalidateQueries({ queryKey: ['node-test-links'] }),
       ]);
+      // Force immediate refetch of files list
+      await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
       await new Promise(resolve => setTimeout(resolve, 1200));
     } catch (error) {
       const isCancelled = error instanceof Error && error.message === 'Avbrutet av användaren';
@@ -2031,6 +2043,8 @@ export default function BpmnFileManager() {
         queryClient.invalidateQueries({ queryKey: ['bpmn-files'] }),
         queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
       ]);
+      // Force immediate refetch of files list
+      await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
     } catch (error) {
       console.error('Hierarchy build error:', error);
       toast({
@@ -2303,6 +2317,26 @@ export default function BpmnFileManager() {
             >
               <AlertCircle className="w-4 h-4" />
               Registry Status
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (window.location.hash = '/graph-debug')}
+              className="gap-2"
+              title="Debug ProcessGraph (nodes, edges, cycles, missing dependencies)"
+            >
+              <GitBranch className="w-4 h-4" />
+              Graph Debug
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (window.location.hash = '/tree-debug')}
+              className="gap-2"
+              title="Debug ProcessTree (hierarchy, orderIndex, diagnostics)"
+            >
+              <GitBranch className="w-4 h-4" />
+              Tree Debug
             </Button>
             <Button
               variant="destructive"

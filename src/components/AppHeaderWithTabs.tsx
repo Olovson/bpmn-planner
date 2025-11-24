@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
-import { LogOut, History, GitBranch, Network, List, FileText, Folder, LayoutList } from 'lucide-react';
+import { LogOut, History, GitBranch, Network, List, FileText, Folder, LayoutList, Bug, Workflow } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'files' | 'project';
 
@@ -22,10 +23,16 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
   onSignOut,
   isTestsEnabled = true,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   const handleTabChange = (v: string) => {
     if (v === 'tests' && !isTestsEnabled) return;
     onViewChange(v as ViewKey);
   };
+
+  const isGraphDebugActive = location.pathname === '/graph-debug' || location.hash === '#/graph-debug';
+  const isTreeDebugActive = location.pathname === '/tree-debug' || location.hash === '#/tree-debug';
 
   return (
     <aside className="fixed inset-y-0 left-0 w-16 border-r border-border bg-card flex flex-col items-center justify-between py-4 z-40">
@@ -148,6 +155,47 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
             <TooltipContent side="right">Filer</TooltipContent>
           </Tooltip>
         </nav>
+
+        {/* Debug tools section */}
+        <div className="pt-4 border-t border-border w-full">
+          <nav className="flex flex-col items-center gap-3 mt-3" aria-label="Debug-verktyg">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => navigate('/graph-debug')}
+                  aria-label="Graph Debug"
+                  className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                    isGraphDebugActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Bug className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Graph Debug</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => navigate('/tree-debug')}
+                  aria-label="Tree Debug"
+                  className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                    isTreeDebugActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Workflow className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Tree Debug</TooltipContent>
+            </Tooltip>
+          </nav>
+        </div>
       </div>
 
       {/* Bottom: user & actions */}

@@ -59,6 +59,9 @@ interface TreeNodeViewProps {
 function TreeNodeView({ node, depth }: TreeNodeViewProps) {
   const indentStyle = { paddingLeft: depth * 16 };
 
+  const missingSubprocessDiag = node.diagnostics?.find(d => d.code === 'MISSING_SUBPROCESS');
+  const missingFileName = missingSubprocessDiag?.context?.missingFileName as string | undefined;
+
   return (
     <div style={indentStyle} className={`mb-1`}>
       <div className="flex items-center gap-2">
@@ -85,8 +88,13 @@ function TreeNodeView({ node, depth }: TreeNodeViewProps) {
       {node.diagnostics && node.diagnostics.length > 0 && (
         <ul className="ml-4 list-disc">
           {node.diagnostics.map((d, i) => (
-            <li key={i} className={`text-[10px] text-orange-600`}>
+            <li key={i} className={`text-[10px] ${d.severity === 'error' ? 'text-red-600' : 'text-orange-600'}`}>
               {d.code}: {d.message}
+              {d.context?.missingFileName && (
+                <span className="text-[9px] text-muted-foreground ml-1">
+                  (saknar fil: {d.context.missingFileName})
+                </span>
+              )}
             </li>
           ))}
         </ul>

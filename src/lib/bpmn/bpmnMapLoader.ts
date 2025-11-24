@@ -42,7 +42,30 @@ export function matchCallActivityUsingMap(
   bpmnMap: BpmnMap,
 ): { matchedFileName?: string; matchSource: 'bpmn-map' | 'none' } {
   const proc = bpmnMap.processes.find((p) => p.bpmn_file === bpmnFile);
-  if (!proc) return { matchSource: 'none' };
+  if (!proc) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[matchCallActivityUsingMap] No process found in map for file: ${bpmnFile}`,
+        `Available files: ${bpmnMap.processes.map(p => p.bpmn_file).join(', ')}`
+      );
+    }
+    return { matchSource: 'none' };
+  }
+
+  if (import.meta.env.DEV) {
+    console.log(`[matchCallActivityUsingMap] Looking for call activity:`, {
+      id: callActivity.id,
+      name: callActivity.name,
+      calledElement: callActivity.calledElement,
+      inFile: bpmnFile,
+      availableCallActivities: proc.call_activities.map(ca => ({
+        bpmn_id: ca.bpmn_id,
+        name: ca.name,
+        called_element: ca.called_element,
+        subprocess_bpmn_file: ca.subprocess_bpmn_file,
+      })),
+    });
+  }
 
   const entry = proc.call_activities.find(
     (ca) =>
@@ -52,7 +75,27 @@ export function matchCallActivityUsingMap(
   );
 
   if (entry?.subprocess_bpmn_file) {
+    if (import.meta.env.DEV) {
+      const matchReason = 
+        entry.bpmn_id === callActivity.id ? 'bpmn_id' :
+        (entry.name && entry.name === callActivity.name) ? 'name' :
+        'called_element';
+      console.log(`[matchCallActivityUsingMap] ✓ Matched:`, {
+        callActivityId: callActivity.id,
+        matchedFileName: entry.subprocess_bpmn_file,
+        matchReason,
+      });
+    }
     return { matchedFileName: entry.subprocess_bpmn_file, matchSource: 'bpmn-map' };
+  }
+
+  if (import.meta.env.DEV) {
+    console.warn(`[matchCallActivityUsingMap] ✗ No match found for:`, {
+      callActivityId: callActivity.id,
+      callActivityName: callActivity.name,
+      callActivityCalledElement: callActivity.calledElement,
+      inFile: bpmnFile,
+    });
   }
 
   return { matchSource: 'none' };
