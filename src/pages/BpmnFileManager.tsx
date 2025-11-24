@@ -61,6 +61,7 @@ import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { buildDocStoragePaths, buildTestStoragePaths } from '@/lib/artifactPaths';
 import { isPGRST204Error, getSchemaErrorMessage } from '@/lib/schemaVerification';
 import { useLlmHealth } from '@/hooks/useLlmHealth';
+import bpmnMap from '../../bpmn-map.json';
 
 const flattenHierarchyNodes = (node: any): any[] => {
   if (!node) return [];
@@ -182,6 +183,9 @@ export default function BpmnFileManager() {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
   const [rootFileName, setRootFileName] = useState<string | null>(null);
+  const [validatingMap, setValidatingMap] = useState(false);
+  const [showMapValidationDialog, setShowMapValidationDialog] = useState(false);
+  const [mapValidationResult, setMapValidationResult] = useState<any | null>(null);
 
   const handleViewChange = (view: string) => {
     if (view === 'diagram') navigate('/');
@@ -291,6 +295,9 @@ export default function BpmnFileManager() {
       }, candidates[0]);
     };
 
+    const rootCoverage = rootFileName ? coverageMap?.get(rootFileName) : undefined;
+    const hasRootHierarchy = !!(rootCoverage && rootCoverage.hierarchy.covered > 0);
+
     for (const file of files) {
       if (file.file_type !== 'bpmn') continue;
 
@@ -333,12 +340,19 @@ export default function BpmnFileManager() {
       const testStatus: ArtifactStatus = latestGenJob && latestGenJob.status === 'failed'
         ? 'error'
         : computeStatus(testsCovered, testsTotal);
-      const hierarchyStatus: ArtifactStatus =
-        latestGenJob && latestGenJob.status === 'failed'
-          ? 'error'
-          : hierarchyCovered > 0
-          ? 'complete'
-          : 'missing';
+      let hierarchyStatus: ArtifactStatus;
+      if (latestGenJob && latestGenJob.status === 'failed') {
+        hierarchyStatus = 'error';
+      } else if (hierarchyCovered > 0) {
+        // Denna fil har egna hierarkiska tester
+        hierarchyStatus = 'complete';
+      } else if (hasRootHierarchy && file.file_name !== rootFileName) {
+        // Root har hierarki och denna fil ingår i projektet,
+        // men har inga egna hierarkiska tester – visa som "delvis" istället för "saknas".
+        hierarchyStatus = 'partial';
+      } else {
+        hierarchyStatus = 'missing';
+      }
 
       const doc: ArtifactSnapshot = {
         status: docStatus,
@@ -384,7 +398,188 @@ export default function BpmnFileManager() {
     }
 
     return map;
-  }, [files, coverageMap, generationJobs]);
+  }, [files, coverageMap, generationJobs, rootFileName]);
+
+  const handleValidateBpmnMap = async () => {
+    try {
+      setValidatingMap(true);
+      setMapValidationResult(null);
+
+      const { data: filesData, error } = await supabase
+        .from('bpmn_files')
+        .select('file_name, meta')
+        .eq('file_type', 'bpmn');
+
+      if (error) {
+        console.error('[BpmnFileManager] validate-bpmn-map error', error);
+        toast({
+          title: 'Validering misslyckades',
+          description: error.message || 'Kunde inte hämta BPMN-metadata.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const files = filesData ?? [];
+      const mapProcesses = Array.isArray((bpmnMap as any).processes) ? (bpmnMap as any).processes : [];
+
+      const bpmnFilesSet = new Set<string>(files.map((f: any) => f.file_name));
+      const unmappedCallActivities: any[] = [];
+      const callActivitiesMissingInMap: any[] = [];
+      const missingSubprocessFiles: any[] = [];
+      const mapInconsistencies: any[] = [];
+      const orphanProcesses: any[] = [];
+
+      const fileMetaByName = new Map<string, any>();
+      for (const file of files) {
+        fileMetaByName.set(file.file_name, file.meta || {});
+      }
+
+      const mapCallsByKey = new Map<string, { proc: any; entry: any }>();
+      for (const proc of mapProcesses) {
+        const bpmnFile = proc.bpmn_file;
+        const calls = Array.isArray(proc.call_activities) ? proc.call_activities : [];
+        for (const ca of calls) {
+          if (!ca || !ca.bpmn_id) continue;
+          const key = `${bpmnFile}::${ca.bpmn_id}`;
+          mapCallsByKey.set(key, { proc, entry: ca });
+        }
+      }
+
+      for (const proc of mapProcesses) {
+        const bpmnFile = proc.bpmn_file;
+        const meta = fileMetaByName.get(bpmnFile) || {};
+        const processesMeta = Array.isArray(meta.processes) ? meta.processes : [];
+
+        if (!bpmnFilesSet.has(bpmnFile)) {
+          mapInconsistencies.push({
+            type: 'bpmn_file_not_found',
+            bpmn_file: bpmnFile,
+            process_id: proc.process_id,
+          });
+          continue;
+        }
+
+        const metaProcess =
+          processesMeta.find((p: any) => p.id === proc.process_id) ||
+          processesMeta[0] ||
+          null;
+
+        const metaCallActivities = metaProcess?.callActivities || [];
+        const metaCaIds = new Set<string>(metaCallActivities.map((ca: any) => ca.id));
+
+        const calls = Array.isArray(proc.call_activities) ? proc.call_activities : [];
+        for (const ca of calls) {
+          if (!ca || !ca.bpmn_id) continue;
+
+          if (!metaCaIds.has(ca.bpmn_id)) {
+            mapInconsistencies.push({
+              type: 'map_bpmn_id_not_in_meta',
+              bpmn_file: bpmnFile,
+              process_id: proc.process_id,
+              bpmn_id: ca.bpmn_id,
+            });
+          }
+
+          if (ca.subprocess_bpmn_file) {
+            if (!bpmnFilesSet.has(ca.subprocess_bpmn_file)) {
+              missingSubprocessFiles.push({
+                bpmn_file: bpmnFile,
+                bpmn_id: ca.bpmn_id,
+                subprocess_bpmn_file: ca.subprocess_bpmn_file,
+              });
+            }
+          } else {
+            unmappedCallActivities.push({
+              bpmn_file: bpmnFile,
+              process_id: proc.process_id,
+              bpmn_id: ca.bpmn_id,
+              name: ca.name || ca.bpmn_id,
+              reason: 'subprocess_bpmn_file_missing',
+            });
+          }
+        }
+      }
+
+      for (const file of files) {
+        const bpmnFile = file.file_name;
+        const meta = file.meta || {};
+        const processesMeta = Array.isArray(meta.processes) ? meta.processes : [];
+
+        for (const procMeta of processesMeta) {
+          const procId = procMeta.id || bpmnFile;
+          const callActivities = procMeta.callActivities || [];
+
+          for (const ca of callActivities) {
+            const key = `${bpmnFile}::${ca.id}`;
+            if (!mapCallsByKey.has(key)) {
+              callActivitiesMissingInMap.push({
+                bpmn_file: bpmnFile,
+                process_id: procId,
+                bpmn_id: ca.id,
+                name: ca.name || ca.id,
+              });
+            }
+          }
+        }
+      }
+
+      const referencedSubprocessFiles = new Set<string>(
+        mapProcesses
+          .flatMap((p: any) => p.call_activities || [])
+          .map((ca: any) => ca?.subprocess_bpmn_file)
+          .filter((f: any) => typeof f === 'string'),
+      );
+
+      const rootFileNameFromMap: string | null =
+        typeof (bpmnMap as any).orchestration?.root_process === 'string'
+          ? `${(bpmnMap as any).orchestration.root_process}.bpmn`
+          : null;
+
+      for (const file of files) {
+        const bpmnFile = file.file_name;
+        if (!referencedSubprocessFiles.has(bpmnFile) && bpmnFile !== rootFileNameFromMap) {
+          orphanProcesses.push({
+            bpmn_file: bpmnFile,
+            hint: 'Aldrig refererad som subprocess_bpmn_file i bpmn-map.json',
+          });
+        }
+      }
+
+      const result = {
+        generated_at: new Date().toISOString(),
+        summary: {
+          unmapped_call_activities: unmappedCallActivities.length,
+          call_activities_missing_in_map: callActivitiesMissingInMap.length,
+          missing_subprocess_files: missingSubprocessFiles.length,
+          map_inconsistencies: mapInconsistencies.length,
+          orphan_processes: orphanProcesses.length,
+        },
+        unmapped_call_activities: unmappedCallActivities,
+        call_activities_missing_in_map: callActivitiesMissingInMap,
+        missing_subprocess_files: missingSubprocessFiles,
+        map_inconsistencies: mapInconsistencies,
+        orphan_processes: orphanProcesses,
+      };
+
+      setMapValidationResult(result);
+      setShowMapValidationDialog(true);
+
+      toast({
+        title: 'Validering klar',
+        description: `Omatchade call activities: ${result.summary.unmapped_call_activities}, saknas i map: ${result.summary.call_activities_missing_in_map}.`,
+      });
+    } catch (err) {
+      console.error('[BpmnFileManager] validate-bpmn-map unexpected error', err);
+      toast({
+        title: 'Validering misslyckades',
+        description: err instanceof Error ? err.message : 'Okänt fel vid BPMN-kartvalidering.',
+        variant: 'destructive',
+      });
+    } finally {
+      setValidatingMap(false);
+    }
+  };
 
   const resetGenerationState = () => {
     cancelGenerationRef.current = false;
@@ -2134,6 +2329,65 @@ export default function BpmnFileManager() {
               )}
             </div>
           </div>
+          {rootFileName && (
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mt-1">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">Toppfil (root):</span>{' '}
+                <code className="text-xs">{rootFileName}</code>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={generatingFile !== null || isLoading}
+                  onClick={async () => {
+                    const root = files.find((f) => f.file_name === rootFileName);
+                    if (!root) return;
+                    await handleBuildHierarchy(root);
+                  }}
+                  className="gap-2"
+                >
+                  <GitBranch className="w-4 h-4" />
+                  Bygg/uppdatera hierarki från root
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={generatingFile !== null || isLoading || files.length === 0}
+                  onClick={handleGenerateAllArtifacts}
+                  className="gap-2"
+                  title="Generera dokumentation/tester för alla BPMN-filer baserat på befintlig hierarki"
+                >
+                  {generationMode === 'local' ? (
+                    <FileText className="w-3 h-3" />
+                  ) : (
+                    <Sparkles className="w-3 h-3" />
+                  )}
+                  Generera artefakter (alla filer)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={validatingMap}
+                  onClick={handleValidateBpmnMap}
+                  className="gap-2"
+                  title="Validera bpmn-map.json mot aktuella BPMN-filer"
+                >
+                  {validatingMap ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Validerar BPMN-karta…
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-3 h-3" />
+                      Validera BPMN-karta
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -2208,7 +2462,7 @@ export default function BpmnFileManager() {
               {generatingFile && selectedFile ? (
                 <>
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  Genererar…
+                  Genererar artefakter…
                 </>
               ) : (
                 <>
@@ -2217,30 +2471,7 @@ export default function BpmnFileManager() {
                   ) : (
                     <Sparkles className="w-3 h-3" />
                   )}
-                  Generera för valda filer
-                </>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={generatingFile !== null || isLoading || files.length === 0}
-              onClick={handleGenerateAllArtifacts}
-              className="gap-2"
-            >
-              {generatingFile && !selectedFile ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Genererar…
-                </>
-              ) : (
-                <>
-                  {generationMode === 'local' ? (
-                    <FileText className="w-3 h-3" />
-                  ) : (
-                    <Sparkles className="w-3 h-3" />
-                  )}
-                  Generera allt
+                  Generera artefakter för vald fil
                 </>
               )}
             </Button>
@@ -2796,7 +3027,7 @@ export default function BpmnFileManager() {
               <TableHead>Storlek</TableHead>
               <TableHead>Senast uppdaterad</TableHead>
               <TableHead>GitHub-status</TableHead>
-              <TableHead>Kopplade artefakter</TableHead>
+              <TableHead>Struktur & artefakter</TableHead>
               <TableHead>Senaste jobb</TableHead>
               <TableHead className="text-right">Åtgärder</TableHead>
             </TableRow>
@@ -2974,8 +3205,17 @@ export default function BpmnFileManager() {
                               const summary = artifactStatusByFile.get(file.file_name);
                               if (!summary) return undefined;
                               const snap = summary.hierarchy;
+                              const timeStr = snap.generatedAt
+                                ? new Date(snap.generatedAt).toLocaleString('sv-SE')
+                                : '';
+                              const outdatedText = snap.outdated
+                                ? ' (inaktuell – BPMN har ändrats efter generering)'
+                                : '';
                               if (snap.status === 'missing') {
-                                return 'Ingen hierarki/hierarkiska tester genererade ännu.';
+                                return 'Ingen hierarki genererad ännu.';
+                              }
+                              if (snap.status === 'partial') {
+                                return `Ingår i root-hierarki men utan egen hierarkisk testfil.${timeStr ? ` Senast körd: ${timeStr}.` : ''}`;
                               }
                               const modeLabel =
                                 snap.mode === 'slow'
@@ -2983,10 +3223,6 @@ export default function BpmnFileManager() {
                                   : snap.mode === 'local'
                                   ? 'Local'
                                   : 'Okänt läge';
-                              const timeStr = snap.generatedAt
-                                ? new Date(snap.generatedAt).toLocaleString('sv-SE')
-                                : '';
-                              const outdatedText = snap.outdated ? ' (inaktuell – BPMN har ändrats efter generering)' : '';
                               return `Hierarki: ${modeLabel}${timeStr ? ` · ${timeStr}` : ''}${outdatedText}`;
                             })()}
                           />
@@ -3045,6 +3281,21 @@ export default function BpmnFileManager() {
                       {file.file_type === 'bpmn' && (
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleBuildHierarchy(file);
+                          }}
+                          disabled={generatingFile !== null || isLoading}
+                          title="Bygg/uppdatera hierarki för denna fil"
+                        >
+                          <GitBranch className="w-4 h-4" />
+                          <span className="hidden sm:inline">Hierarki</span>
+                        </Button>
+                      )}
+                      {file.file_type === 'bpmn' && (
+                        <Button
+                          size="sm"
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -3058,6 +3309,7 @@ export default function BpmnFileManager() {
                           ) : (
                             <Sparkles className="w-4 h-4" />
                           )}
+                          <span className="hidden sm:inline ml-1">Docs/Test</span>
                         </Button>
                       )}
                       <Button
@@ -3232,6 +3484,116 @@ export default function BpmnFileManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showMapValidationDialog} onOpenChange={setShowMapValidationDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>BPMN-kartvalidering</DialogTitle>
+            <DialogDescription>
+              Jämförelse mellan bpmn-map.json och aktuella BPMN-filer. Använd detta som checklista för att fylla i saknade subprocess-kopplingar.
+            </DialogDescription>
+          </DialogHeader>
+          {mapValidationResult && (
+            <div className="mt-4 space-y-6 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <div className="rounded-md border bg-muted/60 p-2">
+                  <p className="text-xs text-muted-foreground">Omatchade call activities</p>
+                  <p className="font-semibold">
+                    {mapValidationResult.summary.unmapped_call_activities}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-muted/60 p-2">
+                  <p className="text-xs text-muted-foreground">Saknas i map</p>
+                  <p className="font-semibold">
+                    {mapValidationResult.summary.call_activities_missing_in_map}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-muted/60 p-2">
+                  <p className="text-xs text-muted-foreground">Saknade subprocess-filer</p>
+                  <p className="font-semibold">
+                    {mapValidationResult.summary.missing_subprocess_files}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-muted/60 p-2">
+                  <p className="text-xs text-muted-foreground">Map-inkonsekvenser</p>
+                  <p className="font-semibold">
+                    {mapValidationResult.summary.map_inconsistencies}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-muted/60 p-2">
+                  <p className="text-xs text-muted-foreground">Orphan-processer</p>
+                  <p className="font-semibold">
+                    {mapValidationResult.summary.orphan_processes}
+                  </p>
+                </div>
+              </div>
+
+              {mapValidationResult.unmapped_call_activities.length > 0 && (
+                <div>
+                  <p className="font-medium mb-1">Call activities utan subprocess_bpmn_file:</p>
+                  <ul className="space-y-1">
+                    {mapValidationResult.unmapped_call_activities.slice(0, 20).map((item: any, idx: number) => (
+                      <li key={`unmapped-${idx}`} className="text-xs text-muted-foreground">
+                        <code>{item.bpmn_file}</code> · <code>{item.bpmn_id}</code> – {item.name}
+                      </li>
+                    ))}
+                    {mapValidationResult.unmapped_call_activities.length > 20 && (
+                      <li className="text-xs text-muted-foreground">
+                        …och {mapValidationResult.unmapped_call_activities.length - 20} till
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {mapValidationResult.call_activities_missing_in_map.length > 0 && (
+                <div>
+                  <p className="font-medium mb-1">Call activities som finns i BPMN men saknas i bpmn-map.json:</p>
+                  <ul className="space-y-1">
+                    {mapValidationResult.call_activities_missing_in_map.slice(0, 20).map((item: any, idx: number) => (
+                      <li key={`missing-${idx}`} className="text-xs text-muted-foreground">
+                        <code>{item.bpmn_file}</code> · <code>{item.bpmn_id}</code> – {item.name}
+                      </li>
+                    ))}
+                    {mapValidationResult.call_activities_missing_in_map.length > 20 && (
+                      <li className="text-xs text-muted-foreground">
+                        …och {mapValidationResult.call_activities_missing_in_map.length - 20} till
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {mapValidationResult.missing_subprocess_files.length > 0 && (
+                <div>
+                  <p className="font-medium mb-1">Subprocess-filer som anges i map men saknas i registret:</p>
+                  <ul className="space-y-1">
+                    {mapValidationResult.missing_subprocess_files.map((item: any, idx: number) => (
+                      <li key={`miss-sub-${idx}`} className="text-xs text-muted-foreground">
+                        <code>{item.bpmn_file}</code> · <code>{item.bpmn_id}</code> →{' '}
+                        <code>{item.subprocess_bpmn_file}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {mapValidationResult.orphan_processes.length > 0 && (
+                <div>
+                  <p className="font-medium mb-1">Orphan-processer:</p>
+                  <ul className="space-y-1">
+                    {mapValidationResult.orphan_processes.map((item: any, idx: number) => (
+                      <li key={`orphan-${idx}`} className="text-xs text-muted-foreground">
+                        <code>{item.bpmn_file}</code> – {item.hint}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
         </div>
       </main>
     </div>

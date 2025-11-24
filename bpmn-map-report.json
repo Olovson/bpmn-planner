@@ -1,0 +1,288 @@
+{
+  "generated_at": "2025-11-24T10:48:56.772Z",
+  "summary": {
+    "unmapped_call_activities": 12,
+    "call_activities_missing_in_map": 0,
+    "missing_subprocess_files": 0,
+    "map_inconsistencies": 27,
+    "orphan_processes": 6
+  },
+  "unmapped_call_activities": [
+    {
+      "bpmn_file": "mortgage-se-application.bpmn",
+      "process_id": "mortgage-se-application",
+      "bpmn_id": "internal-data-gathering",
+      "name": "Internal data gathering",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-application.bpmn",
+      "process_id": "mortgage-se-application",
+      "bpmn_id": "stakeholder",
+      "name": "Stakeholder",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-application.bpmn",
+      "process_id": "mortgage-se-application",
+      "bpmn_id": "object",
+      "name": "Object",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-application.bpmn",
+      "process_id": "mortgage-se-application",
+      "bpmn_id": "household",
+      "name": "Household",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-manual-credit-evaluation.bpmn",
+      "process_id": "mortgage-se-manual-credit-evaluation",
+      "bpmn_id": "documentation-assessment",
+      "name": "Documentation assessment",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-manual-credit-evaluation.bpmn",
+      "process_id": "mortgage-se-manual-credit-evaluation",
+      "bpmn_id": "credit-evaluation",
+      "name": "Automatic Credit Evaluation",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-mortgage-commitment.bpmn",
+      "process_id": "mortgage-se-mortgage-commitment",
+      "bpmn_id": "credit-evaluation-1",
+      "name": "Automatic Credit Evaluation",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-mortgage-commitment.bpmn",
+      "process_id": "mortgage-se-mortgage-commitment",
+      "bpmn_id": "documentation-assessment",
+      "name": "Documentation assessment",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-mortgage-commitment.bpmn",
+      "process_id": "mortgage-se-mortgage-commitment",
+      "bpmn_id": "object-information",
+      "name": "Object information",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-mortgage-commitment.bpmn",
+      "process_id": "mortgage-se-mortgage-commitment",
+      "bpmn_id": "credit-evaluation-2",
+      "name": "Automatic Credit Evaluation",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-object.bpmn",
+      "process_id": "mortgage-se-object",
+      "bpmn_id": "object-information",
+      "name": "Object information",
+      "reason": "subprocess_bpmn_file_missing"
+    },
+    {
+      "bpmn_file": "mortgage-se-offer.bpmn",
+      "process_id": "mortgage-se-offer",
+      "bpmn_id": "credit-decision",
+      "name": "Credit decision",
+      "reason": "subprocess_bpmn_file_missing"
+    }
+  ],
+  "call_activities_missing_in_map": [],
+  "missing_subprocess_files": [],
+  "map_inconsistencies": [
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-application.bpmn",
+      "process_id": "mortgage-se-application",
+      "bpmn_id": "internal-data-gathering"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-application.bpmn",
+      "process_id": "mortgage-se-application",
+      "bpmn_id": "stakeholder"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-application.bpmn",
+      "process_id": "mortgage-se-application",
+      "bpmn_id": "object"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-application.bpmn",
+      "process_id": "mortgage-se-application",
+      "bpmn_id": "household"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-manual-credit-evaluation.bpmn",
+      "process_id": "mortgage-se-manual-credit-evaluation",
+      "bpmn_id": "documentation-assessment"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-manual-credit-evaluation.bpmn",
+      "process_id": "mortgage-se-manual-credit-evaluation",
+      "bpmn_id": "credit-evaluation"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-mortgage-commitment.bpmn",
+      "process_id": "mortgage-se-mortgage-commitment",
+      "bpmn_id": "credit-evaluation-1"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-mortgage-commitment.bpmn",
+      "process_id": "mortgage-se-mortgage-commitment",
+      "bpmn_id": "documentation-assessment"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-mortgage-commitment.bpmn",
+      "process_id": "mortgage-se-mortgage-commitment",
+      "bpmn_id": "object-information"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-mortgage-commitment.bpmn",
+      "process_id": "mortgage-se-mortgage-commitment",
+      "bpmn_id": "credit-evaluation-2"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-object.bpmn",
+      "process_id": "mortgage-se-object",
+      "bpmn_id": "object-information"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage-se-offer.bpmn",
+      "process_id": "mortgage-se-offer",
+      "bpmn_id": "credit-decision"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "credit-evaluation"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "credit-decision"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "signing"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "disbursement"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "offer"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "collateral-registration"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "mortgage-commitment"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "kyc"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "signing-advance"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "disbursement-advance"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "document-generation"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "document-generation-advance"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "application"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "appeal"
+    },
+    {
+      "type": "map_bpmn_id_not_in_meta",
+      "bpmn_file": "mortgage.bpmn",
+      "process_id": "mortgage",
+      "bpmn_id": "manual-credit-evaluation"
+    }
+  ],
+  "orphan_processes": [
+    {
+      "bpmn_file": "mortgage-se-documentation-assessment.bpmn",
+      "hint": "Aldrig refererad som subprocess_bpmn_file i bpmn-map.json"
+    },
+    {
+      "bpmn_file": "mortgage-se-object-information.bpmn",
+      "hint": "Aldrig refererad som subprocess_bpmn_file i bpmn-map.json"
+    },
+    {
+      "bpmn_file": "mortgage-se-household.bpmn",
+      "hint": "Aldrig refererad som subprocess_bpmn_file i bpmn-map.json"
+    },
+    {
+      "bpmn_file": "mortgage-se-internal-data-gathering.bpmn",
+      "hint": "Aldrig refererad som subprocess_bpmn_file i bpmn-map.json"
+    },
+    {
+      "bpmn_file": "mortgage-se-stakeholder.bpmn",
+      "hint": "Aldrig refererad som subprocess_bpmn_file i bpmn-map.json"
+    },
+    {
+      "bpmn_file": "mortgage-se-object.bpmn",
+      "hint": "Aldrig refererad som subprocess_bpmn_file i bpmn-map.json"
+    }
+  ]
+}
