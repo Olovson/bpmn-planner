@@ -34,6 +34,10 @@ export interface BpmnProcessNode {
   subprocessFile?: string; // Matched BPMN file for CallActivities/SubProcesses
   subprocessMatchStatus?: HierarchyNode['link'] extends { matchStatus: infer T } ? T : string;
   subprocessDiagnostics?: string[];
+  // Optional execution ordering metadata (sequence-flow aware).
+  orderIndex?: number;
+  branchId?: string | null;
+  scenarioPath?: string[];
 }
 
 export interface BpmnProcessGraph {
@@ -97,6 +101,9 @@ export async function buildBpmnProcessGraph(
     bpmnElementId: rootHierarchyNode.processId || 'root',
     children: rootChildren,
   };
+
+  // Assign sequence-flow based ordering per file to all graph nodes.
+  assignExecutionOrder(parseResults, fileNodes);
 
   return {
     rootFile: rootFileName,
@@ -247,6 +254,100 @@ function convertHierarchyChildren(
   }
 
   return result;
+}
+
+function assignExecutionOrder(
+  parseResults: Map<string, BpmnParseResult>,
+  fileNodes: Map<string, BpmnProcessNode[]>,
+): void {
+  fileNodes.forEach((nodes, fileName) => {
+    const parseResult = parseResults.get(fileName);
+    if (!parseResult) return;
+
+    const { sequenceFlows, elements } = parseResult;
+    if (!sequenceFlows || sequenceFlows.length === 0) {
+      return;
+    }
+
+    const successors = new Map<string, string[]>();
+    const predecessors = new Map<string, string[]>();
+
+    for (const flow of sequenceFlows) {
+      const sourceId = flow.sourceRef;
+      const targetId = flow.targetRef;
+      if (!sourceId || !targetId) continue;
+
+      if (!successors.has(sourceId)) successors.set(sourceId, []);
+      successors.get(sourceId)!.push(targetId);
+
+      if (!predecessors.has(targetId)) predecessors.set(targetId, []);
+      predecessors.get(targetId)!.push(sourceId);
+    }
+
+    const startEvents = elements
+      .filter((el) => el.type === 'bpmn:StartEvent')
+      .map((el) => el.id);
+    const allIds = new Set<string>([
+      ...Array.from(successors.keys()),
+      ...Array.from(predecessors.keys()),
+    ]);
+    const startCandidates =
+      startEvents.length > 0
+        ? startEvents
+        : Array.from(allIds).filter((id) => !predecessors.has(id));
+
+    if (!startCandidates.length) return;
+
+    const nodesByElementId = new Map<string, BpmnProcessNode[]>();
+    for (const node of nodes) {
+      const list = nodesByElementId.get(node.bpmnElementId) ?? [];
+      list.push(node);
+      nodesByElementId.set(node.bpmnElementId, list);
+    }
+
+    let counter = 0;
+    const visitedPerBranch = new Map<string, number>();
+    const maxVisitsPerNode = 2;
+
+    const walk = (elementId: string, branchId: string, scenarioPath: string[]) => {
+      const branchKey = `${branchId}:${elementId}`;
+      const visits = (visitedPerBranch.get(branchKey) ?? 0) + 1;
+      if (visits > maxVisitsPerNode) return;
+      visitedPerBranch.set(branchKey, visits);
+
+      const graphNodes = nodesByElementId.get(elementId) ?? [];
+      graphNodes.forEach((node) => {
+        if (node.orderIndex == null) {
+          node.orderIndex = counter++;
+          node.branchId = branchId;
+          node.scenarioPath = scenarioPath;
+        }
+      });
+
+      const next = successors.get(elementId) ?? [];
+      if (!next.length) return;
+
+      if (next.length === 1) {
+        walk(next[0], branchId, scenarioPath);
+        return;
+      }
+
+      const [first, ...others] = next;
+      walk(first, branchId, scenarioPath);
+
+      others.forEach((target, index) => {
+        const subBranchId = `${branchId}-branch-${index + 1}`;
+        const subScenarioPath = [...scenarioPath, subBranchId];
+        walk(target, subBranchId, subScenarioPath);
+      });
+    };
+
+    startCandidates.forEach((startId, index) => {
+      const branchId = index === 0 ? 'main' : `entry-${index + 1}`;
+      const scenarioPath = [branchId];
+      walk(startId, branchId, scenarioPath);
+    });
+  });
 }
 
 function registerGraphNode(node: BpmnProcessNode, context: ConversionContext) {

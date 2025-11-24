@@ -24,7 +24,7 @@ import {
   type NodeTypeFilterValue,
 } from '@/lib/nodeMatrixFiltering';
 
-type SortField = 'bpmnFile' | 'elementName' | 'nodeType';
+type SortField = 'orderIndex' | 'bpmnFile' | 'elementName' | 'nodeType';
 type SortDirection = 'asc' | 'desc';
 
 const NodeMatrix = () => {
@@ -33,7 +33,7 @@ const NodeMatrix = () => {
   const { nodes, loading } = useAllBpmnNodes();
   const { hasDorDod, hasTests } = useArtifactAvailability();
   const { toast } = useToast();
-  const [sortField, setSortField] = useState<SortField>('bpmnFile');
+  const [sortField, setSortField] = useState<SortField>('orderIndex');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
   // Local state for inline editing
@@ -63,6 +63,14 @@ const NodeMatrix = () => {
     const result = [...mergedNodes];
 
     result.sort((a, b) => {
+      if (sortField === 'orderIndex') {
+        const aVal = typeof a.orderIndex === 'number' ? a.orderIndex : Number.MAX_SAFE_INTEGER;
+        const bVal = typeof b.orderIndex === 'number' ? b.orderIndex : Number.MAX_SAFE_INTEGER;
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      }
+
       let aVal = a[sortField];
       let bVal = b[sortField];
 
@@ -296,6 +304,7 @@ const NodeMatrix = () => {
           else if (v === 'tree') navigate('/process-explorer');
           else if (v === 'tests') navigate('/test-report');
           else if (v === 'files') navigate('/files');
+          else if (v === 'project') navigate('/project-plan');
           else navigate('/node-matrix');
         }}
         onOpenVersions={() => navigate('/')}

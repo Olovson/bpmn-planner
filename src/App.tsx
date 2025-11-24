@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import NodeMatrix from "./pages/NodeMatrix";
 import ProcessExplorer from "./pages/ProcessExplorer";
+import ProjectPlanPage from "./pages/ProjectPlanPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BpmnSelectionProvider } from "./contexts/BpmnSelectionContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -65,6 +66,7 @@ const App = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/bpmn/:filename" element={<Index />} />
                 <Route path="/process-explorer" element={<ProcessExplorer />} />
+                <Route path="/project-plan" element={<ProjectPlanPage />} />
                 <Route path="/node-matrix" element={<NodeMatrix />} />
                 <Route path="/test-report" element={<TestReport />} />
                 <Route path="/test-scripts" element={<TestScriptsPage />} />

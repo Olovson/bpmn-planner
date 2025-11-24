@@ -133,6 +133,7 @@ const NodeTestsPage = () => {
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'files') navigate('/files');
+    else if (view === 'project') navigate('/project-plan');
     else navigate('/test-report');
   };
 

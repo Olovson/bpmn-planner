@@ -1,6 +1,6 @@
 {
   "error": "Lokal LLM (Ollama) unavailable",
   "provider": "local",
-  "details": "Validation failed: Failed to parse JSON: Unexpected token ',', ...\"pelvärde)\", 750},\n  \"... is not valid JSON",
-  "timestamp": "2025-11-23T22:16:05.523Z"
+  "details": "LLM returned null/empty response for provider=local",
+  "timestamp": "2025-11-24T00:05:35.893Z"
 }

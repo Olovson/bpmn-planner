@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.40.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:collaboration id="Collaboration_1txbn6q">
+    <bpmn:participant id="Participant_1bl2p0c" name="Credit evaluation" processRef="mortgage-se-credit-evaluation" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-credit-evaluation" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_0fof9zq">
+      <bpmn:lane id="Lane_0nr3hep" name="System">
+        <bpmn:flowNodeRef>start-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fetch-product</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fetch-price</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>evaluate-amortisation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fetch-risk-classification</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>evaluate-application</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>evaluate-credit-policies</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>process-end-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>loop-household</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:sequenceFlow id="Flow_1p1bcfj" sourceRef="start-event" targetRef="fetch-product" />
+    <bpmn:sequenceFlow id="Flow_12v4nt4" sourceRef="fetch-product" targetRef="fetch-price" />
+    <bpmn:sequenceFlow id="Flow_0zr9s3c" sourceRef="fetch-price" targetRef="evaluate-amortisation" />
+    <bpmn:sequenceFlow id="Flow_0pzwjpn" sourceRef="evaluate-amortisation" targetRef="loop-household" />
+    <bpmn:sequenceFlow id="Flow_038mmap" sourceRef="loop-household" targetRef="fetch-risk-classification" />
+    <bpmn:sequenceFlow id="Flow_01spshu" sourceRef="evaluate-application" targetRef="evaluate-credit-policies" />
+    <bpmn:sequenceFlow id="Flow_087v7qx" sourceRef="evaluate-credit-policies" targetRef="process-end-event" />
+    <bpmn:startEvent id="start-event">
+      <bpmn:documentation>
+## Credit Evaluation Process Start
+
+Initiates the comprehensive credit evaluation process for loan applications.
+- Input: Application data ready for detailed credit assessment
+- Actor: System automatically starts the evaluation workflow
+- Outcome: Process begins with risk classification analysis
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_1p1bcfj</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:businessRuleTask id="fetch-product" name="Fetch product">
+      <bpmn:incoming>Flow_1p1bcfj</bpmn:incoming>
+      <bpmn:outgoing>Flow_12v4nt4</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:serviceTask id="fetch-price" name="Fetch price">
+      <bpmn:incoming>Flow_12v4nt4</bpmn:incoming>
+      <bpmn:outgoing>Flow_0zr9s3c</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_0sia9cl">
+        <bpmn:targetRef>DataStoreReference_1utggnd</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:dataStoreReference id="DataStoreReference_1utggnd" name="Pricing engine" />
+    <bpmn:businessRuleTask id="evaluate-amortisation" name="Amortisation">
+      <bpmn:incoming>Flow_0zr9s3c</bpmn:incoming>
+      <bpmn:outgoing>Flow_0pzwjpn</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:subProcess id="loop-household" name="For each household">
+      <bpmn:documentation>
+## Household Processing Loop
+
+Processes affordability calculations for each household in the application.
+- Processing scope: Individual household financial capacity and affordability
+- Actor: System processes each household through affordability assessment
+- Outcome: Consolidated household affordability results for policy evaluation
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_0pzwjpn</bpmn:incoming>
+      <bpmn:outgoing>Flow_038mmap</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics />
+      <bpmn:startEvent id="Event_1oi9cyr">
+        <bpmn:documentation>
+## Household Loop Start
+
+Initiates affordability processing for individual household.
+- Input: Household data ready for affordability calculation
+- Actor: System starts household-specific affordability workflow
+- Outcome: Begins with household affordability calculation
+        </bpmn:documentation>
+        <bpmn:outgoing>Flow_0mm9g1s</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="calculate-household-affordability" name="Calculate household affordabilty">
+        <bpmn:documentation>
+## Calculate Household Affordability
+
+Computes the financial capacity and affordability metrics for the household.
+- Calculation inputs: Income, expenses, existing debts, and financial obligations
+- Actor: KALP system performs detailed affordability calculations
+- Outcome: Affordability metrics ready for business rule assessment
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_0mm9g1s</bpmn:incoming>
+        <bpmn:outgoing>Flow_14h24ts</bpmn:outgoing>
+        <bpmn:dataOutputAssociation id="DataOutputAssociation_0x465za">
+          <bpmn:targetRef>DataStoreReference_1vubp17</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+      </bpmn:serviceTask>
+      <bpmn:businessRuleTask id="evaluate-household" name="Evaluate household">
+        <bpmn:documentation>
+## Assess Household Affordability
+
+Evaluates household affordability against lending policy criteria.
+- Assessment criteria: Debt-to-income ratios, stress testing, and policy limits
+- Actor: Business rules engine evaluates affordability calculations
+- Outcome: Household affordability approval or rejection decision
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_14h24ts</bpmn:incoming>
+        <bpmn:outgoing>Flow_05iv2fo</bpmn:outgoing>
+      </bpmn:businessRuleTask>
+      <bpmn:sequenceFlow id="Flow_14h24ts" sourceRef="calculate-household-affordability" targetRef="evaluate-household" />
+      <bpmn:endEvent id="Event_0f8v76p">
+        <bpmn:documentation>
+## Household Loop Complete
+
+Completes affordability processing for individual household.
+- Process result: Household affordability assessment completed
+- Actor: System completes household-specific processing
+- Outcome: Results contribute to overall application evaluation
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_1dl6pb6</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_05iv2fo" sourceRef="evaluate-household" targetRef="evaluate-stakeholders" />
+      <bpmn:dataStoreReference id="DataStoreReference_1vubp17" name="Stacc Affordability" />
+      <bpmn:sequenceFlow id="Flow_1dl6pb6" sourceRef="evaluate-stakeholders" targetRef="Event_0f8v76p" />
+      <bpmn:businessRuleTask id="evaluate-stakeholders" name="Evaluate stakeholders">
+        <bpmn:incoming>Flow_05iv2fo</bpmn:incoming>
+        <bpmn:outgoing>Flow_1dl6pb6</bpmn:outgoing>
+      </bpmn:businessRuleTask>
+      <bpmn:sequenceFlow id="Flow_0mm9g1s" sourceRef="Event_1oi9cyr" targetRef="calculate-household-affordability" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_0olredq" sourceRef="fetch-risk-classification" targetRef="evaluate-application" />
+    <bpmn:serviceTask id="fetch-risk-classification" name="Fetch risk classification">
+      <bpmn:documentation>
+## Risk Classification
+
+Classifies the overall risk level of the loan application using risk engine.
+- Risk inputs: Credit scores, financial data, and application characteristics
+- Actor: Risk engine processes application data for risk classification
+- Outcome: Risk classification feeds into stakeholder prescoring process
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_038mmap</bpmn:incoming>
+      <bpmn:outgoing>Flow_0olredq</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_1xwydah">
+        <bpmn:targetRef>DataStoreReference_1q4zsjf</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:businessRuleTask id="evaluate-application" name="Evaluate application">
+      <bpmn:incoming>Flow_0olredq</bpmn:incoming>
+      <bpmn:outgoing>Flow_01spshu</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:businessRuleTask id="evaluate-credit-policies" name="Evaluate credit policies">
+      <bpmn:documentation>
+## Evaluate Credit Policies
+
+Final evaluation of application against all credit policies and lending criteria.
+- Policy evaluation: Consolidates risk, affordability, and policy compliance assessment
+- Actor: Business rules engine performs comprehensive policy evaluation
+- Outcome: Final credit evaluation result ready for decision process
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_01spshu</bpmn:incoming>
+      <bpmn:outgoing>Flow_087v7qx</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:endEvent id="process-end-event">
+      <bpmn:documentation>
+## Credit Evaluation Process Complete
+
+Finalizes the comprehensive credit evaluation with policy assessment results.
+- Process result: Complete credit evaluation including risk and affordability assessment
+- Actor: System completes the evaluation workflow
+- Outcome: Application proceeds with evaluation results to decision process
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_087v7qx</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataStoreReference id="DataStoreReference_1q4zsjf" name="Risk engine" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1txbn6q">
+      <bpmndi:BPMNShape id="Participant_1bl2p0c_di" bpmnElement="Participant_1bl2p0c" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="2130" height="430" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_0nr3hep_di" bpmnElement="Lane_0nr3hep" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="2100" height="430" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event">
+        <dc:Bounds x="262" y="219" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0ezx9p0_di" bpmnElement="fetch-product">
+        <dc:Bounds x="350" y="197" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1l6bkfq_di" bpmnElement="fetch-price">
+        <dc:Bounds x="520" y="197" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_1utggnd_di" bpmnElement="DataStoreReference_1utggnd">
+        <dc:Bounds x="545" y="325" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="535" y="382" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0xjei0g_di" bpmnElement="evaluate-amortisation">
+        <dc:Bounds x="700" y="197" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1qvjz8g_di" bpmnElement="loop-household" isExpanded="true">
+        <dc:Bounds x="890" y="137" width="730" height="313" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1oi9cyr_di" bpmnElement="Event_1oi9cyr">
+        <dc:Bounds x="930" y="219" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_13urxw3_di" bpmnElement="calculate-household-affordability">
+        <dc:Bounds x="1030" y="197" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0k90d42_di" bpmnElement="evaluate-household">
+        <dc:Bounds x="1200" y="197" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0f8v76p_di" bpmnElement="Event_0f8v76p">
+        <dc:Bounds x="1532" y="219" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_1vubp17_di" bpmnElement="DataStoreReference_1vubp17">
+        <dc:Bounds x="1055" y="325" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1036" y="382" width="88" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0bhk94v_di" bpmnElement="evaluate-stakeholders">
+        <dc:Bounds x="1370" y="197" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_14h24ts_di" bpmnElement="Flow_14h24ts">
+        <di:waypoint x="1130" y="237" />
+        <di:waypoint x="1200" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05iv2fo_di" bpmnElement="Flow_05iv2fo">
+        <di:waypoint x="1300" y="237" />
+        <di:waypoint x="1370" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1dl6pb6_di" bpmnElement="Flow_1dl6pb6">
+        <di:waypoint x="1470" y="237" />
+        <di:waypoint x="1532" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0mm9g1s_di" bpmnElement="Flow_0mm9g1s">
+        <di:waypoint x="966" y="237" />
+        <di:waypoint x="1030" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Activity_0fzq6ja_di" bpmnElement="fetch-risk-classification">
+        <dc:Bounds x="1700" y="197" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_08o9czy_di" bpmnElement="evaluate-application">
+        <dc:Bounds x="1870" y="197" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0o5qror_di" bpmnElement="evaluate-credit-policies">
+        <dc:Bounds x="2040" y="197" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ukrfd4_di" bpmnElement="process-end-event">
+        <dc:Bounds x="2212" y="219" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_1q4zsjf_di" bpmnElement="DataStoreReference_1q4zsjf">
+        <dc:Bounds x="1725" y="325" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1721" y="382" width="58" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1p1bcfj_di" bpmnElement="Flow_1p1bcfj">
+        <di:waypoint x="298" y="237" />
+        <di:waypoint x="350" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12v4nt4_di" bpmnElement="Flow_12v4nt4">
+        <di:waypoint x="450" y="237" />
+        <di:waypoint x="520" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0zr9s3c_di" bpmnElement="Flow_0zr9s3c">
+        <di:waypoint x="620" y="237" />
+        <di:waypoint x="700" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0pzwjpn_di" bpmnElement="Flow_0pzwjpn">
+        <di:waypoint x="800" y="237" />
+        <di:waypoint x="890" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_038mmap_di" bpmnElement="Flow_038mmap">
+        <di:waypoint x="1620" y="237" />
+        <di:waypoint x="1700" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_01spshu_di" bpmnElement="Flow_01spshu">
+        <di:waypoint x="1970" y="237" />
+        <di:waypoint x="2040" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_087v7qx_di" bpmnElement="Flow_087v7qx">
+        <di:waypoint x="2140" y="237" />
+        <di:waypoint x="2212" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0olredq_di" bpmnElement="Flow_0olredq">
+        <di:waypoint x="1800" y="237" />
+        <di:waypoint x="1870" y="237" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_0sia9cl_di" bpmnElement="DataOutputAssociation_0sia9cl">
+        <di:waypoint x="570" y="277" />
+        <di:waypoint x="570" y="325" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_0x465za_di" bpmnElement="DataOutputAssociation_0x465za">
+        <di:waypoint x="1080" y="277" />
+        <di:waypoint x="1080" y="325" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_1xwydah_di" bpmnElement="DataOutputAssociation_1xwydah">
+        <di:waypoint x="1750" y="277" />
+        <di:waypoint x="1750" y="325" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

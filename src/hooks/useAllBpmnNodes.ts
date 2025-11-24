@@ -27,6 +27,9 @@ export interface BpmnNodeData {
   hierarchyPath?: string;
   subprocessMatchStatus?: 'matched' | 'ambiguous' | 'lowConfidence' | 'unresolved';
   diagnosticsSummary?: string | null;
+  orderIndex?: number;
+  branchId?: string | null;
+  scenarioPath?: string[];
 }
 
 type FlattenedProcessNode = ProcessTreeNode & { parentLabels: string[] };
@@ -173,6 +176,9 @@ export const useAllBpmnNodes = () => {
             hierarchyPath: defaultJiraName,
             subprocessMatchStatus: node.subprocessLink?.matchStatus,
             diagnosticsSummary,
+            orderIndex: node.orderIndex,
+            branchId: node.branchId ?? null,
+            scenarioPath: node.scenarioPath,
           };
 
           nodeMap.set(nodeKey, nodeData);

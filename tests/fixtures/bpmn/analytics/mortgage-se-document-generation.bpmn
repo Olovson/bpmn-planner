@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0otj6k0" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.40.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.22.0">
+  <bpmn:collaboration id="Collaboration_0yl5mrq">
+    <bpmn:participant id="Participant_12l024c" name="Document generation" processRef="mortgage-se-document-generation" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-document-generation" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_0i5uu8q">
+      <bpmn:lane id="Lane_17vrfjr" name="System">
+        <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>select-documents</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>generate-documents</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1vwpr3l</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:sequenceFlow id="Flow_146e8jb" sourceRef="select-documents" targetRef="generate-documents" />
+    <bpmn:sequenceFlow id="Flow_03k8jlw" sourceRef="StartEvent_1" targetRef="select-documents" />
+    <bpmn:sequenceFlow id="Flow_013ro9v" sourceRef="generate-documents" targetRef="Event_1vwpr3l" />
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_03k8jlw</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:businessRuleTask id="select-documents" name="Select documents">
+      <bpmn:incoming>Flow_03k8jlw</bpmn:incoming>
+      <bpmn:outgoing>Flow_146e8jb</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:serviceTask id="generate-documents" name="Generate Document">
+      <bpmn:incoming>Flow_146e8jb</bpmn:incoming>
+      <bpmn:outgoing>Flow_013ro9v</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_1g83t1u">
+        <bpmn:targetRef>DataStoreReference_1px1m7r</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:multiInstanceLoopCharacteristics />
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Event_1vwpr3l">
+      <bpmn:incoming>Flow_013ro9v</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataStoreReference id="DataStoreReference_1px1m7r" name="Document generation service" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0yl5mrq">
+      <bpmndi:BPMNShape id="Participant_12l024c_di" bpmnElement="Participant_12l024c" isHorizontal="true">
+        <dc:Bounds x="132" y="90" width="628" height="300" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_17vrfjr_di" bpmnElement="Lane_17vrfjr" isHorizontal="true">
+        <dc:Bounds x="162" y="90" width="598" height="300" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="212" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0hup7zj_di" bpmnElement="select-documents">
+        <dc:Bounds x="320" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0isvnoz_di" bpmnElement="generate-documents">
+        <dc:Bounds x="500" y="140" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1vwpr3l_di" bpmnElement="Event_1vwpr3l">
+        <dc:Bounds x="682" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_1px1m7r_di" bpmnElement="DataStoreReference_1px1m7r">
+        <dc:Bounds x="525" y="275" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="505" y="332" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_146e8jb_di" bpmnElement="Flow_146e8jb">
+        <di:waypoint x="420" y="180" />
+        <di:waypoint x="500" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03k8jlw_di" bpmnElement="Flow_03k8jlw">
+        <di:waypoint x="248" y="180" />
+        <di:waypoint x="320" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_013ro9v_di" bpmnElement="Flow_013ro9v">
+        <di:waypoint x="600" y="180" />
+        <di:waypoint x="682" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_1g83t1u_di" bpmnElement="DataOutputAssociation_1g83t1u">
+        <di:waypoint x="550" y="220" />
+        <di:waypoint x="550" y="275" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -279,6 +279,7 @@ export default function ProcessExplorerPage() {
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'tests') navigate('/test-report');
     else if (view === 'files') navigate('/files');
+    else if (view === 'project') navigate('/project-plan');
     else navigate('/process-explorer');
   };
 

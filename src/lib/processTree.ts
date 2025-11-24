@@ -25,6 +25,10 @@ export interface ProcessTreeNode {
   type: ProcessNodeType;
   bpmnFile: string;
   bpmnElementId?: string;
+   /** Optional execution ordering metadata propagated from the process model. */
+  orderIndex?: number;
+  branchId?: string | null;
+  scenarioPath?: string[];
   /** Matched subprocess BPMN file for call activities (when link resolved). */
   subprocessFile?: string;
   children: ProcessTreeNode[];

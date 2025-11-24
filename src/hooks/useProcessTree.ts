@@ -2,11 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { collectProcessDefinitionsFromMeta } from '@/lib/bpmn/processDefinition';
-import { buildProcessHierarchy, type NormalizedProcessDefinition } from '@/lib/bpmn/buildProcessHierarchy';
+import { parseBpmnFile } from '@/lib/bpmnParser';
+import type { NormalizedProcessDefinition } from '@/lib/bpmn/buildProcessHierarchy';
 import {
   resolveProcessFileName,
   resolveProcessFileNameByInternalId,
 } from '@/lib/bpmn/hierarchyTraversal';
+import { buildProcessModelFromDefinitions } from '@/lib/bpmn/buildProcessModel';
+import { buildProcessTreeFromModel } from '@/lib/bpmn/processModelToProcessTree';
 import type { HierarchyNode } from '@/lib/bpmn/types';
 import type { BpmnMeta } from '@/types/bpmnMeta';
 
@@ -36,15 +39,17 @@ async function buildClientProcessTree(rootFile: string): Promise<ProcessTreeNode
   if (error) throw error;
   if (!bpmnFiles?.length) return null;
 
-  const definitions = bpmnFiles.flatMap((file) =>
-    collectProcessDefinitionsFromMeta(
+  const files = bpmnFiles.map((file) => ({
+    fileName: file.file_name,
+    definitions: collectProcessDefinitionsFromMeta(
       file.file_name,
       file.meta as BpmnMeta | null,
       file.storage_path ?? undefined,
     ),
-  );
+  }));
 
-  if (definitions.length === 0) return null;
+  const allDefinitionsEmpty = files.every((file) => file.definitions.length === 0);
+  if (allDefinitionsEmpty) return null;
 
   let effectiveRootFile = rootFile;
   if (!bpmnFiles.some((file) => file.file_name === effectiveRootFile)) {
@@ -54,29 +59,37 @@ async function buildClientProcessTree(rootFile: string): Promise<ProcessTreeNode
     effectiveRootFile = fallback;
   }
 
-  const preferredProcessIds = new Set(
-    definitions.filter((def) => def.fileName === effectiveRootFile).map((def) => def.id),
-  );
-
-  const hierarchy = buildProcessHierarchy(definitions, {
-    preferredRootProcessIds: preferredProcessIds,
-  });
-
-  if (!hierarchy.roots.length) {
-    return null;
+  const parseResultsByFile = new Map<string, Awaited<ReturnType<typeof parseBpmnFile>>>();
+  for (const file of bpmnFiles) {
+    try {
+      const result = await parseBpmnFile(`/bpmn/${file.file_name}`);
+      parseResultsByFile.set(file.file_name, result);
+    } catch (parseError) {
+      console.warn('[useProcessTree] Failed to parse BPMN file for ordering', file.file_name, parseError);
+    }
   }
 
-  const rootNode =
-    hierarchy.roots.find(
-      (node) =>
-        node.processId &&
-        definitions.some(
-          (def) => def.id === node.processId && def.fileName === effectiveRootFile,
-        ),
-    ) ?? hierarchy.roots[0];
+  const model = buildProcessModelFromDefinitions(files, {
+    preferredRootFile: effectiveRootFile,
+    parseResultsByFile,
+  });
 
-  return convertProcessHierarchyToTree(rootNode, hierarchy.processes, buildArtifacts);
+  const tree = buildProcessTreeFromModel(model, effectiveRootFile, buildArtifacts);
+  return tree;
 }
+
+export const useProcessTree = (rootFile: string = 'mortgage.bpmn') => {
+  return useQuery<ProcessTreeNode | null>({
+    queryKey: ['process-tree', rootFile],
+    queryFn: async () => {
+      const fallbackTree = await buildClientProcessTree(rootFile);
+      if (fallbackTree) return fallbackTree;
+      throw new Error('Ingen BPMN-fil finns i registret.');
+    },
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    retry: 2,
+  });
+};
 
 type ArtifactBuilder = typeof buildArtifacts;
 
@@ -149,7 +162,12 @@ function convertHierarchyChild(
     return [callTreeNode];
   }
 
-  if (node.bpmnType === 'userTask' || node.bpmnType === 'serviceTask' || node.bpmnType === 'businessRuleTask' || node.bpmnType === 'task') {
+  if (
+    node.bpmnType === 'userTask' ||
+    node.bpmnType === 'serviceTask' ||
+    node.bpmnType === 'businessRuleTask' ||
+    node.bpmnType === 'task'
+  ) {
     const typeMap: Record<string, ProcessTreeNode['type']> = {
       userTask: 'userTask',
       serviceTask: 'serviceTask',
@@ -174,16 +192,3 @@ function convertHierarchyChild(
 
   return [];
 }
-
-export const useProcessTree = (rootFile: string = 'mortgage.bpmn') => {
-  return useQuery<ProcessTreeNode | null>({
-    queryKey: ['process-tree', rootFile],
-    queryFn: async () => {
-      const fallbackTree = await buildClientProcessTree(rootFile);
-      if (fallbackTree) return fallbackTree;
-      throw new Error('Ingen BPMN-fil finns i registret.');
-    },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    retry: 2,
-  });
-};

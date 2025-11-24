@@ -1,9 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { LogOut, History, GitBranch, Network, List, FileText, Folder } from 'lucide-react';
+import { LogOut, History, GitBranch, Network, List, FileText, Folder, LayoutList } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 
-export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'files';
+export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'files' | 'project';
 
 interface AppHeaderWithTabsProps {
   userEmail?: string | null;
@@ -87,6 +87,24 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">Listvy</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handleTabChange('project')}
+                aria-label="Projektplan"
+                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                  currentView === 'project'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Projektplan</TooltipContent>
           </Tooltip>
 
           <Tooltip>
