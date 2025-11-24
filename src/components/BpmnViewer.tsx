@@ -5,7 +5,7 @@ import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Upload, FolderOpen, ArrowUp } from 'lucide-react';
+import { Upload, FolderOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { BpmnMapping } from '@/hooks/useBpmnMappings';
 import { useTestResults } from '@/hooks/useTestResults';
@@ -17,6 +17,8 @@ import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { buildSubprocessNavigationMap } from '@/lib/processTreeNavigation';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { elementResourceMapping } from '@/data/elementResourceMapping';
+import { buildBreadcrumbPath } from '@/lib/breadcrumbNavigation';
+import { BpmnBreadcrumb } from './BpmnBreadcrumb';
 
 interface BpmnViewerProps {
   onElementSelect?: (elementId: string | null, elementType?: string | null, elementName?: string | null) => void;
@@ -897,6 +899,36 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     setBpmnHistory(bpmnHistory.slice(0, index));
   };
 
+  // Build breadcrumb path
+  const breadcrumbItems = useMemo(() => {
+    return buildBreadcrumbPath(processTree, fileName, bpmnHistory);
+  }, [processTree, fileName, bpmnHistory]);
+
+  // Handle breadcrumb navigation
+  const handleBreadcrumbNavigate = useCallback((targetFileName: string) => {
+    // Don't navigate if already on this file
+    if (targetFileName === fileName) return;
+
+    // Find the target in history
+    const historyIndex = bpmnHistory.findIndex(item => item.fileName === targetFileName);
+    if (historyIndex >= 0) {
+      // Navigate back to this point in history
+      navigateBack(historyIndex);
+    } else {
+      // Check if it's the root file (should reset history)
+      const isRoot = processTree && processTree.bpmnFile === targetFileName;
+      if (isRoot) {
+        // Reset to root - clear history and load root file
+        setBpmnHistory([]);
+        // Load root file via initialFileName mechanism
+        onFileChange?.(targetFileName);
+      } else {
+        // Navigate to file (load subprocess)
+        loadSubProcess(targetFileName);
+      }
+    }
+  }, [bpmnHistory, fileName, processTree, loadSubProcess, onFileChange]);
+
   // Show empty state if no files
   if (!isLoadingFiles && bpmnFiles && bpmnFiles.length === 0) {
     return (
@@ -958,17 +990,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between gap-4 px-4 py-2 bg-card border-b border-border">
-        <div className="flex items-center gap-2 min-w-0">
-          {bpmnHistory.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigateBack(bpmnHistory.length - 1)}
-              className="shrink-0"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-          )}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="flex flex-col min-w-0">
             <h2 className="text-sm font-medium text-foreground truncate">{fileName}</h2>
             {selectedElement && (
@@ -978,44 +1000,15 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
             )}
           </div>
         </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <BpmnBreadcrumb
+            items={breadcrumbItems}
+            onNavigate={handleBreadcrumbNavigate}
+            currentFileName={fileName}
+          />
+        </div>
       </div>
       <div className="flex-1 relative bg-muted/30">
-        {(() => {
-          const hasHistoryParent = !!parentHistoryItem;
-          const treeParentFile = !hasHistoryParent ? findParentProcessFile(fileName) : null;
-          const canGoUp = hasHistoryParent || !!treeParentFile;
-
-          if (!canGoUp) return null;
-
-          const targetLabelFile = hasHistoryParent
-            ? parentHistoryItem.fileName
-            : treeParentFile!;
-
-          const handleGoUp = () => {
-            if (hasHistoryParent) {
-              navigateBack(bpmnHistory.length - 1);
-            } else if (treeParentFile) {
-              loadSubProcess(treeParentFile);
-            }
-          };
-
-          return (
-            <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="shadow-md"
-                onClick={handleGoUp}
-              >
-                <ArrowUp className="w-4 h-4 mr-2" />
-                Gå upp en nivå
-              </Button>
-              <span className="text-xs text-muted-foreground bg-card/80 px-2 py-1 rounded shadow">
-                Tillbaka till {targetLabelFile.replace('.bpmn', '')}
-              </span>
-            </div>
-          );
-        })()}
         <div ref={containerRef} className="absolute inset-0" />
       </div>
     </div>

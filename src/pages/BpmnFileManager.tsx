@@ -53,7 +53,11 @@ import {
   type LlmGenerationMode,
 } from '@/lib/llmMode';
 import type { LlmProvider } from '@/lib/llmClientAbstraction';
-import { buildBpmnProcessGraph, createGraphSummary } from '@/lib/bpmnProcessGraph';
+import { buildProcessGraph } from '@/lib/bpmn/processGraphBuilder';
+import { buildProcessTreeFromGraph } from '@/lib/bpmn/processTreeBuilder';
+import { loadAllBpmnParseResults, loadBpmnMap } from '@/lib/bpmn/debugDataLoader';
+import type { ProcessGraph } from '@/lib/bpmn/processGraph';
+import type { ProcessTreeNode } from '@/lib/bpmn/processTreeTypes';
 import { useGenerationJobs, type GenerationJob, type GenerationOperation, type GenerationStatus } from '@/hooks/useGenerationJobs';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -63,18 +67,42 @@ import { isPGRST204Error, getSchemaErrorMessage } from '@/lib/schemaVerification
 import { useLlmHealth } from '@/hooks/useLlmHealth';
 import bpmnMap from '../../bpmn-map.json';
 
-const flattenHierarchyNodes = (node: any): any[] => {
-  if (!node) return [];
-  const nodes: any[] = [];
-  if (node.type !== 'Process') {
-    nodes.push(node);
-  }
-  if (Array.isArray(node.children)) {
-    for (const child of node.children) {
-      nodes.push(...flattenHierarchyNodes(child));
+/**
+ * Creates a summary from ProcessGraph and ProcessTree
+ */
+const createGraphSummaryFromNewGraph = (
+  graph: ProcessGraph,
+  tree: ProcessTreeNode,
+): {
+  totalFiles: number;
+  totalNodes: number;
+  filesIncluded: string[];
+  hierarchyDepth: number;
+} => {
+  const filesIncluded = new Set<string>();
+  let totalNodes = 0;
+
+  // Collect files from graph nodes
+  for (const node of graph.nodes.values()) {
+    filesIncluded.add(node.bpmnFile);
+    if (node.type !== 'process') {
+      totalNodes++;
     }
   }
-  return nodes;
+
+  // Calculate hierarchy depth from tree
+  const calculateDepth = (node: ProcessTreeNode): number => {
+    if (node.children.length === 0) return 1;
+    const childDepths = node.children.map((child) => calculateDepth(child));
+    return 1 + Math.max(...childDepths, 0);
+  };
+
+  return {
+    totalFiles: filesIncluded.size,
+    totalNodes,
+    filesIncluded: Array.from(filesIncluded),
+    hierarchyDepth: calculateDepth(tree),
+  };
 };
 
 const formatFileRootName = (fileName: string) =>
@@ -1909,28 +1937,42 @@ export default function BpmnFileManager() {
         total: 3,
       });
 
-      const { data: allFiles, error: filesError } = await supabase
-        .from('bpmn_files')
-        .select('file_name, file_type')
-        .eq('file_type', 'bpmn');
+      // Load all BPMN parse results and bpmn-map
+      const parseResults = await loadAllBpmnParseResults();
+      const bpmnMap = await loadBpmnMap();
 
-      if (filesError) throw filesError;
-      const existingBpmnFiles = allFiles?.map(f => f.file_name) || [];
+      // Build ProcessGraph using the new implementation
+      const graph = buildProcessGraph(parseResults, {
+        bpmnMap,
+        preferredRootProcessId: file.file_name.replace('.bpmn', ''),
+      });
 
-      const graph = await buildBpmnProcessGraph(file.file_name, existingBpmnFiles);
-      const summary = createGraphSummary(graph);
+      // Build ProcessTree from graph
+      const tree = buildProcessTreeFromGraph(graph, {
+        rootProcessId: file.file_name.replace('.bpmn', ''),
+        preferredRootFile: file.file_name,
+        artifactBuilder: () => [],
+      });
+
+      // Create summary
+      const summary = createGraphSummaryFromNewGraph(graph, tree);
       if (hierarchyJob) {
         await updateGenerationJob(hierarchyJob.id, { progress: 1 });
       }
 
+      // Extract dependencies from graph edges
       const dependenciesToInsert: Array<{ parent_file: string; child_process: string; child_file: string }> = [];
-      for (const node of graph.allNodes.values()) {
-        if (node.subprocessFile) {
-          dependenciesToInsert.push({
-            parent_file: node.bpmnFile,
-            child_process: node.bpmnElementId,
-            child_file: node.subprocessFile,
-          });
+      for (const edge of graph.edges.values()) {
+        if (edge.type === 'subprocess') {
+          const fromNode = graph.nodes.get(edge.from);
+          const toNode = graph.nodes.get(edge.to);
+          if (fromNode && toNode && toNode.type === 'process') {
+            dependenciesToInsert.push({
+              parent_file: fromNode.bpmnFile,
+              child_process: fromNode.bpmnElementId,
+              child_file: toNode.bpmnFile,
+            });
+          }
         }
       }
 
@@ -1950,47 +1992,51 @@ export default function BpmnFileManager() {
         await updateGenerationJob(hierarchyJob.id, { progress: 2 });
       }
 
-      const parentMap = new Map<string, { parentFile: string }>();
-      for (const dep of dependenciesToInsert) {
-        parentMap.set(dep.child_file, {
-          parentFile: dep.parent_file,
-        });
-      }
-
-      const buildParentPath = (fileName: string): string[] => {
-        const path: string[] = [];
-        let current = parentMap.get(fileName);
-        const guard = new Set<string>();
-        while (current && !guard.has(current.parentFile)) {
-          guard.add(current.parentFile);
-          path.unshift(formatFileRootName(current.parentFile));
-          current = parentMap.get(current.parentFile);
-        }
-        return path;
-      };
-
-      const filesToProcess = summary.filesIncluded.length > 0 ? summary.filesIncluded : [file.file_name];
+      // Extract Jira mappings from ProcessTree
       const mappingsToInsert: any[] = [];
 
-      for (const bpmnFileName of filesToProcess) {
-        try {
-          const bpmnUrl = await getBpmnFileUrl(bpmnFileName);
-          const { buildBpmnHierarchy } = await import('@/lib/bpmnHierarchy');
-          const hierarchy = await buildBpmnHierarchy(bpmnFileName, bpmnUrl, buildParentPath(bpmnFileName));
-          const allNodes = flattenHierarchyNodes(hierarchy.rootNode);
+      // Helper to build Jira name with full parent path
+      const buildJiraNameWithPath = (
+        node: ProcessTreeNode,
+        parentPath: string[] = [],
+      ): string => {
+        const fullPath = [...parentPath, node.label];
+        return fullPath.join(' - ');
+      };
 
-          for (const node of allNodes) {
-            mappingsToInsert.push({
-              bpmn_file: node.bpmnFile,
-              element_id: node.id,
-              jira_type: node.jiraType || null,
-              jira_name: node.jiraName || null,
-            });
-          }
-        } catch (error) {
-          console.error(`Error building mappings for ${bpmnFileName}:`, error);
+      // Traverse tree and collect mappings with parent paths
+      const collectMappings = (
+        node: ProcessTreeNode,
+        parentPath: string[] = [],
+      ): void => {
+        // Skip root process node itself
+        if (node.type !== 'process') {
+          // Determine Jira type based on node type
+          const jiraType =
+            node.type === 'callActivity'
+              ? 'feature goal'
+              : node.type === 'userTask' || node.type === 'serviceTask' || node.type === 'businessRuleTask'
+                ? 'epic'
+                : null;
+
+          const jiraName = buildJiraNameWithPath(node, parentPath);
+
+          mappingsToInsert.push({
+            bpmn_file: node.bpmnFile,
+            element_id: node.bpmnElementId,
+            jira_type: jiraType,
+            jira_name: jiraName,
+          });
         }
-      }
+
+        // Recursively process children with updated parent path
+        const newParentPath = node.type === 'process' ? [] : [...parentPath, node.label];
+        for (const child of node.children) {
+          collectMappings(child, newParentPath);
+        }
+      };
+
+      collectMappings(tree);
 
       if (mappingsToInsert.length > 0) {
         const { error: mappingsError } = await supabase
@@ -2008,13 +2054,22 @@ export default function BpmnFileManager() {
         await updateGenerationJob(hierarchyJob.id, { progress: 3 });
       }
 
+      // Convert missing dependencies to the expected format
+      const missingDeps = graph.missingDependencies.map((dep) => {
+        const fromNode = graph.nodes.get(dep.fromNodeId);
+        return {
+          parent: fromNode?.bpmnFile || 'unknown',
+          childProcess: dep.missingProcessId || dep.missingFileName || 'unknown',
+        };
+      });
+
       setHierarchyResult({
         fileName: file.file_name,
-        filesAnalyzed: filesToProcess,
+        filesAnalyzed: summary.filesIncluded,
         totalNodes: summary.totalNodes,
         totalFiles: summary.totalFiles,
         hierarchyDepth: summary.hierarchyDepth,
-        missingDependencies: graph.missingDependencies,
+        missingDependencies: missingDeps,
       });
       setShowHierarchyReport(true);
 
@@ -2022,14 +2077,14 @@ export default function BpmnFileManager() {
 
       toast({
         title: 'Hierarki uppdaterad',
-        description: `${filesToProcess.length} filer analyserade. Öppna processträdet för att verifiera resultatet.`,
+        description: `${summary.filesIncluded.length} filer analyserade. Öppna processträdet för att verifiera resultatet.`,
       });
       if (hierarchyJob) {
         await setJobStatus(hierarchyJob.id, 'succeeded', {
           finished_at: new Date().toISOString(),
           progress: 3,
           result: {
-            filesAnalyzed: filesToProcess.length,
+            filesAnalyzed: summary.filesIncluded.length,
             totalNodes: summary.totalNodes,
             hierarchyDepth: summary.hierarchyDepth,
           },
