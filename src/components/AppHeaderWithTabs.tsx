@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { LogOut, History, GitBranch, Network, List, FileText, Folder, LayoutList, Bug, Workflow } from 'lucide-react';
+import { LogOut, History, GitBranch, Network, List, FileText, Folder, LayoutList, Bug, Workflow, Calendar } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'files' | 'project';
+export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'files' | 'project' | 'timeline';
 
 interface AppHeaderWithTabsProps {
   userEmail?: string | null;
@@ -112,6 +112,24 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">Projektplan</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handleTabChange('timeline')}
+                aria-label="Timeline"
+                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                  currentView === 'timeline'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <Calendar className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Timeline / Planning</TooltipContent>
           </Tooltip>
 
           <Tooltip>

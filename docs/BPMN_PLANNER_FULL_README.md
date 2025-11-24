@@ -63,7 +63,8 @@ BPMN-filer (.bpmn, .dmn) + bpmn-map.json
                 ├──> Testskript & scenarier
                 ├──> DoR/DoD
                 ├──> Ledger/Registry
-                └──> Projektplanering
+                ├──> Projektplanering
+                └──> Timeline / Planning View (Gantt)
 ```
 
 Kortfattat:
@@ -427,7 +428,19 @@ En vy (eller flera):
 - status per nod (design, implementering, test, produktionsstatus)  
 - underlag för governance och spårbarhet
 
-### 5.5 Debug- & utvecklarvyer
+### 5.5 Timeline / Planning View
+
+En Gantt-chart-baserad vy för att:
+- visualisera subprocesser (callActivities/feature goals) i tidsordning
+- baseras på `orderIndex`, `branchId` och `scenarioPath` från ProcessTree
+- tillåter redigering av start/end datum direkt i Gantt-charten
+- använder DHTMLX Gantt för interaktiv visualisering
+- default: alla subprocesser startar på 2026-01-01 med 2 veckors duration
+- primärt verktyg för att inspektera och förfina tidsordningslogiken
+
+Se `docs/GANTT_TIMELINE_ANALYSIS.md` och `docs/GANTT_TIMELINE_IMPLEMENTATION_SUMMARY.md` för detaljer.
+
+### 5.6 Debug- & utvecklarvyer
 
 (specat i senare faser, men konceptuellt:)
 
@@ -469,7 +482,8 @@ BPMN Planner:
   - testscenarion
   - DoR/DoD
   - ledger/registry
-  - projektplaneringsunderlag  
+  - projektplaneringsunderlag
+  - timeline/planning views (Gantt)  
 - är **LLM-agnostiskt**: fungerar med ChatGPT, OLAMA eller utan LLM (fallback)  
 - är designat för **determinism, spårbarhet, skalbarhet och robusthet**.
 

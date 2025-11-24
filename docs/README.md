@@ -22,6 +22,12 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
   - `#/test-report` – global vy per provider (local‑fallback, ChatGPT, Ollama) och BPMN‑fil,
   - `#/node-tests` – nodspecifik vy med planerade scenarier och körda tester.
 
+- `GANTT_TIMELINE_ANALYSIS.md` & `GANTT_TIMELINE_IMPLEMENTATION_SUMMARY.md`  
+  Dokumentation för Timeline / Planning View:
+  - analys av befintliga strukturer och tidsordning,
+  - implementation av Gantt-chart för visualisering av subprocesser,
+  - redigering av start/end datum baserat på orderIndex.
+
 - `confluence/`  
   Confluence‑orienterad dokumentation och mallar:
   - `README.md` – hur Confluence‑strukturen hänger ihop med BPMN‑noderna,
@@ -46,6 +52,7 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
   - dokumentationsgeneratorn,
   - testgeneratorn (Playwright),
   - testrapportvyerna,
+  - Timeline / Planning View (Gantt),
   - samt Jira‑namngivning och DoR/DoD.
 
 - **Planerade scenarier i `node_planned_scenarios`**  

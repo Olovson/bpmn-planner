@@ -54,6 +54,8 @@
  */
 
 import { parseBpmnFile, BpmnParseResult } from './bpmnParser';
+import { buildJiraName } from './jiraNaming';
+import type { ProcessTreeNode } from './processTree';
 
 export type BpmnNodeType = 
   | 'CallActivity' 
@@ -112,6 +114,9 @@ export async function buildBpmnHierarchy(
   // Build children recursively (start with full parent path + context root)
   buildNodeChildren(rootNode, parseResult, bpmnFile, [...parentPath, contextRoot]);
   
+  // Compute Jira names using the new naming scheme
+  computeJiraNames(rootNode);
+  
   // Flatten for easy access
   const allNodes = flattenNodes(rootNode);
   
@@ -146,6 +151,11 @@ function extractContextRoot(parseResult: BpmnParseResult, bpmnFile: string): str
 
 /**
  * Build children nodes recursively
+ * 
+ * NOTE: This function uses the new Jira naming scheme via buildJiraName.
+ * However, since buildJiraName expects ProcessTreeNode and we're working with
+ * BpmnHierarchyNode, we need to build the full hierarchy first, then compute Jira names.
+ * For now, we'll compute Jira names after the hierarchy is built.
  */
 function buildNodeChildren(
   parentNode: BpmnHierarchyNode,
@@ -166,13 +176,6 @@ function buildNodeChildren(
       depth: parentNode.depth + 1,
     };
     
-    // Build jira_name
-    node.jiraName = [...currentPath, ca.name].join(' - ');
-    
-    // Find children of this CallActivity (if any)
-    // This would require parsing the subprocess structure from XML
-    // For now, we'll add direct children only
-    
     parentNode.children.push(node);
   });
   
@@ -188,8 +191,6 @@ function buildNodeChildren(
       jiraType: 'epic',
       depth: parentNode.depth + 1,
     };
-    
-    node.jiraName = [...currentPath, ut.name].join(' - ');
     
     parentNode.children.push(node);
   });
@@ -207,8 +208,6 @@ function buildNodeChildren(
       depth: parentNode.depth + 1,
     };
     
-    node.jiraName = [...currentPath, st.name].join(' - ');
-    
     parentNode.children.push(node);
   });
   
@@ -225,8 +224,6 @@ function buildNodeChildren(
       depth: parentNode.depth + 1,
     };
     
-    node.jiraName = [...currentPath, brt.name].join(' - ');
-    
     parentNode.children.push(node);
   });
   
@@ -237,6 +234,49 @@ function buildNodeChildren(
       // Here we would recursively parse the subprocess file if available
       // For now, we treat each node as a leaf
     });
+}
+
+/**
+ * Compute Jira names for all nodes in the hierarchy using the new naming scheme.
+ * This must be called after the hierarchy is fully built.
+ */
+function computeJiraNames(rootNode: BpmnHierarchyNode): void {
+  // Convert BpmnHierarchyNode to ProcessTreeNode format for buildJiraName
+  const convertToProcessTreeNode = (node: BpmnHierarchyNode): ProcessTreeNode => {
+    return {
+      id: node.id,
+      label: node.name,
+      type: node.type === 'CallActivity' ? 'callActivity'
+        : node.type === 'UserTask' ? 'userTask'
+        : node.type === 'ServiceTask' ? 'serviceTask'
+        : node.type === 'BusinessRuleTask' ? 'businessRuleTask'
+        : 'process',
+      bpmnFile: node.bpmnFile,
+      bpmnElementId: node.id,
+      children: node.children.map(convertToProcessTreeNode),
+    };
+  };
+
+  const processTreeRoot = convertToProcessTreeNode(rootNode);
+
+  // Compute Jira names for all nodes
+  const computeForNode = (node: BpmnHierarchyNode, processTreeNode: ProcessTreeNode): void => {
+    if (node.type !== 'Process') {
+      // Exclude root process name from parent path
+      const parentPathWithoutRoot = node.parentPath.filter((p) => p !== rootNode.name);
+      node.jiraName = buildJiraName(processTreeNode, processTreeRoot, parentPathWithoutRoot);
+    }
+
+    // Recursively compute for children
+    node.children.forEach((child, index) => {
+      const childProcessTreeNode = processTreeNode.children[index];
+      if (childProcessTreeNode) {
+        computeForNode(child, childProcessTreeNode);
+      }
+    });
+  };
+
+  computeForNode(rootNode, processTreeRoot);
 }
 
 /**

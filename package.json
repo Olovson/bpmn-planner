@@ -66,6 +66,7 @@
     "cmdk": "^1.1.1",
     "d3": "^7.9.0",
     "date-fns": "^3.6.0",
+    "dhtmlx-gantt": "^9.1.0",
     "dmn-js": "^17.4.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
@@ -102,10 +103,10 @@
     "lovable-tagger": "^1.1.11",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
-    "vitest": "^2.1.4",
-    "ts-node": "^10.9.2"
+    "vitest": "^2.1.4"
   }
 }

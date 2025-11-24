@@ -42,7 +42,9 @@ const Index = () => {
       ? 'tree'
       : location.pathname.includes('/project-plan')
         ? 'project'
-        : 'diagram';
+        : location.pathname.includes('/timeline')
+          ? 'timeline'
+          : 'diagram';
 
   const handleViewChange = (value: string) => {
     if (value === 'listvy') {
@@ -55,6 +57,8 @@ const Index = () => {
       baseNavigate('/files');
     } else if (value === 'project') {
       baseNavigate('/project-plan');
+    } else if (value === 'timeline') {
+      baseNavigate('/timeline');
     } else {
       setViewMode(value as 'diagram' | 'tree');
       if (value === 'diagram') baseNavigate('/');

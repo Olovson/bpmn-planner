@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { buildJiraName, type HierarchyNode } from '../_shared/jiraNaming.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -268,23 +269,34 @@ serve(async (req) => {
       // Find this element in the hierarchy to get its full parentPath
       const elementParentPath = findElementInHierarchy(rootHierarchy, element.id);
       
-      // Build jira_name: full parentPath + element name (for epics)
-      // Skip the first element (root "Mortgage") to avoid redundancy
-      const pathParts = elementParentPath ? elementParentPath.slice(1) : element.parentPath || [];
+      // Find the corresponding HierarchyNode for this element
+      const elementNode = findNodeById(rootHierarchy, element.id);
       
-      // For epics (UserTask, ServiceTask, BusinessRuleTask), add the node name
-      if (element.type !== 'CallActivity') {
-        pathParts.push(element.name);
+      // Build jira_name using the new naming scheme
+      // If we found the node in hierarchy, use it; otherwise fall back to path-based
+      let jiraName: string;
+      if (elementNode && rootHierarchy) {
+        // Use new naming scheme (feature goals use top-level subprocess logic, epics use path-based)
+        const parentPathWithoutRoot = elementParentPath 
+          ? elementParentPath.slice(1) // Skip root
+          : (element.parentPath || []).filter((p: string) => p !== rootHierarchy.name);
+        jiraName = buildJiraName(elementNode, rootHierarchy, parentPathWithoutRoot);
+      } else {
+        // Fallback to old path-based logic if node not found in hierarchy
+        const pathParts = elementParentPath ? elementParentPath.slice(1) : element.parentPath || [];
+        if (element.type !== 'CallActivity') {
+          pathParts.push(element.name);
+        }
+        jiraName = pathParts.join(' - ');
       }
-      
-      const jiraName = pathParts.join(' - ');
       
       console.log(`Setting Jira mapping for ${element.id}:`, {
         type: defaultJiraType,
         name: jiraName,
         hierarchyPath: elementParentPath,
         localParentPath: element.parentPath,
-        elementName: element.name
+        elementName: element.name,
+        foundInHierarchy: !!elementNode
       });
       
       // Always set/overwrite jira_type and jira_name on generation
@@ -727,6 +739,24 @@ function findElementInHierarchy(node: HierarchyNode, elementId: string, currentP
   for (const child of node.children) {
     const found = findElementInHierarchy(child, elementId, childPath);
     if (found !== null) {
+      return found;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Find a node by ID in the hierarchy tree
+ */
+function findNodeById(node: HierarchyNode, elementId: string): HierarchyNode | null {
+  if (node.id === elementId) {
+    return node;
+  }
+  
+  for (const child of node.children) {
+    const found = findNodeById(child, elementId);
+    if (found) {
       return found;
     }
   }

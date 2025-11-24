@@ -314,11 +314,12 @@ Checklista:
 1. **Files** – ladda upp BPMN/DMN eller synka GitHub.  
 2. **Build hierarchy** – bygger deterministisk struktur.  
 3. **Generate documentation** – välj Lokal fallback (ingen LLM), ChatGPT (moln-LLM) eller Ollama (lokal LLM).  
-4. Visa resultat i **Viewer / Tree / List**.  
+4. Visa resultat i **Viewer / Tree / List / Timeline**.  
 5. Justera metadata i **Node Matrix**.  
-6. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
-7. **Återgenerera vid behov**.  
-8. **Reset Registry** – rensa allt.
+6. **Timeline** – visualisera och redigera tidsordning för subprocesser i Gantt-chart.  
+7. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
+8. **Återgenerera vid behov**.  
+9. **Reset Registry** – rensa allt.
 
 ---
 
@@ -332,6 +333,7 @@ Checklista:
 - SOT i Supabase Storage  
 - Job queue för historik  
 - Full diagnostik vid mismatch eller otydliga subprocesser  
+- **Timeline / Planning View** - Gantt-chart för visualisering och redigering av tidsordning för subprocesser
 - DMN-stöd (på väg)
 
 ---
@@ -423,11 +425,19 @@ Detta problem uppstår när PostgREST schema-cache är utdaterad efter migration
 
 En kort lista över förbättringsidéer som vi kan plocka upp senare:
 
+- **Timeline / Planning View (2025-01)**
+  - ✅ Gantt-chart för visualisering av subprocesser baserat på tidsordning (orderIndex)
+  - ✅ Redigering av start/end datum direkt i Gantt
+  - 🔄 Spara redigerade datum till backend/database
+  - 🔄 Automatisk staggering av datum baserat på orderIndex
+  - 🔄 Visa dependencies mellan subprocesser i Gantt
+  - 🔄 Export av timeline till Excel/PDF
+
 - **Aktuellt arbete (mortgage‑hierarki / 2025‑11)**  
   - Finslipa subprocesskedjan `Object → Object information` så att callActivity `object-information` alltid matchar `mortgage-se-object-information.bpmn` med tydlig diagnostik när det inte går.  
   - Låta Node Matrix visa noder från alla relevanta BPMN‑filer i mortgage‑kedjan (inte bara rootfilen), t.ex. `mortgage-se-application` och `mortgage-se-internal-data-gathering`.  
-  - Utforska att flytta tunga hierarki/graf‑beräkningar till en Supabase‑funktion (server‑side) för att minska CPU/minne i browsern vid “Generera allt”.  
-  - Förenkla “Generera allt” ytterligare genom att återanvända en gemensam processgraf per root i stället för att bygga nya grafer per subprocess‑fil.
+  - Utforska att flytta tunga hierarki/graf‑beräkningar till en Supabase‑funktion (server‑side) för att minska CPU/minne i browsern vid "Generera allt".  
+  - Förenkla "Generera allt" ytterligare genom att återanvända en gemensam processgraf per root i stället för att bygga nya grafer per subprocess‑fil.
 
 - **Parallellisering av LLM‑generering**
   - Lägg till en enkel concurrency‑pool i `generateAllFromBpmnWithGraph` så att flera noder kan genereras parallellt (t.ex. 3–5 samtidiga anrop per provider).
