@@ -40,10 +40,59 @@ export function matchCallActivityToProcesses(
     .filter((candidate): candidate is MatchCandidate => candidate.score > 0)
     .sort((a, b) => b.score - a.score);
 
+  const DEBUG_CALL_ACTIVITY_IDS = new Set<string>([
+    'application',
+    'mortgage-commitment',
+    'credit-evaluation',
+    'appeal',
+    'manual-credit-evaluation',
+    'kyc',
+    'credit-decision',
+    'offer',
+    'document-generation',
+    'signing',
+    'disbursement',
+    'signing-advance',
+    'disbursement-advance',
+    'collateral-registration',
+    'internal-data-gathering',
+    'stakeholder',
+    'object',
+    'household',
+  ]);
+
   const bestCandidate = evaluatedCandidates[0];
   const diagnostics: DiagnosticsEntry[] = [];
 
+  if (DEBUG_CALL_ACTIVITY_IDS.has(callActivity.id)) {
+    // Minimal, riktad debug-logg för mortgage-hierarkin.
+    // Visar hur matchern resonerar för utvalda call activities.
+    // Syns i browserkonsolen och i testloggar.
+    // eslint-disable-next-line no-console
+    console.log('[SubprocessMatcher][debug]', {
+      callActivity,
+      evaluatedCandidates: evaluatedCandidates.map((c) => ({
+        processId: c.processId,
+        fileName: c.fileName,
+        score: c.score,
+        reason: c.reason,
+      })),
+    });
+  }
+
   if (!bestCandidate) {
+    if (DEBUG_CALL_ACTIVITY_IDS.has(callActivity.id)) {
+      // eslint-disable-next-line no-console
+      console.log('[SubprocessMatcher][decision]', {
+        callActivityId: callActivity.id,
+        calledElement: callActivity.calledElement,
+        status: 'unresolved' as const,
+        best: null,
+        secondBest: null,
+        threshold: mergedConfig.fuzzyThreshold,
+        ambiguityDelta: mergedConfig.ambiguityDelta,
+      });
+    }
     diagnostics.push({
       severity: 'warning',
       code: 'NO_MATCH',
@@ -68,6 +117,31 @@ export function matchCallActivityToProcesses(
 
   const secondBest = evaluatedCandidates[1];
   const status = deriveStatus(bestCandidate, secondBest, mergedConfig);
+
+  if (DEBUG_CALL_ACTIVITY_IDS.has(callActivity.id)) {
+    // eslint-disable-next-line no-console
+    console.log('[SubprocessMatcher][decision]', {
+      callActivityId: callActivity.id,
+      calledElement: callActivity.calledElement,
+      status,
+      best: {
+        processId: bestCandidate.processId,
+        fileName: bestCandidate.fileName,
+        score: bestCandidate.score,
+        reason: bestCandidate.reason,
+      },
+      secondBest: secondBest
+        ? {
+            processId: secondBest.processId,
+            fileName: secondBest.fileName,
+            score: secondBest.score,
+            reason: secondBest.reason,
+          }
+        : null,
+      threshold: mergedConfig.fuzzyThreshold,
+      ambiguityDelta: mergedConfig.ambiguityDelta,
+    });
+  }
 
   if (status === 'ambiguous' && secondBest) {
     diagnostics.push({
@@ -302,4 +376,3 @@ function normalize(value?: string | null): string {
 function stripBpmnExtension(fileName: string): string {
   return fileName.replace(/\.bpmn$/i, '').replace(/^\/?public\//, '');
 }
-

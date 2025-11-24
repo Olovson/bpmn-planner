@@ -851,8 +851,11 @@ export default function BpmnFileManager() {
         .map(f => f.file_name);
       const existingDmnFiles: string[] = []; // DMN files kan läggas till senare
 
-      // Använd alltid den hierarkiska generatorn (LLM + nodkontext) för samtliga BPMN-filer
-      const useHierarchy = true;
+      // Använd full hierarkisk analys endast för toppfilen (root).
+      // Övriga filer genereras med enklare per-fil-analys för att undvika
+      // att browsern bygger tunga grafer för varje enskild subprocess-fil.
+      const isRootFile = rootFileName && file.file_name === rootFileName;
+      const useHierarchy = isRootFile;
 
       console.log(`Generating for ${file.file_name} (hierarchy: ${useHierarchy})`);
 
@@ -866,9 +869,13 @@ export default function BpmnFileManager() {
         ? 'llm-slow-chatgpt'
         : 'llm-slow-ollama';
       const localAvailable = llmHealth?.local.available ?? false;
+      const graphFiles =
+        isRootFile && useHierarchy
+          ? existingBpmnFiles
+          : [file.file_name];
       const result = await generateAllFromBpmnWithGraph(
         file.file_name,
-        existingBpmnFiles,
+        graphFiles,
         existingDmnFiles,
         useHierarchy,
         !isLocalMode,
@@ -1579,14 +1586,33 @@ export default function BpmnFileManager() {
 
   const handleGenerateAllArtifacts = async () => {
     const rootFile = await resolveRootBpmnFile();
-    if (!rootFile) return;
+    const allBpmnFiles = files.filter((f) => f.file_type === 'bpmn');
+
+    if (!allBpmnFiles.length) {
+      toast({
+        title: 'Inga BPMN-filer',
+        description: 'Ladda upp minst en BPMN-fil innan du genererar artefakter.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const orderedFiles =
+      rootFile != null
+        ? [rootFile, ...allBpmnFiles.filter((f) => f.id !== rootFile.id)]
+        : allBpmnFiles;
 
     toast({
-      title: 'Startar generering från toppnoden',
-      description: `Genererar hierarki och artefakter utifrån ${rootFile.file_name} för alla BPMN-filer.`,
+      title: 'Startar generering för alla BPMN-filer',
+      description:
+        rootFile != null
+          ? `Genererar hierarki och artefakter med ${rootFile.file_name} som toppfil (${orderedFiles.length} filer totalt).`
+          : `Genererar hierarki och artefakter för ${orderedFiles.length} BPMN-filer.`,
     });
 
-    await handleGenerateArtifacts(rootFile, generationMode, 'file');
+    for (const file of orderedFiles) {
+      await handleGenerateArtifacts(file, generationMode, 'file');
+    }
   };
 
   const handleGenerateSelectedFile = async () => {
@@ -2789,10 +2815,16 @@ export default function BpmnFileManager() {
                 </TableCell>
               </TableRow>
             ) : (
-              files.map((file) => (
+              files.map((file) => {
+                const isSelected = selectedFile?.id === file.id;
+                return (
                 <TableRow
                   key={file.id}
-                  className={selectedFile?.id === file.id ? 'bg-muted/40' : ''}
+                  className={
+                    isSelected
+                      ? 'bg-muted/60 border-l-4 border-primary/70'
+                      : 'hover:bg-muted/30 cursor-pointer'
+                  }
                   onClick={() => setSelectedFile(file)}
                 >
                   <TableCell className="font-medium">
@@ -3051,7 +3083,7 @@ export default function BpmnFileManager() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+              )})
             )}
           </TableBody>
         </Table>

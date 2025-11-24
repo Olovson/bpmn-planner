@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { collectProcessDefinitionsFromMeta } from '@/lib/bpmn/processDefinition';
-import { parseBpmnFile } from '@/lib/bpmnParser';
 import type { NormalizedProcessDefinition } from '@/lib/bpmn/buildProcessHierarchy';
 import {
   resolveProcessFileName,
@@ -59,19 +58,8 @@ async function buildClientProcessTree(rootFile: string): Promise<ProcessTreeNode
     effectiveRootFile = fallback;
   }
 
-  const parseResultsByFile = new Map<string, Awaited<ReturnType<typeof parseBpmnFile>>>();
-  for (const file of bpmnFiles) {
-    try {
-      const result = await parseBpmnFile(`/bpmn/${file.file_name}`);
-      parseResultsByFile.set(file.file_name, result);
-    } catch (parseError) {
-      console.warn('[useProcessTree] Failed to parse BPMN file for ordering', file.file_name, parseError);
-    }
-  }
-
   const model = buildProcessModelFromDefinitions(files, {
     preferredRootFile: effectiveRootFile,
-    parseResultsByFile,
   });
 
   const tree = buildProcessTreeFromModel(model, effectiveRootFile, buildArtifacts);

@@ -478,44 +478,58 @@ function assignExecutionOrderFromSequenceFlows(
     const visitedPerBranch = new Map<string, number>();
     const maxVisitsPerNode = 2;
 
-    const walk = (elementId: string, branchId: string, scenarioPath: string[]) => {
-      const branchKey = `${branchId}:${elementId}`;
-      const visits = (visitedPerBranch.get(branchKey) ?? 0) + 1;
-      if (visits > maxVisitsPerNode) return;
-      visitedPerBranch.set(branchKey, visits);
-
-      const modelNodes = nodesByElementId.get(elementId) ?? [];
-      modelNodes.forEach((node) => {
-        node.primaryPathIndex = counter;
-        node.branchId = branchId;
-        node.scenarioPath = scenarioPath;
-      });
-      if (modelNodes.length) {
-        counter += 1;
-      }
-
-      const next = successors.get(elementId) ?? [];
-      if (!next.length) return;
-
-      if (next.length === 1) {
-        walk(next[0], branchId, scenarioPath);
-        return;
-      }
-
-      const [first, ...others] = next;
-      walk(first, branchId, scenarioPath);
-
-      others.forEach((target, index) => {
-        const subBranchId = `${branchId}-branch-${index + 1}`;
-        const subScenarioPath = [...scenarioPath, subBranchId];
-        walk(target, subBranchId, subScenarioPath);
-      });
-    };
-
     startCandidates.forEach((startId, index) => {
       const branchId = index === 0 ? 'main' : `entry-${index + 1}`;
       const scenarioPath = [branchId];
-      walk(startId, branchId, scenarioPath);
+      type StackFrame = { elementId: string; branchId: string; scenarioPath: string[] };
+      const stack: StackFrame[] = [{ elementId: startId, branchId, scenarioPath }];
+
+      while (stack.length > 0) {
+        const { elementId, branchId: currentBranchId, scenarioPath: currentScenario } = stack.pop()!;
+        const branchKey = `${currentBranchId}:${elementId}`;
+        const visits = (visitedPerBranch.get(branchKey) ?? 0) + 1;
+        if (visits > maxVisitsPerNode) continue;
+        visitedPerBranch.set(branchKey, visits);
+
+        const modelNodes = nodesByElementId.get(elementId) ?? [];
+        modelNodes.forEach((node) => {
+          node.primaryPathIndex = counter;
+          node.branchId = currentBranchId;
+          node.scenarioPath = currentScenario;
+        });
+        if (modelNodes.length) {
+          counter += 1;
+        }
+
+        const next = successors.get(elementId) ?? [];
+        if (!next.length) continue;
+
+        if (next.length === 1) {
+          stack.push({
+            elementId: next[0],
+            branchId: currentBranchId,
+            scenarioPath: currentScenario,
+          });
+          continue;
+        }
+
+        const [first, ...others] = next;
+        others.forEach((target, idx) => {
+          const subBranchId = `${currentBranchId}-branch-${idx + 1}`;
+          const subScenarioPath = [...currentScenario, subBranchId];
+          stack.push({
+            elementId: target,
+            branchId: subBranchId,
+            scenarioPath: subScenarioPath,
+          });
+        });
+
+        stack.push({
+          elementId: first,
+          branchId: currentBranchId,
+          scenarioPath: currentScenario,
+        });
+      }
     });
   });
 }

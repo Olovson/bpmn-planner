@@ -31,7 +31,7 @@ export function buildProcessTreeFromModel(
     model.hierarchyRoots.find((proc) => proc.bpmnFile === rootFile) ??
     model.hierarchyRoots[0];
 
-  const children = buildChildren(rootProcess, model, artifactBuilder);
+  const children = buildChildren(rootProcess, model, artifactBuilder, new Set<string>());
 
   return {
     id: rootProcess.id,
@@ -51,6 +51,7 @@ function buildChildren(
   parent: ProcessNodeModel,
   model: ProcessModel,
   artifactBuilder: ArtifactBuilder,
+  visitedProcesses: Set<string>,
 ): ProcessTreeNode[] {
   const result: ProcessTreeNode[] = [];
 
@@ -61,12 +62,12 @@ function buildChildren(
     if (child.kind === 'process') {
       // Flatten process nodes beneath the current parent, mirroring
       // convertProcessHierarchyToTree behaviour.
-      result.push(...buildChildren(child, model, artifactBuilder));
+      result.push(...buildChildren(child, model, artifactBuilder, visitedProcesses));
       return;
     }
 
     if (child.kind === 'callActivity') {
-      result.push(buildCallActivityNode(child, model, artifactBuilder));
+      result.push(buildCallActivityNode(child, model, artifactBuilder, visitedProcesses));
       return;
     }
 
@@ -86,10 +87,45 @@ function buildCallActivityNode(
   node: ProcessNodeModel,
   model: ProcessModel,
   artifactBuilder: ArtifactBuilder,
+  visitedProcesses: Set<string>,
 ): ProcessTreeNode {
   const subprocessFile = resolveSubprocessFile(node, model);
-  const children = buildChildren(node, model, artifactBuilder);
+  const children = buildChildren(node, model, artifactBuilder, visitedProcesses);
   const elementId = node.bpmnElementId;
+
+  // If this Call Activity has a resolved subprocess, embed the subprocess'
+  // process node (and its children) explicitly in the tree so that the full
+  // cross-file hierarchy becomes visible.
+  if (subprocessFile) {
+    const subprocessEdge = model.edges.find(
+      (e) => e.kind === 'subprocess' && e.fromId === node.id,
+    );
+    if (subprocessEdge) {
+      const targetProcess = model.nodesById.get(subprocessEdge.toId);
+      if (targetProcess && !visitedProcesses.has(targetProcess.id)) {
+        visitedProcesses.add(targetProcess.id);
+        const subprocessChildren = buildChildren(
+          targetProcess,
+          model,
+          artifactBuilder,
+          visitedProcesses,
+        );
+        const subprocessNode: ProcessTreeNode = {
+          id: targetProcess.id,
+          label: targetProcess.name,
+          type: 'process',
+          bpmnFile: targetProcess.bpmnFile,
+          bpmnElementId: targetProcess.processId,
+          orderIndex: targetProcess.primaryPathIndex,
+          branchId: targetProcess.branchId,
+          scenarioPath: targetProcess.scenarioPath,
+          children: subprocessChildren,
+          diagnostics: targetProcess.diagnostics,
+        };
+        children.push(subprocessNode);
+      }
+    }
+  }
 
   return {
     id: node.id,

@@ -239,10 +239,30 @@ function buildProcessNode(
   const proc = context.processes.get(processInternalId);
   if (!proc) return null;
 
+  const deriveProcessDisplayName = (): string => {
+    const humanize = (val?: string | null): string => {
+      if (!val) return '';
+      let base = val.replace(/\.bpmn$/i, '').replace(/^\/?public\//, '');
+      base = base.replace(/^mortgage-se-/, '').replace(/^mortgage-/, '');
+      base = base.replace(/-/g, ' ').trim();
+      if (!base) base = val;
+      return base.replace(/\b\w/g, (c) => c.toUpperCase());
+    };
+
+    const fromName = humanize(proc.name);
+    if (fromName) return fromName;
+
+    const fromId = humanize(proc.id);
+    if (fromId) return fromId;
+
+    const fromFile = humanize(proc.fileName);
+    return fromFile || 'Process';
+  };
+
   const node: HierarchyNode = {
     nodeId: processInternalId,
     bpmnType: 'process',
-    displayName: proc.name || proc.id || proc.fileName,
+    displayName: deriveProcessDisplayName(),
     processId: proc.id,
     children: [],
     diagnostics: proc.parseDiagnostics ?? [],
@@ -322,4 +342,3 @@ function diagnosticMessageForStatus(
       return `Ingen subprocess kunde matchas för ${callActivityName}.`;
   }
 }
-

@@ -2,14 +2,10 @@ import type { BpmnElement, BpmnParseResult } from './bpmnParser';
 import { parseBpmnFile } from './bpmnParser';
 import { collectProcessDefinitionsFromMeta } from '@/lib/bpmn/processDefinition';
 import {
-  buildProcessHierarchy,
-  type NormalizedProcessDefinition,
-} from '@/lib/bpmn/buildProcessHierarchy';
-import type { HierarchyNode, ProcessDefinition } from '@/lib/bpmn/types';
-import {
-  resolveProcessFileName,
-  resolveProcessFileNameByInternalId,
-} from '@/lib/bpmn/hierarchyTraversal';
+  buildProcessModelFromDefinitions,
+  type ProcessModel,
+  type ProcessNodeModel,
+} from '@/lib/bpmn/buildProcessModel';
 
 export type BpmnNodeType =
   | 'process'
@@ -58,47 +54,44 @@ export async function buildBpmnProcessGraph(
   existingBpmnFiles: string[]
 ): Promise<BpmnProcessGraph> {
   const parseResults = await parseAllBpmnFiles(existingBpmnFiles);
-  const processDefinitions = buildProcessDefinitions(parseResults);
-
-  const preferredProcessIds = new Set(
-    processDefinitions.filter((proc) => proc.fileName === rootFile).map((proc) => proc.id),
-  );
-
-  const hierarchy = buildProcessHierarchy(processDefinitions, {
-    preferredRootProcessIds: preferredProcessIds,
+  const inputFiles = buildProcessModelInputFiles(parseResults);
+  const model = buildProcessModelFromDefinitions(inputFiles, {
+    preferredRootFile: rootFile,
   });
 
-  if (!hierarchy.roots.length) {
+  if (!model.hierarchyRoots.length) {
     throw new Error('Kunde inte bygga hierarki: inga processrötter hittades.');
   }
 
-  const rootHierarchyNode =
-    hierarchy.roots.find((node) => resolveProcessFileName(node, hierarchy.processes) === rootFile) ??
-    hierarchy.roots[0];
+  const rootProcess =
+    model.hierarchyRoots.find((proc) => proc.bpmnFile === rootFile) ??
+    model.hierarchyRoots[0];
 
-  const rootFileName =
-    resolveProcessFileName(rootHierarchyNode, hierarchy.processes) ?? rootFile;
+  const rootFileName = rootProcess.bpmnFile || rootFile;
 
   const elementsByFile = buildElementIndex(parseResults);
   const allNodes = new Map<string, BpmnProcessNode>();
   const fileNodes = new Map<string, BpmnProcessNode[]>();
   const missingDependencies: { parent: string; childProcess: string }[] = [];
 
-  const rootChildren = convertHierarchyChildren(rootHierarchyNode.children, {
-    currentFile: rootFileName,
-    processes: hierarchy.processes,
-    elementsByFile,
-    allNodes,
-    fileNodes,
-    missingDependencies,
-  });
+  const rootChildren = convertProcessModelChildren(
+    rootProcess,
+    model,
+    {
+      currentFile: rootFileName,
+      elementsByFile,
+      allNodes,
+      fileNodes,
+      missingDependencies,
+    },
+  );
 
   const root: BpmnProcessNode = {
     id: `root:${rootFileName}`,
-    name: rootHierarchyNode.displayName || rootFileName.replace('.bpmn', ''),
+    name: rootProcess.name || rootFileName.replace('.bpmn', ''),
     type: 'process',
     bpmnFile: rootFileName,
-    bpmnElementId: rootHierarchyNode.processId || 'root',
+    bpmnElementId: rootProcess.processId || 'root',
     children: rootChildren,
   };
 
@@ -129,14 +122,20 @@ async function parseAllBpmnFiles(
   return results;
 }
 
-function buildProcessDefinitions(parseResults: Map<string, BpmnParseResult>) {
-  const definitions: ProcessDefinition[] = [];
+function buildProcessModelInputFiles(
+  parseResults: Map<string, BpmnParseResult>,
+) {
+  const files: {
+    fileName: string;
+    definitions: ReturnType<typeof collectProcessDefinitionsFromMeta>;
+  }[] = [];
   for (const [fileName, result] of parseResults.entries()) {
-    definitions.push(
-      ...collectProcessDefinitionsFromMeta(fileName, result.meta),
-    );
+    files.push({
+      fileName,
+      definitions: collectProcessDefinitionsFromMeta(fileName, result.meta),
+    });
   }
-  return definitions;
+  return files;
 }
 
 function buildElementIndex(parseResults: Map<string, BpmnParseResult>) {
@@ -153,63 +152,57 @@ function buildElementIndex(parseResults: Map<string, BpmnParseResult>) {
 
 interface ConversionContext {
   currentFile: string;
-  processes: Map<string, NormalizedProcessDefinition>;
   elementsByFile: Map<string, Map<string, BpmnElement>>;
   allNodes: Map<string, BpmnProcessNode>;
   fileNodes: Map<string, BpmnProcessNode[]>;
   missingDependencies: { parent: string; childProcess: string }[];
 }
 
-function convertHierarchyChildren(
-  nodes: HierarchyNode[],
+function convertProcessModelChildren(
+  parent: ProcessNodeModel,
+  model: ProcessModel,
   context: ConversionContext,
 ): BpmnProcessNode[] {
   const result: BpmnProcessNode[] = [];
 
-  for (const node of nodes) {
-    if (node.bpmnType === 'process') {
-      const nextFile = resolveProcessFileName(node, context.processes) ?? context.currentFile;
+  parent.childrenIds.forEach((childId) => {
+    const node = model.nodesById.get(childId);
+    if (!node) return;
+
+    if (node.kind === 'process') {
+      // Flatten process nodes beneath the current parent, mirroring the
+      // behaviour used in the client-side ProcessTree.
       result.push(
-        ...convertHierarchyChildren(node.children, {
+        ...convertProcessModelChildren(node, model, {
           ...context,
-          currentFile: nextFile,
+          currentFile: node.bpmnFile || context.currentFile,
         }),
       );
-      continue;
+      return;
     }
 
-    if (node.bpmnType === 'callActivity') {
-      const elementId = node.link?.callActivityId ?? extractElementId(node.nodeId);
+    if (node.kind === 'callActivity') {
+      const elementId = node.bpmnElementId || node.id.split(':').pop()!;
       const element = context.elementsByFile.get(context.currentFile)?.get(elementId);
-      const subprocessFile = node.link?.matchedProcessId
-        ? resolveProcessFileNameByInternalId(node.link.matchedProcessId, context.processes)
+      const subprocessFile = node.subprocessLink?.matchedProcessId
+        ? resolveSubprocessFileFromModel(node, model)
         : undefined;
 
-      if (!subprocessFile || node.link?.matchStatus !== 'matched') {
+      if (!subprocessFile || node.subprocessLink?.matchStatus !== 'matched') {
         context.missingDependencies.push({
           parent: context.currentFile,
-          childProcess: node.displayName,
+          childProcess: node.name,
         });
       }
 
-      const children = node.children.flatMap((child) => {
-        if (child.bpmnType === 'process') {
-          const processFile =
-            resolveProcessFileName(child, context.processes) ?? subprocessFile ?? context.currentFile;
-          return convertHierarchyChildren(child.children, {
-            ...context,
-            currentFile: processFile,
-          });
-        }
-        return convertHierarchyChildren([child], {
-          ...context,
-          currentFile: subprocessFile ?? context.currentFile,
-        });
+      const children = convertProcessModelChildren(node, model, {
+        ...context,
+        currentFile: subprocessFile ?? context.currentFile,
       });
 
       const graphNode: BpmnProcessNode = {
         id: `${context.currentFile}:${elementId}`,
-        name: node.displayName,
+        name: node.name,
         type: 'callActivity',
         bpmnFile: context.currentFile,
         bpmnElementId: elementId,
@@ -217,41 +210,52 @@ function convertHierarchyChildren(
         element,
         subprocessFile,
         missingDefinition: !subprocessFile,
-        subprocessMatchStatus: node.link?.matchStatus,
-        subprocessDiagnostics: node.link?.diagnostics?.map((d) => d.message).filter(Boolean),
+        subprocessMatchStatus: node.subprocessLink?.matchStatus,
+        subprocessDiagnostics: node.subprocessLink?.diagnostics
+          ?.map((d) => d.message)
+          .filter(Boolean),
+        orderIndex: node.orderIndex,
+        branchId: node.branchId,
+        scenarioPath: node.scenarioPath,
       };
 
       registerGraphNode(graphNode, context);
       result.push(graphNode);
-      continue;
+      return;
     }
 
-    if (isTaskLike(node.bpmnType)) {
-      const elementId = extractElementId(node.nodeId);
+    if (
+      node.kind === 'userTask' ||
+      node.kind === 'serviceTask' ||
+      node.kind === 'businessRuleTask'
+    ) {
+      const elementId = node.bpmnElementId || node.id.split(':').pop()!;
       const element = context.elementsByFile.get(context.currentFile)?.get(elementId);
 
       const typeMap: Record<string, BpmnNodeType> = {
         userTask: 'userTask',
         serviceTask: 'serviceTask',
         businessRuleTask: 'businessRuleTask',
-        task: 'userTask',
       };
 
       const graphNode: BpmnProcessNode = {
         id: `${context.currentFile}:${elementId}`,
-        name: node.displayName,
-        type: typeMap[node.bpmnType] ?? 'userTask',
+        name: node.name,
+        type: typeMap[node.kind] ?? 'userTask',
         bpmnFile: context.currentFile,
         bpmnElementId: elementId,
         children: [],
         element,
+        orderIndex: node.orderIndex,
+        branchId: node.branchId,
+        scenarioPath: node.scenarioPath,
       };
 
       registerGraphNode(graphNode, context);
       result.push(graphNode);
-      continue;
+      return;
     }
-  }
+  });
 
   return result;
 }
@@ -309,43 +313,58 @@ function assignExecutionOrder(
     const visitedPerBranch = new Map<string, number>();
     const maxVisitsPerNode = 2;
 
-    const walk = (elementId: string, branchId: string, scenarioPath: string[]) => {
-      const branchKey = `${branchId}:${elementId}`;
-      const visits = (visitedPerBranch.get(branchKey) ?? 0) + 1;
-      if (visits > maxVisitsPerNode) return;
-      visitedPerBranch.set(branchKey, visits);
-
-      const graphNodes = nodesByElementId.get(elementId) ?? [];
-      graphNodes.forEach((node) => {
-        if (node.orderIndex == null) {
-          node.orderIndex = counter++;
-          node.branchId = branchId;
-          node.scenarioPath = scenarioPath;
-        }
-      });
-
-      const next = successors.get(elementId) ?? [];
-      if (!next.length) return;
-
-      if (next.length === 1) {
-        walk(next[0], branchId, scenarioPath);
-        return;
-      }
-
-      const [first, ...others] = next;
-      walk(first, branchId, scenarioPath);
-
-      others.forEach((target, index) => {
-        const subBranchId = `${branchId}-branch-${index + 1}`;
-        const subScenarioPath = [...scenarioPath, subBranchId];
-        walk(target, subBranchId, subScenarioPath);
-      });
-    };
-
     startCandidates.forEach((startId, index) => {
       const branchId = index === 0 ? 'main' : `entry-${index + 1}`;
       const scenarioPath = [branchId];
-      walk(startId, branchId, scenarioPath);
+      type StackFrame = { elementId: string; branchId: string; scenarioPath: string[] };
+      const stack: StackFrame[] = [{ elementId: startId, branchId, scenarioPath }];
+
+      while (stack.length > 0) {
+        const { elementId, branchId: currentBranchId, scenarioPath: currentScenario } = stack.pop()!;
+        const branchKey = `${currentBranchId}:${elementId}`;
+        const visits = (visitedPerBranch.get(branchKey) ?? 0) + 1;
+        if (visits > maxVisitsPerNode) continue;
+        visitedPerBranch.set(branchKey, visits);
+
+        const graphNodes = nodesByElementId.get(elementId) ?? [];
+        graphNodes.forEach((node) => {
+          if (node.orderIndex == null) {
+            node.orderIndex = counter++;
+            node.branchId = currentBranchId;
+            node.scenarioPath = currentScenario;
+          }
+        });
+
+        const next = successors.get(elementId) ?? [];
+        if (!next.length) continue;
+
+        if (next.length === 1) {
+          stack.push({
+            elementId: next[0],
+            branchId: currentBranchId,
+            scenarioPath: currentScenario,
+          });
+          continue;
+        }
+
+        const [first, ...others] = next;
+        // Push others first so that "first" is processed first (LIFO).
+        others.forEach((target, idx) => {
+          const subBranchId = `${currentBranchId}-branch-${idx + 1}`;
+          const subScenarioPath = [...currentScenario, subBranchId];
+          stack.push({
+            elementId: target,
+            branchId: subBranchId,
+            scenarioPath: subScenarioPath,
+          });
+        });
+
+        stack.push({
+          elementId: first,
+          branchId: currentBranchId,
+          scenarioPath: currentScenario,
+        });
+      }
     });
   });
 }
@@ -363,8 +382,14 @@ function extractElementId(nodeId: string): string {
   return segments[segments.length - 1];
 }
 
-function isTaskLike(type: HierarchyNode['bpmnType']) {
-  return type === 'userTask' || type === 'serviceTask' || type === 'businessRuleTask' || type === 'task';
+function resolveSubprocessFileFromModel(
+  node: ProcessNodeModel,
+  model: ProcessModel,
+): string | undefined {
+  const link = node.subprocessLink;
+  if (!link?.matchedProcessId) return undefined;
+  const target = model.nodesById.get(link.matchedProcessId);
+  return target?.bpmnFile;
 }
 
 /**
