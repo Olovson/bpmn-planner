@@ -3,6 +3,13 @@ import * as d3 from 'd3';
 import { ProcessTreeNode, ProcessNodeType, NodeArtifact, getProcessNodeStyle, PROCESS_NODE_STYLES } from '@/lib/processTree';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Download } from 'lucide-react';
 
 interface ProcessTreeD3Props {
   root: ProcessTreeNode;
@@ -20,10 +27,17 @@ interface ProcessTreeD3Props {
   nodeTypeFilter?: Set<ProcessNodeType>;
   /** Callback när nodeTypeFilter ändras */
   onNodeTypeFilterChange?: (filter: Set<ProcessNodeType>) => void;
+  /** Export-callbacks från instans med SVG-elementet (används i legenden) */
+  onExportSvg?: () => void;
+  onExportPng?: () => void;
+  onExportPdf?: () => void;
 }
 
 export interface ProcessTreeD3Api {
   zoomToFitCurrentTree: () => void;
+  exportSvg: () => void;
+  exportPng: () => void;
+  exportPdf: () => void;
 }
 
 const getColorForNodeType = (type: ProcessNodeType): string => {
@@ -78,6 +92,9 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
   onCollapsedIdsChange,
   nodeTypeFilter,
   onNodeTypeFilterChange,
+  onExportSvg,
+  onExportPng,
+  onExportPdf,
 }, ref) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -88,58 +105,252 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
   const collapsedIds = externalCollapsedIds ?? internalCollapsedIds;
   const setCollapsedIds = onCollapsedIdsChange ?? setInternalCollapsedIds;
 
-  const handleExportPdf = () => {
+  // Hjälpfunktion för att förbereda SVG för export
+  const prepareSvgForExport = (): { svgString: string; viewBox: string } | null => {
     const svgElement = svgRef.current;
-    if (!svgElement) return;
+    if (!svgElement) {
+      console.warn('[ProcessTreeD3] Cannot export: SVG element not found');
+      return null;
+    }
 
-    const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
-    clonedSvg.removeAttribute('class');
-
-    // Sätt explicita färger istället för CSS-variabler
-    clonedSvg.querySelectorAll('path.link').forEach((el) => {
-      (el as SVGPathElement).setAttribute('stroke', '#CBD5E1');
-    });
-    clonedSvg.querySelectorAll('circle').forEach((el) => {
-      const circle = el as SVGCircleElement;
-      if (circle.getAttribute('stroke')?.includes('var(')) {
-        circle.setAttribute('stroke', '#0F172A');
+    try {
+      // Hämta den aktuella transform-strängen från <g>-elementet
+      const gElement = svgElement.querySelector('g.tree-root') as SVGGElement;
+      if (!gElement) {
+        console.warn('[ProcessTreeD3] Cannot export: tree-root group not found');
+        return null;
       }
-    });
-    clonedSvg.querySelectorAll('text').forEach((el) => {
-      const text = el as SVGTextElement;
-      if (text.getAttribute('fill')?.includes('var(')) {
-        text.setAttribute('fill', '#0F172A');
+
+      const transform = gElement.getAttribute('transform') || '';
+      
+      // Klona SVG och ta bort class-attribut
+      const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+      clonedSvg.removeAttribute('class');
+      clonedSvg.removeAttribute('style');
+
+      // Hitta det klonade <g>-elementet och applicera transformen direkt på dess barn
+      const clonedG = clonedSvg.querySelector('g.tree-root') as SVGGElement;
+      if (clonedG && transform) {
+        // Applicera transformen på alla barn istället för på <g>
+        const children = Array.from(clonedG.children);
+        children.forEach((child) => {
+          const childTransform = child.getAttribute('transform') || '';
+          const combinedTransform = childTransform 
+            ? `${transform} ${childTransform}` 
+            : transform;
+          child.setAttribute('transform', combinedTransform);
+        });
+        clonedG.removeAttribute('transform');
       }
-    });
 
-    const width = svgElement.clientWidth || 1200;
-    const height = svgElement.clientHeight || 800;
-    clonedSvg.setAttribute('width', String(width));
-    clonedSvg.setAttribute('height', String(height));
+      // Sätt explicita färger istället för CSS-variabler
+      clonedSvg.querySelectorAll('path.link').forEach((el) => {
+        (el as SVGPathElement).setAttribute('stroke', '#CBD5E1');
+        (el as SVGPathElement).setAttribute('stroke-width', '2');
+      });
+      
+      clonedSvg.querySelectorAll('circle').forEach((el) => {
+        const circle = el as SVGCircleElement;
+        const fill = circle.getAttribute('fill');
+        const stroke = circle.getAttribute('stroke');
+        
+        // Konvertera CSS-variabler till explicita färger
+        if (!fill || fill.includes('var(')) {
+          const computedFill = window.getComputedStyle(circle).fill;
+          circle.setAttribute('fill', computedFill || '#3B82F6');
+        }
+        if (!stroke || stroke.includes('var(')) {
+          const computedStroke = window.getComputedStyle(circle).stroke;
+          circle.setAttribute('stroke', computedStroke || '#0F172A');
+        }
+      });
+      
+      clonedSvg.querySelectorAll('text').forEach((el) => {
+        const text = el as SVGTextElement;
+        const fill = text.getAttribute('fill');
+        if (!fill || fill.includes('var(')) {
+          const computedFill = window.getComputedStyle(text).fill;
+          text.setAttribute('fill', computedFill || '#0F172A');
+        }
+      });
 
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(clonedSvg);
+      // Beräkna faktiska dimensioner från trädet
+      const treeData = treeDataRef.current;
+      let viewBox = '0 0 1200 800';
+      if (treeData) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        treeData.descendants().forEach(d => {
+          if (d.x < minX) minX = d.x;
+          if (d.x > maxX) maxX = d.x;
+          if (d.y < minY) minY = d.y;
+          if (d.y > maxY) maxY = d.y;
+        });
+        const padding = 100;
+        const width = maxY - minY + padding * 2;
+        const height = maxX - minX + padding * 2;
+        viewBox = `${minY - padding} ${minX - padding} ${width} ${height}`;
+      }
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+      clonedSvg.setAttribute('viewBox', viewBox);
+      clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
 
-    printWindow.document.open();
-    printWindow.document.write(`<!DOCTYPE html>
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(clonedSvg);
+
+      return { svgString, viewBox };
+    } catch (error) {
+      console.error('[ProcessTreeD3] Error preparing SVG for export:', error);
+      return null;
+    }
+  };
+
+  const handleExportSvg = () => {
+    const prepared = prepareSvgForExport();
+    if (!prepared) {
+      alert('Kunde inte exportera SVG. Kontrollera konsolen för mer information.');
+      return;
+    }
+
+    const { svgString, viewBox } = prepared;
+    const filename = `${root.label.replace(/[^a-z0-9]/gi, '_')}_processtree.svg`;
+    
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPng = () => {
+    const prepared = prepareSvgForExport();
+    if (!prepared) {
+      alert('Kunde inte exportera PNG. Kontrollera konsolen för mer information.');
+      return;
+    }
+
+    const { svgString, viewBox } = prepared;
+    
+    // Parse viewBox för att få dimensioner
+    const viewBoxMatch = viewBox.match(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/);
+    if (!viewBoxMatch) {
+      alert('Kunde inte beräkna dimensioner för PNG-export.');
+      return;
+    }
+
+    const [, , , width, height] = viewBoxMatch;
+    const scale = 2; // 2x för högre kvalitet
+    const scaledWidth = Math.ceil(parseFloat(width) * scale);
+    const scaledHeight = Math.ceil(parseFloat(height) * scale);
+
+    // Skapa en SVG med rätt dimensioner
+    const svgWithDimensions = svgString.replace(
+      /viewBox="[^"]*"/,
+      `viewBox="${viewBox}" width="${scaledWidth}" height="${scaledHeight}"`
+    );
+
+    // Skapa en bild och ladda SVG
+    const img = new Image();
+    const svgBlob = new Blob([svgWithDimensions], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    img.onload = () => {
+      // Skapa canvas och rita bilden
+      const canvas = document.createElement('canvas');
+      canvas.width = scaledWidth;
+      canvas.height = scaledHeight;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        alert('Kunde inte skapa canvas för PNG-export.');
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Vit bakgrund
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, scaledWidth, scaledHeight);
+      
+      // Rita SVG
+      ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+
+      // Ladda ner PNG
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert('Kunde inte skapa PNG-fil.');
+          URL.revokeObjectURL(url);
+          return;
+        }
+
+        const filename = `${root.label.replace(/[^a-z0-9]/gi, '_')}_processtree.png`;
+        const pngUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(pngUrl);
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    };
+
+    img.onerror = () => {
+      alert('Kunde inte ladda SVG för PNG-konvertering.');
+      URL.revokeObjectURL(url);
+    };
+
+    img.src = url;
+  };
+
+  const handleExportPdf = () => {
+    const prepared = prepareSvgForExport();
+    if (!prepared) {
+      alert('Kunde inte exportera PDF. Kontrollera konsolen för mer information.');
+      return;
+    }
+
+    const { svgString } = prepared;
+
+    try {
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        console.warn('[ProcessTreeD3] Cannot export PDF: popup blocked');
+        alert('Popup blockerades. Tillåt popups för denna sida för att exportera till PDF.');
+        return;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(`<!DOCTYPE html>
 <html lang="sv">
   <head>
     <meta charset="utf-8" />
-    <title>Processträd</title>
+    <title>Processträd - ${root.label}</title>
     <style>
-      body {
-        margin: 0;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      @media print {
+        body {
+          margin: 0;
+          padding: 0;
+        }
+        svg {
+          width: 100%;
+          height: auto;
+        }
       }
-      svg {
-        max-width: 100%;
-        height: auto;
+      @media screen {
+        body {
+          margin: 20px;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #f5f5f5;
+        }
+        svg {
+          background: white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          border-radius: 4px;
+        }
       }
     </style>
   </head>
@@ -147,13 +358,19 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
     ${svgString}
     <script>
       window.onload = function () {
-        window.focus();
-        window.print();
+        setTimeout(function() {
+          window.focus();
+          window.print();
+        }, 250);
       };
     <\/script>
   </body>
 </html>`);
-    printWindow.document.close();
+      printWindow.document.close();
+    } catch (error) {
+      console.error('[ProcessTreeD3] Error exporting PDF:', error);
+      alert('Ett fel uppstod vid export till PDF. Kontrollera konsolen för mer information.');
+    }
   };
 
   // Imperative API: zoom to fit current tree
@@ -204,7 +421,10 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
   // Expose API via ref
   useImperativeHandle(ref, () => ({
     zoomToFitCurrentTree,
-  }), [zoomToFitCurrentTree]);
+    exportSvg: handleExportSvg,
+    exportPng: handleExportPng,
+    exportPdf: handleExportPdf,
+  }), [zoomToFitCurrentTree, root]);
 
   const handleCollapseAll = () => {
     const allIds = new Set<string>();
@@ -491,9 +711,25 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
                 <Button variant="outline" size="sm" onClick={handleExpandAll}>
                   Expandera allt
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleExportPdf}>
-                  Exportera till PDF
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Exportera
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={onExportSvg || handleExportSvg}>
+                      Exportera som SVG
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={onExportPng || handleExportPng}>
+                      Exportera som PNG
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={onExportPdf || handleExportPdf}>
+                      Exportera som PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </CardContent>

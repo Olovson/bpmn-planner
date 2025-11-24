@@ -182,6 +182,9 @@ export function ProcessExplorerView({
           onCollapsedIdsChange={setCollapsedIds}
           nodeTypeFilter={nodeTypeFilter}
           onNodeTypeFilterChange={setNodeTypeFilter}
+          onExportSvg={() => treeRef.current?.exportSvg()}
+          onExportPng={() => treeRef.current?.exportPng()}
+          onExportPdf={() => treeRef.current?.exportPdf()}
         />
         {hasDiagnostics && (
           <div className="diagnostics-summary bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
