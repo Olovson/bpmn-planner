@@ -1801,8 +1801,8 @@ export default function BpmnFileManager() {
       title: 'Startar generering för alla BPMN-filer',
       description:
         rootFile != null
-          ? `Genererar hierarki och artefakter med ${rootFile.file_name} som toppfil (${orderedFiles.length} filer totalt).`
-          : `Genererar hierarki och artefakter för ${orderedFiles.length} BPMN-filer.`,
+          ? `Genererar dokumentation, tester och DoR/DoD med ${rootFile.file_name} som toppfil (${orderedFiles.length} filer totalt), baserat på befintlig hierarki.`
+          : `Genererar dokumentation, tester och DoR/DoD för ${orderedFiles.length} BPMN-filer, baserat på befintlig hierarki.`,
     });
 
     for (const file of orderedFiles) {
@@ -2274,127 +2274,115 @@ export default function BpmnFileManager() {
       
       <Card className="p-6 mb-8 border-dashed border-muted-foreground/40 bg-muted/10">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <h2 className="text-lg font-semibold">Genereringsläge</h2>
-                <Badge variant="outline">
-                  {currentGenerationLabel}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Välj om du vill använda endast lokala mallar (fallback), ChatGPT eller lokal LLM (Ollama) för generering.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => (window.location.hash = '/registry-status')}
-                className="gap-2"
-              >
-                <AlertCircle className="w-4 h-4" />
-                Registry Status
-              </Button>
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <h2 className="text-lg font-semibold">Genereringsläge</h2>
+            <Badge variant="outline">
+              {currentGenerationLabel}
+            </Badge>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (window.location.hash = '/registry-status')}
+              className="gap-2"
+            >
+              <AlertCircle className="w-4 h-4" />
+              Registry Status
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowResetDialog(true)}
+              disabled={isResetting}
+              className="gap-2"
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Återställer...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Reset registret
+                </>
+              )}
+            </Button>
+            {files.length > 0 && (
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => setShowResetDialog(true)}
-                disabled={isResetting}
+                onClick={() => setShowDeleteAllDialog(true)}
                 className="gap-2"
               >
-                {isResetting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Återställer...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    Reset registret
-                  </>
-                )}
+                <Trash2 className="w-4 h-4" />
+                Radera alla filer
               </Button>
-              {files.length > 0 && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteAllDialog(true)}
-                  className="gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Radera alla filer
-                </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={generatingFile !== null || isLoading || !rootFileName}
+              onClick={async () => {
+                if (!rootFileName) return;
+                const root = files.find((f) => f.file_name === rootFileName);
+                if (!root) return;
+                await handleBuildHierarchy(root);
+              }}
+              className="gap-2"
+            >
+              <GitBranch className="w-4 h-4" />
+              Bygg/uppdatera hierarki från root
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={validatingMap}
+              onClick={handleValidateBpmnMap}
+              className="gap-2"
+              title="Validera bpmn-map.json mot aktuella BPMN-filer"
+            >
+              {validatingMap ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Validerar BPMN-karta…
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-3 h-3" />
+                  Validera BPMN-karta
+                </>
               )}
-            </div>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={generatingFile !== null || isLoading || files.length === 0 || !rootFileName}
+              onClick={handleGenerateAllArtifacts}
+              className="gap-2"
+              title="Generera dokumentation, tester och DoR/DoD för alla BPMN-filer baserat på befintlig hierarki"
+            >
+              {generationMode === 'local' ? (
+                <FileText className="w-3 h-3" />
+              ) : (
+                <Sparkles className="w-3 h-3" />
+              )}
+              Generera dokumentation/tester (alla filer)
+            </Button>
           </div>
-          {rootFileName && (
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mt-1">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium">Toppfil (root):</span>{' '}
-                <code className="text-xs">{rootFileName}</code>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={generatingFile !== null || isLoading}
-                  onClick={async () => {
-                    const root = files.find((f) => f.file_name === rootFileName);
-                    if (!root) return;
-                    await handleBuildHierarchy(root);
-                  }}
-                  className="gap-2"
-                >
-                  <GitBranch className="w-4 h-4" />
-                  Bygg/uppdatera hierarki från root
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={generatingFile !== null || isLoading || files.length === 0}
-                  onClick={handleGenerateAllArtifacts}
-                  className="gap-2"
-                  title="Generera dokumentation/tester för alla BPMN-filer baserat på befintlig hierarki"
-                >
-                  {generationMode === 'local' ? (
-                    <FileText className="w-3 h-3" />
-                  ) : (
-                    <Sparkles className="w-3 h-3" />
-                  )}
-                  Generera artefakter (alla filer)
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={validatingMap}
-                  onClick={handleValidateBpmnMap}
-                  className="gap-2"
-                  title="Validera bpmn-map.json mot aktuella BPMN-filer"
-                >
-                  {validatingMap ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Validerar BPMN-karta…
-                    </>
-                  ) : (
-                    <>
-                      <AlertTriangle className="w-3 h-3" />
-                      Validera BPMN-karta
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mt-4">
             <Button
               size="sm"
               variant={generationMode === 'local' ? 'default' : 'outline'}
-              className="gap-2"
+              className={`gap-2 ${
+                generationMode === 'local'
+                  ? 'ring-2 ring-primary shadow-sm'
+                  : 'opacity-80'
+              }`}
               onClick={() => setGenerationMode('local')}
-              disabled={generationMode === 'local'}
+              aria-pressed={generationMode === 'local'}
             >
               <FileText className="w-4 h-4" />
               Local (ingen LLM)
@@ -2402,13 +2390,17 @@ export default function BpmnFileManager() {
             <Button
               size="sm"
               variant={generationMode === 'slow' && llmProvider === 'cloud' ? 'default' : 'outline'}
-              className="gap-2"
+              className={`gap-2 ${
+                generationMode === 'slow' && llmProvider === 'cloud'
+                  ? 'ring-2 ring-primary shadow-sm'
+                  : 'opacity-80'
+              }`}
               onClick={() => {
                 setLlmMode('slow');
                 setGenerationMode('slow');
                 setLlmProvider('cloud');
               }}
-              disabled={generationMode === 'slow' && llmProvider === 'cloud'}
+              aria-pressed={generationMode === 'slow' && llmProvider === 'cloud'}
             >
               <Sparkles className="w-4 h-4" />
               ChatGPT (moln-LLM)
@@ -2416,13 +2408,17 @@ export default function BpmnFileManager() {
             <Button
               size="sm"
               variant={generationMode === 'slow' && llmProvider === 'local' ? 'default' : 'outline'}
-              className="gap-2"
+              className={`gap-2 ${
+                generationMode === 'slow' && llmProvider === 'local'
+                  ? 'ring-2 ring-primary shadow-sm'
+                  : 'opacity-80'
+              }`}
               onClick={() => {
                 setLlmMode('slow');
                 setGenerationMode('slow');
                 setLlmProvider('local');
               }}
-              disabled={generationMode === 'slow' && llmProvider === 'local'}
+              aria-pressed={generationMode === 'slow' && llmProvider === 'local'}
               title={
                 !llmHealth?.local.available
                   ? `Kan inte nå lokal LLM-motor – kontrollera att Ollama körs. ${llmHealth?.local.error ? `Fel: ${llmHealth.local.error}` : ''}`
@@ -2448,7 +2444,14 @@ export default function BpmnFileManager() {
           <div className="flex flex-wrap gap-2 mt-3">
             <Button
               size="sm"
-              variant="default"
+              variant={
+                generatingFile !== null ||
+                isLoading ||
+                !selectedFile ||
+                selectedFile.file_type !== 'bpmn'
+                  ? 'outline'
+                  : 'default'
+              }
               disabled={
                 generatingFile !== null ||
                 isLoading ||
@@ -2894,128 +2897,6 @@ export default function BpmnFileManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Job Queue */}
-      <Card className="mt-6">
-        <div className="border-b px-4 py-3">
-          <h3 className="font-semibold">Jobb & historik</h3>
-        </div>
-        <div className="p-4">
-          <div className="space-y-2">
-            {generationJobs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Inga aktiva jobb – alla genereringar är klara just nu.</p>
-            ) : (
-              <ul className="space-y-3">
-                {generationJobs.map(job => (
-                  <li
-                    key={job.id}
-                    className="flex flex-col md:flex-row md:items-center justify-between gap-2 border rounded-lg p-3"
-                  >
-                    {(() => {
-                      const jobResult = (job.result || {}) as {
-                        docs?: number;
-                        tests?: number;
-                        dorDod?: number;
-                        filesAnalyzed?: string[];
-                        mode?: string;
-                        skippedSubprocesses?: string[];
-                        llmProvider?: 'cloud' | 'local' | 'fallback';
-                      };
-                      const providerLabel =
-                        jobResult.llmProvider === 'cloud'
-                          ? 'ChatGPT'
-                          : jobResult.llmProvider === 'local'
-                          ? 'Ollama'
-                          : jobResult.llmProvider === 'fallback' || job.mode === 'local'
-                          ? 'Lokal fallback'
-                          : undefined;
-                      const modeLabel =
-                        job.mode === 'slow'
-                          ? providerLabel
-                            ? `LLM (${providerLabel})`
-                            : 'Slow LLM'
-                          : job.mode === 'local'
-                          ? 'Lokal fallback'
-                          : 'Okänt';
-                      const statusLabel = formatStatusLabel(job.status);
-                      const durationMs =
-                        job.started_at && job.finished_at
-                          ? new Date(job.finished_at).getTime() -
-                            new Date(job.started_at).getTime()
-                          : undefined;
-                      return (
-                        <>
-                          <div className="flex-1">
-                            <div className="text-sm font-semibold mb-1">
-                              {job.file_name} · {modeLabel} · {statusLabel}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {formatOperationLabel(job.operation)} · Start:{' '}
-                              {job.created_at
-                                ? new Date(job.created_at).toLocaleTimeString('sv-SE', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    second: '2-digit',
-                                  })
-                                : 'okänd'}
-                              {durationMs !== undefined && (
-                                <> · Körtid: {formatDuration(durationMs)}</>
-                              )}
-                            </p>
-                            <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                              {job.status === 'running' && job.total ? (
-                                <p>
-                                  Steg {job.progress ?? 0} av {job.total}
-                                </p>
-                              ) : null}
-                              {job.status === 'succeeded' && (
-                                <p>
-                                  {jobResult.docs ?? 0} dok · {jobResult.tests ?? 0} tester
-                                </p>
-                              )}
-                              {jobResult.filesAnalyzed && jobResult.filesAnalyzed.length > 0 && (
-                                <p className="line-clamp-1">
-                                  Filer: {jobResult.filesAnalyzed.join(', ')}
-                                </p>
-                              )}
-                              {Array.isArray(jobResult.skippedSubprocesses) &&
-                                jobResult.skippedSubprocesses.length > 0 && (
-                                  <p className="text-amber-600">
-                                    Hoppade över {jobResult.skippedSubprocesses.length} subprocesser
-                                  </p>
-                                )}
-                              {job.error && (
-                                <p className="text-red-600">{job.error}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-xs px-2 py-1 rounded-full border ${getStatusBadgeClasses(job.status)}`}
-                            >
-                              {statusLabel}
-                            </span>
-                            {job.status === 'running' && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                            {(job.status === 'running' || job.status === 'pending') && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => abortGenerationJob(job)}
-                              >
-                                Stoppa
-                              </Button>
-                            )}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </Card>
       {/* Files */}
       <Card className="mt-4">
         <Table>
@@ -3339,6 +3220,133 @@ export default function BpmnFileManager() {
             )}
           </TableBody>
         </Table>
+      </Card>
+
+      {/* Job Queue */}
+      <Card className="mt-6">
+        <div className="border-b px-4 py-3">
+          <h3 className="font-semibold">Jobb & historik</h3>
+        </div>
+        <div className="p-4">
+          <div className="space-y-2">
+            {generationJobs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Inga aktiva jobb – alla genereringar är klara just nu.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {generationJobs.map((job) => (
+                  <li
+                    key={job.id}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-2 border rounded-lg p-3"
+                  >
+                    {(() => {
+                      const jobResult = (job.result || {}) as {
+                        docs?: number;
+                        tests?: number;
+                        dorDod?: number;
+                        filesAnalyzed?: string[];
+                        mode?: string;
+                        skippedSubprocesses?: string[];
+                        llmProvider?: 'cloud' | 'local' | 'fallback';
+                      };
+                      const providerLabel =
+                        jobResult.llmProvider === 'cloud'
+                          ? 'ChatGPT'
+                          : jobResult.llmProvider === 'local'
+                          ? 'Ollama'
+                          : jobResult.llmProvider === 'fallback' || job.mode === 'local'
+                          ? 'Lokal fallback'
+                          : undefined;
+                      const modeLabel =
+                        job.mode === 'slow'
+                          ? providerLabel
+                            ? `LLM (${providerLabel})`
+                            : 'Slow LLM'
+                          : job.mode === 'local'
+                          ? 'Lokal fallback'
+                          : 'Okänt';
+                      const statusLabel = formatStatusLabel(job.status);
+                      const durationMs =
+                        job.started_at && job.finished_at
+                          ? new Date(job.finished_at).getTime() -
+                            new Date(job.started_at).getTime()
+                          : undefined;
+                      return (
+                        <>
+                          <div className="flex-1">
+                            <div className="text-sm font-semibold mb-1">
+                              {job.file_name} · {modeLabel} · {statusLabel}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {formatOperationLabel(job.operation)} · Start:{' '}
+                              {job.created_at
+                                ? new Date(job.created_at).toLocaleTimeString('sv-SE', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                  })
+                                : 'okänd'}
+                              {durationMs !== undefined && (
+                                <> · Körtid: {formatDuration(durationMs)}</>
+                              )}
+                            </p>
+                            <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                              {job.status === 'running' && job.total ? (
+                                <p>
+                                  Steg {job.progress ?? 0} av {job.total}
+                                </p>
+                              ) : null}
+                              {job.status === 'succeeded' && (
+                                <p>
+                                  {jobResult.docs ?? 0} dok · {jobResult.tests ?? 0} tester
+                                </p>
+                              )}
+                              {jobResult.filesAnalyzed && jobResult.filesAnalyzed.length > 0 && (
+                                <p className="line-clamp-1">
+                                  Filer: {jobResult.filesAnalyzed.join(', ')}
+                                </p>
+                              )}
+                              {Array.isArray(jobResult.skippedSubprocesses) &&
+                                jobResult.skippedSubprocesses.length > 0 && (
+                                  <p className="text-amber-600">
+                                    Hoppade över {jobResult.skippedSubprocesses.length} subprocesser
+                                  </p>
+                                )}
+                              {job.error && (
+                                <p className="text-red-600">{job.error}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full border ${getStatusBadgeClasses(job.status)}`}
+                            >
+                              {statusLabel}
+                            </span>
+                            {job.status === 'running' && (
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            )}
+                            {(job.status === 'running' || job.status === 'pending') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => abortGenerationJob(job)}
+                              >
+                                Stoppa
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       </Card>
 
       {/* Delete Confirmation Dialog */}

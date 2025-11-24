@@ -24,25 +24,25 @@
           "bpmn_id": "internal-data-gathering",
           "name": "Internal data gathering",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-internal-data-gathering.bpmn"
         },
         {
           "bpmn_id": "stakeholder",
           "name": "Stakeholder",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-stakeholder.bpmn"
         },
         {
           "bpmn_id": "object",
           "name": "Object",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-object.bpmn"
         },
         {
           "bpmn_id": "household",
           "name": "Household",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-household.bpmn"
         }
       ]
     },
@@ -129,13 +129,13 @@
           "bpmn_id": "documentation-assessment",
           "name": "Documentation assessment",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-documentation-assessment.bpmn"
         },
         {
           "bpmn_id": "credit-evaluation",
           "name": "Automatic Credit Evaluation",
           "called_element": "credit-evaluation",
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-credit-evaluation.bpmn"
         }
       ]
     },
@@ -150,25 +150,25 @@
           "bpmn_id": "credit-evaluation-1",
           "name": "Automatic Credit Evaluation",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-credit-evaluation.bpmn"
         },
         {
           "bpmn_id": "documentation-assessment",
           "name": "Documentation assessment",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-documentation-assessment.bpmn"
         },
         {
           "bpmn_id": "object-information",
           "name": "Object information",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-object-information.bpmn"
         },
         {
           "bpmn_id": "credit-evaluation-2",
           "name": "Automatic Credit Evaluation",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-credit-evaluation.bpmn"
         }
       ]
     },
@@ -191,7 +191,7 @@
           "bpmn_id": "object-information",
           "name": "Object information",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-object-information.bpmn"
         }
       ]
     },
@@ -206,7 +206,7 @@
           "bpmn_id": "credit-decision",
           "name": "Credit decision",
           "called_element": null,
-          "subprocess_bpmn_file": null
+          "subprocess_bpmn_file": "mortgage-se-credit-decision.bpmn"
         }
       ]
     },
