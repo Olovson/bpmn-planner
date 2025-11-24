@@ -24,7 +24,8 @@
     "start:supabase": "node scripts/start-supabase.mjs",
     "start:dev": "node scripts/start-dev.mjs",
     "stop:dev": "node scripts/stop-dev.mjs",
-    "sync:github": "node scripts/sync-to-github.mjs"
+    "sync:github": "node scripts/sync-to-github.mjs",
+    "graph:inspect": "ts-node scripts/graph-inspect.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -104,6 +105,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
-    "vitest": "^2.1.4"
+    "vitest": "^2.1.4",
+    "ts-node": "^10.9.2"
   }
 }

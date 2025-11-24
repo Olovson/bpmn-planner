@@ -592,6 +592,15 @@ test.describe('${nodeName}', () => {
  * This mirrors the logic in src/lib/bpmnHierarchy.ts to ensure consistency
  * between the Process Explorer tree and Jira naming
  */
+/**
+ * NOTE: This is a simplified hierarchy structure used in Edge Functions.
+ * For full ProcessTree support with orderIndex/scenarioPath, consider:
+ * 1. Calling build-process-tree edge function internally, or
+ * 2. Porting ProcessGraph/ProcessTree builder logic to Deno
+ * 
+ * Current implementation uses meta-based parsing which works but lacks
+ * sequence flow ordering and full ProcessTree compatibility.
+ */
 interface HierarchyNode {
   id: string;
   name: string;

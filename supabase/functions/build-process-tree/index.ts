@@ -11,6 +11,10 @@ interface ProcessTreeNode {
   type: 'process' | 'subProcess' | 'callActivity' | 'userTask' | 'serviceTask' | 'businessRuleTask' | 'dmnDecision' | 'gateway' | 'event';
   bpmnFile: string | null;
   bpmnElementId?: string;
+  /** Optional execution ordering metadata */
+  orderIndex?: number;
+  branchId?: string | null;
+  scenarioPath?: string[];
   missingDefinition?: boolean;
   subprocessDiagnostics?: Array<{
     severity: 'info' | 'warning' | 'error';
@@ -40,8 +44,16 @@ Deno.serve(async (req) => {
     // Parse query parameters
     const url = new URL(req.url);
     const rootFile = url.searchParams.get('rootFile') || 'mortgage.bpmn';
+    const debugMode = url.searchParams.get('debug');
 
-    console.log(`Building process tree for root file: ${rootFile}`);
+    const startTime = Date.now();
+
+    console.log(JSON.stringify({
+      level: 'info',
+      event: 'build-process-tree.start',
+      rootFile,
+      timestamp: new Date().toISOString(),
+    }));
 
     // Fetch all BPMN files with storage paths and metadata
     const { data: bpmnFiles, error: filesError } = await supabase
@@ -407,6 +419,107 @@ Deno.serve(async (req) => {
         .filter(task => Boolean(task.id));
     };
 
+    // Parse sequence flows from BPMN XML
+    const parseSequenceFlows = (xml: string): Array<{ sourceRef: string; targetRef: string }> => {
+      const flows: Array<{ sourceRef: string; targetRef: string }> = [];
+      const regex = /<bpmn:sequenceFlow[^>]*sourceRef="([^"]+)"[^>]*targetRef="([^"]+)"[^>]*>/g;
+      let match;
+      while ((match = regex.exec(xml)) !== null) {
+        flows.push({ sourceRef: match[1], targetRef: match[2] });
+      }
+      return flows;
+    };
+
+    // Calculate orderIndex based on sequence flows
+    const calculateOrderIndex = (
+      tasks: Array<{ id: string }>,
+      callActivities: Array<{ id: string }>,
+      sequenceFlows: Array<{ sourceRef: string; targetRef: string }>
+    ): Map<string, { orderIndex: number; branchId: string; scenarioPath: string[] }> => {
+      const orderMap = new Map<string, { orderIndex: number; branchId: string; scenarioPath: string[] }>();
+      const visited = new Set<string>();
+      let globalOrder = 0;
+      
+      // Combine tasks and callActivities for ordering
+      const allNodes = [
+        ...tasks.map(t => ({ id: t.id, isTask: true })),
+        ...callActivities.map(ca => ({ id: ca.id, isTask: false }))
+      ];
+      
+      // Find start nodes (nodes without incoming edges)
+      const allTargets = new Set(sequenceFlows.map(f => f.targetRef));
+      const startNodes = allNodes.filter(n => !allTargets.has(n.id));
+      
+      // Also check for StartEvent elements
+      const startEventRegex = /<bpmn:startEvent[^>]*id="([^"]+)"[^>]*>/g;
+      const startEvents: string[] = [];
+      let startMatch;
+      // We'll need XML for this, so we'll handle it in buildTree
+      
+      function visit(nodeId: string, branchId: string, scenarioPath: string[]) {
+        if (visited.has(nodeId)) return;
+        visited.add(nodeId);
+        orderMap.set(nodeId, {
+          orderIndex: globalOrder++,
+          branchId,
+          scenarioPath,
+        });
+        
+        // Visit successors
+        const successors = sequenceFlows
+          .filter(f => f.sourceRef === nodeId)
+          .map(f => f.targetRef);
+        
+        if (successors.length === 0) {
+          // Leaf node
+          return;
+        }
+        
+        if (successors.length === 1) {
+          // Single successor - continue same branch
+          visit(successors[0], branchId, scenarioPath);
+        } else {
+          // Multiple successors - create branches
+          const [first, ...others] = successors;
+          
+          // First branch continues main branch
+          visit(first, branchId, scenarioPath);
+          
+          // Other branches get new branch IDs
+          others.forEach((target, idx) => {
+            const newBranchId = `${branchId}-branch-${idx + 1}`;
+            const newScenarioPath = [...scenarioPath, newBranchId];
+            visit(target, newBranchId, newScenarioPath);
+          });
+        }
+      }
+      
+      // Start from start nodes or first node if no start nodes found
+      if (startNodes.length > 0) {
+        startNodes.forEach((startNode, index) => {
+          const branchId = index === 0 ? 'main' : `entry-${index + 1}`;
+          const scenarioPath = [branchId];
+          visit(startNode.id, branchId, scenarioPath);
+        });
+      } else if (allNodes.length > 0) {
+        // Fallback: start from first node
+        visit(allNodes[0].id, 'main', ['main']);
+      }
+      
+      // Ensure all nodes have an order (for nodes not in sequence flows)
+      allNodes.forEach(node => {
+        if (!visited.has(node.id)) {
+          orderMap.set(node.id, {
+            orderIndex: globalOrder++,
+            branchId: 'main',
+            scenarioPath: ['main'],
+          });
+        }
+      });
+      
+      return orderMap;
+    };
+
     // Helper to build artifacts array for a node
     // NOTE: Process tree only shows BPMN structure + documentation
     // DoR/DoD and test artifacts are excluded from the tree view
@@ -458,8 +571,15 @@ Deno.serve(async (req) => {
 
       const children: ProcessTreeNode[] = [];
 
+      // Parse sequence flows for ordering
+      const sequenceFlows = parseSequenceFlows(xml);
+
       // Extract CallActivity/SubProcess elements from BPMN metadata
       const callActivities = extractCallActivitiesFromMeta(fileName);
+      
+      // Calculate orderIndex for all nodes in this file
+      const tasks = parseTaskNodesFromMeta(fileName);
+      const orderMap = calculateOrderIndex(tasks, callActivities, sequenceFlows);
       for (const ca of callActivities) {
         const link = matchCallActivity({
           id: ca.id,
@@ -470,6 +590,9 @@ Deno.serve(async (req) => {
           ? link.matchedFile
           : null;
 
+        // Get order info for this callActivity
+        const orderInfo = orderMap.get(ca.id) || { orderIndex: undefined, branchId: 'main', scenarioPath: ['main'] };
+        
         // Always create a CallActivity node in the parent context with artifacts
         const caNode: ProcessTreeNode = {
           id: `${fileName}:${ca.id}`,
@@ -477,6 +600,9 @@ Deno.serve(async (req) => {
           type: 'callActivity',
           bpmnFile: fileName,
           bpmnElementId: ca.id,
+          orderIndex: orderInfo.orderIndex,
+          branchId: orderInfo.branchId,
+          scenarioPath: orderInfo.scenarioPath,
           children: [],
           subprocessDiagnostics: link.diagnostics,
           artifacts: buildArtifacts(fileName, ca.id),
@@ -497,8 +623,10 @@ Deno.serve(async (req) => {
       }
 
       // Add task-level nodes from BPMN metadata
-      const tasks = parseTaskNodesFromMeta(fileName);
       for (const t of tasks) {
+        // Get order info for this task
+        const orderInfo = orderMap.get(t.id) || { orderIndex: undefined, branchId: 'main', scenarioPath: ['main'] };
+        
         const artifacts = buildArtifacts(fileName, t.id);
         const taskNode: ProcessTreeNode = {
           id: `${fileName}:${t.id}`,
@@ -506,6 +634,9 @@ Deno.serve(async (req) => {
           type: t.type,
           bpmnFile: fileName,
           bpmnElementId: t.id,
+          orderIndex: orderInfo.orderIndex,
+          branchId: orderInfo.branchId,
+          scenarioPath: orderInfo.scenarioPath,
           children: [],
           artifacts,
         };
@@ -544,7 +675,79 @@ Deno.serve(async (req) => {
     // Build the tree
     const tree = await buildTree(rootFile, undefined, true);
 
-    console.log(`Process tree built successfully with ${processedFiles.size} files`);
+    const durationMs = Date.now() - startTime;
+
+    // Helper functions for logging
+    const countTreeNodes = (node: ProcessTreeNode): number => {
+      return 1 + node.children.reduce((sum, c) => sum + countTreeNodes(c), 0);
+    };
+
+    const summarizeDiagnostics = (root: ProcessTreeNode): Record<string, number> => {
+      const counts: Record<string, number> = {};
+
+      function visit(node: ProcessTreeNode) {
+        const diags = node.subprocessDiagnostics || [];
+        diags.forEach((d) => {
+          const key = `${d.severity}:${d.code}`;
+          counts[key] = (counts[key] ?? 0) + 1;
+        });
+        node.children.forEach(visit);
+      }
+
+      visit(root);
+      return counts;
+    };
+
+    const totalNodes = countTreeNodes(tree);
+    const diagnosticsSummary = summarizeDiagnostics(tree);
+
+    // Calculate graph metrics (if we had built a graph, we'd include node/edge counts)
+    // For now, we log tree metrics
+    console.log(JSON.stringify({
+      level: 'info',
+      event: 'build-process-tree.treeBuilt',
+      rootLabel: tree.label,
+      totalNodes,
+      fileCount: processedFiles.size,
+      durationMs,
+      diagnosticsSummary,
+      // Size metrics for monitoring
+      size: {
+        treeNodes: totalNodes,
+        filesProcessed: processedFiles.size,
+      },
+    }));
+
+    // Debug mode: return graph structure or raw tree
+    if (debugMode === 'graph') {
+      // For debug mode, we'd need to build a graph representation
+      // Since this function builds tree directly, we'll return tree structure info
+      return new Response(
+        JSON.stringify({
+          tree: {
+            root: tree.label,
+            totalNodes,
+            fileCount: processedFiles.size,
+          },
+          diagnostics: diagnosticsSummary,
+          durationMs,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
+    if (debugMode === 'tree') {
+      return new Response(
+        JSON.stringify(tree),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify(tree),

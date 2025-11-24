@@ -140,10 +140,35 @@ export function ProcessExplorerView({
     );
   }
 
+  // Summarize diagnostics across the entire tree
+  const summarizeDiagnostics = (root: ProcessTreeNode): Record<string, number> => {
+    const counts: Record<string, number> = {};
+
+    function visit(node: ProcessTreeNode) {
+      // Check node diagnostics
+      (node.diagnostics ?? []).forEach((d) => {
+        const key = `${d.severity}:${d.code}`;
+        counts[key] = (counts[key] ?? 0) + 1;
+      });
+      // Check subprocess link diagnostics
+      (node.subprocessLink?.diagnostics ?? []).forEach((d) => {
+        const key = `${d.severity}:${d.code}`;
+        counts[key] = (counts[key] ?? 0) + 1;
+      });
+      node.children.forEach(visit);
+    }
+
+    visit(root);
+    return counts;
+  };
+
+  const diagnosticsSummary = summarizeDiagnostics(tree);
+  const hasDiagnostics = Object.keys(diagnosticsSummary).length > 0;
+
   return (
     <div className="h-full p-4 flex flex-col gap-4">
-      {/* Rad 1: legend som spänner över hela bredden */}
-      <div>
+      {/* Rad 1: legend och diagnostics summary */}
+      <div className="flex flex-col gap-2">
         <ProcessTreeD3
           ref={null}
           root={tree}
@@ -154,6 +179,33 @@ export function ProcessExplorerView({
           collapsedIds={collapsedIds}
           onCollapsedIdsChange={setCollapsedIds}
         />
+        {hasDiagnostics && (
+          <div className="diagnostics-summary bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
+            <h3 className="text-sm font-semibold mb-2 text-yellow-800 dark:text-yellow-200">
+              Diagnostics Summary
+            </h3>
+            <ul className="text-xs space-y-1">
+              {Object.entries(diagnosticsSummary).map(([key, count]) => {
+                const [severity, code] = key.split(':');
+                const severityColor =
+                  severity === 'error'
+                    ? 'text-red-600 dark:text-red-400'
+                    : severity === 'warning'
+                      ? 'text-yellow-600 dark:text-yellow-400'
+                      : 'text-blue-600 dark:text-blue-400';
+                return (
+                  <li key={key} className="flex items-center gap-2">
+                    <span className={severityColor}>
+                      {severity === 'error' ? '❌' : severity === 'warning' ? '⚠️' : 'ℹ️'}
+                    </span>
+                    <span className="font-mono text-gray-700 dark:text-gray-300">{code}</span>
+                    <span className="text-gray-500 dark:text-gray-400">({count})</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Rad 2: trädvyn till vänster, infokort till höger */}

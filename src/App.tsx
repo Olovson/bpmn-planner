@@ -16,6 +16,8 @@ import Auth from "./pages/Auth";
 import NodeMatrix from "./pages/NodeMatrix";
 import ProcessExplorer from "./pages/ProcessExplorer";
 import ProjectPlanPage from "./pages/ProjectPlanPage";
+import ProcessGraphDebugPage from "./pages/ProcessGraphDebug";
+import ProcessTreeDebugPage from "./pages/ProcessTreeDebug";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BpmnSelectionProvider } from "./contexts/BpmnSelectionContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -75,6 +77,8 @@ const App = () => {
                 <Route path="/files" element={<ProtectedRoute><BpmnFileManager /></ProtectedRoute>} />
                 <Route path="/registry-status" element={<ProtectedRoute><RegistryStatus /></ProtectedRoute>} />
                 <Route path="/llm-debug" element={<ProtectedRoute><LlmDebugView /></ProtectedRoute>} />
+                <Route path="/graph-debug" element={<ProtectedRoute><ProcessGraphDebugPage /></ProtectedRoute>} />
+                <Route path="/tree-debug" element={<ProtectedRoute><ProcessTreeDebugPage /></ProtectedRoute>} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/doc-viewer/:docId" element={<DocViewer />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

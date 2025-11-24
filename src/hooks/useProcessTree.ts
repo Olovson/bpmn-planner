@@ -1,20 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { ProcessTreeNode } from '@/lib/processTree';
-import { collectProcessDefinitionsFromMeta } from '@/lib/bpmn/processDefinition';
-import type { NormalizedProcessDefinition } from '@/lib/bpmn/buildProcessHierarchy';
+import type { ProcessTreeNode, NodeArtifact } from '@/lib/processTree';
 import {
-  resolveProcessFileName,
-  resolveProcessFileNameByInternalId,
-} from '@/lib/bpmn/hierarchyTraversal';
-import { buildProcessModelFromDefinitions } from '@/lib/bpmn/buildProcessModel';
-import { buildProcessTreeFromModel } from '@/lib/bpmn/processModelToProcessTree';
-import type { HierarchyNode } from '@/lib/bpmn/types';
-import type { BpmnMeta } from '@/types/bpmnMeta';
+  buildBpmnProcessGraph,
+  type BpmnProcessGraph,
+  type BpmnNodeType,
+} from '@/lib/bpmnProcessGraph';
+import { buildProcessTreeFromGraph } from '@/lib/bpmn/buildProcessTreeFromGraph';
 
 const sanitizeElementId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
 
-const buildArtifacts = (bpmnFile: string, elementId?: string) => {
+const buildArtifacts = (bpmnFile: string, elementId?: string): NodeArtifact[] | undefined => {
   if (!elementId) return undefined;
   const baseName = bpmnFile.replace('.bpmn', '');
   const safeId = sanitizeElementId(elementId);
@@ -32,37 +28,55 @@ const buildArtifacts = (bpmnFile: string, elementId?: string) => {
 async function buildClientProcessTree(rootFile: string): Promise<ProcessTreeNode | null> {
   const { data: bpmnFiles, error } = await supabase
     .from('bpmn_files')
-    .select('file_name, storage_path, meta')
+    .select('file_name')
     .eq('file_type', 'bpmn');
 
   if (error) throw error;
   if (!bpmnFiles?.length) return null;
 
-  const files = bpmnFiles.map((file) => ({
-    fileName: file.file_name,
-    definitions: collectProcessDefinitionsFromMeta(
-      file.file_name,
-      file.meta as BpmnMeta | null,
-      file.storage_path ?? undefined,
-    ),
-  }));
-
-  const allDefinitionsEmpty = files.every((file) => file.definitions.length === 0);
-  if (allDefinitionsEmpty) return null;
-
   let effectiveRootFile = rootFile;
-  if (!bpmnFiles.some((file) => file.file_name === effectiveRootFile)) {
-    const fallback = bpmnFiles[0]?.file_name;
+  const existingFiles = bpmnFiles.map((f) => f.file_name as string);
+
+  if (!existingFiles.includes(effectiveRootFile)) {
+    const fallback = existingFiles[0];
     if (!fallback) return null;
     console.warn(`Root file ${rootFile} not found. Falling back to ${fallback}.`);
     effectiveRootFile = fallback;
   }
 
-  const model = buildProcessModelFromDefinitions(files, {
-    preferredRootFile: effectiveRootFile,
-  });
+  const graph: BpmnProcessGraph = await buildBpmnProcessGraph(
+    effectiveRootFile,
+    existingFiles,
+  );
 
-  const tree = buildProcessTreeFromModel(model, effectiveRootFile, buildArtifacts);
+  // Enkel debug-logik i dev-läge för att felsöka graf/treestruktur
+  if (import.meta.env.MODE === 'development') {
+    const allNodes = Array.from(graph.allNodes.values());
+    const countByType: Record<string, number> = {};
+    allNodes.forEach((node) => {
+      countByType[node.type] = (countByType[node.type] || 0) + 1;
+    });
+
+    // eslint-disable-next-line no-console
+    console.log('[ProcessExplorer] Graph stats', {
+      rootFile: graph.rootFile,
+      totalNodes: allNodes.length,
+      byType: countByType,
+    });
+  }
+
+  const tree = buildProcessTreeFromGraph(graph, effectiveRootFile, buildArtifacts);
+
+  if (import.meta.env.MODE === 'development') {
+    // eslint-disable-next-line no-console
+    console.log('[ProcessExplorer] ProcessTree root', {
+      label: tree.label,
+      type: tree.type,
+      childCount: tree.children.length,
+      children: tree.children.map((c) => ({ label: c.label, type: c.type })),
+    });
+  }
+
   return tree;
 }
 
@@ -81,88 +95,6 @@ export const useProcessTree = (rootFile: string = 'mortgage.bpmn') => {
 
 type ArtifactBuilder = typeof buildArtifacts;
 
-export function convertProcessHierarchyToTree(
-  root: HierarchyNode,
-  processes: Map<string, NormalizedProcessDefinition>,
-  artifactBuilder: ArtifactBuilder,
-): ProcessTreeNode | null {
-  if (root.bpmnType !== 'process') return null;
-  const fileName = resolveProcessFileName(root, processes) ?? `${root.displayName}.bpmn`;
-
-  const children = root.children.flatMap((child) =>
-    convertHierarchyChild(child, {
-      currentFile: fileName,
-      processes,
-      artifactBuilder,
-    }),
-  );
-
-  return {
-    id: root.nodeId,
-    label: root.displayName,
-    type: 'process',
-    bpmnFile: fileName,
-    bpmnElementId: root.processId,
-    children,
-    diagnostics: root.diagnostics,
-  };
-}
-
-interface ConversionContext {
-  currentFile: string;
-  processes: Map<string, NormalizedProcessDefinition>;
-  artifactBuilder: ArtifactBuilder;
-}
-
-function convertHierarchyChild(
-  node: HierarchyNode,
-  context: ConversionContext,
-): ProcessTreeNode[] {
-  if (node.bpmnType === 'process') {
-    const nextFile = resolveProcessFileName(node, context.processes) ?? context.currentFile;
-    // Vi skippar att lägga in en separat process-nod i trädet här för att undvika
-    // dubbelvisning (filnamn + callActivities). I stället går vi direkt vidare
-    // till barn-noderna med uppdaterat currentFile.
-    return node.children.flatMap((child) =>
-      convertHierarchyChild(child, { ...context, currentFile: nextFile }),
-    );
-  }
-
-  if (node.bpmnType === 'callActivity') {
-    const matchedFile = node.link?.matchedProcessId
-      ? resolveProcessFileNameByInternalId(node.link.matchedProcessId, context.processes)
-      : undefined;
-    const childFile = matchedFile ?? context.currentFile;
-
-    const children = node.children.flatMap((child) =>
-      convertHierarchyChild(child, { ...context, currentFile: childFile }),
-    );
-
-    const callTreeNode: ProcessTreeNode = {
-      id: node.nodeId,
-      label: node.displayName,
-      type: 'callActivity',
-      bpmnFile: context.currentFile,
-      bpmnElementId: node.link?.callActivityId,
-      children,
-      subprocessFile: matchedFile,
-      artifacts: context.artifactBuilder(context.currentFile, node.link?.callActivityId),
-      subprocessLink: node.link,
-      diagnostics: node.diagnostics,
-    };
-    return [callTreeNode];
-  }
-
-  if (
-    node.bpmnType === 'userTask' ||
-    node.bpmnType === 'serviceTask' ||
-    node.bpmnType === 'businessRuleTask' ||
-    node.bpmnType === 'task'
-  ) {
-    // För processträdet vill vi enbart visa subprocesser / callActivities
-    // (plus root-processen). Vanliga task-noder visas därför inte här.
-    return [];
-  }
-
-  return [];
-}
+// OBS: meta-baserad hierarki (collectProcessDefinitionsFromMeta + buildProcessModelFromDefinitions)
+// finns kvar i koden för andra användningsfall, men Process Explorer bygger nu
+// alltid sitt träd direkt från BpmnProcessGraph via buildProcessTreeFromGraph.
