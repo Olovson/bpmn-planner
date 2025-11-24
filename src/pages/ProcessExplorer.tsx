@@ -251,6 +251,7 @@ export default function ProcessExplorerPage() {
     else if (view === 'tests') navigate('/test-report');
     else if (view === 'files') navigate('/files');
     else if (view === 'project') navigate('/project-plan');
+    else if (view === 'timeline') navigate('/timeline');
     else navigate('/process-explorer');
   };
 

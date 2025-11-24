@@ -232,6 +232,7 @@ export default function BpmnFileManager() {
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'tests') navigate('/test-report');
     else if (view === 'project') navigate('/project-plan');
+    else if (view === 'timeline') navigate('/timeline');
     else navigate('/files');
   };
   
@@ -1343,8 +1344,8 @@ export default function BpmnFileManager() {
             const parentPath = await buildParentPath(bpmnFileName);
             const hierarchy = await buildBpmnHierarchy(bpmnFileName, bpmnUrl, parentPath);
             
-            // Extrahera alla noder från hierarkin (inklusive nested)
-            const allNodes = flattenHierarchyNodes(hierarchy.rootNode);
+            // Extrahera alla noder från hierarkin (hierarchy.allNodes är redan en flat lista)
+            const allNodes = hierarchy.allNodes;
             
             // Skapa mappings för varje nod
             for (const node of allNodes) {
@@ -1358,7 +1359,7 @@ export default function BpmnFileManager() {
               if (node.jiraType && node.jiraName) {
                 detailedJiraMappings.push({
                   elementId: node.id,
-                  elementName: node.label,
+                  elementName: node.name,
                   jiraType: node.jiraType,
                   jiraName: node.jiraName,
                 });
@@ -1378,8 +1379,8 @@ export default function BpmnFileManager() {
           const parentPath = await buildParentPath(file.file_name);
           const hierarchy = await buildBpmnHierarchy(file.file_name, bpmnUrl, parentPath);
           
-          // Extrahera alla noder från hierarkin (inklusive nested)
-          const allNodes = flattenHierarchyNodes(hierarchy.rootNode);
+          // Extrahera alla noder från hierarkin (hierarchy.allNodes är redan en flat lista)
+          const allNodes = hierarchy.allNodes;
           
           // Skapa mappings för varje nod
           for (const node of allNodes) {
@@ -1393,7 +1394,7 @@ export default function BpmnFileManager() {
             if (node.jiraType && node.jiraName) {
               detailedJiraMappings.push({
                 elementId: node.id,
-                elementName: node.label,
+                elementName: node.name,
                 jiraType: node.jiraType,
                 jiraName: node.jiraName,
               });

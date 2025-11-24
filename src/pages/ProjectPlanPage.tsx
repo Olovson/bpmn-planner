@@ -27,6 +27,7 @@ const ProjectPlanPage = () => {
     else if (view === 'tests') navigate('/test-report');
     else if (view === 'files') navigate('/files');
     else if (view === 'project') navigate('/project-plan');
+    else if (view === 'timeline') navigate('/timeline');
     else navigate('/project-plan');
   };
 
@@ -147,8 +148,8 @@ const ProjectPlanPage = () => {
                     </TableCell>
                   </TableRow>
                 )}
-                {!loading && rows.map((row) => (
-                  <TableRow key={`${row.bpmnFile}:${row.bpmnNodeId}:${row.level}`}>
+                {!loading && rows.map((row, index) => (
+                  <TableRow key={`${row.bpmnFile}:${row.bpmnNodeId}:${row.level}:${row.processOrder}:${index}`}>
                     <TableCell className="text-xs">{row.processOrder}</TableCell>
                     <TableCell className="text-xs">{row.processStepName}</TableCell>
                     <TableCell className="text-xs">{row.summary}</TableCell>

@@ -305,6 +305,7 @@ const NodeMatrix = () => {
           else if (v === 'tests') navigate('/test-report');
           else if (v === 'files') navigate('/files');
           else if (v === 'project') navigate('/project-plan');
+          else if (v === 'timeline') navigate('/timeline');
           else navigate('/node-matrix');
         }}
         onOpenVersions={() => navigate('/')}
