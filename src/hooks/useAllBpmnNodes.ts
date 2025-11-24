@@ -6,6 +6,7 @@ import { ProcessTreeNode } from '@/lib/processTree';
 import { getDocumentationUrl, storageFileExists, getNodeDocStoragePath, getTestFileUrl } from '@/lib/artifactUrls';
 import { getNodeDocFileKey } from '@/lib/nodeArtifactPaths';
 import { checkDocsAvailable, checkDorDodAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
+import { buildJiraName } from '@/lib/jiraNaming';
 
 export interface BpmnNodeData {
   bpmnFile: string;
@@ -143,7 +144,10 @@ export const useAllBpmnNodes = () => {
               ? 'epic'
               : null;
 
-          const defaultJiraName = [...node.parentLabels, node.label].filter(Boolean).join(' - ') || node.label;
+          // Use new Jira naming scheme (feature goals use top-level subprocess logic, epics use path-based)
+          // Exclude root process label from parent path
+          const parentPathWithoutRoot = node.parentLabels.filter(label => label !== processTree.label);
+          const defaultJiraName = buildJiraName(node, processTree, parentPathWithoutRoot);
 
           const dorDodUrl = `/subprocess/${encodeURIComponent(elementId)}`;
           const diagnosticsSummary = collectDiagnosticsSummary(node);

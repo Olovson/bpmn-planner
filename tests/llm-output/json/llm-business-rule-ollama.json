@@ -1,6 +1,6 @@
 {
   "error": "Lokal LLM (Ollama) unavailable",
   "provider": "local",
-  "details": "LLM returned null/empty response for provider=local",
-  "timestamp": "2025-11-24T00:05:35.893Z"
+  "details": "Validation failed: Failed to parse JSON: Expected double-quoted property name in JSON at position 891",
+  "timestamp": "2025-11-24T19:02:00.874Z"
 }

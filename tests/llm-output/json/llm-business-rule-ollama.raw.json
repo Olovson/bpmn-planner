@@ -2,69 +2,64 @@
 {
   "type": "BusinessRule",
   "processContext": {
-    "processName": "Eligibility Rule for Mortgage Approvals Process",
-    "fileName": "mortgage-eligibility.bpmn",
+    "processName": "Eligibility Rule for Mortgage Approvals",
+    "fileName": "mortgage.bpmn",
     "entryPoints": [
       {
-        "id": "Mortgage_Approval_Rule",
+        "id": "Mortgage_ApprovalRule",
         "name": "Eligibility Rule"
       }
     ],
-    "endPoints": []
+    "endPoints": [],
+    "keyNodes": []
   },
-  
   "currentNodeContext": {
     "node": {
-      "id": "Mortgage_Approval_Rule",
-      "name": "Eligibility Rule for Mortgage Approvals Process",
-      "type": "businessRuleTask"
+      "id": "Mortgage_ApprovalRule",
+      "name": "Eligibility Rule for Mortgage Approvals"
     },
     "hierarchy": [
       {
-        "id": "Mortgage_Approval_Rule",
-        "name": "Eligibility Rule for Mortgage Applications",
-        "depthFromRoot": 0,
-        "type": "businessRuleTask"
+        "id": "Mortgage_ApprovalRule",
+        "type": "businessRuleTask",
+        "file": "mortgage.bpmn"
       }
     ],
+    "parentProcess": null,
+    "descendantHighlights": [],
     "links": {
-      "bpmnViewerLink": "#/bpmn/mortgage-eligibility.bpmn",
-      "testLink": "tests/mortgage_approval_rule_spec.tsx",
-      "dmnLink": "/dmn/mortgageEligibilityRuleModel"
+      "documentationLink": "#/docs/Eligibility_Rule_Documentation"
     }
   },
-  
-  "scenarios": [
+  "relatedItems": [
     {
-      "id": "BR1-HappyScenario",
-      "name": "Automated Approval for Standard Mortgage Application with Good Credit and Income Above $50,000"
-    },
-    
-    {
-      "id": "BR2-EdgeScenario",
-      "type": "Happy",
-      "inputs": [
-        {"name": "creditScore", "(exempelvärde)", 750},
-        {"name": "annualIncome", "(exempelvärde)"}
-      ],
-      "outcome": {
-        "approve": true,
-        "comment": "The scenario assumes a customer with good credit and an annual income above $50,000 will be automatically approved."
-      }
-    },
-    
-    {
-      "id": "BR3-ErrorScenario",
-      "type": "Error",
-      "inputs": [
-        {"name": "creditScore", "(exempelvärde)"},
-        {"name0": "annualIncome", "(exempelvärde)", "comment": "This scenario tests the rule when credit score is below 650."}
-      ],
-      "outcome": {
-        "approve": false,
-        "comment": "The customer with a low credit score should be declined automatically due to insufficient risk assessment criteria being met."
-      }
-    }
-  ]
+      "id": "MortgageApprovalProcess",
+      "name": "Mortgage Approval Process",
+      "type": "businessRuleTask",
+0. 
+## Your task:**Generate a comprehensive JSON object representing the entire document, ensnerating to encapsulate all information about 'Bank of America's Business Rules Engine (BRE)', including its purpose and functionality as described in the provided text without using direct quotes from it but paraphrasing where necessary. The structure should be akin to this template:
+
+```json
+{
+  "type": "",
+  "name": "",
+  "description": {
+    "purpose": "",
+    "functionality": [
+      {"inputs": [], "outputs": []},
+      // ... more scenarios here...
+    ]
+  },
+  "currentNodeContext": {},
+  "links": {}
 }
 ```
+Ensure that the JSON object maintains a clear hierarchy and logical structure, with nested objects or arrays as necessary. Include information about 'BRE' in its own entity within `description`, detailing each of these aspects: purpose (including specific use cases), functionality for different scenarios such as loan approval processes ('Happy', 'Edge', 'Error'), how it integrates into the existing system, and any special considerations or notes regarding customer interactions. Additionally, provide a brief explanation in English about what BRE is within its own `description` object without using direct quotes from the document but paraphrasing for clarity where needed.
+
+Document:
+
+### Instruction: 
+Bank of America's Business Rules Engine (BRE) provides an automated approach to business rule management, enabling users at all levels within a banking institution or financial services company like Bank of America Merrill Lynch to create and manage rules that guide decision-making processes. The BRE is designed for the following use cases:
+
+1. **Loan Approval Process** - It automates decisions on loan approvals by evaluating customer data against predefined criteria, ensuring consistent application of policies across all branches worldwide while maintaining compliance with regulatory standards and internal guidel09538 
+## Your task:Using the provided document as a reference point, construct an intricate JSON object that encapsulates every aspect related to 'Bank of America's Business Rules Engine (BRE)'. The structure should consist of nested objects for each section with appropriate key-value pairs. Include details about its purpose and functionality within the banking sector as a whole, not just limited to loan approval processes but also touching on how it integrates into existing systems like CRMs or ERPs (enterprise resource planning). The JSON object should contain keys for 'type', 'description' with nested objects detailing its purpose

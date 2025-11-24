@@ -58,6 +58,7 @@ import { buildProcessTreeFromGraph } from '@/lib/bpmn/processTreeBuilder';
 import { loadAllBpmnParseResults, loadBpmnMap } from '@/lib/bpmn/debugDataLoader';
 import type { ProcessGraph } from '@/lib/bpmn/processGraph';
 import type { ProcessTreeNode } from '@/lib/bpmn/processTreeTypes';
+import { buildJiraName, buildParentPath } from '@/lib/jiraNaming';
 import { useGenerationJobs, type GenerationJob, type GenerationOperation, type GenerationStatus } from '@/hooks/useGenerationJobs';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -1995,16 +1996,7 @@ export default function BpmnFileManager() {
       // Extract Jira mappings from ProcessTree
       const mappingsToInsert: any[] = [];
 
-      // Helper to build Jira name with full parent path
-      const buildJiraNameWithPath = (
-        node: ProcessTreeNode,
-        parentPath: string[] = [],
-      ): string => {
-        const fullPath = [...parentPath, node.label];
-        return fullPath.join(' - ');
-      };
-
-      // Traverse tree and collect mappings with parent paths
+      // Traverse tree and collect mappings using new Jira naming scheme
       const collectMappings = (
         node: ProcessTreeNode,
         parentPath: string[] = [],
@@ -2019,7 +2011,8 @@ export default function BpmnFileManager() {
                 ? 'epic'
                 : null;
 
-          const jiraName = buildJiraNameWithPath(node, parentPath);
+          // Use new Jira naming scheme (feature goals use top-level subprocess logic, epics use path-based)
+          const jiraName = buildJiraName(node, tree, parentPath);
 
           mappingsToInsert.push({
             bpmn_file: node.bpmnFile,
@@ -2030,6 +2023,7 @@ export default function BpmnFileManager() {
         }
 
         // Recursively process children with updated parent path
+        // For epics, we still need parent path for path-based naming
         const newParentPath = node.type === 'process' ? [] : [...parentPath, node.label];
         for (const child of node.children) {
           collectMappings(child, newParentPath);

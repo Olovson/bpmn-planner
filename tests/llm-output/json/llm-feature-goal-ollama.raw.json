@@ -1,64 +1,83 @@
+# Feature Goals and Epics for the Mortgage Process - JSON Output Format
+
+```json
 {
-  "type": "Feature",
+  "type": "FeatureGoal",
   "processContext": {
-    "processName": "Internal data gathering",
-    "fileName": "mortgage-se-application.bpmn",
+    "name": "Internal data gathering",
+    "filePath": "mortgage-se-application.bpmn",
     "entryPoints": [
       {
-        "id": "internal-data-gathering",
-        "name": "Internal data gathering",
+        "id": "internalDataGatheringEntryPoint",
         "type": "callActivity",
-        "file": "mortgage-se-application.bpmn"
+        "phase": "Datainsamling"
       }
     ],
     "endPoints": [],
-    "keyNodes": [
-      {
-        "id": "internal-data-gathering",
-        "name": "Internal data gathering",
-        "type": "callActivity",
-        "file": "mortgage-se-application.bpmn"
-      }
-    ]
+    "keyNodes": [] // No key nodes for Feature Goals in this context.
   },
   "currentNodeContext": {
-    "node": {
-      "id": "internal-data-gathering",
-      "name": "Internal data gathering",
-      "type": "callActivity",
-      "file": "mortgage-se-application.bpmn"
-    },
+    "node": null, // Not applicable as we are describing a process node here.
     "hierarchy": [
-      {
-        "id": "internal-data-gathering",
-        "name": "Internal data gathering (callActivity)",
-        "depthFromRoot": 0,
-        "featureGoalAncestor": null
-      }
+      {"id": "internalDataGatheringEntryPoint", "name": "Internal data gathering"}
     ],
     "parents": [],
-    "siblings": [
-      {
-        "id": "internal-data-gathering",
-        "name": "Internal data gathering"
-      }
-    ],
-    "children": []
-  },
-  "flows": {
-    "incoming": [],
-    "outgoing": []
-  },
-  "documentation": [
-    "<p>The Internal Data Gathering feature goal is a multi-team leverançer that should be described by several epics.</p>"
-  ],
-  "jiraGuidance": {
-    "hierarchy": "#/bpmn",
-    "nodeJiraType": "feature goal"
-  },
-  "links": {
-    "bpmnViewerLink": "/#/bpmn/mortgage.bpmn",
-    "testLink": "tests/mortgage.smoke.spec.ts",
-    "dmnLink": "/dmn/example.dmn"
+    "siblings": [],
+    "children": [], // Not applicable for Feature Goals in this context.
+    "descendantHighlights": [],
+    "descendantTypeCounts": {},
+    "flows": {
+      "incoming": [],
+      "outgoing": []
+    },
+    "documentation": [{}],
+    "jiraGuidance": {
+      "hierarchy": "Projekt → Initiativ → Feature Goal", // Adjusted to fit the mortgage process context.
+      "nodeJiraType": "feature goal"
+    },
+    "links": {}
   }
 }
+```
+Please note that this JSON structure is designed for a BPMN-based model and does not directly map onto your provided document, which seems to describe Feature Goals within the context of an Agile project. The above output assumes we are focusing on one specific entry point (callActivity) in our process as per standard practice when dealing with such models:
+
+```json
+{
+  "type": "Epic",
+  "processContext": {
+    "name": "Internal data gathering for mortgage application",
+    "filePath": "mortgage-se-application.bpmn",
+    "entryPoints": [
+      {
+        "id": "internalDataGatheringEntryPoint",
+        "type": "callActivity",
+        "phase": "Datainsamling"
+      }
+    ],
+    "endPoints": [], // No end points for Epics in this context.
+    "keyNodes": [
+      {
+        "id": "internalDataGatheringEntryPoint",
+        "name": "Internal data gathering for mortgage application",
+        "type": "callActivity"
+      }
+    ] // Key nodes are typically not used in this context.
+  },
+  "currentNodeContext": {
+    "node": null, // Not applicable as we're describing a process node here.
+    "hierarchy": [
+      {"id": "internalDataGatheringEntryPoint", "name": "Internal data gathering for mortgage application"}
+    ],
+    "parents": [],
+    "siblings": [], // Not applicable in this context as we're focusing on a single entry point.
+    "children": [{}], // No children since it is an individual process node, not part of the hierarchy here.
+    "descendantHighlights": [],
+    "descendantTypeCounts": {},
+    "flows": {
+      "incoming": ["internalDataGatheringEntryPoint"],
+      "outgoing": [] // No outgoing flows for a single entry point in this context.
+    },
+    "documentation": [{}],
+    "jiraGuidance": {
+      "hierarchy": "Projekt → Initiativ → Feature Goal", // Adjusted to fit the mortgage process context, assuming no multi-team approach here.
+      "nodeJiraType": "epic"
