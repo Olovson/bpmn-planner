@@ -99,11 +99,28 @@ function getSubprocessTarget(
   return graph.nodes.get(targetId);
 }
 
+/**
+ * Sorts ProcessGraphNodes using the same logic as sortCallActivities
+ * This ensures consistency between ProcessGraph building and UI display
+ */
 function sortByOrderIndex<T extends ProcessGraphNode>(nodes: T[]): T[] {
   return [...nodes].sort((a, b) => {
-    const ao = (a.metadata.orderIndex as number | undefined) ?? Number.POSITIVE_INFINITY;
-    const bo = (b.metadata.orderIndex as number | undefined) ?? Number.POSITIVE_INFINITY;
-    return ao - bo;
+    // Same priority as sortCallActivities: visualOrderIndex -> orderIndex -> label
+    const avisual =
+      (a.metadata.visualOrderIndex as number | undefined) ?? Number.MAX_SAFE_INTEGER;
+    const bvisual =
+      (b.metadata.visualOrderIndex as number | undefined) ?? Number.MAX_SAFE_INTEGER;
+    if (avisual !== bvisual) {
+      return avisual - bvisual;
+    }
+
+    const ao = (a.metadata.orderIndex as number | undefined) ?? Number.MAX_SAFE_INTEGER;
+    const bo = (b.metadata.orderIndex as number | undefined) ?? Number.MAX_SAFE_INTEGER;
+    if (ao !== bo) {
+      return ao - bo;
+    }
+
+    return (a.name || '').localeCompare(b.name || '');
   });
 }
 
@@ -131,6 +148,7 @@ function baseTreeNodeFromGraphNode(
   diagnostics?: DiagnosticsEntry[],
 ): ProcessTreeNode {
   const orderIndex = graphNode.metadata.orderIndex as number | undefined;
+  const visualOrderIndex = graphNode.metadata.visualOrderIndex as number | undefined;
   const branchId = graphNode.metadata.branchId as string | undefined;
   const scenarioPath = graphNode.metadata.scenarioPath as string[] | undefined;
 
@@ -142,6 +160,7 @@ function baseTreeNodeFromGraphNode(
     bpmnElementId: graphNode.bpmnElementId,
     processId: graphNode.processId,
     orderIndex,
+    visualOrderIndex,
     branchId,
     scenarioPath,
     children,

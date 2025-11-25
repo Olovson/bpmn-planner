@@ -1289,3 +1289,7 @@ Detta dokument presenterar en omfattande analys av BPMN-Planner-projektet och de
 
 Genom att följa den stegvisa implementation-planen kan systemet byggas upp på ett kontrollerat sätt, med tydliga kriterier för varje steg och omfattande testning.
 
+
+
+
+

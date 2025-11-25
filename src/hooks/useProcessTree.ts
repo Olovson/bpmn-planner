@@ -37,6 +37,7 @@ function convertProcessTreeNode(node: NewProcessTreeNode): LegacyProcessTreeNode
     bpmnElementId: node.bpmnElementId,
     processId: node.processId,
     orderIndex: node.orderIndex,
+    visualOrderIndex: node.visualOrderIndex,
     branchId: node.branchId,
     scenarioPath: node.scenarioPath,
     subprocessFile: node.subprocessFile,

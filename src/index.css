@@ -112,3 +112,22 @@ All colors MUST be HSL.
   stroke: hsl(var(--primary)) !important;
   stroke-width: 3px !important;
 }
+
+/* Gantt timeline: Enable text selection and copying in columns */
+/* Target all Gantt grid cells and headers for text selection */
+.gantt_grid .gantt_cell,
+.gantt_grid_head_cell {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Make sure text in cells is selectable */
+.gantt_grid .gantt_cell *,
+.gantt_grid_head_cell * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}

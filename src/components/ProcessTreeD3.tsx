@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import * as d3 from 'd3';
 import { ProcessTreeNode, ProcessNodeType, NodeArtifact, getProcessNodeStyle, PROCESS_NODE_STYLES } from '@/lib/processTree';
+import { sortCallActivities } from '@/lib/ganttDataConverter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -480,10 +481,15 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       if (collapsedIds.has(node.id)) {
         filtered.children = [];
       } else if (hasChildren) {
-        // Filtrera barn och ta bort null-värden
-        filtered.children = node.children!
+        // Filtrera barn, ta bort null-värden och sortera med sekvens-rangering
+        const filteredChildren = node.children!
           .map((child) => filterCollapsed(child, false))
           .filter((child: any) => child !== null);
+        
+        // Använd samma sorteringslogik som Timeline: visualOrderIndex -> orderIndex -> branchId -> label
+        // Bestäm mode baserat på om det är root-nivå (depth 0) eller subprocess-nivå
+        const mode = isRoot ? 'root' : 'subprocess';
+        filtered.children = sortCallActivities(filteredChildren, mode);
       } else {
         filtered.children = [];
       }

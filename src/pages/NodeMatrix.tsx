@@ -124,8 +124,8 @@ const NodeMatrix = () => {
         'Figma URL': node.figmaUrl || '',
         'Dokumentation': getDocumentationUrl(node.bpmnFile, node.elementId),
         'Testfil': node.testFilePath || '',
-        'Jira Namn': node.jiraName || '',
-        'Jira Typ': node.jiraType || '',
+        'Jira Namn': node.jiraName || 'N/A',
+        'Jira Typ': node.jiraType || 'N/A',
       }));
 
       // Create worksheet
@@ -304,7 +304,6 @@ const NodeMatrix = () => {
           else if (v === 'tree') navigate('/process-explorer');
           else if (v === 'tests') navigate('/test-report');
           else if (v === 'files') navigate('/files');
-          else if (v === 'project') navigate('/project-plan');
           else if (v === 'timeline') navigate('/timeline');
           else navigate('/node-matrix');
         }}
@@ -559,9 +558,9 @@ const NodeMatrix = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs" title={node.jiraName || undefined}>
+                      <span className="text-xs break-words whitespace-normal" title={node.jiraName || undefined}>
                         {node.jiraName ? (
-                          <span className="truncate max-w-[250px] inline-block">{node.jiraName}</span>
+                          <span className="break-words">{node.jiraName}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}

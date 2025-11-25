@@ -27,6 +27,8 @@ export interface ProcessTreeNode {
   bpmnElementId?: string;
    /** Optional execution ordering metadata propagated from the process model. */
   orderIndex?: number;
+  /** Visual ordering index based on BPMN DI coordinates (x, y). Used only when orderIndex is missing. */
+  visualOrderIndex?: number;
   branchId?: string | null;
   scenarioPath?: string[];
   /** Matched subprocess BPMN file for call activities (when link resolved). */

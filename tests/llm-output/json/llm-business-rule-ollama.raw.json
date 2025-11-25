@@ -2,12 +2,12 @@
 {
   "type": "BusinessRule",
   "processContext": {
-    "processName": "Eligibility Rule for Mortgage Approvals",
+    "processName": "Eligibility Rule for Mortgage Loan Approvals",
     "fileName": "mortgage.bpmn",
     "entryPoints": [
       {
         "id": "Mortgage_ApprovalRule",
-        "name": "Eligibility Rule"
+        "name": "Mortgage Eligibility Checker Rule"
       }
     ],
     "endPoints": [],
@@ -16,50 +16,73 @@
   "currentNodeContext": {
     "node": {
       "id": "Mortgage_ApprovalRule",
-      "name": "Eligibility Rule for Mortgage Approvals"
+      "name": "Eligibility Checker Rule for Mortgage Loans"
     },
     "hierarchy": [
       {
         "id": "Mortgage_ApprovalRule",
+        "name": "Eligibility Checker Rule for Mortgage Loans",
         "type": "businessRuleTask",
         "file": "mortgage.bpmn"
       }
     ],
-    "parentProcess": null,
-    "descendantHighlights": [],
+    "parentProcess": {
+      "id": "Mortgage_LoanApplicationFlow",
+      "name": "Mortgage Loan Application Process Flow",
+      "type": "businessRuleTask",
+      "file": "mortgage.bpmn"
+    },
     "links": {
-      "documentationLink": "#/docs/Eligibility_Rule_Documentation"
+      "dmnLink": "/dmn/example_eligibility_rule.json",
+      "testLink": "tests/MortgageEligibilityTestSpecification.ts"
     }
   },
-  "relatedItems": [
+  "scenarios": [
     {
-      "id": "MortgageApprovalProcess",
-      "name": "Mortgage Approval Process",
-      "type": "businessRuleTask",
-0. 
-## Your task:**Generate a comprehensive JSON object representing the entire document, ensnerating to encapsulate all information about 'Bank of America's Business Rules Engine (BRE)', including its purpose and functionality as described in the provided text without using direct quotes from it but paraphrasing where necessary. The structure should be akin to this template:
-
-```json
-{
-  "type": "",
-  "name": "",
-  "description": {
-    "purpose": "",
-    "functionality": [
-      {"inputs": [], "outputs": []},
-      // ... more scenarios here...
-    ]
-  },
-  "currentNodeContext": {},
-  "links": {}
-}
-```
-Ensure that the JSON object maintains a clear hierarchy and logical structure, with nested objects or arrays as necessary. Include information about 'BRE' in its own entity within `description`, detailing each of these aspects: purpose (including specific use cases), functionality for different scenarios such as loan approval processes ('Happy', 'Edge', 'Error'), how it integrates into the existing system, and any special considerations or notes regarding customer interactions. Additionally, provide a brief explanation in English about what BRE is within its own `description` object without using direct quotes from the document but paraphrasing for clarity where needed.
-
-Document:
-
-### Instruction: 
-Bank of America's Business Rules Engine (BRE) provides an automated approach to business rule management, enabling users at all levels within a banking institution or financial services company like Bank of America Merrill Lynch to create and manage rules that guide decision-making processes. The BRE is designed for the following use cases:
-
-1. **Loan Approval Process** - It automates decisions on loan approvals by evaluating customer data against predefined criteria, ensuring consistent application of policies across all branches worldwide while maintaining compliance with regulatory standards and internal guidel09538 
-## Your task:Using the provided document as a reference point, construct an intricate JSON object that encapsulates every aspect related to 'Bank of America's Business Rules Engine (BRE)'. The structure should consist of nested objects for each section with appropriate key-value pairs. Include details about its purpose and functionality within the banking sector as a whole, not just limited to loan approval processes but also touching on how it integrates into existing systems like CRMs or ERPs (enterprise resource planning). The JSON object should contain keys for 'type', 'description' with nested objects detailing its purpose
+      "id": "BR1-HappyScenario",
+      "name": "Automated Approval for Eligible Customer with Good Credit Score and Income Stability",
+      "type": "Happy"
+    },
+    {
+      "id": "BR2-EdgeCaseScenario",
+      "name": "Handling of Edge Cases in Loan Application Processing",
+      "type": "Error",
+      "inputs": [
+        {"value": 750, "description": "(exemplarvärde)"},
+        {"value": true, "description": "Automatically approves the loan application."}
+      ],
+      "outcome": {
+        "expectedResult": "Loan Approved",
+        "approvalType": "automatic"
+      }
+    },
+    {
+      "id": "BR3-ErrorScenario",
+      "name": "Manual Review for High Risk Cases with Incomplete Documentation",
+      "type": "Error",
+      "inputs": [
+        {"value": 650, "(exemplarvärde)"},
+        {
+          "description": "Customer has a credit score below the threshold and incomplete documentation.",
+          "expectedResult": "Loan Declined"
+        }
+      ],
+      "outcome": {
+        "approvalType": "manual",
+        "loanDecision": "Rejected due to insufficient information."
+      }
+    }
+  ],
+  "implementationNotes": [
+    "Implement the rule using a DMN-compliant tool like Drools or Ruleflow, ensuring it can handle different credit score ranges and income stability factors.",
+    {
+      "description": "The Eligibility Checker should interface with an external API to fetch real-time market data for dynamic interest rate calculations."
+    },
+    {
+      "description": "Ensure the rule integrates seamlessly into a microservices architecture, using Python's Flask framework as its backbone.",
+      "relevantBeroenden": [
+        {"name": "CreditScoreAPI", "type": "external API"},
+        {"name": "IncomeStabilityService", "type": "service"}
+      ]
+    }
+  ],

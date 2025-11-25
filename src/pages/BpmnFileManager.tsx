@@ -170,6 +170,20 @@ export default function BpmnFileManager() {
     missingDependencies?: { parent: string; childProcess: string }[];
     skippedSubprocesses?: string[];
   }
+
+  interface AggregatedGenerationResult {
+    totalFiles: number;
+    allFilesAnalyzed: Set<string>;
+    allDorDodCriteria: Array<{ subprocess: string; category: string; type: string; text: string }>;
+    allTestFiles: Array<{ fileName: string; elements: Array<{ id: string; name: string }> }>;
+    allDocFiles: string[];
+    allJiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }>;
+    allSubprocessMappings: Array<{ callActivity: string; subprocessFile: string }>;
+    allNodeArtifacts: Array<{ bpmnFile: string; elementId: string; elementName: string; docFileName?: string; testFileName?: string }>;
+    allMissingDependencies: { parent: string; childProcess: string }[];
+    allSkippedSubprocesses: Set<string>;
+    fileResults: Array<{ fileName: string; success: boolean; error?: string }>;
+  }
   
   interface HierarchyBuildResult {
     fileName: string;
@@ -231,7 +245,6 @@ export default function BpmnFileManager() {
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'tests') navigate('/test-report');
-    else if (view === 'project') navigate('/project-plan');
     else if (view === 'timeline') navigate('/timeline');
     else navigate('/files');
   };
@@ -905,7 +918,8 @@ export default function BpmnFileManager() {
     file: BpmnFile,
     mode: GenerationMode = 'slow',
     scope: GenerationScope = 'file',
-  ) => {
+    showReport: boolean = true,
+  ): Promise<DetailedGenerationResult | null> => {
     if (file.file_type !== 'bpmn') {
       toast({
         title: 'Ej stödd filtyp',
@@ -1086,12 +1100,17 @@ export default function BpmnFileManager() {
       checkCancellation();
 
       const missingUploads = (allFiles || []).filter(f => !f.storage_path).map(f => f.file_name);
-      if (missingUploads.length) {
+      // Only show this warning if showReport is true (single file generation)
+      // For batch generation, this is less critical and can be logged instead
+      if (showReport && missingUploads.length) {
         toast({
           title: 'BPMN-filer saknar uppladdning',
           description: `Hoppar över ${missingUploads.length} filer som inte finns i Supabase Storage: ${missingUploads.join(', ')}.`,
           variant: 'destructive',
         });
+      } else if (!showReport && missingUploads.length) {
+        // Log for batch generation instead of showing toast
+        console.warn(`[Batch generation] Hoppar över ${missingUploads.length} filer som inte finns i Supabase Storage: ${missingUploads.join(', ')}`);
       }
 
       const existingBpmnFiles = (allFiles || [])
@@ -1134,17 +1153,21 @@ export default function BpmnFileManager() {
       );
       checkCancellation();
 
-      if (result.metadata?.llmFallbackUsed && result.metadata.llmFinalProvider === 'local') {
-        toast({
-          title: 'LLM-fallback använd',
-          description:
-            'ChatGPT (moln-LLM) var inte tillgänglig. Dokumentationen genererades i stället via lokal LLM (Ollama).',
-        });
+      // Only show warnings if showReport is true (single file generation)
+      // For batch generation, warnings are collected and shown in the summary
+      if (showReport) {
+        if (result.metadata?.llmFallbackUsed && result.metadata.llmFinalProvider === 'local') {
+          toast({
+            title: 'LLM-fallback använd',
+            description:
+              'ChatGPT (moln-LLM) var inte tillgänglig. Dokumentationen genererades i stället via lokal LLM (Ollama).',
+          });
+        }
       }
       const nodeArtifacts = result.nodeArtifacts || [];
       const missingDependencies = result.metadata?.missingDependencies || [];
       const skippedSubprocesses = new Set<string>(result.metadata?.skippedSubprocesses || []);
-      if (skippedSubprocesses.size) {
+      if (showReport && skippedSubprocesses.size) {
         const skippedArray = Array.from(skippedSubprocesses);
         const preview = skippedArray.slice(0, 3).join(', ');
         const more = skippedArray.length > 3 ? ` … och ${skippedArray.length - 3} till` : '';
@@ -1333,8 +1356,14 @@ export default function BpmnFileManager() {
         return [...grandparentPath, capitalizedRoot];
       };
       
+      // NOTE: Jira-namn (jira_name) genereras INTE här längre.
+      // De genereras istället av handleBuildHierarchy() som använder hela ProcessTree
+      // och kan bygga korrekta paths. Här skriver vi bara jira_type för noder som saknar det.
+      // 
+      // Om jira_name behövs, använd "Bygg/uppdatera hierarki från root" först.
+      
       if (useHierarchy && result.metadata) {
-        // För hierarkiska filer: bygg hierarkin för att extrahera Jira-metadata
+        // För hierarkiska filer: extrahera jira_type för noder som saknar det
         for (const bpmnFileName of result.metadata.filesIncluded) {
           try {
             const bpmnUrl = `/bpmn/${bpmnFileName}`;
@@ -1347,21 +1376,21 @@ export default function BpmnFileManager() {
             // Extrahera alla noder från hierarkin (hierarchy.allNodes är redan en flat lista)
             const allNodes = hierarchy.allNodes;
             
-            // Skapa mappings för varje nod
+            // Skapa mappings för varje nod (bara jira_type, inte jira_name)
             for (const node of allNodes) {
               mappingsToInsert.push({
                 bpmn_file: node.bpmnFile,
                 element_id: node.id,
                 jira_type: node.jiraType || null,
-                jira_name: node.jiraName || null,
+                // jira_name: INTE satt här - genereras av handleBuildHierarchy istället
               });
               
-              if (node.jiraType && node.jiraName) {
+              if (node.jiraType) {
                 detailedJiraMappings.push({
                   elementId: node.id,
                   elementName: node.name,
                   jiraType: node.jiraType,
-                  jiraName: node.jiraName,
+                  jiraName: '', // Tomt - kommer från handleBuildHierarchy
                 });
               }
             }
@@ -1382,21 +1411,21 @@ export default function BpmnFileManager() {
           // Extrahera alla noder från hierarkin (hierarchy.allNodes är redan en flat lista)
           const allNodes = hierarchy.allNodes;
           
-          // Skapa mappings för varje nod
+          // Skapa mappings för varje nod (bara jira_type, inte jira_name)
           for (const node of allNodes) {
             mappingsToInsert.push({
               bpmn_file: node.bpmnFile,
               element_id: node.id,
               jira_type: node.jiraType || null,
-              jira_name: node.jiraName || null,
+              // jira_name: INTE satt här - genereras av handleBuildHierarchy istället
             });
             
-            if (node.jiraType && node.jiraName) {
+            if (node.jiraType) {
               detailedJiraMappings.push({
                 elementId: node.id,
                 elementName: node.name,
                 jiraType: node.jiraType,
-                jiraName: node.jiraName,
+                jiraName: '', // Tomt - kommer från handleBuildHierarchy
               });
             }
           }
@@ -1595,24 +1624,27 @@ export default function BpmnFileManager() {
           if (testError) {
             console.error('[Generation] Save test links error:', testError);
 
-            if (isPGRST204Error(testError)) {
-              // Testfilerna är genererade, men länkning till databasen misslyckades på grund av schema-problem.
-              toast({
-                title: 'Tester genererade – men länkning till DB misslyckades',
-                description:
-                  'Testfilerna har skapats, men kunde inte kopplas i tabellen node_test_links. ' +
-                  'Om du kör lokalt och nyligen ändrat DB-schemat: kör supabase-migrationerna (t.ex. supabase db reset) enligt README.',
-                variant: 'destructive',
-                duration: 10000,
-              });
-            } else {
-              toast({
-                title: 'Kunde inte spara testlänkar',
-                description:
-                  (testError as { message?: string }).message ||
-                  'Okänt fel vid sparning av testlänkar',
-                variant: 'destructive',
-              });
+            // Only show toast warnings if showReport is true (single file generation)
+            if (showReport) {
+              if (isPGRST204Error(testError)) {
+                // Testfilerna är genererade, men länkning till databasen misslyckades på grund av schema-problem.
+                toast({
+                  title: 'Tester genererade – men länkning till DB misslyckades',
+                  description:
+                    'Testfilerna har skapats, men kunde inte kopplas i tabellen node_test_links. ' +
+                    'Om du kör lokalt och nyligen ändrat DB-schemat: kör supabase-migrationerna (t.ex. supabase db reset) enligt README.',
+                  variant: 'destructive',
+                  duration: 10000,
+                });
+              } else {
+                toast({
+                  title: 'Kunde inte spara testlänkar',
+                  description:
+                    (testError as { message?: string }).message ||
+                    'Okänt fel vid sparning av testlänkar',
+                  variant: 'destructive',
+                });
+              }
             }
           } else {
             console.log(
@@ -1713,20 +1745,6 @@ export default function BpmnFileManager() {
         : [file.file_name];
       
       const skippedList = Array.from(skippedSubprocesses);
-      setGenerationResult({
-        fileName: file.file_name,
-        filesAnalyzed,
-        dorDodCriteria: detailedDorDod,
-        testFiles: detailedTestFiles,
-        docFiles: detailedDocFiles,
-        jiraMappings: detailedJiraMappings,
-        subprocessMappings: detailedSubprocessMappings,
-        nodeArtifacts,
-        missingDependencies,
-        skippedSubprocesses: skippedList,
-      });
-      setShowGenerationReport(true);
-
       const nodeDocCount = nodeArtifacts.filter(a => a.docFileName).length;
       const nodeTestCount = nodeArtifacts.filter(a => a.testFileName).length;
       const totalDocCount = nodeDocCount || docsCount;
@@ -1754,10 +1772,30 @@ export default function BpmnFileManager() {
         resultMessage.push(`Hoppade över ${skippedList.length} saknade subprocesser`);
       }
 
-      toast({
-        title: 'Artefakter genererade!',
-        description: resultMessage.join(', '),
-      });
+      if (showReport) {
+        toast({
+          title: 'Artefakter genererade!',
+          description: resultMessage.join(', '),
+        });
+      }
+
+      const generationResult: DetailedGenerationResult = {
+        fileName: file.file_name,
+        filesAnalyzed,
+        dorDodCriteria: detailedDorDod,
+        testFiles: detailedTestFiles,
+        docFiles: detailedDocFiles,
+        jiraMappings: detailedJiraMappings,
+        subprocessMappings: detailedSubprocessMappings,
+        nodeArtifacts,
+        missingDependencies,
+        skippedSubprocesses: skippedList,
+      };
+      
+      if (showReport) {
+        setGenerationResult(generationResult);
+        setShowGenerationReport(true);
+      }
       if (jobProgressCount < jobTotalCount) {
         jobProgressCount = jobTotalCount;
         if (activeJob) {
@@ -1800,6 +1838,8 @@ export default function BpmnFileManager() {
       // Force immediate refetch of files list
       await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
       await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      return generationResult;
     } catch (error) {
       const isCancelled = error instanceof Error && error.message === 'Avbrutet av användaren';
       console.error('Generation error:', error);
@@ -1822,6 +1862,7 @@ export default function BpmnFileManager() {
         setOverlayMessage('');
         setOverlayDescription('');
       }
+      return null;
     } finally {
       setTimeout(() => {
         setGeneratingFile(null);
@@ -1860,9 +1901,70 @@ export default function BpmnFileManager() {
           : `Genererar dokumentation, tester och DoR/DoD för ${orderedFiles.length} BPMN-filer, baserat på befintlig hierarki.`,
     });
 
+    // Samla resultat från alla filer
+    const aggregatedResult: AggregatedGenerationResult = {
+      totalFiles: orderedFiles.length,
+      allFilesAnalyzed: new Set<string>(),
+      allDorDodCriteria: [],
+      allTestFiles: [],
+      allDocFiles: [],
+      allJiraMappings: [],
+      allSubprocessMappings: [],
+      allNodeArtifacts: [],
+      allMissingDependencies: [],
+      allSkippedSubprocesses: new Set<string>(),
+      fileResults: [],
+    };
+
+    // Generera för varje fil utan att visa popup
     for (const file of orderedFiles) {
-      await handleGenerateArtifacts(file, generationMode, 'file');
+      try {
+        const result = await handleGenerateArtifacts(file, generationMode, 'file', false);
+        if (result) {
+          // Aggregera resultat
+          result.filesAnalyzed.forEach(f => aggregatedResult.allFilesAnalyzed.add(f));
+          aggregatedResult.allDorDodCriteria.push(...result.dorDodCriteria);
+          aggregatedResult.allTestFiles.push(...result.testFiles);
+          aggregatedResult.allDocFiles.push(...result.docFiles);
+          aggregatedResult.allJiraMappings.push(...result.jiraMappings);
+          aggregatedResult.allSubprocessMappings.push(...result.subprocessMappings);
+          if (result.nodeArtifacts) {
+            aggregatedResult.allNodeArtifacts.push(...result.nodeArtifacts);
+          }
+          if (result.missingDependencies) {
+            aggregatedResult.allMissingDependencies.push(...result.missingDependencies);
+          }
+          if (result.skippedSubprocesses) {
+            result.skippedSubprocesses.forEach(s => aggregatedResult.allSkippedSubprocesses.add(s));
+          }
+          aggregatedResult.fileResults.push({ fileName: file.file_name, success: true });
+        }
+      } catch (error) {
+        aggregatedResult.fileResults.push({
+          fileName: file.file_name,
+          success: false,
+          error: error instanceof Error ? error.message : 'Okänt fel',
+        });
+      }
     }
+
+    // Konvertera till DetailedGenerationResult-format för visning
+    const summaryResult: DetailedGenerationResult = {
+      fileName: `Alla filer (${aggregatedResult.totalFiles})`,
+      filesAnalyzed: Array.from(aggregatedResult.allFilesAnalyzed),
+      dorDodCriteria: aggregatedResult.allDorDodCriteria,
+      testFiles: aggregatedResult.allTestFiles,
+      docFiles: aggregatedResult.allDocFiles,
+      jiraMappings: aggregatedResult.allJiraMappings,
+      subprocessMappings: aggregatedResult.allSubprocessMappings,
+      nodeArtifacts: aggregatedResult.allNodeArtifacts,
+      missingDependencies: aggregatedResult.allMissingDependencies,
+      skippedSubprocesses: Array.from(aggregatedResult.allSkippedSubprocesses),
+    };
+
+    // Visa sammanfattning när alla filer är klara
+    setGenerationResult(summaryResult);
+    setShowGenerationReport(true);
   };
 
   const handleGenerateSelectedFile = async () => {
@@ -1928,6 +2030,31 @@ export default function BpmnFileManager() {
         toast({
           title: 'Inloggning krävs',
           description: 'Logga in via Auth-sidan för att kunna uppdatera hierarkin.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Check if user still exists in database (common after db reset)
+      try {
+        const { data: userCheck, error: userError } = await supabase.auth.getUser();
+        if (userError || !userCheck?.user) {
+          // User doesn't exist - likely after db reset
+          await supabase.auth.signOut();
+          toast({
+            title: 'Session ogiltig',
+            description: 'Din session är ogiltig (troligen efter databasreset). Logga in igen.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      } catch (userCheckError) {
+        // If getUser fails, try to sign out and show error
+        console.error('Error checking user:', userCheckError);
+        await supabase.auth.signOut();
+        toast({
+          title: 'Autentiseringsfel',
+          description: 'Kunde inte verifiera din session. Logga in igen.',
           variant: 'destructive',
         });
         return;
@@ -2012,8 +2139,21 @@ export default function BpmnFileManager() {
                 ? 'epic'
                 : null;
 
-          // Use new Jira naming scheme (feature goals use top-level subprocess logic, epics use path-based)
-          const jiraName = buildJiraName(node, tree, parentPath);
+          // Use new Jira naming scheme: full path from root to node (excluding root)
+          const jiraName = buildJiraName(node, tree, []);
+
+          // Debug logging for specific node
+          if (import.meta.env.DEV && node.bpmnElementId === 'calculate-household-affordability') {
+            const fullPath = buildParentPath(node, tree);
+            console.log('[handleBuildHierarchy] Jira name generation for calculate-household-affordability:', {
+              nodeLabel: node.label,
+              nodeType: node.type,
+              bpmnFile: node.bpmnFile,
+              fullPath,
+              jiraName,
+              rootLabel: tree.label,
+            });
+          }
 
           mappingsToInsert.push({
             bpmn_file: node.bpmnFile,
@@ -2023,20 +2163,32 @@ export default function BpmnFileManager() {
           });
         }
 
-        // Recursively process children with updated parent path
-        // For epics, we still need parent path for path-based naming
-        const newParentPath = node.type === 'process' ? [] : [...parentPath, node.label];
+        // Recursively process children
+        // parentPath is no longer used for naming, but kept for backward compatibility
         for (const child of node.children) {
-          collectMappings(child, newParentPath);
+          collectMappings(child, parentPath);
         }
       };
 
       collectMappings(tree);
 
-      if (mappingsToInsert.length > 0) {
+      // Deduplicate mappings by bpmn_file:element_id to avoid PostgreSQL error:
+      // "ON CONFLICT DO UPDATE command cannot affect row a second time"
+      // This can happen if the same node appears multiple times in the tree
+      const uniqueMappings = new Map<string, typeof mappingsToInsert[0]>();
+      for (const mapping of mappingsToInsert) {
+        const key = `${mapping.bpmn_file}:${mapping.element_id}`;
+        // Keep the first occurrence (or we could keep the last one)
+        if (!uniqueMappings.has(key)) {
+          uniqueMappings.set(key, mapping);
+        }
+      }
+      const deduplicatedMappings = Array.from(uniqueMappings.values());
+
+      if (deduplicatedMappings.length > 0) {
         const { error: mappingsError } = await supabase
           .from('bpmn_element_mappings')
-          .upsert(mappingsToInsert, {
+          .upsert(deduplicatedMappings, {
             onConflict: 'bpmn_file,element_id',
             ignoreDuplicates: false,
           });
@@ -2097,6 +2249,32 @@ export default function BpmnFileManager() {
       await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
     } catch (error) {
       console.error('Hierarchy build error:', error);
+      
+      // Check if this is an authentication error (common after db reset)
+      const isAuthError = error instanceof Error && (
+        error.message.includes('User from sub claim in JWT does not exist') ||
+        error.message.includes('JWT') ||
+        error.message.includes('401') ||
+        error.message.includes('403') ||
+        (error as any).status === 401 ||
+        (error as any).status === 403
+      );
+
+      if (isAuthError) {
+        // Sign out and redirect to auth page
+        await supabase.auth.signOut();
+        toast({
+          title: 'Session ogiltig',
+          description: 'Din session är ogiltig (troligen efter databasreset). Logga in igen.',
+          variant: 'destructive',
+        });
+        // Optionally redirect to auth page
+        setTimeout(() => {
+          window.location.href = '/#/auth';
+        }, 2000);
+        return;
+      }
+
       toast({
         title: 'Hierarkibyggnad misslyckades',
         description: error instanceof Error ? error.message : 'Ett okänt fel uppstod',
@@ -2740,9 +2918,18 @@ export default function BpmnFileManager() {
       <Dialog open={showGenerationReport} onOpenChange={setShowGenerationReport}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Genereringsrapport - {generationResult?.fileName}</DialogTitle>
+            <DialogTitle className="text-xl font-bold">
+              Genereringsrapport - {generationResult?.fileName}
+              {generationResult?.fileName?.includes('Alla filer') && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  (Sammanfattning)
+                </span>
+              )}
+            </DialogTitle>
             <DialogDescription>
-              Detaljerad översikt över alla genererade artefakter
+              {generationResult?.fileName?.includes('Alla filer')
+                ? 'Sammanfattning över alla genererade artefakter för alla filer'
+                : 'Detaljerad översikt över alla genererade artefakter'}
             </DialogDescription>
           </DialogHeader>
 
@@ -3171,37 +3358,6 @@ export default function BpmnFileManager() {
                                 : '';
                               const outdatedText = snap.outdated ? ' (inaktuella – BPMN har ändrats efter generering)' : '';
                               return `Tester: ${modeLabel}${timeStr ? ` · ${timeStr}` : ''}${outdatedText}`;
-                            })()}
-                          />
-                          <ArtifactStatusBadge
-                            icon="🌐"
-                            label="Hierarki"
-                            status={coverageMap.get(file.file_name)!.hierarchy.status}
-                            covered={coverageMap.get(file.file_name)!.hierarchy.covered}
-                            total={coverageMap.get(file.file_name)!.hierarchy.total}
-                            title={(() => {
-                              const summary = artifactStatusByFile.get(file.file_name);
-                              if (!summary) return undefined;
-                              const snap = summary.hierarchy;
-                              const timeStr = snap.generatedAt
-                                ? new Date(snap.generatedAt).toLocaleString('sv-SE')
-                                : '';
-                              const outdatedText = snap.outdated
-                                ? ' (inaktuell – BPMN har ändrats efter generering)'
-                                : '';
-                              if (snap.status === 'missing') {
-                                return 'Ingen hierarki genererad ännu.';
-                              }
-                              if (snap.status === 'partial') {
-                                return `Ingår i root-hierarki men utan egen hierarkisk testfil.${timeStr ? ` Senast körd: ${timeStr}.` : ''}`;
-                              }
-                              const modeLabel =
-                                snap.mode === 'slow'
-                                  ? 'Slow LLM'
-                                  : snap.mode === 'local'
-                                  ? 'Local'
-                                  : 'Okänt läge';
-                              return `Hierarki: ${modeLabel}${timeStr ? ` · ${timeStr}` : ''}${outdatedText}`;
                             })()}
                           />
                         </>

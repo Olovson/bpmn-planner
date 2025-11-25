@@ -37,39 +37,45 @@ Alla platser där Jira-namn genereras i appen har nu konsoliderats till att anv�
 
 ### ✅ Alla Använder Nu `buildJiraName`
 
-1. **`src/pages/BpmnFileManager.tsx`**
-   - Använder: `buildJiraName(node, tree, parentPath)`
-   - Syfte: Genererar Jira-mappningar vid hierarkibyggnad
+1. **`src/pages/BpmnFileManager.tsx` - `handleBuildHierarchy`**
+   - Använder: `buildJiraName(node, tree, [])`
+   - Syfte: **Endast plats som skriver Jira-namn till databasen**
+   - Genererar Jira-mappningar vid hierarkibyggnad med fullständig ProcessTree
 
 2. **`src/hooks/useAllBpmnNodes.ts`**
-   - Använder: `buildJiraName(node, processTree, parentPathWithoutRoot)`
+   - Använder: `buildJiraName(node, processTree, [])`
    - Syfte: Fallback-namn när ingen mapping finns i databasen
 
 3. **`supabase/functions/generate-artifacts/index.ts`**
-   - Använder: `buildJiraName(elementNode, rootHierarchy, parentPathWithoutRoot)`
-   - Syfte: Genererar Jira-mappningar vid artefaktgenerering i Edge Function
+   - **Uppdaterat**: Skriver INTE längre `jira_name` till databasen
+   - Sätter bara `jira_type` om det saknas
+   - Anledning: Använder partiell hierarki som inte kan bygga korrekta paths
 
 4. **`src/lib/bpmnHierarchy.ts`**
    - Använder: `buildJiraName()` via `computeJiraNames()`
-   - Syfte: Bygger Jira-namn för `BpmnHierarchyNode`-strukturen
+   - Syfte: Bygger Jira-namn för `BpmnHierarchyNode`-strukturen (används inte längre för databas-skrivning)
 
 ## Fördelar med Konsolideringen
 
-1. **Konsekvens**: Samma subprocess får alltid samma Jira-namn, oavsett var den genereras
-2. **Underhållbarhet**: En enda plats att uppdatera när namngivningsregler ändras
-3. **Testbarhet**: Enklare att testa namngivningslogiken när den är centraliserad
-4. **Kvalitet**: Mindre risk för buggar och inkonsekvenser
+1. **Konsekvens**: Samma nod får alltid samma Jira-namn, oavsett var den genereras
+2. **Enkel källa**: Endast en plats (`handleBuildHierarchy`) skriver Jira-namn till databasen
+3. **Underhållbarhet**: En enda plats att uppdatera när namngivningsregler ändras
+4. **Testbarhet**: Enklare att testa namngivningslogiken när den är centraliserad
+5. **Kvalitet**: Mindre risk för buggar och inkonsekvenser
+6. **Fullständig hierarki**: Använder hela ProcessTree för att bygga korrekta paths
 
 ## Namngivningsregler (Enhetliga Överallt)
 
-### Feature Goals (CallActivity)
-- Top-level subprocess: `<N.label>`
-- Djupare subprocess: `<T.label> – <N.label>` (där T är top-level subprocess)
-- Root-processnamn ingår **aldrig**
+**Alla nodtyper använder samma full path-baserad namngivning:**
 
-### Epics (UserTask, ServiceTask, BusinessRuleTask)
-- Path-baserad: `<parent1> - <parent2> - ... - <node.label>`
-- Root-processnamn exkluderas från pathen
+### Feature Goals (CallActivity) och Epics (UserTask, ServiceTask, BusinessRuleTask)
+- **Fullständig path från root till nod** (root-processnamn exkluderas)
+- Format: `<parent1> - <parent2> - ... - <node.label>`
+- Root-processnamn ingår **aldrig**
+- Exempel: 
+  - `Application` (top-level callActivity)
+  - `Application - Internal data gathering` (nested callActivity)
+  - `Automatic Credit Evaluation - Calculate household affordability` (serviceTask under callActivity)
 
 ## Separata Användningsfall (Behöver Inte Konsolideras)
 

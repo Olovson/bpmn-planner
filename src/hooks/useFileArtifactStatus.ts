@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { testMapping } from '@/data/testMapping';
+// Removed testMapping import - no longer using fallback logic
 
 export interface FileArtifactStatus {
   file_name: string;
@@ -84,29 +84,13 @@ export const useAllFilesArtifactStatus = () => {
         }
       });
 
-      // Count tests per file - use database or fallback to testMapping
+      // Count tests per file - only use database, no fallback
+      // This makes it clear when tests are missing and need to be generated
       const testCounts = new Map<string, number>();
       testResult.data?.forEach(row => {
         const bpmnFile = row.test_file.replace('.spec.ts', '.bpmn');
         testCounts.set(bpmnFile, (testCounts.get(bpmnFile) || 0) + (row.test_count || 0));
       });
-
-      // Fallback to testMapping if database is empty
-      if (testCounts.size === 0) {
-        Object.entries(testMapping).forEach(([nodeId, testInfo]) => {
-          // Try to match nodeId to BPMN file name
-          const possibleFiles = [
-            `${nodeId}.bpmn`,
-            `mortgage-se-${nodeId}.bpmn`,
-          ];
-          
-          possibleFiles.forEach(fileName => {
-            if ((filesResult.data || []).some(f => f.file_name === fileName)) {
-              testCounts.set(fileName, testInfo.testCount);
-            }
-          });
-        });
-      }
 
       // Check docs for each BPMN file
       const docChecks = await Promise.all(

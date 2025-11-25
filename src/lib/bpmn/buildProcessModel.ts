@@ -4,6 +4,10 @@ import {
   type NormalizedProcessDefinition,
   type ProcessHierarchyResult,
 } from '@/lib/bpmn/buildProcessHierarchy';
+import {
+  calculateOrderFromSequenceFlows,
+  calculateVisualOrderFromCoordinates,
+} from './sequenceOrderHelpers';
 import type {
   HierarchyNode,
   ProcessDefinition,
@@ -432,39 +436,16 @@ function assignExecutionOrderFromSequenceFlows(
     if (!parseResult) return;
 
     const { sequenceFlows, elements } = parseResult;
-    if (!sequenceFlows || sequenceFlows.length === 0) {
-      return;
-    }
+    
+    // Always use the same function - calculateOrderFromSequenceFlows
+    // This will return empty map if no sequence flows or no start nodes
+    // Note: ProcessNodeModel uses primaryPathIndex instead of orderIndex
+    const nodeElementIds = nodes
+      .map((n) => n.bpmnElementId)
+      .filter((id): id is string => id !== undefined);
+    const orderMap = calculateOrderFromSequenceFlows(sequenceFlows || [], nodeElementIds);
 
-    const successors = new Map<string, string[]>();
-    const predecessors = new Map<string, string[]>();
-
-    for (const flow of sequenceFlows) {
-      const sourceId = flow.sourceRef;
-      const targetId = flow.targetRef;
-      if (!sourceId || !targetId) continue;
-
-      if (!successors.has(sourceId)) successors.set(sourceId, []);
-      successors.get(sourceId)!.push(targetId);
-
-      if (!predecessors.has(targetId)) predecessors.set(targetId, []);
-      predecessors.get(targetId)!.push(sourceId);
-    }
-
-    const startEvents = elements
-      .filter((el) => el.type === 'bpmn:StartEvent')
-      .map((el) => el.id);
-    const allIds = new Set<string>([
-      ...Array.from(successors.keys()),
-      ...Array.from(predecessors.keys()),
-    ]);
-    const startCandidates =
-      startEvents.length > 0
-        ? startEvents
-        : Array.from(allIds).filter((id) => !predecessors.has(id));
-
-    if (!startCandidates.length) return;
-
+    // Apply primaryPathIndex (mapped from orderIndex), branchId, scenarioPath to nodes
     const nodesByElementId = new Map<string, ProcessNodeModel[]>();
     for (const node of nodes) {
       const elementId = node.bpmnElementId;
@@ -474,62 +455,31 @@ function assignExecutionOrderFromSequenceFlows(
       nodesByElementId.set(elementId, list);
     }
 
-    let counter = 0;
-    const visitedPerBranch = new Map<string, number>();
-    const maxVisitsPerNode = 2;
-
-    startCandidates.forEach((startId, index) => {
-      const branchId = index === 0 ? 'main' : `entry-${index + 1}`;
-      const scenarioPath = [branchId];
-      type StackFrame = { elementId: string; branchId: string; scenarioPath: string[] };
-      const stack: StackFrame[] = [{ elementId: startId, branchId, scenarioPath }];
-
-      while (stack.length > 0) {
-        const { elementId, branchId: currentBranchId, scenarioPath: currentScenario } = stack.pop()!;
-        const branchKey = `${currentBranchId}:${elementId}`;
-        const visits = (visitedPerBranch.get(branchKey) ?? 0) + 1;
-        if (visits > maxVisitsPerNode) continue;
-        visitedPerBranch.set(branchKey, visits);
-
-        const modelNodes = nodesByElementId.get(elementId) ?? [];
-        modelNodes.forEach((node) => {
-          node.primaryPathIndex = counter;
-          node.branchId = currentBranchId;
-          node.scenarioPath = currentScenario;
-        });
-        if (modelNodes.length) {
-          counter += 1;
+    orderMap.forEach((info, elementId) => {
+      const modelNodes = nodesByElementId.get(elementId) ?? [];
+      modelNodes.forEach((node) => {
+        if (node.primaryPathIndex === undefined) {
+          node.primaryPathIndex = info.orderIndex;
+          node.branchId = info.branchId;
+          node.scenarioPath = info.scenarioPath;
         }
-
-        const next = successors.get(elementId) ?? [];
-        if (!next.length) continue;
-
-        if (next.length === 1) {
-          stack.push({
-            elementId: next[0],
-            branchId: currentBranchId,
-            scenarioPath: currentScenario,
-          });
-          continue;
-        }
-
-        const [first, ...others] = next;
-        others.forEach((target, idx) => {
-          const subBranchId = `${currentBranchId}-branch-${idx + 1}`;
-          const subScenarioPath = [...currentScenario, subBranchId];
-          stack.push({
-            elementId: target,
-            branchId: subBranchId,
-            scenarioPath: subScenarioPath,
-          });
-        });
-
-        stack.push({
-          elementId: first,
-          branchId: currentBranchId,
-          scenarioPath: currentScenario,
-        });
-      }
+      });
     });
+
+    // Always compute visualOrderIndex for nodes without primaryPathIndex
+    // This uses the same function regardless of whether sequence flows exist
+    const nodesWithoutOrder = nodes.filter((n) => n.bpmnElementId && n.primaryPathIndex === undefined);
+    if (nodesWithoutOrder.length > 0) {
+      const nodeElementIds = nodesWithoutOrder.map((n) => n.bpmnElementId!);
+      const visualOrderMap = calculateVisualOrderFromCoordinates(elements, nodeElementIds);
+      nodesWithoutOrder.forEach((node) => {
+        if (node.bpmnElementId) {
+          const visualIndex = visualOrderMap.get(node.bpmnElementId);
+          if (visualIndex !== undefined) {
+            (node as any).visualOrderIndex = visualIndex;
+          }
+        }
+      });
+    }
   });
 }

@@ -7,6 +7,9 @@ export interface BpmnElement {
   name: string;
   type: string;
   businessObject: any;
+  /** Visual coordinates from BPMN DI (Diagram Interchange) */
+  x?: number;
+  y?: number;
 }
 
 export interface BpmnSubprocess {
@@ -105,6 +108,27 @@ export class BpmnParser {
         const bo = element.businessObject;
         if (!bo) return;
 
+        // Extract DI (Diagram Interchange) coordinates for visual ordering
+        // bpmn-js stores DI info in element.di or element.gfx
+        let x: number | undefined;
+        let y: number | undefined;
+        
+        // Try to get coordinates from element's diagram info
+        if (element.di) {
+          // For shapes (tasks, callActivities, etc.)
+          if (element.di.bounds) {
+            x = element.di.bounds.x;
+            y = element.di.bounds.y;
+          }
+          // For waypoints (sequence flows) we don't need coordinates
+        } else if (element.gfx) {
+          // Alternative location for diagram info
+          if (element.gfx.bounds) {
+            x = element.gfx.bounds.x;
+            y = element.gfx.bounds.y;
+          }
+        }
+
         // Extract process info
         if (bo.$type === 'bpmn:Process') {
           processId = bo.id || element.id;
@@ -120,6 +144,8 @@ export class BpmnParser {
           name: bo.name || element.id,
           type: bo.$type,
           businessObject: bo,
+          x,
+          y,
         };
 
         elements.push(bpmnElement);

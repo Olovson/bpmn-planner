@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Safe Sync to GitHub Script
+ * Sync to GitHub Script
  * 
- * Synkar lokala ändringar till GitHub utan att någonsin skriva över lokala ändringar med remote.
- * Lokalt repo är alltid source of truth.
- * 
- * Om remote har något som inte finns lokalt rapporteras det, men inget försöker lösa det automatiskt.
+ * Synkar lokala ändringar till GitHub. Lokalt repo är facit och remote kan skrivas över.
  * 
  * Användning:
  *   node scripts/sync-to-github.mjs
@@ -68,7 +65,7 @@ function runCommand(command, description, options = {}) {
 async function main() {
   console.log('');
   log('═══════════════════════════════════════════════════════════');
-  log('Safe Sync to GitHub');
+  log('Sync to GitHub (lokalt är facit)');
   log('═══════════════════════════════════════════════════════════');
   console.log('');
 
@@ -140,15 +137,13 @@ async function main() {
     const [remoteAhead, localAhead] = divergenceResult.output.trim().split(/\s+/).map(Number);
     
     if (remoteAhead > 0) {
-      error(`Remote ligger ${remoteAhead} commit(s) före lokalt.`);
-      log('Lokal kod är source of truth - stoppar för säkerhets skull.');
-      log('Om du vill synka remote till lokalt, gör det manuellt med försiktighet.');
-      process.exit(1);
+      log(`Remote ligger ${remoteAhead} commit(s) före lokalt.`);
+      log('Lokalt är facit - remote kommer att skrivas över vid push.');
     }
     
     if (localAhead > 0) {
       log(`Lokalt ligger ${localAhead} commit(s) före remote.`);
-    } else {
+    } else if (remoteAhead === 0) {
       success('Lokalt och remote är synkade.');
     }
   }
@@ -160,60 +155,6 @@ async function main() {
   const porcelainResult = runCommand('git status --porcelain', 'Ocommittade ändringar', { silent: true });
   
   if (porcelainResult.success && porcelainResult.output && porcelainResult.output.trim()) {
-    // Kontrollera om det finns borttagna filer
-    // Git status --porcelain format:
-    //   "D " = deleted, staged (kommer committas)
-    //   " D" = deleted, not staged (kommer committas efter git add)
-    //   "??" = untracked
-    const lines = porcelainResult.output.trim().split('\n');
-    const stagedDeletions = [];
-    const unstagedDeletions = [];
-    
-    lines.forEach(line => {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('D ')) {
-        // Staged deletion
-        const file = trimmed.substring(2).trim();
-        if (file) stagedDeletions.push(file);
-      } else if (trimmed.startsWith(' D')) {
-        // Unstaged deletion
-        const file = trimmed.substring(2).trim();
-        if (file) unstagedDeletions.push(file);
-      }
-    });
-    
-    if (stagedDeletions.length > 0 || unstagedDeletions.length > 0) {
-      console.log('');
-      error('⚠️  VARNING: Filer kommer att tas bort!');
-      log('═══════════════════════════════════════════════════════════');
-      
-      if (stagedDeletions.length > 0) {
-        log('Filer som redan är staged för borttagning:');
-        stagedDeletions.forEach(file => {
-          console.log(`  ❌ ${file} (staged)`);
-        });
-        console.log('');
-      }
-      
-      if (unstagedDeletions.length > 0) {
-        log('Filer som kommer att tas bort vid "git add .":');
-        unstagedDeletions.forEach(file => {
-          console.log(`  ❌ ${file} (kommer att stagas)`);
-        });
-        console.log('');
-      }
-      
-      log('═══════════════════════════════════════════════════════════');
-      console.log('');
-      error('Scriptet stoppas för att förhindra oavsiktlig borttagning.');
-      log('Om du verkligen vill ta bort dessa filer:');
-      log('  1. Granska listan ovan noggrant');
-      log('  2. Kör scriptet igen om du är säker');
-      log('  3. Eller committa manuellt med: git add . && git commit -m "..."');
-      console.log('');
-      process.exit(1);
-    }
-    
     log('Hittade ocommittade ändringar. Committar...');
     
     const addResult = runCommand('git add .', 'Lägger till alla ändringar', { silent: false });
@@ -244,11 +185,25 @@ async function main() {
     success('Inga ocommittade ändringar.');
   }
 
-  // 6. Pusha lokala commits
+  // 6. Pusha lokala commits (force push om remote ligger före)
   console.log('');
   log('Pusher till remote...');
   
-  const pushResult = runCommand(`git push origin ${MAIN_BRANCH}`, 'Pushar till GitHub', { silent: false });
+  // Kontrollera om vi behöver force push
+  const needsForcePush = divergenceResult.success && divergenceResult.output && divergenceResult.output.trim();
+  let remoteAhead = 0;
+  if (needsForcePush) {
+    const [ahead] = divergenceResult.output.trim().split(/\s+/).map(Number);
+    remoteAhead = ahead || 0;
+  }
+  
+  let pushCommand = `git push origin ${MAIN_BRANCH}`;
+  if (remoteAhead > 0) {
+    log(`Remote ligger före lokalt - använder force push för att skriva över remote.`);
+    pushCommand = `git push --force-with-lease origin ${MAIN_BRANCH}`;
+  }
+  
+  const pushResult = runCommand(pushCommand, 'Pushar till GitHub', { silent: false });
   
   if (!pushResult.success) {
     error('Kunde inte pusha till remote.');
@@ -277,7 +232,7 @@ async function main() {
   log('═══════════════════════════════════════════════════════════');
   console.log('');
   log('Lokala ändringar är nu synkade till GitHub.');
-  log('Inga lokala ändringar har skrivits över.');
+  log('Lokalt repo är facit - remote har uppdaterats därefter.');
   console.log('');
 }
 

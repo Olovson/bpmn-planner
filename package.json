@@ -25,7 +25,8 @@
     "start:dev": "node scripts/start-dev.mjs",
     "stop:dev": "node scripts/stop-dev.mjs",
     "sync:github": "node scripts/sync-to-github.mjs",
-    "graph:inspect": "ts-node scripts/graph-inspect.ts"
+    "graph:inspect": "tsx scripts/graph-inspect.ts",
+    "mortgage:order-debug": "vitest run tests/integration/mortgage.order-debug.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -104,6 +105,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",

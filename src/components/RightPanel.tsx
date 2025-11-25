@@ -485,7 +485,7 @@ export const RightPanel = ({
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-4 pb-20">
             <NodeSummaryCard
-              title={currentMapping?.jira_name || selectedElementName || selectedElement}
+              title={currentMapping?.jira_name || selectedElementName || selectedElement || 'N/A'}
               elementId={selectedElement || undefined}
               elementTypeLabel={selectedElementType?.replace('bpmn:', '') || undefined}
               testStatus={testResult?.status ?? null}

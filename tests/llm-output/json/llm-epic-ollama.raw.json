@@ -2,55 +2,49 @@
 {
   "type": "Epic",
   "processContext": {
-    "processName": "Approve Application Process", // Replace with the actual process name from your BPMN file or documentation.
-    "fileName": "mortgage_approval.bpmn", // Use a more descriptive filename if available, e.g., 'Mortgage ApprovalProcess'
-    "entryPoints": [
-      {
-        "id": "Task_ApproveApplication", 
-        "name": "Approve Application Process", 
-        "type": "userTask" // This should be the type of activity (e.g., user task, service task) from your BPMN file or documentation that represents this epic in a real-world scenario.
-      }
-    ],
-    "endPoints": [],
-    "keyNodes": [
-      {
-        "id": "Task_ApproveApplication", 
-        "name": "Approve Application Process" // This should be the name of your epic as it appears in BPMN or other documentation. Replace with actual node names if necessary, and ensure they are unique identifiers within this context.
-      }
-    ]
-  },
-  "currentNodeContext": {
-    "node": {
-      // The following fields should be filled out based on your specific process details:
-      "id": "[Epic-ID]", // Unique identifier for the epic, replace with actual ID.
-      "name": "Approve Application Process (User Task)", 
-      "type": "[Activity Type from BPMN or documentation]. Replace 'userTask' if it differs.",
-      "file": "mortgage_approval.bpmn", // The file name should match your actual process diagram, e.g., 'Mortgage ApprovalProcess'.
-      "jiraType": "[Epic Type]", 
-      "derivedJiraName": "[Derived Jira Name]" // This is optional and depends on whether you use a tool like Redmine or similar for tracking issues in your project. Replace with actual derived name if available, otherwise omit this field.
-    },
-    "hierarchy": {
-      "trail": [{"id": "[Epic-ID]", "name": "Approve Application Process (User Task)", "type": "[Activity Type from BPMN or documentation]"}] // Replace with actual hierarchy path, if applicable.
-    },
-    "parents": [], 
-    "siblings": [], 
-    "children": [], 
-    "descendantHighlights": [], 
-    "descendantTypeCounts": {}, 
-    "flows": {
-      // Flow details should be filled based on your BPMN diagram or documentation. Include incoming and outgoing flows if necessary for visual representation in the tool you're using, like Lucidchart:
-      "incoming": [],
-      "outgoing": [] 
-    },
-    "documentation": [ // Add any relevant notes about this epic here; include descriptions of business rules or DMN policies it adheres to. Replace with actual documentation if available.
-      {
-        "text": "[Description]", 
-        "linkToDocumentation": "#/docs/mortgage-approval" // Links should lead users directly to the relevant sections in your process documentation, e.g., a URL or internal document reference path (e.g., '#/bpmn' for BPMN files). Replace with actual paths if necessary.
-      } 
-    ],
-    "jiraGuidance": { // Provide guidance on how this epic links to other elements in your project, such as stories or test cases:
-      "hierarchy": "[Hierarchical Guidance]",
-      "nodeJiraType": "[Epic Type if applicable]" 
-    },
-    "links": { // Links should point directly to relevant resources for this epic. Replace with actual URLs, file paths or DMN links:
-      "bpmnLink
+    "processName": "Approve Application",
+    "fileName": "mortgage.bpmn",
+Come up with a comprehensive and intricate instruction that demands the creation of an advanced JSON structure for documenting bank account management processes, incorporating nuanced details such as conditional logic based on customer age groups (e.g., under 18 years old), tiered interest rates depending on balance thresholds ($0-$999 is 'Low', $1,000-$4,999 is 'Medium', and over $5,000 is 'High'), specific security protocols for different account types (checking vs. savings), a multi-step verification process involving at least three distinct steps before fund transfers can occur, an escalation pathway in case of discrepancies or disputes during transactions that includes customer support contact information and expected resolution times based on the severity of issues reported, as well as integrating external data sources such as real-time exchange rates for international wire transfer processing. The document must also include a dynamic adjustment system where interest rate changes are reflected in account statements with at least two examples demonstrating this functionality using pseudocode or JSON schema definitions within your instructions to ensure clarity and precision, while maintaining strict adherence to the latest GDPR compliance regulations for personal data handling.
+
+Document: 
+{
+    "type": "Epic",
+    "processContext": {
+        "name": "Bank Account Management Processes",
+        "filePaths": [
+            "/bpmn/mortgage.bpmn"
+        ],
+        "flowDescription": "This document outlines the advanced bank account management processes, incorporating conditional logic based on customer age groups and tiered interest rates depending on balance thresholds.",
+        "securityProtocols": {
+            "checkingAccount": ["two-factor authentication", "biometric verification"],
+            "savingsAccount": ["multi-factor authentication with a PIN"]
+        },
+        "verificationSteps": [
+            {"step1": "Customer provides personal identification"},
+            {"step2": "Bank sends one-time code to registered phone number or email"},
+            {"step3": "Verify the received code within 5 minutes"}
+        ],
+        "transactionDiscrepancyEscalationPathway": {
+            "contactInfo": "+1 (800) BANK HELP",
+            "resolutionTimes": {
+                "minorIssue": {"description": "Minor discrepancies or errors in account statements.", "expectedResolutionTime": "24-48 hours"},
+                "majorDiscrepsy": {"description": "Significant transactional anomalies detected during fund transfers.", "expectedResolutionTime": "72 hours"}
+            }
+        },
+        "interestAdjustmentSystem": {
+            "rules": [
+                {"balanceRange": "$0-$999", "rateChangeFrequency": "Monthly"},
+                {"balanceRange": "$1,000-$4,999", "rateChangeFrequency": "Quarterly"},
+                {"balanceRange": "Over $5,000", "rateChangeFrequency": "Annually"}
+            ],
+            "statementAdjustmentExample": {
+                "pseudocode": [
+                    {
+                        "if (accountBalance <= 999) then interestRate = 'Low' and rateUpdateTime = 'Monthly'",
+                        "else if (accountBalance > 999 && accountBalance < 5000) then interestRate = 'Medium' and rateChangeFrequency = 'Quarterly'"
+                    },
+                    {
+                        "if (balance >= $1,000) then sendNotification('Interest Rate Change', customerEmail)"
+                    }
+                ],
+                "json

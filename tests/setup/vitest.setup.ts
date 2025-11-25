@@ -38,14 +38,34 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(SVGElement.prototype, 'transform', {
     get() {
       if (!this._transform) {
+        const items: any[] = [];
         this._transform = {
           baseVal: {
             numberOfItems: 0,
-            getItem: () => null,
-            appendItem: () => null,
-            insertItemBefore: () => null,
-            replaceItem: () => null,
-            removeItem: () => null,
+            clear() {
+              items.length = 0;
+              this.numberOfItems = 0;
+            },
+            getItem: (index: number) => items[index] ?? null,
+            appendItem: (item: any) => {
+              items.push(item);
+              this.numberOfItems = items.length;
+              return item;
+            },
+            insertItemBefore: (item: any, index: number) => {
+              items.splice(index, 0, item);
+              this.numberOfItems = items.length;
+              return item;
+            },
+            replaceItem: (item: any, index: number) => {
+              items[index] = item;
+              return item;
+            },
+            removeItem: (index: number) => {
+              const removed = items.splice(index, 1)[0] ?? null;
+              this.numberOfItems = items.length;
+              return removed;
+            },
             consolidate: () => null,
           },
           animVal: {
@@ -62,19 +82,70 @@ if (typeof window !== 'undefined') {
   // Polyfill SVGMatrix creation (needed by tiny-svg)
   if (typeof window.SVGElement !== 'undefined') {
     const createSVGMatrix = () => ({
-      a: 1, b: 0, c: 0, d: 1, e: 0, f: 0,
-      multiply: (other: any) => createSVGMatrix(),
+      a: 1,
+      b: 0,
+      c: 0,
+      d: 1,
+      e: 0,
+      f: 0,
+      multiply: (_other: any) => createSVGMatrix(),
       inverse: () => createSVGMatrix(),
-      translate: (x: number, y: number) => createSVGMatrix(),
-      scale: (scaleFactor: number) => createSVGMatrix(),
-      scaleNonUniform: (scaleFactorX: number, scaleFactorY: number) => createSVGMatrix(),
-      rotate: (angle: number) => createSVGMatrix(),
-      rotateFromVector: (x: number, y: number) => createSVGMatrix(),
+      translate: (_x: number, _y: number) => createSVGMatrix(),
+      scale: (_scaleFactor: number) => createSVGMatrix(),
+      scaleNonUniform: (_scaleFactorX: number, _scaleFactorY: number) => createSVGMatrix(),
+      rotate: (_angle: number) => createSVGMatrix(),
+      rotateFromVector: (_x: number, _y: number) => createSVGMatrix(),
       flipX: () => createSVGMatrix(),
       flipY: () => createSVGMatrix(),
-      skewX: (angle: number) => createSVGMatrix(),
-      skewY: (angle: number) => createSVGMatrix(),
+      skewX: (_angle: number) => createSVGMatrix(),
+      skewY: (_angle: number) => createSVGMatrix(),
     });
+
+    if (typeof (globalThis as any).SVGMatrix === 'undefined') {
+      class SVGMatrixPolyfill {
+        a = 1;
+        b = 0;
+        c = 0;
+        d = 1;
+        e = 0;
+        f = 0;
+
+        multiply(_other: any) {
+          return new SVGMatrixPolyfill();
+        }
+        inverse() {
+          return new SVGMatrixPolyfill();
+        }
+        translate(_x: number, _y: number) {
+          return new SVGMatrixPolyfill();
+        }
+        scale(_scaleFactor: number) {
+          return new SVGMatrixPolyfill();
+        }
+        scaleNonUniform(_scaleFactorX: number, _scaleFactorY: number) {
+          return new SVGMatrixPolyfill();
+        }
+        rotate(_angle: number) {
+          return new SVGMatrixPolyfill();
+        }
+        rotateFromVector(_x: number, _y: number) {
+          return new SVGMatrixPolyfill();
+        }
+        flipX() {
+          return new SVGMatrixPolyfill();
+        }
+        flipY() {
+          return new SVGMatrixPolyfill();
+        }
+        skewX(_angle: number) {
+          return new SVGMatrixPolyfill();
+        }
+        skewY(_angle: number) {
+          return new SVGMatrixPolyfill();
+        }
+      }
+      (globalThis as any).SVGMatrix = SVGMatrixPolyfill;
+    }
 
     // Polyfill createSVGTransform (needed by tiny-svg)
     const createSVGTransform = () => ({

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTestResults, TestResult, TestScenario } from './useTestResults';
-import { testMapping } from '@/data/testMapping';
+// Removed testMapping import - no longer using fallback logic
 
 export interface TestForNode {
   id: string;
@@ -24,7 +24,7 @@ export const useTestsForNode = ({ bpmnFile, bpmnElementId, nodeSlug }: UseTestsF
   const { testResults, isLoading } = useTestResults();
 
   const normalizedId = (bpmnElementId || '').toLowerCase();
-  const fallbackKey = (nodeSlug || '').toLowerCase();
+  // Removed fallbackKey - no longer using mock mapping fallback
 
   const dbTests = useMemo<TestForNode[]>(() => {
     if (!bpmnElementId) return [];
@@ -65,28 +65,9 @@ export const useTestsForNode = ({ bpmnFile, bpmnElementId, nodeSlug }: UseTestsF
   }, [testResults, bpmnElementId, normalizedId]);
 
 
-  // Fallback to mock mapping when DB has no entries for this node
-  const fallbackTests = useMemo<TestForNode[]>(() => {
-    if (!fallbackKey) return [];
-    const info = testMapping[fallbackKey];
-    if (!info) return [];
-
-    const file = info.testFile?.replace('tests/', '') || '';
-
-    return (info.scenarios || []).map((sc) => ({
-      id: sc.id,
-      title: sc.name,
-      fileName: file,
-      status: sc.status,
-      lastRun: info.lastRun || new Date().toISOString(),
-      duration: sc.duration,
-      scenarios: [sc],
-      nodeId: info.nodeId,
-      nodeName: info.nodeName,
-    }));
-  }, [fallbackKey]);
-
-  const tests = dbTests.length > 0 ? dbTests : fallbackTests;
+  // Removed fallback to mock mapping - only use data from database
+  // This makes it clear when tests are missing and need to be generated
+  const tests = dbTests;
 
   // Calculate stats
   const stats = useMemo(() => {

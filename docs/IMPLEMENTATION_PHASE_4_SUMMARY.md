@@ -74,3 +74,7 @@ Framtida förbättringar som kan göras:
 
 Alla planerade aktiviteter är genomförda. ProcessTree används nu konsekvent i client-side applikationen, och Edge Functions har förbättrats för att stödja ProcessTree-struktur.
 
+
+
+
+

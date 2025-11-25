@@ -22,6 +22,11 @@
   - `ProcessDefinition` + `SubprocessLink` → `buildProcessHierarchy`
   - `buildBpmnProcessGraph` → `BpmnProcessGraph` (root, children, missingDependencies)
   - denna graf används av UI, dokumentationsgeneratorn och testgeneratorn.
+- **Ordningslogik för callActivities/tasks**
+  - `orderIndex` beräknas enbart för noder som deltar i sequence edges (DFS/topologisk sort). Övriga noder lämnas utan `orderIndex`.
+  - Noder utan `orderIndex` får istället `visualOrderIndex` baserat på DI-koordinater (vänster→höger-sortering per fil).
+  - Sortering i UI och Gantt följer alltid `visualOrderIndex` → `orderIndex` → `branchId` (endast root) → `label`. Se `docs/VISUAL_ORDERING_IMPLEMENTATION.md`.
+  - För felsökning finns scriptet `npm run mortgage:order-debug` som kör hela parse → graph → tree-flödet för mortgage-fixtures och skriver ut tabeller (både full traversal och “unika aktiviteter per fil”) med ordningsmetadata.
 
 - **Dokumentation**
   - Feature Goals, Epics och Business Rules genereras via modellbaserade JSON-kontrakt:
@@ -59,11 +64,75 @@
   - Testscenarier via LLM i Slow LLM Mode (`generateTestSpecWithLlm`).
   - Node tests i UI (kopplade till `node_test_links`).
 - Övrig metadata:
-  - Jira-typer/namn per nod.
+  - Jira-typer/namn per nod (se [Jira-namngivning](#jira-namngivning) nedan).
   - Subprocess-mappningar (`bpmn_dependencies`) + diagnostik (`missingDependencies`).
   - Explicit BPMN-karta (`bpmn-map.json`) med kopplingar mellan BPMN-filer och subprocess-noder (både `callActivity` och vissa `subProcess`-noder) – används för att tydligt deklarera vilka delar av modellen som ska tolkas som externa subprocesser.
 
 Alla artefakter lagras i Supabase (tabeller + storage) och kan regenereras från UI.
+
+---
+
+# 🏷️ Jira-namngivning
+
+BPMN Planner genererar automatiskt Jira-namn för alla relevanta noder (feature goals och epics) baserat på processhierarkin.
+
+## Namngivningsregler
+
+**Alla nodtyper använder samma full path-baserad namngivning:**
+
+- **Fullständig path från root till nod** (root-processnamn exkluderas)
+- **Format**: `<parent1> - <parent2> - ... - <node.label>`
+- **Root-processnamn ingår aldrig** i Jira-namn (t.ex. "Mortgage" ingår inte)
+
+### Feature Goals (callActivity)
+
+Feature goals använder full path-baserad namngivning:
+
+- **Top-level subprocess** (direkt under root):
+  - Format: `<SubprocessLabel>`
+  - Exempel: `Application`
+
+- **Nested subprocess** (under en annan subprocess):
+  - Format: `<Parent1> - <Parent2> - ... - <SubprocessLabel>`
+  - Exempel: `Application - Internal data gathering`
+
+### Epics (userTask, serviceTask, businessRuleTask)
+
+Epics använder samma full path-baserad namngivning:
+
+- **Path innehåller alla föräldranoder** från root till nod (exklusive root)
+- Format: `<Parent1> - <Parent2> - ... - <TaskLabel>`
+- Exempel: `Automatic Credit Evaluation - Calculate household affordability` (serviceTask under Automatic Credit Evaluation subprocess)
+
+## Exempel
+
+För en processhierarki:
+```
+Mortgage (root)
+  └─ Application (callActivity)
+      ├─ Internal data gathering (callActivity)
+      │   └─ Verify customer info (userTask)
+      └─ Confirm application (userTask)
+  └─ Automatic Credit Evaluation (callActivity)
+      └─ Calculate household affordability (serviceTask)
+```
+
+Genererade Jira-namn:
+- `Application` (feature goal, top-level)
+- `Application - Internal data gathering` (feature goal, nested)
+- `Application - Internal data gathering - Verify customer info` (epic, under nested subprocess)
+- `Application - Confirm application` (epic, under top-level subprocess)
+- `Automatic Credit Evaluation` (feature goal, top-level)
+- `Automatic Credit Evaluation - Calculate household affordability` (epic, under top-level subprocess)
+
+## Implementation
+
+Jira-namn genereras via `buildJiraName()` i `src/lib/jiraNaming.ts` och används konsekvent i:
+- Hierarkibyggnad (`BpmnFileManager.handleBuildHierarchy`) - **endast plats som skriver Jira-namn till databasen**
+- Fallback-namn (`useAllBpmnNodes`)
+- Edge Functions (`generate-artifacts`) - sätter bara `jira_type`, inte `jira_name`
+
+**Viktigt**: Jira-namn skrivs endast till databasen när hierarkin byggs via "Bygg/uppdatera hierarki från root". Detta säkerställer att korrekta fullständiga paths används baserat på hela ProcessTree.
 
 ---
 
@@ -333,7 +402,7 @@ Checklista:
 - SOT i Supabase Storage  
 - Job queue för historik  
 - Full diagnostik vid mismatch eller otydliga subprocesser  
-- **Timeline / Planning View** - Gantt-chart för visualisering och redigering av tidsordning för subprocesser
+- **Timeline / Planning View** - Gantt-chart för visualisering och redigering av tidsordning för subprocesser (använder orderIndex och visualOrderIndex för sortering)
 - DMN-stöd (på väg)
 
 ---
@@ -427,6 +496,7 @@ En kort lista över förbättringsidéer som vi kan plocka upp senare:
 
 - **Timeline / Planning View (2025-01)**
   - ✅ Gantt-chart för visualisering av subprocesser baserat på tidsordning (orderIndex)
+  - ✅ Visuell ordning (visualOrderIndex) baserad på BPMN DI-koordinater när sequence flows saknas
   - ✅ Redigering av start/end datum direkt i Gantt
   - 🔄 Spara redigerade datum till backend/database
   - 🔄 Automatisk staggering av datum baserat på orderIndex

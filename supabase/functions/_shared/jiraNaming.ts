@@ -15,20 +15,18 @@ export interface HierarchyNode {
 }
 
 /**
- * Builds Jira name for a node based on the new naming scheme.
+ * Builds Jira name for a node using the full path from root to the node.
  * 
- * For feature goals (CallActivity):
- * - If top-level (direct child of root): <N.name>
- * - If deeper: <T.name> – <N.name> where T is the top-level subprocess ancestor
- * - Root process name is NEVER included
+ * Uses the same logic as buildParentPath - builds the complete path from root
+ * to the node (excluding root), then joins with " - " separator.
  * 
- * For epics (UserTask, ServiceTask, BusinessRuleTask):
- * - Uses existing path-based naming (full parent path + node name)
- * - Root process name is excluded from the path
+ * For all node types (CallActivity, UserTask, ServiceTask, BusinessRuleTask):
+ * - Full path from root to node (excluding root process name)
+ * - Format: <parent1> - <parent2> - ... - <node.name>
  * 
  * @param node - The node to generate a Jira name for
  * @param rootNode - The root process node (type === 'Process')
- * @param parentPath - Optional parent path array (for backward compatibility)
+ * @param parentPath - Optional parent path array (for backward compatibility, not used)
  * @returns The Jira name string
  */
 export function buildJiraName(
@@ -36,79 +34,33 @@ export function buildJiraName(
   rootNode: HierarchyNode,
   parentPath: string[] = [],
 ): string {
-  // For feature goals (CallActivity), use the new naming scheme
-  if (node.type === 'CallActivity') {
-    return buildFeatureGoalJiraName(node, rootNode);
-  }
-
-  // For epics and other node types, use existing path-based naming
-  // Exclude root process name from the path
-  const pathWithoutRoot = parentPath.filter((label) => label !== rootNode.name);
-  const fullPath = [...pathWithoutRoot, node.name];
-  return fullPath.filter(Boolean).join(' - ') || node.name;
-}
-
-/**
- * Builds Jira name for a feature goal (CallActivity) using the new naming scheme.
- */
-function buildFeatureGoalJiraName(
-  node: HierarchyNode,
-  rootNode: HierarchyNode,
-): string {
-  // Find the top-level subprocess (first CallActivity ancestor that is a direct child of root)
-  const topLevelSubprocess = findTopLevelSubprocess(node, rootNode);
-
-  if (!topLevelSubprocess) {
-    // If we can't find a top-level subprocess, just use the node's name
-    // This can happen if the tree structure is incomplete
-    return node.name;
-  }
-
-  // If this node IS the top-level subprocess, return just its name
-  if (topLevelSubprocess.id === node.id) {
-    return topLevelSubprocess.name;
-  }
-
-  // Otherwise, return: <top-level-name> – <node-name>
-  return `${topLevelSubprocess.name} – ${node.name}`;
-}
-
-/**
- * Finds the top-level subprocess for a given CallActivity node.
- * A top-level subprocess is the first CallActivity ancestor that is a direct child of the root process.
- */
-function findTopLevelSubprocess(
-  node: HierarchyNode,
-  rootNode: HierarchyNode,
-): HierarchyNode | null {
-  // If the node is a direct child of root, it is itself the top-level subprocess
-  if (isDirectChildOfRoot(node, rootNode)) {
-    return node;
-  }
-
-  // Traverse upward to find the first CallActivity in the ancestor chain that is a direct child of root
-  const ancestors = findAncestors(node, rootNode);
+  // Build full path from root to node (excluding root)
+  const fullPath = buildParentPath(node, rootNode);
   
-  // Find the first CallActivity in the ancestor chain that is a direct child of root
-  for (const ancestor of ancestors) {
-    if (ancestor.type === 'CallActivity' && isDirectChildOfRoot(ancestor, rootNode)) {
-      return ancestor;
-    }
-  }
-
-  // If no top-level subprocess found, return null
-  // This can happen if the tree structure is incomplete or malformed
-  return null;
+  // Add the node's own name
+  const jiraName = [...fullPath, node.name].join(' - ');
+  
+  return jiraName || node.name;
 }
 
 /**
- * Checks if a node is a direct child of the root process.
+ * Builds a parent path array from a node up to (but not including) the root.
+ * This is used to build the full path for Jira naming.
+ * 
+ * @param node - The node to build the path for
+ * @param rootNode - The root process node
+ * @returns Array of parent labels (excluding root)
  */
-function isDirectChildOfRoot(
+function buildParentPath(
   node: HierarchyNode,
   rootNode: HierarchyNode,
-): boolean {
-  return rootNode.children.some((child) => child.id === node.id);
+): string[] {
+  const ancestors = findAncestors(node, rootNode);
+  // Filter out the root and return names
+  return ancestors
+    .filter((ancestor) => ancestor.id !== rootNode.id)
+    .map((ancestor) => ancestor.name)
+    .filter(Boolean);
 }
 
 /**

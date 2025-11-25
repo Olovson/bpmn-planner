@@ -6,7 +6,7 @@ import { ProcessTreeNode } from '@/lib/processTree';
 import { getDocumentationUrl, storageFileExists, getNodeDocStoragePath, getTestFileUrl } from '@/lib/artifactUrls';
 import { getNodeDocFileKey } from '@/lib/nodeArtifactPaths';
 import { checkDocsAvailable, checkDorDodAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
-import { buildJiraName } from '@/lib/jiraNaming';
+// Removed buildJiraName import - no longer using fallback logic
 
 export interface BpmnNodeData {
   bpmnFile: string;
@@ -29,11 +29,15 @@ export interface BpmnNodeData {
   subprocessMatchStatus?: 'matched' | 'ambiguous' | 'lowConfidence' | 'unresolved';
   diagnosticsSummary?: string | null;
   orderIndex?: number;
+  visualOrderIndex?: number;
   branchId?: string | null;
   scenarioPath?: string[];
 }
 
-type FlattenedProcessNode = ProcessTreeNode & { parentLabels: string[] };
+type FlattenedProcessNode = ProcessTreeNode & { 
+  parentLabels: string[];
+  parentNodes: Array<{ label: string; type: string }>; // Keep type info for filtering
+};
 
 /**
  * Hook to fetch and aggregate all relevant BPMN nodes across all files
@@ -76,9 +80,17 @@ export const useAllBpmnNodes = () => {
           .from('dor_dod_status')
           .select('bpmn_file, bpmn_element_id, subprocess_name');
 
-        const flattenTree = (node: ProcessTreeNode, parents: string[] = []): FlattenedProcessNode[] => {
-          const current: FlattenedProcessNode = { ...node, parentLabels: parents };
-          const childParents = [...parents, node.label];
+        const flattenTree = (node: ProcessTreeNode, parents: Array<{ label: string; type: string }> = []): FlattenedProcessNode[] => {
+          // Only include non-process nodes in parent labels (for Jira naming)
+          const parentLabels = parents
+            .filter(p => p.type !== 'process')
+            .map(p => p.label);
+          const current: FlattenedProcessNode = { 
+            ...node, 
+            parentLabels,
+            parentNodes: parents.filter(p => p.type !== 'process') // Keep type info for filtering
+          };
+          const childParents = [...parents, { label: node.label, type: node.type }];
           const descendants = node.children.flatMap(child => flattenTree(child, childParents));
           return [current, ...descendants];
         };
@@ -138,16 +150,9 @@ export const useAllBpmnNodes = () => {
             t => t.bpmn_file === bpmnFile && t.bpmn_element_id === elementId
           );
 
-          const defaultJiraType =
-            node.type === 'callActivity' ? 'feature goal'
-            : (node.type === 'userTask' || node.type === 'serviceTask' || node.type === 'businessRuleTask')
-              ? 'epic'
-              : null;
-
-          // Use new Jira naming scheme (feature goals use top-level subprocess logic, epics use path-based)
-          // Exclude root process label from parent path
-          const parentPathWithoutRoot = node.parentLabels.filter(label => label !== processTree.label);
-          const defaultJiraName = buildJiraName(node, processTree, parentPathWithoutRoot);
+          // Removed defaultJiraName and defaultJiraType generation
+          // Only use data from database - no fallback to generated names
+          // This makes it clear when Jira names need to be generated via handleBuildHierarchy
 
           const dorDodUrl = `/subprocess/${encodeURIComponent(elementId)}`;
           const diagnosticsSummary = collectDiagnosticsSummary(node);
@@ -175,12 +180,13 @@ export const useAllBpmnNodes = () => {
             documentationUrl: docUrl,
             hasTestReport: false, // resolved below
             hasDorDod,
-            jiraType: (mapping?.jira_type as 'feature goal' | 'epic' | null) ?? defaultJiraType ?? null,
-            jiraName: mapping?.jira_name || defaultJiraName,
-            hierarchyPath: defaultJiraName,
+            jiraType: (mapping?.jira_type as 'feature goal' | 'epic' | null) || null,
+            jiraName: mapping?.jira_name || null,
+            hierarchyPath: null, // Deprecated - no longer used, kept for backward compatibility
             subprocessMatchStatus: node.subprocessLink?.matchStatus,
             diagnosticsSummary,
             orderIndex: node.orderIndex,
+            visualOrderIndex: node.visualOrderIndex,
             branchId: node.branchId ?? null,
             scenarioPath: node.scenarioPath,
           };

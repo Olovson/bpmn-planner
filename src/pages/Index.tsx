@@ -40,8 +40,6 @@ const Index = () => {
     ? 'listvy'
     : location.pathname.includes('/process-explorer')
       ? 'tree'
-      : location.pathname.includes('/project-plan')
-        ? 'project'
         : location.pathname.includes('/timeline')
           ? 'timeline'
           : 'diagram';
@@ -55,8 +53,6 @@ const Index = () => {
       baseNavigate('/test-report');
     } else if (value === 'files') {
       baseNavigate('/files');
-    } else if (value === 'project') {
-      baseNavigate('/project-plan');
     } else if (value === 'timeline') {
       baseNavigate('/timeline');
     } else {

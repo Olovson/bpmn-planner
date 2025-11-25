@@ -17,7 +17,7 @@
 **Hur det används:**
 - `src/lib/bpmn/processTreeBuilder.ts` - `sortByOrderIndex()` sorterar noder
 - `src/pages/NodeMatrix.tsx` - Sorterar noder efter `orderIndex` som standard
-- `src/lib/projectPlan.ts` - Använder `orderIndex` för processOrder
+- `src/lib/ganttDataConverter.ts` - Använder `orderIndex` för sortering av subprocesser
 
 ### 1.2 Subprocesser / Feature Goals
 
@@ -33,6 +33,7 @@ interface ProcessTreeNode {
   label: string;
   type: 'callActivity' | 'userTask' | ...;
   orderIndex?: number;
+  visualOrderIndex?: number; // Visuell ordning baserad på DI-koordinater, används endast när orderIndex saknas
   branchId?: string | null;
   scenarioPath?: string[];
   bpmnFile: string;
@@ -50,9 +51,9 @@ interface ProcessTreeNode {
 - HashRouter används (`#/route`)
 
 **Liknande sidor:**
-- `ProjectPlanPage` - Visar processplan i tabellformat, använder `useProcessTree` och `useAllBpmnNodes`
 - `ProcessExplorer` - Visar hierarkin som träd, använder `useProcessTree`
 - `NodeMatrix` - Visar alla noder i tabell, använder `useAllBpmnNodes`
+- `TimelinePage` - Visar subprocesser i Gantt-chart, använder `useProcessTree`
 
 ## 2. Var Det Bästa Stället Att Integrera
 
@@ -67,8 +68,8 @@ interface ProcessTreeNode {
 
 **Varför:**
 - Separerad sida gör det enkelt att fokusera på timeline-funktionalitet
-- Följer samma mönster som `ProjectPlanPage` och `ProcessExplorer`
-- Kan återanvända samma hooks (`useProcessTree`, `useAllBpmnNodes`)
+- Följer samma mönster som `ProcessExplorer` och `NodeMatrix`
+- Kan återanvända samma hooks (`useProcessTree`)
 
 ### 2.2 Dataflöde
 
@@ -108,11 +109,12 @@ interface GanttTask {
 
 **Steg:**
 1. Rekursivt extrahera alla `callActivity`-noder från `ProcessTreeNode`
-2. Sortera efter `orderIndex` (fallback till label om orderIndex saknas)
+2. Sortera efter `orderIndex` → `visualOrderIndex` → `branchId` → `label`
 3. Konvertera varje nod till `GanttTask`:
    - `id`: `node.id` eller `node.bpmnElementId`
    - `text`: `node.label`
    - `start_date`: Baserat på orderIndex (staggered) eller base date
+   - Sortering: orderIndex → visualOrderIndex → branchId → label
    - `end_date`: start_date + 2 veckor
    - `duration`: 14 (dagar)
 

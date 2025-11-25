@@ -183,8 +183,8 @@ export function nodeToMeta(
     nodeName: node.name,
     bpmnFile: node.bpmnFile,
     bpmnElementId: node.id,
-    jiraType: node.jiraType || 'epic',
-    jiraName: node.jiraName || `${initiative} - ${node.name}`,
+    jiraType: node.jiraType || null, // No fallback - use data from database only
+    jiraName: node.jiraName || null, // No fallback - use data from database only
   };
 }
 

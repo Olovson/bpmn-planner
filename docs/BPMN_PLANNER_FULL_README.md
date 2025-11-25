@@ -169,12 +169,13 @@ DoR/DoD måste:
   - vilka noder som är klara (DoD uppfylld)
   - vilka som ännu inte är redo (DoR ej uppfylld)
 
-#### Projektplanering
+#### Timeline / Planning View
 
-Projektplaneringslagret måste kunna:
+Timeline-vyn (Gantt-chart) använder:
 
-- använda sekvensordning för att skapa **projektplaner** (t.ex. Gantt-liknande vyer)
-- identifiera **kritiska vägar** (längsta sekvens av beroende noder)
+- sekvensordning (`orderIndex`) för att visualisera subprocesser i tidsordning
+- Gantt-chart för att visa och redigera start/end datum för subprocesser
+- möjlighet att identifiera **kritiska vägar** (längsta sekvens av beroende noder)
 - tydliggöra beroenden mellan subprocesser och tasks
 
 ---

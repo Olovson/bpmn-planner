@@ -61,22 +61,17 @@ Created a new utility module with the following functions:
 
 ## New Naming Rules
 
-### For Feature Goals (callActivity)
+**All node types use the same full path-based naming:**
+
+### For Feature Goals (callActivity) and Epics (userTask, serviceTask, businessRuleTask)
 
 1. **Root process name is NEVER included** - It's considered implicit context
-2. **Top-level subprocess** (direct child of root):
-   - Format: `<N.label>`
-   - Example: `Application`
-3. **Deeper subprocess** (nested under a top-level subprocess):
-   - Format: `<T.label> – <N.label>`
-   - Where T is the top-level subprocess ancestor
-   - Example: `Application – Internal data gathering`
-
-### For Epics (userTask, serviceTask, businessRuleTask)
-
-- **Unchanged**: Continue using existing path-based naming
-- **Root process name is excluded** from the path
-- Format: `<parent1> - <parent2> - ... - <node.label>`
+2. **Full path from root to node** (excluding root process name)
+3. **Format**: `<parent1> - <parent2> - ... - <node.label>`
+4. **Examples**:
+   - `Application` (top-level callActivity)
+   - `Application - Internal data gathering` (nested callActivity)
+   - `Automatic Credit Evaluation - Calculate household affordability` (serviceTask under callActivity)
 
 ## Behavior
 
@@ -103,8 +98,9 @@ The new naming scheme is applied consistently across:
    - Verify root process name is never included
 
 2. **Verify epic names**:
-   - Check that epics still use path-based naming
+   - Check that epics use path-based naming with only callActivity ancestors
    - Verify root process name is excluded from paths
+   - Verify that other tasks are not included in the path (only subprocesses)
 
 3. **Verify consistency**:
    - Same subprocess appearing in multiple places should have the same Jira name

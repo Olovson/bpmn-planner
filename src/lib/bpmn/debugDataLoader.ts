@@ -17,6 +17,19 @@ export async function loadAllBpmnParseResults(): Promise<
     .eq('file_type', 'bpmn');
 
   if (error) {
+    // Check if this is an authentication error (common after db reset)
+    const isAuthError = error.message?.includes('User from sub claim in JWT does not exist') ||
+      error.message?.includes('JWT') ||
+      error.message?.includes('401') ||
+      error.message?.includes('403') ||
+      (error as any).status === 401 ||
+      (error as any).status === 403;
+    
+    if (isAuthError) {
+      // Sign out user and throw a more descriptive error
+      await supabase.auth.signOut();
+      throw new Error('Din session är ogiltig (troligen efter databasreset). Logga in igen.');
+    }
     throw error;
   }
 

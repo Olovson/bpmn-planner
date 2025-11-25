@@ -39,6 +39,8 @@ export interface ProcessTreeNode {
   processId?: string;
 
   orderIndex?: number;
+  /** Visual ordering index based on BPMN DI coordinates (x, y). Used only when orderIndex is missing. */
+  visualOrderIndex?: number;
   branchId?: string | null;
   scenarioPath?: string[];
 

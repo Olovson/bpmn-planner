@@ -28,6 +28,13 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
   - implementation av Gantt-chart för visualisering av subprocesser,
   - redigering av start/end datum baserat på orderIndex.
 
+- `JIRA_NAMING_UPDATE_SUMMARY.md` & `JIRA_NAMING_CONSOLIDATION_COMPLETE.md`  
+  Dokumentation för Jira-namngivning:
+  - namngivningsregler för feature goals (callActivity) och epics (tasks),
+  - top-level subprocess-baserad namngivning för feature goals,
+  - path-baserad namngivning för epics (endast callActivity-noder i pathen),
+  - konsolidering av namngivningslogik över hela applikationen.
+
 - `confluence/`  
   Confluence‑orienterad dokumentation och mallar:
   - `README.md` – hur Confluence‑strukturen hänger ihop med BPMN‑noderna,

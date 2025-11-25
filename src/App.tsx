@@ -15,9 +15,9 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import NodeMatrix from "./pages/NodeMatrix";
 import ProcessExplorer from "./pages/ProcessExplorer";
-import ProjectPlanPage from "./pages/ProjectPlanPage";
 import ProcessGraphDebugPage from "./pages/ProcessGraphDebug";
 import ProcessTreeDebugPage from "./pages/ProcessTreeDebug";
+import JiraNamingDebugPage from "./pages/JiraNamingDebug";
 import TimelinePage from "./pages/TimelinePage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BpmnSelectionProvider } from "./contexts/BpmnSelectionContext";
@@ -69,7 +69,6 @@ const App = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/bpmn/:filename" element={<Index />} />
                 <Route path="/process-explorer" element={<ProcessExplorer />} />
-                <Route path="/project-plan" element={<ProjectPlanPage />} />
                 <Route path="/node-matrix" element={<NodeMatrix />} />
                 <Route path="/test-report" element={<TestReport />} />
                 <Route path="/test-scripts" element={<TestScriptsPage />} />
@@ -80,6 +79,7 @@ const App = () => {
                 <Route path="/llm-debug" element={<ProtectedRoute><LlmDebugView /></ProtectedRoute>} />
                 <Route path="/graph-debug" element={<ProtectedRoute><ProcessGraphDebugPage /></ProtectedRoute>} />
                 <Route path="/tree-debug" element={<ProtectedRoute><ProcessTreeDebugPage /></ProtectedRoute>} />
+                <Route path="/jira-naming-debug" element={<ProtectedRoute><JiraNamingDebugPage /></ProtectedRoute>} />
                 <Route path="/timeline" element={<ProtectedRoute><TimelinePage /></ProtectedRoute>} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/doc-viewer/:docId" element={<DocViewer />} />

@@ -20,27 +20,40 @@ npm install dhtmlx-gantt
 ### 2. Skapade Filer
 
 #### `src/lib/ganttDataConverter.ts`
-**Syfte**: Utility-funktioner för att konvertera ProcessTreeNode till DHTMLX Gantt-format
+**Syfte**: Bygger hierarkiska DHTMLX Gantt-tasks direkt från ProcessTree
 
 **Funktioner:**
-- `extractCallActivities()` - Rekursiv extraktion av callActivity-noder
-- `sortCallActivities()` - Sorterar efter orderIndex, branchId, label
-- `convertToGanttTasks()` - Konverterar till GanttTask-format
-- `buildGanttTasksFromProcessTree()` - Huvudfunktion som kombinerar ovanstående
+- `sortCallActivities(nodes, mode)` – sorteringslogik för root- respektive subprocess-nivå.
+- `buildSubprocessUsageIndex()` – räknar hur många callActivities som pekar på samma subprocess-fil (för `isReusedSubprocess`-flaggan).
+- `buildGanttTasksFromProcessTree()` – skapar en hierarki: root-process → root-callActivities → deras subprocess-innehåll.
+- `addRootCallActivities()`, `addSubprocessChildren()` – hjälper till att skapa `project`/`task`-rader med korrekta föräldrar.
+- (Legacy helpers `extractCallActivities()` och `convertToGanttTasks()` finns kvar för kompatibilitet men används inte längre av timeline-vyn.)
 
-**Dataformat:**
-```typescript
+**Dataformat (utdrag):**
+```ts
 interface GanttTask {
   id: string;
   text: string;
-  start_date: string; // YYYY-MM-DD
-  end_date: string; // YYYY-MM-DD
-  duration: number; // Days
-  progress: number; // 0-1
+  start_date: string;
+  end_date: string;
+  duration: number;
+  progress: number;
+  parent?: string | number;
+  type?: 'task' | 'project';
   orderIndex?: number;
   branchId?: string | null;
   bpmnFile?: string;
   bpmnElementId?: string;
+  meta?: {
+    kind: 'process' | ProcessTreeNode['type'];
+    orderIndex: number | null;
+    visualOrderIndex: number | null;
+    branchId: string | null;
+    scenarioPath: string[];
+    subprocessFile?: string | null;
+    matchedProcessId?: string | null;
+    isReusedSubprocess?: boolean;
+  };
 }
 ```
 
@@ -78,23 +91,16 @@ interface GanttTask {
 ## Dataflöde
 
 ```
-1. useProcessTree(rootFile)
-   ↓
-2. ProcessTreeNode (hierarki med orderIndex, branchId, scenarioPath)
-   ↓
-3. extractCallActivities() - Rekursiv extraktion
-   ↓
-4. sortCallActivities() - Sortera efter orderIndex → branchId → label
-   ↓
-5. convertToGanttTasks() - Konvertera till DHTMLX-format
-   ↓
-6. DHTMLX Gantt instance.render()
-   ↓
-7. User edits dates → onAfterTaskUpdate event
-   ↓
-8. Update local state (tasks)
-   ↓
-9. Re-render Gantt with updated data
+1. `useProcessTree(rootFile)`
+2. `buildGanttTasksFromProcessTree(processTree, baseDate, duration)`  
+   - Root-process blir `project` (parent `0`)
+   - Root-callActivities blir `project`-barn
+   - Subprocess-innehåll (callActivities + tasks) blir hierarkiska underbarn
+   - Metadata (`meta`) följer med varje rad
+3. Supabase `bpmn_element_mappings` hämtas och injiceras (Jira-data)
+4. DHTMLX Gantt initialiseras och får den hierarkiska datan (`parent`, `type`, `open`)
+5. Användaren kan redigera datum → `onAfterTaskUpdate`
+6. React-state uppdateras → Gantt renderas om
 ```
 
 ## Redigering av Datum
@@ -112,15 +118,26 @@ interface GanttTask {
 
 ## Sortering & Tidsordning
 
-**Prioritet:**
-1. `orderIndex` (primär tidsordning från sequence flows)
-2. `branchId` (main → entry-2 → entry-3, etc.)
-3. `label` (alfabetisk fallback)
+**Root-nivå (`mode: 'root'`):**
+1. `orderIndex`
+2. `visualOrderIndex`
+3. `branchId` (main → entry-2 → entry-3)
+4. `label`
+
+**Subprocess-nivå (`mode: 'subprocess'`):**
+1. `orderIndex`
+2. `visualOrderIndex`
+3. `label`
+
+**Visuell ordning (visualOrderIndex):**
+- Beräknas per BPMN-fil när sequence flows saknas (se `docs/VISUAL_ORDERING_IMPLEMENTATION.md`).
+- Gör att t.ex. root-level callActivities i `mortgage.bpmn` sorteras vänster→höger enligt BPMN-diagrammet.
 
 **Exempel:**
 - Subprocess med `orderIndex: 1, branchId: 'main'` kommer före
 - Subprocess med `orderIndex: 2, branchId: 'main'` som kommer före
-- Subprocess med `orderIndex: 1, branchId: 'entry-2'`
+- Subprocess med `orderIndex: undefined, visualOrderIndex: 0` (när orderIndex saknas)
+- Subprocess med `orderIndex: undefined, visualOrderIndex: 1` (när orderIndex saknas)
 
 ## Användning
 

@@ -74,10 +74,12 @@ export const useFileArtifactCoverage = (fileName: string) => {
 
       const total_nodes = relevantNodes.length;
 
-      console.log(`[Coverage Debug] ${fileName}:`, {
-        total_nodes,
-        relevant_node_ids: relevantNodes.map(n => n.id),
-      });
+      if (import.meta.env.DEV) {
+        console.log(`[Coverage Debug] ${fileName}:`, {
+          total_nodes,
+          relevant_node_ids: relevantNodes.map(n => n.id),
+        });
+      }
 
       // Get DoR/DoD coverage from database
       const { data: dorDodData } = await supabase
@@ -98,12 +100,14 @@ export const useFileArtifactCoverage = (fileName: string) => {
       const uniqueTestNodes = new Set(testLinksData?.map(t => t.bpmn_element_id).filter(Boolean));
       const tests_covered = uniqueTestNodes.size;
 
-      console.log(`[Coverage Debug] ${fileName} - Tests:`, {
-        test_links_found: testLinksData?.length || 0,
-        unique_test_nodes: Array.from(uniqueTestNodes),
-        tests_covered,
-        coverage_status: getCoverageStatus(tests_covered, total_nodes),
-      });
+      if (import.meta.env.DEV) {
+        console.log(`[Coverage Debug] ${fileName} - Tests:`, {
+          test_links_found: testLinksData?.length || 0,
+          unique_test_nodes: Array.from(uniqueTestNodes),
+          tests_covered,
+          coverage_status: getCoverageStatus(tests_covered, total_nodes),
+        });
+      }
 
       const hasHierarchyTests = await hasHierarchicalTestsForFile(fileName);
       const hierarchyCovered = hasHierarchyTests ? 1 : 0;
@@ -197,12 +201,14 @@ export const useAllFilesArtifactCoverage = () => {
           const uniqueTestNodes = new Set(fileTestLinks.map(t => t.bpmn_element_id).filter(Boolean));
           const tests_covered = uniqueTestNodes.size;
 
-          console.log(`[Coverage Debug] ${file.file_name} - Tests:`, {
-            test_links_found: fileTestLinks.length,
-            unique_test_nodes: Array.from(uniqueTestNodes),
-            tests_covered,
-            coverage_status: getCoverageStatus(tests_covered, total_nodes),
-          });
+          if (import.meta.env.DEV) {
+            console.log(`[Coverage Debug] ${file.file_name} - Tests:`, {
+              test_links_found: fileTestLinks.length,
+              unique_test_nodes: Array.from(uniqueTestNodes),
+              tests_covered,
+              coverage_status: getCoverageStatus(tests_covered, total_nodes),
+            });
+          }
 
           let docs_covered = 0;
           try {
@@ -221,11 +227,13 @@ export const useAllFilesArtifactCoverage = () => {
             console.error(`[Coverage Debug] Error checking docs for ${file.file_name}:`, error);
           }
 
-          console.log(`[Coverage Debug] ${file.file_name} - Docs:`, {
-            docs_covered,
-            total_nodes,
-            coverage_status: getCoverageStatus(docs_covered, total_nodes),
-          });
+          if (import.meta.env.DEV) {
+            console.log(`[Coverage Debug] ${file.file_name} - Docs:`, {
+              docs_covered,
+              total_nodes,
+              coverage_status: getCoverageStatus(docs_covered, total_nodes),
+            });
+          }
 
           const hasHierarchyTests = await hasHierarchicalTestsForFile(file.file_name);
           const hierarchyCovered = hasHierarchyTests ? 1 : 0;

@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { LogOut, History, GitBranch, Network, List, FileText, Folder, LayoutList, Bug, Workflow, Calendar } from 'lucide-react';
+import { LogOut, History, GitBranch, Network, List, FileText, Folder, Bug, Workflow, Calendar, Tag } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'files' | 'project' | 'timeline';
+export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'files' | 'timeline';
 
 interface AppHeaderWithTabsProps {
   userEmail?: string | null;
@@ -33,6 +33,7 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
 
   const isGraphDebugActive = location.pathname === '/graph-debug' || location.hash === '#/graph-debug';
   const isTreeDebugActive = location.pathname === '/tree-debug' || location.hash === '#/tree-debug';
+  const isJiraNamingDebugActive = location.pathname === '/jira-naming-debug' || location.hash === '#/jira-naming-debug';
 
   return (
     <aside className="fixed inset-y-0 left-0 w-16 border-r border-border bg-card flex flex-col items-center justify-between py-4 z-40">
@@ -94,24 +95,6 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">Listvy</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => handleTabChange('project')}
-                aria-label="Projektplan"
-                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                  currentView === 'project'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                <LayoutList className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Projektplan</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -211,6 +194,24 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">Tree Debug</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => navigate('/jira-naming-debug')}
+                  aria-label="Jira Naming Debug"
+                  className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                    isJiraNamingDebugActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Tag className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Jira Naming Debug</TooltipContent>
             </Tooltip>
           </nav>
         </div>
