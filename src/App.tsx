@@ -29,6 +29,39 @@ import { supabase } from "@/integrations/supabase/client";
 const queryClient = new QueryClient();
 
 const App = () => {
+  // Ensure favicon is set for all pages
+  useEffect(() => {
+    const setFavicon = () => {
+      const faviconPath = '/favicon.png';
+      
+      // Remove existing favicon links
+      const existingLinks = document.querySelectorAll('link[rel*="icon"]');
+      existingLinks.forEach(link => link.remove());
+      
+      // Add standard favicon
+      const linkIcon = document.createElement('link');
+      linkIcon.rel = 'icon';
+      linkIcon.type = 'image/png';
+      linkIcon.href = faviconPath;
+      document.head.appendChild(linkIcon);
+      
+      // Add shortcut icon for older browsers
+      const linkShortcut = document.createElement('link');
+      linkShortcut.rel = 'shortcut icon';
+      linkShortcut.type = 'image/png';
+      linkShortcut.href = faviconPath;
+      document.head.appendChild(linkShortcut);
+      
+      // Add apple-touch-icon for iOS devices
+      const linkApple = document.createElement('link');
+      linkApple.rel = 'apple-touch-icon';
+      linkApple.href = faviconPath;
+      document.head.appendChild(linkApple);
+    };
+    
+    setFavicon();
+  }, []);
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
 

@@ -1,4 +1,9 @@
 import type { ProcessTreeNode } from '@/lib/processTree';
+import {
+  computeLeafCountsAndDurations,
+  scheduleTree,
+  type ScheduledNode,
+} from '@/lib/timelineScheduling';
 
 export type SortMode = 'root' | 'subprocess';
 
@@ -159,7 +164,37 @@ export function convertToGanttTasks(
 /**
  * Main function: Extract, sort, and convert callActivities to Gantt tasks
  */
+/**
+ * Builds Gantt tasks from ProcessTree using the new hierarchical scheduling algorithm.
+ * 
+ * New algorithm:
+ * - Each leaf node (timeline node with no timeline node children) gets 2 weeks duration
+ * - Each non-leaf node gets duration = 2 weeks × number of leaf nodes in its subtree
+ * - Leaf nodes are scheduled sequentially (each starts when previous ends)
+ * - Non-leaf nodes get startDate = min of children's startDates, endDate = max of children's endDates
+ * 
+ * This is the recommended function to use for timeline scheduling.
+ */
 export function buildGanttTasksFromProcessTree(
+  processTree: ProcessTreeNode | null,
+  baseDate: Date = new Date('2026-01-01'),
+  defaultDurationDays: number = 14
+): GanttTask[] {
+  if (!processTree) {
+    return [];
+  }
+
+  // Use new hierarchical scheduling algorithm
+  return buildGanttTasksWithHierarchicalScheduling(processTree, baseDate);
+}
+
+/**
+ * Legacy function: Builds Gantt tasks using the old sequential row-based algorithm.
+ * Kept for backward compatibility and testing.
+ * 
+ * @deprecated Use buildGanttTasksFromProcessTree instead, which uses hierarchical scheduling.
+ */
+export function buildGanttTasksFromProcessTreeLegacy(
   processTree: ProcessTreeNode | null,
   baseDate: Date = new Date('2026-01-01'),
   defaultDurationDays: number = 14
@@ -198,6 +233,8 @@ export function buildGanttTasksFromProcessTree(
   });
 
   const subprocessUsage = buildSubprocessUsageIndex(processTree);
+  // Use a global counter to ensure each row gets 2 weeks offset
+  let globalRowIndex = 0;
   addRootCallActivities(
     processTree,
     rootTaskId,
@@ -205,7 +242,117 @@ export function buildGanttTasksFromProcessTree(
     baseDate,
     defaultDurationDays,
     subprocessUsage,
+    () => globalRowIndex++,
   );
+
+  return tasks;
+}
+
+/**
+ * New hierarchical scheduling implementation.
+ * Uses leaf-count based duration calculation and sequential leaf scheduling.
+ */
+function buildGanttTasksWithHierarchicalScheduling(
+  processTree: ProcessTreeNode,
+  projectStartDate: Date,
+): GanttTask[] {
+  // Step 1: Compute leafCount and durationDays for all nodes
+  const scheduledTree = computeLeafCountsAndDurations(processTree);
+
+  // Step 2: Schedule all nodes (assign startDate and endDate)
+  const scheduled = scheduleTree(scheduledTree, projectStartDate);
+
+  // Step 3: Convert scheduled tree to Gantt tasks
+  const tasks: GanttTask[] = [];
+  const rootTaskId = `process:${scheduled.bpmnFile}:${scheduled.processId ?? scheduled.bpmnElementId ?? scheduled.id}`;
+
+  // Add root process node
+  if (scheduled.startDate && scheduled.endDate) {
+    tasks.push({
+      id: rootTaskId,
+      text: scheduled.label,
+      start_date: formatDateForGantt(scheduled.startDate),
+      end_date: formatDateForGantt(scheduled.endDate),
+      duration: scheduled.durationDays ?? 14,
+      progress: 0,
+      type: 'project',
+      parent: '0',
+      orderIndex: scheduled.orderIndex,
+      branchId: scheduled.branchId ?? null,
+      bpmnFile: scheduled.bpmnFile,
+      bpmnElementId: scheduled.bpmnElementId,
+      meta: {
+        kind: 'process',
+        bpmnFile: scheduled.bpmnFile,
+        bpmnElementId: scheduled.bpmnElementId,
+        processId: scheduled.processId ?? scheduled.bpmnElementId ?? scheduled.id,
+        orderIndex: scheduled.orderIndex ?? null,
+        visualOrderIndex: scheduled.visualOrderIndex ?? null,
+        branchId: scheduled.branchId ?? null,
+        scenarioPath: scheduled.scenarioPath ?? [],
+      },
+    });
+  }
+
+  // Recursively add all timeline nodes
+  const addScheduledNodes = (
+    node: ScheduledNode,
+    parentTaskId: string,
+    usageIndex: Map<string, number>,
+  ) => {
+    // Only process timeline nodes (skip process root itself)
+    if (node.type !== 'process' && isTimelineNode(node)) {
+      if (node.startDate && node.endDate) {
+        const subprocessFile = resolveSubprocessFile(node);
+        const isCallActivity = node.type === 'callActivity';
+
+        tasks.push({
+          id: node.id,
+          text: node.label,
+          start_date: formatDateForGantt(node.startDate),
+          end_date: formatDateForGantt(node.endDate),
+          duration: node.durationDays ?? 14,
+          progress: 0,
+          type: isCallActivity ? 'project' : 'task',
+          parent: parentTaskId,
+          orderIndex: node.orderIndex,
+          branchId: node.branchId ?? null,
+          bpmnFile: node.bpmnFile,
+          bpmnElementId: node.bpmnElementId,
+          meta: {
+            kind: node.type,
+            bpmnFile: node.bpmnFile,
+            bpmnElementId: node.bpmnElementId,
+            processId: node.processId,
+            orderIndex: node.orderIndex ?? null,
+            visualOrderIndex: node.visualOrderIndex ?? null,
+            branchId: node.branchId ?? null,
+            scenarioPath: node.scenarioPath ?? [],
+            subprocessFile,
+            matchedProcessId: node.subprocessLink?.matchedProcessId ?? null,
+            isReusedSubprocess:
+              isCallActivity &&
+              !!subprocessFile &&
+              (usageIndex.get(subprocessFile) ?? 0) > 1,
+          },
+        });
+
+        // Recursively process children
+        const childParentId = isCallActivity ? node.id : parentTaskId;
+        for (const child of node.children) {
+          addScheduledNodes(child as ScheduledNode, childParentId, usageIndex);
+        }
+      }
+    } else {
+      // For process nodes, process all children
+      for (const child of node.children) {
+        addScheduledNodes(child as ScheduledNode, parentTaskId, usageIndex);
+      }
+    }
+  };
+
+  const subprocessUsage = buildSubprocessUsageIndex(processTree);
+  addScheduledNodes(scheduled, rootTaskId, subprocessUsage);
 
   return tasks;
 }
@@ -217,6 +364,7 @@ function addRootCallActivities(
   baseDate: Date,
   defaultDurationDays: number,
   usageIndex: Map<string, number>,
+  getNextRowIndex: () => number,
 ) {
   // Include all timeline-relevant nodes from root process (callActivities, userTasks, serviceTasks, etc.)
   const rootNodes = root.children.filter(
@@ -225,8 +373,9 @@ function addRootCallActivities(
 
   const sorted = sortCallActivities(rootNodes, 'root');
 
-  sorted.forEach((node, index) => {
-    const dates = calculateTaskDates(baseDate, index, defaultDurationDays);
+  sorted.forEach((node) => {
+    const rowIndex = getNextRowIndex();
+    const dates = calculateTaskDates(baseDate, rowIndex, defaultDurationDays);
     const subprocessFile = resolveSubprocessFile(node);
     const taskId = node.id;
     const isCallActivity = node.type === 'callActivity';
@@ -271,6 +420,7 @@ function addRootCallActivities(
         baseDate,
         defaultDurationDays,
         usageIndex,
+        getNextRowIndex,
       );
     }
   });
@@ -283,6 +433,7 @@ function addSubprocessChildren(
   baseDate: Date,
   defaultDurationDays: number,
   usageIndex: Map<string, number>,
+  getNextRowIndex: () => number,
 ) {
   const childNodes = parentNode.children.filter(isTimelineNode);
   if (!childNodes.length) {
@@ -291,8 +442,9 @@ function addSubprocessChildren(
 
   const sorted = sortCallActivities(childNodes, 'subprocess');
 
-  sorted.forEach((node, index) => {
-    const dates = calculateTaskDates(baseDate, index, defaultDurationDays);
+  sorted.forEach((node) => {
+    const rowIndex = getNextRowIndex();
+    const dates = calculateTaskDates(baseDate, rowIndex, defaultDurationDays);
     const subprocessFile = resolveSubprocessFile(node);
     const isCallActivity = node.type === 'callActivity';
     const taskId = node.id;
@@ -336,6 +488,7 @@ function addSubprocessChildren(
         baseDate,
         defaultDurationDays,
         usageIndex,
+        getNextRowIndex,
       );
     }
   });
