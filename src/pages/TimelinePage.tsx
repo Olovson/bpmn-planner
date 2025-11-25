@@ -22,9 +22,10 @@ const TimelinePage = () => {
   const [tasks, setTasks] = useState<GanttTask[]>([]);
   const [isGanttInitialized, setIsGanttInitialized] = useState(false);
 
-  const toGanttData = (items: GanttTask[]) =>
-    items.map((task) => ({
-      id: task.id,
+  const toGanttData = (items: GanttTask[]) => {
+    // Convert to Gantt format
+    const ganttTasks = items.map((task) => ({
+      id: String(task.id),
       text: task.text,
       jira_name: task.jira_name || task.text || 'N/A',
       jira_type: task.jira_type || null,
@@ -33,7 +34,7 @@ const TimelinePage = () => {
       duration: task.duration,
       progress: task.progress,
       type: task.type ?? 'task',
-      parent: task.parent ?? '0',
+      parent: task.parent ? String(task.parent) : '0',
       orderIndex: task.orderIndex,
       branchId: task.branchId,
       bpmnFile: task.bpmnFile,
@@ -41,6 +42,33 @@ const TimelinePage = () => {
       meta: task.meta,
       open: task.type === 'project',
     }));
+    
+    // DHTMLX Gantt requires parent tasks to come before their children
+    // Sort tasks so that parents appear before children
+    const taskMap = new Map(ganttTasks.map(t => [t.id, t]));
+    const sorted: typeof ganttTasks = [];
+    const added = new Set<string>();
+    
+    const addTask = (task: typeof ganttTasks[0]) => {
+      if (added.has(task.id)) return;
+      
+      // If task has a parent (and it's not root), add parent first
+      if (task.parent && task.parent !== '0') {
+        const parent = taskMap.get(task.parent);
+        if (parent && !added.has(parent.id)) {
+          addTask(parent);
+        }
+      }
+      
+      sorted.push(task);
+      added.add(task.id);
+    };
+    
+    // Add all tasks in correct order
+    ganttTasks.forEach(addTask);
+    
+    return sorted;
+  };
 
   // Build Gantt tasks from ProcessTree and fetch Jira mappings
   useEffect(() => {
@@ -249,6 +277,24 @@ const TimelinePage = () => {
           firstTask: ganttData[0],
           containerExists: !!ganttContainerRef.current 
         });
+        
+        // Debug: Check parent references
+        const taskIds = new Set(ganttData.map(t => String(t.id)));
+        const invalidParents = ganttData.filter(t => {
+          const parent = String(t.parent || '0');
+          return parent !== '0' && !taskIds.has(parent);
+        });
+        if (invalidParents.length > 0) {
+          console.warn('[TimelinePage] Tasks with invalid parent references:', invalidParents);
+        }
+        
+        // Debug: Log all tasks with their hierarchy
+        console.log('[TimelinePage] All Gantt tasks:', ganttData.map(t => ({
+          id: t.id,
+          text: t.text,
+          parent: t.parent,
+          type: t.type,
+        })));
       }
 
       gantt.clearAll();

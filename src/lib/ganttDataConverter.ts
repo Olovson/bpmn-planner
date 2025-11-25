@@ -218,16 +218,18 @@ function addRootCallActivities(
   defaultDurationDays: number,
   usageIndex: Map<string, number>,
 ) {
-  const rootCallActivities = root.children.filter(
-    (node) => node.type === 'callActivity' && node.bpmnFile === root.bpmnFile,
+  // Include all timeline-relevant nodes from root process (callActivities, userTasks, serviceTasks, etc.)
+  const rootNodes = root.children.filter(
+    (node) => isTimelineNode(node) && node.bpmnFile === root.bpmnFile,
   );
 
-  const sorted = sortCallActivities(rootCallActivities, 'root');
+  const sorted = sortCallActivities(rootNodes, 'root');
 
   sorted.forEach((node, index) => {
     const dates = calculateTaskDates(baseDate, index, defaultDurationDays);
     const subprocessFile = resolveSubprocessFile(node);
     const taskId = node.id;
+    const isCallActivity = node.type === 'callActivity';
 
     tasks.push({
       id: taskId,
@@ -236,14 +238,14 @@ function addRootCallActivities(
       end_date: dates.end,
       duration: defaultDurationDays,
       progress: 0,
-      type: 'project',
+      type: isCallActivity ? 'project' : 'task',
       parent: parentTaskId,
       orderIndex: node.orderIndex,
       branchId: node.branchId ?? null,
       bpmnFile: node.bpmnFile,
       bpmnElementId: node.bpmnElementId,
       meta: {
-        kind: 'callActivity',
+        kind: node.type,
         bpmnFile: node.bpmnFile,
         bpmnElementId: node.bpmnElementId,
         processId: node.processId,
@@ -254,11 +256,14 @@ function addRootCallActivities(
         subprocessFile,
         matchedProcessId: node.subprocessLink?.matchedProcessId ?? null,
         isReusedSubprocess:
-          !!subprocessFile && (usageIndex.get(subprocessFile) ?? 0) > 1,
+          isCallActivity &&
+          !!subprocessFile &&
+          (usageIndex.get(subprocessFile) ?? 0) > 1,
       },
     });
 
-    if (node.children?.length) {
+    // Only add subprocess children for callActivities
+    if (isCallActivity && node.children?.length) {
       addSubprocessChildren(
         node,
         taskId,
