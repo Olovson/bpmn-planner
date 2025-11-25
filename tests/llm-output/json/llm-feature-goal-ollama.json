@@ -1,6 +1,6 @@
 {
   "error": "Lokal LLM (Ollama) unavailable",
   "provider": "local",
-  "details": "Validation failed: Failed to parse JSON: Expected ',' or '}' after property value in JSON at position 288",
-  "timestamp": "2025-11-25T18:46:57.048Z"
+  "details": "Validation failed: Missing required field: summary, Missing required field: effectGoals, Missing required field: scopeIncluded, Missing required field: scopeExcluded, Missing required field: epics, Missing required field: flowSteps, Missing required field: dependencies, Missing required field: scenarios, Missing required field: testDescription, Missing required field: implementationNotes, Missing required field: relatedItems",
+  "timestamp": "2025-11-25T20:36:37.809Z"
 }

@@ -440,10 +440,23 @@ function assignExecutionOrderFromSequenceFlows(
     // Always use the same function - calculateOrderFromSequenceFlows
     // This will return empty map if no sequence flows or no start nodes
     // Note: ProcessNodeModel uses primaryPathIndex instead of orderIndex
+    // ProcessNodeModel uses bpmnElementId directly, so we can use element IDs as nodeIds
     const nodeElementIds = nodes
       .map((n) => n.bpmnElementId)
       .filter((id): id is string => id !== undefined);
-    const orderMap = calculateOrderFromSequenceFlows(sequenceFlows || [], nodeElementIds);
+    
+    // Create mapping: element ID → element ID (identity mapping for ProcessNodeModel)
+    // This allows intermediate events to be included in graph
+    const elementIdToNodeIdMap = new Map<string, string>();
+    nodeElementIds.forEach((elementId) => {
+      elementIdToNodeIdMap.set(elementId, elementId);
+    });
+    
+    const orderMap = calculateOrderFromSequenceFlows(
+      sequenceFlows || [],
+      nodeElementIds,
+      elementIdToNodeIdMap,
+    );
 
     // Apply primaryPathIndex (mapped from orderIndex), branchId, scenarioPath to nodes
     const nodesByElementId = new Map<string, ProcessNodeModel[]>();
@@ -466,13 +479,13 @@ function assignExecutionOrderFromSequenceFlows(
       });
     });
 
-    // Always compute visualOrderIndex for nodes without primaryPathIndex
-    // This uses the same function regardless of whether sequence flows exist
-    const nodesWithoutOrder = nodes.filter((n) => n.bpmnElementId && n.primaryPathIndex === undefined);
-    if (nodesWithoutOrder.length > 0) {
-      const nodeElementIds = nodesWithoutOrder.map((n) => n.bpmnElementId!);
+    // Always compute visualOrderIndex for ALL nodes with coordinates
+    // Visual order is the primary sorting method, so all nodes need visualOrderIndex
+    const nodesWithCoords = nodes.filter((n) => n.bpmnElementId);
+    if (nodesWithCoords.length > 0) {
+      const nodeElementIds = nodesWithCoords.map((n) => n.bpmnElementId!);
       const visualOrderMap = calculateVisualOrderFromCoordinates(elements, nodeElementIds);
-      nodesWithoutOrder.forEach((node) => {
+      nodesWithCoords.forEach((node) => {
         if (node.bpmnElementId) {
           const visualIndex = visualOrderMap.get(node.bpmnElementId);
           if (visualIndex !== undefined) {

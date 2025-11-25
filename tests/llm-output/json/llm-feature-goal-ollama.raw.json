@@ -1,41 +1,59 @@
 {
-  "type": "FeatureGoal",
+  "type": "Feature",
   "processContext": {
-    "name": "Internal data gathering",
-    "file": "mortgage-se-application.bpmn",
+    "processName": "Internal data gathering",
+    "fileName": "mortgage-se-application.bpmn",
     "entryPoints": [
       {
         "id": "internal-data-gathering",
-        "type": "callActivity"
+        "name": "Internal data gathering",
+        "type": "callActivity",
+        "file": "mortgage-se-application.bpmn"
       }
     ],
     "endPoints": [],
-    "keyNodes": [] // No key nodes for Feature Goals.
+    "keyNodes": [
+      {
+        "id": "internal-data-gathering",
+        "name": "Internal data gathering",
+        "type": "callActivity",
+        "file": "mortgage-se-application.bpmn"
+      }
+    ]
   },
   "currentNodeContext": {
-    "node": null,
-    "hierarchy": {},
+    "node": {
+      "id": "internal-data-gathering",
+      "name": "Internal data gathering",
+      "type": "callActivity",
+      "file": "mortgage-se-application.bpmn"
+    },
+    "hierarchy": [
+      {
+        "id": "internal-data-gathering",
+        "name": "Internal data gathering (callActivity)",
+        "depthFromRoot": 0,
+        "featureGoalAncestor": null
+      }
+    ],
     "parents": [],
     "siblings": [],
-    "children": [],
-    "descendantHighlights": [],
-    "descendantTypeCounts": {} // No descendant type counts for Feature Goals.
+    "children": []
   },
-  "documentation": [
-    {
-      "id": "Internal data gathering",
-      "type": "FeatureGoal"
-    }
-  ],
+  "flows": {
+    "incoming": [
+      {
+        "id": "internal-data-gathering",
+        "name": "Internal data gathering"
+      }
+    ],
+    "outgoing": []
+  },
+  "documentation": [],
   "jiraGuidance": {
-    "hierarchy": "Projekt → Initiativ → Feature Goal → Epic → Stories",
-    "nodeJiraType": "feature goal",
-    "derivedJiraName": null, // Derived Jira Name not applicable for a single node.
-    "notes": "Feature goals are multi-team deliverables and should describe several epics."
+    "hierarchy": "Projekt → Initiativ → Feature Goal → Epic",
+    "nodeJiraType": null,
+    "derivedJiraName": ""
   },
-  "links": {
-    "bpmnViewerLink": "#/bpmn/mortgage.bpmn", // Link to the BPMN file for context, if available in your system's URL structure. Replace with actual link as needed.
-    "testLink": null, // Test links are not applicable for Feature Goals; they belong under Epics and Stories. Remove or replace accordingly.
-    "dmnLink": "/dmn/example.dmn" // Link to a DMN model if relevant, otherwise remove it as well. Replace with the actual link when available.
-  }
+  "links": {}
 }

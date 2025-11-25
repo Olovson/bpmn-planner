@@ -2,5 +2,5 @@
   "error": "ChatGPT (moln-LLM) connection failed",
   "provider": "cloud",
   "details": "LLM returned null response",
-  "timestamp": "2025-11-25T18:46:05.842Z"
+  "timestamp": "2025-11-25T20:35:40.467Z"
 }

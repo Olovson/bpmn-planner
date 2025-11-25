@@ -57,7 +57,8 @@ export function extractCallActivities(node: ProcessTreeNode): ProcessTreeNode[] 
 }
 
 /**
- * Sorts call activities by time order (orderIndex, then visualOrderIndex, then branchId, then label)
+ * Sorts call activities by visual order (visualOrderIndex is primary, then orderIndex, then branchId, then label)
+ * Visual order is the primary sorting method based on DI coordinates from the BPMN diagram
  */
 export function sortCallActivities(
   nodes: ProcessTreeNode[],

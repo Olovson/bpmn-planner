@@ -400,21 +400,44 @@ function detectCycles(graph: ProcessGraph): CycleInfo[] {
 function assignLocalOrderForFile(
   fileName: string,
   nodes: ProcessGraphNode[],
-  edges: ProcessGraphEdge[],
+  parseResult: BpmnParseResult,
 ): Map<string, OrderInfo> {
-  const sequenceEdges = edges.filter((e) => e.type === 'sequence');
+  // Use parseResult.sequenceFlows directly (includes all flows, even via intermediate events)
+  // These use element IDs (e.g., "Event_111bwbu", "offer")
+  const sequenceFlows = parseResult.sequenceFlows || [];
   
-  // Convert ProcessGraphEdge[] to BpmnSequenceFlow[] format
-  const sequenceFlows = sequenceEdges.map((e) => ({
-    id: e.id,
-    name: e.name || '',
-    sourceRef: e.from,
-    targetRef: e.to,
-  }));
+  // Create mapping: element ID → ProcessGraphNode ID
+  const elementIdToNodeIdMap = new Map<string, string>();
+  nodes.forEach((node) => {
+    if (node.bpmnElementId) {
+      elementIdToNodeIdMap.set(node.bpmnElementId, node.id);
+    }
+  });
 
   const nodeIds = nodes.map((n) => n.id);
 
-  const orderMap = calculateOrderFromSequenceFlows(sequenceFlows, nodeIds);
+  // Use calculateOrderFromSequenceFlows with element IDs and mapping
+  const orderMap = calculateOrderFromSequenceFlows(
+    sequenceFlows,
+    nodeIds,
+    elementIdToNodeIdMap,
+  );
+  
+  // Map result back to ProcessGraphNode IDs
+  // orderMap may contain both element IDs and ProcessGraphNode IDs
+  const nodeOrderMap = new Map<string, OrderInfo>();
+  orderMap.forEach((info, key) => {
+    // If key is a ProcessGraphNode ID, use it directly
+    if (nodeIds.includes(key)) {
+      nodeOrderMap.set(key, info);
+    } else {
+      // If key is an element ID, find corresponding ProcessGraphNode ID
+      const nodeId = elementIdToNodeIdMap.get(key);
+      if (nodeId) {
+        nodeOrderMap.set(nodeId, info);
+      }
+    }
+  });
 
   if (import.meta.env.DEV && fileName === 'mortgage.bpmn') {
     const total = nodes.length;
@@ -426,18 +449,20 @@ function assignLocalOrderForFile(
     const relevantCount = sequenceRelevant.size;
     const visualOnly = total - relevantCount;
     console.log(
-      `[Sequence Order Debug] ${fileName}: ${relevantCount} sequence-relevant nodes, ${visualOnly} visual-only nodes`,
+      `[Sequence Order Debug] ${fileName}: ${relevantCount} sequence-relevant elements, ${visualOnly} visual-only nodes`,
     );
-    const sequenceRelevantNodes = nodes.filter((n) => sequenceRelevant.has(n.id));
+    const sequenceRelevantNodes = nodes.filter((n) => 
+      n.bpmnElementId && sequenceRelevant.has(n.bpmnElementId)
+    );
     const sample = sequenceRelevantNodes.slice(0, 5).map((n) => ({
       id: n.bpmnElementId ?? n.id,
       label: n.name,
-      hasOrder: orderMap.has(n.id),
+      hasOrder: nodeOrderMap.has(n.id),
     }));
     console.log('[Sequence Order Debug] Sample relevant nodes:', sample);
   }
 
-  return orderMap;
+  return nodeOrderMap;
 }
 
 export function buildProcessGraph(
@@ -507,16 +532,6 @@ export function buildProcessGraph(
   graph.cycles = detectCycles(graph);
 
   // Lokalt orderIndex per fil
-  const edgesByFile = new Map<string, ProcessGraphEdge[]>();
-  edgesArray.forEach((e) => {
-    if (e.type !== 'sequence') return;
-    const seqFile = (e.metadata.sequenceFlowId as string | undefined)?.split(':')?.[0];
-    const fileKey = typeof seqFile === 'string' && seqFile ? seqFile : 'unknown';
-    const list = edgesByFile.get(fileKey) ?? [];
-    list.push(e);
-    edgesByFile.set(fileKey, list);
-  });
-
   const nodesByFile = new Map<string, ProcessGraphNode[]>();
   nodes.forEach((n) => {
     const list = nodesByFile.get(n.bpmnFile) ?? [];
@@ -525,13 +540,15 @@ export function buildProcessGraph(
   });
 
   nodesByFile.forEach((nodesInFile, fileName) => {
-    const fileEdges = edgesArray.filter(
-      (e) => e.type === 'sequence' && nodesInFile.some((n) => n.id === e.from || n.id === e.to),
-    );
-    
     // Always use the same function - calculateOrderFromSequenceFlows
     // This will return empty map if no sequence flows or no start nodes
-    const orderMap = assignLocalOrderForFile(fileName, nodesInFile, fileEdges);
+    const parseResult = parseResults.get(fileName);
+    if (!parseResult) {
+      // Skip if parseResult is not available
+      return;
+    }
+    
+    const orderMap = assignLocalOrderForFile(fileName, nodesInFile, parseResult);
     orderMap.forEach((info, nodeId) => {
       const node = nodes.get(nodeId);
       if (!node) return;
@@ -543,18 +560,17 @@ export function buildProcessGraph(
       };
     });
     
-    // Always compute visualOrderIndex for nodes without orderIndex
-    // This uses the same function regardless of whether sequence flows exist
-    const nodesWithoutOrder = nodesInFile.filter(n => {
-      const orderIndex = n.metadata.orderIndex as number | undefined;
+    // Always compute visualOrderIndex for ALL nodes with coordinates
+    // Visual order is the primary sorting method, so all nodes need visualOrderIndex
+    const nodesWithCoords = nodesInFile.filter(n => {
       const hasCoords = n.metadata.x !== undefined && n.metadata.y !== undefined;
-      return orderIndex === undefined && hasCoords;
+      return hasCoords && n.bpmnElementId !== undefined;
     });
     
-    if (nodesWithoutOrder.length > 0) {
+    if (nodesWithCoords.length > 0) {
       const parseResult = parseResults.get(fileName);
       if (parseResult) {
-        const nodeElementIds = nodesWithoutOrder
+        const nodeElementIds = nodesWithCoords
           .map((n) => n.bpmnElementId)
           .filter((id): id is string => id !== undefined);
         
@@ -565,8 +581,8 @@ export function buildProcessGraph(
         
         // Debug logging for visual ordering (development only)
         if (import.meta.env.DEV && fileName === 'mortgage.bpmn') {
-          console.log(`[Visual Ordering Debug] ${fileName} - ${nodesWithoutOrder.length} nodes without orderIndex:`);
-          const sorted = [...nodesWithoutOrder].sort((a, b) => {
+          console.log(`[Visual Ordering Debug] ${fileName} - ${nodesWithCoords.length} nodes with coordinates:`);
+          const sorted = [...nodesWithCoords].sort((a, b) => {
             const aIndex = visualOrderMap.get(a.bpmnElementId ?? '') ?? Number.MAX_SAFE_INTEGER;
             const bIndex = visualOrderMap.get(b.bpmnElementId ?? '') ?? Number.MAX_SAFE_INTEGER;
             return aIndex - bIndex;
@@ -574,13 +590,14 @@ export function buildProcessGraph(
           sorted.forEach((node, index) => {
             const x = (node.metadata.x as number) ?? 0;
             const y = (node.metadata.y as number) ?? 0;
-            console.log(`  ${index}: ${node.name} (${node.bpmnElementId}) - x:${x}, y:${y}`);
+            const orderIndex = node.metadata.orderIndex as number | undefined;
+            console.log(`  ${index}: ${node.name} (${node.bpmnElementId}) - x:${x}, y:${y}, orderIndex:${orderIndex ?? 'N/A'}, visualOrderIndex:${visualOrderMap.get(node.bpmnElementId ?? '') ?? 'N/A'}`);
           });
         }
         
-        // Assign visualOrderIndex (only for nodes without orderIndex)
-        nodesWithoutOrder.forEach((node) => {
-          if (node.metadata.orderIndex === undefined && node.bpmnElementId) {
+        // Assign visualOrderIndex to ALL nodes with coordinates
+        nodesWithCoords.forEach((node) => {
+          if (node.bpmnElementId) {
             const visualIndex = visualOrderMap.get(node.bpmnElementId);
             if (visualIndex !== undefined) {
               node.metadata.visualOrderIndex = visualIndex;

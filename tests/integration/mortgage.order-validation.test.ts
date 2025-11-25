@@ -150,24 +150,25 @@ describe('Mortgage order validation', () => {
     const uniqueNodes = deduplicateNodesByElement(sortedNodes);
     const actualLabels = uniqueNodes.map((node) => node.label);
 
-    // Expected order based on actual sortCallActivities() output
+    // Expected order based on visual order (DI coordinates) - primary sorting method
     // This reflects the actual ordering: visualOrderIndex -> orderIndex -> branchId -> label
+    // Visual order is now the primary sorting method, so nodes are sorted by their position in the BPMN diagram
     const expectedMortgageLabels = [
-      'Application',
-      'Mortgage commitment',
-      'Automatic Credit Evaluation',
-      'Appeal',
-      'Manual credit evaluation',
-      'Offer',
-      'Document generation',
-      'Signing',
-      'Disbursement',
-      'Collateral registration',
-      'KYC',
-      'Credit decision',
-      'Document generation',
-      'Signing',
-      'Disbursement',
+      'Application',                    // visualOrderIndex: 0
+      'Mortgage commitment',            // visualOrderIndex: 1
+      'Automatic Credit Evaluation',    // visualOrderIndex: 2
+      'Appeal',                         // visualOrderIndex: 3
+      'Manual credit evaluation',       // visualOrderIndex: 4
+      'KYC',                            // visualOrderIndex: 5
+      'Credit decision',                // visualOrderIndex: 6
+      'Offer',                          // visualOrderIndex: 7
+      'Document generation',            // visualOrderIndex: 8 (document-generation-advance)
+      'Signing',                        // visualOrderIndex: 9 (signing-advance)
+      'Document generation',            // visualOrderIndex: 10 (document-generation)
+      'Disbursement',                   // visualOrderIndex: 11 (disbursement-advance)
+      'Signing',                        // visualOrderIndex: 12 (signing)
+      'Disbursement',                   // visualOrderIndex: 13 (disbursement)
+      'Collateral registration',        // visualOrderIndex: 14
     ];
 
     expect(actualLabels).toEqual(expectedMortgageLabels);
@@ -182,14 +183,14 @@ describe('Mortgage order validation', () => {
     const uniqueNodes = deduplicateNodesByElement(sortedNodes);
     const actualLabels = uniqueNodes.map((node) => node.label);
 
-    // Expected order based on actual sortCallActivities() output
+    // Expected order based on visual order (DI coordinates) - primary sorting method
     // This reflects the actual ordering: visualOrderIndex -> orderIndex -> branchId -> label
     const expectedApplicationLabels = [
-      'Internal data gathering',
-      'Household',
-      'Confirm application',
-      'Stakeholder',
-      'Object',
+      'Internal data gathering',  // visualOrderIndex: 0
+      'Stakeholder',              // visualOrderIndex: 1
+      'Household',                // visualOrderIndex: 2
+      'Object',                   // visualOrderIndex: 3
+      'Confirm application',      // visualOrderIndex: 4
     ];
 
     expect(actualLabels).toEqual(expectedApplicationLabels);
