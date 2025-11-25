@@ -42,6 +42,10 @@ import {
   getTestableNodes,
 } from '@/lib/bpmnProcessGraph';
 import { testMapping, type TestScenario } from '@/data/testMapping';
+import {
+  createPlannedScenariosFromGraph,
+  savePlannedScenarios,
+} from '@/lib/plannedScenariosHelper';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { buildProcessTreeFromGraph } from '@/lib/bpmn/buildProcessTreeFromGraph';
 
@@ -1414,63 +1418,14 @@ export async function generateAllFromBpmnWithGraph(
 
     // Seed node_planned_scenarios med bas-scenarion för Lokal fallback
     try {
-      const rows: {
-        bpmn_file: string;
-        bpmn_element_id: string;
-        provider: 'local-fallback';
-        origin: 'design';
-        scenarios: TestScenario[];
-      }[] = [];
-
-      const seen = new Set<string>();
-
-      for (const node of testableNodes) {
-        if (!node.bpmnFile || !node.bpmnElementId) continue;
-        const key = `${node.bpmnFile}::${node.bpmnElementId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        const nodeId = node.bpmnElementId as string;
-
-        // Försök först hitta explicit mall i testMapping
-        const template = testMapping[nodeId];
-        let scenarios: TestScenario[] | null = null;
-
-        if (template && template.scenarios && template.scenarios.length > 0) {
-          scenarios = template.scenarios;
-        } else {
-          // Fallback: skapa ett enkelt "happy path"-scenario per nod
-          const name = node.name || nodeId;
-          scenarios = [
-            {
-              id: `${nodeId}-auto`,
-              name: `Happy path – ${name}`,
-              description:
-                'Automatiskt genererat scenario baserat på nodens testskelett.',
-              status: 'pending',
-              category: 'happy-path',
-            },
-          ];
-        }
-
-        rows.push({
-          bpmn_file: node.bpmnFile,
-          bpmn_element_id: node.bpmnElementId,
-          provider: 'local-fallback',
-          origin: 'design',
-          scenarios,
-        });
-      }
-
-      if (rows.length > 0) {
-        await supabase.from('node_planned_scenarios').upsert(rows, {
-          onConflict: 'bpmn_file,bpmn_element_id,provider',
-        });
-      }
+      const rows = createPlannedScenariosFromGraph(testableNodes);
+      await savePlannedScenarios(rows, 'bpmnGenerators');
     } catch (e) {
-      console.warn(
+      console.error(
         '[bpmnGenerators] Failed to seed local-fallback scenarios from hierarchy',
         e,
+        'Testable nodes:',
+        testableNodes.length,
       );
     }
 

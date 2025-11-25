@@ -59,6 +59,10 @@ import { loadAllBpmnParseResults, loadBpmnMap } from '@/lib/bpmn/debugDataLoader
 import type { ProcessGraph } from '@/lib/bpmn/processGraph';
 import type { ProcessTreeNode } from '@/lib/bpmn/processTreeTypes';
 import { buildJiraName, buildParentPath } from '@/lib/jiraNaming';
+import {
+  createPlannedScenariosFromTree,
+  savePlannedScenarios,
+} from '@/lib/plannedScenariosHelper';
 import { useGenerationJobs, type GenerationJob, type GenerationOperation, type GenerationStatus } from '@/hooks/useGenerationJobs';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -2171,6 +2175,21 @@ export default function BpmnFileManager() {
       };
 
       collectMappings(tree);
+
+      // Create base planned scenarios for all testable nodes in ProcessTree
+      const scenariosToInsert = createPlannedScenariosFromTree(tree);
+      const result = await savePlannedScenarios(scenariosToInsert, 'handleBuildHierarchy');
+
+      if (!result.success) {
+        toast({
+          title: 'Varning',
+          description: `Kunde inte spara alla planerade scenarion: ${result.error?.message || 'Okänt fel'}`,
+          variant: 'destructive',
+        });
+      } else if (result.count > 0) {
+        // Invalidate planned scenarios queries
+        queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
+      }
 
       // Deduplicate mappings by bpmn_file:element_id to avoid PostgreSQL error:
       // "ON CONFLICT DO UPDATE command cannot affect row a second time"

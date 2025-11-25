@@ -2,7 +2,7 @@
 // - Aggregated view over all BPMN-filer och noder
 // - Filtrering på provider (local/chatgpt/ollama), process, status m.m.
 // - Ska INTE vara nodspecifik – det hanteras av NodeTestsPage (/node-tests)
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, XCircle, FileCode, Clock, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -357,13 +357,14 @@ const TestReport = () => {
         })
         .map((node) => {
           // Hämta planerade scenarion från globalPlannedSummary om den finns
-          const plannedNode = plannedByNodeKey.get(
-            `${node.bpmnFile}::${node.elementId}`,
-          );
+          const nodeKey = `${node.bpmnFile}::${node.elementId}`;
+          const plannedNode = plannedByNodeKey.get(nodeKey);
 
           const plannedScenarios: UiScenario[] = [];
+          const availableProviders: string[] = [];
           if (plannedNode) {
             for (const providerSet of plannedNode.byProvider) {
+              availableProviders.push(providerSet.provider);
               if (providerSet.provider !== providerScope) continue;
               const sourceLabel = `${providerSet.origin}/${providerSet.provider}`;
               for (const scenario of providerSet.scenarios) {
@@ -372,6 +373,22 @@ const TestReport = () => {
                   _source: sourceLabel,
                 });
               }
+            }
+          }
+          
+          // Debug logging for nodes without planned scenarios
+          if (import.meta.env.DEV && plannedScenarios.length === 0) {
+            if (plannedNode) {
+              // Node exists in planned summary but no scenarios for current provider
+              console.log(`[TestReport] Node ${nodeKey} (${node.elementName || node.elementId}) has planned scenarios for providers: [${availableProviders.join(', ')}], but current scope is: ${providerScope}`);
+              console.log(`[TestReport] Available provider sets:`, plannedNode.byProvider.map(p => ({
+                provider: p.provider,
+                origin: p.origin,
+                scenarioCount: p.scenarios?.length || 0
+              })));
+            } else {
+              // Node doesn't exist in planned summary at all
+              console.log(`[TestReport] Node ${nodeKey} (${node.elementName || node.elementId}) has no planned scenarios in database`);
             }
           }
 
@@ -392,10 +409,13 @@ const TestReport = () => {
 
           return {
             id: node.elementId,
+            uniqueKey: `${node.bpmnFile}::${node.elementId}`, // Unique key for React
             displayName: node.elementName || node.elementId,
             plannedScenarios,
             hasExecuted,
             docId,
+            availableProviders, // For UI indication
+            hasPlannedForOtherProviders: availableProviders.length > 0 && plannedScenarios.length === 0,
           };
         });
     }
@@ -627,9 +647,8 @@ const TestReport = () => {
                         const isExpanded = expandedNodeId === node.id;
 
                         return (
-                          <>
+                          <React.Fragment key={node.uniqueKey}>
                             <TableRow
-                              key={node.id}
                               className="cursor-pointer"
                               onClick={() => {
                                 setExpandedNodeId((prev) =>
@@ -665,6 +684,15 @@ const TestReport = () => {
                                   >
                                     {plannedScenarioCount} scenarion
                                   </Badge>
+                                ) : node.hasPlannedForOtherProviders ? (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-xs text-muted-foreground">
+                                      Inga scenarion för {providerScope === 'local-fallback' ? 'Lokal fallback' : providerScope === 'chatgpt' ? 'ChatGPT' : 'Ollama'}
+                                    </span>
+                                    <span className="text-[10px] text-amber-600">
+                                      Finns för: {node.availableProviders.join(', ')}
+                                    </span>
+                                  </div>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">
                                     Inga scenarion definierade
@@ -743,7 +771,7 @@ const TestReport = () => {
                                 </TableCell>
                               </TableRow>
                             )}
-                          </>
+                          </React.Fragment>
                         );
                       })}
                     </TableBody>
