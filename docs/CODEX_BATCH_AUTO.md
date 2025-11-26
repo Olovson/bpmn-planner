@@ -17,7 +17,32 @@ Läs filen .codex-batch-all.md och bearbeta ALLA filer där automatiskt.
 VIKTIGT: Skriv ALDRIG över befintligt innehåll - ersätt bara 'TODO', tomma arrayer [], eller tomma strängar ''.
 Fortsätt från fil 1 till sista filen utan att stoppa eller fråga.
 Bearbeta filerna en i taget, men kontinuerligt.
+
+Efter varje fil du bearbetar, uppdatera .codex-batch-status.json:
+- Lägg till filen i "completed"-arrayen
+- Uppdatera "current" med nästa fil (eller null om klar)
+- Uppdatera "lastUpdated" med aktuellt datum/tid (ISO-format)
+- Fråga INTE om du ska fortsätta - bara uppdatera status och fortsätt!
 ```
+
+## Följ progress
+
+Öppna en annan terminal och kör:
+
+```bash
+# Se status i realtid
+watch -n 2 cat .codex-batch-status.json
+
+# Eller bara kolla status
+cat .codex-batch-status.json
+```
+
+Statusfilen uppdateras automatiskt efter varje fil, så du kan se:
+- Hur många filer som är klara (`completed.length`)
+- Vilken fil som bearbetas just nu (`current`)
+- När den senast uppdaterades (`lastUpdated`)
+
+Se `docs/CODEX_STATUS_MONITORING.md` för mer information.
 
 **Det är allt!** Codex bearbetar alla filer automatiskt.
 
