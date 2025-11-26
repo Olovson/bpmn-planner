@@ -3,7 +3,8 @@
 **BPMN Planner** tar BPMN-/DMN-filer, bygger en deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar dokumentation, testunderlag och metadata för produkt- och utvecklingsteamet. Supabase används som backend och innehåll kan genereras både via mallar (utan LLM) och via LLM (ChatGPT/Ollama).
 
 > Arkitektur & hierarki: `docs/bpmn-hierarchy-architecture.md`  
-> LLM-kontrakt & prompts: `prompts/llm/*`
+> LLM-kontrakt & prompts: `prompts/llm/*`  
+> Test-scenarion & design-scenarion: `docs/TEST_MAPPING_DESIGN_SCENARIOS.md`
 >
 > **Not om subprocesser (callActivity vs subProcess)**  
 > I många modeller används både `bpmn:callActivity` (tydlig extern subprocess) och `bpmn:subProcess` (inlinad subprocess) för att beskriva logiken.  
@@ -62,6 +63,7 @@
 - Tester:
   - Playwright-skelett per nod eller gren.
   - Testscenarier via LLM i Slow LLM Mode (`generateTestSpecWithLlm`).
+  - Design-scenarion från `testMapping.ts` för lokal generering (används när LLM är avstängt).
   - Node tests i UI (kopplade till `node_test_links`).
 - Övrig metadata:
   - Jira-typer/namn per nod (se [Jira-namngivning](#jira-namngivning) nedan).
@@ -133,6 +135,77 @@ Jira-namn genereras via `buildJiraName()` i `src/lib/jiraNaming.ts` och används
 - Edge Functions (`generate-artifacts`) - sätter bara `jira_type`, inte `jira_name`
 
 **Viktigt**: Jira-namn skrivs endast till databasen när hierarkin byggs via "Bygg/uppdatera hierarki från root". Detta säkerställer att korrekta fullständiga paths används baserat på hela ProcessTree.
+
+---
+
+# 🧪 Test-scenarion & design-scenarion
+
+BPMN Planner stödjer två sätt att generera testscenarion för Playwright-testscript:
+
+## LLM-genererade scenarion (Slow LLM Mode)
+
+När LLM är aktiverat (`VITE_USE_LLM=true`) kan systemet generera testscenarion via:
+- **ChatGPT** (moln-LLM) – "gold standard" för kontraktet
+- **Ollama** (lokal LLM) – best-effort fallback
+
+LLM-scenarion genereras via `generateTestSpecWithLlm()` och sparas i `node_planned_scenarios` med provider `chatgpt` eller `ollama`.
+
+## Design-scenarion (Lokal generering)
+
+För lokal generering (utan LLM) används **design-scenarion** från `src/data/testMapping.ts`:
+
+- **Statisk konfiguration**: Varje testbar nod kan ha en entry i `testMapping` med manuellt definierade scenarion.
+- **Format**: Varje scenario har `id`, `name`, `description`, `status`, `category` (happy-path/error-case/edge-case).
+- **Användning**: När lokal generering körs (`useLlm = false`) läser `getDesignScenariosForElement()` scenarion från `testMapping` och skickar dem till `generateTestSkeleton()`.
+- **Fallback**: Om en nod saknar entry i `testMapping` skapas automatiskt ett enkelt "Happy path"-scenario.
+
+### Hur design-scenarion sparas
+
+När hierarkin byggs eller dokumentation genereras:
+1. `createPlannedScenariosFromTree()` / `createPlannedScenariosFromGraph()` går igenom alla testbara noder.
+2. För varje nod:
+   - Om `testMapping[nodeId]` finns → använd dess scenarion.
+   - Annars → skapa ett automatiskt fallback-scenario.
+3. Alla scenarion sparas i `node_planned_scenarios` med `provider: 'local-fallback'` och `origin: 'design'`.
+
+### Utöka design-scenarion
+
+För att lägga till fler eller bättre scenarion:
+1. Öppna `src/data/testMapping.ts`.
+2. Lägg till eller uppdatera entry för noden (nyckel = `elementId`).
+3. Definiera scenarion med relevanta kategorier (happy-path, error-case, edge-case).
+4. När du kör lokal generering kommer dessa scenarion användas direkt i Playwright-testscripten.
+
+**Viktigt**: LLM-generering påverkas **inte** av `testMapping.ts` – den använder endast LLM-scenarion. Design-scenarion används enbart när `useLlm = false`.
+
+---
+
+# 🔌 Integrationer
+
+BPMN Planner innehåller en dedikerad sida för att hantera integrationer mellan Stacc och bankens integrationskällor.
+
+## Integrationer-sidan (`#/integrations`)
+
+- **Path**: `#/integrations`
+- **Syfte**: Hantera vilka Service Tasks som använder Staccs integrationskälla vs. bankens integrationskälla.
+- **Funktionalitet**:
+  - Visar alla Service Tasks från `staccIntegrationMapping.ts` (statisk mappning).
+  - Kolumner: BPMN Fil, Element, Element ID, Typ, Beskrivning, Staccs integrationskälla (read-only), Ersätts med bankens integrationskälla (checkbox).
+  - Checkboxen är **ikryssad som standard** (använder Staccs integrationskälla).
+  - När checkboxen **kryssas ur** betyder det att noden ska ersättas med bankens integrationskälla.
+  - Val sparas i `integration_overrides`-tabellen i Supabase och är persistent över sessioner.
+
+## Visualisering i andra vyer
+
+- **Timeline** (`#/timeline`): Service Tasks som använder bankens integrationskälla visas i **grön färg** (istället för standard blå).
+- **Process Explorer** (`#/process-explorer`): Service Tasks med bankens integrationskälla markeras med grön färg i trädvyn och har en egen legend-typ "Bankens integrationskälla (Service Task)".
+
+## Statisk mappning
+
+Mappningen mellan Service Tasks och Staccs integrationskällor definieras i `src/data/staccIntegrationMapping.ts`:
+- 20 fördefinierade Service Tasks med sina integrationskällor.
+- Används för att auto-populera "Staccs integrationskälla"-kolumnen.
+- Kan utökas med fler Service Tasks vid behov.
 
 ---
 
@@ -385,10 +458,11 @@ Checklista:
 3. **Generate documentation** – välj Lokal fallback (ingen LLM), ChatGPT (moln-LLM) eller Ollama (lokal LLM).  
 4. Visa resultat i **Viewer / Tree / List / Timeline**.  
 5. Justera metadata i **Node Matrix**.  
-6. **Timeline** – visualisera och redigera tidsordning för subprocesser i Gantt-chart.  
-7. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
-8. **Återgenerera vid behov**.  
-9. **Reset Registry** – rensa allt.
+6. **Integrationer** (`#/integrations`) – hantera Stacc vs. bankens integrationskällor för Service Tasks.  
+7. **Timeline** – visualisera och redigera tidsordning för subprocesser i Gantt-chart.  
+8. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
+9. **Återgenerera vid behov**.  
+10. **Reset Registry** – rensa allt.
 
 ---
 
@@ -398,6 +472,8 @@ Checklista:
 - Subprocess-matchning med confidence score  
 - Dokumentgenerering i två lägen (Local / Slow LLM)  
 - Playwright-skapande automatiskt  
+- **Design-scenarion** (`testMapping.ts`) för lokal testgenerering utan LLM
+- **Integrationer-sida** (`#/integrations`) för hantering av Stacc vs. bankens integrationskällor
 - Node Dashboard  
 - SOT i Supabase Storage  
 - Job queue för historik  

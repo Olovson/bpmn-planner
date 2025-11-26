@@ -23,7 +23,10 @@ Det finns två olika testrapport‑vyer i applikationen med tydliga roller:
 - Syfte: Visa en detaljerad dashboard för **en specifik nod**.
 - Innehåll:
   - Sammanfattning för noden (namn, BPMN‑fil, id).
-  - Planerade scenarion per provider för just den noden (inkl. Lokal fallback där scenarion seedas från generatorn/testMapping).
+  - Planerade scenarion per provider för just den noden:
+    - **`local-fallback`**: Design-scenarion från `testMapping.ts` (eller automatiskt genererade fallback-scenarion).
+    - **`chatgpt`**: LLM-genererade scenarion från ChatGPT.
+    - **`ollama`**: LLM-genererade scenarion från lokal Ollama-modell.
   - Faktiska körda tester (Playwright) för noden.
   - Länkar tillbaka till den globala testrapporten.
 
