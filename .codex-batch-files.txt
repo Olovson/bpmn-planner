@@ -1,5 +1,0 @@
-src/data/node-docs/epic/mortgage-se-application.confirm-application.doc.ts
-src/data/node-docs/feature-goal/mortgage-se-application.household.doc.ts
-src/data/node-docs/feature-goal/mortgage-se-application.internal-data-gathering.doc.ts
-src/data/node-docs/feature-goal/mortgage-se-application.object.doc.ts
-src/data/node-docs/feature-goal/mortgage-se-application.stakeholder.doc.ts

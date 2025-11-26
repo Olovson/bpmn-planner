@@ -13,8 +13,6 @@ import {
 } from './promptLoader';
 import {
   getPromptForDocType,
-  buildLlmRequestStructure,
-  mapLlmResponseToModel,
 } from './llmDocumentationShared';
 import type { DocType } from './llmProfiles';
 import { getLlmProfile } from './llmProfiles';

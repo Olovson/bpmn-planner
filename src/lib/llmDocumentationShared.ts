@@ -2,9 +2,7 @@
  * Shared abstraction for LLM documentation generation.
  * 
  * This module extracts the reusable logic for preparing LLM requests and interpreting
- * responses, making it available for both:
- * - The existing ChatGPT API path (via generateDocumentationWithLlm)
- * - The new Codex-driven batch override generation workflow
+ * responses for the ChatGPT API path.
  * 
  * The goal is to have a single source of truth for:
  * - Prompt selection
@@ -83,8 +81,7 @@ export function buildLlmInputPayload(
 
 /**
  * Builds the full LLM request structure (system prompt + user prompt).
- * This is what would be sent to ChatGPT, but can also be used by Codex
- * to understand what content to generate.
+ * This is what would be sent to ChatGPT.
  */
 export interface LlmRequestStructure {
   systemPrompt: string;

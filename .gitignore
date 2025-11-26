@@ -7,6 +7,3 @@ dist
 /supabase/.temp
 /supabase/.branches
 .supabase
-.codex-batch-all.md
-.codex-batch-status.json
-.codex-batch-files.json

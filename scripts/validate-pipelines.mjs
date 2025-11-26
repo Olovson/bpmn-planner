@@ -3,7 +3,7 @@
 /**
  * Validate All Pipelines
  * 
- * Detta script validerar att alla pipelines (ChatGPT, Ollama, Codex) fungerar
+ * Detta script validerar att pipelines (ChatGPT, Ollama) fungerar
  * korrekt efter uppdateringar till shared logic.
  * 
  * Användning:
@@ -60,18 +60,8 @@ check(llmDocContent.includes('from \'./llmDocumentationShared\''), 'llmDocumenta
 check(llmDocContent.includes('getPromptForDocType'), 'llmDocumentation.ts använder inte getPromptForDocType');
 check(llmDocContent.includes('export function buildContextPayload'), 'buildContextPayload exporteras inte från llmDocumentation.ts');
 
-// 3. Kontrollera att Codex helper använder shared logic
-console.log('3. Kontrollerar Codex pipeline (codexBatchOverrideHelper.ts)...');
-const codexFile = path.join(projectRoot, 'src', 'lib', 'codexBatchOverrideHelper.ts');
-check(fs.existsSync(codexFile), 'codexBatchOverrideHelper.ts saknas');
-
-const codexContent = fs.readFileSync(codexFile, 'utf-8');
-check(codexContent.includes('from \'./llmDocumentationShared\''), 'codexBatchOverrideHelper.ts importerar inte llmDocumentationShared');
-check(codexContent.includes('getPromptForDocType'), 'codexBatchOverrideHelper.ts använder inte getPromptForDocType');
-check(codexContent.includes('mapLlmResponseToModel'), 'codexBatchOverrideHelper.ts använder inte mapLlmResponseToModel');
-
-// 4. Kontrollera att render-funktioner använder overrides
-console.log('4. Kontrollerar dokumentationsrendering (documentationTemplates.ts)...');
+// 3. Kontrollera att render-funktioner använder overrides
+console.log('3. Kontrollerar dokumentationsrendering (documentationTemplates.ts)...');
 const templatesFile = path.join(projectRoot, 'src', 'lib', 'documentationTemplates.ts');
 check(fs.existsSync(templatesFile), 'documentationTemplates.ts saknas');
 
@@ -83,8 +73,8 @@ check(templatesContent.includes('mergeFeatureGoalOverrides'), 'renderFeatureGoal
 check(templatesContent.includes('mergeEpicOverrides'), 'renderEpicDoc använder inte mergeEpicOverrides');
 check(templatesContent.includes('mergeBusinessRuleOverrides'), 'renderBusinessRuleDoc använder inte mergeBusinessRuleOverrides');
 
-// 5. Kontrollera att bpmnGenerators använder unified render functions
-console.log('5. Kontrollerar bpmnGenerators integration...');
+// 4. Kontrollera att bpmnGenerators använder unified render functions
+console.log('4. Kontrollerar bpmnGenerators integration...');
 const generatorsFile = path.join(projectRoot, 'src', 'lib', 'bpmnGenerators.ts');
 check(fs.existsSync(generatorsFile), 'bpmnGenerators.ts saknas');
 
@@ -94,21 +84,14 @@ check(generatorsContent.includes('renderEpicDoc'), 'bpmnGenerators använder int
 check(generatorsContent.includes('renderBusinessRuleDoc'), 'bpmnGenerators använder inte renderBusinessRuleDoc');
 check(generatorsContent.includes('generateDocumentationWithLlm'), 'bpmnGenerators använder inte generateDocumentationWithLlm');
 
-// 6. Kontrollera att promptVersioning exporteras
-console.log('6. Kontrollerar promptVersioning module...');
+// 5. Kontrollera att promptVersioning exporteras
+console.log('5. Kontrollerar promptVersioning module...');
 const versioningFile = path.join(projectRoot, 'src', 'lib', 'promptVersioning.ts');
 check(fs.existsSync(versioningFile), 'promptVersioning.ts saknas');
 
 const versioningContent = fs.readFileSync(versioningFile, 'utf-8');
 check(versioningContent.includes('export function getPromptVersion'), 'getPromptVersion exporteras inte');
 check(versioningContent.includes('export function getOverridePromptVersion'), 'getOverridePromptVersion exporteras inte');
-
-// 7. Kontrollera att codexBatchOverrideHelper exporterar nya funktioner
-console.log('7. Kontrollerar codexBatchOverrideHelper exports...');
-check(codexContent.includes('export function needsUpdate'), 'needsUpdate exporteras inte');
-check(codexContent.includes('export function analyzeFile'), 'analyzeFile exporteras inte');
-check(codexContent.includes('export function findOverrideFiles'), 'findOverrideFiles exporteras inte');
-check(codexContent.includes('export function parseOverrideFileContext'), 'parseOverrideFileContext exporteras inte');
 
 // Resultat
 console.log('\n📊 Valideringsresultat:');

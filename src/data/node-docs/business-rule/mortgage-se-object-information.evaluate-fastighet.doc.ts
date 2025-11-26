@@ -35,7 +35,7 @@ import type { BusinessRuleDocOverrides } from '@/lib/nodeDocOverrides';
 
 export const overrides: BusinessRuleDocOverrides = {
   // Sammanfattning av regeln (syfte & scope)
-  summary: 'TODO',
+  summary: 'Denna affärsregel används i bolåneflödet för att fatta ett avgränsat beslut baserat på strukturerad kund- och ansökningsdata. Syftet är att säkerställa en konsekvent tillämpning av kreditpolicy och riskprinciper för den aktuella delen av processen.',
 
   // Inputs & datakällor till regeln
   inputs: ['TODO'],
@@ -50,10 +50,48 @@ export const overrides: BusinessRuleDocOverrides = {
   businessRulesPolicy: ['TODO'],
 
   // Viktiga affärs-scenarion (BR1/BR2/...)
-  scenarios: [],
+  
+  scenarios: [
+    {
+      id: 'BR1',
+      name: 'Normalfall inom riktlinjer',
+      type: 'Happy',
+      input:
+        'Underlag som uppfyller definierade riktvärden för risk och återbetalningsförmåga utan negativa flaggor.',
+      outcome:
+        'Regeln ger ett positivt utfall inom ordinarie mandat och processen kan fortsätta utan manuell avvikelsehantering.',
+    },
+    {
+      id: 'BR2',
+      name: 'Gränsfall som kräver manuell granskning',
+      type: 'Edge',
+      input:
+        'Underlag som ligger nära en eller flera trösklar i policyn eller innehåller osäkerheter som inte kan avgöras automatiskt.',
+      outcome:
+        'Regeln flaggar ärendet för manuell granskning och ger vägledning om vilka faktorer som behöver bedömas.',
+    },
+    {
+      id: 'BR3',
+      name: 'Tydlig överträdelse av beslutskriterier',
+      type: 'Edge',
+      input:
+        'Underlag som tydligt ligger utanför fastställda gränser eller uppfyller exklusionskriterier.',
+      outcome:
+        'Regeln ger ett avslag eller motsvarande negativt utfall i enlighet med kreditpolicy.',
+    },
+    {
+      id: 'BR4',
+      name: 'Tekniskt fel eller ofullständig data',
+      type: 'Error',
+      input:
+        'Nyckeldata kan inte läsas in, valideras eller tolkas på ett säkert sätt.',
+      outcome:
+        'Regeln avbryter automatisk bedömning, loggar avvikelsen och kräver manuell hantering.',
+    },
+  ],
 
   // Koppling till automatiska tester / DMN-tester
-  testDescription: 'TODO',
+  testDescription: 'Scenarierna BR1–BR4 ska mappas mot automatiska DMN- och API-tester där scenario-ID och namn återfinns i testfallens benämningar. Testerna ska verifiera normalfall, gränsfall, tydliga avslag samt tekniska fel eller ofullständig data.',
 
   // Implementation & integrationsnoter
   implementationNotes: ['TODO'],
