@@ -1913,8 +1913,19 @@ export async function generateAllFromBpmn(
 
     // Generate test skeleton
     if (['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity'].includes(nodeType)) {
-      const llmScenarios = useLlm ? await generateTestSpecWithLlm(element, llmProvider, false) : null;
-      const testContent = generateTestSkeleton(element, llmScenarios || undefined);
+      let scenarioInputs:
+        | { name: string; description: string; expectedResult?: string; steps?: string[] }[]
+        | undefined;
+
+      if (useLlm) {
+        const llmScenarios = await generateTestSpecWithLlm(element, llmProvider, false);
+        scenarioInputs = llmScenarios || undefined;
+      } else {
+        // Lokal generering: använd design-scenarion från testMapping när de finns
+        scenarioInputs = getDesignScenariosForElement(element);
+      }
+
+      const testContent = generateTestSkeleton(element, scenarioInputs);
       const testFileKey = bpmnFileName
         ? getNodeTestFileKey(bpmnFileName, element.id)
         : `${element.id}.spec.ts`;
@@ -2023,6 +2034,29 @@ export async function generateAllFromBpmn(
   });
 
   return result;
+}
+
+/**
+ * Hämta design-scenarion från testMapping och mappa dem till formatet
+ * som används av generateTestSkeleton. Används enbart för lokal generering
+ * (useLlm = false) så vi inte ändrar LLM-beteendet.
+ */
+function getDesignScenariosForElement(
+  element: BpmnElement,
+): { name: string; description: string; expectedResult?: string; steps?: string[] }[] | undefined {
+  const mapping = testMapping[element.id];
+  if (!mapping || !mapping.scenarios || mapping.scenarios.length === 0) {
+    return undefined;
+  }
+
+  const scenarios = mapping.scenarios.map((s: TestScenario) => ({
+    name: s.name,
+    description: s.description,
+    expectedResult: s.description,
+    // steps lämnas tomma så generateTestSkeleton genererar generiska TODO-kommentarer
+  }));
+
+  return scenarios.length ? scenarios : undefined;
 }
 
 // ============= PROCESS TREE BASED GENERATORS =============
