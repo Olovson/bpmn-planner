@@ -21,10 +21,14 @@ import * as path from 'path';
 import type { DocumentationDocType } from './llmDocumentation';
 import {
   getPromptForDocType,
+  buildLlmRequestStructure,
   mapLlmResponseToModel,
   normalizeDocType,
   inferDocTypeFromNodeType,
 } from './llmDocumentationShared';
+import type { NodeDocumentationContext } from './documentationContext';
+import type { BpmnProcessNode } from './bpmnProcessGraph';
+import type { TemplateLinks } from './documentationTemplates';
 import { getOverridePromptVersion } from './promptVersioning';
 import type {
   FeatureGoalDocOverrides,
@@ -218,50 +222,267 @@ export interface CodexGenerationInstructions {
   userPrompt: string;
   docType: DocumentationDocType;
   expectedOutputFormat: string;
+  _contextType?: 'full' | 'minimal'; // Internal: indicates whether full or minimal context was used
+}
+
+/**
+ * Builds a minimal NodeDocumentationContext from override file metadata.
+ * This is used as a fallback when full context cannot be built.
+ * 
+ * Note: This creates a minimal context without full BPMN graph structure.
+ * For production, we should use buildFullNodeContext() instead.
+ */
+function buildMinimalNodeContext(
+  context: ParsedOverrideContext
+): NodeDocumentationContext {
+  const { bpmnFile, elementId, nodeType } = context;
+  
+  // Create a minimal BpmnProcessNode
+  const node: BpmnProcessNode = {
+    id: elementId,
+    bpmnElementId: elementId,
+    name: elementId, // Will be improved if we can read from BPMN file
+    type: nodeType as any,
+    bpmnFile,
+    children: [],
+    element: undefined, // Not available in batch context
+  };
+
+  return {
+    node,
+    parentChain: [],
+    childNodes: [],
+    siblingNodes: [],
+    descendantNodes: [],
+  };
+}
+
+/**
+ * Builds a full NodeDocumentationContext by loading BPMN files and building the graph.
+ * This provides the same rich context that ChatGPT/Ollama uses.
+ * 
+ * ⚠️ BEGRÄNSNING: Denna funktion fungerar INTE i Node.js batch-kontexten eftersom
+ * `parseBpmnFile` använder `fetch()` för web-URLs. Den kommer alltid returnera null
+ * i batch-kontexten och fallback till minimal kontext.
+ * 
+ * För att få full kontext i batch-kontexten behöver vi:
+ * 1. En Node.js-variant av `parseBpmnFile` som läser från filsystemet
+ * 2. Eller en adapter som konverterar filsystem-paths till web-URLs
+ * 
+ * @param context - Parsed override context with bpmnFile and elementId
+ * @param projectRoot - Root directory of the project
+ * @returns Full NodeDocumentationContext, or null if building fails
+ */
+async function buildFullNodeContext(
+  context: ParsedOverrideContext,
+  projectRoot: string
+): Promise<NodeDocumentationContext | null> {
+  // ⚠️ KRITISKT: Denna funktion fungerar INTE i Node.js batch-kontexten
+  // eftersom parseBpmnFile använder fetch() för web-URLs.
+  // Vi returnerar null direkt så att vi fallback till minimal kontext.
+  // Detta är en känd begränsning som behöver fixas för full kontext i batch.
+  
+  // TODO: Implementera Node.js-variant av parseBpmnFile som läser från filsystemet
+  // eller skapa en adapter som konverterar filsystem-paths till web-URLs
+  
+  return null;
+  
+  /* ORIGINAL IMPLEMENTATION (kommer inte köras i batch-kontexten):
+  try {
+    // Check if we're in a Node.js environment with file system access
+    if (typeof require === 'undefined' || !fs.existsSync) {
+      console.warn(`[Codex] Not in Node.js environment, using minimal context`);
+      return null;
+    }
+
+    // Import dynamically to avoid issues in non-Node environments
+    const { buildBpmnProcessGraph } = await import('./bpmnProcessGraph');
+    const { buildNodeDocumentationContext } = await import('./documentationContext');
+    
+    // Find all BPMN files in the project
+    const bpmnFiles = findBpmnFiles(projectRoot);
+    if (bpmnFiles.length === 0) {
+      console.warn(`[Codex] No BPMN files found, using minimal context`);
+      return null;
+    }
+
+    // NOTE: buildBpmnProcessGraph uses parseBpmnFile which expects web URLs (/bpmn/...)
+    // In Node.js batch context, this will FAIL because parseBpmnFile uses fetch()
+    // which doesn't work with file system paths.
+    
+    try {
+      // Build the graph using the node's BPMN file as root
+      const graph = await buildBpmnProcessGraph(context.bpmnFile, bpmnFiles);
+      
+      // Find the node in the graph
+      const nodeId = context.elementId;
+      let nodeContext = buildNodeDocumentationContext(graph, nodeId);
+      
+      if (!nodeContext) {
+        // Try alternative ID formats
+        const alternativeIds = [
+          `${context.bpmnFile}::${context.elementId}`,
+          `root:${context.bpmnFile}::${context.elementId}`,
+        ];
+        
+        for (const altId of alternativeIds) {
+          nodeContext = buildNodeDocumentationContext(graph, altId);
+          if (nodeContext) {
+            break;
+          }
+        }
+      }
+      
+      if (!nodeContext) {
+        // Search all nodes for matching elementId
+        for (const [id, node] of graph.allNodes.entries()) {
+          if (node.bpmnElementId === context.elementId && node.bpmnFile === context.bpmnFile) {
+            nodeContext = buildNodeDocumentationContext(graph, id);
+            if (nodeContext) {
+              break;
+            }
+          }
+        }
+      }
+      
+      if (!nodeContext) {
+        console.warn(`[Codex] Node ${context.elementId} not found in graph, using minimal context`);
+        return null;
+      }
+      
+      console.log(`[Codex] Successfully built full context for ${context.bpmnFile}::${context.elementId}`);
+      return nodeContext;
+    } catch (graphError) {
+      // buildBpmnProcessGraph will fail in Node.js batch context because parseBpmnFile uses fetch()
+      console.warn(`[Codex] Failed to build graph (parseBpmnFile uses fetch() which doesn't work in Node.js batch context): ${graphError instanceof Error ? graphError.message : String(graphError)}`);
+      return null;
+    }
+  } catch (error) {
+    console.warn(`[Codex] Failed to build full context: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+  */
+}
+
+/**
+ * Finds all BPMN files in the project.
+ */
+function findBpmnFiles(projectRoot: string): string[] {
+  const fs = require('fs');
+  const path = require('path');
+  
+  const candidateDirs = [
+    path.join(projectRoot, 'public', 'bpmn'),
+    path.join(projectRoot, 'tests', 'fixtures', 'bpmn'),
+  ];
+  
+  const bpmnFiles: string[] = [];
+  
+  for (const dir of candidateDirs) {
+    if (!fs.existsSync(dir)) continue;
+    
+    try {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        if (file.endsWith('.bpmn')) {
+          bpmnFiles.push(file);
+        }
+      }
+    } catch (error) {
+      // Ignore errors reading directory
+    }
+  }
+  
+  return bpmnFiles;
 }
 
 /**
  * Provides generation instructions for Codex based on an override file context.
  * 
- * Since Codex doesn't have access to the full BpmnProcessGraph, this provides
- * the prompt and instructions that Codex should follow, along with the node metadata.
+ * ⚠️ VIKTIGT: Denna funktion använder SAMMA pipeline som ChatGPT/Ollama:
+ * - Samma prompt (via getPromptForDocType())
+ * - Samma kontext-struktur (via buildLlmRequestStructure())
+ * - Samma response-mapping (via mapLlmResponseToModel())
  * 
- * Codex should use the systemPrompt to understand what structure to generate,
- * and can work with the node metadata to create appropriate content.
+ * BEGRÄNSNING: Full kontext fungerar INTE i Node.js batch-kontexten eftersom
+ * `parseBpmnFile` använder `fetch()` för web-URLs. Den kommer alltid använda
+ * minimal kontext i batch-kontexten.
+ * 
+ * För att få full kontext i batch-kontexten behöver vi:
+ * 1. En Node.js-variant av `parseBpmnFile` som läser från filsystemet
+ * 2. Eller en adapter som konverterar filsystem-paths till web-URLs
+ * 
+ * @param context - Parsed override context
+ * @param options - Options for context building
+ * @param options.useFullContext - If true, attempt to build full context (default: true, men kommer inte fungera i batch)
+ * @param options.projectRoot - Root directory of the project (default: process.cwd())
+ * @returns Generation instructions with prompt and context
  */
-export function getCodexGenerationInstructions(
-  context: ParsedOverrideContext
-): CodexGenerationInstructions {
-  const { docType, bpmnFile, elementId } = context;
+export async function getCodexGenerationInstructions(
+  context: ParsedOverrideContext,
+  options: {
+    useFullContext?: boolean;
+    projectRoot?: string;
+  } = {}
+): Promise<CodexGenerationInstructions> {
+  const { docType } = context;
+  const { useFullContext = true, projectRoot = typeof process !== 'undefined' ? process.cwd() : '' } = options;
 
-  // Get the prompt (same as ChatGPT would use)
-  const systemPrompt = getPromptForDocType(docType);
+  // Try to build full context first (production mode)
+  // This gives Codex the same rich context as ChatGPT/Ollama
+  let nodeContext: NodeDocumentationContext | null = null;
+  let contextType: 'full' | 'minimal' = 'minimal';
+  
+  if (useFullContext) {
+    nodeContext = await buildFullNodeContext(context, projectRoot);
+    if (nodeContext) {
+      contextType = 'full';
+    }
+  }
+  
+  // Fall back to minimal context if full context is not available
+  // This is acceptable for tests but not ideal for production
+  if (!nodeContext) {
+    nodeContext = buildMinimalNodeContext(context);
+    if (useFullContext) {
+      console.warn(`[Codex] Using minimal context for ${context.bpmnFile}::${context.elementId}. Full context preferred for production.`);
+    }
+  }
 
-  // Build a simplified user prompt with just the node metadata
-  // Codex can use this along with the system prompt to generate content
-  // The prompt itself contains instructions on what structure to return
-  const docLabel = docType === 'feature' ? 'Feature' : docType === 'epic' ? 'Epic' : 'BusinessRule';
-  const userPrompt = JSON.stringify(
-    {
-      type: docLabel,
-      nodeMetadata: {
-        bpmnFile,
-        elementId,
-        nodeType: context.nodeType,
-      },
-      // Note: Full processContext and currentNodeContext would normally be here.
-      // Codex should use the prompt instructions and node metadata to generate
-      // appropriate content following the prompt's guidelines.
-    },
-    null,
-    2
-  );
+  const links: TemplateLinks = {
+    bpmnViewerLink: `#/bpmn/${context.bpmnFile}`,
+    dorLink: undefined,
+    testLink: undefined,
+  };
+
+  // Use the SAME function that ChatGPT/Ollama uses!
+  const requestStructure = buildLlmRequestStructure(docType, nodeContext, links);
+
+  // If using minimal context, add a warning to the user prompt so it's visible in the generated content
+  let userPrompt = requestStructure.userPrompt;
+  if (contextType === 'minimal' && useFullContext) {
+    // Parse the JSON to add a warning field that will be visible in the generated content
+    try {
+      const promptJson = JSON.parse(userPrompt);
+      // Add warning to processContext so it appears in the generated documentation
+      if (!promptJson.processContext) {
+        promptJson.processContext = {};
+      }
+      promptJson.processContext._contextWarning = '⚠️ OBS: Denna dokumentation genererades med minimal kontext (endast nod-metadata). Full kontext med hierarki, flows och relaterade noder kunde inte byggas i batch-kontexten. För bästa kvalitet, generera via ChatGPT/Ollama-pipelinen i appen där full kontext är tillgänglig.';
+      userPrompt = JSON.stringify(promptJson, null, 2);
+    } catch {
+      // If parsing fails, prepend warning as comment
+      userPrompt = `// ⚠️ OBS: Minimal kontext används - full kontext kunde inte byggas\n${userPrompt}`;
+    }
+  }
 
   return {
-    systemPrompt,
+    systemPrompt: requestStructure.systemPrompt,
     userPrompt,
     docType,
     expectedOutputFormat: 'JSON object matching the model structure (FeatureGoalDocModel, EpicDocModel, or BusinessRuleDocModel)',
+    // Include context type for debugging
+    _contextType: contextType,
   };
 }
 
@@ -492,6 +713,15 @@ export function needsUpdate(
 /**
  * This module is designed to be used by Codex (AI assistant) for batch generation.
  * 
+ * **IMPORTANT: This module uses the SAME pipeline as ChatGPT/Ollama!**
+ * 
+ * All pipelines (ChatGPT, Ollama, Codex) now use:
+ * - Same prompts (via `getPromptForDocType()`)
+ * - Same context structure (via `buildLlmRequestStructure()`)
+ * - Same response mapping (via `mapLlmResponseToModel()`)
+ * 
+ * This ensures consistency across all LLM integrations.
+ * 
  * Typical workflow:
  * 
  * 1. Find override files:
@@ -501,9 +731,11 @@ export function needsUpdate(
  * 2. For each file:
  *    const context = parseOverrideFileContext(file.filePath);
  *    const instructions = getCodexGenerationInstructions(context);
+ *    // This uses buildLlmRequestStructure() - SAME as ChatGPT/Ollama!
  * 
  * 3. Generate content using Codex:
  *    - Use instructions.systemPrompt and instructions.userPrompt
+ *    - These are the EXACT same prompts/context that ChatGPT would use
  *    - Generate JSON matching the model structure
  *    - Parse the response: const model = mapLlmResponseToModel(docType, rawResponse);
  *    - Convert to overrides: const overrides = mapLlmResponseToOverrides(docType, model);

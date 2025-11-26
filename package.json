@@ -39,6 +39,7 @@
     "check:prompt-versions": "node scripts/check-prompt-versions.mjs",
     "validate:codex-pipeline": "node scripts/validate-codex-pipeline.mjs",
     "validate:pipelines": "node scripts/validate-pipelines.mjs",
+    "validate:inputs-format": "node scripts/validate-inputs-format.mjs",
     "codex:batch:epic": "node scripts/codex-batch.mjs epic",
     "codex:batch:feature": "node scripts/codex-batch.mjs feature-goal",
     "codex:batch:business-rule": "node scripts/codex-batch.mjs business-rule",

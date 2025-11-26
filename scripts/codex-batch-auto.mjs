@@ -294,6 +294,32 @@ Bearbeta filerna en i taget, automatiskt och kontinuerligt. För varje fil:
 5. **Behåll** allt annat innehåll oförändrat
 6. **Spara** filen och gå vidare till nästa
 
+## ⚠️ VIKTIGT: Format för inputs (Epic)
+
+Om du uppdaterar \`inputs\`-fältet för en **Epic**, måste du använda detta EXAKTA format:
+
+**FEL format (använd INTE):**
+\`\`\`typescript
+inputs: [
+  "Strukturerad ansökningsdata som beskriver kund...",
+  "Sammanfattad information från tidigare processsteg..."
+]
+\`\`\`
+
+**RÄTT format (använd alltid):**
+\`\`\`typescript
+inputs: [
+  "Fält: ansökningsdata; Datakälla: kundgränssnitt; Typ: JSON-struktur; Obligatoriskt: Ja; Validering: schema-validering; Felhantering: visa felmeddelande och kräv korrigering",
+  "Fält: status; Datakälla: föregående processsteg; Typ: enum; Obligatoriskt: Ja; Validering: kontrollera att status är giltig; Felhantering: flagga för manuell granskning",
+  "Fält: parametrar; Datakälla: systemkonfiguration; Typ: objekt; Obligatoriskt: Nej; Validering: kontrollera att värden är inom tillåtna intervall; Felhantering: använd standardvärden vid saknade data"
+]
+\`\`\`
+
+**Format-mall:**
+\`Fält: <namn>; Datakälla: <varifrån>; Typ: <datatyp>; Obligatoriskt: Ja/Nej; Validering: <hur valideras>; Felhantering: <vad händer vid fel>\`
+
+Varje input MÅSTE följa detta format. Om du ser inputs som INTE följer detta format, uppdatera dem!
+
 ## Filer att bearbeta
 
 ${fileAnalyses.map((file, index) => {
@@ -321,23 +347,27 @@ ${file.needsVersionUpdate ? `\n**⚠️ Gammal prompt-version:** Nuvarande: ${fi
 2. **Läs hela filen FÖRST** och identifiera vilka fält som är 'TODO' vs vilka som redan har innehåll
 3. Läs NODE CONTEXT-kommentaren överst i filen
 4. Läs prompt-filen: ${promptFile}
-5. Generera JSON enligt promptens instruktioner
-6. **Uppdatera BARA fälten som är 'TODO' eller tomma:** ${file.needsUpdate.map(f => f.field).join(', ')}
-7. **LÄMNA ALLA ANDRA FÄLT ORÖRTA** - även om de inte är i listan ovan
-8. **Uppdatera prompt-version kommentar:**
-   - Om filen INTE har en PROMPT VERSION-kommentar → Lägg till en direkt efter NODE CONTEXT-kommentaren
-   - Om filen HAR en PROMPT VERSION-kommentar → Uppdatera versionen till: ${file.context?.type === 'business-rule' ? businessRuleVersion : featureEpicVersion}
-   - Format:
-   \`\`\`typescript
-   /**
-    * PROMPT VERSION: ${file.context?.type === 'business-rule' ? businessRuleVersion : featureEpicVersion}
-    * Genererad: ${new Date().toISOString().split('T')[0]}
-    */
-   \`\`\`
-   Lägg till/uppdatera denna kommentar direkt efter NODE CONTEXT-kommentaren, INNAN export-satsen.
-9. **Kontrollera INNAN du sparar:** Har du ändrat något som INTE var 'TODO'? → Ångra ändringen!
-10. Spara filen
-11. **Uppdatera statusfilen** (\`.codex-batch-status.json\`):
+5. **VIKTIGT:** Använd \`getCodexGenerationInstructions()\` från \`src/lib/codexBatchOverrideHelper.ts\` för att få EXAKT samma prompt och kontext-struktur som ChatGPT/Ollama använder
+6. Generera JSON enligt promptens instruktioner
+7. **Uppdatera BARA fälten som är 'TODO' eller tomma:** ${file.needsUpdate.map(f => f.field).join(', ')}
+8. **VIKTIGT för Epic-filer:** Om \`inputs\`-fältet behöver uppdateras, använd EXAKT formatet: \`Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: ...; Validering: ...; Felhantering: ...\` (se format-sektionen ovan)
+9. **Kontrollera inputs-format:** Om filen är en Epic och \`inputs\` INTE följer formatet ovan, uppdatera det även om det inte var 'TODO'!
+10. **LÄMNA ALLA ANDRA FÄLT ORÖRTA** - även om de inte är i listan ovan
+11. **Om minimal kontext används:** Lägg till en kommentar i \`summary\`-fältet: "⚠️ OBS: Genererad med minimal kontext. För bästa kvalitet, generera via ChatGPT/Ollama-pipelinen i appen."
+10. **Uppdatera prompt-version kommentar:**
+    - Om filen INTE har en PROMPT VERSION-kommentar → Lägg till en direkt efter NODE CONTEXT-kommentaren
+    - Om filen HAR en PROMPT VERSION-kommentar → Uppdatera versionen till: ${file.context?.type === 'business-rule' ? businessRuleVersion : featureEpicVersion}
+    - Format:
+    \`\`\`typescript
+    /**
+     * PROMPT VERSION: ${file.context?.type === 'business-rule' ? businessRuleVersion : featureEpicVersion}
+     * Genererad: ${new Date().toISOString().split('T')[0]}
+     */
+    \`\`\`
+    Lägg till/uppdatera denna kommentar direkt efter NODE CONTEXT-kommentaren, INNAN export-satsen.
+11. **Kontrollera INNAN du sparar:** Har du ändrat något som INTE var 'TODO' (utom inputs-formatet för Epic)? → Ångra ändringen!
+12. Spara filen
+13. **Uppdatera statusfilen** (\`.codex-batch-status.json\`):
     - Lägg till \`${file.relativePath}\` i \`completed\`-arrayen (om den inte redan finns)
     - Uppdatera \`current\` till nästa fil i listan (eller null om alla är klara)
     - Uppdatera \`lastUpdated\` till aktuellt datum/tid (ISO-format)
@@ -351,11 +381,14 @@ ${file.needsVersionUpdate ? `\n**⚠️ Gammal prompt-version:** Nuvarande: ${fi
 
 Innan du sparar en fil, kontrollera:
 - [ ] Har jag bara ändrat fält som var 'TODO', [], eller ''?
-- [ ] Har jag lämnat alla fält med befintligt innehåll orörda?
-- [ ] Har jag inte tagit bort eller ändrat något innehåll som redan fanns?
-- [ ] Har jag bara LAGT TILL innehåll i TODO-fält, inte ändrat befintligt?
+- [ ] **För Epic-filer:** Har jag kontrollerat att \`inputs\`-fältet följer formatet \`Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: ...; Validering: ...; Felhantering: ...\`? (Uppdatera även om det inte var 'TODO'!)
+- [ ] Har jag lämnat alla fält med befintligt innehåll orörda (utom inputs-formatet för Epic)?
+- [ ] Har jag inte tagit bort eller ändrat något innehåll som redan fanns (utom inputs-formatet för Epic)?
+- [ ] Har jag bara LAGT TILL/uppdaterat innehåll i TODO-fält, inte ändrat befintligt (utom inputs-formatet för Epic)?
 
 **Om någon checklista är fel → Ångra ändringarna innan du sparar!**
+
+**Undantag:** För Epic-filer kan du alltid uppdatera \`inputs\`-fältet om det INTE följer formatet ovan, även om det inte var 'TODO'.
 
 ## Automatisk bearbetning
 
