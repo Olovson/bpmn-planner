@@ -201,14 +201,8 @@ export const useAllFilesArtifactCoverage = () => {
           const uniqueTestNodes = new Set(fileTestLinks.map(t => t.bpmn_element_id).filter(Boolean));
           const tests_covered = uniqueTestNodes.size;
 
-          if (import.meta.env.DEV) {
-            console.log(`[Coverage Debug] ${file.file_name} - Tests:`, {
-              test_links_found: fileTestLinks.length,
-              unique_test_nodes: Array.from(uniqueTestNodes),
-              tests_covered,
-              coverage_status: getCoverageStatus(tests_covered, total_nodes),
-            });
-          }
+          // Debug logging only for specific files or when explicitly needed
+          // Removed verbose logging to reduce console noise
 
           let docs_covered = 0;
           try {
@@ -227,13 +221,8 @@ export const useAllFilesArtifactCoverage = () => {
             console.error(`[Coverage Debug] Error checking docs for ${file.file_name}:`, error);
           }
 
-          if (import.meta.env.DEV) {
-            console.log(`[Coverage Debug] ${file.file_name} - Docs:`, {
-              docs_covered,
-              total_nodes,
-              coverage_status: getCoverageStatus(docs_covered, total_nodes),
-            });
-          }
+          // Debug logging only for specific files or when explicitly needed
+          // Removed verbose logging to reduce console noise
 
           const hasHierarchyTests = await hasHierarchicalTestsForFile(file.file_name);
           const hierarchyCovered = hasHierarchyTests ? 1 : 0;

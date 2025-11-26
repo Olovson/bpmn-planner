@@ -253,12 +253,17 @@ npm run check:db-schema          # Verifierar att schema är korrekt
 
 **Viktigt:** Om du ser `PGRST204`-fel (schema-cache mismatch) efter att ha lagt till nya kolumner:
 ```bash
-npm run supabase:reset  # Stoppar, resetar DB och startar om (rekommenderat)
+npm run supabase:reset  # Stoppar, resetar DB, startar om, verifierar schema och skapar seed-användare automatiskt (rekommenderat)
 # eller
 npm run supabase:ensure-schema  # Säkerställer schema-sync vid start
 ```
 
 Detta säkerställer att PostgREST läser om schemat och uppdaterar sin cache.
+
+**Seed-användare skapas automatiskt**: När du kör `npm run supabase:reset` skapas seed-användaren (`seed-bot@local.test` / `Passw0rd!`) automatiskt efter databas-reset. Om du bara behöver skapa användaren utan att resetta databasen kan du köra:
+```bash
+npm run create:seed-user
+```
 
 ## 2. Miljövariabler (.env.local)
 ```

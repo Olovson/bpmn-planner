@@ -1510,7 +1510,7 @@ export async function generateAllFromBpmnWithGraph(
             'Genererar dokumentation/testinstruktioner',
             `${file} → ${node.name || node.bpmnElementId}`,
           );
-          const nodeKey = `${node.bpmnFile}:${node.bpmnElementId}`;
+          const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
           if (processedDocNodes.has(nodeKey)) {
             console.log(`Skipping duplicate doc generation in this run: ${nodeKey}`);
             continue;
@@ -1784,12 +1784,6 @@ export async function generateAllFromBpmnWithGraph(
                 if (providerScenarios && providerScenarios.length > 0) {
                   scenarioInputs = providerScenarios.map(mapTestScenarioToSkeleton);
                   break;
-                }
-              }
-              if ((!scenarioInputs || scenarioInputs.length === 0) && providerEntries.size > 0) {
-                const [, scenarios = []] = providerEntries.entries().next().value;
-                if (scenarios.length > 0) {
-                  scenarioInputs = scenarios.map(mapTestScenarioToSkeleton);
                 }
               }
             }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
+import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useBpmnFiles, useUploadBpmnFile, useDeleteBpmnFile, BpmnFile } from '@/hooks/useBpmnFiles';
 import { useSyncFromGithub, SyncResult } from '@/hooks/useSyncFromGithub';
 import { supabase } from '@/integrations/supabase/client';
@@ -210,6 +211,10 @@ export default function BpmnFileManager() {
   const [overlayMessage, setOverlayMessage] = useState('');
   const [overlayDescription, setOverlayDescription] = useState('');
   const [generationProgress, setGenerationProgress] = useState<{ step: string; detail?: string } | null>(null);
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false);
+  const [fileFilter, setFileFilter] = useState<'all' | 'bpmn' | 'dmn'>('all');
+  const [fileSortBy, setFileSortBy] = useState<'name' | 'type' | 'updated'>('name');
+  const [hierarchyBuilt, setHierarchyBuilt] = useState(false);
   const [graphTotals, setGraphTotals] = useState<{ files: number; nodes: number }>({
     files: 0,
     nodes: 0,
@@ -241,6 +246,36 @@ export default function BpmnFileManager() {
   const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
   const [rootFileName, setRootFileName] = useState<string | null>(null);
   const [validatingMap, setValidatingMap] = useState(false);
+
+  // Check if hierarchy has been built when files or rootFileName changes
+  useEffect(() => {
+    const checkHierarchyStatus = async () => {
+      if (!rootFileName || files.length === 0) {
+        setHierarchyBuilt(false);
+        return;
+      }
+
+      try {
+        // Check if we have Jira mappings for the root file (indicates hierarchy was built)
+        const { data: mappings, error } = await supabase
+          .from('bpmn_element_mappings')
+          .select('bpmn_file')
+          .eq('bpmn_file', rootFileName)
+          .limit(1);
+
+        if (!error && mappings && mappings.length > 0) {
+          setHierarchyBuilt(true);
+        } else {
+          setHierarchyBuilt(false);
+        }
+      } catch (err) {
+        console.warn('[BpmnFileManager] Error checking hierarchy status:', err);
+        setHierarchyBuilt(false);
+      }
+    };
+
+    checkHierarchyStatus();
+  }, [rootFileName, files.length]);
   const [showMapValidationDialog, setShowMapValidationDialog] = useState(false);
   const [mapValidationResult, setMapValidationResult] = useState<any | null>(null);
 
@@ -1578,6 +1613,45 @@ export default function BpmnFileManager() {
           let testLinksData: unknown = null;
           let testError: unknown = null;
 
+          // Ta bort gamla länkar för samma noder för att undvika dubbletter med felaktiga paths
+          const uniqueNodes = new Map<string, { bpmnFile: string; elementId: string }>();
+          for (const link of linksWithMode) {
+            const key = `${link.bpmn_file}::${link.bpmn_element_id}`;
+            if (!uniqueNodes.has(key)) {
+              uniqueNodes.set(key, { bpmnFile: link.bpmn_file, elementId: link.bpmn_element_id });
+            }
+          }
+
+          for (const { bpmnFile, elementId } of uniqueNodes.values()) {
+            // Ta bort alla gamla länkar för denna nod (behåller bara de nya vi ska skapa)
+            const newPaths = new Set(
+              linksWithMode
+                .filter(l => l.bpmn_file === bpmnFile && l.bpmn_element_id === elementId)
+                .map(l => l.test_file_path)
+            );
+            
+            // Hämta befintliga länkar för denna nod
+            const { data: existingLinks } = await supabase
+              .from('node_test_links')
+              .select('id, test_file_path')
+              .eq('bpmn_file', bpmnFile)
+              .eq('bpmn_element_id', elementId);
+            
+            // Ta bort länkar som inte matchar de nya paths vi ska skapa
+            if (existingLinks) {
+              const toDelete = existingLinks
+                .filter(l => !newPaths.has(l.test_file_path))
+                .map(l => l.id);
+              
+              if (toDelete.length > 0) {
+                await supabase
+                  .from('node_test_links')
+                  .delete()
+                  .in('id', toDelete);
+              }
+            }
+          }
+
           // Första försök: upsert med mode-kolumn (normalläget när schemat är uppdaterat)
           const firstAttempt = await supabase
             .from('node_test_links')
@@ -1604,6 +1678,34 @@ export default function BpmnFileManager() {
                 test_file_path: link.test_file_path,
                 test_name: link.test_name,
               }));
+
+              // Ta bort gamla länkar även i fallback-läget
+              for (const { bpmnFile, elementId } of uniqueNodes.values()) {
+                const newPaths = new Set(
+                  linksWithoutMode
+                    .filter(l => l.bpmn_file === bpmnFile && l.bpmn_element_id === elementId)
+                    .map(l => l.test_file_path)
+                );
+                
+                const { data: existingLinks } = await supabase
+                  .from('node_test_links')
+                  .select('id, test_file_path')
+                  .eq('bpmn_file', bpmnFile)
+                  .eq('bpmn_element_id', elementId);
+                
+                if (existingLinks) {
+                  const toDelete = existingLinks
+                    .filter(l => !newPaths.has(l.test_file_path))
+                    .map(l => l.id);
+                  
+                  if (toDelete.length > 0) {
+                    await supabase
+                      .from('node_test_links')
+                      .delete()
+                      .in('id', toDelete);
+                  }
+                }
+              }
 
               const fallbackAttempt = await supabase
                 .from('node_test_links')
@@ -1879,6 +1981,141 @@ export default function BpmnFileManager() {
     }
   };
 
+  // Helper function to build hierarchy without showing report
+  const buildHierarchySilently = async (file: BpmnFile): Promise<boolean> => {
+    if (file.file_type !== 'bpmn' || !file.storage_path) {
+      return false;
+    }
+
+    try {
+      // Load all BPMN parse results and bpmn-map
+      const parseResults = await loadAllBpmnParseResults();
+      const bpmnMap = await loadBpmnMap();
+
+      // Build ProcessGraph using the new implementation
+      const graph = buildProcessGraph(parseResults, {
+        bpmnMap,
+        preferredRootProcessId: file.file_name.replace('.bpmn', ''),
+      });
+
+      // Build ProcessTree from graph
+      const tree = buildProcessTreeFromGraph(graph, {
+        rootProcessId: file.file_name.replace('.bpmn', ''),
+        preferredRootFile: file.file_name,
+        artifactBuilder: () => [],
+      });
+
+      // Extract dependencies from graph edges
+      const dependenciesToInsert: Array<{ parent_file: string; child_process: string; child_file: string }> = [];
+      for (const edge of graph.edges.values()) {
+        if (edge.type === 'subprocess') {
+          const fromNode = graph.nodes.get(edge.from);
+          const toNode = graph.nodes.get(edge.to);
+          if (fromNode && toNode && toNode.type === 'process') {
+            dependenciesToInsert.push({
+              parent_file: fromNode.bpmnFile,
+              child_process: fromNode.bpmnElementId,
+              child_file: toNode.bpmnFile,
+            });
+          }
+        }
+      }
+
+      if (dependenciesToInsert.length > 0) {
+        const { error: depError } = await supabase
+          .from('bpmn_dependencies')
+          .upsert(dependenciesToInsert, {
+            onConflict: 'parent_file,child_process',
+            ignoreDuplicates: false,
+          });
+
+        if (depError) {
+          console.error('Save dependencies error:', depError);
+        }
+      }
+
+      // Extract Jira mappings from ProcessTree
+      const mappingsToInsert: any[] = [];
+
+      const collectMappings = (
+        node: ProcessTreeNode,
+        parentPath: string[] = [],
+      ): void => {
+        if (node.type !== 'process') {
+          const jiraType =
+            node.type === 'callActivity'
+              ? 'feature goal'
+              : node.type === 'userTask' || node.type === 'serviceTask' || node.type === 'businessRuleTask'
+                ? 'epic'
+                : null;
+
+          const jiraName = buildJiraName(node, tree, []);
+
+          mappingsToInsert.push({
+            bpmn_file: node.bpmnFile,
+            element_id: node.bpmnElementId,
+            jira_type: jiraType,
+            jira_name: jiraName,
+          });
+        }
+
+        for (const child of node.children) {
+          collectMappings(child, parentPath);
+        }
+      };
+
+      collectMappings(tree);
+
+      // Create base planned scenarios for all testable nodes in ProcessTree
+      const scenariosToInsert = createPlannedScenariosFromTree(tree);
+      const result = await savePlannedScenarios(scenariosToInsert, 'buildHierarchySilently');
+
+      if (!result.success) {
+        console.warn('Could not save all planned scenarios:', result.error?.message);
+      } else if (result.count > 0) {
+        queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
+      }
+
+      // Deduplicate mappings
+      const uniqueMappings = new Map<string, typeof mappingsToInsert[0]>();
+      for (const mapping of mappingsToInsert) {
+        const key = `${mapping.bpmn_file}:${mapping.element_id}`;
+        if (!uniqueMappings.has(key)) {
+          uniqueMappings.set(key, mapping);
+        }
+      }
+      const deduplicatedMappings = Array.from(uniqueMappings.values());
+
+      if (deduplicatedMappings.length > 0) {
+        const { error: mappingsError } = await supabase
+          .from('bpmn_element_mappings')
+          .upsert(deduplicatedMappings, {
+            onConflict: 'bpmn_file,element_id',
+            ignoreDuplicates: false,
+          });
+
+        if (mappingsError) {
+          console.error('Save element mappings error:', mappingsError);
+        }
+      }
+
+      // Invalidate queries
+      invalidateStructureQueries(queryClient);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['process-tree'] }),
+        queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
+        queryClient.invalidateQueries({ queryKey: ['bpmn-files'] }),
+        queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
+        queryClient.invalidateQueries({ queryKey: ['root-bpmn-file'] }),
+      ]);
+
+      return true;
+    } catch (error) {
+      console.error('Silent hierarchy build error:', error);
+      return false;
+    }
+  };
+
   const handleGenerateAllArtifacts = async () => {
     const rootFile = await resolveRootBpmnFile();
     const allBpmnFiles = files.filter((f) => f.file_type === 'bpmn');
@@ -1892,6 +2129,29 @@ export default function BpmnFileManager() {
       return;
     }
 
+    // Build hierarchy first if we have a root file
+    if (rootFile) {
+      toast({
+        title: 'Bygger hierarki',
+        description: `Bygger hierarki från ${rootFile.file_name} innan generering...`,
+      });
+      
+      const hierarchySuccess = await buildHierarchySilently(rootFile);
+      if (hierarchySuccess) {
+        setHierarchyBuilt(true);
+        toast({
+          title: 'Hierarki byggd',
+          description: 'Hierarkin är klar. Startar generering...',
+        });
+      } else {
+        toast({
+          title: 'Varning',
+          description: 'Kunde inte bygga hierarki. Fortsätter med generering ändå.',
+          variant: 'destructive',
+        });
+      }
+    }
+
     const orderedFiles =
       rootFile != null
         ? [rootFile, ...allBpmnFiles.filter((f) => f.id !== rootFile.id)]
@@ -1901,8 +2161,8 @@ export default function BpmnFileManager() {
       title: 'Startar generering för alla BPMN-filer',
       description:
         rootFile != null
-          ? `Genererar dokumentation, tester och DoR/DoD med ${rootFile.file_name} som toppfil (${orderedFiles.length} filer totalt), baserat på befintlig hierarki.`
-          : `Genererar dokumentation, tester och DoR/DoD för ${orderedFiles.length} BPMN-filer, baserat på befintlig hierarki.`,
+          ? `Genererar dokumentation, tester och DoR/DoD med ${rootFile.file_name} som toppfil (${orderedFiles.length} filer totalt).`
+          : `Genererar dokumentation, tester och DoR/DoD för ${orderedFiles.length} BPMN-filer.`,
     });
 
     // Samla resultat från alla filer
@@ -2556,116 +2816,114 @@ export default function BpmnFileManager() {
             </Badge>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => (window.location.hash = '/registry-status')}
-              className="gap-2"
-            >
-              <AlertCircle className="w-4 h-4" />
-              Registry Status
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => (window.location.hash = '/graph-debug')}
-              className="gap-2"
-              title="Debug ProcessGraph (nodes, edges, cycles, missing dependencies)"
-            >
-              <GitBranch className="w-4 h-4" />
-              Graph Debug
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => (window.location.hash = '/tree-debug')}
-              className="gap-2"
-              title="Debug ProcessTree (hierarchy, orderIndex, diagnostics)"
-            >
-              <GitBranch className="w-4 h-4" />
-              Tree Debug
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowResetDialog(true)}
-              disabled={isResetting}
-              className="gap-2"
-            >
-              {isResetting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Återställer...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  Reset registret
-                </>
-              )}
-            </Button>
-            {files.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowDeleteAllDialog(true)}
-                className="gap-2"
-              >
-                <Trash2 className="w-4 h-4" />
-                Radera alla filer
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={generatingFile !== null || isLoading || !rootFileName}
-              onClick={async () => {
-                if (!rootFileName) return;
-                const root = files.find((f) => f.file_name === rootFileName);
-                if (!root) return;
-                await handleBuildHierarchy(root);
-              }}
-              className="gap-2"
-            >
-              <GitBranch className="w-4 h-4" />
-              Bygg/uppdatera hierarki från root
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={validatingMap}
-              onClick={handleValidateBpmnMap}
-              className="gap-2"
-              title="Validera bpmn-map.json mot aktuella BPMN-filer"
-            >
-              {validatingMap ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Validerar BPMN-karta…
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-3 h-3" />
-                  Validera BPMN-karta
-                </>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={generatingFile !== null || isLoading || files.length === 0 || !rootFileName}
-              onClick={handleGenerateAllArtifacts}
-              className="gap-2"
-              title="Generera dokumentation, tester och DoR/DoD för alla BPMN-filer baserat på befintlig hierarki"
-            >
-              {generationMode === 'local' ? (
-                <FileText className="w-3 h-3" />
-              ) : (
-                <Sparkles className="w-3 h-3" />
-              )}
-              Generera dokumentation/tester (alla filer)
-            </Button>
+            {/* Primary actions will be moved below */}
           </div>
+          
+          {/* Advanced Tools - Collapsible */}
+          <Collapsible open={showAdvancedTools} onOpenChange={setShowAdvancedTools}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 gap-2 text-muted-foreground hover:text-foreground"
+              >
+                {showAdvancedTools ? (
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    Dölj avancerade verktyg
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    Visa avancerade verktyg
+                  </>
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={validatingMap}
+                  onClick={handleValidateBpmnMap}
+                  className="gap-2"
+                  title="Validera bpmn-map.json mot aktuella BPMN-filer"
+                >
+                  {validatingMap ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Validerar BPMN-karta…
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-3 h-3" />
+                      Validera BPMN-karta
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (window.location.hash = '/registry-status')}
+                  className="gap-2"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  Registry Status
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (window.location.hash = '/graph-debug')}
+                  className="gap-2"
+                  title="Debug ProcessGraph (nodes, edges, cycles, missing dependencies)"
+                >
+                  <GitBranch className="w-4 h-4" />
+                  Graph Debug
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (window.location.hash = '/tree-debug')}
+                  className="gap-2"
+                  title="Debug ProcessTree (hierarchy, orderIndex, diagnostics)"
+                >
+                  <GitBranch className="w-4 h-4" />
+                  Tree Debug
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowResetDialog(true)}
+                  disabled={isResetting}
+                  className="gap-2"
+                >
+                  {isResetting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Återställer...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      Reset registret
+                    </>
+                  )}
+                </Button>
+                {files.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteAllDialog(true)}
+                    className="gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Radera alla filer
+                  </Button>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
           <div className="flex flex-wrap gap-2 mt-4">
             <Button
               size="sm"
@@ -2771,6 +3029,21 @@ export default function BpmnFileManager() {
                   Generera artefakter för vald fil
                 </>
               )}
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              disabled={generatingFile !== null || isLoading || files.length === 0 || !rootFileName}
+              onClick={handleGenerateAllArtifacts}
+              className="gap-2"
+              title="Generera dokumentation, tester och DoR/DoD för alla BPMN-filer. Hierarkin byggs automatiskt först."
+            >
+              {generationMode === 'local' ? (
+                <FileText className="w-4 h-4" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              Generera dokumentation/tester (alla filer)
             </Button>
           </div>
         </div>
@@ -3202,6 +3475,41 @@ export default function BpmnFileManager() {
 
       {/* Files */}
       <Card className="mt-4">
+        {/* Filter and Sort Controls */}
+        {files.length > 0 && (
+          <div className="p-4 border-b flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filtrera:</span>
+              <Select value={fileFilter} onValueChange={(value: 'all' | 'bpmn' | 'dmn') => setFileFilter(value)}>
+                <SelectTrigger className="w-32 h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alla filer</SelectItem>
+                  <SelectItem value="bpmn">BPMN</SelectItem>
+                  <SelectItem value="dmn">DMN</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Sortera:</span>
+              <Select value={fileSortBy} onValueChange={(value: 'name' | 'type' | 'updated') => setFileSortBy(value)}>
+                <SelectTrigger className="w-40 h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Filnamn</SelectItem>
+                  <SelectItem value="type">Typ</SelectItem>
+                  <SelectItem value="updated">Senast uppdaterad</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="ml-auto text-sm text-muted-foreground">
+              Visar {files.filter(f => fileFilter === 'all' || f.file_type === fileFilter).length} av {files.length} filer
+            </div>
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
@@ -3219,18 +3527,34 @@ export default function BpmnFileManager() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8">
                   Laddar filer...
                 </TableCell>
               </TableRow>
             ) : files.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   Inga filer uppladdade ännu
                 </TableCell>
               </TableRow>
-            ) : (
-              files.map((file) => {
+            ) : (() => {
+              // Filter and sort files
+              let filteredFiles = files.filter(f => fileFilter === 'all' || f.file_type === fileFilter);
+              
+              filteredFiles = [...filteredFiles].sort((a, b) => {
+                switch (fileSortBy) {
+                  case 'name':
+                    return a.file_name.localeCompare(b.file_name);
+                  case 'type':
+                    return a.file_type.localeCompare(b.file_type) || a.file_name.localeCompare(b.file_name);
+                  case 'updated':
+                    return new Date(b.last_updated_at).getTime() - new Date(a.last_updated_at).getTime();
+                  default:
+                    return 0;
+                }
+              });
+
+              return filteredFiles.map((file) => {
                 const isSelected = selectedFile?.id === file.id;
                 return (
                 <TableRow
@@ -3488,8 +3812,9 @@ export default function BpmnFileManager() {
                     </div>
                   </TableCell>
                 </TableRow>
-              )})
-            )}
+              );
+              });
+            })()}
           </TableBody>
         </Table>
       </Card>
