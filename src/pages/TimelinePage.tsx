@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { useProcessTree } from '@/hooks/useProcessTree';
@@ -25,42 +26,31 @@ const TimelinePage = () => {
   const [tasks, setTasks] = useState<GanttTask[]>([]);
   const [isGanttInitialized, setIsGanttInitialized] = useState(false);
 
-  // BPMN type filtering (view-only)
+  // BPMN type filtering (view-only), aligned with Process Explorer
   type TimelineNodeKind = ProcessTreeNode['type'];
-  const [enabledKinds, setEnabledKinds] = useState<TimelineNodeKind[]>([]);
-
-  // Collect all kinds present in the current tasks
-  const allKinds = useMemo(() => {
-    const kinds = new Set<TimelineNodeKind>();
-    tasks.forEach((t) => {
-      const kind = t.meta?.kind as TimelineNodeKind | undefined;
-      if (kind) {
-        kinds.add(kind);
-      }
-    });
-    return kinds;
-  }, [tasks]);
-
-  // Initialize filter to \"all types\" when tasks are first loaded
-  useEffect(() => {
-    if (enabledKinds.length === 0 && allKinds.size > 0) {
-      setEnabledKinds(Array.from(allKinds));
-    }
-  }, [allKinds, enabledKinds.length]);
+  const FILTER_TYPES: TimelineNodeKind[] = [
+    'callActivity',
+    'userTask',
+    'serviceTask',
+    'businessRuleTask',
+  ];
+  const [enabledKinds, setEnabledKinds] = useState<Set<TimelineNodeKind>>(
+    () => new Set(FILTER_TYPES),
+  );
 
   // View-only filtered tasks for Timeline (does not affect underlying scheduling)
   const visibleTasks = useMemo(() => {
-    if (enabledKinds.length === 0) {
-      // If filter is somehow empty, fall back to showing all tasks to avoid confusion
-      return tasks;
-    }
-    const enabledSet = new Set(enabledKinds);
+    // If filter is empty (ska inte hända normalt), visa alla tasks
+    if (enabledKinds.size === 0) return tasks;
+
     return tasks.filter((t) => {
       // Always keep project/root nodes to preserve hierarchy
       if (t.type === 'project') return true;
       const kind = t.meta?.kind as TimelineNodeKind | undefined;
       if (!kind) return true;
-      return enabledSet.has(kind);
+      // Only filter types we explicitly support in the UI; others are always visible
+      if (!FILTER_TYPES.includes(kind)) return true;
+      return enabledKinds.has(kind);
     });
   }, [tasks, enabledKinds]);
 
@@ -428,46 +418,43 @@ const TimelinePage = () => {
               </p>
             )}
 
-            {/* BPMN type filter (view-only) */}
-            {allKinds.size > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  Filter by BPMN type:
-                </span>
-                {Array.from(allKinds).map((kind) => {
-                  const style = getProcessNodeStyle(kind);
-                  const isActive = enabledKinds.includes(kind);
-                  return (
-                    <button
-                      key={kind}
-                      type="button"
-                      onClick={() => {
-                        setEnabledKinds((prev) => {
-                          const exists = prev.includes(kind);
-                          if (exists) {
-                            const next = prev.filter((k) => k !== kind);
-                            // Om alla filtreras bort, fall tillbaka till alla aktiva för att undvika tom vy
-                            return next.length > 0 ? next : Array.from(allKinds);
-                          }
-                          return [...prev, kind];
-                        });
-                      }}
-                      className={`flex items-center px-2 py-1 rounded-full text-xs border ${
-                        isActive
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                      }`}
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full mr-1.5"
-                        style={{ backgroundColor: style.hexColor }}
-                      />
-                      {style.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {/* BPMN type filter (view-only, same types as Process Explorer) */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                Filter by BPMN type:
+              </span>
+              {FILTER_TYPES.map((kind) => {
+                const style = getProcessNodeStyle(kind);
+                const isActive = enabledKinds.has(kind);
+                return (
+                  <Button
+                    key={kind}
+                    type="button"
+                    variant={isActive ? 'default' : 'outline'}
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => {
+                      setEnabledKinds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(kind)) {
+                          next.delete(kind);
+                        } else {
+                          next.add(kind);
+                        }
+                        // Om alla filtreras bort, fall tillbaka till alla aktiva
+                        return next.size > 0 ? next : new Set(FILTER_TYPES);
+                      });
+                    }}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full mr-1.5"
+                      style={{ backgroundColor: style.hexColor }}
+                    />
+                    {style.label}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
 
           {visibleTasks.length > 0 && (
