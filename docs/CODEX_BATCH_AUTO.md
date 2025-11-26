@@ -14,6 +14,7 @@ Detta skapar en fil (`.codex-batch-all.md`) med alla instruktioner.
 
 ```
 Läs filen .codex-batch-all.md och bearbeta ALLA filer där automatiskt.
+VIKTIGT: Skriv ALDRIG över befintligt innehåll - ersätt bara 'TODO', tomma arrayer [], eller tomma strängar ''.
 Fortsätt från fil 1 till sista filen utan att stoppa eller fråga.
 Bearbeta filerna en i taget, men kontinuerligt.
 ```
@@ -62,6 +63,36 @@ När alla epics är klara, gå vidare till feature-goals.
 # Se vad som ändrats
 git diff src/data/node-docs/
 ```
+
+---
+
+## Prompt-versionering
+
+Systemet stödjer nu prompt-versionering:
+
+### Kontrollera versioner
+
+```bash
+npm run check:prompt-versions
+```
+
+Detta visar vilka filer som använder gamla prompt-versioner.
+
+### När du uppdaterar en prompt
+
+1. **Uppdatera versionen** i prompt-filen (t.ex. `1.0.0` → `1.1.0`)
+2. **Kontrollera vilka filer som påverkas:**
+   ```bash
+   npm run check:prompt-versions
+   ```
+3. **Re-generera innehåll:**
+   ```bash
+   npm run codex:batch:auto
+   ```
+   
+   Scriptet kommer automatiskt att inkludera filer med gamla prompt-versioner.
+
+Se `docs/PROMPT_VERSIONING.md` för mer information.
 
 ---
 

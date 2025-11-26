@@ -49,16 +49,46 @@ function findOverrideFiles() {
   return results;
 }
 
-// Kontrollera om en fil behöver uppdateras
-function needsUpdate(filePath) {
+// Hämta prompt-versioner
+function getPromptVersion(promptPath) {
+  if (!fs.existsSync(promptPath)) return 'unknown';
+  const content = fs.readFileSync(promptPath, 'utf-8');
+  const versionMatch = content.match(/version[:\s]+(\d+\.\d+\.\d+|\d+)/i);
+  if (versionMatch) return versionMatch[1];
+  const stats = fs.statSync(promptPath);
+  return `auto-${stats.mtimeMs.toString(36).slice(-8)}`;
+}
+
+// Extrahera prompt-version från override-fil
+function getOverridePromptVersion(filePath) {
+  if (!fs.existsSync(filePath)) return null;
   const content = fs.readFileSync(filePath, 'utf-8');
-  return (
+  const versionMatch = content.match(/PROMPT[_\s-]?VERSION[:\s]+(\d+\.\d+\.\d+|\d+|auto-[a-z0-9]+)/i);
+  return versionMatch ? versionMatch[1] : null;
+}
+
+// Kontrollera om en fil behöver uppdateras
+function needsUpdate(filePath, docType, promptVersions) {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  
+  // Kolla efter TODO-platshållare
+  const hasTodo = (
     content.includes("'TODO'") ||
     content.includes('"TODO"') ||
     content.includes('TODO,') ||
     /:\s*\[\]\s*,/.test(content) ||
     /:\s*''\s*,/.test(content)
   );
+  
+  // Kolla efter gammal prompt-version
+  const currentVersion = getOverridePromptVersion(filePath);
+  const expectedVersion = docType === 'business-rule' 
+    ? promptVersions.businessRule 
+    : promptVersions.featureEpic;
+  
+  const hasOldVersion = currentVersion && currentVersion !== expectedVersion;
+  
+  return hasTodo || hasOldVersion;
 }
 
 // Analysera vad som behöver uppdateras
@@ -108,8 +138,18 @@ function analyzeFile(filePath) {
 function main() {
   console.log('🔍 Analyserar override-filer...\n');
 
+  // Hämta prompt-versioner FÖRST
+  const promptDir = path.join(projectRoot, 'prompts', 'llm');
+  const featureEpicVersion = getPromptVersion(path.join(promptDir, 'feature_epic_prompt.md'));
+  const businessRuleVersion = getPromptVersion(path.join(promptDir, 'dmn_businessrule_prompt.md'));
+  
+  const promptVersions = {
+    featureEpic: featureEpicVersion,
+    businessRule: businessRuleVersion,
+  };
+
   const allFiles = findOverrideFiles();
-  const filesNeedingUpdate = allFiles.filter((f) => needsUpdate(f.filePath));
+  const filesNeedingUpdate = allFiles.filter((f) => needsUpdate(f.filePath, f.docType, promptVersions));
 
   console.log(`📊 Hittade ${allFiles.length} override-filer`);
   console.log(`   ✅ ${allFiles.length - filesNeedingUpdate.length} filer är redan ifyllda`);
@@ -123,7 +163,19 @@ function main() {
   // Analysera filer
   const fileAnalyses = filesNeedingUpdate.map((file) => {
     const analysis = analyzeFile(file.filePath);
-    return { ...file, ...analysis };
+    const currentVersion = getOverridePromptVersion(file.filePath);
+    const expectedVersion = file.docType === 'business-rule' 
+      ? businessRuleVersion 
+      : featureEpicVersion;
+    const needsVersionUpdate = currentVersion && currentVersion !== expectedVersion;
+    
+    return { 
+      ...file, 
+      ...analysis,
+      currentPromptVersion: currentVersion,
+      expectedPromptVersion: expectedVersion,
+      needsVersionUpdate,
+    };
   });
 
   // Gruppera per typ
@@ -142,22 +194,57 @@ function main() {
   // Skapa instruktionsfil
   const instructions = `# Codex Batch Override Generation - Alla Filer
 
+**Prompt-versioner:**
+- feature-epic: ${featureEpicVersion}
+- business-rule: ${businessRuleVersion}
+
+När du genererar innehåll, lägg till denna kommentar i varje fil:
+\`\`\`typescript
+/**
+ * PROMPT VERSION: ${featureEpicVersion} (eller ${businessRuleVersion} för business-rule)
+ * Genererad: [datum]
+ */
+\`\`\`
+
 Detta dokument innehåller instruktioner för att batch-generera innehåll för ${filesNeedingUpdate.length} override-filer.
 
-## ⚠️ VIKTIGT - Automatisk bearbetning
+## ⚠️ KRITISKT - Läs detta först!
 
-**Bearbeta ALLA filer automatiskt utan att fråga!**
+### Regel 1: Skriv ALDRIG över befintligt innehåll!
+- **Kontrollera FÖRST** om ett fält redan har innehåll (inte 'TODO')
+- Om fältet HAR innehåll → LÄMNA DET ORÖRT, gå vidare till nästa fält
+- Ersätt BARA fält som är:
+  - 'TODO' (exakt strängen 'TODO')
+  - Tomma arrayer: []
+  - Tomma strängar: ''
+- **Om du ser innehåll som INTE är 'TODO' → RÖR INTE DET!**
+
+### Regel 2: Automatisk bearbetning
+- Bearbeta ALLA filer automatiskt utan att fråga
 - Fortsätt från fil 1 till fil ${filesNeedingUpdate.length} utan att stoppa
 - Fråga INTE om du ska fortsätta - bara fortsätt
 - Bearbeta filerna en i taget, men kontinuerligt
 - När en fil är klar, gå direkt vidare till nästa
 
-## Viktiga regler
+## Exempel på korrekt beteende
 
-⚠️ **VIKTIGT:** Skriv INTE över befintligt innehåll!
-- Ersätt BARA fält som är 'TODO', tomma arrayer [], eller tomma strängar ''
-- Behåll allt annat innehåll oförändrat
-- Om ett fält redan har innehåll (inte TODO), lämna det orört
+**FÖRE (filen har redan innehåll):**
+\`\`\`typescript
+export const overrides: FeatureGoalDocOverrides = {
+  summary: 'Detta Feature Goal möjliggör...',  // ← HAR INNEHÅLL, LÄMNA ORÖRT!
+  effectGoals: ['TODO'],  // ← ÄR 'TODO', ERSAETT!
+  scopeIncluded: ['Ingår: Digital ansökan'],  // ← HAR INNEHÅLL, LÄMNA ORÖRT!
+};
+\`\`\`
+
+**EFTER (bara TODO ersätts):**
+\`\`\`typescript
+export const overrides: FeatureGoalDocOverrides = {
+  summary: 'Detta Feature Goal möjliggör...',  // ← OFÖRÄNDRAT (hade innehåll)
+  effectGoals: ['Automatisera manuellt arbete', 'Förbättra kreditbedömningar'],  // ← ERSAETT (var 'TODO')
+  scopeIncluded: ['Ingår: Digital ansökan'],  // ← OFÖRÄNDRAT (hade innehåll)
+};
+\`\`\`
 
 ## Workflow
 
@@ -192,19 +279,43 @@ ${fileAnalyses.map((file, index) => {
 
 **Fält som behöver uppdateras:**
 ${file.needsUpdate.map(f => `- ${f.field} (${f.type})`).join('\n')}
+${file.needsVersionUpdate ? `\n**⚠️ Gammal prompt-version:** Nuvarande: ${file.currentPromptVersion}, Förväntad: ${file.expectedPromptVersion}` : ''}
 
 **Instruktioner:**
 1. Öppna filen: \`${file.relativePath}\`
-2. Läs NODE CONTEXT-kommentaren överst i filen
-3. Läs prompt-filen: ${promptFile}
-4. Generera JSON enligt promptens instruktioner
-5. Uppdatera BARA fälten: ${file.needsUpdate.map(f => f.field).join(', ')}
-6. Behåll allt annat innehåll oförändrat
-7. Spara filen
+2. **Läs hela filen FÖRST** och identifiera vilka fält som är 'TODO' vs vilka som redan har innehåll
+3. Läs NODE CONTEXT-kommentaren överst i filen
+4. Läs prompt-filen: ${promptFile}
+5. Generera JSON enligt promptens instruktioner
+6. **Uppdatera BARA fälten som är 'TODO' eller tomma:** ${file.needsUpdate.map(f => f.field).join(', ')}
+7. **LÄMNA ALLA ANDRA FÄLT ORÖRTA** - även om de inte är i listan ovan
+8. **Uppdatera prompt-version kommentar:**
+   - Om filen INTE har en PROMPT VERSION-kommentar → Lägg till en direkt efter NODE CONTEXT-kommentaren
+   - Om filen HAR en PROMPT VERSION-kommentar → Uppdatera versionen till: ${file.context?.type === 'business-rule' ? businessRuleVersion : featureEpicVersion}
+   - Format:
+   \`\`\`typescript
+   /**
+    * PROMPT VERSION: ${file.context?.type === 'business-rule' ? businessRuleVersion : featureEpicVersion}
+    * Genererad: ${new Date().toISOString().split('T')[0]}
+    */
+   \`\`\`
+   Lägg till/uppdatera denna kommentar direkt efter NODE CONTEXT-kommentaren, INNAN export-satsen.
+9. **Kontrollera INNAN du sparar:** Har du ändrat något som INTE var 'TODO'? → Ångra ändringen!
+10. Spara filen
 
 ---
 `;
 }).join('\n')}
+
+## Checklista för varje fil
+
+Innan du sparar en fil, kontrollera:
+- [ ] Har jag bara ändrat fält som var 'TODO', [], eller ''?
+- [ ] Har jag lämnat alla fält med befintligt innehåll orörda?
+- [ ] Har jag inte tagit bort eller ändrat något innehåll som redan fanns?
+- [ ] Har jag bara LAGT TILL innehåll i TODO-fält, inte ändrat befintligt?
+
+**Om någon checklista är fel → Ångra ändringarna innan du sparar!**
 
 ## Automatisk bearbetning
 
