@@ -67,8 +67,9 @@ export const PROCESS_NODE_STYLES: Record<ProcessNodeType | 'default', {
   },
   serviceTask: {
     icon: '⚙️',
-    tailwindColor: 'text-orange-600',
-    hexColor: '#F97316',
+    // Changed from orange to amber/yellow for better distinction from User Task (red)
+    tailwindColor: 'text-amber-600',
+    hexColor: '#F59E0B',
     label: 'Service Task',
   },
   businessRuleTask: {

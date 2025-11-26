@@ -28,7 +28,18 @@
     "sync:github": "node scripts/sync-to-github.mjs",
     "graph:inspect": "tsx scripts/graph-inspect.ts",
     "mortgage:order-debug": "vitest run tests/integration/mortgage.order-debug.test.ts",
-    "create:node-doc": "node scripts/generate-node-doc-override.mjs"
+    "create:node-doc": "node scripts/generate-node-doc-override.mjs",
+    "create:node-docs-from-bpmn": "node scripts/create-node-docs-from-bpmn.mjs",
+    "batch-overrides": "node scripts/batch-generate-overrides.mjs",
+    "batch-overrides:resume": "node scripts/batch-generate-overrides.mjs --resume",
+    "batch-overrides:clear": "node scripts/batch-generate-overrides.mjs --clear",
+    "codex:batch": "node scripts/codex-batch.mjs",
+    "codex:batch:epic": "node scripts/codex-batch.mjs epic",
+    "codex:batch:feature": "node scripts/codex-batch.mjs feature-goal",
+    "codex:batch:business-rule": "node scripts/codex-batch.mjs business-rule",
+    "batch-overrides:epic": "node scripts/batch-generate-overrides.mjs src/data/node-docs/epic",
+    "batch-overrides:feature": "node scripts/batch-generate-overrides.mjs src/data/node-docs/feature-goal",
+    "batch-overrides:business-rule": "node scripts/batch-generate-overrides.mjs src/data/node-docs/business-rule"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

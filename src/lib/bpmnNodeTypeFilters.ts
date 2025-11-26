@@ -53,8 +53,9 @@ export const BPMN_NODE_TYPE_FILTERS: BpmnNodeTypeFilterConfig[] = [
     type: 'serviceTask',
     label: 'Service Task',
     description: 'En automatiserad uppgift som anropar en extern tjänst eller integration. Representerar en Epic i Jira.',
-    hexColor: '#F97316',
-    tailwindColor: 'text-orange-600',
+    // Changed from orange to amber/yellow for better distinction from User Task (red)
+    hexColor: '#F59E0B',
+    tailwindColor: 'text-amber-600',
     icon: '⚙️',
     filterable: true,
     order: 3,

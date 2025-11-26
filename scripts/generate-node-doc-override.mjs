@@ -67,8 +67,123 @@ const typeName =
     ? 'EpicDocOverrides'
     : 'BusinessRuleDocOverrides';
 
+// Build an LLM-friendly overrides stub per docType
+const buildOverridesStub = () => {
+  if (docType === 'feature-goal') {
+    return `export const overrides: ${typeName} = {
+  // Kort sammanfattning på Feature Goal-nivå
+  summary: 'TODO',
+
+  // Effektmål på affärsnivå
+  effectGoals: ['TODO'],
+
+  // Scope (Ingår / Ingår inte)
+  scopeIncluded: ['TODO'],
+  scopeExcluded: ['TODO'],
+
+  // Ingående epics
+  epics: [],
+
+  // Översiktliga affärsflödessteg
+  flowSteps: ['TODO'],
+
+  // Viktiga beroenden
+  dependencies: ['TODO'],
+
+  // Centrala affärs-scenarion (happy/edge/error)
+  scenarios: [],
+
+  // Koppling till automatiska tester
+  testDescription: 'TODO',
+
+  // Tekniska/implementationsrelaterade anteckningar
+  implementationNotes: ['TODO'],
+
+  // Relaterade regler / subprocesser / artefakter
+  relatedItems: ['TODO'],
+};`;
+  }
+
+  if (docType === 'epic') {
+    return `export const overrides: ${typeName} = {
+  // Syfte & värde för epiken
+  summary: 'TODO',
+
+  // Förutsättningar / triggers
+  prerequisites: ['TODO'],
+
+  // Inputs (datakällor / fält)
+  inputs: ['TODO'],
+
+  // Funktionellt flöde i epiken
+  flowSteps: ['TODO'],
+
+  // Interaktioner (kanaler, API:er, användare/system)
+  interactions: ['TODO'],
+
+  // Data-kontrakt / in- och utdata
+  dataContracts: ['TODO'],
+
+  // Affärsregler & policyberoenden
+  businessRulesPolicy: ['TODO'],
+
+  // Affärs-scenarion kopplade till tester
+  scenarios: [],
+
+  // Kort text om koppling till automatiska tester
+  testDescription: 'TODO',
+
+  // Implementation notes för dev/test
+  implementationNotes: ['TODO'],
+
+  // Relaterade steg & artefakter
+  relatedItems: ['TODO'],
+};`;
+  }
+
+  // business-rule
+  return `export const overrides: ${typeName} = {
+  // Sammanfattning av regeln (syfte & scope)
+  summary: 'TODO',
+
+  // Inputs & datakällor till regeln
+  inputs: ['TODO'],
+
+  // Beslutslogik / regeluppsättning
+  decisionLogic: ['TODO'],
+
+  // Output & effekter av beslutet
+  outputs: ['TODO'],
+
+  // Policystöd & regler som täcks
+  businessRulesPolicy: ['TODO'],
+
+  // Viktiga affärs-scenarion (BR1/BR2/...)
+  scenarios: [],
+
+  // Koppling till automatiska tester / DMN-tester
+  testDescription: 'TODO',
+
+  // Implementation & integrationsnoter
+  implementationNotes: ['TODO'],
+
+  // Relaterade DMN-tabeller, regler och subprocesser
+  relatedItems: ['TODO'],
+};`;
+};
+
 // Generate template
 const template = `import type { ${typeName} } from '@/lib/nodeDocOverrides';
+
+/**
+ * NODE CONTEXT
+ * bpmnFile: ${bpmnFile}
+ * elementId: ${elementId}
+ * type: ${docType}
+ *
+ * Denna kontext används av LLM/Cursor när dokumentationsinnehåll ska genereras
+ * eller förbättras. Ändra inte detta block programmatiskt – det är enbart metadata.
+ */
 
 /**
  * Documentation overrides for ${bpmnFile}::${elementId}
@@ -93,11 +208,7 @@ const template = `import type { ${typeName} } from '@/lib/nodeDocOverrides';
  * ${docType === 'business-rule' ? '- Business Rule: summary, inputs, decisionLogic, outputs, businessRulesPolicy, scenarios, testDescription, implementationNotes, relatedItems' : ''}
  */
 
-export const overrides: ${typeName} = {
-  // Add your overrides here
-  // Example:
-  // summary: "Custom summary for this node...",
-};
+${buildOverridesStub()}
 `;
 
 fs.writeFileSync(filePath, template, 'utf-8');
@@ -112,4 +223,3 @@ console.log('Tip: Use _mergeStrategy to extend arrays instead of replacing them:
 console.log('  _mergeStrategy: {');
 console.log('    scenarios: "extend"');
 console.log('  }');
-

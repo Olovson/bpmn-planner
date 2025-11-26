@@ -1,0 +1,26 @@
+# Cursor / Codex project rules for node-doc overrides
+#
+# Purpose:
+# - Make it safe to bulk-edit per-node documentation override files
+#   without touching the unified documentation pipeline.
+#
+# Scope:
+# - Files under: src/data/node-docs/**\/*.doc.ts
+
+{
+  "version": 1,
+  "rules": [
+    {
+      "pattern": "src/data/node-docs/**/*.doc.ts",
+      "description": "Per-node documentation overrides",
+      "instructions": [
+        "For each file, read the NODE CONTEXT comment block at the top (bpmnFile, elementId, type) to understand the node.",
+        "Only edit the exported `overrides` object. Do not modify imports, exports, or any other code.",
+        "For any field in `overrides` that is set to 'TODO' or is an empty array/object, generate high-quality Swedish documentation content that matches our credit/kreditprocess domain.",
+        "Do not overwrite non-placeholder content. If a field already contains meaningful text or items, leave it unchanged unless explicitly asked.",
+        "Keep TypeScript valid and preserve the file structure and typing (e.g. `EpicDocOverrides`, `FeatureGoalDocOverrides`, `BusinessRuleDocOverrides`)."
+      ]
+    }
+  ]
+}
+

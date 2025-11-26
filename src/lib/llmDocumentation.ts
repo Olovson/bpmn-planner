@@ -11,6 +11,11 @@ import {
   getEpicPrompt,
   getBusinessRulePrompt,
 } from './promptLoader';
+import {
+  getPromptForDocType,
+  buildLlmRequestStructure,
+  mapLlmResponseToModel,
+} from './llmDocumentationShared';
 import type { DocType } from './llmProfiles';
 import { getLlmProfile } from './llmProfiles';
 import {
@@ -61,13 +66,8 @@ export async function generateDocumentationWithLlm(
       ? 'Epic'
       : 'BusinessRule';
 
-  // Hämta prompt via central promptLoader
-  const basePrompt =
-    docType === 'businessRule'
-      ? getBusinessRulePrompt()
-      : docType === 'feature'
-      ? getFeaturePrompt()
-      : getEpicPrompt();
+  // Hämta prompt via central promptLoader (reusing shared logic)
+  const basePrompt = getPromptForDocType(docType);
 
   // Resolvera provider med smart logik
   const globalDefault = getDefaultLlmProvider();
@@ -254,7 +254,7 @@ export async function generateDocumentationWithLlm(
   }
 }
 
-function buildContextPayload(context: NodeDocumentationContext, links: TemplateLinks) {
+export function buildContextPayload(context: NodeDocumentationContext, links: TemplateLinks) {
   const parentChain = context.parentChain || [];
   const trail = [...parentChain, context.node];
   const hierarchyTrail = trail.map((node) => ({
