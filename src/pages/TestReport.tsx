@@ -411,6 +411,8 @@ const TestReport = () => {
             id: node.elementId,
             uniqueKey: `${node.bpmnFile}::${node.elementId}`, // Unique key for React
             displayName: node.elementName || node.elementId,
+            bpmnFile: node.bpmnFile,
+            testFilePath: node.testFilePath,
             plannedScenarios,
             hasExecuted,
             docId,
@@ -637,6 +639,7 @@ const TestReport = () => {
                       <TableRow>
                         <TableHead />
                         <TableHead>Nod</TableHead>
+                        <TableHead>Testscript</TableHead>
                         <TableHead>Planerade scenarion</TableHead>
                         <TableHead>Körda tester</TableHead>
                       </TableRow>
@@ -675,6 +678,29 @@ const TestReport = () => {
                                     <DocVariantBadges docId={node.docId} compact />
                                   )}
                                 </div>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {node.testFilePath && node.bpmnFile && node.id ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(
+                                        `/node-test-script?bpmnFile=${encodeURIComponent(
+                                          node.bpmnFile,
+                                        )}&elementId=${encodeURIComponent(node.id)}`,
+                                      );
+                                    }}
+                                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                                    title="Visa testscript för denna nod"
+                                  >
+                                    <FileCode className="h-3 w-3 shrink-0" />
+                                    <span>Öppna</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    Inget testscript
+                                  </span>
+                                )}
                               </TableCell>
                               <TableCell className="text-sm">
                                 {plannedScenarioCount > 0 ? (
@@ -720,7 +746,7 @@ const TestReport = () => {
                             </TableRow>
                             {isExpanded && plannedScenarioCount > 0 && (
                               <TableRow>
-                                <TableCell colSpan={4} className="bg-muted/40">
+                                <TableCell colSpan={5} className="bg-muted/40">
                                   <div className="py-3">
                                     <p className="text-xs font-medium text-muted-foreground mb-2">
                                       Planerade scenarion för denna nod

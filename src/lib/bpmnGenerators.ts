@@ -1290,19 +1290,30 @@ export async function generateAllFromBpmnWithGraph(
     }
   };
   const generationSourceLabel = generationSource ?? (useLlm ? 'llm' : 'local');
-  // Om hierarki ska användas, bygg processgraf först
-  if (useHierarchy) {
+  const graphFileScope =
+    useHierarchy && existingBpmnFiles.length > 0 ? existingBpmnFiles : [bpmnFileName];
+
+  try {
     await reportProgress('graph:start', 'Analyserar BPMN-struktur', bpmnFileName);
     
     console.log(`Building process graph for ${bpmnFileName}...`);
-    const graph = await buildBpmnProcessGraph(bpmnFileName, existingBpmnFiles);
+    const graph = await buildBpmnProcessGraph(bpmnFileName, graphFileScope);
     const summary = createGraphSummary(graph);
-    await reportProgress('graph:complete', 'Processträd klart', `${summary.totalFiles} filer · djup ${summary.hierarchyDepth}`);
+    const analyzedFiles =
+      useHierarchy && summary.filesIncluded.length > 0
+        ? summary.filesIncluded
+        : [bpmnFileName];
+    const totalAnalyzed = useHierarchy ? summary.totalFiles : analyzedFiles.length;
+    await reportProgress(
+      'graph:complete',
+      'Processträd klart',
+      `${totalAnalyzed} filer · djup ${summary.hierarchyDepth}`,
+    );
     
     console.log('Process graph built:', {
-      totalFiles: summary.totalFiles,
+      totalFiles: totalAnalyzed,
       totalNodes: summary.totalNodes,
-      filesIncluded: summary.filesIncluded,
+      filesIncluded: analyzedFiles,
       hierarchyDepth: summary.hierarchyDepth,
     });
     const testableNodes = getTestableNodes(graph);
@@ -1315,11 +1326,13 @@ export async function generateAllFromBpmnWithGraph(
       subprocessMappings: new Map(),
       metadata: {
         hierarchyUsed: true,
-        totalFilesAnalyzed: summary.totalFiles,
-        filesIncluded: summary.filesIncluded,
+        totalFilesAnalyzed: totalAnalyzed,
+        filesIncluded: analyzedFiles,
         hierarchyDepth: summary.hierarchyDepth,
         missingDependencies: graph.missingDependencies,
-        skippedSubprocesses: Array.from(new Set(graph.missingDependencies.map(dep => dep.childProcess))),
+        skippedSubprocesses: Array.from(
+          new Set(graph.missingDependencies.map((dep) => dep.childProcess)),
+        ),
       },
     };
     const hierarchicalNodeArtifacts: NodeArtifactEntry[] = [];
@@ -1328,9 +1341,8 @@ export async function generateAllFromBpmnWithGraph(
     // === HIERARKISKA TESTER MED JIRA-META ===
     // Generera hierarkiska tester direkt från processgrafen
     console.log('Generating hierarchical tests with Jira metadata...');
-    const filesToGenerate = summary.filesIncluded.length > 0 
-      ? summary.filesIncluded 
-      : [bpmnFileName];
+    const filesToGenerate =
+      analyzedFiles.length > 0 ? analyzedFiles : [bpmnFileName];
     await reportProgress('total:init', 'Init totals', JSON.stringify({
       files: filesToGenerate.length,
       nodes: testableNodes.length,
@@ -1764,21 +1776,27 @@ export async function generateAllFromBpmnWithGraph(
     }
 
     return result;
+  } catch (error) {
+    if (!useHierarchy) {
+      console.warn(
+        '[generateAllFromBpmnWithGraph] Hierarchical pipeline failed, falling back to legacy generator',
+        error,
+      );
+      const fileUrl = `/bpmn/${bpmnFileName}`;
+      const parseResult = await parseBpmnFile(fileUrl);
+      
+      return generateAllFromBpmn(
+        parseResult.elements,
+        parseResult.subprocesses,
+        existingBpmnFiles,
+        existingDmnFiles,
+        bpmnFileName,
+        useLlm,
+        generationSourceLabel,
+      );
+    }
+    throw error;
   }
-
-  // Fallback: gamla metoden utan hierarki
-  const fileUrl = `/bpmn/${bpmnFileName}`;
-  const parseResult = await parseBpmnFile(fileUrl);
-  
-  return generateAllFromBpmn(
-    parseResult.elements,
-    parseResult.subprocesses,
-    existingBpmnFiles,
-    existingDmnFiles,
-    bpmnFileName,
-    useLlm,
-    generationSourceLabel
-  );
 }
 
 export async function generateAllFromBpmn(

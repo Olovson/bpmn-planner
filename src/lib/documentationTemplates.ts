@@ -1654,13 +1654,7 @@ function buildEpicDocHtmlFromModel(
 
     <section class="doc-section" data-source-inputs="${inputsSource}">
       <h2>Inputs</h2>
-      <p class="muted">
-        ${
-          inputsSource === 'llm'
-            ? 'Inputs genererade av LLM (ChatGPT/Ollama) enligt inputformatet i kontraktet.'
-            : 'Exempelinputs (fallback – mallbaserad tabell) används eftersom inga LLM-inputs finns.'
-        }
-      </p>
+      
       ${renderEpicInputsTable()}
     </section>
 
@@ -2545,13 +2539,7 @@ function buildBusinessRuleDocHtmlFromModel(
       model.inputs.length ? 'llm' : 'fallback'
     }">
       <h2>Inputs &amp; datakällor</h2>
-      <p class="muted">
-        ${
-          model.inputs.length
-            ? 'Inputs genererade av LLM (ChatGPT/Ollama) enligt inputformatet i kontraktet.'
-            : 'Exempelinputs (fallback – mallbaserad tabell) används eftersom inga LLM-inputs finns.'
-        }
-      </p>
+      
       ${renderInputsTable()}
     </section>
 

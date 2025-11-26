@@ -486,7 +486,9 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       }
 
       const filtered: any = { ...node };
-      filtered._hasChildren = filteredChildren.length > 0;
+      // Behåll indikatorn för att visa att noden har barn även om de filtrerats bort,
+      // så att dubbelklick kan fortsätta toggla kollaps/expand.
+      filtered._hasChildren = hasChildren;
 
       if (collapsedIds.has(node.id)) {
         filtered.children = [];
