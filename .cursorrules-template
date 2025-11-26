@@ -1,19 +1,12 @@
-# Cursor / Codex project rules
+# Cursor / Codex project rules - TEMPLATE
+# 
+# Kopiera denna fil till .cursorrules i nya projekt för att använda samma regler
+# 
+# Denna fil innehåller PERMANENTA GLOBALA REGLER som gäller för ALL kod, ALLA projekt
 
 {
   "version": 3,
   "rules": [
-    {
-      "pattern": "src/data/node-docs/**/*.doc.ts",
-      "description": "Per-node documentation overrides",
-      "instructions": [
-        "For each file, read the NODE CONTEXT comment block at the top (bpmnFile, elementId, type) to understand the node.",
-        "Only edit the exported `overrides` object. Do not modify imports, exports, or any other code.",
-        "For any field in `overrides` that is set to 'TODO' or is an empty array/object, generate high-quality Swedish documentation content that matches our credit/kreditprocess domain.",
-        "Do not overwrite non-placeholder content. If a field already contains meaningful text or items, leave it unchanged unless explicitly asked.",
-        "Keep TypeScript valid and preserve the file structure and typing (e.g. `EpicDocOverrides`, `FeatureGoalDocOverrides`, `BusinessRuleDocOverrides`)."
-      ]
-    },
     {
       "pattern": "tests/**/*.test.{ts,tsx,js,jsx}",
       "description": "Test files - PERMANENT GLOBAL RULE: NO DUPLICATED LOGIC, NO FALLBACKS",

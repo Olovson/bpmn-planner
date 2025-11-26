@@ -1,48 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Mock functions from check-prompt-versions.mjs
-function getPromptVersion(promptPath: string): string | null {
-  if (!fs.existsSync(promptPath)) {
-    return null;
-  }
-
-  const content = fs.readFileSync(promptPath, 'utf-8');
-  
-  // Sök efter version i kommentarer eller metadata
-  const versionMatch = content.match(/version[:\s]+(\d+\.\d+\.\d+|\d+)/i);
-  if (versionMatch) {
-    return versionMatch[1];
-  }
-
-  // Om ingen version hittas, använd filens ändringsdatum som hash
-  const stats = fs.statSync(promptPath);
-  const hash = stats.mtimeMs.toString(36).slice(-8);
-  return `auto-${hash}`;
-}
-
-function getOverridePromptVersion(filePath: string): string | null {
-  if (!fs.existsSync(filePath)) {
-    return null;
-  }
-
-  const content = fs.readFileSync(filePath, 'utf-8');
-  
-  // Sök efter prompt-version kommentar (kan vara på flera rader)
-  // Match both "PROMPT VERSION:" and "PROMPT_VERSION:"
-  const versionMatch = content.match(/PROMPT[_\s-]?VERSION[:\s]+(\d+\.\d+\.\d+|\d+|auto-[a-z0-9]+)/i);
-  if (versionMatch) {
-    return versionMatch[1];
-  }
-
-  return null;
-}
+import { getPromptVersion, getOverridePromptVersion } from '@/lib/promptVersioning';
 
 describe('Prompt Versioning', () => {
   let tempDir: string;

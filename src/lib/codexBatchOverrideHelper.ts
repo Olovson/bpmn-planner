@@ -25,6 +25,7 @@ import {
   normalizeDocType,
   inferDocTypeFromNodeType,
 } from './llmDocumentationShared';
+import { getOverridePromptVersion } from './promptVersioning';
 import type {
   FeatureGoalDocOverrides,
   EpicDocOverrides,
@@ -391,6 +392,97 @@ export function mapLlmResponseToOverrides(
   }
 
   return overrides;
+}
+
+// ============================================================================
+// File Analysis Utilities
+// ============================================================================
+
+export interface FileAnalysis {
+  context: {
+    bpmnFile: string;
+    elementId: string;
+    type: string;
+  } | null;
+  needsUpdate: Array<{ field: string; type: string }>;
+}
+
+/**
+ * Analyzes an override file to determine what needs to be updated.
+ * 
+ * @param filePath - Path to the override file
+ * @returns Analysis with context and fields needing update
+ */
+export function analyzeFile(filePath: string): FileAnalysis {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const needsUpdate: Array<{ field: string; type: string }> = [];
+  
+  // Extract NODE CONTEXT (can be on multiple lines with comments)
+  // Match across multiple lines, allowing for whitespace and comments
+  const contextMatch = content.match(
+    /bpmnFile:\s*([^\n\r]+)[\s\S]*?elementId:\s*([^\n\r]+)[\s\S]*?type:\s*([^\n\r]+)/
+  );
+  
+  const context = contextMatch ? {
+    bpmnFile: contextMatch[1].trim(),
+    elementId: contextMatch[2].trim(),
+    type: contextMatch[3].trim(),
+  } : null;
+  
+  // Find TODO placeholders (can be 'TODO' or "TODO")
+  const todoMatches = [...content.matchAll(/(\w+):\s*['"]TODO['"]/g)];
+  for (const match of todoMatches) {
+    needsUpdate.push({ field: match[1], type: 'TODO' });
+  }
+  
+  // Find empty arrays
+  const emptyArrayMatches = [...content.matchAll(/(\w+):\s*\[\]\s*,/g)];
+  for (const match of emptyArrayMatches) {
+    needsUpdate.push({ field: match[1], type: 'empty array' });
+  }
+  
+  // Find empty strings
+  const emptyStringMatches = [...content.matchAll(/(\w+):\s*''\s*,/g)];
+  for (const match of emptyStringMatches) {
+    needsUpdate.push({ field: match[1], type: 'empty string' });
+  }
+  
+  return { context, needsUpdate };
+}
+
+/**
+ * Checks if an override file needs to be updated.
+ * 
+ * @param filePath - Path to the override file
+ * @param docType - Document type (e.g., 'feature-goal', 'epic', 'business-rule')
+ * @param promptVersions - Current prompt versions
+ * @returns true if file needs update
+ */
+export function needsUpdate(
+  filePath: string,
+  docType: string,
+  promptVersions: { featureEpic: string; businessRule: string }
+): boolean {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  
+  // Check for TODO placeholders
+  const hasTodo = (
+    content.includes("'TODO'") ||
+    content.includes('"TODO"') ||
+    content.includes('TODO,') ||
+    /:\s*\[\]\s*,/.test(content) ||
+    /:\s*''\s*,/.test(content)
+  );
+  
+  // Check for old prompt version
+  const currentVersion = getOverridePromptVersion(filePath);
+  const expectedVersion = docType === 'business-rule' 
+    ? promptVersions.businessRule 
+    : promptVersions.featureEpic;
+  
+  const hasOldVersion = currentVersion && currentVersion !== expectedVersion;
+  
+  return hasTodo || hasOldVersion;
 }
 
 // ============================================================================
