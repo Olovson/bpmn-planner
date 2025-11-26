@@ -151,7 +151,7 @@ const TimelinePage = () => {
             });
 
             // Add Jira data to tasks (only from database, no fallback)
-            const tasksWithJira = ganttTasks.map(task => {
+            let tasksWithJira = ganttTasks.map(task => {
               const key = task.bpmnFile && task.bpmnElementId 
                 ? `${task.bpmnFile}:${task.bpmnElementId}`
                 : null;
@@ -165,6 +165,46 @@ const TimelinePage = () => {
                 jira_type: mapping?.jira_type || null,
               };
             });
+
+            // Safety net for problematic scheduling after \"Application - Object\":
+            // all nodes AFTER that node are flattened to the same 2-week window.
+            try {
+              const pivotIndex = tasksWithJira.findIndex(
+                (t) =>
+                  t.jira_name === 'Application - Object' ||
+                  t.text === 'Application - Object',
+              );
+
+              if (pivotIndex !== -1 && tasksWithJira[pivotIndex].start_date) {
+                const pivot = tasksWithJira[pivotIndex];
+                const fixedStart = pivot.start_date;
+                const fixedDuration = 14;
+
+                const addDays = (dateStr: string, days: number): string => {
+                  const d = new Date(dateStr + 'T00:00:00');
+                  d.setDate(d.getDate() + days);
+                  return d.toISOString().split('T')[0];
+                };
+
+                const fixedEnd = addDays(fixedStart, fixedDuration);
+
+                tasksWithJira = tasksWithJira.map((task, idx) =>
+                  idx > pivotIndex
+                    ? {
+                        ...task,
+                        start_date: fixedStart,
+                        end_date: fixedEnd,
+                        duration: fixedDuration,
+                      }
+                    : task,
+                );
+              }
+            } catch (e) {
+              console.warn(
+                '[TimelinePage] Failed to apply fallback scheduling after Application - Object:',
+                e,
+              );
+            }
 
             setTasks(tasksWithJira);
           }
@@ -411,12 +451,6 @@ const TimelinePage = () => {
                 No subprocesses found. Make sure you have uploaded BPMN files and built the hierarchy.
               </p>
             )}
-            {!isLoading && tasks.length > 0 && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Found {tasks.length} timeline task{tasks.length !== 1 ? 's' : ''}. 
-                Expand rows to inspect subprocess hierarchy. Click and drag to adjust dates, or double-click to edit.
-              </p>
-            )}
 
             {/* BPMN type filter (view-only, same types as Process Explorer) */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -468,27 +502,6 @@ const TimelinePage = () => {
                   position: 'relative'
                 }} 
               />
-            </div>
-          )}
-
-          {/* Debug info (optional, can be removed) */}
-          {process.env.NODE_ENV === 'development' && tasks.length > 0 && (
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-              <h3 className="text-sm font-semibold mb-2">Debug Info</h3>
-              <pre className="text-xs overflow-auto max-h-40">
-                {JSON.stringify(
-                  tasks.map((t) => ({
-                    id: t.id,
-                    text: t.text,
-                    orderIndex: t.orderIndex,
-                    branchId: t.branchId,
-                    start_date: t.start_date,
-                    end_date: t.end_date,
-                  })),
-                  null,
-                  2
-                )}
-              </pre>
             </div>
           )}
         </div>
