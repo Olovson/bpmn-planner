@@ -226,6 +226,23 @@ Detta dokument innehåller instruktioner för att batch-generera innehåll för 
 - Bearbeta filerna en i taget, men kontinuerligt
 - När en fil är klar, gå direkt vidare till nästa
 
+### Regel 3: Statusrapportering (VIKTIGT!)
+- Efter varje fil du bearbetar, uppdatera statusfilen: \`.codex-batch-status.json\`
+- Format:
+\`\`\`json
+{
+  "total": ${filesNeedingUpdate.length},
+  "completed": [fil1, fil2, ...],
+  "current": "filX",
+  "lastUpdated": "2024-11-26T20:00:00Z"
+}
+\`\`\`
+- Lägg till varje klar fil i \`completed\`-arrayen
+- Uppdatera \`current\` med filen du just bearbetar
+- Uppdatera \`lastUpdated\` med aktuellt datum/tid
+- **Rapportera INTE i chatten - bara uppdatera filen!**
+- **Fråga INTE om du ska fortsätta - bara uppdatera status och fortsätt!**
+
 ## Exempel på korrekt beteende
 
 **FÖRE (filen har redan innehåll):**
@@ -342,13 +359,19 @@ Innan du sparar en fil, kontrollera:
 
   console.log('📋 Nästa steg:\n');
   console.log('1. Öppna Codex-chatten i Cursor');
-  console.log('2. Säg till Codex:');
+  console.log('2. Kopiera och klistra in denna instruktion till Codex:\n');
+  console.log('─'.repeat(70));
+  console.log('Läs filen .codex-batch-all.md och bearbeta ALLA filer där automatiskt.');
   console.log('');
-  console.log('   "Läs filen .codex-batch-all.md och bearbeta ALLA filer där automatiskt.');
-  console.log('   Fortsätt från fil 1 till fil ' + filesNeedingUpdate.length + ' utan att stoppa eller fråga.');
-  console.log('   Bearbeta filerna en i taget, men kontinuerligt."');
+  console.log('VIKTIGT: Skriv ALDRIG över befintligt innehåll - ersätt bara fält som är:');
+  console.log('- "TODO" (exakt strängen)');
+  console.log('- Tomma arrayer: []');
+  console.log('- Tomma strängar: \'\'');
   console.log('');
-  console.log('3. Codex kommer att bearbeta alla filer automatiskt utan att fråga\n');
+  console.log('Fortsätt från fil 1 till sista filen utan att stoppa eller fråga.');
+  console.log('Bearbeta filerna en i taget, men kontinuerligt.');
+  console.log('─'.repeat(70));
+  console.log('\n3. Codex kommer att bearbeta alla filer automatiskt utan att fråga\n');
 
   console.log('💡 Tips:');
   console.log('   - Codex kan läsa .codex-batch-all.md direkt');

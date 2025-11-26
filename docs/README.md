@@ -3,26 +3,35 @@
 Det här `docs/`‑trädet samlar den interna dokumentation som kompletterar koden.  
 Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BPMN Planner.
 
-## Struktur
+## Viktiga Guider
 
-- `bpmn-hierarchy-architecture.md`  
+### Batch-generering & Overrides
+- **`CODEX_BATCH_AUTO.md`** - Batch-generera dokumentation med Codex för många noder
+- **`PROMPT_VERSIONING.md`** - Hantera prompt-versioner och re-generera innehåll
+- **`FALLBACK_SAFETY.md`** - Säkerhet och debugging för fallback-resultat
+
+### Testing
+- **`TESTING.md`** - Testguide, best practices och test-isolering
+
+### Arkitektur
+- **`bpmn-hierarchy-architecture.md`**  
   Detaljerad arkitektur‑ och implementationsbeskrivning av hur vi bygger BPMN‑hierarkin:
   - parser → meta → processdefinitioner → hierarki → processgraf,
   - hur CallActivities matchas mot subprocesser,
   - hur samma modell återanvänds i UI, dokumentations‑ och testgeneratorerna.
 
-- `hierarchy-overview.md`  
+- **`hierarchy-overview.md`**  
   Kortare, mer UI‑orienterad översikt:
   - hur hierarkin används i Process Explorer,
   - flattening av subprocesser,
   - hur lokalgenerering/LLM bygger på samma graf.
 
-- `test-report-views.md`  
+- **`test-report-views.md`**  
   Beskriver de två testrapportvyerna:
   - `#/test-report` – global vy per provider (local‑fallback, ChatGPT, Ollama) och BPMN‑fil,
   - `#/node-tests` – nodspecifik vy med planerade scenarier och körda tester.
 
-- `GANTT_TIMELINE_ANALYSIS.md` & `GANTT_TIMELINE_IMPLEMENTATION_SUMMARY.md`  
+- **`GANTT_TIMELINE_ANALYSIS.md`** & **`GANTT_TIMELINE_IMPLEMENTATION_SUMMARY.md`**  
   Dokumentation för Timeline / Planning View:
   - analys av befintliga strukturer och tidsordning,
   - implementation av Gantt-chart för visualisering av subprocesser,
