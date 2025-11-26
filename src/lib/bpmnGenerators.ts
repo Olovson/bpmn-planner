@@ -7,9 +7,6 @@ import {
   renderFeatureGoalDoc,
   renderEpicDoc,
   renderBusinessRuleDoc,
-  renderFeatureGoalDocFromLlm,
-  renderEpicDocFromLlm,
-  renderBusinessRuleDocFromLlm,
   type TemplateLinks,
 } from '@/lib/documentationTemplates';
 import { wrapLlmContentAsDocument } from '@/lib/wrapLlmContent';
@@ -1053,7 +1050,7 @@ async function renderDocWithLlmFallback(
   docType: DocumentationDocType,
   context: NodeDocumentationContext,
   links: TemplateLinks,
-  fallback: () => string,
+  fallback: () => string | Promise<string>,
   llmAllowed: boolean,
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
@@ -1069,7 +1066,8 @@ async function renderDocWithLlmFallback(
 
   // I lokalt läge eller när LLM är avstängt ska vi aldrig göra något LLM-anrop.
   if (!llmActive) {
-    return fallback();
+    const fallbackResult = fallback();
+    return fallbackResult instanceof Promise ? await fallbackResult : fallbackResult;
   }
 
   try {
@@ -1085,56 +1083,26 @@ async function renderDocWithLlmFallback(
       // Hämta provider-info för metadata från faktisk provider
       const llmClient = getLlmClient(llmResult.provider);
       
+      const llmMetadata = {
+        llmMetadata: {
+          provider: llmClient.provider,
+          model: llmClient.modelName,
+        },
+        fallbackUsed: llmResult.fallbackUsed,
+        finalProvider: llmResult.provider,
+      };
+
+      // Use unified render functions - they handle base + overrides + LLM patch
       if (docType === 'feature') {
-        // För Feature Goals använder vi samma HTML-layout som den lokala varianten,
-        // men fyller sektionerna med LLM-innehåll via en dedikerad mapper.
-        return renderFeatureGoalDocFromLlm(
-          context,
-          links,
-          llmResult.text,
-          {
-            llmMetadata: {
-              provider: llmClient.provider,
-              model: llmClient.modelName,
-            },
-            fallbackUsed: llmResult.fallbackUsed,
-            finalProvider: llmResult.provider,
-          },
-        );
+        return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata);
       }
 
       if (docType === 'epic') {
-        // För Epics använder vi samma layout som lokalt, men fyller via EpicDocModel.
-        return renderEpicDocFromLlm(
-          context,
-          links,
-          llmResult.text,
-          {
-            llmMetadata: {
-              provider: llmClient.provider,
-              model: llmClient.modelName,
-            },
-            fallbackUsed: llmResult.fallbackUsed,
-            finalProvider: llmResult.provider,
-          },
-        );
+        return await renderEpicDoc(context, links, llmResult.text, llmMetadata);
       }
 
       if (docType === 'businessRule') {
-        // För Business Rules används också modellbaserad layout.
-        return renderBusinessRuleDocFromLlm(
-          context,
-          links,
-          llmResult.text,
-          {
-            llmMetadata: {
-              provider: llmClient.provider,
-              model: llmClient.modelName,
-            },
-            fallbackUsed: llmResult.fallbackUsed,
-            finalProvider: llmResult.provider,
-          },
-        );
+        return await renderBusinessRuleDoc(context, links, llmResult.text, llmMetadata);
       }
 
       const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
@@ -1537,7 +1505,7 @@ export async function generateAllFromBpmnWithGraph(
                 'feature',
                 nodeContext,
                 docLinks,
-                () => renderFeatureGoalDoc(nodeContext, docLinks),
+                async () => await renderFeatureGoalDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
                 localAvailable,
@@ -1615,7 +1583,7 @@ export async function generateAllFromBpmnWithGraph(
                 'businessRule',
                 nodeContext,
                 docLinks,
-                () => renderBusinessRuleDoc(nodeContext, docLinks),
+                async () => await renderBusinessRuleDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
                 localAvailable,
@@ -1678,7 +1646,7 @@ export async function generateAllFromBpmnWithGraph(
                 'epic',
                 nodeContext,
                 docLinks,
-                () => renderEpicDoc(nodeContext, docLinks),
+                async () => await renderEpicDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
                 localAvailable,

@@ -142,24 +142,6 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => handleTabChange('files')}
-                aria-label="Filer"
-                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                  currentView === 'files'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                <Folder className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Filer</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
                 onClick={() => navigate('/integrations')}
                 aria-label="Integrationer"
                 className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
@@ -172,6 +154,24 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">Integrationer</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handleTabChange('files')}
+                aria-label="Filer"
+                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                  currentView === 'files'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <Folder className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Filer</TooltipContent>
           </Tooltip>
         </nav>
       </div>

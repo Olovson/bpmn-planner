@@ -1,11 +1,20 @@
 import { NodeDocumentationContext } from './documentationContext';
 import { getNodeDocViewerPath } from './nodeArtifactPaths';
 import { mapFeatureGoalLlmToSections } from './featureGoalLlmMapper';
-import type { FeatureGoalDocModel } from './featureGoalLlmTypes';
-import type { EpicDocModel } from './epicDocTypes';
+import type { FeatureGoalDocModel, FeatureGoalLlmSections } from './featureGoalLlmTypes';
+import type { EpicDocModel, EpicScenario } from './epicDocTypes';
 import { mapEpicLlmToSections } from './epicLlmMapper';
 import type { BusinessRuleDocModel } from './businessRuleDocTypes';
 import { mapBusinessRuleLlmToSections } from './businessRuleLlmMapper';
+import {
+  loadFeatureGoalOverrides,
+  loadEpicOverrides,
+  loadBusinessRuleOverrides,
+  mergeFeatureGoalOverrides,
+  mergeEpicOverrides,
+  mergeBusinessRuleOverrides,
+  mergeLlmPatch,
+} from './nodeDocOverrides';
 
 export interface TemplateLinks {
   bpmnViewerLink?: string;
@@ -127,7 +136,11 @@ const SECTION_RENDERERS: Partial<Record<DocSectionId, (ctx: SectionRendererConte
             buildEpicDocModelFromContext(ctx.context),
           );
         case 'business-rule':
-          return buildBusinessRuleDocBody(ctx.context, ctx.links);
+          return buildBusinessRuleDocHtmlFromModel(
+            ctx.context,
+            ctx.links,
+            buildBusinessRuleDocModelFromContext(ctx.context, ctx.links),
+          );
         default:
           return '';
       }
@@ -142,22 +155,41 @@ export const __setUseSchemaRenderingForTests = (value: boolean) => {
   USE_SCHEMA_RENDERING = value;
 };
 
-function renderFromSchema(schema: DocTemplateSchema, ctx: SectionRendererContext): string {
-  return schema.sections
-    .map((section) => {
+/**
+ * @deprecated Use unified render functions (renderFeatureGoalDoc, renderEpicDoc, renderBusinessRuleDoc) instead.
+ * This function is kept for backward compatibility but will be removed in the future.
+ */
+async function renderFromSchema(schema: DocTemplateSchema, ctx: SectionRendererContext): Promise<string> {
+  const results = await Promise.all(
+    schema.sections.map(async (section) => {
       const renderer = SECTION_RENDERERS[section.id];
       if (!renderer) return '';
-      return renderer(ctx);
+      const result = renderer(ctx);
+      // Handle both sync and async renderers
+      if (!result) {
+        return '';
+      }
+      // Check if it's a Promise (object with 'then' method)
+      const maybePromise = result as string | Promise<string>;
+      if (typeof maybePromise === 'object' && maybePromise !== null && 'then' in maybePromise) {
+        return await maybePromise;
+      }
+      return String(maybePromise);
     })
-    .join('\n');
+  );
+  return results.join('\n');
 }
 
-function renderDocWithSchema(
+/**
+ * @deprecated Use unified render functions (renderFeatureGoalDoc, renderEpicDoc, renderBusinessRuleDoc) instead.
+ * This function is kept for backward compatibility but will be removed in the future.
+ */
+async function renderDocWithSchema(
   templateId: TemplateId,
   schema: DocTemplateSchema,
   context: NodeDocumentationContext,
   links: TemplateLinks,
-): string {
+): Promise<string> {
   const node = context.node;
   const fallbackTitle =
     templateId === 'feature-goal'
@@ -168,7 +200,7 @@ function renderDocWithSchema(
       ? 'Business Rule'
       : templateId;
   const title = node?.name || node?.bpmnElementId || fallbackTitle;
-  const body = renderFromSchema(schema, { templateId, context, links });
+  const body = await renderFromSchema(schema, { templateId, context, links });
   return wrapDocument(title, body);
 }
 
@@ -1750,29 +1782,27 @@ function buildEpicDocHtmlFromModel(
   `;
 }
 
-function buildBusinessRuleDocBody(
+/**
+ * Builds a BusinessRuleDocModel from NodeDocumentationContext.
+ * This extracts the model-building logic so it can be reused for both
+ * local generation and LLM-based generation.
+ */
+function buildBusinessRuleDocModelFromContext(
   context: NodeDocumentationContext,
   links: TemplateLinks,
-): string {
+): BusinessRuleDocModel {
   const node = context.node;
   const nodeName = node.name || node.bpmnElementId || 'Business Rule';
   const upstreamNode = context.parentChain.length
     ? context.parentChain[context.parentChain.length - 1]
     : undefined;
-  const nextNode = context.childNodes.length
-    ? context.childNodes[0]
-    : undefined;
+  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
   const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
   const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen';
-  const dmnLabel = links.dmnLink ? links.dmnLink.split('/').pop() : 'Beslutstabell';
 
-  const scopeBullets = [
-    `${nodeName} avgör om en ansökan ligger inom bankens riktlinjer för kreditgivning.`,
-    'Regeln används för att automatisera delar av kreditbeslutet och säkerställa likabehandling.',
-    'Omfattar endast den aktuella kreditprodukten – andra produkter hanteras i separata regler.',
-  ];
+  const summary = `${nodeName} kombinerar flera risk- och kreditparametrar för att avgöra om en ansökan kan godkännas, ska skickas till manuell granskning eller avslås. Regeln säkerställer konsekvent tillämpning av kreditpolicy och riskmandat för målgrupperna.`;
 
-  const prerequisites = [
+  const inputs = [
     upstreamNode
       ? `Triggas normalt efter <strong>${formatNodeName(upstreamNode)}</strong>.`
       : 'Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.',
@@ -1780,13 +1810,26 @@ function buildBusinessRuleDocBody(
     'Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.',
   ];
 
-  const policySupportBullets = [
+  const decisionLogic = [
+    'Hög riskScore och måttlig skuldsättning ger normalt auto-approve.',
+    'Mellanrisk eller ofullständig data leder till manuell granskning.',
+    'Tydliga exklusionskriterier (t.ex. betalningsanmärkningar eller sanktionsflaggor) ger auto-decline.',
+  ];
+
+  const outputs = [
+    'Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.',
+    `Processpåverkan: fortsätter till ${downstreamName} vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE.`,
+    'Flaggor: t.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff.',
+    'Loggning: beslut, huvudparametrar och regelversion loggas för audit.',
+  ];
+
+  const businessRulesPolicy = [
     'Stödjer intern kreditpolicy och mandat för respektive produkt och segment.',
     'Bygger på dokumenterade riskramverk och beslutsmodeller.',
     'Tar hänsyn till regulatoriska krav (t.ex. konsumentkreditlag, AML/KYC) på en övergripande nivå.',
   ];
 
-  const scenariosRows = [
+  const scenarios = [
     {
       id: 'BR1',
       name: 'Standardkund med låg risk',
@@ -1807,196 +1850,134 @@ function buildBusinessRuleDocBody(
     },
   ];
 
-  return `
-    <section class="doc-section">
-      <span class="doc-badge">Business Rule / DMN</span>
-      <h1>${nodeName}</h1>
-      <ul>
-        <li><strong>Regel-ID:</strong> ${node.bpmnElementId}</li>
-        <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
-        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
-        <li><strong>Ägare:</strong> Risk &amp; Kreditpolicy</li>
-        <li><strong>Kreditprocess-steg:</strong> ${node.bpmnFile.replace('.bpmn', '')}</li>
-      </ul>
-    </section>
+  const testDescription =
+    'Affärs-scenarierna ovan ska mappas mot automatiska tester där respektive scenario-ID och namn återanvänds i testfil och testbeskrivning.';
 
-    <section class="doc-section">
-      <h2>Sammanfattning &amp; scope</h2>
-      <p>${nodeName} kombinerar flera risk- och kreditparametrar för att avgöra om en ansökan kan godkännas, ska skickas till manuell granskning eller avslås.</p>
-      <p>Regeln säkerställer konsekvent tillämpning av kreditpolicy och riskmandat för målgrupperna.</p>
-      ${renderList(scopeBullets)}
-    </section>
+  const dmnLabel = links.dmnLink ? links.dmnLink.split('/').pop() : 'Beslutstabell';
+  const implementationNotes = [
+    links.dmnLink
+      ? `DMN-tabell: <a href="${links.dmnLink}">${dmnLabel}</a>`
+      : 'DMN-tabell: ej länkad – lägg till beslutstabell/DMN när den finns.',
+    `BPMN-koppling: Business Rule Task i filen ${node.bpmnFile}.`,
+    links.bpmnViewerLink
+      ? `BPMN viewer: <a href="${links.bpmnViewerLink}">Öppna noden i viewer</a>`
+      : 'BPMN viewer-länk sätts via applikationen.',
+    'API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).',
+    'Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.',
+  ];
 
-    <section class="doc-section">
-      <h2>Förutsättningar &amp; kontext</h2>
-      ${renderList(prerequisites)}
-    </section>
+  const relatedItems = [
+    links.dmnLink
+      ? `Relaterad DMN-modell: <a href="${links.dmnLink}">${dmnLabel}</a>`
+      : 'Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell/DMN när den finns.',
+    links.bpmnViewerLink
+      ? `Relaterad BPMN-subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
+      : 'Subprocess-länk sätts via BPMN viewer.',
+    context.parentChain.length
+      ? `Överordnad nod: ${buildNodeLink(context.parentChain[context.parentChain.length - 1])}`
+      : 'Överordnad nod: Rotprocess',
+  ];
 
-    <section class="doc-section">
-      <h2>Inputs &amp; datakällor</h2>
-      <table>
-        <tr>
-          <th>Fält</th>
-          <th>Datakälla</th>
-          <th>Typ / format</th>
-          <th>Obligatoriskt</th>
-          <th>Validering</th>
-          <th>Felhantering</th>
-        </tr>
-        <tr>
-          <td>riskScore</td>
-          <td>Kreditmotor / UC</td>
-          <td>Tal (0–1000)</td>
-          <td>Ja</td>
-          <td>Inom definierat intervall</td>
-          <td>Avslå eller skicka till manuell granskning</td>
-        </tr>
-        <tr>
-          <td>debtToIncomeRatio</td>
-          <td>Intern beräkning</td>
-          <td>Decimal</td>
-          <td>Ja</td>
-          <td>&gt;= 0</td>
-          <td>Flagga för manuell granskning vid saknade data</td>
-        </tr>
-        <tr>
-          <td>loanToValue</td>
-          <td>Fastighetsvärdering</td>
-          <td>Procent</td>
-          <td>Ja</td>
-          <td>0–100 %</td>
-          <td>Avslå vid orimliga värden</td>
-        </tr>
-      </table>
-    </section>
-
-    <section class="doc-section">
-      <h2>Beslutslogik (DMN / regler)</h2>
-      <p>Regeln kombinerar riskScore, skuldsättning, belåningsgrad och eventuella riskflaggor för att fatta ett samlat beslut.</p>
-      ${renderList([
-        'Hög riskScore och måttlig skuldsättning ger normalt auto-approve.',
-        'Mellanrisk eller ofullständig data leder till manuell granskning.',
-        'Tydliga exklusionskriterier (t.ex. betalningsanmärkningar eller sanktionsflaggor) ger auto-decline.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Output &amp; effekter</h2>
-      ${renderList([
-        'Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.',
-        `Processpåverkan: fortsätter till ${downstreamName} vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE.`,
-        'Flaggor: t.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff.',
-        'Loggning: beslut, huvudparametrar och regelversion loggas för audit.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Affärsregler &amp; policystöd</h2>
-      ${renderList(policySupportBullets)}
-    </section>
-
-    <section class="doc-section">
-      <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
-      <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
-      <table>
-        <tr>
-          <th>Scenario-ID</th>
-          <th>Scenario</th>
-          <th>Input (kortfattat)</th>
-          <th>Förväntat beslut/flagga</th>
-          <th>Automatiskt test</th>
-        </tr>
-        ${scenariosRows
-          .map(
-            (row) => `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.name}</td>
-          <td>${row.input}</td>
-          <td>${row.outcome}</td>
-          <td>${
-            links.testLink
-              ? `<code>${links.testLink}</code>`
-              : '<span class="muted">Test mappas i node_test_links</span>'
-          }</td>
-        </tr>`,
-          )
-          .join('')}
-      </table>
-    </section>
-
-    <section class="doc-section">
-      <h2>Implementation &amp; integrationsnoter</h2>
-      ${renderList([
-        links.dmnLink
-          ? `DMN-tabell: <a href="${links.dmnLink}">${dmnLabel}</a>`
-          : 'DMN-tabell: ej länkad – lägg till beslutstabell/DMN när den finns.',
-        `BPMN-koppling: Business Rule Task i filen ${node.bpmnFile}.`,
-        links.bpmnViewerLink
-          ? `BPMN viewer: <a href="${links.bpmnViewerLink}">Öppna noden i viewer</a>`
-          : 'BPMN viewer-länk sätts via applikationen.',
-        'API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).',
-        'Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.',
-      ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Relaterade regler &amp; subprocesser</h2>
-      ${renderList([
-        links.dmnLink
-          ? `Relaterad DMN-modell: <a href="${links.dmnLink}">${dmnLabel}</a>`
-          : 'Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell/DMN när den finns.',
-        links.bpmnViewerLink
-          ? `Relaterad BPMN-subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
-          : 'Subprocess-länk sätts via BPMN viewer.',
-        context.parentChain.length
-          ? `Överordnad nod: ${buildNodeLink(context.parentChain[context.parentChain.length - 1])}`
-          : 'Överordnad nod: Rotprocess',
-      ])}
-    </section>
-  `;
+  return {
+    summary,
+    inputs,
+    decisionLogic,
+    outputs,
+    businessRulesPolicy,
+    scenarios,
+    testDescription,
+    implementationNotes,
+    relatedItems,
+  };
 }
 
-export const renderFeatureGoalDoc = (
+/**
+ * Legacy function that builds HTML directly from context.
+ * Now refactored to use the model-based approach for consistency.
+ * @deprecated Use buildBusinessRuleDocModelFromContext + buildBusinessRuleDocHtmlFromModel instead
+ */
+function buildBusinessRuleDocBody(
   context: NodeDocumentationContext,
   links: TemplateLinks,
-) => renderDocWithSchema('feature-goal', FEATURE_GOAL_DOC_SCHEMA, context, links);
+): string {
+  const model = buildBusinessRuleDocModelFromContext(context, links);
+  return buildBusinessRuleDocHtmlFromModel(context, links, model);
+}
 
-export const renderFeatureGoalDocFromLlm = (
+/**
+ * Unified render function for Feature Goal documentation.
+ * Handles: base model → per-node overrides → optional LLM patch → HTML renderer
+ * 
+ * @param context - Node documentation context
+ * @param links - Template links
+ * @param llmContent - Optional LLM-generated content (for ChatGPT/Ollama)
+ * @param llmMetadata - Optional LLM metadata
+ * @returns Complete HTML document
+ */
+export async function renderFeatureGoalDoc(
   context: NodeDocumentationContext,
   links: TemplateLinks,
-  rawLlmContent: string,
+  llmContent?: string,
   llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
-) => {
-  const node = context.node;
-  const title = node.name || node.bpmnElementId || 'Feature Goal';
-  const sections = mapFeatureGoalLlmToSections(rawLlmContent);
-  const body = buildFeatureGoalDocHtmlFromModel(context, links, sections);
+): Promise<string> {
+  // 1. Build base model from context
+  let model = buildFeatureGoalDocModelFromContext(context);
+
+  // 2. Apply per-node overrides (if any)
+  const overrides = await loadFeatureGoalOverrides(context);
+  model = mergeFeatureGoalOverrides(model, overrides);
+
+  // 3. Apply LLM patch (if provided)
+  if (llmContent) {
+    const llmModel = mapFeatureGoalLlmToSections(llmContent);
+    model = mergeLlmPatch(model, llmModel);
+  }
+
+  // 4. Render HTML via unified renderer
+  const body = buildFeatureGoalDocHtmlFromModel(context, links, model);
+  const title = context.node.name || context.node.bpmnElementId || 'Feature Goal';
   return wrapDocument(title, body, llmMetadata);
-};
+}
 
-export const renderEpicDoc = (
+/**
+ * Unified render function for Epic documentation.
+ * Handles: base model → per-node overrides → optional LLM patch → HTML renderer
+ * 
+ * @param context - Node documentation context
+ * @param links - Template links
+ * @param llmContent - Optional LLM-generated content (for ChatGPT/Ollama)
+ * @param llmMetadata - Optional LLM metadata
+ * @returns Complete HTML document
+ */
+export async function renderEpicDoc(
   context: NodeDocumentationContext,
   links: TemplateLinks,
-) => renderDocWithSchema('epic', EPIC_DOC_SCHEMA, context, links);
-
-export const renderEpicDocFromLlm = (
-  context: NodeDocumentationContext,
-  links: TemplateLinks,
-  rawLlmContent: string,
+  llmContent?: string,
   llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
-) => {
-  const sections = mapEpicLlmToSections(rawLlmContent);
-  const body = buildEpicDocHtmlFromModel(context, links, sections);
-  const node = context.node;
-  const title = node.name || node.bpmnElementId || 'Epic';
-  return wrapDocument(title, body, llmMetadata);
-};
+): Promise<string> {
+  // 1. Build base model from context
+  let model = buildEpicDocModelFromContext(context);
 
-const renderBusinessRuleDocLegacy = (
+  // 2. Apply per-node overrides (if any)
+  const overrides = await loadEpicOverrides(context);
+  model = mergeEpicOverrides(model, overrides);
+
+  // 3. Apply LLM patch (if provided)
+  if (llmContent) {
+    const llmModel = mapEpicLlmToSections(llmContent);
+    model = mergeLlmPatch(model, llmModel);
+  }
+
+  // 4. Render HTML via unified renderer
+  const body = buildEpicDocHtmlFromModel(context, links, model);
+  const title = context.node.name || context.node.bpmnElementId || 'Epic';
+  return wrapDocument(title, body, llmMetadata);
+}
+
+const renderBusinessRuleDocLegacy = async (
   context: NodeDocumentationContext,
   links: TemplateLinks
-) => {
+): Promise<string> => {
   const node = context.node;
   const nodeName = node.name || node.bpmnElementId || 'Business Rule';
   const ruleId = node.bpmnElementId || node.id;
@@ -2210,7 +2191,7 @@ const renderBusinessRuleDocLegacy = (
   `;
 
   if (USE_SCHEMA_RENDERING) {
-    const schemaBody = renderFromSchema(BUSINESS_RULE_DOC_SCHEMA, {
+    const schemaBody = await renderFromSchema(BUSINESS_RULE_DOC_SCHEMA, {
       templateId: 'business-rule',
       context,
       links,
@@ -2221,10 +2202,40 @@ const renderBusinessRuleDocLegacy = (
   return wrapDocument(nodeName, body);
 };
 
-export const renderBusinessRuleDoc = (
+/**
+ * Unified render function for Business Rule documentation.
+ * Handles: base model → per-node overrides → optional LLM patch → HTML renderer
+ * 
+ * @param context - Node documentation context
+ * @param links - Template links
+ * @param llmContent - Optional LLM-generated content (for ChatGPT/Ollama)
+ * @param llmMetadata - Optional LLM metadata
+ * @returns Complete HTML document
+ */
+export async function renderBusinessRuleDoc(
   context: NodeDocumentationContext,
   links: TemplateLinks,
-) => renderDocWithSchema('business-rule', BUSINESS_RULE_DOC_SCHEMA, context, links);
+  llmContent?: string,
+  llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
+): Promise<string> {
+  // 1. Build base model from context
+  let model = buildBusinessRuleDocModelFromContext(context, links);
+
+  // 2. Apply per-node overrides (if any)
+  const overrides = await loadBusinessRuleOverrides(context);
+  model = mergeBusinessRuleOverrides(model, overrides);
+
+  // 3. Apply LLM patch (if provided)
+  if (llmContent) {
+    const llmModel = mapBusinessRuleLlmToSections(llmContent);
+    model = mergeLlmPatch(model, llmModel);
+  }
+
+  // 4. Render HTML via unified renderer
+  const body = buildBusinessRuleDocHtmlFromModel(context, links, model);
+  const title = context.node.name || context.node.bpmnElementId || 'Business Rule';
+  return wrapDocument(title, body, llmMetadata);
+}
 
 function buildBusinessRuleDocHtmlFromModel(
   context: NodeDocumentationContext,
