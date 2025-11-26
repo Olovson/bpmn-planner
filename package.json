@@ -27,7 +27,8 @@
     "stop:dev": "node scripts/stop-dev.mjs",
     "sync:github": "node scripts/sync-to-github.mjs",
     "graph:inspect": "tsx scripts/graph-inspect.ts",
-    "mortgage:order-debug": "vitest run tests/integration/mortgage.order-debug.test.ts"
+    "mortgage:order-debug": "vitest run tests/integration/mortgage.order-debug.test.ts",
+    "create:node-doc": "node scripts/generate-node-doc-override.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

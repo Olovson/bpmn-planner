@@ -10,6 +10,7 @@ import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { supabase } from '@/integrations/supabase/client';
 import { useIntegration } from '@/contexts/IntegrationContext';
 import { getProcessNodeStyle, type ProcessTreeNode } from '@/lib/processTree';
+import { getFilterableNodeTypeValues, getDefaultFilterSet, getFilterableNodeTypes } from '@/lib/bpmnNodeTypeFilters';
 // Removed buildJiraName import - no longer using fallback logic
 import { gantt } from 'dhtmlx-gantt';
 import 'dhtmlx-gantt/codebase/dhtmlxgantt.css';
@@ -28,14 +29,9 @@ const TimelinePage = () => {
 
   // BPMN type filtering (view-only), aligned with Process Explorer
   type TimelineNodeKind = ProcessTreeNode['type'];
-  const FILTER_TYPES: TimelineNodeKind[] = [
-    'callActivity',
-    'userTask',
-    'serviceTask',
-    'businessRuleTask',
-  ];
+  const FILTER_TYPES = getFilterableNodeTypeValues() as TimelineNodeKind[];
   const [enabledKinds, setEnabledKinds] = useState<Set<TimelineNodeKind>>(
-    () => new Set(FILTER_TYPES),
+    () => getDefaultFilterSet() as Set<TimelineNodeKind>,
   );
 
   // View-only filtered tasks for Timeline (does not affect underlying scheduling)
@@ -457,8 +453,8 @@ const TimelinePage = () => {
               <span className="text-xs text-muted-foreground">
                 Filter by BPMN type:
               </span>
-              {FILTER_TYPES.map((kind) => {
-                const style = getProcessNodeStyle(kind);
+              {getFilterableNodeTypes().map((filterConfig) => {
+                const kind = filterConfig.type as TimelineNodeKind;
                 const isActive = enabledKinds.has(kind);
                 return (
                   <Button
@@ -467,6 +463,7 @@ const TimelinePage = () => {
                     variant={isActive ? 'default' : 'outline'}
                     size="sm"
                     className="text-xs h-7"
+                    title={filterConfig.description}
                     onClick={() => {
                       setEnabledKinds((prev) => {
                         const next = new Set(prev);
@@ -482,9 +479,9 @@ const TimelinePage = () => {
                   >
                     <span
                       className="w-2 h-2 rounded-full mr-1.5"
-                      style={{ backgroundColor: style.hexColor }}
+                      style={{ backgroundColor: filterConfig.hexColor }}
                     />
-                    {style.label}
+                    {filterConfig.label}
                   </Button>
                 );
               })}

@@ -23,6 +23,8 @@ import {
   countNodesByType,
   type NodeTypeFilterValue,
 } from '@/lib/nodeMatrixFiltering';
+import { getNodeTypeFilterConfig, getFilterableNodeTypes } from '@/lib/bpmnNodeTypeFilters';
+import { ProcessNodeType } from '@/lib/processTree';
 
 type SortField = 'orderIndex' | 'bpmnFile' | 'elementName' | 'nodeType';
 type SortDirection = 'asc' | 'desc';
@@ -352,11 +354,21 @@ const NodeMatrix = () => {
                   <SelectValue placeholder="Välj nodtyp att visa" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
-                  {NODE_TYPE_FILTER_OPTIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
+                  {NODE_TYPE_FILTER_OPTIONS.map((type) => {
+                    if (type === 'Alla') {
+                      return (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      );
+                    }
+                    const config = getNodeTypeFilterConfig(type as ProcessNodeType);
+                    return (
+                      <SelectItem key={type} value={type} title={config.description}>
+                        {config.label}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

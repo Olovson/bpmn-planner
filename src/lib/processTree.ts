@@ -73,8 +73,9 @@ export const PROCESS_NODE_STYLES: Record<ProcessNodeType | 'default', {
   },
   businessRuleTask: {
     icon: '📊',
-    tailwindColor: 'text-yellow-600',
-    hexColor: '#F59E0B',
+    // Changed from yellow/amber to cyan/teal for better distinction from Service Task (orange)
+    tailwindColor: 'text-cyan-600',
+    hexColor: '#06B6D4',
     label: 'Business Rule',
   },
   dmnDecision: {

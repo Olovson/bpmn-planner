@@ -1,0 +1,7 @@
+# This directory contains Feature Goal documentation override files
+# 
+# Example file: mortgage.application.doc.ts
+# 
+# Create new files using:
+#   npm run create:node-doc feature-goal <bpmnFile> <elementId>
+

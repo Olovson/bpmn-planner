@@ -1,0 +1,7 @@
+# This directory contains Business Rule documentation override files
+# 
+# Example file: mortgage-se-credit-evaluation.credit-decision.doc.ts
+# 
+# Create new files using:
+#   npm run create:node-doc business-rule <bpmnFile> <elementId>
+

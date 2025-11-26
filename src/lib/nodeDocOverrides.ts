@@ -127,16 +127,19 @@ export async function loadFeatureGoalOverrides(
     
     return overrides || null;
   } catch (error) {
-    // File doesn't exist - that's fine, use base model
+    // File doesn't exist - that's fine, use base model (expected behavior)
     if (
       error instanceof Error &&
       (error.message.includes('Failed to fetch') ||
-        error.message.includes('Cannot find module'))
+        error.message.includes('Cannot find module') ||
+        error.message.includes('Failed to resolve module specifier'))
     ) {
+      // File doesn't exist - this is expected, not an error
       return null;
     }
+    // Only log unexpected errors (syntax errors, etc.)
     console.warn(
-      `[nodeDocOverrides] Error loading override for ${bpmnFile}::${bpmnElementId}:`,
+      `[nodeDocOverrides] Unexpected error loading override for ${bpmnFile}::${bpmnElementId}:`,
       error
     );
     return null;
@@ -167,15 +170,19 @@ export async function loadEpicOverrides(
     
     return overrides || null;
   } catch (error) {
+    // File doesn't exist - that's fine, use base model (expected behavior)
     if (
       error instanceof Error &&
       (error.message.includes('Failed to fetch') ||
-        error.message.includes('Cannot find module'))
+        error.message.includes('Cannot find module') ||
+        error.message.includes('Failed to resolve module specifier'))
     ) {
+      // File doesn't exist - this is expected, not an error
       return null;
     }
+    // Only log unexpected errors (syntax errors, etc.)
     console.warn(
-      `[nodeDocOverrides] Error loading override for ${bpmnFile}::${bpmnElementId}:`,
+      `[nodeDocOverrides] Unexpected error loading override for ${bpmnFile}::${bpmnElementId}:`,
       error
     );
     return null;
@@ -206,15 +213,19 @@ export async function loadBusinessRuleOverrides(
     
     return overrides || null;
   } catch (error) {
+    // File doesn't exist - that's fine, use base model (expected behavior)
     if (
       error instanceof Error &&
       (error.message.includes('Failed to fetch') ||
-        error.message.includes('Cannot find module'))
+        error.message.includes('Cannot find module') ||
+        error.message.includes('Failed to resolve module specifier'))
     ) {
+      // File doesn't exist - this is expected, not an error
       return null;
     }
+    // Only log unexpected errors (syntax errors, etc.)
     console.warn(
-      `[nodeDocOverrides] Error loading override for ${bpmnFile}::${bpmnElementId}:`,
+      `[nodeDocOverrides] Unexpected error loading override for ${bpmnFile}::${bpmnElementId}:`,
       error
     );
     return null;

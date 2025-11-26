@@ -3,6 +3,7 @@ import { useProcessTree } from '@/hooks/useProcessTree';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { ProcessTreeD3, ProcessTreeD3Api } from '@/components/ProcessTreeD3';
 import { ProcessTreeNode, NodeArtifact, getProcessNodeStyle, ProcessNodeType } from '@/lib/processTree';
+import { getDefaultFilterSet } from '@/lib/bpmnNodeTypeFilters';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
@@ -29,7 +30,7 @@ export function ProcessExplorerView({
   const [selectedNode, setSelectedNode] = useState<ProcessTreeNode | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [nodeTypeFilter, setNodeTypeFilter] = useState<Set<ProcessNodeType>>(
-    new Set(['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'])
+    getDefaultFilterSet()
   );
   const treeRef = useRef<ProcessTreeD3Api | null>(null);
   const [treeLayoutTrigger, setTreeLayoutTrigger] = useState(0);

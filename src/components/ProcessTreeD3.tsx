@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import * as d3 from 'd3';
 import { ProcessTreeNode, ProcessNodeType, NodeArtifact, getProcessNodeStyle, PROCESS_NODE_STYLES } from '@/lib/processTree';
+import { getFilterableNodeTypes } from '@/lib/bpmnNodeTypeFilters';
 import { sortCallActivities } from '@/lib/ganttDataConverter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -709,30 +710,30 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
             <div className="flex items-center justify-between mt-3">
               {onNodeTypeFilterChange && (
                 <div className="flex flex-wrap gap-2">
-                  {(['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'] as ProcessNodeType[]).map(type => {
-                    const isActive = !nodeTypeFilter || nodeTypeFilter.has(type);
-                    const style = getProcessNodeStyle(type);
+                  {getFilterableNodeTypes().map(filterConfig => {
+                    const isActive = !nodeTypeFilter || nodeTypeFilter.has(filterConfig.type);
                     return (
                       <Button
-                        key={type}
+                        key={filterConfig.type}
                         variant={isActive ? 'default' : 'outline'}
                         size="sm"
                         className="text-xs h-7"
                         onClick={() => {
                           const newFilter = new Set(nodeTypeFilter || []);
                           if (isActive) {
-                            newFilter.delete(type);
+                            newFilter.delete(filterConfig.type);
                           } else {
-                            newFilter.add(type);
+                            newFilter.add(filterConfig.type);
                           }
                           onNodeTypeFilterChange(newFilter);
                         }}
+                        title={filterConfig.description}
                       >
                         <div
                           className="w-2 h-2 rounded-full mr-1.5"
-                          style={{ backgroundColor: style.hexColor }}
+                          style={{ backgroundColor: filterConfig.hexColor }}
                         />
-                        {style.label}
+                        {filterConfig.label}
                       </Button>
                     );
                   })}

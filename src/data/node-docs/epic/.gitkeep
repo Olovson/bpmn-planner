@@ -1,0 +1,7 @@
+# This directory contains Epic documentation override files
+# 
+# Example file: mortgage-se-application.confirm-application.doc.ts
+# 
+# Create new files using:
+#   npm run create:node-doc epic <bpmnFile> <elementId>
+

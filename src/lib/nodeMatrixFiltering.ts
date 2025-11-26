@@ -1,11 +1,10 @@
 import type { BpmnNodeData } from '@/hooks/useAllBpmnNodes';
+import { getFilterableNodeTypes } from '@/lib/bpmnNodeTypeFilters';
 
+// Generate filter options from central configuration
 export const NODE_TYPE_FILTER_OPTIONS = [
   'Alla',
-  'UserTask',
-  'CallActivity',
-  'BusinessRuleTask',
-  'ServiceTask',
+  ...getFilterableNodeTypes().map(f => f.type),
 ] as const;
 
 export type NodeTypeFilterValue = (typeof NODE_TYPE_FILTER_OPTIONS)[number];
