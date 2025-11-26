@@ -467,32 +467,36 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
 
     // Filter collapsed nodes and node types, men behåll info om huruvida noden har barn i originalträdet
     const filterCollapsed = (node: ProcessTreeNode, isRoot: boolean = false): any => {
-      // Process-noder (root) ska alltid visas, annars filtrera på nodtyp om filter är satt
-      if (!isRoot && nodeTypeFilter && nodeTypeFilter.size > 0 && !nodeTypeFilter.has(node.type)) {
-        // Om noden inte matchar filtret, returnera null så att den hoppas över
+      const hasChildren = node.children && node.children.length > 0;
+      const filteredChildren = hasChildren
+        ? node.children!
+            .map((child) => filterCollapsed(child, false))
+            .filter((child: any) => child !== null)
+        : [];
+
+      const matchesFilter =
+        isRoot ||
+        !nodeTypeFilter ||
+        nodeTypeFilter.size === 0 ||
+        nodeTypeFilter.has(node.type);
+
+      // Behåll process-/container-noder så länge de har barn som matchar filtreringen
+      if (!matchesFilter && filteredChildren.length === 0) {
         return null;
       }
 
-      const hasChildren = node.children && node.children.length > 0;
       const filtered: any = { ...node };
-      // Markera om noden kan ha barn, oavsett kollaps-state
-      filtered._hasChildren = hasChildren;
+      filtered._hasChildren = filteredChildren.length > 0;
 
       if (collapsedIds.has(node.id)) {
         filtered.children = [];
-      } else if (hasChildren) {
-        // Filtrera barn, ta bort null-värden och sortera med sekvens-rangering
-        const filteredChildren = node.children!
-          .map((child) => filterCollapsed(child, false))
-          .filter((child: any) => child !== null);
-        
-        // Använd samma sorteringslogik som Timeline: visualOrderIndex -> orderIndex -> branchId -> label
-        // Bestäm mode baserat på om det är root-nivå (depth 0) eller subprocess-nivå
+      } else if (filteredChildren.length > 0) {
         const mode = isRoot ? 'root' : 'subprocess';
         filtered.children = sortCallActivities(filteredChildren, mode);
       } else {
         filtered.children = [];
       }
+
       return filtered;
     };
 
