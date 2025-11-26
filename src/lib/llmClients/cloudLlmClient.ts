@@ -38,6 +38,44 @@ if (shouldEnableLlm) {
   });
 }
 
+/**
+ * Error som kastas när OpenAI-kontot är inaktivt eller har billing-problem.
+ * Detta stoppar alla ytterligare anrop för att undvika onödiga kostnader.
+ */
+export class CloudLlmAccountInactiveError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CloudLlmAccountInactiveError';
+  }
+}
+
+/**
+ * Error som kastas vid rate limiting (429).
+ * Kan vara tillfälligt eller permanent beroende på orsak.
+ */
+export class CloudLlmRateLimitError extends Error {
+  readonly isPermanent: boolean;
+  readonly retryAfter?: number;
+
+  constructor(message: string, isPermanent: boolean = false, retryAfter?: number) {
+    super(message);
+    this.name = 'CloudLlmRateLimitError';
+    this.isPermanent = isPermanent;
+    this.retryAfter = retryAfter;
+  }
+}
+
+// Global flagga för att stoppa alla anrop när kontot är inaktivt
+let accountInactive = false;
+
+export function isCloudLlmAccountInactive(): boolean {
+  return accountInactive;
+}
+
+export function resetCloudLlmAccountStatus(): void {
+  accountInactive = false;
+}
+
 export class CloudLlmClient implements LlmClient {
   readonly modelName = FULL_MODEL;
   readonly provider: 'cloud' = 'cloud';
@@ -50,6 +88,12 @@ export class CloudLlmClient implements LlmClient {
     responseFormat?: { type: 'json_schema'; json_schema: any };
   }): Promise<string | null> {
     if (!shouldEnableLlm || !openAiClient) return null;
+
+    // Stoppa alla anrop om kontot är inaktivt
+    if (accountInactive) {
+      console.warn('[Cloud LLM] Account is inactive - skipping request to avoid costs');
+      throw new CloudLlmAccountInactiveError('OpenAI account is inactive. Please check billing details.');
+    }
 
     const messages: ChatCompletionMessageParam[] = [];
     if (args.systemPrompt) {
@@ -79,7 +123,35 @@ export class CloudLlmClient implements LlmClient {
       });
 
       return response.choices?.[0]?.message?.content?.trim() ?? null;
-    } catch (error) {
+    } catch (error: any) {
+      // Hantera 429 Rate Limit fel
+      if (error?.status === 429 || error?.code === 'rate_limit_exceeded') {
+        const errorMessage = error?.message || error?.error?.message || 'Rate limit exceeded';
+        
+        // Kontrollera om det är ett permanent fel (t.ex. inaktivt konto)
+        const isAccountInactive = 
+          errorMessage.toLowerCase().includes('account is not active') ||
+          errorMessage.toLowerCase().includes('billing') ||
+          errorMessage.toLowerCase().includes('payment');
+        
+        if (isAccountInactive) {
+          accountInactive = true;
+          console.error('[Cloud LLM] Account is inactive - stopping all future requests');
+          throw new CloudLlmAccountInactiveError(
+            `OpenAI account is inactive: ${errorMessage}. Please check billing details on https://platform.openai.com/account/billing`
+          );
+        }
+        
+        // Tillfällig rate limit
+        const retryAfter = error?.headers?.['retry-after'] || error?.retryAfter;
+        throw new CloudLlmRateLimitError(
+          `Rate limit exceeded: ${errorMessage}`,
+          false,
+          retryAfter ? parseInt(retryAfter, 10) : undefined
+        );
+      }
+      
+      // Hantera andra fel
       console.error('Cloud LLM generation error:', error);
       return null;
     }
@@ -87,4 +159,3 @@ export class CloudLlmClient implements LlmClient {
 }
 
 export const cloudLlmClientInstance = new CloudLlmClient();
-

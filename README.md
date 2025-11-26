@@ -631,57 +631,11 @@ npm run create:node-doc feature-goal mortgage-se-application.bpmn household
 
 ---
 
-# 🧭 TODO / Idébank (framtida förbättringar)
+# 🧭 TODO & Framtida Förbättringar
 
-En kort lista över förbättringsidéer som vi kan plocka upp senare:
+Se [TODO.md](TODO.md) för en detaljerad, prioriterad lista över uppgifter och förbättringar.
 
-- **Timeline / Planning View (2025-01)**
-  - ✅ Gantt-chart för visualisering av subprocesser baserat på tidsordning (orderIndex)
-  - ✅ Visuell ordning (visualOrderIndex) baserad på BPMN DI-koordinater när sequence flows saknas
-  - ✅ Redigering av start/end datum direkt i Gantt
-  - 🔄 Spara redigerade datum till backend/database
-  - 🔄 Automatisk staggering av datum baserat på orderIndex
-  - 🔄 Visa dependencies mellan subprocesser i Gantt
-  - 🔄 Export av timeline till Excel/PDF
-
-- **Aktuellt arbete (mortgage‑hierarki / 2025‑11)**  
-  - Finslipa subprocesskedjan `Object → Object information` så att callActivity `object-information` alltid matchar `mortgage-se-object-information.bpmn` med tydlig diagnostik när det inte går.  
-  - Låta Node Matrix visa noder från alla relevanta BPMN‑filer i mortgage‑kedjan (inte bara rootfilen), t.ex. `mortgage-se-application` och `mortgage-se-internal-data-gathering`.  
-  - Utforska att flytta tunga hierarki/graf‑beräkningar till en Supabase‑funktion (server‑side) för att minska CPU/minne i browsern vid "Generera allt".  
-  - Förenkla "Generera allt" ytterligare genom att återanvända en gemensam processgraf per root i stället för att bygga nya grafer per subprocess‑fil.
-
-- **Parallellisering av LLM‑generering**
-  - Lägg till en enkel concurrency‑pool i `generateAllFromBpmnWithGraph` så att flera noder kan genereras parallellt (t.ex. 3–5 samtidiga anrop per provider).
-  - Var försiktig med ordning/loggning/aggregation av HTML så resultatet blir deterministiskt.
-
-- **Caching av LLM‑resultat**
-  - Spara LLM‑output i Supabase per `(bpmnFile, nodeId, provider, promptVersion)` så att noder inte behöver köras om om inget ändrats.
-  - Använd cache både i UI (“regenerera bara ändrade noder”) och i batch‑körningar.
-
-- **Selektiv körning**
-  - Kör LLM‑generering endast för noder/filer som ändrats sedan senaste körning.
-
-- **Batch‑API för massgenerering + omdesign av filvy**
-  - Flytta stora genereringsjobb (docs/tests/testscript) från synkrona per‑nod‑anrop till OpenAI Batch‑API.
-  - Designa om filvyn så att den jobbar mot batch‑jobb (status, kö, progress) i stället för att trigga enstaka ChatGPT‑anrop direkt från UI.
-  - Lägg till serverflöde (Supabase function/cron) som bygger batchar, skickar till Batch‑API och skriver tillbaka resultat till DB.
-  - Koppla mot t.ex. `bpmn_files.updated_at` och jobbhistorik för att avgöra vad som behöver regenereras.
-
-- **Lokal LLM‑profil / modellbyte**
-  - Utvärdera alternativ lokal modell (t.ex. `mistral:latest`) som kanske är snabbare/stabilare än `llama3:latest` på svagare hårdvara.
-  - Håll ChatGPT‑kontrakten oförändrade; behandla lokal modell som best‑effort fallback.
-
-- **Bättre LLM‑progress & statistik**
-  - Utöka `LlmDebugView`/LLM‑events med tydligare progress för batch‑körningar:
-    - totalt antal noder,
-    - hur många som är klara per provider/docType,
-    - uppskattad kvarvarande tid vid större körningar (300+ noder).
-
-- **Separata testscript per LLM‑provider**
-  - I dag finns en gemensam LLM‑testfil per nod (`tests/slow/...`) oavsett om ChatGPT eller Ollama användes.
-  - Utred att införa separata paths per provider, t.ex. `tests/slow/chatgpt/...` och `tests/slow/ollama/...`, samt:
-    - uppdatera `buildTestStoragePaths` och `node_test_links` så att provider ingår i testfilens path,
-    - utöka `NodeTestScriptViewer`/`TestScriptsPage` så användaren kan se och jämföra ChatGPT‑ respektive Ollama‑testscript sida vid sida.
+Se [Feature Roadmap](docs/FEATURE_ROADMAP.md) för strategiska funktioner och långsiktiga visioner.
 
 # 📍 Lokal URL
 `http://localhost:8080/`

@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { isLlmEnabled } from '@/lib/llmClient';
 import { logLlmFallback } from '@/lib/llmMonitoring';
 import { saveLlmDebugArtifact } from '@/lib/llmDebugStorage';
+import { CloudLlmAccountInactiveError } from '@/lib/llmClients/cloudLlmClient';
 import {
   buildProcessHierarchy,
   type NormalizedProcessDefinition,
@@ -1138,6 +1139,19 @@ async function renderDocWithLlmFallback(
       },
     });
   } catch (error) {
+    // Om kontot är inaktivt, logga tydligt och använd fallback direkt
+    if (error instanceof Error && error.message.includes('account is inactive')) {
+      console.error('[LLM Documentation] Cloud account is inactive - using fallback:', error.message);
+      await logLlmFallback({
+        eventType: 'documentation',
+        status: 'fallback',
+        reason: 'account-inactive',
+        error: error.message,
+        ...basePayload,
+      });
+      return fallback();
+    }
+    
     console.error('LLM documentation generation failed:', error);
     await logLlmFallback({
       eventType: 'documentation',

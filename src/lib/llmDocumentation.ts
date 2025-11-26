@@ -6,6 +6,7 @@ import { saveLlmDebugArtifact } from './llmDebugStorage';
 import type { LlmProvider } from './llmClientAbstraction';
 import { getDefaultLlmProvider } from './llmClients';
 import { LocalLlmUnavailableError } from './llmClients/localLlmClient';
+import { CloudLlmAccountInactiveError, CloudLlmRateLimitError } from './llmClients/cloudLlmClient';
 import {
   getFeaturePrompt,
   getEpicPrompt,
@@ -247,6 +248,47 @@ export async function generateDocumentationWithLlm(
       console.warn('Local LLM unavailable during documentation generation:', error.message);
       return null;
     }
+    
+    // Hantera CloudLlmAccountInactiveError - stoppa alla anrop
+    if (error instanceof CloudLlmAccountInactiveError) {
+      console.error('[LLM Documentation] Cloud account is inactive:', error.message);
+      logLlmEvent({
+        eventType: 'ERROR',
+        docType: profileDocType,
+        attemptedProviders: resolution.attempted,
+        finalProvider: resolution.chosen,
+        fallbackUsed: false,
+        success: false,
+        errorCode: 'ACCOUNT_INACTIVE',
+        validationOk: false,
+        errorMessage: error.message,
+      });
+      // Returnera null istället för att kasta - detta stoppar generering men kraschar inte appen
+      return null;
+    }
+    
+    // Hantera CloudLlmRateLimitError - logga men fortsätt inte
+    if (error instanceof CloudLlmRateLimitError) {
+      console.error('[LLM Documentation] Rate limit error:', error.message);
+      logLlmEvent({
+        eventType: 'ERROR',
+        docType: profileDocType,
+        attemptedProviders: resolution.attempted,
+        finalProvider: resolution.chosen,
+        fallbackUsed: false,
+        success: false,
+        errorCode: error.isPermanent ? 'RATE_LIMIT_PERMANENT' : 'RATE_LIMIT_TEMPORARY',
+        validationOk: false,
+        errorMessage: error.message,
+      });
+      // Om permanent rate limit (t.ex. inaktivt konto), returnera null
+      if (error.isPermanent) {
+        return null;
+      }
+      // Annars kasta vidare för retry-logik
+      throw error;
+    }
+    
     // För andra fel, kasta vidare
     throw error;
   }

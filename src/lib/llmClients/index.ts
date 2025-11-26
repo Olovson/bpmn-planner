@@ -30,7 +30,13 @@ export function getDefaultLlmProvider(): LlmProvider {
 }
 
 // Re-export för enkel import
-export { cloudLlmClientInstance } from './cloudLlmClient';
+export { 
+  cloudLlmClientInstance,
+  CloudLlmAccountInactiveError,
+  CloudLlmRateLimitError,
+  isCloudLlmAccountInactive,
+  resetCloudLlmAccountStatus,
+} from './cloudLlmClient';
 export { localLlmClientInstance } from './localLlmClient';
 export type { LlmProvider } from '../llmClientAbstraction';
 

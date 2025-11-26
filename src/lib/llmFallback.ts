@@ -16,6 +16,11 @@ import {
   buildSystemPrompt,
 } from './promptLoader';
 import { LocalLlmUnavailableError } from './llmClients/localLlmClient';
+import { 
+  CloudLlmAccountInactiveError, 
+  CloudLlmRateLimitError,
+  isCloudLlmAccountInactive 
+} from './llmClients/cloudLlmClient';
 import type { LlmResolution } from './llmProviderResolver';
 import { estimatePromptTokens } from './tokenUtils';
 import { getProviderLabel, logLlmEvent } from './llmLogging';
@@ -170,6 +175,14 @@ export async function generateWithFallback(
       FALLBACK_TO_LOCAL_ENABLED;
 
     if (alternativeProvider && (shouldFallbackToCloud || shouldFallbackToLocal)) {
+      // Om vi försöker fallback till cloud men kontot är inaktivt, hoppa över
+      if (alternativeProvider === 'cloud' && isCloudLlmAccountInactive()) {
+        throw new CloudLlmAccountInactiveError(
+          'Cannot fallback to cloud: account is inactive. ' +
+          'Please check billing details on https://platform.openai.com/account/billing'
+        );
+      }
+
       try {
         const altClient = getLlmClient(alternativeProvider);
         const altProfile = getLlmProfile(docType, alternativeProvider);
