@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Download } from 'lucide-react';
+import { useIntegration } from '@/contexts/IntegrationContext';
 
 interface ProcessTreeD3Props {
   root: ProcessTreeNode;
@@ -46,7 +47,8 @@ const getColorForNodeType = (type: ProcessNodeType): string => {
 };
 
 const getLegendItems = () => {
-  const order: ProcessNodeType[] = ['process', 'callActivity', 'userTask', 'serviceTask', 'businessRuleTask', 'dmnDecision'];
+  // DMN Decision finns i modellen men vi visar den inte i legenden ännu.
+  const order: ProcessNodeType[] = ['process', 'callActivity', 'userTask', 'serviceTask', 'businessRuleTask'];
   return order.map(type => ({
     type,
     label: getProcessNodeStyle(type).label,
@@ -105,6 +107,7 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
   const [fitOnNextLayout, setFitOnNextLayout] = useState(false);
   const collapsedIds = externalCollapsedIds ?? internalCollapsedIds;
   const setCollapsedIds = onCollapsedIdsChange ?? setInternalCollapsedIds;
+  const { useStaccIntegration } = useIntegration();
 
   // Hjälpfunktion för att förbereda SVG för export
   const prepareSvgForExport = (): { svgString: string; viewBox: string } | null => {
@@ -618,7 +621,18 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
     // Node circle
     node.append('circle')
       .attr('r', (d: any) => ((d.data as any)._hasChildren ? 12 : 8))
-      .attr('fill', (d: any) => getColorForNodeType(d.data.type))
+      .attr('fill', (d: any) => {
+        const data = d.data as ProcessTreeNode;
+        // Special highlight: ServiceTasks configured to use bankens integrationskälla
+        if (data.type === 'serviceTask' && data.bpmnFile && data.bpmnElementId) {
+          const useStacc = useStaccIntegration(data.bpmnFile, data.bpmnElementId);
+          if (!useStacc) {
+            // Same green tone as Timeline bank-färg
+            return '#22c55e';
+          }
+        }
+        return getColorForNodeType(data.type);
+      })
       .attr('stroke', (d: any) => {
         const isSelected = d.data.id === selectedNodeId;
         return isSelected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))';
@@ -660,7 +674,7 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       }
     });
 
-  }, [root, selectedNodeId, collapsedIds, nodeTypeFilter, onSelectNode, onArtifactClick, fitOnNextLayout]);
+  }, [root, selectedNodeId, collapsedIds, nodeTypeFilter, onSelectNode, onArtifactClick, fitOnNextLayout, useStaccIntegration]);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -680,6 +694,14 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
                   <span className="text-muted-foreground">{item.label}</span>
                 </div>
               ))}
+              {/* Extra legend item for bankens integrationskälla (overrides ServiceTask color when active) */}
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: '#22c55e' }}
+                />
+                <span className="text-muted-foreground">Bankens integrationskälla (Service Task)</span>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
               Klicka för att välja nod • Dubbelklick eller Shift+klick för att expandera/kollapsa • Scrolla för zoom • Dra för att panorera

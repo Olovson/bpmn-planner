@@ -59,8 +59,10 @@ export const PROCESS_NODE_STYLES: Record<ProcessNodeType | 'default', {
   },
   userTask: {
     icon: '👤',
-    tailwindColor: 'text-green-600',
-    hexColor: '#10B981',
+    // User Tasks should stand out clearly from \"Bankens integrationskälla\" (grön).
+    // Use a red tone here so that green can be used for bank integrations.
+    tailwindColor: 'text-red-600',
+    hexColor: '#DC2626',
     label: 'User Task',
   },
   serviceTask: {
@@ -77,8 +79,8 @@ export const PROCESS_NODE_STYLES: Record<ProcessNodeType | 'default', {
   },
   dmnDecision: {
     icon: '🎯',
-    tailwindColor: 'text-red-600',
-    hexColor: '#DC2626',
+    tailwindColor: 'text-muted-foreground',
+    hexColor: '#64748B',
     label: 'DMN Decision',
   },
   default: {

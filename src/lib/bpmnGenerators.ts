@@ -45,6 +45,7 @@ import { testMapping, type TestScenario } from '@/data/testMapping';
 import {
   createPlannedScenariosFromGraph,
   savePlannedScenarios,
+  type PlannedScenarioRow,
 } from '@/lib/plannedScenariosHelper';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { buildProcessTreeFromGraph } from '@/lib/bpmn/buildProcessTreeFromGraph';
@@ -927,6 +928,19 @@ export interface GenerationResult {
 }
 
 type PlannedScenarioProvider = 'local-fallback' | 'chatgpt' | 'ollama';
+type PlannedScenarioMap = Map<string, Map<PlannedScenarioProvider, TestScenario[]>>;
+const FALLBACK_PROVIDER_ORDER: PlannedScenarioProvider[] = [
+  'local-fallback',
+  'chatgpt',
+  'ollama',
+];
+const mapTestScenarioToSkeleton = (scenario: TestScenario) => ({
+  name:
+    scenario.id && scenario.name && scenario.id !== scenario.name
+      ? `${scenario.id} – ${scenario.name}`
+      : scenario.name || scenario.id || 'Scenario',
+  description: scenario.description || '',
+});
 
 function mapProviderToScenarioProvider(
   provider: LlmProvider,
@@ -1337,6 +1351,23 @@ export async function generateAllFromBpmnWithGraph(
     };
     const hierarchicalNodeArtifacts: NodeArtifactEntry[] = [];
     result.nodeArtifacts = hierarchicalNodeArtifacts;
+    const plannedScenarioMap: PlannedScenarioMap = new Map();
+    const setScenarioEntry = (
+      key: string,
+      provider: PlannedScenarioProvider,
+      scenarios: TestScenario[],
+    ) => {
+      if (!plannedScenarioMap.has(key)) {
+        plannedScenarioMap.set(key, new Map());
+      }
+      plannedScenarioMap.get(key)!.set(provider, scenarios);
+    };
+    const hydrateScenarioMapFromRows = (rows: PlannedScenarioRow[]) => {
+      rows.forEach((row) => {
+        const provider = row.provider as PlannedScenarioProvider;
+        setScenarioEntry(`${row.bpmn_file}::${row.bpmn_element_id}`, provider, row.scenarios);
+      });
+    };
 
     // === HIERARKISKA TESTER MED JIRA-META ===
     // Generera hierarkiska tester direkt från processgrafen
@@ -1431,6 +1462,7 @@ export async function generateAllFromBpmnWithGraph(
     // Seed node_planned_scenarios med bas-scenarion för Lokal fallback
     try {
       const rows = createPlannedScenariosFromGraph(testableNodes);
+      hydrateScenarioMapFromRows(rows);
       await savePlannedScenarios(rows, 'bpmnGenerators');
     } catch (e) {
       console.error(
@@ -1544,6 +1576,8 @@ export async function generateAllFromBpmnWithGraph(
                             onConflict: 'bpmn_file,bpmn_element_id,provider',
                           },
                         );
+                        const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
+                        setScenarioEntry(nodeKey, scenarioProvider, scenarios);
                       } catch (e) {
                         console.warn(
                           '[bpmnGenerators] Failed to upsert node_planned_scenarios for feature',
@@ -1623,6 +1657,8 @@ export async function generateAllFromBpmnWithGraph(
                             onConflict: 'bpmn_file,bpmn_element_id,provider',
                           },
                         );
+                        const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
+                        setScenarioEntry(nodeKey, scenarioProvider, scenarios);
                       } catch (e) {
                         console.warn(
                           '[bpmnGenerators] Failed to upsert node_planned_scenarios for businessRule',
@@ -1681,6 +1717,8 @@ export async function generateAllFromBpmnWithGraph(
                             onConflict: 'bpmn_file,bpmn_element_id,provider',
                           },
                         );
+                        const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
+                        setScenarioEntry(nodeKey, scenarioProvider, scenarios);
                       } catch (e) {
                         console.warn(
                           '[bpmnGenerators] Failed to upsert node_planned_scenarios for epic',
@@ -1735,9 +1773,31 @@ export async function generateAllFromBpmnWithGraph(
             }
           }
 
+          let scenarioInputs =
+            llmScenarios && llmScenarios.length ? llmScenarios : null;
+
+          if (!scenarioInputs || scenarioInputs.length === 0) {
+            const providerEntries = plannedScenarioMap.get(nodeKey);
+            if (providerEntries) {
+              for (const provider of FALLBACK_PROVIDER_ORDER) {
+                const providerScenarios = providerEntries.get(provider);
+                if (providerScenarios && providerScenarios.length > 0) {
+                  scenarioInputs = providerScenarios.map(mapTestScenarioToSkeleton);
+                  break;
+                }
+              }
+              if ((!scenarioInputs || scenarioInputs.length === 0) && providerEntries.size > 0) {
+                const [, scenarios = []] = providerEntries.entries().next().value;
+                if (scenarios.length > 0) {
+                  scenarioInputs = scenarios.map(mapTestScenarioToSkeleton);
+                }
+              }
+            }
+          }
+
           result.tests.set(
             testFileKey,
-            generateTestSkeleton(node.element, llmScenarios || undefined),
+            generateTestSkeleton(node.element, scenarioInputs || undefined),
           );
 
           hierarchicalNodeArtifacts.push({

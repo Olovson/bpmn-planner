@@ -385,6 +385,7 @@ const NodeMatrix = () => {
                 <TableHead className="cursor-pointer" onClick={() => handleSort('elementName')}>
                   Element {sortField === 'elementName' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </TableHead>
+                <TableHead>Element ID</TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort('nodeType')}>
                   Typ {sortField === 'nodeType' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </TableHead>
@@ -406,18 +407,18 @@ const NodeMatrix = () => {
                     <TableCell className="text-xs text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="text-xs font-mono">{node.bpmnFile}</TableCell>
                     <TableCell className="text-xs">
-                      <div className="flex flex-col">
-                        <span className="font-medium flex items-center gap-1">
-                          {node.elementName}
-                          {hasIssues && (
-                            <AlertTriangle
-                              className="h-3 w-3 text-amber-500"
-                              title={issueSummary || 'Problem med subprocess'}
-                            />
-                          )}
-                        </span>
-                        <span className="text-muted-foreground">{node.elementId}</span>
+                      <div className="flex items-center gap-1 font-medium">
+                        {node.elementName}
+                        {hasIssues && (
+                          <AlertTriangle
+                            className="h-3 w-3 text-amber-500"
+                            title={issueSummary || 'Problem med subprocess'}
+                          />
+                        )}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-xs font-mono text-muted-foreground">
+                      {node.elementId}
                     </TableCell>
                     <TableCell className="text-xs">
                       <span className="px-2 py-1 rounded bg-primary/10 text-primary">

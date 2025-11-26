@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,6 +7,8 @@ import { useProcessTree } from '@/hooks/useProcessTree';
 import { buildGanttTasksFromProcessTree, type GanttTask } from '@/lib/ganttDataConverter';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { supabase } from '@/integrations/supabase/client';
+import { useIntegration } from '@/contexts/IntegrationContext';
+import { getProcessNodeStyle, type ProcessTreeNode } from '@/lib/processTree';
 // Removed buildJiraName import - no longer using fallback logic
 import { gantt } from 'dhtmlx-gantt';
 import 'dhtmlx-gantt/codebase/dhtmlxgantt.css';
@@ -17,31 +19,86 @@ const TimelinePage = () => {
   const { hasTests } = useArtifactAvailability();
   const { data: rootFile } = useRootBpmnFile();
   const { data: processTree, isLoading } = useProcessTree(rootFile || 'mortgage.bpmn');
+  const { useStaccIntegration } = useIntegration();
   
   const ganttContainerRef = useRef<HTMLDivElement>(null);
   const [tasks, setTasks] = useState<GanttTask[]>([]);
   const [isGanttInitialized, setIsGanttInitialized] = useState(false);
 
+  // BPMN type filtering (view-only)
+  type TimelineNodeKind = ProcessTreeNode['type'];
+  const [enabledKinds, setEnabledKinds] = useState<TimelineNodeKind[]>([]);
+
+  // Collect all kinds present in the current tasks
+  const allKinds = useMemo(() => {
+    const kinds = new Set<TimelineNodeKind>();
+    tasks.forEach((t) => {
+      const kind = t.meta?.kind as TimelineNodeKind | undefined;
+      if (kind) {
+        kinds.add(kind);
+      }
+    });
+    return kinds;
+  }, [tasks]);
+
+  // Initialize filter to \"all types\" when tasks are first loaded
+  useEffect(() => {
+    if (enabledKinds.length === 0 && allKinds.size > 0) {
+      setEnabledKinds(Array.from(allKinds));
+    }
+  }, [allKinds, enabledKinds.length]);
+
+  // View-only filtered tasks for Timeline (does not affect underlying scheduling)
+  const visibleTasks = useMemo(() => {
+    if (enabledKinds.length === 0) {
+      // If filter is somehow empty, fall back to showing all tasks to avoid confusion
+      return tasks;
+    }
+    const enabledSet = new Set(enabledKinds);
+    return tasks.filter((t) => {
+      // Always keep project/root nodes to preserve hierarchy
+      if (t.type === 'project') return true;
+      const kind = t.meta?.kind as TimelineNodeKind | undefined;
+      if (!kind) return true;
+      return enabledSet.has(kind);
+    });
+  }, [tasks, enabledKinds]);
+
   const toGanttData = (items: GanttTask[]) => {
     // Convert to Gantt format
-    const ganttTasks = items.map((task) => ({
-      id: String(task.id),
-      text: task.text,
-      jira_name: task.jira_name || task.text || 'N/A',
-      jira_type: task.jira_type || null,
-      start_date: new Date(task.start_date + 'T00:00:00'),
-      end_date: new Date(task.end_date + 'T00:00:00'),
-      duration: task.duration,
-      progress: task.progress,
-      type: task.type ?? 'task',
-      parent: task.parent ? String(task.parent) : '0',
-      orderIndex: task.orderIndex,
-      branchId: task.branchId,
-      bpmnFile: task.bpmnFile,
-      bpmnElementId: task.bpmnElementId,
-      meta: task.meta,
-      open: task.type === 'project',
-    }));
+    const ganttTasks = items.map((task) => {
+      // Determine integration mode for this task (if we have BPMN identity)
+      const hasIdentity = Boolean(task.bpmnFile && task.bpmnElementId);
+      const useStacc =
+        hasIdentity && task.bpmnFile && task.bpmnElementId
+          ? useStaccIntegration(task.bpmnFile, task.bpmnElementId)
+          : true; // Default: treat as Stacc (keeps current blue color)
+
+      // Use green color for tasks that are configured to use bank integration instead of Stacc
+      const color = useStacc ? undefined : '#22c55e'; // Tailwind green-500
+
+      return {
+        id: String(task.id),
+        text: task.text,
+        jira_name: task.jira_name || task.text || 'N/A',
+        jira_type: task.jira_type || null,
+        start_date: new Date(task.start_date + 'T00:00:00'),
+        end_date: new Date(task.end_date + 'T00:00:00'),
+        duration: task.duration,
+        progress: task.progress,
+        type: task.type ?? 'task',
+        parent: task.parent ? String(task.parent) : '0',
+        orderIndex: task.orderIndex,
+        branchId: task.branchId,
+        bpmnFile: task.bpmnFile,
+        bpmnElementId: task.bpmnElementId,
+        meta: task.meta,
+        open: task.type === 'project',
+        // Custom visual hint for integration mode
+        color,
+        integrationMode: useStacc ? 'stacc' : 'bank',
+      };
+    });
     
     // DHTMLX Gantt requires parent tasks to come before their children
     // Sort tasks so that parents appear before children
@@ -67,7 +124,12 @@ const TimelinePage = () => {
     // Add all tasks in correct order
     ganttTasks.forEach(addTask);
     
-    return sorted;
+    const numbered = sorted.map((task, index) => ({
+      ...task,
+      rowNumber: index + 1,
+    }));
+    
+    return numbered;
   };
 
   // Build Gantt tasks from ProcessTree and fetch Jira mappings
@@ -137,12 +199,22 @@ const TimelinePage = () => {
     // Initialize Gantt
     gantt.config.date_format = '%Y-%m-%d';
     gantt.config.columns = [
+      {
+        name: 'rowNumber',
+        label: '#',
+        width: 40,
+        align: 'center',
+        template: (task: any) => task.rowNumber || '',
+      },
       { 
         name: 'jira_name', 
         label: 'Jira namn', 
-        width: 300, 
+        width: 350, 
         tree: true,
-        template: (task: any) => task.jira_name || task.text || 'N/A'
+        template: (task: any) => {
+          const value = task.jira_name || task.text || 'N/A';
+          return `<div class="gantt-column-wrap" style="white-space: normal; line-height: 1.3;">${value}</div>`;
+        },
       },
       { 
         name: 'jira_type', 
@@ -265,15 +337,15 @@ const TimelinePage = () => {
     };
   }, [isGanttInitialized, tasks]);
 
-  // Update Gantt data when tasks change
+  // Update Gantt data when tasks or filters change (view-only filtering)
   useEffect(() => {
-    if (isGanttInitialized && tasks.length > 0) {
+    if (isGanttInitialized && visibleTasks.length > 0) {
       // Convert tasks to Gantt data format
-      const ganttData = toGanttData(tasks);
+      const ganttData = toGanttData(visibleTasks);
 
       if (import.meta.env.DEV) {
         console.log('[TimelinePage] Parsing Gantt data:', { 
-          taskCount: ganttData.length, 
+          taskCount: ganttData.length,
           firstTask: ganttData[0],
           containerExists: !!ganttContainerRef.current 
         });
@@ -305,7 +377,7 @@ const TimelinePage = () => {
         gantt.render();
       }
     }
-  }, [tasks, isGanttInitialized]);
+  }, [visibleTasks, isGanttInitialized]);
 
   const handleViewChange = (view: string) => {
     if (view === 'diagram') navigate('/');
@@ -355,9 +427,50 @@ const TimelinePage = () => {
                 Expand rows to inspect subprocess hierarchy. Click and drag to adjust dates, or double-click to edit.
               </p>
             )}
+
+            {/* BPMN type filter (view-only) */}
+            {allKinds.size > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Filter by BPMN type:
+                </span>
+                {Array.from(allKinds).map((kind) => {
+                  const style = getProcessNodeStyle(kind);
+                  const isActive = enabledKinds.includes(kind);
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => {
+                        setEnabledKinds((prev) => {
+                          const exists = prev.includes(kind);
+                          if (exists) {
+                            const next = prev.filter((k) => k !== kind);
+                            // Om alla filtreras bort, fall tillbaka till alla aktiva för att undvika tom vy
+                            return next.length > 0 ? next : Array.from(allKinds);
+                          }
+                          return [...prev, kind];
+                        });
+                      }}
+                      className={`flex items-center px-2 py-1 rounded-full text-xs border ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                      }`}
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full mr-1.5"
+                        style={{ backgroundColor: style.hexColor }}
+                      />
+                      {style.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {tasks.length > 0 && (
+          {visibleTasks.length > 0 && (
             <div className="border rounded-lg overflow-hidden bg-white">
               <div 
                 ref={ganttContainerRef} 

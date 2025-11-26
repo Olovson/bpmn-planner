@@ -21,9 +21,11 @@ import JiraNamingDebugPage from "./pages/JiraNamingDebug";
 import TimelinePage from "./pages/TimelinePage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BpmnSelectionProvider } from "./contexts/BpmnSelectionContext";
+import { IntegrationProvider } from "./contexts/IntegrationContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import DocViewer from "./pages/DocViewer";
 import { LlmDebugView } from "./pages/LlmDebugView";
+import IntegrationsPage from "./pages/IntegrationsPage";
 import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
@@ -94,33 +96,36 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <BpmnSelectionProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <HashRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/bpmn/:filename" element={<Index />} />
-                <Route path="/process-explorer" element={<ProcessExplorer />} />
-                <Route path="/node-matrix" element={<NodeMatrix />} />
-                <Route path="/test-report" element={<TestReport />} />
-                <Route path="/test-scripts" element={<TestScriptsPage />} />
-                <Route path="/node-tests" element={<NodeTestsPage />} />
-                <Route path="/node-test-script" element={<NodeTestScriptViewer />} />
-                <Route path="/files" element={<ProtectedRoute><BpmnFileManager /></ProtectedRoute>} />
-                <Route path="/registry-status" element={<ProtectedRoute><RegistryStatus /></ProtectedRoute>} />
-                <Route path="/llm-debug" element={<ProtectedRoute><LlmDebugView /></ProtectedRoute>} />
-                <Route path="/graph-debug" element={<ProtectedRoute><ProcessGraphDebugPage /></ProtectedRoute>} />
-                <Route path="/tree-debug" element={<ProtectedRoute><ProcessTreeDebugPage /></ProtectedRoute>} />
-                <Route path="/jira-naming-debug" element={<ProtectedRoute><JiraNamingDebugPage /></ProtectedRoute>} />
-                <Route path="/timeline" element={<ProtectedRoute><TimelinePage /></ProtectedRoute>} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/doc-viewer/:docId" element={<DocViewer />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </HashRouter>
-          </TooltipProvider>
+          <IntegrationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <HashRouter>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/bpmn/:filename" element={<Index />} />
+                  <Route path="/process-explorer" element={<ProcessExplorer />} />
+                  <Route path="/node-matrix" element={<NodeMatrix />} />
+                  <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
+                  <Route path="/test-report" element={<TestReport />} />
+                  <Route path="/test-scripts" element={<TestScriptsPage />} />
+                  <Route path="/node-tests" element={<NodeTestsPage />} />
+                  <Route path="/node-test-script" element={<NodeTestScriptViewer />} />
+                  <Route path="/files" element={<ProtectedRoute><BpmnFileManager /></ProtectedRoute>} />
+                  <Route path="/registry-status" element={<ProtectedRoute><RegistryStatus /></ProtectedRoute>} />
+                  <Route path="/llm-debug" element={<ProtectedRoute><LlmDebugView /></ProtectedRoute>} />
+                  <Route path="/graph-debug" element={<ProtectedRoute><ProcessGraphDebugPage /></ProtectedRoute>} />
+                  <Route path="/tree-debug" element={<ProtectedRoute><ProcessTreeDebugPage /></ProtectedRoute>} />
+                  <Route path="/jira-naming-debug" element={<ProtectedRoute><JiraNamingDebugPage /></ProtectedRoute>} />
+                  <Route path="/timeline" element={<ProtectedRoute><TimelinePage /></ProtectedRoute>} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/doc-viewer/:docId" element={<DocViewer />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </HashRouter>
+            </TooltipProvider>
+          </IntegrationProvider>
         </BpmnSelectionProvider>
       </ErrorBoundary>
     </QueryClientProvider>

@@ -32,6 +32,8 @@ export interface BpmnNodeData {
   visualOrderIndex?: number;
   branchId?: string | null;
   scenarioPath?: string[];
+  staccIntegrationSource?: string | null;
+  replaceWithBankIntegrationSource?: boolean;
 }
 
 type FlattenedProcessNode = ProcessTreeNode & { 
@@ -189,6 +191,11 @@ export const useAllBpmnNodes = () => {
             visualOrderIndex: node.visualOrderIndex,
             branchId: node.branchId ?? null,
             scenarioPath: node.scenarioPath,
+            staccIntegrationSource: mapping?.stacc_integration_source || null,
+            replaceWithBankIntegrationSource:
+              typeof mapping?.replace_with_bank_integration_source === 'boolean'
+                ? mapping.replace_with_bank_integration_source
+                : true,
           };
 
           nodeMap.set(nodeKey, nodeData);
