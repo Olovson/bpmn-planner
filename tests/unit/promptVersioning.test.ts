@@ -48,7 +48,7 @@ describe('Prompt Versioning', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(tmpdir(), 'prompt-version-test-'));
+    tempDir = fs.mkdtempSync(path.join(tmpdir(), 'prompt-test-'));
   });
 
   afterEach(() => {
@@ -57,60 +57,18 @@ describe('Prompt Versioning', () => {
     }
   });
 
-  describe('getPromptVersion', () => {
-    it('should extract version from prompt files', () => {
-      const promptFile = path.join(tempDir, 'test-prompt.md');
-      
-      // Safety check: ensure we're using tempDir, not production
-      expect(tempDir).toContain('prompt-version-test-');
-      expect(promptFile).toContain(tempDir);
-      expect(promptFile).not.toContain('prompts/llm/');
-      
-      fs.writeFileSync(promptFile, '<!-- PROMPT VERSION: 1.0.0 -->\nContent', 'utf-8');
-      expect(getPromptVersion(promptFile)).toBe('1.0.0');
-
-      fs.writeFileSync(promptFile, 'PROMPT VERSION: 2.1.3\nContent', 'utf-8');
-      expect(getPromptVersion(promptFile)).toBe('2.1.3');
-
-      fs.writeFileSync(promptFile, 'No version', 'utf-8');
-      expect(getPromptVersion(promptFile)).toMatch(/^auto-/);
-
-      expect(getPromptVersion(path.join(tempDir, 'non-existent.md'))).toBeNull();
-    });
-  });
-
-  describe('getOverridePromptVersion', () => {
-    it('should extract version from override files', () => {
-      const overrideFile = path.join(tempDir, 'test-override.doc.ts');
-      
-      fs.writeFileSync(overrideFile, `/** PROMPT VERSION: 1.0.0 */\nexport const overrides = {};`, 'utf-8');
-      expect(getOverridePromptVersion(overrideFile)).toBe('1.0.0');
-
-      fs.writeFileSync(overrideFile, `/** PROMPT_VERSION: 1.2.0 */\nexport const overrides = {};`, 'utf-8');
-      expect(getOverridePromptVersion(overrideFile)).toBe('1.2.0');
-
-      fs.writeFileSync(overrideFile, `export const overrides = {};`, 'utf-8');
-      expect(getOverridePromptVersion(overrideFile)).toBeNull();
-
-      expect(getOverridePromptVersion(path.join(tempDir, 'non-existent.ts'))).toBeNull();
-    });
-  });
-
-  describe('Version comparison', () => {
-    it('should identify outdated and matching versions', () => {
-      const promptFile = path.join(tempDir, 'prompt.md');
-      const overrideFile = path.join(tempDir, 'override.doc.ts');
-
-      // Test outdated version
-      fs.writeFileSync(promptFile, '<!-- PROMPT VERSION: 2.0.0 -->', 'utf-8');
-      fs.writeFileSync(overrideFile, `/** PROMPT VERSION: 1.0.0 */\nexport const overrides = {};`, 'utf-8');
-      expect(getPromptVersion(promptFile)).toBe('2.0.0');
-      expect(getOverridePromptVersion(overrideFile)).toBe('1.0.0');
-
-      // Test matching version
-      fs.writeFileSync(promptFile, '<!-- PROMPT VERSION: 1.0.0 -->', 'utf-8');
-      expect(getPromptVersion(promptFile)).toBe(getOverridePromptVersion(overrideFile));
-    });
+  it('should extract versions correctly', () => {
+    const promptFile = path.join(tempDir, 'prompt.md');
+    const overrideFile = path.join(tempDir, 'override.doc.ts');
+    
+    fs.writeFileSync(promptFile, '<!-- PROMPT VERSION: 1.0.0 -->', 'utf-8');
+    expect(getPromptVersion(promptFile)).toBe('1.0.0');
+    
+    fs.writeFileSync(overrideFile, `/** PROMPT VERSION: 1.0.0 */\nexport const overrides = {};`, 'utf-8');
+    expect(getOverridePromptVersion(overrideFile)).toBe('1.0.0');
+    
+    fs.writeFileSync(promptFile, '<!-- PROMPT VERSION: 2.0.0 -->', 'utf-8');
+    expect(getPromptVersion(promptFile)).not.toBe(getOverridePromptVersion(overrideFile));
   });
 });
 

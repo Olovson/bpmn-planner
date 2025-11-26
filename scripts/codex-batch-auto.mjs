@@ -19,6 +19,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
 const OUTPUT_FILE = path.join(projectRoot, '.codex-batch-all.md');
+const STATUS_FILE = path.join(projectRoot, '.codex-batch-status.json');
 
 // Hitta alla override-filer
 function findOverrideFiles() {
@@ -232,6 +233,23 @@ Detta dokument innehåller instruktioner för att batch-generera innehåll för 
 \`\`\`json
 {
   "total": ${filesNeedingUpdate.length},
+  "completed": ["fil1", "fil2", ...],
+  "current": "filX",
+  "lastUpdated": "2024-11-26T20:00:00Z"
+}
+\`\`\`
+- Lägg till varje klar fil i \`completed\`-arrayen (om den inte redan finns)
+- Uppdatera \`current\` med filen du just bearbetar (eller null om klar)
+- Uppdatera \`lastUpdated\` med aktuellt datum/tid (ISO-format)
+- **Rapportera INTE i chatten - bara uppdatera filen!**
+- **Fråga INTE om du ska fortsätta - bara uppdatera status och fortsätt!**
+
+### Regel 3: Statusrapportering (VIKTIGT!)
+- Efter varje fil du bearbetar, uppdatera statusfilen: \`.codex-batch-status.json\`
+- Format:
+\`\`\`json
+{
+  "total": ${filesNeedingUpdate.length},
   "completed": [fil1, fil2, ...],
   "current": "filX",
   "lastUpdated": "2024-11-26T20:00:00Z"
@@ -319,6 +337,11 @@ ${file.needsVersionUpdate ? `\n**⚠️ Gammal prompt-version:** Nuvarande: ${fi
    Lägg till/uppdatera denna kommentar direkt efter NODE CONTEXT-kommentaren, INNAN export-satsen.
 9. **Kontrollera INNAN du sparar:** Har du ändrat något som INTE var 'TODO'? → Ångra ändringen!
 10. Spara filen
+11. **Uppdatera statusfilen** (\`.codex-batch-status.json\`):
+    - Lägg till \`${file.relativePath}\` i \`completed\`-arrayen (om den inte redan finns)
+    - Uppdatera \`current\` till nästa fil i listan (eller null om alla är klara)
+    - Uppdatera \`lastUpdated\` till aktuellt datum/tid (ISO-format)
+    - **Fråga INTE om du ska fortsätta - bara uppdatera och gå vidare till nästa fil!**
 
 ---
 `;
@@ -351,11 +374,23 @@ Innan du sparar en fil, kontrollera:
 
   fs.writeFileSync(OUTPUT_FILE, instructions, 'utf-8');
 
+  // Skapa initial statusfil
+  const initialStatus = {
+    total: filesNeedingUpdate.length,
+    completed: [],
+    current: null,
+    lastUpdated: new Date().toISOString(),
+    started: new Date().toISOString(),
+  };
+  fs.writeFileSync(STATUS_FILE, JSON.stringify(initialStatus, null, 2), 'utf-8');
+
   console.log('\n' + '='.repeat(70));
   console.log('✅ Instruktionsfil skapad!');
   console.log('='.repeat(70) + '\n');
 
-  console.log(`📄 Fil: ${path.relative(projectRoot, OUTPUT_FILE)}\n`);
+  console.log(`📄 Fil: ${path.relative(projectRoot, OUTPUT_FILE)}`);
+  console.log(`📊 Statusfil: ${path.relative(projectRoot, STATUS_FILE)}`);
+  console.log('   (Uppdateras automatiskt av Codex när filer bearbetas)\n');
 
   console.log('📋 Nästa steg:\n');
   console.log('1. Öppna Codex-chatten i Cursor');
@@ -375,8 +410,16 @@ Innan du sparar en fil, kontrollera:
 
   console.log('💡 Tips:');
   console.log('   - Codex kan läsa .codex-batch-all.md direkt');
+  console.log('   - Följ progress i .codex-batch-status.json (uppdateras automatiskt)');
   console.log('   - Bearbeta i batchar om det är många filer');
-  console.log('   - Kontrollera resultatet med: git diff src/data/node-docs/\n');
+  console.log('   - Kontrollera resultatet med: git diff src/data/node-docs/');
+  console.log('\n📊 Statusfil-format:');
+  console.log('   {');
+  console.log('     "total": ' + filesNeedingUpdate.length + ',');
+  console.log('     "completed": ["fil1", "fil2", ...],');
+  console.log('     "current": "filX",');
+  console.log('     "lastUpdated": "2024-11-26T20:00:00Z"');
+  console.log('   }');
 }
 
 main();

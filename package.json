@@ -37,6 +37,7 @@
     "codex:batch": "node scripts/codex-batch.mjs",
     "codex:batch:auto": "node scripts/codex-batch-auto.mjs",
     "check:prompt-versions": "node scripts/check-prompt-versions.mjs",
+    "validate:codex-pipeline": "node scripts/validate-codex-pipeline.mjs",
     "codex:batch:epic": "node scripts/codex-batch.mjs epic",
     "codex:batch:feature": "node scripts/codex-batch.mjs feature-goal",
     "codex:batch:business-rule": "node scripts/codex-batch.mjs business-rule",

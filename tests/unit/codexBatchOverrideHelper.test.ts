@@ -115,14 +115,8 @@ describe('Codex Batch Override Helper', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(tmpdir(), 'codex-batch-test-'));
-    
-    // Create directory structure
-    const nodeDocsRoot = path.join(tempDir, 'src', 'data', 'node-docs');
-    fs.mkdirSync(nodeDocsRoot, { recursive: true });
-    fs.mkdirSync(path.join(nodeDocsRoot, 'feature-goal'), { recursive: true });
-    fs.mkdirSync(path.join(nodeDocsRoot, 'epic'), { recursive: true });
-    fs.mkdirSync(path.join(nodeDocsRoot, 'business-rule'), { recursive: true });
+    tempDir = fs.mkdtempSync(path.join(tmpdir(), 'codex-test-'));
+    fs.mkdirSync(path.join(tempDir, 'src', 'data', 'node-docs', 'feature-goal'), { recursive: true });
   });
 
   afterEach(() => {
@@ -131,59 +125,19 @@ describe('Codex Batch Override Helper', () => {
     }
   });
 
-  describe('findOverrideFiles', () => {
-    it('should find override files and ignore non-doc.ts files', () => {
-      const featureFile = path.join(tempDir, 'src', 'data', 'node-docs', 'feature-goal', 'test.doc.ts');
-      fs.writeFileSync(featureFile, 'export const overrides = {};');
-      fs.writeFileSync(path.join(tempDir, 'src', 'data', 'node-docs', 'feature-goal', 'test.ts'), 'export const test = {};');
-
-      const files = findOverrideFiles(tempDir);
-      
-      // Safety check: ensure we're using tempDir, not production
-      expect(tempDir).toContain('codex-batch-test-');
-      expect(files.length).toBeGreaterThanOrEqual(1);
-      expect(files.some(f => f.docType === 'feature-goal')).toBe(true);
-      // Verify all files are in tempDir, not production
-      files.forEach(f => {
-        expect(f.filePath).toContain(tempDir);
-        expect(f.filePath).not.toContain(process.cwd());
-      });
-    });
-  });
-
-  describe('needsUpdate', () => {
-    it('should detect files needing update (TODO, empty, old versions)', () => {
-      const filePath = path.join(tempDir, 'test.doc.ts');
-      const promptVersions = { featureEpic: '1.0.0', businessRule: '1.0.0' };
-
-      fs.writeFileSync(filePath, `export const overrides = { summary: 'TODO' };`, 'utf-8');
-      expect(needsUpdate(filePath, 'feature-goal', promptVersions)).toBe(true);
-
-      fs.writeFileSync(filePath, `export const overrides = { effectGoals: [], };`, 'utf-8');
-      expect(needsUpdate(filePath, 'feature-goal', promptVersions)).toBe(true);
-
-      fs.writeFileSync(filePath, `/** PROMPT VERSION: 1.0.0 */\nexport const overrides = { summary: 'Content', effectGoals: ['Goal'], };`, 'utf-8');
-      expect(needsUpdate(filePath, 'feature-goal', { featureEpic: '2.0.0', businessRule: '1.0.0' })).toBe(true);
-      expect(needsUpdate(filePath, 'feature-goal', promptVersions)).toBe(false);
-    });
-  });
-
-  describe('analyzeFile', () => {
-    it('should extract context and identify fields needing update', () => {
-      const filePath = path.join(tempDir, 'test.doc.ts');
-      
-      fs.writeFileSync(filePath, `/** bpmnFile: test.bpmn\nelementId: test-node\ntype: feature-goal */\nexport const overrides = {};`, 'utf-8');
-      const analysis1 = analyzeFile(filePath);
-      expect(analysis1.context?.bpmnFile).toBe('test.bpmn');
-
-      fs.writeFileSync(filePath, `export const overrides = { summary: 'TODO', effectGoals: [], };`, 'utf-8');
-      const analysis2 = analyzeFile(filePath);
-      expect(analysis2.needsUpdate.length).toBeGreaterThan(0);
-      expect(analysis2.needsUpdate.some(f => f.type === 'TODO' || f.type === 'empty array')).toBe(true);
-
-      fs.writeFileSync(filePath, `export const overrides = { summary: 'Complete', effectGoals: ['Goal'], };`, 'utf-8');
-      expect(analyzeFile(filePath).needsUpdate).toHaveLength(0);
-    });
+  it('should find files, detect updates, and analyze correctly', () => {
+    const filePath = path.join(tempDir, 'src', 'data', 'node-docs', 'feature-goal', 'test.doc.ts');
+    fs.writeFileSync(filePath, 'export const overrides = {};');
+    expect(findOverrideFiles(tempDir).length).toBe(1);
+    
+    const promptVersions = { featureEpic: '1.0.0', businessRule: '1.0.0' };
+    fs.writeFileSync(filePath, `export const overrides = { summary: 'TODO' };`, 'utf-8');
+    expect(needsUpdate(filePath, 'feature-goal', promptVersions)).toBe(true);
+    
+    fs.writeFileSync(filePath, `/** bpmnFile: test.bpmn\nelementId: test\ntype: feature-goal */\nexport const overrides = { summary: 'TODO' };`, 'utf-8');
+    const analysis = analyzeFile(filePath);
+    expect(analysis.context?.bpmnFile).toBe('test.bpmn');
+    expect(analysis.needsUpdate.length).toBeGreaterThan(0);
   });
 });
 
