@@ -43,8 +43,10 @@ export function createPlannedScenariosFromTree(
 
       const key = `${node.bpmnFile}::${node.bpmnElementId}`;
       if (seen.has(key)) {
-        console.warn(
-          '[createPlannedScenariosFromTree] Duplicate node key skipped:',
+        // Expected: same node can appear in multiple contexts (parent/subprocess, different flows)
+        // We deduplicate by keeping the first occurrence
+        console.debug(
+          '[createPlannedScenariosFromTree] Duplicate node key skipped (expected in hierarchical BPMN):',
           key,
           { label: node.label, type: node.type },
         );
@@ -113,8 +115,10 @@ export function createPlannedScenariosFromGraph(
 
     const key = `${node.bpmnFile}::${node.bpmnElementId}`;
     if (seen.has(key)) {
-      console.warn(
-        '[createPlannedScenariosFromGraph] Duplicate node key skipped:',
+      // Expected: same node can appear in multiple contexts (parent/subprocess, different flows)
+      // We deduplicate by keeping the first occurrence
+      console.debug(
+        '[createPlannedScenariosFromGraph] Duplicate node key skipped (expected in hierarchical BPMN):',
         key,
         { name: node.name, type: node.type },
       );

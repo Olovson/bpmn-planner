@@ -1,3 +1,10 @@
+import type {
+  ScenarioAssertionType,
+  ScenarioPersona,
+  ScenarioRiskLevel,
+  ScenarioUiStep,
+} from '@/lib/epicDocTypes';
+
 /**
  * E2E (End-to-End) Test Scenario Types
  * 
@@ -22,6 +29,11 @@ export interface E2EScenario {
   testFilePath?: string;
   createdAt?: string;
   updatedAt?: string;
+  persona?: ScenarioPersona;
+  riskLevel?: ScenarioRiskLevel;
+  assertionType?: ScenarioAssertionType;
+  dataProfileId?: string;
+  uiFlow?: ScenarioUiStep[];
 }
 
 /**

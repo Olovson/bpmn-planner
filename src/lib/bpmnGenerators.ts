@@ -47,6 +47,8 @@ import {
 } from '@/lib/plannedScenariosHelper';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { buildProcessTreeFromGraph } from '@/lib/bpmn/buildProcessTreeFromGraph';
+import { generateExportReadyTest } from './exportReadyTestGenerator';
+import type { EpicScenario } from './epicDocTypes';
 
 export type GenerationPhaseKey =
   | 'graph:start'
@@ -254,6 +256,23 @@ function generateNodeTests(node: HierarchicalTestNode, indentLevel: number): str
   }
 
   return result;
+}
+
+// ============= EXPORT-READY TEST GENERATOR =============
+
+/**
+ * Generate export-ready test from EpicScenario
+ * This creates tests ready for export to complete environment
+ */
+export function generateExportReadyTestFromScenario(
+  element: BpmnElement,
+  scenario: EpicScenario
+): string {
+  return generateExportReadyTest(element, scenario, {
+    includeBpmnMetadata: true,
+    includePlaceholders: true,
+    exportFormat: 'playwright',
+  });
 }
 
 // ============= LEGACY TEST SKELETON GENERATOR (for backward compatibility) =============

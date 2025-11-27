@@ -1,3 +1,9 @@
+import type {
+  ScenarioAssertionType,
+  ScenarioPersona,
+  ScenarioRiskLevel,
+} from '@/lib/epicDocTypes';
+
 // NOTE: This file contains mock test data for UI display purposes.
 // For actual subprocess metadata (IDs, filenames, URLs), see src/data/subprocessRegistry.ts
 
@@ -13,6 +19,9 @@ export interface TestScenario {
    * (sätts av LLM-valideringen, påverkar inte körning utan bara UI).
    */
   contextWarning?: boolean;
+  persona?: ScenarioPersona;
+  riskLevel?: ScenarioRiskLevel;
+  assertionType?: ScenarioAssertionType;
 }
 
 export interface TestInfo {

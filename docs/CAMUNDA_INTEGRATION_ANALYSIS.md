@@ -20,17 +20,20 @@ Detta dokument analyserar hur man skulle implementera **Camunda** för att fakti
 
 ### Camunda-varianter
 
-1. **Camunda Platform** (tidigare Camunda BPM)
+1. **Camunda Platform** (tidigare Camunda BPM) ⭐ **REKOMMENDERAT FÖR LOKAL**
+   - **Open Source Community Edition** - helt gratis, ingen cloud-bindning
    - Fullständig BPM-plattform med REST API
-   - Kräver separat server (Java-baserad)
-   - Bra för enterprise-användning
+   - Kan köras lokalt med Docker eller standalone
    - Har web UI (Cockpit, Tasklist, Admin)
+   - **Ingen registrering eller cloud-konto krävs**
+   - Perfekt för lokal utveckling och produktion
 
 2. **Camunda Platform 8** (Zeebe)
    - Cloud-native, skalbar
    - Event-driven architecture
    - Bättre för microservices
-   - Kräver Camunda Cloud eller self-hosted Zeebe
+   - **Community Edition** finns också för lokal deployment
+   - Mer komplex setup än Platform 7
 
 3. **Embedded Camunda Engine**
    - Embedded i Java-applikation
@@ -237,41 +240,102 @@ Supabase PostgreSQL (process state)
 
 ### 5.1 Phase 1: Setup & Infrastructure
 
-#### 5.1.1 Deploya Camunda Platform
+#### 5.1.1 Deploya Camunda Platform Lokalt (100% Gratis, Ingen Cloud)
 
-**Docker Compose (lokal utveckling):**
+**✅ Open Source Community Edition - Ingen Registrering Krävs**
+
+Camunda Platform Community Edition är helt open source och kan köras lokalt utan någon bindning till Camunda Cloud eller konton.
+
+**Docker Compose Setup (Rekommenderat):**
+
+Skapa `docker/camunda/docker-compose.yml`:
+
 ```yaml
 version: '3.8'
 services:
   camunda:
     image: camunda/camunda-bpm-platform:latest
+    container_name: bpmn-planner-camunda
     ports:
-      - "8080:8080"
+      - "8080:8080"  # Camunda REST API och Web UI
     environment:
       - DB_DRIVER=org.postgresql.Driver
-      - DB_URL=jdbc:postgresql://postgres:5432/camunda
+      - DB_URL=jdbc:postgresql://camunda-db:5432/camunda
       - DB_USERNAME=camunda
       - DB_PASSWORD=camunda
+      - WAIT_FOR=camunda-db:5432
     depends_on:
-      - postgres
+      - camunda-db
+    volumes:
+      - camunda_data:/camunda/webapps
+    networks:
+      - camunda-network
+    restart: unless-stopped
   
-  postgres:
-    image: postgres:15
+  camunda-db:
+    image: postgres:15-alpine
+    container_name: bpmn-planner-camunda-db
     environment:
       - POSTGRES_DB=camunda
       - POSTGRES_USER=camunda
       - POSTGRES_PASSWORD=camunda
     volumes:
       - camunda_db_data:/var/lib/postgresql/data
+    networks:
+      - camunda-network
+    restart: unless-stopped
+    ports:
+      - "5433:5432"  # Exponera på annan port för att undvika konflikt med Supabase
 
 volumes:
   camunda_db_data:
+  camunda_data:
+
+networks:
+  camunda-network:
+    driver: bridge
 ```
 
-**Produktion:**
-- Deploya Camunda Platform på egen server eller cloud
-- Konfigurera PostgreSQL-databas
-- Sätt upp REST API-autentisering
+**Starta Camunda:**
+```bash
+cd docker/camunda
+docker-compose up -d
+```
+
+**Verifiera:**
+- Web UI: http://localhost:8080/camunda
+- REST API: http://localhost:8080/engine-rest
+- Default credentials: `demo` / `demo` (ändra i produktion!)
+
+**Alternativ: Standalone Deployment (utan Docker):**
+
+1. Ladda ner Camunda Platform från https://camunda.com/download/
+2. Extrahera ZIP-filen
+3. Konfigurera `conf/server.xml` för PostgreSQL
+4. Starta med `start-camunda.sh` (Linux/Mac) eller `start-camunda.bat` (Windows)
+
+**Integration med Supabase (lokalt):**
+
+Camunda kan använda samma PostgreSQL-instans som Supabase, eller separat:
+
+**Alternativ A: Delad PostgreSQL (enklare för lokal utveckling)**
+```yaml
+camunda:
+  environment:
+    - DB_URL=jdbc:postgresql://localhost:54321/camunda  # Supabase PostgreSQL
+    - DB_USERNAME=postgres
+    - DB_PASSWORD=your-supabase-password
+```
+
+**Alternativ B: Separat PostgreSQL (rekommenderat för produktion)**
+- Använd separat PostgreSQL-container (som i docker-compose ovan)
+- Bättre isolering och säkerhet
+
+**Produktion (Self-Hosted):**
+- Deploya Camunda Platform på egen server (AWS, Azure, GCP, eller on-premise)
+- Använd PostgreSQL-databas (kan vara samma som Supabase eller separat)
+- Konfigurera REST API-autentisering
+- **Ingen cloud-bindning - allt körs lokalt/self-hosted**
 
 #### 5.1.2 Supabase Schema-utökning
 
@@ -913,21 +977,135 @@ async function executeProcess(instance: ProcessInstance) {
 
 ---
 
-## 11. Nästa Steg
+## 11. Lokal Deployment Plan (Ingen Cloud-bindning)
 
-1. **Proof of Concept**: Bygg en enkel execution engine för en process
-2. **Utvärdera**: Testa med riktiga processer
-3. **Beslut**: Egen engine eller Camunda?
-4. **Implementation**: Följ vald approach
-5. **Integration**: Koppla till befintlig app
+### 11.1 Steg-för-steg Setup
+
+**Steg 1: Skapa Docker Compose-fil**
+```bash
+mkdir -p docker/camunda
+# Skapa docker-compose.yml (se ovan)
+```
+
+**Steg 2: Starta Camunda lokalt**
+```bash
+cd docker/camunda
+docker-compose up -d
+```
+
+**Steg 3: Verifiera Installation**
+- Öppna http://localhost:8080/camunda
+- Logga in med `demo` / `demo`
+- Verifiera att REST API svarar: http://localhost:8080/engine-rest/engine
+
+**Steg 4: Konfigurera Environment Variables**
+```bash
+# .env.local
+CAMUNDA_REST_URL=http://localhost:8080/engine-rest
+CAMUNDA_USERNAME=demo
+CAMUNDA_PASSWORD=demo
+```
+
+**Steg 5: Uppdatera Supabase Edge Functions**
+- Använd `CAMUNDA_REST_URL` från environment
+- Inga cloud-credentials behövs
+
+### 11.2 Produktion (Self-Hosted)
+
+**Alternativ A: Docker på Server**
+- Deploya samma docker-compose.yml på egen server
+- Konfigurera reverse proxy (nginx) för HTTPS
+- Använd produktions-PostgreSQL
+
+**Alternativ B: Standalone Deployment**
+- Ladda ner Camunda Platform ZIP
+- Installera på server (Java 11+ krävs)
+- Konfigurera som systemd service
+- Använd produktions-PostgreSQL
+
+**Alternativ C: Kubernetes**
+- Deploya Camunda som Kubernetes deployment
+- Använd PostgreSQL StatefulSet
+- Konfigurera ingress för extern access
+
+### 11.3 Säkerhet
+
+**Lokal Utveckling:**
+- Default credentials (`demo`/`demo`) är OK
+- Endast tillgänglig lokalt
+
+**Produktion:**
+- Ändra default credentials
+- Konfigurera REST API-autentisering
+- Använd HTTPS
+- Begränsa nätverksaccess
+- Använd produktions-PostgreSQL med säkra lösenord
+
+### 11.4 Backup & Maintenance
+
+**Database Backup:**
+- Backup PostgreSQL-databasen regelbundet
+- Camunda lagrar all state i databasen
+
+**Versionering:**
+- Process definitions versioneras automatiskt i Camunda
+- Gamla versioner behålls för historik
+
+**Monitoring:**
+- Camunda Web UI inkluderar monitoring
+- REST API för metrics
+- Kan integrera med Prometheus/Grafana
 
 ---
 
-## 12. Referenser
+## 12. Nästa Steg
+
+1. **Proof of Concept**: Starta Camunda lokalt med Docker
+2. **Testa REST API**: Deploya en enkel BPMN-process
+3. **Integrera med Supabase**: Skapa Edge Functions för deployment
+4. **Bygg Frontend**: Lägg till Process Execution View
+5. **Testa med Riktiga Processer**: Validera med mortgage-processer
+
+---
+
+## 13. FAQ: Lokal Deployment (Ingen Cloud-bindning)
+
+### Q: Behöver jag registrera ett konto hos Camunda?
+**A:** Nej! Camunda Platform Community Edition är helt open source och kräver ingen registrering. Du kan ladda ner och använda den helt gratis utan någon bindning till Camunda Cloud eller konton.
+
+### Q: Kan jag köra Camunda helt lokalt?
+**A:** Ja! Camunda kan köras lokalt med Docker eller standalone, helt utan internet-anslutning (efter initial download). Allt körs på din egen maskin eller server.
+
+### Q: Vad kostar det?
+**A:** Community Edition är helt gratis. Enterprise Edition kostar pengar, men behövs inte för de flesta användningsfall. Du betalar ingenting för Community Edition.
+
+### Q: Kan jag använda samma PostgreSQL som Supabase?
+**A:** Ja, tekniskt sett kan du använda samma PostgreSQL-instans, men rekommenderat att använda separat databas för bättre isolering och säkerhet.
+
+### Q: Hur uppdaterar jag Camunda?
+**A:** Ladda ner ny version och uppdatera Docker image eller standalone installation. Process definitions migreras automatiskt vid uppdatering.
+
+### Q: Vad händer om jag vill flytta till Camunda Cloud senare?
+**A:** Process definitions är kompatibla, men du måste migrera data. Rekommenderat att stanna lokalt om det fungerar bra - du har full kontroll och betalar ingenting.
+
+### Q: Behöver jag Java-kunskap?
+**A:** För att köra Camunda behöver du bara Docker (eller Java runtime för standalone). För att utveckla integrations behöver du bara kunna anropa REST API (vilket du gör från Node.js/Supabase Edge Functions).
+
+### Q: Kan jag köra Camunda i produktion?
+**A:** Ja! Camunda Platform Community Edition kan användas i produktion. Många företag kör Community Edition i produktion. Enterprise Edition ger extra features (support, monitoring tools, etc.) men är inte nödvändigt.
+
+### Q: Hur skalar jag Camunda?
+**A:** Camunda kan skalas horisontellt genom att köra flera instanser mot samma databas. För större skalning kan du använda Camunda Platform 8 (Zeebe) som är designad för cloud-native skalning.
+
+---
+
+## 14. Referenser
 
 - [Camunda Platform Documentation](https://docs.camunda.org/manual/latest/)
 - [Camunda REST API](https://docs.camunda.org/manual/latest/reference/rest/)
 - [Camunda External Tasks](https://docs.camunda.org/manual/latest/user-guide/process-engine/external-tasks/)
+- [Camunda Docker Images](https://hub.docker.com/r/camunda/camunda-bpm-platform) - Helt gratis, ingen registrering
+- [Camunda Community Edition Download](https://camunda.com/download/) - Open source, gratis
 - [BPMN 2.0 Specification](https://www.omg.org/spec/BPMN/2.0/)
 
 ---

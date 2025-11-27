@@ -2,7 +2,13 @@ import { NodeDocumentationContext } from './documentationContext';
 import { getNodeDocViewerPath } from './nodeArtifactPaths';
 import { mapFeatureGoalLlmToSections } from './featureGoalLlmMapper';
 import type { FeatureGoalDocModel, FeatureGoalLlmSections } from './featureGoalLlmTypes';
-import type { EpicDocModel, EpicScenario } from './epicDocTypes';
+import type {
+  EpicDocModel,
+  EpicScenario,
+  ScenarioAssertionType,
+  ScenarioPersona,
+  ScenarioRiskLevel,
+} from './epicDocTypes';
 import { mapEpicLlmToSections } from './epicLlmMapper';
 import type { BusinessRuleDocModel } from './businessRuleDocTypes';
 import { mapBusinessRuleLlmToSections } from './businessRuleLlmMapper';
@@ -1341,9 +1347,18 @@ function buildEpicDocModelFromContext(
   ];
 
   const businessRulesPolicy = businessRuleRefs;
+  const defaultPersona: ScenarioPersona = isServiceTask ? 'system' : isUserTask ? 'customer' : 'unknown';
+  const defaultRiskLevel: ScenarioRiskLevel = 'P1';
+  const defaultAssertionType: ScenarioAssertionType = 'functional';
+  const defaultScenarioMetadata: Pick<EpicScenario, 'persona' | 'riskLevel' | 'assertionType'> = {
+    persona: defaultPersona,
+    riskLevel: defaultRiskLevel,
+    assertionType: defaultAssertionType,
+  };
 
   const scenarios: EpicScenario[] = [
     {
+      ...defaultScenarioMetadata,
       id: 'EPIC-S1',
       name: 'Happy path',
       type: 'Happy',
@@ -1353,6 +1368,7 @@ function buildEpicDocModelFromContext(
         : 'Tjänsten exekverar utan fel och uppdaterar processen enligt förväntan.',
     },
     {
+      ...defaultScenarioMetadata,
       id: 'EPIC-S2',
       name: 'Valideringsfel',
       type: 'Edge',
@@ -1360,6 +1376,7 @@ function buildEpicDocModelFromContext(
       outcome: 'Fel visas/loggas och användaren eller tjänsten kan hantera och rätta indata innan processen går vidare.',
     },
     {
+      ...defaultScenarioMetadata,
       id: 'EPIC-S3',
       name: 'Tekniskt fel / beroende nere',
       type: 'Error',
