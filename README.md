@@ -4,7 +4,8 @@
 
 > Arkitektur & hierarki: `docs/bpmn-hierarchy-architecture.md`  
 > LLM-kontrakt & prompts: `prompts/llm/*`  
-> Test-scenarion & design-scenarion: `docs/TEST_MAPPING_DESIGN_SCENARIOS.md`
+> Test-scenarion & design-scenarion: `docs/TEST_MAPPING_DESIGN_SCENARIOS.md`  
+> **👨‍💼 För Test Lead**: `docs/README_FOR_TESTLEAD.md` - Guide om hur BPMN Planner fungerar och hur du tar test scripts vidare till ditt reella projekt
 >
 > **Not om subprocesser (callActivity vs subProcess)**  
 > I många modeller används både `bpmn:callActivity` (tydlig extern subprocess) och `bpmn:subProcess` (inlinad subprocess) för att beskriva logiken.  
@@ -144,6 +145,8 @@ Jira-namn genereras via `buildJiraName()` i `src/lib/jiraNaming.ts` och används
 # 📤 Test Export
 
 BPMN Planner kan generera **export-ready test scripts** som kan tas till en complete environment för finalisering. Dessa scripts innehåller BPMN-metadata, tydliga TODO-markörer och struktur som kan kompletteras i målmiljön.
+
+> **👨‍💼 För Test Lead**: Se [README_FOR_TESTLEAD.md](docs/README_FOR_TESTLEAD.md) för en dedikerad guide om hur BPMN Planner fungerar och hur du tar test scripts vidare till ditt reella projekt.
 
 ## Översikt
 
