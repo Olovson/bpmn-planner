@@ -11,6 +11,7 @@ import type { BpmnElement } from '@/lib/bpmnParser';
 import type { EpicScenario } from './epicDocTypes';
 import { generateExportReadyTest } from './exportReadyTestGenerator';
 import { getTestFilePath } from './testContextGuard';
+import { getTestScenariosFromHtml } from './htmlTestGenerationParser';
 
 export interface ExportOptions {
   format: 'playwright' | 'jest' | 'mocha';
@@ -30,15 +31,21 @@ export interface ExportSummary {
 /**
  * Export tests for use in complete environment
  * 
+ * This function will:
+ * 1. Try to get scenarios from HTML (v2 Feature Goal documents) first
+ * 2. Fall back to provided scenarios map if HTML is not available
+ * 
  * @param elements - BPMN elements to export tests for
- * @param scenarios - Map of element ID to scenarios
+ * @param scenarios - Map of element ID to scenarios (fallback if HTML not available)
  * @param options - Export options
+ * @param preferHtmlScenarios - If true, try to fetch scenarios from HTML first (default: true)
  * @returns Summary of exported tests
  */
 export async function exportTestsForCompleteEnvironment(
   elements: BpmnElement[],
   scenarios: Map<string, EpicScenario[]>,
-  options: ExportOptions
+  options: ExportOptions,
+  preferHtmlScenarios: boolean = true
 ): Promise<ExportSummary> {
   const summary: ExportSummary = {
     totalTests: 0,
@@ -50,7 +57,28 @@ export async function exportTestsForCompleteEnvironment(
   };
 
   for (const element of elements) {
-    const elementScenarios = scenarios.get(element.id) || [];
+    let elementScenarios = scenarios.get(element.id) || [];
+
+    // Try to get scenarios from HTML if this is a Feature Goal (CallActivity)
+    if (preferHtmlScenarios && element.type === 'bpmn:CallActivity' && element.bpmnFile) {
+      try {
+        const htmlScenarios = await getTestScenariosFromHtml(
+          element.bpmnFile,
+          element.id,
+          'v2'
+        );
+        
+        if (htmlScenarios && htmlScenarios.length > 0) {
+          // Use HTML scenarios, but merge with provided scenarios if needed
+          // HTML scenarios take precedence
+          elementScenarios = htmlScenarios;
+          console.log(`[Export] Using ${htmlScenarios.length} scenarios from HTML for ${element.id}`);
+        }
+      } catch (error) {
+        console.warn(`[Export] Could not fetch scenarios from HTML for ${element.id}:`, error);
+        // Fall back to provided scenarios
+      }
+    }
 
     for (const scenario of elementScenarios) {
       const testCode = generateExportReadyTest(element, scenario, {
@@ -122,16 +150,38 @@ export function generateExportManifest(
 /**
  * Generate test code for download
  * Returns a map of file paths to test code
+ * 
+ * This function will try to get scenarios from HTML first, then fall back to provided scenarios
  */
-export function generateTestFilesForExport(
+export async function generateTestFilesForExport(
   elements: BpmnElement[],
   scenarios: Map<string, EpicScenario[]>,
-  options: ExportOptions
-): Map<string, string> {
+  options: ExportOptions,
+  preferHtmlScenarios: boolean = true
+): Promise<Map<string, string>> {
   const files = new Map<string, string>();
 
   for (const element of elements) {
-    const elementScenarios = scenarios.get(element.id) || [];
+    let elementScenarios = scenarios.get(element.id) || [];
+
+    // Try to get scenarios from HTML if this is a Feature Goal (CallActivity)
+    if (preferHtmlScenarios && element.type === 'bpmn:CallActivity' && element.bpmnFile) {
+      try {
+        const htmlScenarios = await getTestScenariosFromHtml(
+          element.bpmnFile,
+          element.id,
+          'v2'
+        );
+        
+        if (htmlScenarios && htmlScenarios.length > 0) {
+          elementScenarios = htmlScenarios;
+          console.log(`[Export] Using ${htmlScenarios.length} scenarios from HTML for ${element.id}`);
+        }
+      } catch (error) {
+        console.warn(`[Export] Could not fetch scenarios from HTML for ${element.id}:`, error);
+        // Fall back to provided scenarios
+      }
+    }
 
     for (const scenario of elementScenarios) {
       const testCode = generateExportReadyTest(element, scenario, {

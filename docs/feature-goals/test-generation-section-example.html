@@ -1,0 +1,274 @@
+<!-- Exempel på Testgenerering-sektion för v2 Feature Goal-dokumentation -->
+<!-- Detta är ett exempel som visar hur sektionen skulle se ut i HTML -->
+
+<section class="doc-section">
+  <h2>Testgenerering</h2>
+  <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+  <!-- Testscenarier tabell -->
+  <h3>Testscenarier</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Namn</th>
+        <th>Typ</th>
+        <th>Persona</th>
+        <th>Risk Level</th>
+        <th>Assertion Type</th>
+        <th>Outcome</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – komplett ansökan</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Ansökan bekräftad och går vidare till kreditevaluering</td>
+        <td>✅ Planerad</td>
+      </tr>
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Ofullständig information</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td>Kunden styrs till komplettering, beslut skjuts upp</td>
+        <td>⏳ TODO</td>
+      </tr>
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Pre-screen rejected</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Ansökan avvisas tidigt, felmeddelande visas</td>
+        <td>✅ Planerad</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- UI Flow per scenario (expandable) -->
+  <h3>UI Flow per Scenario</h3>
+  <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+  
+  <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+    <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+      <strong>S1: Normalflöde – komplett ansökan</strong> (Klicka för att expandera)
+    </summary>
+    <table style="margin-top: 12px;">
+      <thead>
+        <tr>
+          <th>Steg</th>
+          <th>Page ID</th>
+          <th>Action</th>
+          <th>Locator ID</th>
+          <th>Data Profile</th>
+          <th>Kommentar</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>application-form</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till ansökningsformulär</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>application-form</td>
+          <td>fill</td>
+          <td>income-input</td>
+          <td>customer-high-income</td>
+          <td>Fyll i inkomst (>600k SEK/år)</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>application-form</td>
+          <td>fill</td>
+          <td>household-size-input</td>
+          <td>customer-standard-household</td>
+          <td>Fyll i hushållsstorlek (2 vuxna, 2 barn)</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>application-form</td>
+          <td>click</td>
+          <td>submit-button</td>
+          <td>-</td>
+          <td>Skicka ansökan</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>confirmation-page</td>
+          <td>verify</td>
+          <td>success-message</td>
+          <td>-</td>
+          <td>Verifiera bekräftelse</td>
+        </tr>
+      </tbody>
+    </table>
+  </details>
+
+  <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+    <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+      <strong>S2: Ofullständig information</strong> (Klicka för att expandera)
+    </summary>
+    <table style="margin-top: 12px;">
+      <thead>
+        <tr>
+          <th>Steg</th>
+          <th>Page ID</th>
+          <th>Action</th>
+          <th>Locator ID</th>
+          <th>Data Profile</th>
+          <th>Kommentar</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>application-form</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till ansökningsformulär</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>application-form</td>
+          <td>fill</td>
+          <td>income-input</td>
+          <td>customer-high-income</td>
+          <td>Fyll i inkomst</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>application-form</td>
+          <td>click</td>
+          <td>submit-button</td>
+          <td>-</td>
+          <td>Försök skicka utan att fylla i hushållsstorlek</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>application-form</td>
+          <td>verify</td>
+          <td>validation-error</td>
+          <td>-</td>
+          <td>Verifiera att valideringsfel visas</td>
+        </tr>
+      </tbody>
+    </table>
+  </details>
+
+  <!-- Testdata-referenser -->
+  <h3>Testdata-referenser</h3>
+  <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+  <ul>
+    <li><strong>customer-high-income</strong>: Kund med hög inkomst (>600k SEK/år), låg skuldsättning (<30%), god kredithistorik</li>
+    <li><strong>customer-standard-household</strong>: Standard hushåll (2 vuxna, 2 barn), medianinkomst (~400k SEK/år)</li>
+    <li><strong>customer-low-income</strong>: Kund med låg inkomst (<300k SEK/år), hög skuldsättning (>50%)</li>
+    <li><strong>stakeholder-primary</strong>: Primär sökande med fullständig information (personnummer, inkomst, fastighet)</li>
+    <li><strong>stakeholder-co-applicant</strong>: Medsökande med kompletterande information</li>
+  </ul>
+
+  <!-- Implementation Mapping -->
+  <h3>Implementation Mapping</h3>
+  <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+  <table>
+    <thead>
+      <tr>
+        <th>BPMN Aktivitet</th>
+        <th>Type</th>
+        <th>Route/Endpoint</th>
+        <th>Method</th>
+        <th>Base URL</th>
+        <th>Kommentar</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Confirm application</td>
+        <td>UI</td>
+        <td>/application/confirm</td>
+        <td>-</td>
+        <td>https://mortgage-app.example.com</td>
+        <td>User task - kundportal</td>
+      </tr>
+      <tr>
+        <td>Internal data gathering</td>
+        <td>API</td>
+        <td>/api/v1/party-information</td>
+        <td>GET</td>
+        <td>https://api.mortgage.example.com</td>
+        <td>Service task - hämtar partdata</td>
+      </tr>
+      <tr>
+        <td>Household</td>
+        <td>UI</td>
+        <td>/application/household</td>
+        <td>-</td>
+        <td>https://mortgage-app.example.com</td>
+        <td>User task - hushållsekonomi</td>
+      </tr>
+      <tr>
+        <td>Stakeholder</td>
+        <td>UI</td>
+        <td>/application/stakeholder</td>
+        <td>-</td>
+        <td>https://mortgage-app.example.com</td>
+        <td>User task - stakeholder information</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Locator Mapping (optional, kan läggas till senare) -->
+  <h3>Locator Mapping</h3>
+  <p class="muted">CSS selectors, test IDs, eller andra locators för UI-element. Uppdateras när implementation är klar.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Locator ID</th>
+        <th>Selector</th>
+        <th>Beskrivning</th>
+        <th>Page ID</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>income-input</td>
+        <td>#income-input</td>
+        <td>Inkomstfält</td>
+        <td>application-form</td>
+      </tr>
+      <tr>
+        <td>household-size-input</td>
+        <td>[data-testid="household-size"]</td>
+        <td>Hushållsstorlek dropdown</td>
+        <td>application-form</td>
+      </tr>
+      <tr>
+        <td>submit-button</td>
+        <td>button[type="submit"]</td>
+        <td>Skicka-knapp</td>
+        <td>application-form</td>
+      </tr>
+      <tr>
+        <td>success-message</td>
+        <td>.success-message</td>
+        <td>Bekräftelsemeddelande</td>
+        <td>confirmation-page</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+

@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Automatic Credit Evaluation</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+    <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+  <div class="doc-shell">
+    
+    
+    
+    <section class="doc-section">
+      <h2>Beskrivning av FGoal</h2>
+      <p>Automatic Credit Evaluation är en automatiserad kreditevaluering som anropas från Manual Credit Evaluation-processen när en kreditomvärdering krävs. Denna subprocess utför en komplett automatisk bedömning av ansökan inklusive produkt- och prishämtning, amortisationsberäkning, hushållsbehandling, riskklassificering och policyutvärdering.</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Confluence länk</h2>
+      <p><a href="https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data">https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data</a></p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Input</h2>
+      <ul>
+        <li>Kreditomvärdering har triggrats via boundary event "Credit reevaluation required" från Documentation assessment</li>
+        <li>Uppdaterad dokumentation är tillgänglig</li>
+        <li>Ansökningsdata är redo för ny automatisk utvärdering</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Output</h2>
+      <ul>
+        <li>Komplett automatisk kreditevaluering med uppdaterade data</li>
+        <li>Beslut om ansökan ska avvisas automatiskt (rejected gateway)</li>
+        <li>Resultatet flödar tillbaka till Manual Credit Evaluation-processen för vidare hantering</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Omfattning</h2>
+      <ul>
+        <li>Hämtning av produktinformation och prissättning</li>
+        <li>Amortisationsberäkning</li>
+        <li>Multi-instance bearbetning av alla hushåll i ansökan (affordability-beräkningar)</li>
+        <li>Riskklassificering</li>
+        <li>Policyutvärdering mot affärsregler</li>
+        <li>Automatiskt avvisningsbeslut om ansökan inte uppfyller kriterier</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Avgränsning</h2>
+      <ul>
+        <li>Manuell granskning och advanced underwriting sker i Manual Credit Evaluation-processen, inte här</li>
+        <li>Objektvärdering hanteras separat i Manual Credit Evaluation</li>
+        <li>Dokumentationshantering sker i Documentation assessment, inte i denna subprocess</li>
+        <li>Denna subprocess fokuserar enbart på automatisk utvärdering, inte på manuella åtgärder</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Beroenden</h2>
+      <ul>
+        <li><strong>KALP-system:</strong> Beräknar hushållsaffordability</li>
+        <li><strong>Pricing engine:</strong> Hämtar produkt- och prissättningsdata</li>
+        <li><strong>Affärsregelmotor (DMN):</strong> Utvärderar mot policykriterier och affärsregler</li>
+        <li><strong>Riskklassificeringssystem:</strong> Klassificerar risknivå baserat på utvärderingsresultat</li>
+        <li><strong>Kunddata och engagemangsdata:</strong> För hushållsbehandling och affordability-beräkningar</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN - Process</h2>
+      <p><a href="#/bpmn/mortgage-se-credit-evaluation.bpmn">Visa BPMN-processen för Automatic Credit Evaluation</a></p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Testgenerering</h2>
+      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – ansökan godkänd automatiskt</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Komplett automatisk kreditevaluering: produkt och pris hämtade, amortisation beräknad, hushållsaffordability OK, riskklassificering låg, ansökan och kreditpolicyer godkända. Processen avslutas och resultatet flödar tillbaka till Manual Credit Evaluation.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Ansökan avvisad – hushållsaffordability otillräcklig</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Hushållsaffordability är otillräcklig (hög skuldsättning, låg inkomst). Evaluate household avvisar. Rejected gateway triggas och processen avslutas med avslag. Resultatet flödar tillbaka till Manual Credit Evaluation.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Ansökan avvisad – kreditpolicyer inte uppfyllda</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Hushållsaffordability OK, men Evaluate credit policies avvisar (t.ex. för hög LTV, otillräcklig säkerhet, eller policyöverträdelse). Rejected gateway triggas och processen avslutas med avslag.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Multi-instance – flera hushåll i ansökan</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Ansökan innehåller flera hushåll (multi-instance loop). Varje hushåll genomgår Calculate household affordability och Evaluate household. Alla hushåll godkänns. Processen fortsätter med riskklassificering och policyutvärdering. Ansökan godkänns.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>Hög riskklassificering – ansökan godkänd ändå</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Riskklassificering är hög, men hushållsaffordability och kreditpolicyer är ändå OK. Evaluate application och Evaluate credit policies godkänner trots hög risk. Processen avslutas med godkännande (kan kräva manuell granskning i Manual Credit Evaluation).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Pris- eller produktdata saknas – felhantering</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Fetch product eller Fetch price misslyckas (t.ex. produkt inte tillgänglig, eller prissättning saknas). Systemet hanterar felet gracefully och processen kan antingen avvisas eller kräva manuell hantering.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – ansökan godkänd automatiskt</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>credit-evaluation-start</td>
+          <td>verify</td>
+          <td>process-started</td>
+          <td>application-approved</td>
+          <td>Processen startar automatiskt när anropas från Manual Credit Evaluation (eller från huvudprocessen). Verifiera att processen är initierad.</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>fetch-product</td>
+          <td>verify</td>
+          <td>api-product-fetched</td>
+          <td>application-approved</td>
+          <td>Fetch product business rule task körs automatiskt. Verifiera att produktinformation hämtas (t.ex. bolåneprodukt, räntetyp, villkor).</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>fetch-price</td>
+          <td>verify</td>
+          <td>api-price-fetched</td>
+          <td>application-approved</td>
+          <td>Fetch price service task körs automatiskt från Pricing engine. Verifiera att prissättning hämtas (ränta, avgifter).</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>evaluate-amortisation</td>
+          <td>verify</td>
+          <td>dmn-amortisation-calculated</td>
+          <td>application-approved</td>
+          <td>Amortisation business rule task beräknar amorteringsplan. Verifiera att amortering beräknas korrekt baserat på produkt, pris och lånebelopp.</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>loop-household</td>
+          <td>verify</td>
+          <td>multi-instance-household-started</td>
+          <td>application-approved</td>
+          <td>For each household subprocess startar (multi-instance loop). Verifiera att loop startar för varje hushåll i ansökan.</td>
+        </tr>
+      
+        <tr>
+          <td>6</td>
+          <td>calculate-household-affordability</td>
+          <td>verify</td>
+          <td>api-kalp-affordability-calculated</td>
+          <td>application-approved</td>
+          <td>Calculate household affordability service task körs per hushåll via KALP-system. Verifiera att affordability beräknas (inkomster, utgifter, skuldsättning, tillgångar).</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>evaluate-household</td>
+          <td>verify</td>
+          <td>dmn-household-approved</td>
+          <td>application-approved</td>
+          <td>Evaluate household business rule task utvärderar affordability mot policykriterier. Verifiera att hushåll godkänns (tillräcklig affordability, OK skuldsättning).</td>
+        </tr>
+      
+        <tr>
+          <td>8</td>
+          <td>evaluate-stakeholders</td>
+          <td>verify</td>
+          <td>dmn-stakeholders-approved</td>
+          <td>application-approved</td>
+          <td>Evaluate stakeholders business rule task utvärderar stakeholders per hushåll. Verifiera att stakeholders godkänns.</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>loop-household</td>
+          <td>verify</td>
+          <td>multi-instance-household-completed</td>
+          <td>application-approved</td>
+          <td>Verifiera att alla hushåll i multi-instance loop är bearbetade och godkända.</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>fetch-risk-classification</td>
+          <td>verify</td>
+          <td>api-risk-classification-fetched</td>
+          <td>application-approved</td>
+          <td>Fetch risk classification service task hämtar riskklassificering från risk engine. Verifiera att riskklassificering är låg eller medel.</td>
+        </tr>
+      
+        <tr>
+          <td>11</td>
+          <td>evaluate-application</td>
+          <td>verify</td>
+          <td>dmn-application-approved</td>
+          <td>application-approved</td>
+          <td>Evaluate application business rule task utvärderar hela ansökan. Verifiera att ansökan godkänns baserat på riskklassificering, affordability och stakeholders.</td>
+        </tr>
+      
+        <tr>
+          <td>12</td>
+          <td>evaluate-credit-policies</td>
+          <td>verify</td>
+          <td>dmn-credit-policies-approved</td>
+          <td>application-approved</td>
+          <td>Evaluate credit policies business rule task utvärderar mot alla kreditpolicyer och affärsregler. Verifiera att alla policyer uppfylls (LTV, säkerhet, lånevillkor).</td>
+        </tr>
+      
+        <tr>
+          <td>13</td>
+          <td>credit-evaluation-completed</td>
+          <td>verify</td>
+          <td>process-end-approved</td>
+          <td>application-approved</td>
+          <td>Verifiera att processen avslutas med godkännande. Resultatet flödar tillbaka till Manual Credit Evaluation (eller huvudprocessen) för vidare hantering.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Ansökan avvisad – hushållsaffordability otillräcklig</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-4</td>
+          <td>credit-evaluation-start till evaluate-amortisation</td>
+          <td>verify</td>
+          <td>process-started, api-product-fetched, api-price-fetched, dmn-amortisation-calculated</td>
+          <td>application-rejected-affordability</td>
+          <td>Samma som S1 steg 1-4: Processen startar, produkt och pris hämtas, amortering beräknas</td>
+        </tr>
+      
+        <tr>
+          <td>5-6</td>
+          <td>loop-household, calculate-household-affordability</td>
+          <td>verify</td>
+          <td>multi-instance-household-started, api-kalp-affordability-calculated</td>
+          <td>application-rejected-affordability</td>
+          <td>Household loop startar, affordability beräknas (med otillräcklig inkomst eller för hög skuldsättning)</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>evaluate-household</td>
+          <td>verify</td>
+          <td>dmn-household-rejected</td>
+          <td>application-rejected-affordability</td>
+          <td>Evaluate household business rule task avvisar hushållet (otillräcklig affordability, för hög skuldsättning, eller policyöverträdelse).</td>
+        </tr>
+      
+        <tr>
+          <td>8</td>
+          <td>rejected-gateway</td>
+          <td>verify</td>
+          <td>gateway-rejected-triggered</td>
+          <td>application-rejected-affordability</td>
+          <td>Rejected gateway triggas när hushåll avvisas. Processen avslutas med avslag.</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>credit-evaluation-rejected</td>
+          <td>verify</td>
+          <td>process-end-rejected</td>
+          <td>application-rejected-affordability</td>
+          <td>Verifiera att processen avslutas med avslag. Resultatet flödar tillbaka till Manual Credit Evaluation med avslagsorsak.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: Ansökan avvisad – kreditpolicyer inte uppfyllda</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-11</td>
+          <td>credit-evaluation-start till evaluate-application</td>
+          <td>verify</td>
+          <td>process-started, api-product-fetched, api-price-fetched, dmn-amortisation-calculated, api-kalp-affordability-calculated, dmn-household-approved, api-risk-classification-fetched, dmn-application-approved</td>
+          <td>application-rejected-policy</td>
+          <td>Samma som S1 steg 1-11: Processen startar, produkt/pris/amortering OK, hushållsaffordability OK, riskklassificering OK, ansökan godkänd</td>
+        </tr>
+      
+        <tr>
+          <td>12</td>
+          <td>evaluate-credit-policies</td>
+          <td>verify</td>
+          <td>dmn-credit-policies-rejected</td>
+          <td>application-rejected-policy</td>
+          <td>Evaluate credit policies business rule task avvisar (t.ex. för hög LTV &gt;85%, otillräcklig säkerhet, eller policyöverträdelse).</td>
+        </tr>
+      
+        <tr>
+          <td>13</td>
+          <td>rejected-gateway</td>
+          <td>verify</td>
+          <td>gateway-rejected-triggered</td>
+          <td>application-rejected-policy</td>
+          <td>Rejected gateway triggas när kreditpolicyer inte uppfylls. Processen avslutas med avslag.</td>
+        </tr>
+      
+        <tr>
+          <td>14</td>
+          <td>credit-evaluation-rejected</td>
+          <td>verify</td>
+          <td>process-end-rejected</td>
+          <td>application-rejected-policy</td>
+          <td>Verifiera att processen avslutas med avslag. Resultatet flödar tillbaka med avslagsorsak (policyöverträdelse).</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S4: Multi-instance – flera hushåll i ansökan</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-4</td>
+          <td>credit-evaluation-start till evaluate-amortisation</td>
+          <td>verify</td>
+          <td>process-started, api-product-fetched, api-price-fetched, dmn-amortisation-calculated</td>
+          <td>application-multi-household</td>
+          <td>Samma som S1 steg 1-4: Processen startar, produkt/pris/amortering OK</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>loop-household</td>
+          <td>verify</td>
+          <td>multi-instance-household-started</td>
+          <td>application-multi-household</td>
+          <td>For each household subprocess startar för flera hushåll (multi-instance loop)</td>
+        </tr>
+      
+        <tr>
+          <td>6-8</td>
+          <td>calculate-household-affordability till evaluate-stakeholders</td>
+          <td>verify</td>
+          <td>api-kalp-affordability-calculated, dmn-household-approved, dmn-stakeholders-approved</td>
+          <td>application-multi-household</td>
+          <td>Första hushållet: affordability beräknas, hushåll och stakeholders godkänns</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>loop-household</td>
+          <td>verify</td>
+          <td>multi-instance-continue</td>
+          <td>application-multi-household</td>
+          <td>Multi-instance loop fortsätter till nästa hushåll</td>
+        </tr>
+      
+        <tr>
+          <td>10-12</td>
+          <td>calculate-household-affordability till evaluate-stakeholders</td>
+          <td>verify</td>
+          <td>api-kalp-affordability-calculated, dmn-household-approved, dmn-stakeholders-approved</td>
+          <td>application-multi-household</td>
+          <td>Andra hushållet: affordability beräknas, hushåll och stakeholders godkänns</td>
+        </tr>
+      
+        <tr>
+          <td>13</td>
+          <td>loop-household</td>
+          <td>verify</td>
+          <td>multi-instance-all-completed</td>
+          <td>application-multi-household</td>
+          <td>Verifiera att alla hushåll i multi-instance loop är bearbetade och godkända</td>
+        </tr>
+      
+        <tr>
+          <td>14-17</td>
+          <td>fetch-risk-classification till credit-evaluation-completed</td>
+          <td>verify</td>
+          <td>api-risk-classification-fetched, dmn-application-approved, dmn-credit-policies-approved, process-end-approved</td>
+          <td>application-multi-household</td>
+          <td>Fortsätt med riskklassificering, ansökan och kreditpolicyer (samma som S1 steg 10-13)</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S5: Hög riskklassificering – ansökan godkänd ändå</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-9</td>
+          <td>credit-evaluation-start till loop-household</td>
+          <td>verify</td>
+          <td>process-started, api-product-fetched, api-price-fetched, dmn-amortisation-calculated, api-kalp-affordability-calculated, dmn-household-approved</td>
+          <td>application-high-risk-approved</td>
+          <td>Samma som S1 steg 1-9: Processen startar, produkt/pris/amortering OK, hushållsaffordability OK</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>fetch-risk-classification</td>
+          <td>verify</td>
+          <td>api-risk-classification-fetched-high</td>
+          <td>application-high-risk-approved</td>
+          <td>Fetch risk classification returnerar hög riskklassificering (t.ex. medelhög kreditvärdighet, eller komplex ansökan)</td>
+        </tr>
+      
+        <tr>
+          <td>11</td>
+          <td>evaluate-application</td>
+          <td>verify</td>
+          <td>dmn-application-approved</td>
+          <td>application-high-risk-approved</td>
+          <td>Evaluate application godkänner ändå trots hög risk (t.ex. tillräcklig affordability och säkerhet kompenserar för risk).</td>
+        </tr>
+      
+        <tr>
+          <td>12</td>
+          <td>evaluate-credit-policies</td>
+          <td>verify</td>
+          <td>dmn-credit-policies-approved</td>
+          <td>application-high-risk-approved</td>
+          <td>Evaluate credit policies godkänner (alla policyer uppfyllda trots hög risk).</td>
+        </tr>
+      
+        <tr>
+          <td>13</td>
+          <td>credit-evaluation-completed</td>
+          <td>verify</td>
+          <td>process-end-approved</td>
+          <td>application-high-risk-approved</td>
+          <td>Processen avslutas med godkännande trots hög risk. Resultatet flödar tillbaka (kan kräva manuell granskning i Manual Credit Evaluation).</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S6: Pris- eller produktdata saknas – felhantering</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>credit-evaluation-start</td>
+          <td>verify</td>
+          <td>process-started</td>
+          <td>application-missing-data</td>
+          <td>Processen startar automatiskt</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>fetch-product</td>
+          <td>verify</td>
+          <td>api-product-fetched</td>
+          <td>application-missing-data</td>
+          <td>Fetch product körs. Verifiera att produktinformation hämtas OK.</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>fetch-price</td>
+          <td>verify</td>
+          <td>api-price-fetch-failed</td>
+          <td>application-missing-data</td>
+          <td>Fetch price misslyckas (t.ex. produkt inte tillgänglig för denna kundtyp, eller prissättning saknas för denna kombination).</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>error-handling</td>
+          <td>verify</td>
+          <td>error-price-missing</td>
+          <td>application-missing-data</td>
+          <td>Systemet hanterar felet gracefully. Processen kan antingen: 1) Avvisas automatiskt, 2) Kräva manuell hantering, eller 3) Använda fallback-prissättning.</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>credit-evaluation-error</td>
+          <td>verify</td>
+          <td>process-end-error</td>
+          <td>application-missing-data</td>
+          <td>Verifiera att processen hanterar felet korrekt och resultatet flödar tillbaka med felinformation för vidare hantering.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>application-approved</strong>: Ansökan som godkänns automatiskt - tillräcklig hushållsaffordability, låg riskklassificering, alla kreditpolicyer uppfyllda (LTV &lt;80%, tillräcklig säkerhet, god kreditvärdighet)</li>
+    
+      <li><strong>application-rejected-affordability</strong>: Ansökan som avvisas på grund av otillräcklig hushållsaffordability - hög skuldsättning (&gt;40% DTI), låg inkomst, eller otillräckliga tillgångar</li>
+    
+      <li><strong>application-rejected-policy</strong>: Ansökan som avvisas på grund av policyöverträdelse - för hög LTV (&gt;85%), otillräcklig säkerhet, eller lånebelopp överskrider policygränser</li>
+    
+      <li><strong>application-multi-household</strong>: Ansökan med flera hushåll (t.ex. huvudansökande + medsökande med separata hushåll) - alla hushåll har tillräcklig affordability, alla godkänns</li>
+    
+      <li><strong>application-high-risk-approved</strong>: Ansökan med hög riskklassificering men ändå godkänd - medelhög kreditvärdighet, men tillräcklig affordability och säkerhet kompenserar för risk</li>
+    
+      <li><strong>application-missing-data</strong>: Ansökan där produkt- eller prissättningsdata saknas - produkt inte tillgänglig för kundtyp, eller prissättning saknas för specifik kombination</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>Credit Evaluation (start)</td>
+        <td>System</td>
+        <td>Internal process trigger</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Processen startar automatiskt när anropas från Manual Credit Evaluation (eller från huvudprocessen). Ingen direkt API-endpoint, triggas via BPMN engine.</td>
+      </tr>
+    
+      <tr>
+        <td>Fetch product</td>
+        <td>API</td>
+        <td>/api/credit-evaluation/product</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Business rule task som hämtar produktinformation (bolåneprodukt, räntetyp, villkor) baserat på ansökningsdata. Input: Application ID, Customer Type, Loan Amount. Output: Product Details.</td>
+      </tr>
+    
+      <tr>
+        <td>Fetch price</td>
+        <td>API</td>
+        <td>/api/pricing/calculate</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Service task som hämtar prissättning från Pricing engine. Input: Product ID, Loan Amount, Loan Term, Customer Risk Profile. Output: Interest Rate, Fees, Total Cost.</td>
+      </tr>
+    
+      <tr>
+        <td>Evaluate amortisation</td>
+        <td>API</td>
+        <td>/api/dmn/evaluate-amortisation</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Business rule task som beräknar amorteringsplan baserat på produkt, pris och lånebelopp. Input: Product, Price, Loan Amount, Loan Term. Output: Amortisation Schedule.</td>
+      </tr>
+    
+      <tr>
+        <td>Calculate household affordability</td>
+        <td>API</td>
+        <td>/api/kalp/calculate-affordability</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Service task som beräknar hushållsaffordability via KALP-system. Input: Household Income, Expenses, Existing Debts, Assets. Output: Affordability Metrics (DTI Ratio, Stress Test Results, Available Capacity).</td>
+      </tr>
+    
+      <tr>
+        <td>Evaluate household</td>
+        <td>API</td>
+        <td>/api/dmn/evaluate-household</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Business rule task som utvärderar hushållsaffordability mot policykriterier. Input: Affordability Metrics, Loan Amount, Amortisation. Output: APPROVED / REJECTED + Reason.</td>
+      </tr>
+    
+      <tr>
+        <td>Evaluate stakeholders</td>
+        <td>API</td>
+        <td>/api/dmn/evaluate-stakeholders</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Business rule task som utvärderar stakeholders per hushåll. Input: Stakeholder Data, Household Context. Output: APPROVED / REJECTED + Reason.</td>
+      </tr>
+    
+      <tr>
+        <td>Fetch risk classification</td>
+        <td>API</td>
+        <td>/api/risk/classify</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Service task som hämtar riskklassificering från risk engine. Input: Application Data, Credit Scores, Financial Data. Output: Risk Classification (Low / Medium / High), Risk Score, Risk Factors.</td>
+      </tr>
+    
+      <tr>
+        <td>Evaluate application</td>
+        <td>API</td>
+        <td>/api/dmn/evaluate-application</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Business rule task som utvärderar hela ansökan. Input: Risk Classification, Household Results, Stakeholder Results. Output: APPROVED / REJECTED / REVIEW_NEEDED + Reason.</td>
+      </tr>
+    
+      <tr>
+        <td>Evaluate credit policies</td>
+        <td>API</td>
+        <td>/api/dmn/evaluate-credit-policies</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Business rule task som utvärderar mot alla kreditpolicyer och affärsregler. Input: Application Data, LTV, Security, Loan Terms. Output: APPROVED / REJECTED + Policy Violations.</td>
+      </tr>
+    
+      <tr>
+        <td>Rejected gateway</td>
+        <td>System</td>
+        <td>Internal gateway logic</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Exclusive gateway som triggas när någon utvärdering avvisar (Evaluate household, Evaluate application, eller Evaluate credit policies). Processen avslutas med avslag.</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </section>
+  
+
+  
+  </div>
+  </body>
+</html>

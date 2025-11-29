@@ -15,5 +15,13 @@ export const getNodeDocViewerPath = (bpmnFile: string, elementId: string) =>
 export const getFileDocViewerPath = (bpmnFile: string) =>
   getBaseName(bpmnFile);
 
-export const getFeatureGoalDocFileKey = (bpmnFile: string, elementId: string) =>
-  `feature-goals/${getBaseName(bpmnFile)}-${sanitizeElementId(elementId)}.html`;
+export const getFeatureGoalDocFileKey = (
+  bpmnFile: string,
+  elementId: string,
+  templateVersion?: 'v1' | 'v2',
+) => {
+  const baseName = getBaseName(bpmnFile);
+  const sanitizedId = sanitizeElementId(elementId);
+  const versionSuffix = templateVersion ? `-${templateVersion}` : '';
+  return `feature-goals/${baseName}-${sanitizedId}${versionSuffix}.html`;
+};

@@ -1075,6 +1075,7 @@ async function renderDocWithLlmFallback(
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
   onLlmResult?: (provider: LlmProvider, fallbackUsed: boolean, docJson?: unknown) => void,
+  featureGoalTemplateVersion?: 'v1' | 'v2',
 ): Promise<string> {
   const llmActive = llmAllowed && isLlmEnabled();
   const basePayload = {
@@ -1114,7 +1115,7 @@ async function renderDocWithLlmFallback(
 
       // Use unified render functions - they handle base + overrides + LLM patch
       if (docType === 'feature') {
-        return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata);
+        return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata, featureGoalTemplateVersion || 'v1');
       }
 
       if (docType === 'epic') {
@@ -1278,14 +1279,15 @@ async function parseDmnSummary(fileName: string): Promise<SubprocessSummary | nu
  */
 type ProgressReporter = (phase: GenerationPhaseKey, label: string, detail?: string) => void | Promise<void>;
 
-const insertGenerationMeta = (html: string, source: string): string => {
+const insertGenerationMeta = (html: string, source: string, templateVersion?: 'v1' | 'v2'): string => {
   if (!source) return html;
   if (html.includes('x-generation-source')) return html;
   const metaTag = `<meta name="x-generation-source" content="${source}" />`;
+  const templateVersionTag = templateVersion ? `\n  <meta name="x-feature-goal-template-version" content="${templateVersion}" />` : '';
   if (html.includes('<head>')) {
-    return html.replace('<head>', `<head>\n  ${metaTag}`);
+    return html.replace('<head>', `<head>\n  ${metaTag}${templateVersionTag}`);
   }
-  return `<!-- generation-source:${source} -->\n${html}`;
+  return `<!-- generation-source:${source} -->${templateVersion ? `\n<!-- feature-goal-template-version:${templateVersion} -->` : ''}\n${html}`;
 };
 
 export async function generateAllFromBpmnWithGraph(
@@ -1298,6 +1300,7 @@ export async function generateAllFromBpmnWithGraph(
   generationSource?: string,
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
+  featureGoalTemplateVersion: 'v1' | 'v2' = 'v1',
 ): Promise<GenerationResult> {
   const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
     if (progressCallback) {
@@ -1538,10 +1541,12 @@ export async function generateAllFromBpmnWithGraph(
                 'feature',
                 nodeContext,
                 docLinks,
-                async () => await renderFeatureGoalDoc(nodeContext, docLinks),
+                async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined, featureGoalTemplateVersion),
                 useLlm,
                 llmProvider,
                 localAvailable,
+                undefined,
+                featureGoalTemplateVersion,
                 async (provider, fallbackUsed, docJson) => {
                   if (fallbackUsed) {
                     llmFallbackUsed = true;
@@ -1590,10 +1595,20 @@ export async function generateAllFromBpmnWithGraph(
                 },
               );
               // Skapa även en separat feature goal-sida för matched subprocesser
-              const featureDocPath = getFeatureGoalDocFileKey(node.bpmnFile, node.bpmnElementId);
+              // Include template version in filename so v1 and v2 can coexist
+              // For call activities, use subprocessFile if available (the actual subprocess BPMN file),
+              // otherwise fall back to bpmnFile (the file where the call activity is defined)
+              const bpmnFileForFeatureGoal = node.type === 'callActivity' && node.subprocessFile
+                ? node.subprocessFile
+                : node.bpmnFile;
+              const featureDocPath = getFeatureGoalDocFileKey(
+                bpmnFileForFeatureGoal,
+                node.bpmnElementId,
+                featureGoalTemplateVersion,
+              );
               result.docs.set(
                 featureDocPath,
-                insertGenerationMeta(nodeDocContent, generationSourceLabel),
+                insertGenerationMeta(nodeDocContent, generationSourceLabel, featureGoalTemplateVersion),
               );
               // Lägg till diagnostiksektion om subprocess-matchen inte är bekräftad
               if (

@@ -5,7 +5,8 @@
 > Arkitektur & hierarki: `docs/bpmn-hierarchy-architecture.md`  
 > LLM-kontrakt & prompts: `prompts/llm/*`  
 > Test-scenarion & design-scenarion: `docs/TEST_MAPPING_DESIGN_SCENARIOS.md`  
-> **👨‍💼 För Test Lead**: `docs/README_FOR_TESTLEAD.md` - Guide om hur BPMN Planner fungerar och hur du tar test scripts vidare till ditt reella projekt
+> **👨‍💼 För Test Lead**: `docs/README_FOR_TESTLEAD.md` - Guide om hur BPMN Planner fungerar och hur du tar test scripts vidare till ditt reella projekt  
+> **📋 Projektorganisation**: `docs/project-organization/` - Ways of working, teststrategi, roller och projektstruktur
 >
 > **Not om subprocesser (callActivity vs subProcess)**  
 > I många modeller används både `bpmn:callActivity` (tydlig extern subprocess) och `bpmn:subProcess` (inlinad subprocess) för att beskriva logiken.  
@@ -28,7 +29,8 @@
   - `orderIndex` beräknas enbart för noder som deltar i sequence edges (DFS/topologisk sort). Övriga noder lämnas utan `orderIndex`.
   - Noder utan `orderIndex` får istället `visualOrderIndex` baserat på DI-koordinater (vänster→höger-sortering per fil).
   - Sortering i UI och Gantt följer alltid `visualOrderIndex` → `orderIndex` → `branchId` (endast root) → `label`. Se `docs/VISUAL_ORDERING_IMPLEMENTATION.md`.
-  - För felsökning finns scriptet `npm run mortgage:order-debug` som kör hela parse → graph → tree-flödet för mortgage-fixtures och skriver ut tabeller (både full traversal och “unika aktiviteter per fil”) med ordningsmetadata.
+  - För felsökning finns scriptet `npm run mortgage:order-debug` som kör hela parse → graph → tree-flödet för mortgage-fixtures och skriver ut tabeller (både full traversal och "unika aktiviteter per fil") med ordningsmetadata.
+  - För att exportera hela BPMN-trädet i markdown-format (användbart för ChatGPT/andra verktyg): `npm run print:bpmn-tree` - genererar `bpmn-tree-output.md` med hierarkisk trädvy och flat lista av alla noder sorterade i ordningsföljd.
 
 - **Dokumentation**
   - Feature Goals, Epics och Business Rules genereras via modellbaserade JSON-kontrakt:
@@ -426,7 +428,53 @@ npm run dev   # http://localhost:8080/
 ## 5. Inloggning
 `seed-bot@local.test / Passw0rd!`
 
-## 6. Validering & tester
+## 6. Scripts & Verktyg
+
+**BPMN Tree Export:**
+```bash
+npm run print:bpmn-tree  # Genererar både bpmn-tree-output.md och bpmn-tree-output.xlsx
+```
+
+Detta script:
+- Parsar alla BPMN-filer från fixtures (`tests/fixtures/bpmn/analytics/`)
+- Bygger ProcessGraph och ProcessTree baserat på `bpmn-map.json`
+- Genererar **två filer** i projektets root:
+
+**1. Markdown-fil (`bpmn-tree-output.md`):**
+  - Hierarkisk trädvy (alla noder sorterade enligt orderIndex → visualOrderIndex → branchId → label)
+  - Flat lista (markdown-tabell med alla noder och metadata)
+  - Metadata (antal noder, edges, root process, etc.)
+  - Legend (ikoner och nodtyper)
+  - Ordering information (förklaring av sorteringslogik)
+
+**2. Excel-fil (`bpmn-tree-output.xlsx`):**
+  - **Sheet 1: Tree Hierarchy** - Hierarkisk vy med separata kolumner för varje nivå (Level 1, Level 2, etc.)
+    - Visar hela trädet med tydlig hierarki
+    - Inkluderar alla metadata (Type, Label, Element ID, BPMN File, Order Index, Visual Order Index, Branch ID, Path)
+  - **Sheet 2: Flat List** - Flat lista med alla noder i sorterad ordning
+  - **Sheet 3: Summary** - Metadata, legend och ordering information
+
+**Användning:**
+- **Markdown**: Kopiera till ChatGPT eller andra verktyg, använd för dokumentation, versionkontrollera i Git
+- **Excel**: Öppna i Excel/LibreOffice/Google Sheets för enkel läsning, filtrering och sortering
+  - Perfekt för att analysera hierarkin visuellt
+  - Kan exporteras till andra format (CSV, PDF, etc.)
+  - Enkelt att dela med teamet
+
+**Feature Goal Export/Import (för AI-förbättring):**
+```bash
+npm run export:feature-goals    # Exporterar alla Feature Goal HTML-filer till exports/feature-goals/
+npm run import:feature-goals    # Importerar förbättrade HTML-filer tillbaka till Supabase Storage
+```
+- Se `docs/IMPROVE_FEATURE_GOALS_WITH_AI.md` för komplett workflow: Export → Förbättra med AI → Import
+
+**Andra scripts:**
+```bash
+npm run graph:inspect           # Inspectera ProcessGraph
+npm run mortgage:order-debug     # Debug callActivity-ordning för mortgage-fixtures
+```
+
+## 7. Validering & tester
 
 **Testmiljö:**
 - **Vitest** för unit- och integrationstester.
@@ -442,6 +490,33 @@ npx vitest run \
   src/lib/bpmn/buildProcessHierarchy.test.ts \
   src/lib/processTreeNavigation.test.ts   # verifierar hierarkin + UI-kartan
 # (valfritt) supabase functions serve build-process-tree --env-file supabase/.env --no-verify-jwt
+```
+
+## 7. Scripts & Verktyg
+
+**BPMN Tree Export:**
+```bash
+npm run print:bpmn-tree  # Genererar bpmn-tree-output.md med hela BPMN-trädet sorterat i ordningsföljd
+```
+
+Detta script:
+- Parsar alla BPMN-filer från `bpmn-map.json`
+- Bygger ProcessGraph och ProcessTree
+- Genererar en markdown-fil (`bpmn-tree-output.md`) med:
+  - Hierarkisk trädvy (alla noder sorterade)
+  - Flat lista (markdown-tabell med alla noder)
+  - Metadata (antal noder, edges, etc.)
+  - Legend och ordering information
+
+**Användning:**
+- Kopiera `bpmn-tree-output.md` till ChatGPT eller andra verktyg
+- Använd för dokumentation eller analys
+- Versionkontrollera i Git
+
+**Andra scripts:**
+```bash
+npm run graph:inspect           # Inspectera ProcessGraph
+npm run mortgage:order-debug     # Debug callActivity-ordning för mortgage-fixtures
 ```
 
 **Fallback-säkerhet i tester:**

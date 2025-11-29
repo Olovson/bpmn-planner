@@ -248,7 +248,7 @@
         {
           "bpmn_id": "signing",
           "name": "Signing",
-          "called_element": null,
+          "called_element": "signing",
           "subprocess_bpmn_file": "mortgage-se-signing.bpmn"
         },
         {

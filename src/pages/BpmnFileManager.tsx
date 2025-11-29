@@ -242,6 +242,11 @@ export default function BpmnFileManager() {
     const stored = localStorage.getItem('llmProvider');
     return (stored === 'local' || stored === 'cloud') ? stored : 'cloud';
   });
+  const [featureGoalTemplateVersion, setFeatureGoalTemplateVersion] = useState<'v1' | 'v2'>(() => {
+    // Läs från localStorage om det finns, annars default till 'v1'
+    const stored = localStorage.getItem('featureGoalTemplateVersion');
+    return (stored === 'v2' ? 'v2' : 'v1') as 'v1' | 'v2';
+  });
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
   const [rootFileName, setRootFileName] = useState<string | null>(null);
@@ -1188,7 +1193,8 @@ export default function BpmnFileManager() {
         handleGeneratorPhase,
         generationSourceLabel,
         !isLocalMode ? llmProvider : undefined,
-        localAvailable
+        localAvailable,
+        featureGoalTemplateVersion
       );
       checkCancellation();
 
@@ -2993,6 +2999,51 @@ export default function BpmnFileManager() {
               )}
             </Button>
           </div>
+          
+          {/* Feature Goal Template Version Selection */}
+          <div className="mt-4 p-3 bg-muted/30 rounded-lg border">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Feature Goal Template Version</label>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={featureGoalTemplateVersion === 'v1' ? 'default' : 'outline'}
+                className={`gap-2 ${
+                  featureGoalTemplateVersion === 'v1'
+                    ? 'ring-2 ring-primary shadow-sm'
+                    : 'opacity-80'
+                }`}
+                onClick={() => {
+                  setFeatureGoalTemplateVersion('v1');
+                  localStorage.setItem('featureGoalTemplateVersion', 'v1');
+                }}
+                aria-pressed={featureGoalTemplateVersion === 'v1'}
+              >
+                Template v1
+              </Button>
+              <Button
+                size="sm"
+                variant={featureGoalTemplateVersion === 'v2' ? 'default' : 'outline'}
+                className={`gap-2 ${
+                  featureGoalTemplateVersion === 'v2'
+                    ? 'ring-2 ring-primary shadow-sm'
+                    : 'opacity-80'
+                }`}
+                onClick={() => {
+                  setFeatureGoalTemplateVersion('v2');
+                  localStorage.setItem('featureGoalTemplateVersion', 'v2');
+                }}
+                aria-pressed={featureGoalTemplateVersion === 'v2'}
+              >
+                Template v2
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Välj vilken template-version som ska användas för Feature Goal-dokumentation. Epic-template påverkas inte.
+            </p>
+          </div>
+          
           <div className="flex flex-wrap gap-2 mt-3">
             <Button
               size="sm"

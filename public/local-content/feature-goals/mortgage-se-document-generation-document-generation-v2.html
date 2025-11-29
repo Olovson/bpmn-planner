@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document generation</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+    <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+  <div class="doc-shell">
+    
+    
+    
+    <section class="doc-section">
+      <h2>Beskrivning av FGoal</h2>
+      <p>Document Generation genererar dokument för hela lånet. Processen startar när offer är accepterad och lånet är redo (event-loan-ready) och genomför val av dokument via business rules, generering av dokument via Document generation service, och lagring i Document generation service. När dokumentgenerering är klar, går processen vidare till Signing för signering av lånedokument.</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Confluence länk</h2>
+      <p><a href="https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data">https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data</a></p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Input</h2>
+      <ul>
+        <li>Offer är accepterad och lånet är redo (event-loan-ready) i huvudprocessen</li>
+        <li>Offer-processen är slutförd</li>
+        <li>Message event "event-offer-accepted" har triggats (topic: event-offer-accepted)</li>
+        <li>Processen startar när Document Generation call activity anropas från mortgage.bpmn i huvudflödet (entry-18 branch) efter event-loan-ready</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Output</h2>
+      <ul>
+        <li>Dokument för hela lånet är genererade och lagrade i Document generation service</li>
+        <li>Processen avslutas och huvudprocessen fortsätter med "Documents generated" event (Event_1u29t2f)</li>
+        <li>Message event "event-offer-accepted" triggas (topic: event-offer-accepted) som signalerar att dokument är redo</li>
+        <li>Dokument är redo för signering i Signing-processen</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Omfattning</h2>
+      <ul>
+        <li><strong>Select documents:</strong> Business rule task som väljer vilka dokument som ska genereras för hela lånet baserat på affärsregler</li>
+        <li><strong>Generate Document:</strong> Service task som genererar dokument via Document generation service (multi-instance loop för att hantera flera dokument)</li>
+        <li><strong>Document generation service:</strong> Data store där genererade dokument lagras</li>
+        <li><strong>Processen använder samma BPMN-fil som Document Generation Advance men anropas i huvudflödet efter Offer</strong></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Avgränsning</h2>
+      <ul>
+        <li>Document Generation Advance (i förskottsflödet) ingår inte - det är en separat process</li>
+        <li>Signering ingår inte - den sker i Signing-processen efter Document Generation</li>
+        <li>Disbursement ingår inte - den sker efter Signing</li>
+        <li>Offer-processen ingår inte - den triggar Document Generation via event-loan-ready</li>
+        <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Beroenden</h2>
+      <ul>
+        <li><strong>Mortgage huvudprocess:</strong> Document Generation anropas från mortgage.bpmn i huvudflödet (entry-18 branch) när event-loan-ready triggas</li>
+        <li><strong>Offer-processen:</strong> Offer måste vara accepterad och event-loan-ready måste ha triggats innan Document Generation startar</li>
+        <li><strong>Document generation service:</strong> Genomför faktisk generering och lagring av dokument</li>
+        <li><strong>Document selection rules (DMN):</strong> Automatisk val av vilka dokument som ska genereras för hela lånet</li>
+        <li><strong>Signing:</strong> Efter dokumentgenerering går processen vidare till Signing för signering</li>
+        <li><strong>Disbursement:</strong> Efter signering går processen vidare till Disbursement för utbetalning</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN - Process</h2>
+      <p><a href="#/bpmn/mortgage-se-document-generation.bpmn">Visa BPMN-processen för Document Generation</a></p>
+      <p class="muted">Processen startar med val av dokument via business rules, genererar dokument via Document generation service (multi-instance loop), och lagrar dokument i Document generation service. Processen använder samma BPMN-fil som Document Generation Advance men anropas i huvudflödet när event-loan-ready triggas efter Offer.</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Testgenerering</h2>
+      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – alla dokument genererade</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Select documents business rule task väljer dokument baserat på ansökningsdata. Generate Document service task genererar alla dokument (multi-instance loop). Dokument lagras i Document generation service. Processen avslutas och går vidare till Signing via event Documents generated.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Dokumentgenerering misslyckas – felhantering</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Generate Document service task misslyckas för ett eller flera dokument (t.ex. template-fel, data-fel, eller service-fel). Systemet hanterar felet gracefully och processen kan antingen retry, avvisas, eller kräva manuell hantering.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Multi-instance – flera dokumenttyper</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Select documents väljer flera dokumenttyper (t.ex. låneavtal, säkerhetsavtal, kreditavtal). Generate Document körs som multi-instance loop för varje dokumenttyp. Alla dokument genereras och lagras korrekt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>[TODO: data-profile-id]</strong>: [TODO: Definiera testdata för denna process]</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>Select documents</td>
+        <td>API</td>
+        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/select-documents]</td>
+        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Business rule task som väljer vilka dokument som ska genereras för hela lånet...</td>
+      </tr>
+    
+      <tr>
+        <td>Generate Document</td>
+        <td>API</td>
+        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/generate-document]</td>
+        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Service task som genererar dokument via Document generation service (multi-in...</td>
+      </tr>
+    
+      <tr>
+        <td>Document generation service</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /document-generation-service]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Data store där genererade dokument lagras</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </section>
+  
+
+  
+  </div>
+  </body>
+</html>

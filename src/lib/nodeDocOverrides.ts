@@ -280,13 +280,12 @@ export function mergeFeatureGoalOverrides(
     const strategy = mergeStrategy[field] || 'replace';
     if (strategy === 'extend') {
       // Extend: concatenate base + override
-      merged[field] = [
-        ...(base[field] as unknown[]),
-        ...(overrides[field] as unknown[]),
-      ] as typeof base[typeof field];
+      const baseArray = base[field] as unknown[];
+      const overrideArray = overrides[field] as unknown[];
+      (merged as any)[field] = [...baseArray, ...overrideArray];
     } else {
       // Replace: use override completely
-      merged[field] = overrides[field] as typeof base[typeof field];
+      (merged as any)[field] = overrides[field];
     }
   }
 
@@ -329,12 +328,11 @@ export function mergeEpicOverrides(
 
     const strategy = mergeStrategy[field] || 'replace';
     if (strategy === 'extend') {
-      merged[field] = [
-        ...(base[field] as unknown[]),
-        ...(overrides[field] as unknown[]),
-      ] as typeof base[typeof field];
+      const baseArray = base[field] as unknown[];
+      const overrideArray = overrides[field] as unknown[];
+      (merged as any)[field] = [...baseArray, ...overrideArray];
     } else {
-      merged[field] = overrides[field] as typeof base[typeof field];
+      (merged as any)[field] = overrides[field];
     }
   }
 
@@ -375,12 +373,11 @@ export function mergeBusinessRuleOverrides(
 
     const strategy = mergeStrategy[field] || 'replace';
     if (strategy === 'extend') {
-      merged[field] = [
-        ...(base[field] as unknown[]),
-        ...(overrides[field] as unknown[]),
-      ] as typeof base[typeof field];
+      const baseArray = base[field] as unknown[];
+      const overrideArray = overrides[field] as unknown[];
+      (merged as any)[field] = [...baseArray, ...overrideArray];
     } else {
-      merged[field] = overrides[field] as typeof base[typeof field];
+      (merged as any)[field] = overrides[field];
     }
   }
 

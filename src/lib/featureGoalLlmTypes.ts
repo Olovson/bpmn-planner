@@ -1,6 +1,8 @@
 // Domänmodell för Feature Goal-dokumentation.
 // Denna struktur används både av det lokala generatorflödet och som målbilde
 // för strukturerad LLM-output.
+import type { ScenarioPersona, ScenarioRiskLevel, ScenarioAssertionType, ScenarioUiStep } from './epicDocTypes';
+
 export interface FeatureGoalDocModel {
   // Kort, ren sammanfattning av Feature Goalet – 2–5 meningar om syfte, värde och kontext.
   summary: string;
@@ -35,6 +37,17 @@ export interface FeatureGoalDocModel {
     type: string;
     // Förväntat affärsutfall/resultat.
     outcome: string;
+    // Testgenerering-fält (valfria, för manuell redigering och export/import):
+    // Persona som utför scenariot (customer, advisor, system, unknown).
+    persona?: ScenarioPersona;
+    // Risknivå för testprioritering (P0 = kritisk, P1 = hög, P2 = normal).
+    riskLevel?: ScenarioRiskLevel;
+    // Typ av testassertion (functional, regression, compliance, other).
+    assertionType?: ScenarioAssertionType;
+    // UI Flow-steg för scenariot (pageId, action, locatorId, dataProfileId).
+    uiFlow?: ScenarioUiStep[];
+    // Testdata-profil som används för scenariot.
+    dataProfileId?: string;
   }[];
   // Kort text som beskriver kopplingen till automatiska tester.
   testDescription: string;

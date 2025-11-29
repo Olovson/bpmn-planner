@@ -59,6 +59,8 @@ export interface DocTemplateSchema {
 
 type TemplateId = 'feature-goal' | 'epic' | 'business-rule';
 
+export type FeatureGoalTemplateVersion = 'v1' | 'v2';
+
 // Master schema per nod-typ. Dessa används som referens för vilka sektioner
 // som finns och i vilken ordning de förväntas visas. Själva renderingen
 // använder idag fortfarande hårdkodade sektioner, men schemat är grunden
@@ -470,7 +472,7 @@ const inferTeamForNode = (type: NodeDocumentationContext['node']['type']) => {
   }
 };
 
-function buildFeatureGoalDocModelFromContext(
+export function buildFeatureGoalDocModelFromContext(
   context: NodeDocumentationContext,
 ): FeatureGoalDocModel {
   const node = context.node;
@@ -870,6 +872,702 @@ function buildFeatureGoalDocHtmlFromModel(
     <section class="doc-section">
       <h2>Definition of Done</h2>
       ${renderList(dodBullets)}
+    </section>
+  `;
+}
+
+/**
+ * Build Feature Goal HTML from model using V2 template structure.
+ * V2 has a different structure and ordering compared to V1.
+ */
+function buildFeatureGoalDocHtmlFromModelV2(
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  model: FeatureGoalDocModel,
+): string {
+  const node = context.node;
+  const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
+  const upstreamNode = context.parentChain.length
+    ? context.parentChain[context.parentChain.length - 1]
+    : undefined;
+  const downstreamNode = context.childNodes.length
+    ? context.childNodes[context.childNodes.length - 1]
+    : undefined;
+  const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
+  const downstreamName = downstreamNode ? formatNodeName(downstreamNode) : 'Nedströms leverans';
+  const descendantEpics = context.childNodes.filter((child) =>
+    ['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'].includes(child.type),
+  );
+  const initiative = node.bpmnFile.replace('.bpmn', '');
+  const owner = 'Produktägare Kredit / Risk & Policy';
+  const versionLabel = model.summary
+    ? '1.0 (LLM-validerad) – uppdateras vid ändring'
+    : '1.0 (exempel) – uppdateras vid ändring';
+
+  const epicRows =
+    model.epics.length > 0
+      ? model.epics
+      : descendantEpics.slice(0, 6).map((epic, index) => ({
+          id: `E${index + 1}`,
+          name: formatNodeName(epic),
+          description: `Delsteg som bidrar till att ${nodeName.toLowerCase()} uppnås.`,
+          team: inferTeamForNode(epic.type),
+        }));
+
+  const flowSteps =
+    model.flowSteps.length > 0
+      ? model.flowSteps
+      : [
+          `Initiativet startar i ${upstreamName} när en kreditprocess initieras.`,
+          `${nodeName} samlar in, koordinerar och kvalitetssäkrar data och beslut från ingående epics.`,
+          'Regler och policystöd appliceras på ett konsekvent sätt för att möjliggöra välgrundade kreditbeslut.',
+          `Resultat och status förs vidare till ${downstreamName} och vidare in i efterföljande processer.`,
+        ];
+
+  const dependencies =
+    model.dependencies.length > 0
+      ? model.dependencies
+      : [
+          'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
+          'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
+          'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
+        ];
+
+  const scenarioRows =
+    model.scenarios.length > 0
+      ? model.scenarios
+      : [
+          {
+            id: 'S1',
+            name: 'Normalflöde – komplett ansökan',
+            type: 'Happy',
+            outcome: 'Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.',
+          },
+          {
+            id: 'S2',
+            name: 'Ofullständig information',
+            type: 'Edge',
+            outcome:
+              'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
+          },
+          {
+            id: 'S3',
+            name: 'Hög riskprofil',
+            type: 'Edge',
+            outcome: 'Ärendet flaggas för extra granskning eller avslag enligt policy.',
+          },
+        ];
+
+  const summaryText =
+    model.summary ||
+    `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
+
+  const effectGoals =
+    model.effectGoals && model.effectGoals.length
+      ? model.effectGoals
+      : [
+          'Ökad automatisering i kreditprocessen, med mindre manuellt arbete per ansökan.',
+          'Minskad handläggningstid per ansökan genom mer komplett och strukturerad datainsamling.',
+          'Förbättrad datakvalitet och minskade felkällor i underlag för kreditevaluering.',
+          'Säkrade och mer förutsägbara kreditevalueringar enligt kreditpolicy och riskramverk.',
+          'Högre kundnöjdhet genom snabbare och tydligare besked i tidiga steg av kundresan.',
+        ];
+
+  const scopeIncluded = model.scopeIncluded.length ? model.scopeIncluded : [];
+  const scopeExcluded = model.scopeExcluded.length ? model.scopeExcluded : [];
+  let effectiveScopeIncluded = scopeIncluded;
+  let effectiveScopeExcluded = scopeExcluded;
+  if (!effectiveScopeIncluded.length && !effectiveScopeExcluded.length) {
+    effectiveScopeIncluded = [
+      'Ingår: end-to-end-flöde för det specifika kreditinitiativet.',
+    ];
+    effectiveScopeExcluded = [
+      'Ingår inte: eftermarknadsprocesser och generella engagemangsändringar.',
+      'Ingår inte: tekniska implementationer i underliggande system – dessa dokumenteras separat.',
+    ];
+  }
+
+  const implementationNotes =
+    model.implementationNotes.length > 0
+      ? model.implementationNotes
+      : [
+          'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
+          'Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.',
+          'Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.',
+          'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
+        ];
+
+  const relatedItems =
+    model.relatedItems.length > 0
+      ? model.relatedItems
+      : [
+          links.bpmnViewerLink
+            ? `Relaterad subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
+            : `Relaterad subprocess: BPMN-fil ${node.bpmnFile}`,
+          links.dmnLink
+            ? `Relaterade regler/DMN: <a href="${links.dmnLink}">${links.dmnLink.split('/').pop()}</a>`
+            : 'Relaterade regler/DMN dokumenteras per Business Rule.',
+        ];
+
+  const testDescription =
+    model.testDescription ||
+    'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
+
+  const dorBullets = [
+    'Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.',
+    'Ingående epics och beroende huvudflöden är identifierade och övergripande beskrivna.',
+    'Centrala beroenden (regelmotor, datakällor, externa tjänster) är identifierade och ägarskap är tydliggjort.',
+    'Övergripande affärsscenarier och risk-/policykrav är kända och dokumenterade.',
+    'Tekniska förutsättningar (plattform, integrationer, miljöer) är klarlagda på en övergripande nivå.',
+  ];
+
+  const dodBullets = [
+    'Feature Goalet stödjer de definierade affärsscenarierna och uppfyller beskrivna policys och regler.',
+    'Alla epics som ingår är implementerade, testade och dokumenterade med spårbarhet mot detta Feature Goal.',
+    'Automatiska tester täcker centrala flöden, felhantering och definierade risk-/policykrav.',
+    'Loggning och mätpunkter finns på plats för uppföljning, insikter och incidenthantering.',
+    'Dokumentation (Feature Goal, epics, regler) är uppdaterad och tillgänglig för berörda team.',
+  ];
+
+  // V2 Template Structure - matches HTML template structure
+  // Extract inputs from flowSteps or create defaults
+  const processInputs = flowSteps.length > 0
+    ? flowSteps.filter(step => 
+        step.toLowerCase().includes('startar') || 
+        step.toLowerCase().includes('input') || 
+        step.toLowerCase().includes('när') ||
+        step.toLowerCase().includes('efter')
+      ).slice(0, 3)
+    : upstreamNode
+      ? [`Data och status från ${upstreamName}`]
+      : ['Kund är identifierad med bank-ID'];
+  
+  // If no inputs found, use default
+  if (processInputs.length === 0) {
+    processInputs.push(upstreamNode 
+      ? `Data och status från ${upstreamName}`
+      : 'Kund är identifierad med bank-ID'
+    );
+  }
+
+  // Extract outputs from effectGoals or create defaults
+  const processOutputs = effectGoals.length > 0
+    ? effectGoals.slice(0, 3)
+    : downstreamNode
+      ? [`Resultat och status förs vidare till ${downstreamName}`]
+      : ['Information om part har hämtats och regler har hanterats'];
+
+  // Confluence link - try to extract from relatedItems, otherwise use placeholder
+  let confluenceLink = 'https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data';
+  const confluenceItem = model.relatedItems.find(item => 
+    item.toLowerCase().includes('confluence') || 
+    item.includes('https://confluence') ||
+    item.includes('http://confluence')
+  );
+  if (confluenceItem) {
+    // Try to extract URL from the item
+    const urlMatch = confluenceItem.match(/https?:\/\/[^\s<>"']+/);
+    if (urlMatch) {
+      confluenceLink = urlMatch[0];
+    } else if (confluenceItem.includes('http')) {
+      confluenceLink = confluenceItem;
+    }
+  }
+
+  // BPMN Process link
+  const bpmnProcessLink = links.bpmnViewerLink 
+    ? `<a href="${links.bpmnViewerLink}">Visa BPMN-processen för ${nodeName}</a>`
+    : `Bild av den subprocess som feature goalet refererar till.`;
+
+  return `
+    <section class="doc-section">
+      <h2>Beskrivning av FGoal</h2>
+      <p>${summaryText}</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Confluence länk</h2>
+      <p><a href="${confluenceLink}">${confluenceLink}</a></p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Input</h2>
+      <ul>
+        ${processInputs.map(item => `<li>${item}</li>`).join('')}
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Output</h2>
+      <ul>
+        ${processOutputs.map(item => `<li>${item}</li>`).join('')}
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Omfattning</h2>
+      <ul>
+        ${effectiveScopeIncluded.length > 0
+          ? effectiveScopeIncluded.map(item => `<li>${cleanScopeItem(item)}</li>`).join('')
+          : '<li>Part som finns hämtas</li><li>Part som inte finns skapas</li>'
+        }
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Avgränsning</h2>
+      <ul>
+        ${effectiveScopeExcluded.length > 0
+          ? effectiveScopeExcluded.map(item => `<li>${cleanScopeItem(item)}</li>`).join('')
+          : '<li>Skyddad person hanteras inte</li><li>Personal hanteras inte</li>'
+        }
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Beroenden</h2>
+      <ul>
+        ${dependencies.length > 0
+          ? dependencies.map(dep => `<li>${dep}</li>`).join('')
+          : '<li>CIA - Sanktionsscreening</li><li>SAP?</li><li>Insolvency - Conduct history</li><li>IS-Part -</li>'
+        }
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN - Process</h2>
+      <p>${bpmnProcessLink}</p>
+    </section>
+
+    ${buildTestGenerationSectionV2(context, model, processOutputs)}
+  `;
+}
+
+/**
+ * Build Testgenerering section for v2 Feature Goal documents
+ */
+function buildTestGenerationSectionV2(
+  context: NodeDocumentationContext,
+  model: FeatureGoalDocModel,
+  processOutputs: string[],
+): string {
+  const node = context.node;
+  const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
+  const descendantEpics = context.childNodes.filter((child) =>
+    ['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'].includes(child.type),
+  );
+
+  // Extract activities from descendantEpics
+  const activities = descendantEpics.map((epic) => {
+    const name = epic.name || epic.bpmnElementId || 'Activity';
+    let type: 'user-task' | 'service-task' | 'business-rule-task' | 'call-activity' = 'call-activity';
+    if (epic.type === 'userTask') {
+      type = 'user-task';
+    } else if (epic.type === 'serviceTask') {
+      type = 'service-task';
+    } else if (epic.type === 'businessRuleTask') {
+      type = 'business-rule-task';
+    } else if (epic.type === 'callActivity') {
+      type = 'call-activity';
+    }
+    return {
+      name,
+      type,
+      description: `${name} - ${epic.type}`,
+    };
+  });
+
+  // Determine process type
+  const nodeNameLower = nodeName.toLowerCase();
+  const processType = nodeNameLower.includes('kyc') || nodeNameLower.includes('compliance')
+    ? 'kyc'
+    : nodeNameLower.includes('application') || nodeNameLower.includes('ansökan')
+    ? 'application'
+    : nodeNameLower.includes('credit') || nodeNameLower.includes('kredit')
+    ? 'credit'
+    : 'other';
+
+  // Generate test scenarios
+  const scenarios: Array<{
+    id: string;
+    name: string;
+    type: 'Happy' | 'Edge' | 'Error';
+    persona: 'customer' | 'advisor' | 'system' | 'unknown';
+    riskLevel: 'P0' | 'P1' | 'P2';
+    assertionType: 'functional' | 'regression' | 'compliance' | 'other';
+    outcome: string;
+    status: string;
+  }> = [];
+  let scenarioIndex = 1;
+
+  // Happy path scenario
+  if (processOutputs.length > 0) {
+    const happyOutput = processOutputs[0];
+    const userTasks = activities.filter(a => a.type === 'user-task');
+    let persona: 'customer' | 'advisor' | 'system' | 'unknown' = 'unknown';
+    if (userTasks.length > 0) {
+      persona = 'customer';
+    } else if (activities.some(a => a.type === 'service-task' || a.type === 'business-rule-task')) {
+      persona = 'system';
+    }
+
+    let scenarioName = 'Normalflöde – komplett process';
+    if (happyOutput.toLowerCase().includes('bekräft')) {
+      scenarioName = 'Normalflöde – bekräftad';
+    } else if (happyOutput.toLowerCase().includes('insamlad') || happyOutput.toLowerCase().includes('validerad')) {
+      scenarioName = 'Normalflöde – data insamlad och validerad';
+    } else if (happyOutput.toLowerCase().includes('godkänd') || happyOutput.toLowerCase().includes('approved')) {
+      scenarioName = 'Normalflöde – godkänd';
+    }
+
+    scenarios.push({
+      id: `S${scenarioIndex++}`,
+      name: scenarioName,
+      type: 'Happy',
+      persona,
+      riskLevel: 'P1',
+      assertionType: processType === 'kyc' ? 'compliance' : 'functional',
+      outcome: happyOutput,
+      status: '✅ Planerad',
+    });
+  }
+
+  // Error scenarios
+  const errorOutputs = processOutputs.filter(o =>
+    o.toLowerCase().includes('rejected') ||
+    o.toLowerCase().includes('avvisas') ||
+    o.toLowerCase().includes('fel') ||
+    o.toLowerCase().includes('error')
+  );
+
+  for (const errorOutput of errorOutputs.slice(0, 2)) {
+    scenarios.push({
+      id: `S${scenarioIndex++}`,
+      name: errorOutput.length > 50 ? errorOutput.substring(0, 47) + '...' : errorOutput,
+      type: 'Error',
+      persona: 'system',
+      riskLevel: 'P0',
+      assertionType: processType === 'kyc' ? 'compliance' : 'functional',
+      outcome: errorOutput,
+      status: '✅ Planerad',
+    });
+  }
+
+  // Edge scenario
+  const edgeOutputs = processOutputs.filter(o =>
+    o.toLowerCase().includes('manuell') ||
+    o.toLowerCase().includes('granskning') ||
+    o.toLowerCase().includes('komplettering') ||
+    o.toLowerCase().includes('incomplete')
+  );
+
+  if (edgeOutputs.length > 0) {
+    scenarios.push({
+      id: `S${scenarioIndex++}`,
+      name: edgeOutputs[0].length > 50 ? edgeOutputs[0].substring(0, 47) + '...' : edgeOutputs[0],
+      type: 'Edge',
+      persona: activities.find(a => a.type === 'user-task') ? 'customer' : 'unknown',
+      riskLevel: 'P2',
+      assertionType: 'functional',
+      outcome: edgeOutputs[0],
+      status: '⏳ TODO',
+    });
+  } else if (scenarios.length < 3) {
+    scenarios.push({
+      id: `S${scenarioIndex++}`,
+      name: 'Ofullständig information eller komplettering behövs',
+      type: 'Edge',
+      persona: 'customer',
+      riskLevel: 'P2',
+      assertionType: 'functional',
+      outcome: 'Kunden styrs till komplettering, beslut skjuts upp',
+      status: '⏳ TODO',
+    });
+  }
+
+  // Generate UI Flow steps for each scenario
+  const uiFlowSections = scenarios.map(scenario => {
+    const userTasks = activities.filter(a => a.type === 'user-task');
+    const steps: Array<{
+      step: number;
+      pageId: string;
+      action: string;
+      locatorId: string;
+      dataProfile: string;
+      comment: string;
+    }> = [];
+    let stepNum = 1;
+
+    if (userTasks.length > 0) {
+      const confirmTask = userTasks.find(t => t.name.toLowerCase().includes('confirm') || t.name.toLowerCase().includes('submit'));
+      const firstTask = confirmTask || userTasks[0];
+      const pageId = firstTask.name.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      let finalPageId = pageId;
+      if (firstTask.name.toLowerCase().includes('confirm')) {
+        finalPageId = 'confirm-application';
+      } else if (firstTask.name.toLowerCase().includes('submit')) {
+        finalPageId = 'submit-form';
+      } else if (firstTask.name.toLowerCase().includes('review')) {
+        finalPageId = 'review-page';
+      }
+
+      steps.push({
+        step: stepNum++,
+        pageId: finalPageId,
+        action: 'navigate',
+        locatorId: '-',
+        dataProfile: '-',
+        comment: `Navigera till ${firstTask.name.toLowerCase()}`,
+      });
+
+      if (scenario.type === 'Happy') {
+        steps.push({
+          step: stepNum++,
+          pageId: finalPageId,
+          action: 'fill',
+          locatorId: '[TODO: Lägg till locator för första fältet]',
+          dataProfile: '[TODO: Definiera testdata]',
+          comment: `Fyll i information för ${firstTask.name.toLowerCase()}`,
+        });
+        steps.push({
+          step: stepNum++,
+          pageId: finalPageId,
+          action: 'click',
+          locatorId: '[TODO: Lägg till locator för submit-knapp]',
+          dataProfile: '-',
+          comment: 'Skicka/Submit',
+        });
+        steps.push({
+          step: stepNum++,
+          pageId: `${finalPageId}-confirmation`,
+          action: 'verify',
+          locatorId: '[TODO: Lägg till locator för bekräftelsemeddelande]',
+          dataProfile: '-',
+          comment: 'Verifiera bekräftelse',
+        });
+      } else if (scenario.type === 'Error') {
+        steps.push({
+          step: stepNum++,
+          pageId: finalPageId,
+          action: 'fill',
+          locatorId: '[TODO: Lägg till locator för fält]',
+          dataProfile: '[TODO: Definiera testdata som orsakar fel]',
+          comment: 'Fyll i information som orsakar fel',
+        });
+        steps.push({
+          step: stepNum++,
+          pageId: finalPageId,
+          action: 'click',
+          locatorId: '[TODO: Lägg till locator för submit-knapp]',
+          dataProfile: '-',
+          comment: 'Försök skicka med felaktig information',
+        });
+        steps.push({
+          step: stepNum++,
+          pageId: finalPageId,
+          action: 'verify',
+          locatorId: '[TODO: Lägg till locator för felmeddelande]',
+          dataProfile: '-',
+          comment: 'Verifiera att felmeddelande visas',
+        });
+      } else if (scenario.type === 'Edge') {
+        steps.push({
+          step: stepNum++,
+          pageId: finalPageId,
+          action: 'fill',
+          locatorId: '[TODO: Lägg till locator för fält]',
+          dataProfile: '[TODO: Definiera testdata för edge case]',
+          comment: 'Fyll i information som kräver komplettering',
+        });
+        steps.push({
+          step: stepNum++,
+          pageId: finalPageId,
+          action: 'click',
+          locatorId: '[TODO: Lägg till locator för submit-knapp]',
+          dataProfile: '-',
+          comment: 'Skicka med ofullständig information',
+        });
+        steps.push({
+          step: stepNum++,
+          pageId: `${finalPageId}-completion`,
+          action: 'verify',
+          locatorId: '[TODO: Lägg till locator för kompletteringsmeddelande]',
+          dataProfile: '-',
+          comment: 'Verifiera att kompletteringsmeddelande visas',
+        });
+      }
+    } else {
+      steps.push({
+        step: stepNum++,
+        pageId: '[TODO: Lägg till page ID]',
+        action: 'navigate',
+        locatorId: '-',
+        dataProfile: '-',
+        comment: '[TODO: Lägg till navigationssteg]',
+      });
+    }
+
+    const stepsRows = steps.map(step => `
+        <tr>
+          <td>${step.step}</td>
+          <td>${step.pageId}</td>
+          <td>${step.action}</td>
+          <td>${step.locatorId}</td>
+          <td>${step.dataProfile}</td>
+          <td>${step.comment}</td>
+        </tr>
+      `).join('');
+
+    return `
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>${scenario.id}: ${scenario.name}</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${stepsRows}
+          </tbody>
+        </table>
+      </details>
+    `;
+  }).join('');
+
+  // Generate test data references
+  const testDataRefs: Array<{ id: string; description: string }> = [];
+  if (processOutputs.some(o => o.toLowerCase().includes('inkomst') || o.toLowerCase().includes('income'))) {
+    testDataRefs.push({
+      id: 'customer-high-income',
+      description: '[TODO: Definiera testdata för kund med hög inkomst (>600k SEK/år), låg skuldsättning (<30%), god kredithistorik]',
+    });
+    testDataRefs.push({
+      id: 'customer-low-income',
+      description: '[TODO: Definiera testdata för kund med låg inkomst (<300k SEK/år), hög skuldsättning (>50%)]',
+    });
+  }
+  if (testDataRefs.length === 0) {
+    testDataRefs.push({
+      id: '[TODO: data-profile-id]',
+      description: '[TODO: Definiera testdata för denna process]',
+    });
+  }
+
+  const testDataList = testDataRefs.map(ref => `
+      <li><strong>${ref.id}</strong>: ${ref.description}</li>
+    `).join('');
+
+  // Generate implementation mapping
+  const implMapping = activities.map(activity => {
+    let type: 'UI' | 'API' | 'Both' = 'UI';
+    let method = '-';
+    if (activity.type === 'service-task' || activity.type === 'business-rule-task') {
+      type = 'API';
+      method = '[TODO: Lägg till HTTP method, t.ex. GET eller POST]';
+    } else if (activity.type === 'call-activity') {
+      type = 'Both';
+    }
+    const route = activity.type === 'user-task' || activity.type === 'call-activity'
+      ? `[TODO: Lägg till route, t.ex. /${activity.name.toLowerCase().replace(/\s+/g, '-')}]`
+      : `[TODO: Lägg till endpoint, t.ex. /api/v1/${activity.name.toLowerCase().replace(/\s+/g, '-')}]`;
+    return {
+      activity: activity.name,
+      type,
+      route,
+      method,
+      baseUrl: '[TODO: Lägg till base URL för miljön]',
+      comment: activity.description.length > 80 ? activity.description.substring(0, 77) + '...' : activity.description,
+    };
+  });
+
+  const implMappingRows = implMapping.map(m => `
+      <tr>
+        <td>${m.activity}</td>
+        <td>${m.type}</td>
+        <td>${m.route}</td>
+        <td>${m.method}</td>
+        <td>${m.baseUrl}</td>
+        <td>${m.comment}</td>
+      </tr>
+    `).join('');
+
+  const scenariosTableRows = scenarios.map(s => `
+      <tr>
+        <td><strong>${s.id}</strong></td>
+        <td>${s.name}</td>
+        <td>${s.type}</td>
+        <td>${s.persona}</td>
+        <td>${s.riskLevel}</td>
+        <td>${s.assertionType}</td>
+        <td>${s.outcome}</td>
+        <td>${s.status}</td>
+      </tr>
+    `).join('');
+
+  return `
+    <section class="doc-section">
+      <h2>Testgenerering</h2>
+      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${scenariosTableRows}
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      ${uiFlowSections}
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        ${testDataList}
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${implMappingRows}
+        </tbody>
+      </table>
     </section>
   `;
 }
@@ -1929,6 +2627,7 @@ function buildBusinessRuleDocBody(
  * @param links - Template links
  * @param llmContent - Optional LLM-generated content (for ChatGPT/Ollama)
  * @param llmMetadata - Optional LLM metadata
+ * @param templateVersion - Template version to use ('v1' or 'v2'), defaults to 'v1'
  * @returns Complete HTML document
  */
 export async function renderFeatureGoalDoc(
@@ -1936,6 +2635,7 @@ export async function renderFeatureGoalDoc(
   links: TemplateLinks,
   llmContent?: string,
   llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
+  templateVersion: FeatureGoalTemplateVersion = 'v1',
 ): Promise<string> {
   // 1. Build base model from context
   let model = buildFeatureGoalDocModelFromContext(context);
@@ -1950,8 +2650,10 @@ export async function renderFeatureGoalDoc(
     model = mergeLlmPatch(model, llmModel);
   }
 
-  // 4. Render HTML via unified renderer
-  const body = buildFeatureGoalDocHtmlFromModel(context, links, model);
+  // 4. Render HTML via unified renderer (v1 or v2)
+  const body = templateVersion === 'v2' 
+    ? buildFeatureGoalDocHtmlFromModelV2(context, links, model)
+    : buildFeatureGoalDocHtmlFromModel(context, links, model);
   const title = context.node.name || context.node.bpmnElementId || 'Feature Goal';
   return wrapDocument(title, body, llmMetadata);
 }

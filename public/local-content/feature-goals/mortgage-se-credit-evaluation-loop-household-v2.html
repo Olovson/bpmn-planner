@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>For each household</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+    <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+  <div class="doc-shell">
+    
+    
+    
+    <section class="doc-section">
+      <h2>Beskrivning av FGoal</h2>
+      <p>For each household är en multi-instance subprocess som bearbetar ekonomisk kapacitet och betalningsförmåga för varje hushåll i ansökan. Subprocessen körs parallellt eller sekventiellt för alla hushåll i ansökan och beräknar individuella affordability-mått som sedan konsolideras för policyutvärdering.</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Confluence länk</h2>
+      <p><a href="https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data">https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data</a></p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Input</h2>
+      <ul>
+        <li>Amortisationsberäkning är genomförd</li>
+        <li>Hushållsdata är tillgänglig för varje hushåll i ansökan</li>
+        <li>Inkomst- och utgiftsdata är validerad</li>
+        <li>Befintliga skulder och finansiella åtaganden är registrerade</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Output</h2>
+      <ul>
+        <li>Beräknad betalningsförmåga för varje hushåll (affordability-mått)</li>
+        <li>Utvärdering av hushållets ekonomi mot policykriterier</li>
+        <li>Konsoliderade hushållsresultat redo för riskklassificering</li>
+        <li>Individuella hushållsbeslut (godkänd/underkänd) baserat på affordability</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Omfattning</h2>
+      <ul>
+        <li>Beräkning av hushållets betalningsförmåga via KALP-systemet</li>
+        <li>Utvärdering av hushållets ekonomi mot affärsregler (debt-to-income ratios, stress testing, policy limits)</li>
+        <li>Multi-instance bearbetning för att hantera flera hushåll i samma ansökan</li>
+        <li>Konsolidering av individuella hushållsresultat för vidare policyutvärdering</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Avgränsning</h2>
+      <ul>
+        <li>Riskklassificering sker i efterföljande steg (fetch-risk-classification)</li>
+        <li>Policyutvärdering på ansökningsnivå sker separat (evaluate-credit-policies)</li>
+        <li>Produkt- och prishämtning sker före hushållsbehandling</li>
+        <li>Hushållsbehandlingen fokuserar enbart på ekonomisk kapacitet, inte på objektvärdering eller dokumentation</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Beroenden</h2>
+      <ul>
+        <li><strong>KALP-system:</strong> Beräknar hushållets betalningsförmåga baserat på inkomst, utgifter och skulder</li>
+        <li><strong>Affärsregelmotor (DMN):</strong> Utvärderar hushållets ekonomi mot policykriterier (debt-to-income ratios, stress testing)</li>
+        <li><strong>Kunddata:</strong> Inkomst- och utgiftsdata för varje hushåll</li>
+        <li><strong>Engagemangsdata:</strong> Befintliga skulder och finansiella åtaganden</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN - Process</h2>
+      <p><a href="#/bpmn/mortgage-se-credit-evaluation.bpmn">Visa BPMN-processen för For each household</a></p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Testgenerering</h2>
+      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – alla hushåll godkända</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Multi-instance loop körs för varje hushåll. Calculate household affordability beräknar betalningsförmåga via KALP-system. Evaluate household utvärderar mot policykriterier och godkänner. Evaluate stakeholders utvärderar stakeholders per hushåll och godkänner. Alla hushåll godkänns. Processen fortsätter med riskklassificering.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Hushåll avvisat – otillräcklig affordability</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Multi-instance loop körs för varje hushåll. Calculate household affordability beräknar, men Evaluate household avvisar (otillräcklig affordability, för hög skuldsättning). Processen avslutas med avslag för det hushållet.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Multi-instance – flera hushåll</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Processen körs för flera hushåll (multi-instance loop). Varje hushåll genomgår Calculate household affordability, Evaluate household, och Evaluate stakeholders. Alla hushåll godkänns. Processen fortsätter när alla är klara.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>customer-high-income</strong>: [TODO: Definiera testdata för kund med hög inkomst (>600k SEK/år), låg skuldsättning (<30%), god kredithistorik]</li>
+    
+      <li><strong>customer-low-income</strong>: [TODO: Definiera testdata för kund med låg inkomst (<300k SEK/år), hög skuldsättning (>50%)]</li>
+    
+      <li><strong>customer-standard-household</strong>: [TODO: Definiera testdata för standard hushåll (2 vuxna, 2 barn), medianinkomst (~400k SEK/år)]</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+        </tbody>
+      </table>
+    </section>
+  
+
+  
+  </div>
+  </body>
+</html>

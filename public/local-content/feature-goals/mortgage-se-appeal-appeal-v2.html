@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appeal</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+    <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+  <div class="doc-shell">
+    
+    
+    
+    <section class="doc-section">
+      <h2>Beskrivning av FGoal</h2>
+      <p>Appeal hanterar överklaganden när en kreditansökan har blivit automatiskt avvisad. Processen möjliggör för kunden (Stakeholder) att skicka in en överklagan som sedan granskas av en handläggare (Caseworker). Om överklagan accepteras, går ansökan vidare till manuell kreditevaluering. Processen har en timeout på 30 dagar - om överklagan inte skickas in inom denna tid, avvisas ansökan automatiskt.</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Confluence länk</h2>
+      <p><a href="https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data">https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data</a></p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Input</h2>
+      <ul>
+        <li>Kreditansökan har blivit automatiskt avvisad (is-automatically-rejected-yes)</li>
+        <li>Alternativt: Manuell kreditevaluering har blivit automatiskt avvisad (credit-evaluation-automatically-rejected)</li>
+        <li>Processen startar när Appeal call activity anropas från huvudprocessen mortgage</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processteg - Output</h2>
+      <ul>
+        <li>Om överklagan accepteras: Ansökan går vidare till manuell kreditevaluering (manual-credit-evaluation)</li>
+        <li>Om överklagan avvisas: Processen kan loopa tillbaka för att kunden kan skicka in en ny överklagan</li>
+        <li>Om timeout (30 dagar): Ansökan avvisas automatiskt (application-automatically-rejected) via escalation "appeal-timeout"</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Omfattning</h2>
+      <ul>
+        <li>Stakeholder kan skicka in överklagan via user task "Submit appeal"</li>
+        <li>Caseworker granskar överklagan via user task "Screen appeal"</li>
+        <li>Beslut om överklagan accepteras eller avvisas via gateway "Screening accepted?"</li>
+        <li>Timeout-hantering på 30 dagar (P30D) för "Submit appeal" task</li>
+        <li>Loop-mekanism som möjliggör flera överklagansförsök om den första avvisas</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Avgränsning</h2>
+      <ul>
+        <li>Manuell kreditevaluering ingår inte - den är en separat process som anropas efter att överklagan accepterats</li>
+        <li>Automatisk kreditevaluering ingår inte - den sker innan Appeal-processen startar</li>
+        <li>KYC-processen ingår inte - den sker innan Appeal-processen startar</li>
+        <li>Dokumentationshantering ingår inte - den hanteras i manuell kreditevaluering</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Beroenden</h2>
+      <ul>
+        <li><strong>Mortgage huvudprocess:</strong> Appeal anropas från mortgage.bpmn när en ansökan har blivit automatiskt avvisad</li>
+        <li><strong>Manual credit evaluation:</strong> Om överklagan accepteras, går processen vidare till manuell kreditevaluering</li>
+        <li><strong>Timeout-hantering:</strong> Om överklagan inte skickas in inom 30 dagar, triggas escalation "appeal-timeout" som avvisar ansökan automatiskt</li>
+        <li><strong>Caseworker-system:</strong> Handläggare behöver tillgång till system för att granska överklagan</li>
+        <li><strong>Stakeholder-portal:</strong> Kunden behöver tillgång till portal för att skicka in överklagan</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN - Process</h2>
+      <p><a href="#/bpmn/mortgage-se-appeal.bpmn">Visa BPMN-processen för Appeal</a></p>
+      <p class="muted">Processen innehåller två lanes: "Stakeholder" (kund) och "Caseworker" (handläggare). Processen startar med en start event, går via en gateway till "Submit appeal" (Stakeholder), sedan till "Screen appeal" (Caseworker), och beslutar via gateway om överklagan accepteras eller avvisas.</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Testgenerering</h2>
+      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – överklagan accepterad</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Kund skickar in överklagan, Caseworker granskar och accepterar. Ansökan går vidare till manuell kreditevaluering (manual-credit-evaluation).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Överklagan avvisad – kund kan skicka ny överklagan</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Kund skickar in överklagan, Caseworker avvisar. Processen loopar tillbaka så kunden kan skicka in en ny överklagan (max antal gånger enligt policy).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Timeout (30 dagar) – ansökan avvisas automatiskt</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Kund skickar in överklagan men svarar inte inom 30 dagar. Timeout event "appeal-timeout" triggas. Escalation "appeal-timeout" avvisar ansökan automatiskt (application-automatically-rejected).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Ofullständig överklagan – komplettering krävs</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td>Kund skickar in ofullständig överklagan (saknar motivering eller dokumentation). Systemet kräver komplettering innan överklagan kan granskas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – överklagan accepterad</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>appeal-start</td>
+          <td>navigate</td>
+          <td>nav-appeal</td>
+          <td>appeal-accepted</td>
+          <td>Appeal-processen startar när ansökan har blivit automatiskt avvisad. Navigera till Appeal-sidan.</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>submit-appeal</td>
+          <td>navigate</td>
+          <td>nav-submit-appeal</td>
+          <td>appeal-accepted</td>
+          <td>Navigera till "Submit appeal" user task (Stakeholder lane)</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>submit-appeal</td>
+          <td>fill</td>
+          <td>input-appeal-reason</td>
+          <td>appeal-accepted</td>
+          <td>Fyll i motivering för överklagan (t.ex. ny information, felaktig bedömning)</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>submit-appeal</td>
+          <td>fill</td>
+          <td>input-appeal-documentation</td>
+          <td>appeal-accepted</td>
+          <td>Ladda upp kompletterande dokumentation (t.ex. nya lönespecifikationer, förklarande brev)</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>submit-appeal</td>
+          <td>click</td>
+          <td>btn-submit-appeal</td>
+          <td>appeal-accepted</td>
+          <td>Skicka in överklagan</td>
+        </tr>
+      
+        <tr>
+          <td>6</td>
+          <td>screen-appeal</td>
+          <td>verify</td>
+          <td>task-assigned-caseworker</td>
+          <td>appeal-accepted</td>
+          <td>Verifiera att "Screen appeal" user task är tilldelad till Caseworker (handläggare)</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>screen-appeal</td>
+          <td>navigate</td>
+          <td>nav-screen-appeal</td>
+          <td>appeal-accepted</td>
+          <td>Caseworker navigerar till "Screen appeal" user task (Caseworker lane)</td>
+        </tr>
+      
+        <tr>
+          <td>8</td>
+          <td>screen-appeal</td>
+          <td>verify</td>
+          <td>summary-appeal-content</td>
+          <td>appeal-accepted</td>
+          <td>Verifiera att Caseworker ser överklagansmotivering och dokumentation</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>screen-appeal</td>
+          <td>click</td>
+          <td>btn-accept-appeal</td>
+          <td>appeal-accepted</td>
+          <td>Caseworker accepterar överklagan</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>screening-accepted</td>
+          <td>verify</td>
+          <td>gateway-screening-accepted-yes</td>
+          <td>appeal-accepted</td>
+          <td>Screening accepted gateway avgör att överklagan accepteras (Yes). Processen går till end event.</td>
+        </tr>
+      
+        <tr>
+          <td>11</td>
+          <td>appeal-completed</td>
+          <td>verify</td>
+          <td>success-message-appeal-accepted</td>
+          <td>appeal-accepted</td>
+          <td>Verifiera att processen avslutas och ansökan går vidare till manuell kreditevaluering (manual-credit-evaluation).</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Överklagan avvisad – kund kan skicka ny överklagan</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-5</td>
+          <td>appeal-start till submit-appeal</td>
+          <td>navigate, fill, click</td>
+          <td>nav-appeal, input-appeal-reason, btn-submit-appeal</td>
+          <td>appeal-rejected</td>
+          <td>Samma som S1 steg 1-5: Starta process, skicka in överklagan</td>
+        </tr>
+      
+        <tr>
+          <td>6-8</td>
+          <td>screen-appeal</td>
+          <td>verify, navigate</td>
+          <td>task-assigned-caseworker, nav-screen-appeal, summary-appeal-content</td>
+          <td>appeal-rejected</td>
+          <td>Caseworker navigerar till Screen appeal och ser överklagansinnehåll</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>screen-appeal</td>
+          <td>click</td>
+          <td>btn-reject-appeal</td>
+          <td>appeal-rejected</td>
+          <td>Caseworker avvisar överklagan (t.ex. otillräcklig motivering, saknad dokumentation)</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>screening-accepted</td>
+          <td>verify</td>
+          <td>gateway-screening-accepted-no</td>
+          <td>appeal-rejected</td>
+          <td>Screening accepted gateway avgör att överklagan avvisas (No). Processen loopar tillbaka.</td>
+        </tr>
+      
+        <tr>
+          <td>11</td>
+          <td>appeal-loop</td>
+          <td>verify</td>
+          <td>loop-back-to-submit</td>
+          <td>appeal-rejected</td>
+          <td>Verifiera att processen loopar tillbaka till "Submit appeal" så kunden kan skicka in en ny överklagan (max antal gånger enligt policy).</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: Timeout (30 dagar) – ansökan avvisas automatiskt</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>appeal-start</td>
+          <td>navigate</td>
+          <td>nav-appeal</td>
+          <td>appeal-timeout</td>
+          <td>Appeal-processen startar när ansökan har blivit automatiskt avvisad</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>submit-appeal</td>
+          <td>navigate</td>
+          <td>nav-submit-appeal</td>
+          <td>appeal-timeout</td>
+          <td>Navigera till "Submit appeal" user task. Kund startar men slutför inte överklagan.</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>submit-appeal</td>
+          <td>verify</td>
+          <td>timeout-timer-started</td>
+          <td>appeal-timeout</td>
+          <td>Verifiera att timeout-timer startar (30 dagar P30D) när "Submit appeal" task skapas</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>submit-appeal</td>
+          <td>wait</td>
+          <td>timeout-30-days</td>
+          <td>appeal-timeout</td>
+          <td>Vänta 30 dagar utan att kunden skickar in överklagan (eller simulera timeout i testmiljö)</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>event-appeal-timeout</td>
+          <td>verify</td>
+          <td>timeout-event-triggered</td>
+          <td>appeal-timeout</td>
+          <td>Verifiera att timeout event "appeal-timeout" triggas efter 30 dagar</td>
+        </tr>
+      
+        <tr>
+          <td>6</td>
+          <td>appeal-timeout</td>
+          <td>verify</td>
+          <td>escalation-appeal-timeout</td>
+          <td>appeal-timeout</td>
+          <td>Verifiera att escalation "appeal-timeout" triggas</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>application-automatically-rejected</td>
+          <td>verify</td>
+          <td>rejection-message-timeout</td>
+          <td>appeal-timeout</td>
+          <td>Verifiera att ansökan avvisas automatiskt (application-automatically-rejected) via escalation. Processen avslutas.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S4: Ofullständig överklagan – komplettering krävs</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-2</td>
+          <td>appeal-start, submit-appeal</td>
+          <td>navigate</td>
+          <td>nav-appeal, nav-submit-appeal</td>
+          <td>appeal-incomplete</td>
+          <td>Starta process, navigera till Submit appeal</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>submit-appeal</td>
+          <td>fill</td>
+          <td>input-appeal-reason</td>
+          <td>appeal-incomplete</td>
+          <td>Fyll i motivering, men lämna dokumentation tomt eller ofullständig</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>submit-appeal</td>
+          <td>click</td>
+          <td>btn-submit-appeal</td>
+          <td>appeal-incomplete</td>
+          <td>Försök skicka in ofullständig överklagan</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>submit-appeal</td>
+          <td>verify</td>
+          <td>validation-error-documentation</td>
+          <td>appeal-incomplete</td>
+          <td>Verifiera att valideringsfel visas för saknad eller ofullständig dokumentation</td>
+        </tr>
+      
+        <tr>
+          <td>6</td>
+          <td>submit-appeal</td>
+          <td>fill</td>
+          <td>input-appeal-documentation</td>
+          <td>appeal-incomplete</td>
+          <td>Komplettera med dokumentation</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>submit-appeal</td>
+          <td>click</td>
+          <td>btn-submit-appeal</td>
+          <td>appeal-incomplete</td>
+          <td>Skicka in kompletterad överklagan</td>
+        </tr>
+      
+        <tr>
+          <td>8-11</td>
+          <td>screen-appeal till appeal-completed</td>
+          <td>navigate, verify, click</td>
+          <td>nav-screen-appeal, btn-accept-appeal, success-message-appeal-accepted</td>
+          <td>appeal-incomplete</td>
+          <td>Fortsätt med granskning och godkännande (samma som S1 steg 6-11)</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>appeal-accepted</strong>: Överklagan som accepteras - välgrundad motivering (t.ex. ny information, felaktig bedömning), kompletterande dokumentation (nya lönespecifikationer, förklarande brev), Caseworker godkänner</li>
+    
+      <li><strong>appeal-rejected</strong>: Överklagan som avvisas - otillräcklig motivering, saknad eller ofullständig dokumentation, Caseworker avvisar. Processen loopar tillbaka för ny överklagan.</li>
+    
+      <li><strong>appeal-timeout</strong>: Överklagan som timeout - kund startar men slutför inte överklagan inom 30 dagar. Timeout event triggas och ansökan avvisas automatiskt.</li>
+    
+      <li><strong>appeal-incomplete</strong>: Ofullständig överklagan - saknar viktiga fält som dokumentation eller motivering. Systemet kräver komplettering innan överklagan kan skickas in.</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>Appeal (start)</td>
+        <td>UI</td>
+        <td>/mortgage/appeal</td>
+        <td>GET</td>
+        <td>https://portal.sbab.se</td>
+        <td>Startpunkt för Appeal-processen. Anropas från Mortgage huvudprocess när ansökan har blivit automatiskt avvisad.</td>
+      </tr>
+    
+      <tr>
+        <td>Submit appeal</td>
+        <td>UI</td>
+        <td>/mortgage/appeal/submit<br>/api/appeal/submit</td>
+        <td>GET/POST (UI)<br>POST (API)</td>
+        <td>https://portal.sbab.se<br>https://api.sbab.se</td>
+        <td>User task (Stakeholder lane) där kunden skickar in överklagan. Input: Motivering, Dokumentation. Timeout: 30 dagar (P30D).</td>
+      </tr>
+    
+      <tr>
+        <td>Screen appeal</td>
+        <td>UI</td>
+        <td>/mortgage/appeal/screen<br>/api/appeal/screen</td>
+        <td>GET/POST (UI)<br>POST (API)</td>
+        <td>https://portal.sbab.se<br>https://api.sbab.se</td>
+        <td>User task (Caseworker lane) där handläggare granskar överklagan. Caseworker kan acceptera eller avvisa överklagan.</td>
+      </tr>
+    
+      <tr>
+        <td>Screening accepted gateway</td>
+        <td>System</td>
+        <td>Internal gateway logic</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Exclusive gateway som avgör om överklagan accepteras eller avvisas baserat på Caseworker-beslut. Om Yes → End event (går vidare till manual-credit-evaluation). Om No → Loop tillbaka till Submit appeal.</td>
+      </tr>
+    
+      <tr>
+        <td>Appeal timeout (event)</td>
+        <td>System</td>
+        <td>Internal timer event</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Timer event som triggas efter 30 dagar (P30D) om "Submit appeal" task inte slutförts. Triggar escalation "appeal-timeout".</td>
+      </tr>
+    
+      <tr>
+        <td>Appeal timeout (escalation)</td>
+        <td>System</td>
+        <td>Internal escalation event</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Escalation "appeal-timeout" triggas när timeout event inträffar. Ansökan avvisas automatiskt (application-automatically-rejected). Processen avslutas.</td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </section>
+  
+
+  
+  </div>
+  </body>
+</html>
