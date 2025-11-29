@@ -9,9 +9,14 @@
 export interface CustomActivity {
   id: string;
   name: string;
-  weeks: number;
+  weeks: number; // Legacy field, kept for backward compatibility
   placement: 'before-all' | 'after-all';
   order: number; // For sorting activities with the same placement
+  // Work items (optional, defaults to 0 if not set)
+  analysisWeeks?: number;
+  implementationWeeks?: number;
+  testingWeeks?: number;
+  validationWeeks?: number;
 }
 
 export interface BankIntegrationWorkItems {

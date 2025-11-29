@@ -9,8 +9,7 @@ import { useGlobalProjectConfig } from '@/contexts/GlobalProjectConfigContext';
 import { useToast } from '@/hooks/use-toast';
 import { IntegrationDefaultsSection } from '@/components/config/IntegrationDefaultsSection';
 import { PerNodeWorkItemsSection } from '@/components/config/PerNodeWorkItemsSection';
-import { CustomActivitiesSection } from '@/components/config/CustomActivitiesSection';
-import { Save } from 'lucide-react';
+import { ProjectActivitiesSection } from '@/components/config/ProjectActivitiesSection';
 
 const ConfigurationPage = () => {
   const navigate = useNavigate();
@@ -21,7 +20,6 @@ const ConfigurationPage = () => {
     config,
     loading,
     loadConfig,
-    saveConfig,
   } = useGlobalProjectConfig();
 
   // Load configuration when root file changes
@@ -49,22 +47,6 @@ const ConfigurationPage = () => {
     }
   };
 
-  const handleSave = async () => {
-    try {
-      await saveConfig();
-      toast({
-        title: 'Konfiguration sparad',
-        description: 'Dina inställningar har sparats.',
-      });
-    } catch (error) {
-      console.error('[ConfigurationPage] Error saving:', error);
-      toast({
-        title: 'Fel',
-        description: 'Kunde inte spara konfiguration.',
-        variant: 'destructive',
-      });
-    }
-  };
 
   if (loading) {
     return (
@@ -110,16 +92,9 @@ const ConfigurationPage = () => {
 
           <IntegrationDefaultsSection />
 
+          <ProjectActivitiesSection />
+
           <PerNodeWorkItemsSection />
-
-          <CustomActivitiesSection />
-
-          <div className="flex justify-end pt-4">
-            <Button onClick={handleSave} size="lg">
-              <Save className="h-4 w-4 mr-2" />
-              Spara konfiguration
-            </Button>
-          </div>
         </div>
       </main>
     </div>
