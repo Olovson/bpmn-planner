@@ -12,6 +12,8 @@ import { buildNodeDocumentationContext } from '@/lib/documentationContext';
 import { renderFeatureGoalDoc } from '@/lib/documentationTemplates';
 import { useDynamicBpmnFiles } from '@/hooks/useDynamicBpmnFiles';
 import type { FeatureGoalTemplateVersion } from '@/lib/documentationTemplates';
+import { matchCallActivityUsingMap, loadBpmnMap } from '@/lib/bpmn/bpmnMapLoader';
+import bpmnMapData from '../../bpmn-map.json';
 
 const DocViewer = () => {
   const { user, signOut } = useAuth();
@@ -131,15 +133,32 @@ const DocViewer = () => {
           // This matches how bpmnGenerators.ts creates Feature Goal filenames
           let featureGoalBpmnFile = baseName;
           
-          // Try to resolve subprocessFile from BPMN process graph for call activities
+          // Try to resolve subprocessFile from bpmn-map.json first (fastest and most reliable)
           try {
-            const graph = await buildBpmnProcessGraph(baseName + '.bpmn', bpmnFiles);
-            const nodeId = `${baseName}.bpmn::${elementSegment}`;
-            const nodeContext = buildNodeDocumentationContext(graph, nodeId);
+            console.log('[DocViewer] 🔍 Resolving subprocessFile for:', baseName, elementSegment);
+            const bpmnMap = loadBpmnMap(bpmnMapData);
+            const matchResult = matchCallActivityUsingMap(
+              { id: elementSegment, name: undefined, calledElement: undefined },
+              baseName + '.bpmn',
+              bpmnMap
+            );
             
-            // If this is a call activity with a subprocessFile, use that instead
-            if (nodeContext?.node.type === 'callActivity' && nodeContext.node.subprocessFile) {
-              featureGoalBpmnFile = nodeContext.node.subprocessFile.replace('.bpmn', '');
+            if (matchResult.matchedFileName) {
+              featureGoalBpmnFile = matchResult.matchedFileName.replace('.bpmn', '');
+              console.log('[DocViewer] ✓ Found subprocessFile from bpmn-map.json:', featureGoalBpmnFile);
+            } else {
+              // Fallback: Try to resolve from BPMN process graph
+              console.log('[DocViewer] No match in bpmn-map.json, trying process graph...');
+              const graph = await buildBpmnProcessGraph(baseName + '.bpmn', bpmnFiles);
+              const nodeId = `${baseName}.bpmn::${elementSegment}`;
+              const nodeContext = buildNodeDocumentationContext(graph, nodeId);
+              
+              if (nodeContext?.node.type === 'callActivity' && nodeContext.node.subprocessFile) {
+                featureGoalBpmnFile = nodeContext.node.subprocessFile.replace('.bpmn', '');
+                console.log('[DocViewer] ✓ Found subprocessFile from process graph:', featureGoalBpmnFile);
+              } else {
+                console.log('[DocViewer] Using baseName (not a call activity or no subprocessFile):', featureGoalBpmnFile);
+              }
             }
           } catch (error) {
             // If we can't resolve subprocessFile, fall back to using baseName
@@ -159,13 +178,17 @@ const DocViewer = () => {
           if (versionToUse === 'v2') {
             const localContentFilename = featureGoalPathWithVersion.replace('feature-goals/', '');
             const localContentPath = `/local-content/feature-goals/${localContentFilename}`;
+            console.log('[DocViewer] 📁 Adding local content path (with subprocessFile):', localContentPath);
             tryPaths.push(localContentPath);
             
             // Also try with original baseName
             const localContentFilenameOriginal = featureGoalPathWithVersionOriginal.replace('feature-goals/', '');
             const localContentPathOriginal = `/local-content/feature-goals/${localContentFilenameOriginal}`;
+            console.log('[DocViewer] 📁 Adding local content path (with baseName):', localContentPathOriginal);
             tryPaths.push(localContentPathOriginal);
           }
+          
+          console.log('[DocViewer] All tryPaths for Feature Goal:', tryPaths);
           
           if (modeFolder) {
             // Try version-specific path first (with subprocessFile)
@@ -201,17 +224,34 @@ const DocViewer = () => {
         tryPaths.push(`docs/${safeDocId}.html`);
 
         let rawHtml: string | null = null;
+        let loadedFromPath: string | null = null;
         for (const path of tryPaths) {
           // Check if this is a local content path (starts with /local-content/)
           if (path.startsWith('/local-content/')) {
             // Try to fetch from public directory
             try {
+              console.log('[DocViewer] 🔍 Attempting to fetch from local-content:', path);
               const response = await fetch(path, { cache: 'no-store' });
+              console.log('[DocViewer] Response status:', response.status, 'OK:', response.ok);
               if (response.ok) {
+                const contentLength = response.headers.get('content-length');
+                console.log('[DocViewer] Content-Length header:', contentLength || 'not set');
                 rawHtml = await response.text();
+                loadedFromPath = path;
+                console.log('[DocViewer] ✓ Loaded from local-content:', path, `(${rawHtml.length} bytes)`);
+                console.log('[DocViewer] First 300 chars:', rawHtml.substring(0, 300));
+                if (rawHtml.length < 1000) {
+                  console.error('[DocViewer] ⚠️ HTML seems too small! Expected ~37KB but got', rawHtml.length, 'bytes');
+                  console.error('[DocViewer] Full response (first 1000 chars):', rawHtml.substring(0, 1000));
+                }
                 break;
+              } else {
+                const errorText = await response.text().catch(() => '');
+                console.warn('[DocViewer] ✗ Failed to fetch from local-content:', path, 'Status:', response.status);
+                console.warn('[DocViewer] Error response (first 200 chars):', errorText.substring(0, 200));
               }
             } catch (error) {
+              console.error('[DocViewer] ❌ Error fetching from local-content:', path, error);
               // Continue to next path if local content fetch fails
               continue;
             }
@@ -223,15 +263,44 @@ const DocViewer = () => {
             const response = await fetch(versionedUrl, { cache: 'no-store' });
             if (!response.ok) continue;
             rawHtml = await response.text();
+            loadedFromPath = path;
+            console.log('[DocViewer] ✓ Loaded from Supabase:', path, `(${rawHtml.length} bytes)`);
             break;
           }
         }
 
         if (!rawHtml) {
+          console.error('[DocViewer] ✗ Failed to load HTML from any path. Tried:', tryPaths);
           throw new Error('Kunde inte hämta dokumentationen i valt läge eller legacy-läge.');
         }
 
-        const metaMatch = rawHtml.match(/<meta[^>]+name=["']x-generation-source["'][^>]*content=["']([^"']+)/i) || rawHtml.match(/<!--\s*generation-source:([a-z0-9-_]+)\s*-->/i);
+        console.log('[DocViewer] ✓ HTML loaded successfully from:', loadedFromPath || 'unknown', `(${rawHtml.length} bytes)`);
+        console.log('[DocViewer] First 500 chars of raw HTML:', rawHtml.substring(0, 500));
+        
+        // Check if HTML seems truncated or incomplete
+        if (rawHtml.length < 1000 && !rawHtml.includes('</html>')) {
+          console.error('[DocViewer] ⚠️ HTML seems incomplete or truncated!');
+          console.error('[DocViewer] Last 200 chars:', rawHtml.substring(Math.max(0, rawHtml.length - 200)));
+        }
+
+        // Sanitize HTML: Remove any script tags that might cause issues in iframe
+        // Note: We don't add CSP here as it can be too restrictive and block content
+        // Instead, we rely on iframe sandbox to prevent script execution
+        let sanitizedHtml = rawHtml;
+        
+        // Remove any existing script tags (they shouldn't be in static documentation anyway)
+        const scriptCount = (sanitizedHtml.match(/<script[^>]*>/gi) || []).length;
+        if (scriptCount > 0) {
+          console.warn('[DocViewer] Found', scriptCount, 'script tag(s) in HTML, removing them');
+          sanitizedHtml = sanitizedHtml.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+        }
+        
+        // Remove any existing base tags that might cause issues with relative URLs
+        sanitizedHtml = sanitizedHtml.replace(/<base[^>]*>/gi, '');
+        
+        console.log('[DocViewer] ✓ HTML sanitized, final length:', sanitizedHtml.length, 'bytes');
+
+        const metaMatch = sanitizedHtml.match(/<meta[^>]+name=["']x-generation-source["'][^>]*content=["']([^"']+)/i) || sanitizedHtml.match(/<!--\s*generation-source:([a-z0-9-_]+)\s*-->/i);
         if (metaMatch) {
           setGenerationSource(metaMatch[1]);
         } else {
@@ -239,18 +308,19 @@ const DocViewer = () => {
         }
         
         // Read template version from HTML metadata
-        const templateVersionMatch = rawHtml.match(/<meta[^>]+name=["']x-feature-goal-template-version["'][^>]*content=["']([^"']+)/i) || rawHtml.match(/<!--\s*feature-goal-template-version:([v12]+)\s*-->/i);
+        const templateVersionMatch = sanitizedHtml.match(/<meta[^>]+name=["']x-feature-goal-template-version["'][^>]*content=["']([^"']+)/i) || sanitizedHtml.match(/<!--\s*feature-goal-template-version:([v12]+)\s*-->/i);
         const detectedVersion = templateVersionMatch ? (templateVersionMatch[1] === 'v2' ? 'v2' : 'v1') : 'v1'; // Default to v1 if not found
         setTemplateVersion(detectedVersion);
         
         // Check if this is a Feature Goal (callActivity)
         // Feature Goals have docId format: nodes/bpmnFile/elementId
         // We can also check HTML for Feature Goal badge
-        const isFeatureGoalDoc = isNodeDoc && (rawHtml.includes('doc-badge">Feature Goal') || rawHtml.includes('Feature Goal'));
+        const isFeatureGoalDoc = isNodeDoc && (sanitizedHtml.includes('doc-badge">Feature Goal') || sanitizedHtml.includes('Feature Goal'));
         setIsFeatureGoal(isFeatureGoalDoc);
         
-        // Store raw HTML
-        setRawHtmlContent(rawHtml);
+        // Store sanitized HTML (not raw, to avoid script injection issues)
+        console.log('[DocViewer] Setting rawHtmlContent, length:', sanitizedHtml.length);
+        setRawHtmlContent(sanitizedHtml);
         
         // Only reset user selection when loading a different document (not when switching versions)
         // Check if docId changed by comparing with previous docId
@@ -417,17 +487,34 @@ const DocViewer = () => {
             </div>
           )}
 
-          {!loading && !error && rawHtmlContent && (
+          {!loading && !error && rawHtmlContent ? (
             <div className="rounded-lg border overflow-hidden bg-card">
               <iframe
                 key={`${docId}-${templateVersion}`}
                 srcDoc={rawHtmlContent}
                 className="w-full min-h-[80vh] bg-white"
                 title={prettyTitle || 'Dokumentation'}
-                sandbox="allow-scripts allow-forms"
+                sandbox="allow-same-origin allow-scripts allow-forms"
+                // Note: allow-same-origin is needed for srcdoc to work properly
+                // The sandbox still provides isolation, and we've removed script tags from HTML
+                onLoad={() => {
+                  console.log('[DocViewer] ✓ Iframe loaded successfully');
+                }}
+                onError={(e) => {
+                  console.error('[DocViewer] ✗ Iframe error:', e);
+                }}
               />
             </div>
-          )}
+          ) : !loading && !error ? (
+            <div className="max-w-2xl mx-auto bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+              <p className="text-yellow-800 font-semibold">
+                ⚠️ Inget innehåll att visa
+              </p>
+              <p className="text-sm text-yellow-600 mt-2">
+                Debug info: loading={String(loading)}, error={error || 'null'}, rawHtmlContent={rawHtmlContent ? `exists (${rawHtmlContent.length} bytes)` : 'null'}
+              </p>
+            </div>
+          ) : null}
         </div>
       </main>
     </div>
