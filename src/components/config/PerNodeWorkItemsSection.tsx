@@ -12,12 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useGlobalProjectConfig } from '@/contexts/GlobalProjectConfigContext';
 import { useProcessTree } from '@/hooks/useProcessTree';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
@@ -25,9 +20,15 @@ import { useIntegration } from '@/contexts/IntegrationContext';
 import { STACC_INTEGRATION_MAPPING } from '@/data/staccIntegrationMapping';
 import { extractAllTimelineNodes } from '@/lib/extractTimelineNodes';
 import { supabase } from '@/integrations/supabase/client';
-import { Settings, MoreVertical } from 'lucide-react';
+import { Settings, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { ProcessTreeNode } from '@/lib/processTree';
+import {
+  NODE_TYPE_FILTER_OPTIONS,
+  type NodeTypeFilterValue,
+} from '@/lib/nodeMatrixFiltering';
+import { getNodeTypeFilterConfig } from '@/lib/bpmnNodeTypeFilters';
+import { ProcessNodeType } from '@/lib/processTree';
 
 interface EnrichedNode {
   node: ProcessTreeNode;
@@ -47,7 +48,7 @@ interface EnrichedNode {
 export const PerNodeWorkItemsSection = () => {
   const { data: rootFile } = useRootBpmnFile();
   const { data: processTree } = useProcessTree(rootFile || 'mortgage.bpmn');
-  const { useStaccIntegration, setUseStaccIntegration } = useIntegration();
+  const { useStaccIntegration } = useIntegration();
   const { toast } = useToast();
   const {
     staccIntegrationWorkItems,
@@ -59,8 +60,7 @@ export const PerNodeWorkItemsSection = () => {
   } = useGlobalProjectConfig();
 
   const [jiraMappings, setJiraMappings] = useState<Map<string, { jira_name: string | null }>>(new Map());
-  const [bulkAnalysis, setBulkAnalysis] = useState('');
-  const [bulkImplementation, setBulkImplementation] = useState('');
+  const [selectedNodeType, setSelectedNodeType] = useState<NodeTypeFilterValue>('Alla');
 
   // Extract all timeline nodes
   const allNodes = useMemo(() => {
@@ -156,6 +156,18 @@ export const PerNodeWorkItemsSection = () => {
     return Array.from(nodeMap.values());
   }, [allNodes, jiraMappings, useStaccIntegration, getPerNodeWorkItems, staccIntegrationWorkItems, bankIntegrationWorkItems]);
 
+  // Filter nodes by type
+  const filteredNodes = useMemo(() => {
+    if (selectedNodeType === 'Alla') {
+      return enrichedNodes;
+    }
+    const target = selectedNodeType.toLowerCase();
+    return enrichedNodes.filter((enriched) => {
+      const nodeType = enriched.type.toLowerCase();
+      return nodeType === target;
+    });
+  }, [enrichedNodes, selectedNodeType]);
+
   // Group nodes by type
   const groupedNodes = useMemo(() => {
     const groups: Record<string, EnrichedNode[]> = {
@@ -166,7 +178,7 @@ export const PerNodeWorkItemsSection = () => {
       other: [],
     };
 
-    enrichedNodes.forEach((enriched) => {
+    filteredNodes.forEach((enriched) => {
       const type = enriched.type;
       if (type in groups) {
         groups[type].push(enriched);
@@ -176,7 +188,7 @@ export const PerNodeWorkItemsSection = () => {
     });
 
     return groups;
-  }, [enrichedNodes]);
+  }, [filteredNodes]);
 
   const handleChange = async (
     bpmnFile: string,
@@ -204,62 +216,6 @@ export const PerNodeWorkItemsSection = () => {
     }
   };
 
-  const handleBulkApply = async (field: 'analysisWeeks' | 'implementationWeeks', value: string) => {
-    const weeks = parseFloat(value);
-    if (isNaN(weeks) || weeks < 0 || weeks > 52) {
-      toast({
-        title: 'Ogiltigt värde',
-        description: 'Värdet måste vara mellan 0 och 52 veckor',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const nodesToUpdate = enrichedNodes
-      .filter((n) => n.node.bpmnFile && n.node.bpmnElementId)
-      .map((n) => ({ bpmnFile: n.node.bpmnFile!, elementId: n.node.bpmnElementId! }));
-
-    for (const { bpmnFile, elementId } of nodesToUpdate) {
-      const current = getPerNodeWorkItems(bpmnFile, elementId);
-      await setPerNodeWorkItems(bpmnFile, elementId, {
-        ...current,
-        [field]: weeks,
-      });
-    }
-
-    toast({
-      title: 'Uppdaterat',
-      description: `${nodesToUpdate.length} nod(er) har uppdaterats.`,
-    });
-
-    if (field === 'analysisWeeks') {
-      setBulkAnalysis('');
-    } else {
-      setBulkImplementation('');
-    }
-  };
-
-  const handleResetAll = async () => {
-    if (!confirm('Är du säker på att du vill återställa alla värden till 0?')) return;
-
-    const nodesToUpdate = enrichedNodes
-      .filter((n) => n.node.bpmnFile && n.node.bpmnElementId)
-      .map((n) => ({ bpmnFile: n.node.bpmnFile!, elementId: n.node.bpmnElementId! }));
-
-    for (const { bpmnFile, elementId } of nodesToUpdate) {
-      await setPerNodeWorkItems(bpmnFile, elementId, {
-        analysisWeeks: 0,
-        implementationWeeks: 0,
-        testingWeeks: 0,
-        validationWeeks: 0,
-      });
-    }
-
-    toast({
-      title: 'Återställt',
-      description: 'Alla värden har återställts till 0.',
-    });
-  };
 
   const getTypeIcon = (type: string, isBank: boolean) => {
     if (type === 'serviceTask') {
@@ -300,53 +256,41 @@ export const PerNodeWorkItemsSection = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Bulk actions */}
-            <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            {/* Filter */}
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Sätt alla Analys till:</span>
-                <Input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  max="52"
-                  value={bulkAnalysis}
-                  onChange={(e) => setBulkAnalysis(e.target.value)}
-                  className="w-20 h-8"
-                  placeholder="2"
-                />
-                <span className="text-sm text-muted-foreground">v</span>
-                <Button
-                  size="sm"
-                  onClick={() => handleBulkApply('analysisWeeks', bulkAnalysis)}
-                  disabled={!bulkAnalysis}
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Nodtypsfilter:
+                </span>
+                <Select
+                  value={selectedNodeType}
+                  onValueChange={(value) => {
+                    setSelectedNodeType(value as NodeTypeFilterValue);
+                  }}
                 >
-                  Tillämpa
-                </Button>
+                  <SelectTrigger className="w-[220px]">
+                    <SelectValue placeholder="Välj nodtyp att visa" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    {NODE_TYPE_FILTER_OPTIONS.map((type) => {
+                      if (type === 'Alla') {
+                        return (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        );
+                      }
+                      const config = getNodeTypeFilterConfig(type as ProcessNodeType);
+                      return (
+                        <SelectItem key={type} value={type} title={config.description}>
+                          {config.label}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Sätt alla Implementering till:</span>
-                <Input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  max="52"
-                  value={bulkImplementation}
-                  onChange={(e) => setBulkImplementation(e.target.value)}
-                  className="w-20 h-8"
-                  placeholder="4"
-                />
-                <span className="text-sm text-muted-foreground">v</span>
-                <Button
-                  size="sm"
-                  onClick={() => handleBulkApply('implementationWeeks', bulkImplementation)}
-                  disabled={!bulkImplementation}
-                >
-                  Tillämpa
-                </Button>
-              </div>
-              <Button size="sm" variant="outline" onClick={handleResetAll}>
-                Återställ alla till 0
-              </Button>
             </div>
 
             {/* Table */}
@@ -375,17 +319,9 @@ export const PerNodeWorkItemsSection = () => {
                               {enriched.type === 'serviceTask' ? (
                                 <Checkbox
                                   checked={!enriched.isBankImplemented} // true = Stacc, false = Banken
-                                  onCheckedChange={(checked) => {
-                                    if (enriched.node.bpmnFile && enriched.node.bpmnElementId) {
-                                      handleCheckboxChange(
-                                        enriched.node.bpmnFile,
-                                        enriched.node.bpmnElementId,
-                                        checked === true
-                                      );
-                                    }
-                                  }}
-                                  className="cursor-pointer"
-                                  aria-label={`${enriched.jiraName} - ${!enriched.isBankImplemented ? 'Använder Stacc integration' : 'Ersätter med bankens integration'}`}
+                                  disabled
+                                  className="cursor-not-allowed opacity-50"
+                                  aria-label={`${enriched.jiraName} - ${!enriched.isBankImplemented ? 'Använder Stacc integration' : 'Ersätter med bankens integration'} (redigera på integrationssidan)`}
                                 />
                               ) : (
                                 <span className="text-muted-foreground">-</span>
@@ -398,11 +334,6 @@ export const PerNodeWorkItemsSection = () => {
                                   <span className="font-medium max-w-xs break-words whitespace-normal">
                                     {enriched.jiraName}
                                   </span>
-                                  {enriched.type === 'serviceTask' && (
-                                    <Badge variant={enriched.isBankImplemented ? 'default' : 'secondary'} className="text-xs">
-                                      {enriched.isBankImplemented ? '🏦 Banken' : '🔌 Stacc'}
-                                    </Badge>
-                                  )}
                                   {enriched.hasCustomConfig && (
                                     <Badge variant="outline" className="text-xs">
                                       Anpassad

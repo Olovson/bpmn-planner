@@ -55,15 +55,15 @@ export interface GlobalProjectConfig {
 export const DEFAULT_CONFIG: Omit<GlobalProjectConfig, 'rootBpmnFile' | 'createdAt' | 'updatedAt'> = {
   staccIntegrationWorkItems: {
     analysisWeeks: 0,
-    implementationWeeks: 0,
-    testingWeeks: 1,
-    validationWeeks: 1,
+    implementationWeeks: 2,
+    testingWeeks: 0,
+    validationWeeks: 0,
   },
   bankIntegrationWorkItems: {
     analysisWeeks: 2,
     implementationWeeks: 4,
     testingWeeks: 2,
-    validationWeeks: 1,
+    validationWeeks: 0,
   },
   customActivities: [],
   perNodeWorkItems: [],
