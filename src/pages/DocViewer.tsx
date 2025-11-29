@@ -29,6 +29,7 @@ const DocViewer = () => {
   const [isFeatureGoal, setIsFeatureGoal] = useState(false);
   const [rawHtmlContent, setRawHtmlContent] = useState<string | null>(null);
   const [userSelectedVersion, setUserSelectedVersion] = useState<'v1' | 'v2' | null>(null);
+  const [loadedFromPath, setLoadedFromPath] = useState<string | null>(null);
   const decoded = docId ? decodeURIComponent(docId) : '';
   const sanitizeDocId = (value: string) => value.replace(/[^a-zA-Z0-9/_-]/g, '');
   const rawSegments = decoded.split('/').filter(Boolean);
@@ -47,6 +48,37 @@ const DocViewer = () => {
     : '';
   const formatGenerationSource = () => {
     if (!generationSource) return 'Okänt (äldre dokument)';
+    
+    // Use userSelectedVersion if available, otherwise fall back to templateVersion
+    // This ensures we show the correct label even if templateVersion hasn't updated yet
+    const effectiveVersion = userSelectedVersion || templateVersion;
+    
+    // Check if this is a local-content v2 file
+    // We check both loadedFromPath (if available) and if userSelectedVersion is v2
+    // This handles the case where loadedFromPath might not be updated yet during render
+    const isLocalContentV2 = 
+      generationSource === 'local-fallback' && 
+      effectiveVersion === 'v2' && 
+      (loadedFromPath?.includes('/local-content/') || userSelectedVersion === 'v2');
+    
+    // Debug logging
+    console.log('[DocViewer] formatGenerationSource:', {
+      generationSource,
+      templateVersion,
+      userSelectedVersion,
+      effectiveVersion,
+      loadedFromPath,
+      isLocalContentV2,
+      check1: generationSource === 'local-fallback',
+      check2: effectiveVersion === 'v2',
+      check3: loadedFromPath?.includes('/local-content/'),
+      check4: userSelectedVersion === 'v2',
+    });
+    
+    // For local-content v2 files, show a more descriptive label
+    if (isLocalContentV2) {
+      return 'Lokalt förbättrat innehåll (v2)';
+    }
     if (generationSource === 'local' || generationSource === 'local-fallback') {
       return 'Lokal fallback (utan LLM)';
     }
@@ -107,6 +139,9 @@ const DocViewer = () => {
       setLoading(true);
       setError(null);
       setRawHtmlContent(null);
+      setLoadedFromPath(null);
+      // Don't reset isFeatureGoal here - let it be determined from the loaded content
+      // This ensures template selection stays visible when switching between v1 and v2
 
       try {
         if (!docId) {
@@ -224,7 +259,7 @@ const DocViewer = () => {
         tryPaths.push(`docs/${safeDocId}.html`);
 
         let rawHtml: string | null = null;
-        let loadedFromPath: string | null = null;
+        let currentLoadedFromPath: string | null = null;
         for (const path of tryPaths) {
           // Check if this is a local content path (starts with /local-content/)
           if (path.startsWith('/local-content/')) {
@@ -237,7 +272,8 @@ const DocViewer = () => {
                 const contentLength = response.headers.get('content-length');
                 console.log('[DocViewer] Content-Length header:', contentLength || 'not set');
                 rawHtml = await response.text();
-                loadedFromPath = path;
+                currentLoadedFromPath = path;
+                setLoadedFromPath(path);
                 console.log('[DocViewer] ✓ Loaded from local-content:', path, `(${rawHtml.length} bytes)`);
                 console.log('[DocViewer] First 300 chars:', rawHtml.substring(0, 300));
                 if (rawHtml.length < 1000) {
@@ -263,7 +299,8 @@ const DocViewer = () => {
             const response = await fetch(versionedUrl, { cache: 'no-store' });
             if (!response.ok) continue;
             rawHtml = await response.text();
-            loadedFromPath = path;
+            currentLoadedFromPath = path;
+            setLoadedFromPath(path);
             console.log('[DocViewer] ✓ Loaded from Supabase:', path, `(${rawHtml.length} bytes)`);
             break;
           }
@@ -274,7 +311,7 @@ const DocViewer = () => {
           throw new Error('Kunde inte hämta dokumentationen i valt läge eller legacy-läge.');
         }
 
-        console.log('[DocViewer] ✓ HTML loaded successfully from:', loadedFromPath || 'unknown', `(${rawHtml.length} bytes)`);
+        console.log('[DocViewer] ✓ HTML loaded successfully from:', currentLoadedFromPath || 'unknown', `(${rawHtml.length} bytes)`);
         console.log('[DocViewer] First 500 chars of raw HTML:', rawHtml.substring(0, 500));
         
         // Check if HTML seems truncated or incomplete
@@ -314,8 +351,23 @@ const DocViewer = () => {
         
         // Check if this is a Feature Goal (callActivity)
         // Feature Goals have docId format: nodes/bpmnFile/elementId
-        // We can also check HTML for Feature Goal badge
-        const isFeatureGoalDoc = isNodeDoc && (sanitizedHtml.includes('doc-badge">Feature Goal') || sanitizedHtml.includes('Feature Goal'));
+        // We can check HTML for Feature Goal badge, or check if this is a call activity node
+        // For v2 files, we also check if the path includes feature-goals
+        const hasFeatureGoalBadge = sanitizedHtml.includes('doc-badge">Feature Goal') || sanitizedHtml.includes('Feature Goal');
+        // Use currentLoadedFromPath (local variable) if available, otherwise use loadedFromPath state
+        // This ensures we check the path of the file we just loaded
+        const finalLoadedFromPath = currentLoadedFromPath || loadedFromPath;
+        const isFeatureGoalPath = isNodeDoc && finalLoadedFromPath?.includes('feature-goals');
+        const isFeatureGoalDoc = isNodeDoc && (hasFeatureGoalBadge || isFeatureGoalPath);
+        console.log('[DocViewer] Setting isFeatureGoal:', {
+          isNodeDoc,
+          hasFeatureGoalBadge,
+          isFeatureGoalPath,
+          loadedFromPath: loadedFromPath, // state
+          currentLoadedFromPath, // local variable
+          finalLoadedFromPath,
+          isFeatureGoalDoc,
+        });
         setIsFeatureGoal(isFeatureGoalDoc);
         
         // Store sanitized HTML (not raw, to avoid script injection issues)
