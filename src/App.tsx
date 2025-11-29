@@ -22,10 +22,12 @@ import TimelinePage from "./pages/TimelinePage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BpmnSelectionProvider } from "./contexts/BpmnSelectionContext";
 import { IntegrationProvider } from "./contexts/IntegrationContext";
+import { GlobalProjectConfigProvider } from "./contexts/GlobalProjectConfigContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import DocViewer from "./pages/DocViewer";
 import { LlmDebugView } from "./pages/LlmDebugView";
 import IntegrationsPage from "./pages/IntegrationsPage";
+import ConfigurationPage from "./pages/ConfigurationPage";
 import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
@@ -97,7 +99,8 @@ const App = () => {
       <ErrorBoundary>
         <BpmnSelectionProvider>
           <IntegrationProvider>
-            <TooltipProvider>
+            <GlobalProjectConfigProvider>
+              <TooltipProvider>
               <Toaster />
               <Sonner />
               <HashRouter>
@@ -118,13 +121,15 @@ const App = () => {
                   <Route path="/tree-debug" element={<ProtectedRoute><ProcessTreeDebugPage /></ProtectedRoute>} />
                   <Route path="/jira-naming-debug" element={<ProtectedRoute><JiraNamingDebugPage /></ProtectedRoute>} />
                   <Route path="/timeline" element={<ProtectedRoute><TimelinePage /></ProtectedRoute>} />
+                  <Route path="/configuration" element={<ProtectedRoute><ConfigurationPage /></ProtectedRoute>} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/doc-viewer/:docId" element={<DocViewer />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </HashRouter>
-            </TooltipProvider>
+              </TooltipProvider>
+            </GlobalProjectConfigProvider>
           </IntegrationProvider>
         </BpmnSelectionProvider>
       </ErrorBoundary>

@@ -40,8 +40,10 @@ const Index = () => {
     ? 'listvy'
     : location.pathname.includes('/process-explorer')
       ? 'tree'
-        : location.pathname.includes('/timeline')
-          ? 'timeline'
+      : location.pathname.includes('/timeline')
+        ? 'timeline'
+        : location.pathname.includes('/configuration')
+          ? 'configuration'
           : 'diagram';
 
   const handleViewChange = (value: string) => {
@@ -51,6 +53,8 @@ const Index = () => {
       baseNavigate('/process-explorer');
     } else if (value === 'tests') {
       baseNavigate('/test-report');
+    } else if (value === 'configuration') {
+      baseNavigate('/configuration');
     } else if (value === 'files') {
       baseNavigate('/files');
     } else if (value === 'timeline') {

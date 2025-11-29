@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { Button } from '@/components/ui/button';
+import { Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { useProcessTree } from '@/hooks/useProcessTree';
@@ -410,6 +411,7 @@ const TimelinePage = () => {
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'tests') navigate('/test-report');
+    else if (view === 'configuration') navigate('/configuration');
     else if (view === 'files') navigate('/files');
     else if (view === 'timeline') navigate('/timeline');
   };
@@ -434,11 +436,19 @@ const TimelinePage = () => {
       <main className="flex-1 ml-16 overflow-auto">
         <div className="container mx-auto p-6">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">Timeline / Planning View</h1>
-            <p className="text-muted-foreground">
-              Visualize and refine time ordering for BPMN subprocesses (feature goals).
-              Each subprocess is shown with a default 2-week duration starting from 2026-01-01.
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h1 className="text-3xl font-bold mb-2">Timeline / Planning View</h1>
+                <p className="text-muted-foreground">
+                  Visualize and refine time ordering for BPMN subprocesses (feature goals).
+                  Each subprocess is shown with a default 2-week duration starting from 2026-01-01.
+                </p>
+              </div>
+              <Button onClick={() => navigate('/configuration')} variant="outline">
+                <Settings className="h-4 w-4 mr-2" />
+                Projektkonfiguration
+              </Button>
+            </div>
             {isLoading && (
               <p className="text-sm text-muted-foreground mt-2">Loading process tree...</p>
             )}
