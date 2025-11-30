@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { LogOut, History, GitBranch, Network, List, FileText, Folder, Calendar, Plug, Settings } from 'lucide-react';
+import { LogOut, History, GitBranch, Network, List, FileText, Folder, Calendar, Plug, Settings, Palette } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'timeline' | 'configuration' | 'files';
+export type ViewKey = 'diagram' | 'tree' | 'listvy' | 'tests' | 'timeline' | 'configuration' | 'files' | 'styleguide';
 
 interface AppHeaderWithTabsProps {
   userEmail?: string | null;
@@ -190,6 +190,27 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">Filer</TooltipContent>
+          </Tooltip>
+
+          {/* Separator */}
+          <div className="w-8 h-px bg-border my-2" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => navigate('/styleguide')}
+                aria-label="Styleguide"
+                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                  location.pathname === '/styleguide' || location.hash === '#/styleguide'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <Palette className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Styleguide</TooltipContent>
           </Tooltip>
         </nav>
       </div>

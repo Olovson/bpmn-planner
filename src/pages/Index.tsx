@@ -44,7 +44,9 @@ const Index = () => {
         ? 'timeline'
         : location.pathname.includes('/configuration')
           ? 'configuration'
-          : 'diagram';
+          : location.pathname.includes('/styleguide')
+            ? 'styleguide'
+            : 'diagram';
 
   const handleViewChange = (value: string) => {
     if (value === 'listvy') {
@@ -57,6 +59,8 @@ const Index = () => {
       baseNavigate('/configuration');
     } else if (value === 'files') {
       baseNavigate('/files');
+    } else if (value === 'styleguide') {
+      baseNavigate('/styleguide');
     } else if (value === 'timeline') {
       baseNavigate('/timeline');
     } else {

@@ -28,6 +28,7 @@ import DocViewer from "./pages/DocViewer";
 import { LlmDebugView } from "./pages/LlmDebugView";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import ConfigurationPage from "./pages/ConfigurationPage";
+import StyleGuidePage from "./pages/StyleGuidePage";
 import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
@@ -122,6 +123,7 @@ const App = () => {
                   <Route path="/jira-naming-debug" element={<ProtectedRoute><JiraNamingDebugPage /></ProtectedRoute>} />
                   <Route path="/timeline" element={<ProtectedRoute><TimelinePage /></ProtectedRoute>} />
                   <Route path="/configuration" element={<ProtectedRoute><ConfigurationPage /></ProtectedRoute>} />
+                  <Route path="/styleguide" element={<StyleGuidePage />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/doc-viewer/:docId" element={<DocViewer />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
