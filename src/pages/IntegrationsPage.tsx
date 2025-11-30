@@ -1,5 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { STACC_INTEGRATION_MAPPING } from '@/data/staccIntegrationMapping';
@@ -41,12 +42,15 @@ const IntegrationsPage = () => {
         onSignOut={signOut}
       />
       <main className="ml-16 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Integrationer</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Hantera Stacc-integrationskällor och konfigurera vilka som ska ersättas med bankens integrationskällor.
-            </p>
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header - Standardiserad struktur */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Integrationer</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Hantera Stacc-integrationskällor och konfigurera vilka som ska ersättas med bankens integrationskällor.
+              </p>
+            </div>
           </div>
 
           <div className="border rounded-lg">

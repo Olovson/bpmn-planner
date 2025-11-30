@@ -459,12 +459,16 @@ const TestReport = () => {
       />
 
       <main className="flex-1 min-w-0 overflow-auto">
-        <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-lg font-semibold text-foreground">
-              Testrapport
-            </h1>
-            <div className="flex flex-col items-start gap-2 sm:items-end">
+        <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+          {/* Header - Standardiserad struktur */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Testrapport</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Översikt över alla testscenarion och resultat
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
               <Badge variant="outline" className="text-xs">
                 Scope: alla BPMN-filer
               </Badge>

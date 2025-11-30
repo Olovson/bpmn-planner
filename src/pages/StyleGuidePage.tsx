@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 
 const StyleGuidePage = () => {
@@ -43,12 +46,15 @@ const StyleGuidePage = () => {
         onSignOut={signOut}
       />
       <main className="ml-16 p-6">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Styleguide</h1>
-            <p className="text-muted-foreground">
-              Design system och komponenter för BPMN Planner
-            </p>
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header - Standardiserad struktur */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Styleguide</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Design system och komponenter för BPMN Planner
+              </p>
+            </div>
           </div>
 
           {/* Design Tokens */}
@@ -131,18 +137,78 @@ const StyleGuidePage = () => {
             <CardHeader>
               <CardTitle>Typografi</CardTitle>
               <CardDescription>
-                Textstorlekar och vikter
+                Textstorlekar och vikter - Standard för sidor
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h1 className="text-4xl font-bold mb-2">Heading 1 (4xl, bold)</h1>
-                <h2 className="text-3xl font-semibold mb-2">Heading 2 (3xl, semibold)</h2>
-                <h3 className="text-2xl font-semibold mb-2">Heading 3 (2xl, semibold)</h3>
-                <h4 className="text-xl font-semibold mb-2">Heading 4 (xl, semibold)</h4>
+                <h1 className="text-2xl font-bold mb-2">Huvudrubrik (2xl, bold) - Standard för sidor</h1>
+                <h2 className="text-lg font-semibold mb-2">Sektionsrubrik (lg, semibold) - I CardTitle</h2>
+                <h3 className="text-base font-semibold mb-2">Underrubrik (base, semibold)</h3>
                 <p className="text-base mb-2">Body text (base, normal)</p>
-                <p className="text-sm text-muted-foreground mb-2">Small text (sm, muted)</p>
-                <p className="text-xs text-muted-foreground">Extra small text (xs, muted)</p>
+                <p className="text-sm text-muted-foreground mb-2">Beskrivningstext (sm, muted) - Standard för beskrivningar</p>
+                <p className="text-xs text-muted-foreground">Extra small text (xs, muted) - För sekundär information</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Page Layout Template */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Page Layout Template</CardTitle>
+              <CardDescription>
+                Standardstruktur för alla sidor i appen
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted/50 p-4 rounded-lg border">
+                <pre className="text-xs overflow-x-auto">
+{`<div className="min-h-screen bg-background">
+  <AppHeaderWithTabs
+    userEmail={user?.email || null}
+    currentView="page-name"
+    onViewChange={handleViewChange}
+    onOpenVersions={() => {}}
+    onSignOut={signOut}
+  />
+  <main className="ml-16 p-6">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Sidtitel</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Beskrivning av sidan
+          </p>
+        </div>
+        {/* Optional action button */}
+        <Button variant="outline">Åtgärd</Button>
+      </div>
+
+      {/* Content */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sektion</CardTitle>
+          <CardDescription>Beskrivning</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Innehåll */}
+        </CardContent>
+      </Card>
+    </div>
+  </main>
+</div>`}
+                </pre>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Standard-värden</h3>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                  <li><strong>Max-width:</strong> <code className="bg-muted px-1 rounded">max-w-6xl</code> (standard), <code className="bg-muted px-1 rounded">max-w-7xl</code> (tabell-tunga sidor)</li>
+                  <li><strong>Spacing:</strong> <code className="bg-muted px-1 rounded">space-y-6</code> mellan sektioner</li>
+                  <li><strong>Padding:</strong> <code className="bg-muted px-1 rounded">ml-16 p-6</code> för main (kompenserar sidebar)</li>
+                  <li><strong>Huvudrubrik:</strong> <code className="bg-muted px-1 rounded">text-2xl font-bold</code></li>
+                  <li><strong>Beskrivning:</strong> <code className="bg-muted px-1 rounded">text-sm text-muted-foreground mt-1</code></li>
+                </ul>
               </div>
             </CardContent>
           </Card>
@@ -198,9 +264,18 @@ const StyleGuidePage = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-4">Input</h3>
                 <div className="space-y-3 max-w-md">
-                  <Input placeholder="Placeholder text" />
-                  <Input type="number" placeholder="Number input" />
-                  <Input disabled placeholder="Disabled input" />
+                  <div className="space-y-2">
+                    <Label htmlFor="input-example">Label för input</Label>
+                    <Input id="input-example" placeholder="Placeholder text" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="input-number">Number input</Label>
+                    <Input id="input-number" type="number" placeholder="Number input" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="input-disabled">Disabled input</Label>
+                    <Input id="input-disabled" disabled placeholder="Disabled input" />
+                  </div>
                 </div>
               </div>
               <div>
@@ -304,12 +379,99 @@ const StyleGuidePage = () => {
             </CardContent>
           </Card>
 
+          {/* Labels */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Labels</CardTitle>
+              <CardDescription>
+                Formulärlabels
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="label-example">Standard label</Label>
+                  <Input id="label-example" placeholder="Input med label" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="label-required">Obligatoriskt fält</Label>
+                  <Input id="label-required" placeholder="Input" required />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Separator */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Separator</CardTitle>
+              <CardDescription>
+                Visuell avgränsare
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm mb-2">Innehåll ovanför</p>
+                <Separator />
+                <p className="text-sm mt-2">Innehåll under</p>
+              </div>
+              <div>
+                <p className="text-sm mb-2">Vertikal separator</p>
+                <div className="flex items-center gap-2">
+                  <span>Vänster</span>
+                  <Separator orientation="vertical" className="h-4" />
+                  <span>Höger</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Progress */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Progress</CardTitle>
+              <CardDescription>
+                Progress bars för status
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>25%</span>
+                  <span>Progress</span>
+                </div>
+                <Progress value={25} />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>50%</span>
+                  <span>Progress</span>
+                </div>
+                <Progress value={50} />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>75%</span>
+                  <span>Progress</span>
+                </div>
+                <Progress value={75} />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>100%</span>
+                  <span>Klart</span>
+                </div>
+                <Progress value={100} />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Spacing */}
           <Card>
             <CardHeader>
               <CardTitle>Spacing</CardTitle>
               <CardDescription>
-                Tailwind spacing scale
+                Tailwind spacing scale - Standard för appen
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -324,16 +486,25 @@ const StyleGuidePage = () => {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="w-4 h-4 bg-primary"></div>
-                  <span className="text-sm">4 (1rem / 16px)</span>
+                  <span className="text-sm">4 (1rem / 16px) - Standard padding</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="w-6 h-4 bg-primary"></div>
-                  <span className="text-sm">6 (1.5rem / 24px)</span>
+                  <span className="text-sm">6 (1.5rem / 24px) - Standard spacing mellan sektioner</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="w-8 h-4 bg-primary"></div>
                   <span className="text-sm">8 (2rem / 32px)</span>
                 </div>
+              </div>
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-semibold mb-2">Standard spacing i appen:</p>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                  <li><code className="bg-muted px-1 rounded">space-y-6</code> - Mellan cards/sektioner</li>
+                  <li><code className="bg-muted px-1 rounded">space-y-4</code> - Inuti cards</li>
+                  <li><code className="bg-muted px-1 rounded">gap-2</code> - Mellan relaterade element</li>
+                  <li><code className="bg-muted px-1 rounded">gap-3</code> - Mellan knappar/inputs</li>
+                </ul>
               </div>
             </CardContent>
           </Card>
