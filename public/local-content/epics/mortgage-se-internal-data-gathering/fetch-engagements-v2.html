@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fetch engagements</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Fetch engagements</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Fetch engagements</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-internal-data-gathering.bpmn</li>
+        <li><strong>Element ID:</strong> fetch-engagements</li>
+        <li><strong>Nodtyp:</strong> serviceTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken hämtar kundens befintliga engagemang (lån, konton, kreditprodukter) från bankens core banking-system. Denna information är avgörande för att bedöma kundens totala skuldsättning, kreditvärdighet och kapacitet att betjäna ett nytt bolån. Epiken säkerställer att komplett och aktuell engagemangsdata finns tillgänglig för kreditbedömning och riskanalys, vilket möjliggör korrekt beräkning av belåningsgrad och skuldsättningsgrad.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>fetch-engagements</strong> är en del av <strong>internal-data-gathering</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs efter <strong>pre-screen-party</strong> när gateway "is-approved" returnerar "Yes" (is-approved-yes), vilket indikerar att kunden har godkänts för fortsatt handläggning. Efter att engagemang har hämtats slutförs internal-data-gathering subprocessen och processen fortsätter till household och stakeholders subprocesser parallellt.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style InternalData fill:#1d4ed8,color:#fff
+    style FetchEngagements fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Internal Data Gathering Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    FetchParty[fetch-party-information<br/>serviceTask]
+    PreScreen[pre-screen-party<br/>businessRuleTask]
+    Gateway{is-approved<br/>Gateway}
+    FetchEngagements[fetch-engagements<br/>serviceTask]
+    End[End Event]
+    Rejected[Pre-screening<br/>rejected]
+    
+    Start --> FetchParty
+    FetchParty --> PreScreen
+    PreScreen --> Gateway
+    Gateway -->|Yes| FetchEngagements
+    Gateway -->|No| Rejected
+    FetchEngagements --> End
+    
+    style FetchParty fill:#3b82f6,color:#fff
+    style PreScreen fill:#f59e0b,color:#fff
+    style FetchEngagements fill:#3b82f6,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Internal Data Gathering Subprocess Flow visar: fetch-party-information → pre-screen-party → gateway (is-approved) → fetch-engagements (om approved) eller rejected (om not approved).</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>pre-screen-party:</strong> Måste returnera "Yes" (is-approved-yes) för att fetch-engagements ska köras</li>
+          <li><strong>fetch-party-information:</strong> Hämtar partinformation som används för att identifiera kunden</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Internal Data Gathering End:</strong> När fetch-engagements är klar slutförs internal-data-gathering subprocessen</li>
+          <li><strong>household subprocess:</strong> Körs parallellt efter internal-data-gathering</li>
+          <li><strong>stakeholders subprocess:</strong> Körs parallellt efter internal-data-gathering, använder engagemangsdata i assess-stakeholder för DTI-ratio beräkning</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Detta är en bakgrundsprocess (serviceTask) som körs automatiskt. Kunden ser ingen direkt UI, men resultatet påverkar vilken information som presenteras i efterföljande steg.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Processen körs automatiskt efter att pre-screen-party har godkänts</li><li>Kunden fortsätter med nästa steg i ansökningsprocessen medan engagemangsdata hämtas i bakgrunden</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Ingen direkt användarinteraktion – automatisk systemprocess</li>
+          <li><strong>Design:</strong> N/A – backend-process</li>
+          
+        </ul>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare kan se status för datahämtningen och eventuella fel i systemloggar eller admin-gränssnitt. Hämtad engagemangsdata visas i kreditbedömningsvyn.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Systemet hämtar engagemang automatiskt när pre-screen är godkänd</li><li>Handläggare ser hämtad data i ansökningsöversikten för kreditbedömning</li><li>Vid fel kan handläggare se felmeddelanden och vidta åtgärder</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska hämtad engagemangsdata, Felsök vid problem, Verifiera datafullständighet</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas automatiskt när pre-screen-party gateway returnerar "Yes" (is-approved-yes), vilket indikerar att kunden har godkänts för fortsatt handläggning.</li><li>Systemet identifierar kundens part-ID eller personnummer från ansökningsdata.</li><li>Ett API-anrop görs till core banking-systemet (TietoEvry/SAP Banking/Finastra) för att hämta alla aktiva och historiska engagemang för kunden.</li><li>Hämtad data valideras mot förväntat format och kompletteras med metadata (t.ex. hämtningstidpunkt, datakälla).</li><li>Engagemangsdata sparas i processens datastore (Core System) och görs tillgänglig för efterföljande steg i kreditflödet.</li><li>Om hämtningen lyckas, fortsätter processen till nästa steg. Vid fel loggas informationen och processen kan avbrytas eller skickas till manuell hantering.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en serviceTask utan egna gateways. Den triggas av "is-approved-yes" gateway och slutförs automatiskt om datahämtningen lyckas. Vid fel kan processen avbrytas eller skickas till felhantering.</p>
+        <p><strong>Felhantering:</strong> Vid timeout eller fel från core banking-systemet ska systemet logga felet med detaljerad information (felkod, meddelande, timestamp). Vid tillfälliga fel kan retry-logik implementeras med exponentiell backoff. Kritiska fel som inte kan återställas ska flagga ärendet för manuell hantering.</p>
+        <p><strong>Edge cases:</strong> Kunder utan befintliga engagemang (tom lista är giltigt resultat), kunder med mycket många engagemang (paginering kan krävas), delade engagemang (t.ex. gemensamma lån), historiska engagemang som kan påverka bedömningen, engagemang i olika valutor.</p>
+      </div>
+      
+      <details>
+        <summary>Sekvensdiagram - Hämtning av engagemang</summary>
+        <div class="mermaid">
+sequenceDiagram
+    participant Camunda as BPMN Engine<br/>(Camunda)
+    participant API as API Service<br/>(Fetch Engagements)
+    participant CoreBanking as Core Banking System<br/>(TietoEvry/SAP/Finastra)
+    participant ISPart as IS-Part<br/>Partinformation
+    participant Aggregation as Aggregation Service
+    participant Validator as Validation Service
+    participant Store as Engagements Data Store
+    
+    Note over Camunda: Triggas efter<br/>pre-screen-party (is-approved-yes)
+    Camunda->>API: Exekvera fetch-engagements
+    API->>API: Identifiera kundidentifierare<br/>(part-ID, personnummer)
+    
+    API->>ISPart: Läsa partinformation<br/>(för att verifiera kund)
+    ISPart-->>API: Partinformation
+    
+    API->>CoreBanking: REST API: Hämta engagemang<br/>(aktiva + historiska)
+    CoreBanking-->>API: Engagemangsdata<br/>(lån, krediter, etc.)
+    
+    API->>Aggregation: Aggregera engagemang<br/>(beräkna totala skulder, etc.)
+    Aggregation-->>API: Aggregerad data
+    
+    API->>Validator: Validera data<br/>(format, obligatoriska fält)
+    Validator-->>API: Valideringsresultat
+    
+    alt Validering lyckas
+        API->>Store: Spara engagemang<br/>+ aggregerad data + metadata
+        Store-->>API: Bekräftelse
+        API->>Camunda: Success + engagemang
+        Camunda->>Camunda: Publicera event för<br/>efterföljande steg
+    else Validering misslyckas
+        API->>Camunda: Error + felmeddelande
+        Camunda->>Camunda: Flagga för manuell hantering
+    end
+    
+    alt API-timeout eller nätverksfel
+        API->>API: Retry med exponentiell backoff
+        API->>CoreBanking: Retry API-anrop
+        CoreBanking-->>API: Engagemangsdata
+        API->>Store: Spara engagemang
+    else Kunden har inga engagemang
+        CoreBanking-->>API: Tom lista (giltigt resultat)
+        API->>Store: Spara tom lista + metadata
+        API->>Camunda: Success (inga engagemang)
+    end
+        </div>
+        <p class="muted">Sekvensdiagram visar tidslinje för interaktioner: BPMN Engine triggar API Service, som läser partinformation, gör REST API-anrop till Core Banking System, aggregerar engagemang, validerar data, sparar i Data Store, och hanterar fel med retry-logik.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Kundens part-ID eller personnummer</td>
+          <td>Föregående steg (pre-screen-party)</td>
+          <td>String</td>
+          <td>Ja</td>
+          <td>Identifierare för att hämta rätt kunds engagemang från core banking-systemet</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla hämtad data till rätt ansökan och möjliggöra spårning</td>
+        </tr>
+        <tr>
+          <td>Status från pre-screen-party</td>
+          <td>Gateway "is-approved"</td>
+          <td>Boolean</td>
+          <td>Ja</td>
+          <td>Måste vara "Yes" för att epiken ska triggas</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Core Banking System (TietoEvry/SAP Banking/Finastra):</strong> Hämtar kundens alla engagemang inklusive lån, konton, kreditkort, och andra kreditprodukter. Data inkluderar belopp, räntor, återstående skuld, betalningshistorik.</li>
+        <li><strong>IS-Part:</strong> Partinformation och kunddata för att verifiera kundidentitet</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs – all data hämtas från interna core banking-system</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata och processkontext</li>
+        <li><strong>Core System Data Store:</strong> Lagrar hämtad engagemangsdata för användning i efterföljande steg</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Lista över kundens engagemang</td>
+          <td>Core System Data Store, efterföljande steg i processen</td>
+          <td>Array&lt;Engagement&gt;</td>
+          <td>Strukturerad lista med alla kundens aktiva och relevanta historiska engagemang, inklusive typ, belopp, ränta, återstående skuld, betalningsstatus</td>
+        </tr>
+        <tr>
+          <td>Hämtningsstatus och metadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>EngagementFetchStatus</td>
+          <td>Status för hämtningen (success/failure), timestamp, antal engagemang hämtade, eventuella varningar eller felmeddelanden</td>
+        </tr>
+        <tr>
+          <td>Beräknade värden (valfritt)</td>
+          <td>Kreditbedömningssteg</td>
+          <td>CalculatedMetrics</td>
+          <td>Förberäknade värden som total skuldsättning, total månadskostnad för befintliga engagemang, användbar för snabbare kreditbedömning</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Core Banking System:</strong> TietoEvry Core Banking / SAP Banking / Finastra – primär datakälla för engagemang</li>
+              <li><strong>IS-Part:</strong> Partinformation och kunddata för verifiering</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+            </ul>
+          </li>
+          
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API-anrop till core banking-system för att hämta engagemang. API:et exponerar endpoints för att söka engagemang baserat på part-ID eller personnummer. Stödjer filtrering på engagemangstyp, status (aktiv/historisk), och datumintervall.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas av BPMN-gateway event (is-approved-yes). Vid lyckad hämtning kan events publiceras för efterföljande steg.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Hämtad engagemangsdata sparas i Core System Data Store för användning i efterföljande steg.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST-klienter för API-anrop till core banking</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Loggning via centraliserat loggsystem</li>
+            </ul>
+          </li>
+          
+          <li><strong>Arkitekturdiagram:</strong>
+            <details>
+              <summary>C4 System Context Diagram</summary>
+              <div class="mermaid">
+graph TB
+    Customer[👤 Customer<br/>Kund]
+    Handler[👤 Handler<br/>Handläggare]
+    
+    Epic[Fetch Engagements<br/>serviceTask]
+    
+    CoreBanking[Core Banking System<br/>TietoEvry/SAP/Finastra]
+    ISPart[IS-Part<br/>Partinformation]
+    
+    AppDB[(Application DB<br/>PostgreSQL)]
+    EngagementsStore[(Engagements Data Store<br/>Engagemang)]
+    
+    Customer -.->|Triggar via<br/>ansökan| Epic
+    Handler -.->|Granskar<br/>resultat| Epic
+    
+    Epic -->|REST API<br/>Hämtar engagemang| CoreBanking
+    Epic -->|Läser| ISPart
+    Epic -->|Läser/Sparar<br/>ansökningsdata| AppDB
+    Epic -->|Sparar<br/>engagemang| EngagementsStore
+    
+    style Epic fill:#1d4ed8,color:#fff
+    style CoreBanking fill:#f59e0b,color:#fff
+    style ISPart fill:#3b82f6,color:#fff
+    style AppDB fill:#10b981,color:#fff
+    style EngagementsStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">System Context Diagram visar epic i centrum med interna system (Core Banking System, IS-Part, Application DB, Engagements Data Store) och användare (Customer, Handler).</p>
+            </details>
+            
+            <details>
+              <summary>Komponentdiagram</summary>
+              <div class="mermaid">
+graph TB
+    BPMN[BPMN Engine<br/>Camunda]
+    APIService[API Service<br/>Fetch Engagements]
+    RESTClient[REST Client<br/>Core Banking]
+    AggregationService[Aggregation Service<br/>Aggregera engagemang]
+    Validator[Validation Service<br/>Data Validation]
+    EngagementsStore[Engagements Data Store<br/>Engagemang]
+    
+    BPMN -->|Orkestrerar| APIService
+    APIService -->|Använder| RESTClient
+    APIService -->|Använder| AggregationService
+    APIService -->|Använder| Validator
+    APIService -->|Sparar data| EngagementsStore
+    
+    RESTClient -->|API-anrop| CoreBanking[Core Banking System]
+    AggregationService -->|Aggregerar| EngagementsStore
+    Validator -->|Validerar| EngagementsStore
+    
+    style BPMN fill:#1d4ed8,color:#fff
+    style APIService fill:#3b82f6,color:#fff
+    style RESTClient fill:#60a5fa,color:#fff
+    style AggregationService fill:#93c5fd,color:#fff
+    style Validator fill:#93c5fd,color:#fff
+    style EngagementsStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">Komponentdiagram visar huvudkomponenter: BPMN Engine orkestrerar API Service, som använder REST Client för API-anrop, Aggregation Service för att aggregera engagemang, Validation Service för datavalidering, och sparar data i Engagements Data Store.</p>
+            </details>
+          </li>
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+    <section class="doc-section">
+      <h2>API Dokumentation</h2>
+      <p class="muted">Beskrivning av API-endpoints som används eller exponeras.</p>
+      
+      
+      <h3>API-endpoints (exponerade)</h3>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Metod</th>
+          <th>Request</th>
+          <th>Response</th>
+          <th>Felkoder</th>
+        </tr>
+        <tr>
+          <td><code>/api/fetch-engagements</code></td>
+          <td>POST</td>
+          <td><code>{ "partId": "string", "applicationId": "uuid", "kundnummer": "string" }</code></td>
+          <td><code>{ "engagements": [{ "typ": "string", "belopp": "number", "återståendeSkuld": "number", ... }], "status": "success", "metadata": { "datakälla": "Core Banking", "timestamp": "ISO8601" } }</code></td>
+          <td>400 (Bad Request), 404 (Not Found), 500 (Server Error), 503 (Service Unavailable)</td>
+        </tr>
+      </table>
+      
+      <h3>Externa API:er (används)</h3>
+      <table>
+        <tr>
+          <th>API</th>
+          <th>Endpoint</th>
+          <th>Autentisering</th>
+          <th>Rate Limit</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>Core Banking System<br/>(TietoEvry/SAP/Finastra)</td>
+          <td><code>/api/customers/{kundnummer}/engagements</code></td>
+          <td>OAuth 2.0 Bearer token</td>
+          <td>200 requests/minut</td>
+          <td>Intern core banking-system för hämtning av aktiva och historiska engagemang (lån, krediter, konton)</td>
+        </tr>
+      </table>
+      
+      <h3>Autentisering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponerad endpoint:</strong> Kräver OAuth 2.0 Bearer token i Authorization header</li>
+          <li><strong>Core Banking:</strong> OAuth 2.0 Bearer token (hanteras av API Gateway)</li>
+        </ul>
+      </div>
+      
+      <h3>Felhantering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>400 Bad Request:</strong> Ogiltig input (t.ex. ogiltigt kundnummer)</li>
+          <li><strong>404 Not Found:</strong> Kund hittas inte i core banking-systemet</li>
+          <li><strong>500 Server Error:</strong> Internt serverfel</li>
+          <li><strong>503 Service Unavailable:</strong> Core banking-system är otillgängligt (retry med exponentiell backoff)</li>
+          <li><strong>Timeout:</strong> 30 sekunder för externa API-anrop, retry max 3 gånger</li>
+        </ul>
+      </div>
+    </section>
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li>Epiken förutsätter att relevanta affärsregler och policypunkter finns dokumenterade i separata Business Rules eller DMN.</li><li>Beslut och val inom epiken ska stödja bankens kreditpolicy och riskmandat för berörda produkter.</li><li>Eventuella avvikelser eller undantag ska identifieras och kunna spåras till bakomliggande regel- eller policystöd.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>EPIC-S1: Normalflöde med komplett underlag:</strong> Kunden har godkänts i pre-screen och har befintliga engagemang i core banking-systemet. Systemet hämtar alla engagemang korrekt och processen fortsätter till nästa steg.</li>
+          <li><strong>EPIC-S2: Kund utan befintliga engagemang:</strong> Kunden har godkänts men har inga befintliga engagemang i systemet. Systemet returnerar tom lista, vilket är ett giltigt resultat. Processen fortsätter normalt.</li>
+          <li><strong>EPIC-S3: Tekniskt fel eller kritisk avvikelse:</strong> Core banking-systemet svarar inte, returnerar fel, eller timeout uppstår. Systemet loggar felet korrekt, flaggar ärendet för manuell hantering, och processen avbryts eller skickas till felhantering.</li>
+          <li><strong>Edge case: Många engagemang:</strong> Kunden har många engagemang (>100). Systemet hanterar paginering korrekt och hämtar alla engagemang utan prestandaproblem.</li>
+          <li><strong>Edge case: Delade engagemang:</strong> Kunden har gemensamma lån med medsökande. Systemet identifierar och flaggar dessa korrekt för kreditbedömning.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>Testkunder med olika engagemangskombinationer: inga engagemang, få engagemang, många engagemang</li>
+          <li>Olika engagemangstyper: bolån, personlån, kreditkort, kontokredit, leasing</li>
+          <li>Testdata för olika valutor (SEK, EUR, USD) om systemet stödjer flera valutor</li>
+          <li>Mock core banking API-responser för olika scenarion (success, timeout, fel)</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li><strong>Local development:</strong> Mock core banking API med lokala testdata</li>
+          <li><strong>Staging:</strong> Anslutning till staging-instans av core banking-system</li>
+          <li><strong>Integration test:</strong> Test mot isolerad testmiljö med kontrollerade testdata</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde (kund med engagemang), edge case (kund utan engagemang), samt tekniska fel (API-timeout, felaktiga svar). Tester ska verifiera att engagemangsdata hämtas korrekt, valideras, och sparas i rätt format för efterföljande steg.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>API-timeout:</strong> Vid timeout från Core Banking System (30 sekunder) ska systemet logga felet och implementera retry med exponentiell backoff (max 3 försök). Om alla retries misslyckas flaggas processen för manuell hantering.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) ska systemet logga felet med detaljerad information och implementera retry med exponentiell backoff. Processen flaggas för manuell hantering om alla retries misslyckas.</li>
+          <li><strong>Databasfel:</strong> Vid databasfel (connection timeout, deadlock) ska processen flaggas för manuell hantering och felet loggas med detaljerad information. Överväg retry för tillfälliga databasfel.</li>
+          <li><strong>Core Banking System-fel:</strong> Vid fel från Core Banking System (503 Service Unavailable, 500 Server Error) ska systemet logga felet och implementera retry med exponentiell backoff. Processen flaggas för manuell hantering om alla retries misslyckas.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Validering:</strong> Om kundnummer är ogiltigt (felaktigt format eller kund hittas inte) ska processen flaggas för manuell verifiering med tydligt felmeddelande. Kunden kan behöva kontakta banken för att korrigera informationen.</li>
+          <li><strong>Kund hittas inte:</strong> Om kund inte hittas i Core Banking System (404 Not Found) ska processen flaggas för manuell verifiering. Detta kan vara förväntat för nya kunder eller kunder med ogiltiga kundnummer.</li>
+          <li><strong>Ofullständig data:</strong> Om hämtad engagemangsdata saknar obligatoriska fält (t.ex. belopp saknas) ska processen flaggas för manuell komplettering. Systemet ska logga vilka fält som saknas.</li>
+          <li><strong>Paginering:</strong> Om kunden har många engagemang (>100) och paginering misslyckas ska processen flaggas för manuell hantering. Systemet ska logga antal engagemang och paginering-status.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Inga engagemang:</strong> Kunder utan engagemang är ett giltigt scenario. Systemet ska hantera detta gracefully och returnera tom lista utan att flagga för manuell hantering.</li>
+          <li><strong>Många engagemang:</strong> Kunder med många engagemang (>100) kan kräva paginering. Systemet ska hantera paginering korrekt och hämtar alla engagemang utan prestandaproblem.</li>
+          <li><strong>Delade engagemang:</strong> Kunder med gemensamma lån med medsökande ska identifieras och flaggas korrekt för kreditbedömning. Systemet ska aggregera delade engagemang korrekt.</li>
+          <li><strong>Historiska engagemang:</strong> Historiska engagemang (avslutade lån) kan vara relevanta för kreditbedömning. Systemet ska identifiera och inkludera historiska engagemang om de är relevanta.</li>
+          <li><strong>Olika valutor:</strong> Om systemet stödjer flera valutor (SEK, EUR, USD) ska systemet hantera valutaomvandling korrekt. Överväg att konvertera alla engagemang till SEK för konsistens.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponentiell backoff:</strong> Retry med växande intervall (1s, 2s, 4s) för tillfälliga fel (timeout, 503 Service Unavailable). Max 3 försök innan processen flaggas för manuell hantering.</li>
+          <li><strong>Max retries:</strong> Max 3 försök för externa API-anrop (Core Banking System). Efter 3 misslyckade försök flaggas processen för manuell hantering.</li>
+          <li><strong>Retry-kriterier:</strong> Retry endast för tillfälliga fel (timeout, 503, connection refused). Inte för permanenta fel (400 Bad Request, 404 Not Found, 401 Unauthorized).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>API-anrop:</strong> Epiken exponeras via BPMN serviceTask och kan anropas via processgränssnitt. API-anrop till core banking bör implementeras med retry-logik för tillfälliga fel och timeout-hantering.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: part-ID/personnummer som används för sökning, antal engagemang hämtade, hämtningstid, eventuella fel eller varningar, och status (success/failure). Känslig data (belopp, personnummer) bör maskeras i loggar enligt GDPR.</li>
+          <li><strong>Felhantering:</strong> Tydlig skillnad mellan affärsrelaterade avvikelser (t.ex. kund hittas inte) och tekniska fel (API-timeout, nätverksfel). Affärsrelaterade fel kan vara förväntade och hanteras gracefully, medan tekniska fel kräver retry eller manuell hantering.</li>
+          <li><strong>Prestanda:</strong> För kunder med många engagemang kan hämtningen ta tid. Överväg asynkron hämtning eller paginering om core banking API stödjer det. Cache kan användas för att undvika onödiga anrop om samma kunds data hämtas flera gånger.</li>
+          <li><strong>Datavalidering:</strong> Validera att hämtad data matchar förväntat format innan sparning. Verifiera att obligatoriska fält finns med och att datatyper är korrekta.</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att inkludera historiska engagemang (avslutade lån) för bättre kreditbedömning. Stöd för real-time uppdateringar om engagemang ändras under ansökningsprocessen. Integration med flera core banking-system för banker som använder olika system.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous1[fetch-party-information<br/>serviceTask]
+    Previous2[pre-screen-party<br/>businessRuleTask]
+    Gateway{is-approved<br/>Gateway}
+    Current[fetch-engagements<br/>serviceTask]
+    End[Internal Data Gathering<br/>End]
+    Stakeholder[stakeholder<br/>subprocess]
+    Household[household<br/>subprocess]
+    
+    Previous1 --> Previous2
+    Previous2 --> Gateway
+    Gateway -->|Yes| Current
+    Gateway -->|No| End
+    Current --> End
+    End -->|Parallel| Stakeholder
+    End -->|Parallel| Household
+    
+    style Current fill:#3b82f6,color:#fff
+    style Previous1 fill:#3b82f6,color:#fff
+    style Previous2 fill:#f59e0b,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Stakeholder fill:#1d4ed8,color:#fff
+    style Household fill:#1d4ed8,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: fetch-party-information → pre-screen-party → gateway (is-approved) → fetch-engagements (om Yes) → End → parallellt stakeholder och household subprocesser.</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>pre-screen-party:</strong> Måste returnera "Yes" (is-approved-yes) för att fetch-engagements ska köras</li>
+        <li><strong>fetch-party-information:</strong> Hämtar part-ID eller personnummer som används för att identifiera kunden</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Internal Data Gathering End:</strong> När fetch-engagements är klar slutförs internal-data-gathering subprocessen</li>
+        <li><strong>stakeholder subprocess:</strong> Körs parallellt efter internal-data-gathering, använder engagemangsdata i assess-stakeholder för DTI-ratio beräkning</li>
+        <li><strong>household subprocess:</strong> Körs parallellt efter internal-data-gathering</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>fetch-credit-information:</strong> Körs parallellt i stakeholder subprocessen (använder engagemangsdata för DTI-ratio beräkning)</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>DMN-modeller:</strong> Beräkning av skuldsättningsgrad baserat på engagemangsdata</li>
+        <li><strong>Engagemangstyper:</strong> Regler för vilka engagemangstyper som ska inkluderas i bedömningen</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-internal-data-gathering.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

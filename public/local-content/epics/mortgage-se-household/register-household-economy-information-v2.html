@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register household economy infomation</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Register household economy infomation</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Register household economy infomation</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-household.bpmn</li>
+        <li><strong>Element ID:</strong> register-household-economy-information</li>
+        <li><strong>Nodtyp:</strong> userTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken ger kunden möjlighet att registrera hushållsekonomi för hela hushållet, inklusive total hushållsinkomst, hushållsutgifter, och andra ekonomiska förhållanden. Denna information används för att bedöma hushållets totala återbetalningsförmåga och är kritisk för kreditbedömningen. Hushållsekonomi aggregerar ekonomi från alla medsökande och ger en helhetsbild av hushållets ekonomiska situation. Systemet validerar att hushållsinkomst och utgifter är rimliga och att obligatoriska fält är ifyllda innan informationen kan sparas och processen kan fortsätta.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>register-household-economy-information</strong> är en del av <strong>household</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs parallellt med <strong>stakeholder</strong> subprocessen efter <strong>internal-data-gathering</strong> har slutförts. Efter att hushållsekonomi har registrerats slutförs household subprocessen och processen fortsätter till <strong>confirm-application</strong> (tillsammans med stakeholder och object subprocesser).</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Household fill:#1d4ed8,color:#fff
+    style RegisterHousehold fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Household Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    RegisterHousehold[register-household-economy-<br/>information<br/>userTask]
+    End[End Event]
+    
+    Start --> RegisterHousehold
+    RegisterHousehold --> End
+    
+    style RegisterHousehold fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Household Subprocess Flow visar: Start → register-household-economy-information → End.</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>Internal Data Gathering End:</strong> Household subprocess startar efter att internal-data-gathering har slutförts</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Household Subprocess End:</strong> När register-household-economy-information är klar slutförs household subprocessen</li>
+          <li><strong>confirm-application:</strong> Körs efter att household, stakeholders och object subprocesser är klara (via Parallel Gateway)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Kunden ser ett formulär för att registrera hushållsekonomi med sektioner för total hushållsinkomst, hushållsutgifter, och andra ekonomiska förhållanden. Formuläret kan visa aggregerad ekonomi från alla medsökande och låta kunden komplettera med ytterligare hushållsinkomst eller utgifter.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Kunden öppnar formuläret för hushållsekonomi</li><li>Kunden ser aggregerad ekonomi från alla medsökande (från register-personal-economy-information)</li><li>Kunden kan komplettera med ytterligare hushållsinkomst eller utgifter som inte ingår i personlig ekonomi</li><li>Systemet validerar att hushållsinkomst och utgifter är rimliga</li><li>Kunden bekräftar och sparar informationen</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Fyll i formulär, Se aggregerad ekonomi från medsökande, Komplettera med ytterligare hushållsinkomst/utgifter, Spara som draft, Bekräfta och spara</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+        
+        <details>
+          <summary>User Journey Map</summary>
+          <div class="mermaid">
+journey
+    title Kundens resa genom registrering av hushållsekonomi
+    section Start
+      Öppnar formulär: 3: Kunden
+      Ser aggregerad ekonomi: 4: Kunden
+    section Registrering
+      Granskar aggregerad ekonomi: 3: Kunden
+      Kompletterar med ytterligare hushållsinkomst/utgifter: 2: Kunden
+      Fyller i formulär: 2: Kunden
+    section Validering
+      Systemet validerar data: 3: Systemet
+      Ser valideringsfel (om några): 1: Kunden
+      Korrigerar fel: 2: Kunden
+    section Bekräftelse
+      Bekräftar information: 4: Kunden
+      Sparar hushållsekonomi: 5: Systemet
+      Ser bekräftelse: 5: Kunden
+          </div>
+          <p class="muted">User Journey Map visar kundens resa från start till bekräftelse, inklusive touchpoints, emotioner, och tidslinje.</p>
+        </details>
+        
+        <details>
+          <summary>Interaktionsflöde</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Öppna formulär]
+    ViewAggregated[Visa aggregerad ekonomi<br/>från alla medsökande]
+    InputAdditional[Komplettera med ytterligare<br/>hushållsinkomst/utgifter]
+    Validate[Systemet validerar<br/>i realtid]
+    HasErrors{Valideringsfel?}
+    ShowErrors[Visa felmeddelanden]
+    CorrectErrors[Korrigera fel]
+    SaveDraft[Spara som draft]
+    Confirm[Bekräfta och spara]
+    Calculate[Systemet beräknar<br/>totalt hushållsinkomst,<br/>utgifter, disponibel inkomst]
+    Success[Registrering slutförd]
+    
+    Start --> ViewAggregated
+    ViewAggregated --> InputAdditional
+    InputAdditional --> Validate
+    Validate --> HasErrors
+    HasErrors -->|Ja| ShowErrors
+    ShowErrors --> CorrectErrors
+    CorrectErrors --> Validate
+    HasErrors -->|Nej| SaveDraft
+    HasErrors -->|Nej| Confirm
+    SaveDraft --> Start
+    Confirm --> Calculate
+    Calculate --> Success
+    
+    style Start fill:#dbeafe,color:#000
+    style ViewAggregated fill:#dbeafe,color:#000
+    style InputAdditional fill:#dbeafe,color:#000
+    style Validate fill:#fef3c7,color:#000
+    style HasErrors fill:#fbbf24,color:#000
+    style ShowErrors fill:#fee2e2,color:#000
+    style CorrectErrors fill:#fee2e2,color:#000
+    style SaveDraft fill:#ddd6fe,color:#000
+    style Confirm fill:#d1fae5,color:#000
+    style Calculate fill:#d1fae5,color:#000
+    style Success fill:#10b981,color:#fff
+          </div>
+          <p class="muted">Interaktionsflöde visar UI-skärmar/steg, användarinteraktioner, systemresponser, valideringar och felhantering.</p>
+        </details>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare ser samma formulär som kunden, men med ytterligare administrativa funktioner. Handläggare kan se aggregerad hushållsekonomi, individuell ekonomi från alla medsökande, och eventuella flaggor eller varningar.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Handläggare öppnar ansökan och ser status för hushållsekonomi</li><li>Handläggare kan se aggregerad hushållsekonomi och individuell ekonomi från alla medsökande</li><li>Handläggare kan komplettera eller korrigera information vid behov</li><li>Handläggare kan registrera hushållsekonomi å kundens vägnar vid behov</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska aggregerad hushållsekonomi, Se individuell ekonomi från medsökande, Verifiera hushållsinkomst och utgifter, Komplettera eller korrigera information, Registrera å kundens vägnar (vid behov)</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas när alla medsökande har registrerat sin personliga ekonomi (register-personal-economy-information).</li><li>Systemet aggregerar personlig ekonomi från alla medsökande och presenterar total hushållsinkomst och hushållsutgifter.</li><li>Kunden eller handläggare kan komplettera med ytterligare hushållsinkomst eller utgifter som inte ingår i personlig ekonomi (t.ex. gemensamma utgifter, hushållsbidrag).</li><li>Systemet validerar att hushållsinkomst och utgifter är rimliga (positiva tal, realistiska värden) och att obligatoriska fält är ifyllda.</li><li>Kunden eller handläggare bekräftar och sparar informationen. Systemet beräknar total hushållsinkomst, totala hushållsutgifter, och disponibel hushållsinkomst.</li><li>Efter bekräftelse markeras hushållsekonomi som registrerad och processen fortsätter till nästa steg i household-processen.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en userTask där användaren måste registrera hushållsekonomi. Om obligatoriska fält saknas eller validering misslyckas kan användaren inte bekräfta och måste korrigera informationen. Efter bekräftelse fortsätter processen automatiskt till nästa steg.</p>
+        <p><strong>Felhantering:</strong> Om validering misslyckas visas tydliga felmeddelanden som indikerar vilka fält som behöver korrigeras. Användaren kan spara informationen som draft och återkomma senare. Om systemfel uppstår vid sparning loggas felet och användaren informeras.</p>
+        <p><strong>Edge cases:</strong> Hushåll med flera medsökande (kan kräva aggregering), hushåll med gemensamma utgifter som inte ingår i personlig ekonomi, hushåll med ofullständig information (kan sparas som draft), negativa eller orimligt höga värden (valideras och avvisas), hushåll där en medsökande saknar personlig ekonomi (kan kräva manuell hantering).</p>
+      </div>
+      
+      <details>
+        <summary>Process Flow Diagram</summary>
+        <div class="mermaid">
+flowchart TD
+    Start([Start:<br/>Alla medsökande har<br/>registrerat personlig ekonomi])
+    Aggregate[Aggregera personlig ekonomi<br/>från alla medsökande]
+    ShowForm[Visa formulär med<br/>aggregerad ekonomi]
+    UserInput[Användare fyller i<br/>ytterligare hushållsinkomst/utgifter]
+    Validate{Validering<br/>OK?}
+    ShowErrors[Visa felmeddelanden]
+    SaveDraft[Spara som draft]
+    Confirm{Användare<br/>bekräftar?}
+    Calculate[Beräkna total hushållsinkomst,<br/>utgifter, disponibel inkomst]
+    Save[Spara hushållsekonomi]
+    End([Slut:<br/>Hushållsekonomi registrerad])
+    
+    Start --> Aggregate
+    Aggregate --> ShowForm
+    ShowForm --> UserInput
+    UserInput --> Validate
+    Validate -->|Nej| ShowErrors
+    ShowErrors --> UserInput
+    Validate -->|Ja| SaveDraft
+    Validate -->|Ja| Confirm
+    SaveDraft --> ShowForm
+    Confirm -->|Nej| ShowForm
+    Confirm -->|Ja| Calculate
+    Calculate --> Save
+    Save --> End
+    
+    style Start fill:#dbeafe,color:#000
+    style Aggregate fill:#fef3c7,color:#000
+    style ShowForm fill:#dbeafe,color:#000
+    style UserInput fill:#dbeafe,color:#000
+    style Validate fill:#fbbf24,color:#000
+    style ShowErrors fill:#fee2e2,color:#000
+    style SaveDraft fill:#ddd6fe,color:#000
+    style Confirm fill:#fbbf24,color:#000
+    style Calculate fill:#d1fae5,color:#000
+    style Save fill:#d1fae5,color:#000
+    style End fill:#10b981,color:#fff
+          </div>
+          <p class="muted">Process Flow Diagram visar steg-för-steg flöde: aggregering, formulär, användarinput, validering, draft-sparning, bekräftelse, beräkning, och sparning.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Personlig ekonomi från alla medsökande</td>
+          <td>Register-personal-economy-information (userTask) för alla medsökande</td>
+          <td>PersonalEconomyData[]</td>
+          <td>Ja</td>
+          <td>Personlig ekonomi från alla medsökande som aggregeras till hushållsekonomi</td>
+        </tr>
+        <tr>
+          <td>Hushållsinformation</td>
+          <td>Föregående steg i household-processen</td>
+          <td>HouseholdData</td>
+          <td>Ja</td>
+          <td>Grundläggande hushållsinformation för att identifiera rätt hushåll</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla registrerad hushållsekonomi till rätt ansökan</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Economy Data Store:</strong> Personlig ekonomi från alla medsökande som aggregeras till hushållsekonomi</li>
+        <li><strong>Application DB:</strong> Ansökningsdata och hushållsinformation</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs – all data registreras av kunden eller handläggare. Hushållsekonomi aggregeras från personlig ekonomi från alla medsökande.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+        <li><strong>Economy Data Store:</strong> Lagrar registrerad hushållsekonomi för användning i efterföljande steg</li>
+      </ul>
+      
+
+      <details>
+        <summary>Data Flow Diagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Input1[Personlig ekonomi<br/>Medsökande 1]
+    Input2[Personlig ekonomi<br/>Medsökande 2]
+    Input3[Personlig ekonomi<br/>Medsökande N]
+    Input4[Ytterligare hushållsinkomst/<br/>utgifter från användare]
+    
+    Transform1[Transformation<br/>Aggregera personlig ekonomi]
+    Transform2[Transformation<br/>Lägg till ytterligare<br/>hushållsinkomst/utgifter]
+    Transform3[Transformation<br/>Beräkna total hushållsinkomst,<br/>utgifter, disponibel inkomst]
+    
+    Output[Registrerad hushållsekonomi<br/>Total hushållsinkomst,<br/>Totala utgifter,<br/>Disponibel inkomst]
+    
+    Input1 -->|Aggregering| Transform1
+    Input2 -->|Aggregering| Transform1
+    Input3 -->|Aggregering| Transform1
+    Transform1 -->|Aggregerad ekonomi| Transform2
+    Input4 -->|Ytterligare data| Transform2
+    Transform2 -->|Komplett data| Transform3
+    Transform3 -->|Beräknad hushållsekonomi| Output
+    
+    style Input1 fill:#dbeafe,color:#000
+    style Input2 fill:#dbeafe,color:#000
+    style Input3 fill:#dbeafe,color:#000
+    style Input4 fill:#dbeafe,color:#000
+    style Transform1 fill:#ddd6fe,color:#000
+    style Transform2 fill:#ddd6fe,color:#000
+    style Transform3 fill:#ddd6fe,color:#000
+    style Output fill:#d1fae5,color:#000
+        </div>
+        <p class="muted">Data Flow Diagram visar datakällor (personlig ekonomi från alla medsökande, ytterligare hushållsinkomst/utgifter), datatransformationer (aggregering, komplettering, beräkning), och datamål (registrerad hushållsekonomi).</p>
+      </details>
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Registrerad hushållsekonomi (total hushållsinkomst, hushållsutgifter)</td>
+          <td>Economy Data Store, efterföljande steg</td>
+          <td>HouseholdEconomyData</td>
+          <td>Strukturerad hushållsekonomi inklusive total hushållsinkomst, totala hushållsutgifter, disponibel hushållsinkomst, och detaljerad information om hushållsinkomst och utgifter</td>
+        </tr>
+        <tr>
+          <td>Beräknade värden (total hushållsinkomst, totala hushållsutgifter, disponibel hushållsinkomst)</td>
+          <td>Processkontext, efterföljande steg</td>
+          <td>CalculatedHouseholdEconomy</td>
+          <td>Systemberäknade värden baserat på aggregerad personlig ekonomi och ytterligare hushållsinkomst/utgifter för användning i kreditbedömning</td>
+        </tr>
+        <tr>
+          <td>Registreringsstatus och metadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>RegistrationStatus</td>
+          <td>Status för registreringen (completed/draft), timestamp, användar-ID, och eventuella flaggor</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Economy Data Store:</strong> Personlig ekonomi från alla medsökande som aggregeras till hushållsekonomi</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att spara hushållsekonomi och hämta ekonomidata. API:et exponerar endpoints för att registrera hushållsekonomi, hämta aggregerad personlig ekonomi, och validera ekonomidata.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när alla medsökande har registrerat personlig ekonomi. Vid bekräftelse publiceras event för att trigga nästa steg i processen.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Economy Data Store för lagring av registrerad hushållsekonomi.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST API för användarinteraktion</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Frontend-komponenter för ekonomiformulär</li>
+            </ul>
+          </li>
+          
+          
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>Aggregering:</strong> Hushållsekonomi aggregeras från personlig ekonomi från alla medsökande. Systemet beräknar total hushållsinkomst som summan av alla medsökandes inkomst, och totala hushållsutgifter som summan av alla medsökandes utgifter plus eventuella gemensamma utgifter.</li>
+          <li><strong>Validering:</strong> Hushållsinkomst och utgifter måste vara positiva tal och rimliga värden. Negativa eller orimligt höga värden avvisas. Obligatoriska fält (t.ex. total hushållsinkomst) måste vara ifyllda innan bekräftelse.</li>
+          <li><strong>Draft-funktionalitet:</strong> Kunder kan spara informationen som draft och återkomma senare för att komplettera. Draft-information sparas men processen kan inte fortsätta förrän all obligatorisk information är ifylld och bekräftad.</li>
+          <li><strong>Kreditbedömning:</strong> Registrerad hushållsekonomi används tillsammans med kreditupplysning och engagemang för att bedöma hushållets totala återbetalningsförmåga i efterföljande steg.</li>
+          <li><strong>Spårbarhet:</strong> Alla ändringar måste loggas med timestamp och användar-ID för spårbarhet och efterkontroll.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>Normalflöde med komplett underlag:</strong> Kunden eller handläggaren har lämnat kompletta och konsistenta uppgifter som uppfyller grundläggande krav.</li><li><strong>Delvis ofullständigt eller oklart underlag:</strong> Enstaka uppgifter saknas eller är motsägelsefulla, men ärendet bedöms kunna kompletteras utan att avbrytas.</li><li><strong>Tekniskt fel eller kritisk avvikelse:</strong> Centrala data inte kan läsas in, valideras eller sparas på ett säkert sätt.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>[Beskrivning av testdata som behövs]</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li>[Miljö 1: t.ex. "Local development"]</li>
+          <li>[Miljö 2: t.ex. "Staging"]</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde, kompletteringsfall samt tekniska fel eller kritiska avvikelser.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databasfel:</strong> Vid databasfel när hushållsekonomi sparas (connection timeout, deadlock) ska systemet logga felet och flagga processen för manuell hantering. Överväg retry för tillfälliga databasfel. Användaren bör informeras om att data inte kunde sparas och att de kan försöka igen.</li>
+          <li><strong>Session timeout:</strong> Om användarens session går ut innan hushållsekonomi sparas ska systemet logga felet och informera användaren. Överväg att spara hushållsekonomi automatiskt när användaren fyller i information för att undvika dataförlust.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) när hushållsekonomi sparas ska systemet logga felet och informera användaren. Överväg retry för tillfälliga nätverksfel.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Valideringsfel:</strong> Om validering misslyckas (t.ex. negativ hushållsinkomst, negativ hushållsutgift, ofullständig information) ska systemet visa tydliga felmeddelanden och låta användaren korrigera informationen. Validering ska ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Ofullständig information:</strong> Om personlig ekonomi från alla medsökande saknas eller är ofullständig ska systemet förhindra bekräftelse och visa tydliga felmeddelanden. Användaren bör informeras om vilka medsökande som saknar ekonomidata.</li>
+          <li><strong>Aggregeringsfel:</strong> Om aggregering av personlig ekonomi från alla medsökande misslyckas ska systemet logga felet och flagga för manuell granskning. Systemet ska validera att aggregering är korrekt innan bekräftelse tillåts.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Många medsökande:</strong> Om hushållet har många medsökande (>5) kan aggregering bli komplex. Systemet ska hantera aggregering korrekt oavsett antal medsökande. Överväg att visa sammanfattning av aggregerad ekonomi för bättre översikt.</li>
+          <li><strong>Noll hushållsinkomst:</strong> Om hushållet har noll hushållsinkomst (alla medsökande är arbetslösa) ska systemet hantera detta gracefully. Överväg att kräva manuell granskning för hushåll med noll inkomst.</li>
+          <li><strong>Negativ disponibel hushållsinkomst:</strong> Om totala hushållsutgifter överstiger total hushållsinkomst (negativ disponibel hushållsinkomst) ska systemet identifiera detta och flagga för manuell granskning. Detta kan vara ett tecken på ekonomiska problem.</li>
+          <li><strong>Historiska data:</strong> Om hushållsekonomi ändras under ansökningsprocessen ska systemet spåra ändringar och logga dem för spårbarhet. Överväg att kräva manuell granskning för stora ändringar.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databas:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga databasfel. Max 3 försök innan processen flaggas för manuell hantering.</li>
+          <li><strong>Session:</strong> Om session går ut ska systemet informera användaren och ge möjlighet att logga in igen. Överväg att spara hushållsekonomi automatiskt för att undvika dataförlust.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>UI/UX:</strong> Formuläret bör visa aggregerad personlig ekonomi från alla medsökande tydligt, och låta kunden komplettera med ytterligare hushållsinkomst eller utgifter. Stöd för att se individuell ekonomi från varje medsökande. Validering ska ske i realtid för snabb feedback.</li>
+          <li><strong>Aggregering:</strong> Systemet måste aggregera personlig ekonomi från alla medsökande korrekt. Överväg att visa både aggregerad ekonomi och individuell ekonomi för transparens. Beräkningar (total hushållsinkomst, totala hushållsutgifter, disponibel hushållsinkomst) bör ske i realtid.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: när hushållsekonomi registrerades, vem som registrerade (kund/handläggare), total hushållsinkomst, totala hushållsutgifter, disponibel hushållsinkomst, och eventuella flaggor. Alla ändringar ska loggas för spårbarhet.</li>
+          <li><strong>Prestanda:</strong> Formuläret bör laddas snabbt (< 2 sekunder). Aggregering och beräkningar bör ske snabbt även för hushåll med många medsökande.</li>
+          <li><strong>Datavalidering:</strong> Validera att hushållsinkomst och utgifter är positiva tal och rimliga värden. Verifiera att obligatoriska fält finns med innan bekräftelse tillåts. Validering bör ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att importera ekonomidata från bankens system om kunden är befintlig kund. Stöd för att ladda upp dokument som stödjer hushållsinkomst. Integration med skatteverket för automatisk verifiering av hushållsinkomst.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Start[Internal Data Gathering<br/>End]
+    Current[register-household-economy-<br/>information<br/>userTask]
+    End[Household Subprocess<br/>End]
+    Gateway[Parallel Gateway]
+    Confirm[confirm-application<br/>userTask]
+    Stakeholder[stakeholder<br/>subprocess]
+    Object[object<br/>subprocess]
+    
+    Start -->|Parallel| Current
+    Current --> End
+    End --> Gateway
+    Stakeholder --> Gateway
+    Object --> Gateway
+    Gateway --> Confirm
+    
+    style Current fill:#3b82f6,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Confirm fill:#3b82f6,color:#fff
+    style Stakeholder fill:#1d4ed8,color:#fff
+    style Object fill:#1d4ed8,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: Internal Data Gathering End → register-household-economy-information → Household Subprocess End → Parallel Gateway → confirm-application (tillsammans med stakeholder och object).</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>Internal Data Gathering End:</strong> Household subprocess startar efter att internal-data-gathering har slutförts</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Household Subprocess End:</strong> När register-household-economy-information är klar slutförs household subprocessen</li>
+        <li><strong>confirm-application:</strong> Körs efter att household, stakeholders och object subprocesser är klara (via Parallel Gateway)</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>register-personal-economy-information:</strong> Körs parallellt i stakeholder subprocessen (agregeras till hushållsekonomi)</li>
+        <li><strong>stakeholder subprocess:</strong> Körs parallellt med household subprocessen</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Valideringsregler:</strong> Hushållsekonomi måste vara korrekt och komplett</li>
+        <li><strong>Aggregering:</strong> Regler för aggregering av personlig ekonomi från alla medsökande</li>
+        <li><strong>Beräkningar:</strong> Regler för beräkning av disponibel hushållsinkomst</li>
+        <li><strong>Kreditbedömning:</strong> Regler för användning av hushållsekonomi i kreditbedömning</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-household.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fetch BRF-information</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Fetch BRF-information</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Fetch BRF-information</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-object-information.bpmn</li>
+        <li><strong>Element ID:</strong> fetch-brf-information</li>
+        <li><strong>Nodtyp:</strong> serviceTask</li>
+        <li><strong>Version:</strong> 1.0</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken hämtar BRF-information (Bostadsrättsförening) från Bolagsverket, UC BRF-info, eller andra källor för bostadsrättsföreningar. Denna information inkluderar föreningens organisationsnummer, ekonomiska nyckeltal (föreningsskuld, avgifter, etc.), och andra relevanta BRF-egenskaper. Epiken är en kritisk del av object-information subprocessen och säkerställer att korrekt BRF-information finns tillgänglig för efterföljande steg som evaluate-bostadsratt. Genom att centralisera hämtningen av BRF-information säkerställs konsistens och minskas risken för felaktig information i senare bedömningar.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>fetch-brf-information</strong> är en del av <strong>object-information</strong> subprocessen i <strong>object</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs efter <strong>fetch-bostadsratts-information</strong> när objekttyp är "Bostadsrätt". Efter att BRF-information har hämtats fortsätter processen till <strong>evaluate-bostadsratt</strong> för att bedöma bostadsrättens lämplighet som säkerhet.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    ObjectInfo[object-information<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Object --> ObjectInfo
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Object fill:#1d4ed8,color:#fff
+    style ObjectInfo fill:#1d4ed8,color:#fff
+    style FetchBRF fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → object-information → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Object Information Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    ObjectType{object-type<br/>Gateway}
+    FetchFastighet[fetch-fastighets-information<br/>serviceTask]
+    EvaluateFastighet[evaluate-fastighet<br/>businessRuleTask]
+    FetchBostadsratt[fetch-bostadsratts-information<br/>serviceTask]
+    FetchBRF[fetch-brf-information<br/>serviceTask]
+    EvaluateBostadsratt[evaluate-bostadsratt<br/>businessRuleTask]
+    Gateway[Gateway Merge]
+    End[End Event]
+    
+    Start --> ObjectType
+    ObjectType -->|Småhus| FetchFastighet
+    ObjectType -->|Bostadsrätt| FetchBostadsratt
+    FetchFastighet --> EvaluateFastighet
+    EvaluateFastighet --> Gateway
+    FetchBostadsratt --> FetchBRF
+    FetchBRF --> EvaluateBostadsratt
+    EvaluateBostadsratt --> Gateway
+    Gateway --> End
+    
+    style FetchFastighet fill:#3b82f6,color:#fff
+    style EvaluateFastighet fill:#f59e0b,color:#fff
+    style FetchBostadsratt fill:#3b82f6,color:#fff
+    style FetchBRF fill:#3b82f6,color:#fff
+    style EvaluateBostadsratt fill:#f59e0b,color:#fff
+    style ObjectType fill:#fbbf24,color:#000
+          </div>
+          <p class="muted">Object Information Subprocess Flow visar: Start → object-type gateway → fetch-fastighets-information (om Småhus) eller fetch-bostadsratts-information (om Bostadsrätt) → evaluate-fastighet/evaluate-bostadsratt → End.</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>fetch-bostadsratts-information:</strong> Måste vara slutförd för att bostadsrättsinformation ska vara tillgänglig (används för att identifiera BRF)</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>evaluate-bostadsratt:</strong> Använder hämtad BRF-information och bostadsrättsinformation för att bedöma bostadsrättens lämplighet som säkerhet</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Detta är en bakgrundsprocess (serviceTask) som körs automatiskt. Kunden ser ingen direkt UI, men processen påverkar vilken BRF-information som kan hämtas och valideras i efterföljande steg.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Processen triggas automatiskt efter att bostadsrättsinformation har hämtats</li><li>Kunden fortsätter med ansökningsprocessen medan BRF-information hämtas i bakgrunden</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Ingen direkt användarinteraktion – automatisk systemprocess</li>
+          <li><strong>Design:</strong> N/A – backend-process</li>
+        </ul>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare kan se status för datahämtningen i systemloggar eller admin-gränssnitt. Hämtad BRF-information visas i ansökningsöversikten och används för att verifiera BRF-data.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Systemet hämtar BRF-information automatiskt efter att bostadsrättsinformation har hämtats</li><li>Handläggare ser hämtad data i ansökningsöversikten för verifiering</li><li>Vid fel eller avvikelser kan handläggare se felmeddelanden och vidta åtgärder</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska hämtad BRF-information, Verifiera BRF-data, Felsök vid problem</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas automatiskt när fetch-bostadsratts-information har slutförts och bostadsrättsinformation är tillgänglig.</li><li>Systemet identifierar BRF-information (föreningsnummer, organisationsnummer) från bostadsrättsinformation eller ansökningsdata.</li><li>Ett API-anrop görs till Bolagsverket, UC BRF-info, eller liknande källor för att hämta BRF-information (föreningsskuld, avgifter, ekonomiska nyckeltal, etc.).</li><li>Hämtad data valideras mot förväntat format och kompletteras med metadata (t.ex. hämtningstidpunkt, datakälla, dataversion).</li><li>BRF-information sparas i processens datastore (BRF information service) och görs tillgänglig för efterföljande steg (evaluate-bostadsratt).</li><li>Om hämtningen lyckas, fortsätter processen till nästa steg. Vid fel loggas informationen och processen kan avbrytas eller skickas till manuell hantering.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en serviceTask utan egna gateways. Den körs sekventiellt efter fetch-bostadsratts-information och måste slutföras framgångsrikt för att efterföljande steg (evaluate-bostadsratt) ska kunna köras.</p>
+        <p><strong>Felhantering:</strong> Vid timeout eller fel från BRF-register ska systemet logga felet med detaljerad information (felkod, meddelande, timestamp). Vid tillfälliga fel kan retry-logik implementeras med exponentiell backoff. Om BRF-information inte hittas i register kan processen flaggas för manuell verifiering eller kund kan ombedjas att uppdatera sina uppgifter.</p>
+        <p><strong>Edge cases:</strong> Nya BRF:er som inte finns i register (kan kräva manuell registrering), BRF:er med flera organisationsnummer (måste identifiera rätt), historiska data som kan vara inaktuella, BRF:er med ändrade organisationsnummer eller namn, data från olika källor som kan vara inkonsistenta.</p>
+      </div>
+      
+      <details>
+        <summary>Sekvensdiagram - Hämtning av BRF-information</summary>
+        <div class="mermaid">
+sequenceDiagram
+    participant Camunda as BPMN Engine<br/>(Camunda)
+    participant API as API Service<br/>(Fetch BRF Info)
+    participant Bolagsverket as Bolagsverket<br/>UC BRF-info
+    participant Validator as Validation Service
+    participant Store as BRF Information Service
+    
+    Note over Camunda: Triggas efter<br/>fetch-bostadsratts-information
+    Camunda->>API: Exekvera fetch-brf-information
+    API->>API: Identifiera BRF-info<br/>(föreningsnummer, organisationsnummer)
+    
+    API->>Bolagsverket: REST API: Hämta BRF-info<br/>(organisationsnummer)
+    Bolagsverket-->>API: BRF-info<br/>(föreningsskuld, avgifter, nyckeltal)
+    
+    API->>Validator: Validera data<br/>(format, obligatoriska fält)
+    Validator-->>API: Valideringsresultat
+    
+    alt Validering lyckas
+        API->>Store: Spara BRF-info<br/>+ metadata
+        Store-->>API: Bekräftelse
+        API->>Camunda: Success + BRF-info
+        Camunda->>Camunda: Publicera event för<br/>evaluate-bostadsratt
+    else Validering misslyckas
+        API->>Camunda: Error + felmeddelande
+        Camunda->>Camunda: Flagga för manuell hantering
+    end
+    
+    alt API-timeout eller fel
+        API->>API: Retry med exponentiell backoff
+        API->>Bolagsverket: Retry API-anrop
+        Bolagsverket-->>API: BRF-info
+        API->>Store: Spara BRF-info
+    else BRF hittas inte
+        Bolagsverket-->>API: 404 Not Found
+        API->>Camunda: Error: BRF hittas inte
+        Camunda->>Camunda: Flagga för manuell verifiering
+    end
+        </div>
+        <p class="muted">Sekvensdiagram visar tidslinje för interaktioner: BPMN Engine triggar API Service, som gör API-anrop till Bolagsverket/UC BRF-info, validerar data, sparar i Data Store, och hanterar fel med retry-logik.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>BRF-information (föreningsnummer, organisationsnummer)</td>
+          <td>Bostadsrättsinformation från fetch-bostadsratts-information</td>
+          <td>String</td>
+          <td>Ja</td>
+          <td>Identifierare för att hämta rätt BRF-information från Bolagsverket/UC BRF-info</td>
+        </tr>
+        <tr>
+          <td>Bostadsrättsinformation</td>
+          <td>Bostadsrätt Information Service</td>
+          <td>BostadsrattData</td>
+          <td>Ja</td>
+          <td>För att koppla BRF-information till rätt bostadsrätt</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla hämtad data till rätt ansökan och möjliggöra spårning</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      <h4>Externa datakällor</h4>
+      <ul>
+        <li><strong>Bolagsverket / UC BRF-info:</strong> Register som innehåller BRF-information inklusive organisationsnummer, föreningsskuld, avgifter, ekonomiska nyckeltal, och andra BRF-egenskaper. Detta är primär datakälla för BRF-information.</li>
+      </ul>
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata och processkontext</li>
+        <li><strong>BRF Information Service:</strong> Lagrar hämtad BRF-information för användning i efterföljande steg (evaluate-bostadsratt)</li>
+        <li><strong>Bostadsrätt Information Service:</strong> Läser bostadsrättsinformation för att identifiera BRF</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>BRF-information (föreningsskuld, avgifter, nyckeltal, etc.)</td>
+          <td>BRF Information Service, evaluate-bostadsratt</td>
+          <td>BRFData</td>
+          <td>Hämtad BRF-information från Bolagsverket/UC BRF-info som används för bostadsrättsbedömning</td>
+        </tr>
+        <tr>
+          <td>Metadata (hämtningstidpunkt, datakälla, dataversion)</td>
+          <td>Processkontext, loggsystem</td>
+          <td>Metadata</td>
+          <td>Metadata om hämtningen för spårning och kvalitetssäkring</td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Bolagsverket / UC BRF-info:</strong> Register – primär datakälla för BRF-information</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+              <li><strong>BRF Information Service:</strong> Lagrar hämtad BRF-information</li>
+              <li><strong>Bostadsrätt Information Service:</strong> Läser bostadsrättsinformation för att identifiera BRF</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API-anrop till Bolagsverket/UC BRF-info för att hämta BRF-information. API:et exponerar endpoints för att söka BRF baserat på organisationsnummer. Stödjer filtrering och validering av data.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas av BPMN event efter fetch-bostadsratts-information. Vid lyckad hämtning kan events publiceras för efterföljande steg.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Hämtad BRF-information sparas i BRF Information Service för användning i efterföljande steg.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST-klienter för API-anrop till Bolagsverket/UC BRF-info</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Loggning via centraliserat loggsystem</li>
+            </ul>
+          </li>
+          
+          <li><strong>Arkitekturdiagram:</strong>
+            <details>
+              <summary>C4 System Context Diagram</summary>
+              <div class="mermaid">
+graph TB
+    Customer[👤 Customer<br/>Kund]
+    Handler[👤 Handler<br/>Handläggare]
+    
+    Epic[Fetch BRF Information<br/>serviceTask]
+    
+    Bolagsverket[Bolagsverket / UC BRF-info<br/>BRF-register]
+    
+    AppDB[(Application DB<br/>PostgreSQL)]
+    BRFStore[(BRF Information Service<br/>BRF-info)]
+    BostadsrattStore[(Bostadsrätt Information Service<br/>Bostadsrättsinfo)]
+    
+    Customer -.->|Triggar via<br/>ansökan| Epic
+    Handler -.->|Granskar<br/>resultat| Epic
+    
+    Epic -->|REST API<br/>Hämtar BRF-info| Bolagsverket
+    Epic -->|Läser| BostadsrattStore
+    Epic -->|Läser/Sparar<br/>ansökningsdata| AppDB
+    Epic -->|Sparar<br/>BRF-info| BRFStore
+    
+    style Epic fill:#1d4ed8,color:#fff
+    style Bolagsverket fill:#f59e0b,color:#fff
+    style AppDB fill:#10b981,color:#fff
+    style BRFStore fill:#10b981,color:#fff
+    style BostadsrattStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">System Context Diagram visar epic i centrum med externa system (Bolagsverket/UC BRF-info), interna system (Application DB, BRF Information Service, Bostadsrätt Information Service), och användare (Customer, Handler).</p>
+            </details>
+            
+            <details>
+              <summary>Komponentdiagram</summary>
+              <div class="mermaid">
+graph TB
+    BPMN[BPMN Engine<br/>Camunda]
+    APIService[API Service<br/>Fetch BRF Info]
+    RESTClient[REST Client<br/>Bolagsverket/UC BRF-info]
+    Validator[Validation Service<br/>Data Validation]
+    BRFStore[BRF Information Service<br/>BRF-info]
+    BostadsrattStore[Bostadsrätt Information Service<br/>Bostadsrättsinfo]
+    
+    BPMN -->|Orkestrerar| APIService
+    APIService -->|Använder| RESTClient
+    APIService -->|Läser| BostadsrattStore
+    APIService -->|Använder| Validator
+    APIService -->|Sparar data| BRFStore
+    
+    RESTClient -->|API-anrop| Bolagsverket[Bolagsverket/UC BRF-info]
+    Validator -->|Validerar| BRFStore
+    
+    style BPMN fill:#1d4ed8,color:#fff
+    style APIService fill:#3b82f6,color:#fff
+    style RESTClient fill:#60a5fa,color:#fff
+    style Validator fill:#93c5fd,color:#000
+    style BRFStore fill:#10b981,color:#fff
+    style BostadsrattStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">Komponentdiagram visar huvudkomponenter: BPMN Engine orkestrerar API Service, som använder REST Client för API-anrop, läser från Bostadsrätt Information Service, Validation Service för datavalidering, och sparar data i BRF Information Service.</p>
+            </details>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>API Dokumentation</h2>
+      <p class="muted">Beskrivning av API-endpoints som används eller exponeras.</p>
+      
+      <h3>API-endpoints (exponerade)</h3>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Metod</th>
+          <th>Request</th>
+          <th>Response</th>
+          <th>Felkoder</th>
+        </tr>
+        <tr>
+          <td><code>/api/fetch-brf-information</code></td>
+          <td>POST</td>
+          <td><code>{ "organisationsnummer": "string", "applicationId": "uuid" }</code></td>
+          <td><code>{ "brfInformation": { "organisationsnummer": "string", "föreningsnamn": "string", "föreningsskuld": "number", "avgifter": "number", "ekonomiskaNyckeltal": {...}, ... }, "status": "success", "metadata": { "datakälla": "Bolagsverket/UC BRF-info", "timestamp": "ISO8601" } }</code></td>
+          <td>400 (Bad Request), 404 (Not Found), 500 (Server Error), 503 (Service Unavailable)</td>
+        </tr>
+      </table>
+      
+      <h3>Externa API:er (används)</h3>
+      <table>
+        <tr>
+          <th>API</th>
+          <th>Endpoint</th>
+          <th>Autentisering</th>
+          <th>Rate Limit</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>Bolagsverket</td>
+          <td><code>/api/organisation/{organisationsnummer}</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>100 requests/minut</td>
+          <td>Organisationsregister för BRF-information (organisationsnummer, föreningsnamn)</td>
+        </tr>
+        <tr>
+          <td>UC BRF-info</td>
+          <td><code>/api/brf/{organisationsnummer}</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>50 requests/minut</td>
+          <td>Ekonomiska nyckeltal för bostadsrättsföreningar (föreningsskuld, avgifter, ekonomiska nyckeltal)</td>
+        </tr>
+      </table>
+      
+      <h3>Autentisering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponerad endpoint:</strong> Kräver OAuth 2.0 Bearer token i Authorization header</li>
+          <li><strong>Bolagsverket/UC BRF-info:</strong> API key i X-API-Key header (hanteras av API Gateway)</li>
+        </ul>
+      </div>
+      
+      <h3>Felhantering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>400 Bad Request:</strong> Ogiltig input (t.ex. ogiltigt organisationsnummer)</li>
+          <li><strong>404 Not Found:</strong> BRF hittas inte i register</li>
+          <li><strong>500 Server Error:</strong> Internt serverfel</li>
+          <li><strong>503 Service Unavailable:</strong> Extern API är otillgänglig (retry med exponentiell backoff)</li>
+          <li><strong>Timeout:</strong> 30 sekunder för externa API-anrop, retry max 3 gånger</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>API-timeout:</strong> Vid timeout från Bolagsverket eller UC BRF-info (30 sekunder) ska systemet logga felet och implementera retry med exponentiell backoff (max 3 försök per källa). Om alla retries misslyckas för en källa, fallback till nästa källa.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) ska systemet logga felet med detaljerad information och implementera retry med exponentiell backoff. Om alla retries misslyckas för en källa, fallback till nästa källa.</li>
+          <li><strong>Databasfel:</strong> Vid databasfel (connection timeout, deadlock) när BRF-information sparas ska processen flaggas för manuell hantering och felet loggas med detaljerad information. Överväg retry för tillfälliga databasfel.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Validering:</strong> Om organisationsnummer är ogiltigt (felaktigt format) ska processen flaggas för manuell verifiering med tydligt felmeddelande. Kunden kan behöva kontakta banken för att korrigera informationen.</li>
+          <li><strong>BRF hittas inte:</strong> Om BRF inte hittas i Bolagsverket eller UC BRF-info (404 Not Found) ska processen flaggas för manuell verifiering. Detta kan vara förväntat för nya BRF:er eller BRF:er med ogiltiga organisationsnummer.</li>
+          <li><strong>Ofullständig data:</strong> Om hämtad BRF-information saknar obligatoriska fält (t.ex. föreningsskuld saknas, avgifter saknas) ska processen flaggas för manuell komplettering. Systemet ska logga vilka fält som saknas.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Fallback mellan källor:</strong> Om Bolagsverket inte är tillgänglig ska systemet automatiskt fallback till UC BRF-info. Systemet ska logga vilken källa som användes.</li>
+          <li><strong>Nya BRF:er:</strong> Nya BRF:er som inte finns i register kan kräva manuell registrering. Systemet ska identifiera detta scenario och flagga för manuell hantering med tydligt meddelande.</li>
+          <li><strong>Historiska data:</strong> Data från olika källor kan vara inkonsistenta och kräva manuell granskning. Systemet ska identifiera inkonsistenser och flagga för manuell verifiering.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponentiell backoff:</strong> Retry med växande intervall (1s, 2s, 4s) för tillfälliga fel (timeout, 503 Service Unavailable). Max 3 försök per källa innan fallback till nästa källa.</li>
+          <li><strong>Fallback-strategi:</strong> Om en källa misslyckas efter 3 försök, fallback till nästa källa (Bolagsverket → UC BRF-info). Om alla källor misslyckas flaggas processen för manuell hantering.</li>
+          <li><strong>Retry-kriterier:</strong> Retry endast för tillfälliga fel (timeout, 503, connection refused). Inte för permanenta fel (400 Bad Request, 404 Not Found, 401 Unauthorized).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous[evaluate-bostadsratt<br/>businessRuleTask]
+    Current[fetch-brf-information<br/>serviceTask]
+    ObjectsValid{objects-valid?<br/>Gateway}
+    End[Object Information<br/>Subprocess End]
+    
+    Previous -->|Input till| Current
+    Current --> ObjectsValid
+    ObjectsValid -->|All/Some/None| End
+    
+    style Current fill:#3b82f6,color:#fff
+    style Previous fill:#f59e0b,color:#fff
+    style ObjectsValid fill:#fbbf24,color:#000
+        </div>
+        <p class="muted">Beroendediagram visar: evaluate-bostadsratt → fetch-brf-information → objects-valid → End.</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>evaluate-bostadsratt:</strong> Måste vara slutförd för att organisationsnummer ska vara tillgängligt för att hämta BRF-information</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>objects-valid:</strong> Gateway som avgör om objekt är giltiga baserat på BRF-information (All/Some/None)</li>
+        <li><strong>Object Information Subprocess End:</strong> När fetch-brf-information är klar slutförs object-information subprocessen</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>fetch-fastighets-information:</strong> Körs parallellt om object-type är "Småhus"</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Valideringsregler:</strong> BRF-information måste vara korrekt och komplett</li>
+        <li><strong>Datakällor:</strong> Bolagsverket och UC BRF-info för ekonomiska nyckeltal</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>
+

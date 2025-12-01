@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fetch credit information</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Fetch credit information</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Fetch credit information</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-stakeholder.bpmn</li>
+        <li><strong>Element ID:</strong> fetch-credit-information</li>
+        <li><strong>Nodtyp:</strong> serviceTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken hämtar kreditupplysning från externa kreditupplysningsföretag som UC, Bisnode, eller Creditsafe. Denna information inkluderar kundens kreditscore, betalningsanmärkningar, skulder, och kredithistorik. Epiken körs automatiskt efter att samtycke till kreditupplysning har givits och evaluate-personal-information har returnerat APPROVED. Kreditupplysningen är kritisk för kreditbedömningen och används i efterföljande steg som assess-stakeholder för att bedöma kundens kreditvärdighet och riskprofil.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>fetch-credit-information</strong> är en del av <strong>stakeholder</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs efter <strong>evaluate-personal-information</strong> när gateway "is-personal-information-rejected" returnerar "No" (approved). Efter att kreditupplysning har hämtats fortsätter processen till <strong>assess-stakeholder</strong> för borrower capacity evaluation.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Stakeholders fill:#1d4ed8,color:#fff
+    style FetchCredit fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Stakeholder Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    HasConsented{has-consented-to-<br/>credit-check?}
+    Consent[consent-to-credit-check<br/>userTask]
+    DidConsent{did-consent?}
+    Gateway[Gateway Merge]
+    FetchPersonal[fetch-personal-information<br/>serviceTask]
+    Evaluate[evaluate-personal-information<br/>businessRuleTask]
+    Gateway2{is-personal-information-<br/>rejected?}
+    FetchCredit[fetch-credit-information<br/>serviceTask]
+    Assess[assess-stakeholder<br/>businessRuleTask]
+    Gateway3{is-stakeholder-<br/>rejected?}
+    Register[register-personal-economy-<br/>information<br/>userTask]
+    End[End Event]
+    Rejected1[Rejected credit check]
+    Rejected2[Rejected personal<br/>information]
+    Rejected3[Rejected stakeholder<br/>evaluation]
+    
+    Start --> HasConsented
+    HasConsented -->|No| Consent
+    HasConsented -->|Yes| Gateway
+    Consent --> DidConsent
+    DidConsent -->|Yes| Gateway
+    DidConsent -->|No| Rejected1
+    Gateway --> FetchPersonal
+    FetchPersonal --> Evaluate
+    Evaluate --> Gateway2
+    Gateway2 -->|No| FetchCredit
+    Gateway2 -->|Yes| Rejected2
+    FetchCredit --> Assess
+    Assess --> Gateway3
+    Gateway3 -->|No| Register
+    Gateway3 -->|Yes| Rejected3
+    Register --> End
+    
+    style FetchPersonal fill:#3b82f6,color:#fff
+    style Consent fill:#3b82f6,color:#fff
+    style Evaluate fill:#f59e0b,color:#fff
+    style FetchCredit fill:#3b82f6,color:#fff
+    style Assess fill:#f59e0b,color:#fff
+    style Register fill:#3b82f6,color:#fff
+    style HasConsented fill:#fbbf24,color:#000
+    style DidConsent fill:#fbbf24,color:#000
+    style Gateway2 fill:#fbbf24,color:#000
+    style Gateway3 fill:#fbbf24,color:#000
+    style Rejected1 fill:#ef4444,color:#fff
+    style Rejected2 fill:#ef4444,color:#fff
+    style Rejected3 fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Stakeholder Subprocess Flow visar: Start → has-consented-to-credit-check → consent-to-credit-check (om No) → did-consent → fetch-personal-information → evaluate-personal-information → fetch-credit-information → assess-stakeholder → register-personal-economy-information (om approved).</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>evaluate-personal-information:</strong> Måste returnera APPROVED (is-personal-information-rejected = No) för att fetch-credit-information ska köras</li>
+          <li><strong>fetch-personal-information:</strong> Hämtar personnummer som används för att hämta kreditupplysning</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>assess-stakeholder:</strong> Använder kreditupplysning för borrower capacity evaluation och DTI-ratio beräkning</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Detta är en bakgrundsprocess (serviceTask) som körs automatiskt. Kunden ser ingen direkt UI, men processen påverkar vilken kreditupplysning som kan hämtas och användas i kreditbedömningen.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Processen triggas automatiskt när evaluate-personal-information har returnerat APPROVED</li><li>Kunden fortsätter med ansökningsprocessen medan kreditupplysning hämtas i bakgrunden</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Ingen direkt användarinteraktion – automatisk systemprocess</li>
+          <li><strong>Design:</strong> N/A – backend-process</li>
+          
+        </ul>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare kan se status för kreditupplysningen i systemloggar eller admin-gränssnitt. Hämtad kreditupplysning visas i ansökningsöversikten och används för att bedöma kundens kreditvärdighet och riskprofil.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Systemet hämtar kreditupplysning automatiskt när evaluate-personal-information har returnerat APPROVED</li><li>Handläggare ser hämtad kreditupplysning i ansökningsöversikten för bedömning</li><li>Vid fel eller avvikelser kan handläggare se felmeddelanden och vidta åtgärder</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska kreditupplysning, Bedöma kreditvärdighet, Felsök vid problem</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas automatiskt när evaluate-personal-information har returnerat APPROVED och personinformation är tillgänglig.</li><li>Systemet identifierar kundens personnummer från personinformation eller stakeholder-data.</li><li>Ett API-anrop görs till UC, Bisnode, eller Creditsafe för att hämta kreditupplysning baserat på personnummer.</li><li>Kreditupplysningen inkluderar kreditscore, betalningsanmärkningar, skulder, kredithistorik, och eventuella varningar.</li><li>Hämtad data valideras mot förväntat format och kompletteras med metadata (t.ex. hämtningstidpunkt, datakälla, dataversion).</li><li>Kreditupplysning sparas i processens datastore och görs tillgänglig för efterföljande steg (assess-stakeholder).</li><li>Om hämtningen lyckas, fortsätter processen till nästa steg. Vid fel loggas informationen och processen kan avbrytas eller skickas till manuell hantering.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en serviceTask utan egna gateways. Den körs sekventiellt efter evaluate-personal-information och måste slutföras framgångsrikt för att efterföljande steg ska kunna köras.</p>
+        <p><strong>Felhantering:</strong> Vid timeout eller fel från kreditupplysningsföretag ska systemet logga felet med detaljerad information (felkod, meddelande, timestamp). Vid tillfälliga fel kan retry-logik implementeras med exponentiell backoff. Om kunden inte hittas i kreditupplysningsregister kan processen flaggas för manuell verifiering eller kund kan ombedjas att kontakta kreditupplysningsföretag.</p>
+        <p><strong>Edge cases:</strong> Nya kunder utan kredithistorik (kan kräva manuell bedömning), kunder med flera personnummer eller namnändringar, historiska data som kan vara inaktuella, kunder med ändrad personnummer eller namnändringar, data från olika kreditupplysningsföretag som kan vara inkonsistenta, kunder som vägrat kreditupplysning tidigare.</p>
+      </div>
+      
+      <details>
+        <summary>Sekvensdiagram - Hämtning av kreditupplysning</summary>
+        <div class="mermaid">
+sequenceDiagram
+    participant Camunda as BPMN Engine<br/>(Camunda)
+    participant API as API Service<br/>(Fetch Credit Info)
+    participant Consent as Consent Check<br/>Service
+    participant UC as UC/Bisnode/Creditsafe
+    participant Validator as Validation Service
+    participant Store as Credit Data Store
+    
+    Note over Camunda: Triggas efter<br/>evaluate-personal-information
+    Camunda->>API: Exekvera fetch-credit-information
+    API->>API: Identifiera personnummer<br/>från personinformation
+    
+    API->>Consent: Verifiera samtycke<br/>(personnummer)
+    Consent-->>API: Samtycke verifierat
+    
+    API->>UC: REST API: Hämta kreditupplysning<br/>(personnummer)
+    UC-->>API: Kreditupplysning<br/>(kreditscore, betalningsanmärkningar,<br/>skulder, kredithistorik)
+    
+    API->>Validator: Validera data<br/>(format, obligatoriska fält)
+    Validator-->>API: Valideringsresultat
+    
+    alt Validering lyckas
+        API->>Store: Spara kreditupplysning<br/>+ metadata
+        Store-->>API: Bekräftelse
+        API->>Camunda: Success + kreditupplysning
+        Camunda->>Camunda: Publicera event för<br/>assess-stakeholder
+    else Validering misslyckas
+        API->>Camunda: Error + felmeddelande
+        Camunda->>Camunda: Flagga för manuell hantering
+    end
+    
+    alt API-timeout eller nätverksfel
+        API->>API: Retry med exponentiell backoff
+        API->>UC: Retry API-anrop
+        UC-->>API: Kreditupplysning
+        API->>Store: Spara kreditupplysning
+    else Fallback till annat kreditupplysningsföretag
+        API->>API: Växla till Bisnode/Creditsafe
+        API->>UC: API-anrop till alternativ källa
+        UC-->>API: Kreditupplysning
+        API->>Store: Spara kreditupplysning
+    else Kund hittas inte
+        UC-->>API: 404 Not Found
+        API->>Camunda: Error: Kund hittas inte
+        Camunda->>Camunda: Flagga för manuell verifiering
+    end
+        </div>
+        <p class="muted">Sekvensdiagram visar tidslinje för interaktioner: BPMN Engine triggar API Service, som verifierar samtycke, gör REST API-anrop till kreditupplysningsföretag, validerar data, sparar i Data Store, och hanterar fel med retry-logik och fallback mellan olika kreditupplysningsföretag.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Personnummer</td>
+          <td>Fetch-personal-information (serviceTask) eller stakeholder-data</td>
+          <td>String</td>
+          <td>Ja</td>
+          <td>Kundens personnummer för att identifiera rätt person i kreditupplysningsregister</td>
+        </tr>
+        <tr>
+          <td>Samtycke till kreditupplysning</td>
+          <td>Consent-to-credit-check (userTask)</td>
+          <td>ConsentStatus</td>
+          <td>Ja</td>
+          <td>Bekräftelse att kunden har gett samtycke till kreditupplysning enligt konsumentkreditlagen</td>
+        </tr>
+        <tr>
+          <td>Personinformation</td>
+          <td>Fetch-personal-information (serviceTask)</td>
+          <td>PersonalInformation</td>
+          <td>Ja</td>
+          <td>Grundläggande personinformation för att verifiera kundidentitet</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla hämtad kreditupplysning till rätt ansökan och möjliggöra spårbarhet</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Personal Data Store:</strong> Personinformation från fetch-personal-information, inklusive personnummer</li>
+        <li><strong>Consent Registry:</strong> Register över samtycken för att verifiera att samtycke har givits</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li><strong>UC (Upplysningscentralen):</strong> Kreditupplysningsföretag som tillhandahåller kreditscore, betalningsanmärkningar, skulder, och kredithistorik. Detta är en av de primära datakällorna för kreditupplysning i Sverige.</li>
+        <li><strong>Bisnode:</strong> Kreditupplysningsföretag som tillhandahåller kompletterande kreditupplysning och riskbedömning.</li>
+        <li><strong>Creditsafe:</strong> Kreditupplysningsföretag som tillhandahåller kreditupplysning och företagsinformation.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+        <li><strong>Credit Data Store:</strong> Lagrar hämtad kreditupplysning för användning i efterföljande steg</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Kreditupplysning (kreditscore, betalningsanmärkningar, skulder, kredithistorik)</td>
+          <td>Credit Data Store, efterföljande steg (assess-stakeholder)</td>
+          <td>CreditInformation</td>
+          <td>Strukturerad kreditupplysning inklusive kreditscore, betalningsanmärkningar, skulder, kredithistorik, och eventuella varningar</td>
+        </tr>
+        <tr>
+          <td>Hämtningsstatus och metadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>CreditFetchStatus</td>
+          <td>Status för hämtningen (success/failure), timestamp, datakälla (UC/Bisnode/Creditsafe), eventuella varningar eller felmeddelanden</td>
+        </tr>
+        <tr>
+          <td>Validerad kreditvärdighet</td>
+          <td>Efterföljande steg</td>
+          <td>ValidatedCredit</td>
+          <td>Verifierad kreditupplysning som kan användas för att bedöma kundens kreditvärdighet och riskprofil i assess-stakeholder</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>UC / Bisnode / Creditsafe:</strong> Externa kreditupplysningsföretag – primär datakälla för kreditupplysning</li>
+              <li><strong>Personal Data Store:</strong> Lagrar personinformation från fetch-personal-information</li>
+              <li><strong>Consent Registry:</strong> Register över samtycken för att verifiera att samtycke har givits</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API-anrop till UC, Bisnode, eller Creditsafe för att hämta kreditupplysning. API:et exponerar endpoints för att söka kreditupplysning baserat på personnummer. Stödjer filtrering och validering av data. Överväg fallback mellan olika kreditupplysningsföretag om en källa inte är tillgänglig.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när evaluate-personal-information är slutförd. Vid lyckad hämtning kan events publiceras för efterföljande steg (assess-stakeholder).</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Hämtad kreditupplysning sparas i Credit Data Store för användning i efterföljande steg.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST-klienter för API-anrop till kreditupplysningsföretag</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Loggning via centraliserat loggsystem</li>
+            </ul>
+          </li>
+          
+          <li><strong>Arkitekturdiagram:</strong>
+            <details>
+              <summary>C4 System Context Diagram</summary>
+              <div class="mermaid">
+graph TB
+    Customer[👤 Customer<br/>Kund]
+    Handler[👤 Handler<br/>Handläggare]
+    
+    Epic[Fetch Credit Information<br/>serviceTask]
+    
+    UC[UC / Bisnode / Creditsafe<br/>Kreditupplysningsföretag]
+    
+    PersonalStore[(Personal Data Store<br/>Personinformation)]
+    ConsentReg[(Consent Registry<br/>Samtycken)]
+    AppDB[(Application DB<br/>PostgreSQL)]
+    CreditStore[(Credit Data Store<br/>Kreditupplysning)]
+    
+    Customer -.->|Triggar via<br/>ansökan| Epic
+    Handler -.->|Granskar<br/>resultat| Epic
+    
+    Epic -->|Läser| PersonalStore
+    Epic -->|Verifierar| ConsentReg
+    Epic -->|REST API<br/>Hämtar kreditupplysning| UC
+    Epic -->|Läser/Sparar<br/>ansökningsdata| AppDB
+    Epic -->|Sparar<br/>kreditupplysning| CreditStore
+    
+    style Epic fill:#1d4ed8,color:#fff
+    style UC fill:#f59e0b,color:#fff
+    style AppDB fill:#10b981,color:#fff
+    style CreditStore fill:#10b981,color:#fff
+    style PersonalStore fill:#10b981,color:#fff
+    style ConsentReg fill:#10b981,color:#fff
+              </div>
+              <p class="muted">System Context Diagram visar epic i centrum med externa system (UC/Bisnode/Creditsafe), interna system (Application DB, Credit Data Store, Personal Data Store, Consent Registry), och användare (Customer, Handler).</p>
+            </details>
+            
+            <details>
+              <summary>Komponentdiagram</summary>
+              <div class="mermaid">
+graph TB
+    BPMN[BPMN Engine<br/>Camunda]
+    APIService[API Service<br/>Fetch Credit Info]
+    RESTClient[REST Client<br/>UC/Bisnode/Creditsafe]
+    Validator[Validation Service<br/>Data Validation]
+    CreditStore[Credit Data Store<br/>Kreditupplysning]
+    ConsentCheck[Consent Check Service<br/>Verifiera samtycke]
+    
+    BPMN -->|Orkestrerar| APIService
+    APIService -->|Använder| RESTClient
+    APIService -->|Använder| Validator
+    APIService -->|Använder| ConsentCheck
+    APIService -->|Sparar data| CreditStore
+    
+    RESTClient -->|API-anrop| UC[UC / Bisnode / Creditsafe]
+    ConsentCheck -->|Verifierar| ConsentReg[(Consent Registry)]
+    Validator -->|Validerar| CreditStore
+    
+    style BPMN fill:#1d4ed8,color:#fff
+    style APIService fill:#3b82f6,color:#fff
+    style RESTClient fill:#60a5fa,color:#fff
+    style Validator fill:#93c5fd,color:#fff
+    style CreditStore fill:#10b981,color:#fff
+    style ConsentCheck fill:#93c5fd,color:#fff
+              </div>
+              <p class="muted">Komponentdiagram visar huvudkomponenter: BPMN Engine orkestrerar API Service, som använder REST Client för API-anrop, Validation Service för datavalidering, Consent Check Service för samtyckesverifiering, och sparar data i Credit Data Store.</p>
+            </details>
+          </li>
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+    <section class="doc-section">
+      <h2>API Dokumentation</h2>
+      <p class="muted">Beskrivning av API-endpoints som används eller exponeras.</p>
+      
+      
+      <h3>API-endpoints (exponerade)</h3>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Metod</th>
+          <th>Request</th>
+          <th>Response</th>
+          <th>Felkoder</th>
+        </tr>
+        <tr>
+          <td><code>/api/fetch-credit-information</code></td>
+          <td>POST</td>
+          <td><code>{ "personnummer": "string", "applicationId": "uuid", "consentId": "uuid" }</code></td>
+          <td><code>{ "creditInformation": { "kreditscore": "number", "betalningsanmärkningar": [...], "skulder": [...], "kredithistorik": [...] }, "status": "success", "metadata": { "datakälla": "UC", "timestamp": "ISO8601" } }</code></td>
+          <td>400 (Bad Request), 401 (Unauthorized - saknat samtycke), 404 (Not Found), 500 (Server Error), 503 (Service Unavailable)</td>
+        </tr>
+      </table>
+      
+      <h3>Externa API:er (används)</h3>
+      <table>
+        <tr>
+          <th>API</th>
+          <th>Endpoint</th>
+          <th>Autentisering</th>
+          <th>Rate Limit</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>UC (Upplysningscentralen)</td>
+          <td><code>/api/credit/{personnummer}</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>50 requests/minut</td>
+          <td>Kreditupplysning (kreditscore, betalningsanmärkningar, skulder, kredithistorik)</td>
+        </tr>
+        <tr>
+          <td>Bisnode</td>
+          <td><code>/api/credit/{personnummer}</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>50 requests/minut</td>
+          <td>Alternativ kreditupplysning (används som fallback om UC inte är tillgängligt)</td>
+        </tr>
+        <tr>
+          <td>Creditsafe</td>
+          <td><code>/api/credit/{personnummer}</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>50 requests/minut</td>
+          <td>Alternativ kreditupplysning (används som fallback om UC och Bisnode inte är tillgängliga)</td>
+        </tr>
+      </table>
+      
+      <h3>Autentisering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponerad endpoint:</strong> Kräver OAuth 2.0 Bearer token i Authorization header</li>
+          <li><strong>UC/Bisnode/Creditsafe:</strong> API key i X-API-Key header (hanteras av API Gateway)</li>
+          <li><strong>Samtycke:</strong> Måste ha giltigt samtycke (consentId) enligt konsumentkreditlagen och GDPR</li>
+        </ul>
+      </div>
+      
+      <h3>Felhantering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>400 Bad Request:</strong> Ogiltig input (t.ex. ogiltigt personnummer)</li>
+          <li><strong>401 Unauthorized:</strong> Saknat eller ogiltigt samtycke till kreditupplysning</li>
+          <li><strong>404 Not Found:</strong> Person hittas inte i kreditupplysningsregister</li>
+          <li><strong>500 Server Error:</strong> Internt serverfel</li>
+          <li><strong>503 Service Unavailable:</strong> Kreditupplysningsföretag är otillgängligt (fallback till nästa leverantör, retry med exponentiell backoff)</li>
+          <li><strong>Timeout:</strong> 30 sekunder för externa API-anrop, retry max 3 gånger per leverantör</li>
+        </ul>
+      </div>
+    </section>
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>Konsumentkreditlagen:</strong> Kreditupplysning får endast hämtas efter att explicit samtycke har givits. Samtycke måste dokumenteras och spåras för compliance.</li>
+          <li><strong>GDPR:</strong> Kreditupplysning innehåller känslig personuppgifter som ska hanteras enligt GDPR. Känslig data ska maskeras i loggar och endast nödvändig data ska sparas.</li>
+          <li><strong>Kreditupplysningskrav:</strong> Kreditupplysning är obligatorisk för kreditbedömning. Om kreditupplysning inte kan hämtas kan ansökan inte fortsätta.</li>
+          <li><strong>Datakvalitet:</strong> Kreditupplysning från olika källor kan variera. Systemet bör hantera inkonsistenser och flagga för manuell granskning vid behov.</li>
+          <li><strong>Spårbarhet:</strong> Alla hämtningar måste loggas med timestamp, datakälla, och eventuella fel för compliance och efterkontroll.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>Normalflöde med komplett underlag:</strong> Kunden eller handläggaren har lämnat kompletta och konsistenta uppgifter som uppfyller grundläggande krav.</li><li><strong>Delvis ofullständigt eller oklart underlag:</strong> Enstaka uppgifter saknas eller är motsägelsefulla, men ärendet bedöms kunna kompletteras utan att avbrytas.</li><li><strong>Tekniskt fel eller kritisk avvikelse:</strong> Centrala data inte kan läsas in, valideras eller sparas på ett säkert sätt.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>[Beskrivning av testdata som behövs]</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li>[Miljö 1: t.ex. "Local development"]</li>
+          <li>[Miljö 2: t.ex. "Staging"]</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde, kompletteringsfall samt tekniska fel eller kritiska avvikelser.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>API-timeout:</strong> Vid timeout från kreditupplysningsföretag (30 sekunder) ska systemet logga felet och implementera retry med exponentiell backoff (max 3 försök per leverantör). Om alla retries misslyckas för en leverantör, fallback till nästa leverantör (UC → Bisnode → Creditsafe).</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) ska systemet logga felet med detaljerad information och implementera retry med exponentiell backoff. Om alla retries misslyckas för en leverantör, fallback till nästa leverantör.</li>
+          <li><strong>Databasfel:</strong> Vid databasfel (connection timeout, deadlock) ska processen flaggas för manuell hantering och felet loggas med detaljerad information. Överväg retry för tillfälliga databasfel.</li>
+          <li><strong>Kreditupplysningsföretag-fel:</strong> Vid fel från kreditupplysningsföretag (503 Service Unavailable, 500 Server Error) ska systemet logga felet och implementera retry med exponentiell backoff. Om alla retries misslyckas för en leverantör, fallback till nästa leverantör.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Samtycke saknas:</strong> Om samtycke inte finns eller är ogiltigt (401 Unauthorized) ska processen avbrytas med tydligt felmeddelande. Kunden bör informeras om att de behöver ge samtycke för att fortsätta.</li>
+          <li><strong>Validering:</strong> Om personnummer är ogiltigt (felaktigt format eller checksum) ska processen flaggas för manuell verifiering med tydligt felmeddelande. Kunden kan behöva kontakta banken för att korrigera informationen.</li>
+          <li><strong>Kund hittas inte:</strong> Om kund inte hittas i kreditupplysningsregister (404 Not Found) ska processen flaggas för manuell verifiering. Detta kan vara förväntat för nya kunder eller kunder med ogiltiga personnummer.</li>
+          <li><strong>Kund har vägrat kreditupplysning:</strong> Om kund har vägrat kreditupplysning ska processen flaggas för manuell hantering. Kunden bör informeras om konsekvenserna.</li>
+          <li><strong>Ofullständig data:</strong> Om hämtad kreditupplysning saknar obligatoriska fält (t.ex. kreditscore saknas) ska processen flaggas för manuell komplettering. Systemet ska logga vilka fält som saknas.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Fallback mellan leverantörer:</strong> Om UC inte är tillgänglig ska systemet automatiskt fallback till Bisnode, och om Bisnode inte är tillgänglig ska systemet fallback till Creditsafe. Systemet ska logga vilken leverantör som användes.</li>
+          <li><strong>Olika kreditscore-skala:</strong> Olika kreditupplysningsföretag kan använda olika kreditscore-skala (t.ex. 0-850 vs 0-1000). Systemet ska normalisera kreditscore till en gemensam skala för konsistens.</li>
+          <li><strong>Nya kunder:</strong> Kunder utan kredithistorik kan sakna kreditscore. Systemet ska hantera detta gracefully och flagga för manuell bedömning om kreditscore saknas.</li>
+          <li><strong>Historiska data:</strong> Kreditupplysning från olika källor kan vara inkonsistenta och kräva manuell granskning. Systemet ska identifiera inkonsistenser och flagga för manuell verifiering.</li>
+          <li><strong>Cache:</strong> Om kreditupplysning är cachad (t.ex. hämtad inom senaste 24 timmarna) ska systemet använda cachad data för att undvika onödiga anrop. Överväg att validera cache-ålder för att säkerställa att data är aktuell.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponentiell backoff:</strong> Retry med växande intervall (1s, 2s, 4s) för tillfälliga fel (timeout, 503 Service Unavailable). Max 3 försök per leverantör innan fallback till nästa leverantör.</li>
+          <li><strong>Fallback-strategi:</strong> Om en leverantör misslyckas efter 3 försök, fallback till nästa leverantör (UC → Bisnode → Creditsafe). Om alla leverantörer misslyckas flaggas processen för manuell hantering.</li>
+          <li><strong>Retry-kriterier:</strong> Retry endast för tillfälliga fel (timeout, 503, connection refused). Inte för permanenta fel (400 Bad Request, 404 Not Found, 401 Unauthorized).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>API-anrop:</strong> Epiken exponeras via BPMN serviceTask och kan anropas via processgränssnitt. API-anrop till kreditupplysningsföretag bör implementeras med retry-logik för tillfälliga fel och timeout-hantering. Överväg fallback mellan olika kreditupplysningsföretag (UC → Bisnode → Creditsafe) om en källa inte är tillgänglig.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: personnummer (maskerat), hämtningstid, datakälla (UC/Bisnode/Creditsafe), eventuella fel eller varningar, och status (success/failure). Känslig data (personnummer, kreditscore) bör maskeras i loggar enligt GDPR.</li>
+          <li><strong>Prestanda:</strong> API-anrop till kreditupplysningsföretag kan ta 2-5 sekunder. Överväg asynkron hämtning om det tar längre tid. Cache kan användas för att undvika onödiga anrop om samma kunds kreditupplysning hämtas flera gånger (med rimlig tidsbegränsning).</li>
+          <li><strong>Datavalidering:</strong> Validera att hämtad kreditupplysning matchar förväntat format innan sparning. Verifiera att obligatoriska fält finns med (kreditscore, betalningsanmärkningar) och att datatyper är korrekta. Validera kreditscore (0-850 eller liknande beroende på källa).</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att aggregera kreditupplysning från flera källor för mer komplett bild. Stöd för real-time kreditupplysning för snabbare bedömning. Integration med machine learning för mer sofistikerad riskbedömning baserat på kreditupplysning.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous1[fetch-personal-information<br/>serviceTask]
+    Previous2[evaluate-personal-information<br/>businessRuleTask]
+    Gateway{is-personal-information-<br/>rejected?}
+    Current[fetch-credit-information<br/>serviceTask]
+    Next[assess-stakeholder<br/>businessRuleTask]
+    Rejected[Rejected personal<br/>information]
+    
+    Previous1 --> Previous2
+    Previous2 --> Gateway
+    Gateway -->|No| Current
+    Gateway -->|Yes| Rejected
+    Current --> Next
+    
+    style Current fill:#3b82f6,color:#fff
+    style Previous1 fill:#3b82f6,color:#fff
+    style Previous2 fill:#f59e0b,color:#fff
+    style Next fill:#f59e0b,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: fetch-personal-information → evaluate-personal-information → gateway → fetch-credit-information (om approved) → assess-stakeholder.</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>evaluate-personal-information:</strong> Måste returnera APPROVED (is-personal-information-rejected = No) för att fetch-credit-information ska köras</li>
+        <li><strong>fetch-personal-information:</strong> Hämtar personnummer som används för att hämta kreditupplysning</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>assess-stakeholder:</strong> Använder kreditupplysning för borrower capacity evaluation och DTI-ratio beräkning</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>fetch-engagements:</strong> Körs parallellt i internal-data-gathering subprocessen (används tillsammans med kreditupplysning för DTI-ratio beräkning)</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Konsumentkreditlagen:</strong> Kräver explicit samtycke innan kreditupplysning kan göras</li>
+        <li><strong>GDPR:</strong> Kreditupplysning ska hanteras enligt GDPR och bankens dataskyddspolicy</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-stakeholder.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

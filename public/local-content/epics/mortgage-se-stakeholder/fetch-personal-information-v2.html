@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fetch personal information</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Fetch personal information</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Fetch personal information</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-stakeholder.bpmn</li>
+        <li><strong>Element ID:</strong> fetch-personal-information</li>
+        <li><strong>Nodtyp:</strong> serviceTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken hämtar detaljerad personinformation från offentliga register, främst SPAR (Skatteverkets Partregister) eller Skatteverket. Denna information inkluderar personnummer, namn, adress, civilstånd, och andra personuppgifter från folkbokföringen. Epiken körs automatiskt efter att samtycke till kreditupplysning har givits och säkerställer att korrekt personinformation finns tillgänglig för efterföljande steg som evaluate-personal-information och fetch-credit-information. Genom att centralisera hämtningen av personinformation säkerställs konsistens och minskas risken för felaktig personidentifikation i senare steg.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>fetch-personal-information</strong> är en del av <strong>stakeholder</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs efter att samtycke till kreditupplysning har givits (via Gateway Merge) och före <strong>evaluate-personal-information</strong> och <strong>fetch-credit-information</strong>. Hämtad personinformation används för att validera borrower profile och för att hämta kreditupplysning.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Stakeholders fill:#1d4ed8,color:#fff
+    style FetchPersonal fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Stakeholder Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    HasConsented{has-consented-to-<br/>credit-check?}
+    Consent[consent-to-credit-check<br/>userTask]
+    DidConsent{did-consent?}
+    Gateway[Gateway Merge]
+    FetchPersonal[fetch-personal-information<br/>serviceTask]
+    Evaluate[evaluate-personal-information<br/>businessRuleTask]
+    Gateway2{is-personal-information-<br/>rejected?}
+    FetchCredit[fetch-credit-information<br/>serviceTask]
+    Assess[assess-stakeholder<br/>businessRuleTask]
+    Gateway3{is-stakeholder-<br/>rejected?}
+    Register[register-personal-economy-<br/>information<br/>userTask]
+    End[End Event]
+    Rejected1[Rejected credit check]
+    Rejected2[Rejected personal<br/>information]
+    Rejected3[Rejected stakeholder<br/>evaluation]
+    
+    Start --> HasConsented
+    HasConsented -->|No| Consent
+    HasConsented -->|Yes| Gateway
+    Consent --> DidConsent
+    DidConsent -->|Yes| Gateway
+    DidConsent -->|No| Rejected1
+    Gateway --> FetchPersonal
+    FetchPersonal --> Evaluate
+    Evaluate --> Gateway2
+    Gateway2 -->|No| FetchCredit
+    Gateway2 -->|Yes| Rejected2
+    FetchCredit --> Assess
+    Assess --> Gateway3
+    Gateway3 -->|No| Register
+    Gateway3 -->|Yes| Rejected3
+    Register --> End
+    
+    style FetchPersonal fill:#3b82f6,color:#fff
+    style Consent fill:#3b82f6,color:#fff
+    style Evaluate fill:#f59e0b,color:#fff
+    style FetchCredit fill:#3b82f6,color:#fff
+    style Assess fill:#f59e0b,color:#fff
+    style Register fill:#3b82f6,color:#fff
+    style HasConsented fill:#fbbf24,color:#000
+    style DidConsent fill:#fbbf24,color:#000
+    style Gateway2 fill:#fbbf24,color:#000
+    style Gateway3 fill:#fbbf24,color:#000
+    style Rejected1 fill:#ef4444,color:#fff
+    style Rejected2 fill:#ef4444,color:#fff
+    style Rejected3 fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Stakeholder Subprocess Flow visar: Start → has-consented-to-credit-check → consent-to-credit-check (om No) → did-consent → fetch-personal-information → evaluate-personal-information → fetch-credit-information → assess-stakeholder → register-personal-economy-information (om approved).</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>consent-to-credit-check:</strong> Måste vara slutförd och samtycke måste ha givits (via Gateway Merge)</li>
+          <li><strong>Gateway Merge:</strong> Samlar flöden från has-consented-to-credit-check (Yes) och did-consent (Yes)</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>evaluate-personal-information:</strong> Använder hämtad personinformation för borrower profile validation</li>
+          <li><strong>fetch-credit-information:</strong> Använder personnummer för att hämta kreditupplysning (körs efter evaluate-personal-information om approved)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Detta är en bakgrundsprocess (serviceTask) som körs automatiskt. Kunden ser ingen direkt UI, men processen påverkar vilken information som kan hämtas och valideras i efterföljande steg.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Processen triggas automatiskt när samtycke till kreditupplysning har givits</li><li>Kunden fortsätter med ansökningsprocessen medan personinformation hämtas i bakgrunden</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Ingen direkt användarinteraktion – automatisk systemprocess</li>
+          <li><strong>Design:</strong> N/A – backend-process</li>
+          
+        </ul>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare kan se status för datahämtningen i systemloggar eller admin-gränssnitt. Hämtad personinformation visas i ansökningsöversikten och används för att verifiera kundidentitet och personuppgifter.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Systemet hämtar personinformation automatiskt när samtycke har givits</li><li>Handläggare ser hämtad data i ansökningsöversikten för verifiering</li><li>Vid fel eller avvikelser kan handläggare se felmeddelanden och vidta åtgärder</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska hämtad personinformation, Verifiera kundidentitet, Felsök vid problem</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas automatiskt när consent-to-credit-check har slutförts och samtycke har givits.</li><li>Systemet identifierar kundens personnummer från stakeholder-data eller ansökningsdata.</li><li>Ett API-anrop görs till SPAR/Skatteverket för att hämta detaljerad personinformation från folkbokföringen.</li><li>Hämtad data valideras mot förväntat format och kompletteras med metadata (t.ex. hämtningstidpunkt, datakälla, dataversion).</li><li>Personinformation sparas i processens datastore och görs tillgänglig för efterföljande steg (evaluate-personal-information, fetch-credit-information).</li><li>Om hämtningen lyckas, fortsätter processen till nästa steg. Vid fel loggas informationen och processen kan avbrytas eller skickas till manuell hantering.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en serviceTask utan egna gateways. Den körs sekventiellt efter consent-to-credit-check och måste slutföras framgångsrikt för att efterföljande steg ska kunna köras.</p>
+        <p><strong>Felhantering:</strong> Vid timeout eller fel från SPAR/Skatteverket ska systemet logga felet med detaljerad information (felkod, meddelande, timestamp). Vid tillfälliga fel kan retry-logik implementeras med exponentiell backoff. Om personen inte hittas i register kan processen flaggas för manuell verifiering.</p>
+        <p><strong>Edge cases:</strong> Nya personer som inte finns i register (kan kräva manuell registrering), personer med flera personnummer eller namnändringar, historiska data som kan vara inaktuella, personer med ändrad adress eller civilstånd, data från olika källor som kan vara inkonsistenta.</p>
+      </div>
+      
+      <details>
+        <summary>Sekvensdiagram - Hämtning av personinformation</summary>
+        <div class="mermaid">
+sequenceDiagram
+    participant Camunda as BPMN Engine<br/>(Camunda)
+    participant API as API Service<br/>(Fetch Personal Info)
+    participant SPAR as SPAR/Skatteverket
+    participant Validator as Validation Service
+    participant Store as Personal Data Store
+    
+    Note over Camunda: Triggas efter<br/>consent-to-credit-check
+    Camunda->>API: Exekvera fetch-personal-information
+    API->>API: Identifiera personnummer<br/>från stakeholder-data
+    
+    API->>SPAR: REST API: Hämta personinformation<br/>(personnummer)
+    SPAR-->>API: Personinformation<br/>(namn, adress, civilstånd, etc.)
+    
+    API->>Validator: Validera data<br/>(format, personnummer, obligatoriska fält)
+    Validator-->>API: Valideringsresultat
+    
+    alt Validering lyckas
+        API->>Store: Spara personinformation<br/>+ metadata
+        Store-->>API: Bekräftelse
+        API->>Camunda: Success + personinformation
+        Camunda->>Camunda: Publicera event för<br/>efterföljande steg
+    else Validering misslyckas
+        API->>Camunda: Error + felmeddelande
+        Camunda->>Camunda: Flagga för manuell hantering
+    end
+    
+    alt API-timeout eller nätverksfel
+        API->>API: Retry med exponentiell backoff
+        API->>SPAR: Retry API-anrop
+        SPAR-->>API: Personinformation
+        API->>Store: Spara personinformation
+    else Person hittas inte
+        SPAR-->>API: 404 Not Found
+        API->>Camunda: Error: Person hittas inte
+        Camunda->>Camunda: Flagga för manuell verifiering
+    end
+        </div>
+        <p class="muted">Sekvensdiagram visar tidslinje för interaktioner: BPMN Engine triggar API Service, som gör REST API-anrop till SPAR/Skatteverket, validerar data, sparar i Data Store, och hanterar fel med retry-logik.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Stakeholder-information (personnummer, namn)</td>
+          <td>Föregående steg i stakeholder-processen</td>
+          <td>StakeholderData</td>
+          <td>Ja</td>
+          <td>Grundläggande information om kunden eller medsökande som ska hämta personinformation</td>
+        </tr>
+        <tr>
+          <td>Samtycke till kreditupplysning</td>
+          <td>Consent-to-credit-check (userTask)</td>
+          <td>ConsentStatus</td>
+          <td>Ja</td>
+          <td>Bekräftelse att kunden har gett samtycke till kreditupplysning innan personinformation kan hämtas</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla hämtad data till rätt ansökan och möjliggöra spårbarhet</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata och stakeholder-information</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li><strong>SPAR (Skatteverkets Partregister):</strong> Offentligt register som innehåller detaljerad personinformation från folkbokföringen inklusive personnummer, namn, adress, civilstånd, och kontaktuppgifter. Detta är primär datakälla för personinformation.</li>
+        <li><strong>Skatteverket:</strong> Kompletterande källa för personuppgifter och verifiering av personidentitet.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+        <li><strong>Personal Data Store:</strong> Lagrar hämtad personinformation för användning i efterföljande steg</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Personinformation (detaljerad personuppgifter)</td>
+          <td>Personal Data Store, efterföljande steg (evaluate-personal-information, fetch-credit-information)</td>
+          <td>PersonalInformation</td>
+          <td>Strukturerad personinformation inklusive personnummer, namn, adress, civilstånd, kontaktuppgifter, och metadata</td>
+        </tr>
+        <tr>
+          <td>Hämtningsstatus och metadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>PersonalFetchStatus</td>
+          <td>Status för hämtningen (success/failure), timestamp, datakälla, eventuella varningar eller felmeddelanden</td>
+        </tr>
+        <tr>
+          <td>Validerad personidentitet</td>
+          <td>Efterföljande steg</td>
+          <td>ValidatedIdentity</td>
+          <td>Verifierad personidentitet som kan användas för att hämta kreditupplysning och andra personrelaterade data</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>SPAR/Skatteverket:</strong> Offentliga register – primär datakälla för personinformation</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API-anrop till SPAR/Skatteverket för att hämta personinformation. API:et exponerar endpoints för att söka person baserat på personnummer eller annan identifierare. Stödjer filtrering och validering av data.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när consent-to-credit-check är slutförd. Vid lyckad hämtning kan events publiceras för efterföljande steg.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Hämtad personinformation sparas i Personal Data Store för användning i efterföljande steg.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST-klienter för API-anrop till SPAR/Skatteverket</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Loggning via centraliserat loggsystem</li>
+            </ul>
+          </li>
+          
+          <li><strong>Arkitekturdiagram:</strong>
+            <details>
+              <summary>C4 System Context Diagram</summary>
+              <div class="mermaid">
+graph TB
+    Customer[👤 Customer<br/>Kund]
+    Handler[👤 Handler<br/>Handläggare]
+    
+    Epic[Fetch Personal Information<br/>serviceTask]
+    
+    SPAR[SPAR/Skatteverket<br/>Offentligt register]
+    
+    AppDB[(Application DB<br/>PostgreSQL)]
+    PersonalStore[(Personal Data Store<br/>Personinformation)]
+    
+    Customer -.->|Triggar via<br/>ansökan| Epic
+    Handler -.->|Granskar<br/>resultat| Epic
+    
+    Epic -->|REST API<br/>Hämtar personinformation| SPAR
+    Epic -->|Läser/Sparar<br/>ansökningsdata| AppDB
+    Epic -->|Sparar<br/>personinformation| PersonalStore
+    
+    style Epic fill:#1d4ed8,color:#fff
+    style SPAR fill:#f59e0b,color:#fff
+    style AppDB fill:#10b981,color:#fff
+    style PersonalStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">System Context Diagram visar epic i centrum med externa system (SPAR/Skatteverket), interna system (Application DB, Personal Data Store), och användare (Customer, Handler).</p>
+            </details>
+            
+            <details>
+              <summary>Komponentdiagram</summary>
+              <div class="mermaid">
+graph TB
+    BPMN[BPMN Engine<br/>Camunda]
+    APIService[API Service<br/>Fetch Personal Info]
+    RESTClient[REST Client<br/>SPAR/Skatteverket]
+    Validator[Validation Service<br/>Data Validation]
+    DataStore[Data Store<br/>Personal Data]
+    
+    BPMN -->|Orkestrerar| APIService
+    APIService -->|Använder| RESTClient
+    APIService -->|Använder| Validator
+    APIService -->|Sparar data| DataStore
+    
+    RESTClient -->|API-anrop| SPAR[SPAR/Skatteverket]
+    Validator -->|Validerar| DataStore
+    
+    style BPMN fill:#1d4ed8,color:#fff
+    style APIService fill:#3b82f6,color:#fff
+    style RESTClient fill:#60a5fa,color:#fff
+    style Validator fill:#93c5fd,color:#fff
+    style DataStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">Komponentdiagram visar huvudkomponenter: BPMN Engine orkestrerar API Service, som använder REST Client för API-anrop och Validation Service för datavalidering, och sparar data i Data Store.</p>
+            </details>
+          </li>
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+    <section class="doc-section">
+      <h2>API Dokumentation</h2>
+      <p class="muted">Beskrivning av API-endpoints som används eller exponeras.</p>
+      
+      
+      <h3>API-endpoints (exponerade)</h3>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Metod</th>
+          <th>Request</th>
+          <th>Response</th>
+          <th>Felkoder</th>
+        </tr>
+        <tr>
+          <td><code>/api/fetch-personal-information</code></td>
+          <td>POST</td>
+          <td><code>{ "personnummer": "string", "applicationId": "uuid", "consentId": "uuid" }</code></td>
+          <td><code>{ "personalInformation": { "personnummer": "string", "namn": "string", "adress": "string", "civilstånd": "string", ... }, "status": "success", "metadata": { "datakälla": "SPAR", "timestamp": "ISO8601" } }</code></td>
+          <td>400 (Bad Request), 401 (Unauthorized - saknat samtycke), 404 (Not Found), 500 (Server Error), 503 (Service Unavailable)</td>
+        </tr>
+      </table>
+      
+      <h3>Externa API:er (används)</h3>
+      <table>
+        <tr>
+          <th>API</th>
+          <th>Endpoint</th>
+          <th>Autentisering</th>
+          <th>Rate Limit</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>SPAR/Skatteverket</td>
+          <td><code>/api/person/{personnummer}</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>100 requests/minut</td>
+          <td>Offentligt register för personinformation (personnummer, namn, adress, civilstånd från folkbokföringen)</td>
+        </tr>
+      </table>
+      
+      <h3>Autentisering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponerad endpoint:</strong> Kräver OAuth 2.0 Bearer token i Authorization header</li>
+          <li><strong>SPAR/Skatteverket:</strong> API key i X-API-Key header (hanteras av API Gateway)</li>
+          <li><strong>Samtycke:</strong> Måste ha giltigt samtycke (consentId) enligt konsumentkreditlagen och GDPR</li>
+        </ul>
+      </div>
+      
+      <h3>Felhantering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>400 Bad Request:</strong> Ogiltig input (t.ex. ogiltigt personnummer)</li>
+          <li><strong>401 Unauthorized:</strong> Saknat eller ogiltigt samtycke till kreditupplysning</li>
+          <li><strong>404 Not Found:</strong> Person hittas inte i register</li>
+          <li><strong>500 Server Error:</strong> Internt serverfel</li>
+          <li><strong>503 Service Unavailable:</strong> SPAR/Skatteverket är otillgängligt (retry med exponentiell backoff)</li>
+          <li><strong>Timeout:</strong> 30 sekunder för externa API-anrop, retry max 3 gånger</li>
+        </ul>
+      </div>
+    </section>
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>GDPR:</strong> Personuppgifter ska hanteras enligt GDPR och bankens dataskyddspolicy. Känslig data ska maskeras i loggar. Endast nödvändig data ska hämtas och sparas.</li>
+          <li><strong>Samtycke:</strong> Personinformation får endast hämtas efter att explicit samtycke till kreditupplysning har givits enligt konsumentkreditlagen.</li>
+          <li><strong>Datavalidering:</strong> Hämtad data måste valideras mot förväntat format innan sparning. Personnummer ska valideras enligt svensk standard.</li>
+          <li><strong>Spårbarhet:</strong> Alla hämtningar måste loggas med timestamp, datakälla, och eventuella fel för compliance och efterkontroll.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>Normalflöde med komplett underlag:</strong> Kunden eller handläggaren har lämnat kompletta och konsistenta uppgifter som uppfyller grundläggande krav.</li><li><strong>Delvis ofullständigt eller oklart underlag:</strong> Enstaka uppgifter saknas eller är motsägelsefulla, men ärendet bedöms kunna kompletteras utan att avbrytas.</li><li><strong>Tekniskt fel eller kritisk avvikelse:</strong> Centrala data inte kan läsas in, valideras eller sparas på ett säkert sätt.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>[Beskrivning av testdata som behövs]</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li>[Miljö 1: t.ex. "Local development"]</li>
+          <li>[Miljö 2: t.ex. "Staging"]</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde, kompletteringsfall samt tekniska fel eller kritiska avvikelser.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>API-timeout:</strong> Vid timeout från SPAR/Skatteverket (30 sekunder) ska systemet logga felet och implementera retry med exponentiell backoff (max 3 försök). Om alla retries misslyckas flaggas processen för manuell hantering.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) ska systemet logga felet med detaljerad information och implementera retry med exponentiell backoff. Processen flaggas för manuell hantering om alla retries misslyckas.</li>
+          <li><strong>Databasfel:</strong> Vid databasfel (connection timeout, deadlock) ska processen flaggas för manuell hantering och felet loggas med detaljerad information. Överväg retry för tillfälliga databasfel.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Samtycke saknas:</strong> Om samtycke inte finns eller är ogiltigt (401 Unauthorized) ska processen avbrytas med tydligt felmeddelande. Kunden bör informeras om att de behöver ge samtycke för att fortsätta.</li>
+          <li><strong>Validering:</strong> Om personnummer är ogiltigt (felaktigt format eller checksum) ska processen flaggas för manuell verifiering med tydligt felmeddelande. Kunden kan behöva kontakta banken för att korrigera informationen.</li>
+          <li><strong>Person hittas inte:</strong> Om person inte hittas i SPAR/Skatteverket (404 Not Found) ska processen flaggas för manuell verifiering. Detta kan vara förväntat för nya personer eller personer med ogiltiga personnummer.</li>
+          <li><strong>Ofullständig data:</strong> Om hämtad data saknar obligatoriska fält (t.ex. adress saknas) ska processen flaggas för manuell komplettering. Systemet ska logga vilka fält som saknas.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Nya personer:</strong> Personer som inte finns i partregister kan kräva manuell registrering. Systemet ska identifiera detta scenario och flagga för manuell hantering med tydligt meddelande.</li>
+          <li><strong>Historiska data:</strong> Data från olika källor kan vara inkonsistenta och kräva manuell granskning. Systemet ska identifiera inkonsistenser och flagga för manuell verifiering.</li>
+          <li><strong>Dubbla personnummer:</strong> Om samma personnummer finns i flera system med olika data ska systemet flagga för manuell granskning. Prioritera data från SPAR/Skatteverket som primär källa.</li>
+          <li><strong>Maskerade data:</strong> Om känslig data (personnummer, namn) är maskerad i loggar enligt GDPR kan det vara svårt att spåra fel. Överväg att använda hashade identifierare för spårbarhet.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponentiell backoff:</strong> Retry med växande intervall (1s, 2s, 4s) för tillfälliga fel (timeout, 503 Service Unavailable). Max 3 försök innan processen flaggas för manuell hantering.</li>
+          <li><strong>Max retries:</strong> Max 3 försök för externa API-anrop (SPAR/Skatteverket). Efter 3 misslyckade försök flaggas processen för manuell hantering.</li>
+          <li><strong>Retry-kriterier:</strong> Retry endast för tillfälliga fel (timeout, 503, connection refused). Inte för permanenta fel (400 Bad Request, 404 Not Found, 401 Unauthorized).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>API-anrop:</strong> Epiken exponeras via BPMN serviceTask och kan anropas via processgränssnitt. API-anrop till SPAR/Skatteverket bör implementeras med retry-logik för tillfälliga fel och timeout-hantering. Överväg caching för att undvika onödiga anrop om samma persons data hämtas flera gånger.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: identifierare som används för sökning, hämtningstid, eventuella fel eller varningar, och status (success/failure). Känslig data (personnummer, namn) bör maskeras i loggar enligt GDPR.</li>
+          <li><strong>Prestanda:</strong> API-anrop till SPAR/Skatteverket bör vara snabba (< 2 sekunder). Överväg asynkron hämtning om det tar längre tid. Cache kan användas för att undvika onödiga anrop.</li>
+          <li><strong>Datavalidering:</strong> Validera att hämtad data matchar förväntat format innan sparning. Verifiera att obligatoriska fält finns med och att datatyper är korrekta. Validera personnummer enligt svensk standard.</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att inkludera real-time validering mot folkbokföringsregister för att verifiera aktuell adress. Stöd för flera partregister om banken använder olika system. Integration med identitetsverifieringstjänster för automatisk KYC-validering.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous1[consent-to-credit-check<br/>userTask]
+    Gateway[Gateway Merge]
+    Current[fetch-personal-information<br/>serviceTask]
+    Next1[evaluate-personal-information<br/>businessRuleTask]
+    Gateway2{is-personal-information-<br/>rejected?}
+    Next2[fetch-credit-information<br/>serviceTask]
+    Rejected[Rejected personal<br/>information]
+    
+    Previous1 --> Gateway
+    Gateway --> Current
+    Current --> Next1
+    Next1 --> Gateway2
+    Gateway2 -->|No| Next2
+    Gateway2 -->|Yes| Rejected
+    
+    style Current fill:#3b82f6,color:#fff
+    style Previous1 fill:#3b82f6,color:#fff
+    style Next1 fill:#f59e0b,color:#fff
+    style Next2 fill:#3b82f6,color:#fff
+    style Gateway2 fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: consent-to-credit-check → Gateway Merge → fetch-personal-information → evaluate-personal-information → gateway → fetch-credit-information (om approved) eller rejected (om rejected).</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>consent-to-credit-check:</strong> Måste vara slutförd och samtycke måste ha givits innan personinformation kan hämtas (via Gateway Merge)</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>evaluate-personal-information:</strong> Använder hämtad personinformation för borrower profile validation</li>
+        <li><strong>fetch-credit-information:</strong> Använder personnummer för att hämta kreditupplysning (körs efter evaluate-personal-information om approved)</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>fetch-party-information:</strong> Körs parallellt i internal-data-gathering subprocessen (använder samma partinformation)</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>GDPR-policy:</strong> Personuppgifter ska hanteras enligt GDPR och bankens dataskyddspolicy</li>
+        <li><strong>Konsumentkreditlagen:</strong> Kräver samtycke innan personinformation kan hämtas</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-stakeholder.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

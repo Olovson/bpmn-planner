@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm application</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Confirm application</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Confirm application</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-application.bpmn</li>
+        <li><strong>Element ID:</strong> confirm-application</li>
+        <li><strong>Nodtyp:</strong> userTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken ger kunden eller handläggaren möjlighet att granska och bekräfta hela ansökan innan den skickas vidare för kreditbedömning. Detta är det sista steget i ansökningsinsamlingen och säkerställer att all nödvändig information är korrekt och komplett. Kunden kan se en sammanfattning av alla insamlade data (stakeholder, household, object) och bekräfta att allt är korrekt innan ansökan skickas vidare. Epiken validerar att alla obligatoriska fält är ifyllda och att ansökan uppfyller grundläggande krav innan den kan bekräftas.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>confirm-application</strong> är en direkt del av <strong>mortgage-se-application</strong> processen (inte en subprocess). Den körs efter att alla subprocesser (household, stakeholders, object) har slutförts via Parallel Gateway "Gateway_1960pk9". Efter att ansökan har bekräftats slutförs Application-processen.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application<br/>userTask]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Confirm fill:#3b82f6,color:#fff
+    style Gateway2 fill:#fbbf24,color:#000
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application → End.</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>household subprocess:</strong> Måste vara slutförd (register-household-economy-information)</li>
+          <li><strong>stakeholders subprocess:</strong> Måste vara slutförd (register-personal-economy-information)</li>
+          <li><strong>object subprocess:</strong> Måste vara slutförd (valuate-property eller object-information)</li>
+          <li><strong>Gateway "Gateway_1960pk9":</strong> Parallel Gateway som väntar på att alla subprocesser ska slutföras innan confirm-application körs</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Application End:</strong> När confirm-application är klar slutförs Application-processen</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Kunden ser en sammanfattningsvy med alla insamlade uppgifter från ansökningsprocessen: stakeholder-information, household-ekonomi, objektinformation, och låneupplägg. Varje sektion kan expanderas för detaljerad granskning.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Kunden öppnar bekräftelsesidan och ser en översiktlig sammanfattning av hela ansökan</li><li>Kunden kan expandera varje sektion för att granska detaljerad information</li><li>Systemet visar eventuella varningar eller ofullständig information som behöver åtgärdas</li><li>Kunden bekräftar att all information är korrekt genom att klicka på "Bekräfta ansökan"</li><li>Efter bekräftelse skickas ansökan vidare för kreditbedömning</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska sammanfattning, Expandera/kollapsa sektioner, Redigera information (navigera tillbaka), Bekräfta ansökan, Avbryt ansökan</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+        
+        <details>
+          <summary>User Journey Map</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start<br/>Öppna bekräftelsesida]
+    Review[Granska<br/>sammanfattning]
+    Expand[Expandera<br/>sektioner]
+    Validate{Validering<br/>OK?}
+    Confirm[Bekräfta<br/>ansökan]
+    Complete[Klart<br/>Skickas för bedömning]
+    Edit[Redigera<br/>information]
+    
+    Start -->|Laddar sammanfattning| Review
+    Review -->|Expandera| Expand
+    Expand -->|Granska| Validate
+    Validate -->|Nej| Edit
+    Edit -->|Navigera tillbaka| Review
+    Validate -->|Ja| Confirm
+    Confirm -->|Bekräftar| Complete
+    
+    style Start fill:#dbeafe,color:#000
+    style Review fill:#bfdbfe,color:#000
+    style Expand fill:#93c5fd,color:#000
+    style Validate fill:#fbbf24,color:#000
+    style Confirm fill:#10b981,color:#fff
+    style Complete fill:#059669,color:#fff
+    style Edit fill:#f59e0b,color:#fff
+          </div>
+          <p class="muted">User Journey Map visar kundens resa från start till bekräftelse, inklusive touchpoints och tidslinje.</p>
+        </details>
+        
+        <details>
+          <summary>Interaktionsflöde</summary>
+          <div class="mermaid">
+sequenceDiagram
+    participant User as Kund/Handläggare
+    participant UI as UI Bekräftelsesida
+    participant API as API Service
+    participant Validator as Validation Service
+    participant Store as Application Store
+    
+    User->>UI: Öppna bekräftelsesida
+    UI->>API: Hämta all ansökningsdata
+    API-->>UI: Sammanfattning (stakeholder, household, object)
+    UI-->>User: Visar sammanfattningsvy
+    
+    User->>UI: Expandera/kollapsa sektioner
+    UI-->>User: Visar/döljer detaljer
+    
+    User->>UI: Klickar "Bekräfta ansökan"
+    UI->>Validator: Validera alla obligatoriska fält
+    Validator-->>UI: Valideringsresultat
+    
+    alt Validering OK
+        UI->>API: Bekräfta ansökan
+        API->>Store: Markera ansökan som komplett
+        Store-->>API: Bekräftelse
+        API-->>UI: Success
+        UI-->>User: Bekräftelse + skickas för kreditbedömning
+    else Validering misslyckas
+        UI-->>User: Felmeddelanden (vilka fält behöver åtgärdas)
+        User->>UI: Navigera tillbaka för att redigera
+    end
+          </div>
+          <p class="muted">Interaktionsflöde visar UI-skärmar/steg, användarinteraktioner, systemresponser, valideringar och felhantering.</p>
+        </details>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare ser samma sammanfattningsvy som kunden, men med ytterligare administrativa funktioner och möjlighet att se valideringsstatus och flaggor från systemet.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Handläggare öppnar ansökan i systemet och ser sammanfattningsvyn</li><li>Handläggare granskar alla sektioner och verifierar att informationen är korrekt och komplett</li><li>Systemet visar valideringsstatus och eventuella varningar eller fel</li><li>Handläggare kan bekräfta ansökan å kundens vägnar eller flagga för komplettering</li><li>Efter bekräftelse skickas ansökan vidare för kreditbedömning</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska sammanfattning, Verifiera information, Bekräfta ansökan, Flagga för komplettering, Avvisa ansökan, Se valideringsstatus</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas när alla föregående steg i ansökningsprocessen är slutförda (stakeholder, household, object).</li><li>Systemet samlar in all insamlad data från föregående steg och skapar en sammanfattningsvy.</li><li>Systemet validerar att alla obligatoriska fält är ifyllda och att ansökan uppfyller grundläggande krav.</li><li>Kunden eller handläggaren granskar sammanfattningen och kan expandera sektioner för detaljerad granskning.</li><li>Systemet visar eventuella varningar, ofullständig information, eller valideringsfel som behöver åtgärdas.</li><li>Kunden eller handläggaren bekräftar ansökan genom att klicka på "Bekräfta ansökan".</li><li>Efter bekräftelse markeras ansökan som komplett och skickas vidare för kreditbedömning. Ansökningsstatus uppdateras och processen fortsätter till nästa steg i bolåneflödet.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en userTask där användaren måste bekräfta ansökan. Om obligatoriska fält saknas eller validering misslyckas kan användaren inte bekräfta och måste navigera tillbaka för att komplettera informationen. Efter bekräftelse fortsätter processen automatiskt till nästa steg.</p>
+        <p><strong>Felhantering:</strong> Om validering misslyckas visas tydliga felmeddelanden som indikerar vilka fält som behöver åtgärdas. Användaren kan navigera tillbaka till relevanta sektioner för att korrigera information. Om systemfel uppstår vid bekräftelse loggas felet och användaren informeras. Ansökan kan sparas som draft om användaren avbryter.</p>
+        <p><strong>Edge cases:</strong> Ansökan med delvis ofullständig information (användaren kan bekräfta med varningar), ansökan som ändras efter bekräftelse (kan kräva ombekräftelse), samtidiga bekräftelser från flera användare (förhindras via låsning), timeout under bekräftelse (ansökan sparas som draft), avbruten bekräftelse (ansökan förblir i draft-läge).</p>
+      </div>
+      
+      <details>
+        <summary>Process Flow Diagram</summary>
+        <div class="mermaid">
+flowchart TD
+    Start[Start<br/>Epik triggas]
+    Collect[Samla in all data<br/>från föregående steg]
+    CreateSummary[Skapa<br/>sammanfattningsvy]
+    Validate{Validering<br/>OK?}
+    Review[Granska<br/>sammanfattning]
+    Confirm[Bekräfta<br/>ansökan]
+    MarkComplete[Markera som komplett<br/>+ skicka för bedömning]
+    Complete[Klart<br/>Fortsätt process]
+    Edit[Redigera<br/>information]
+    
+    Start --> Collect
+    Collect --> CreateSummary
+    CreateSummary --> Validate
+    Validate -->|Nej| Edit
+    Edit -->|Navigera tillbaka| Review
+    Validate -->|Ja| Review
+    Review --> Confirm
+    Confirm --> MarkComplete
+    MarkComplete --> Complete
+    
+    style Start fill:#1d4ed8,color:#fff
+    style Collect fill:#3b82f6,color:#fff
+    style CreateSummary fill:#60a5fa,color:#fff
+    style Validate fill:#fbbf24,color:#000
+    style Review fill:#93c5fd,color:#000
+    style Confirm fill:#10b981,color:#fff
+    style MarkComplete fill:#10b981,color:#fff
+    style Complete fill:#059669,color:#fff
+    style Edit fill:#f59e0b,color:#fff
+        </div>
+        <p class="muted">Process Flow Diagram visar steg-för-steg flöde: samla data, skapa sammanfattning, validering, granskning, bekräftelse, och markera som komplett.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Samlad ansökningsdata från alla föregående steg</td>
+          <td>Föregående steg (stakeholder, household, object)</td>
+          <td>ApplicationData</td>
+          <td>Ja</td>
+          <td>Komplett ansökningsdata inklusive stakeholder-information, household-ekonomi, objektinformation, och låneupplägg</td>
+        </tr>
+        <tr>
+          <td>Valideringsstatus och flaggor</td>
+          <td>Systemvalidering</td>
+          <td>ValidationStatus</td>
+          <td>Ja</td>
+          <td>Status för validering av obligatoriska fält, varningar, och eventuella fel som behöver åtgärdas</td>
+        </tr>
+        <tr>
+          <td>Användar-ID och session</td>
+          <td>Autentiseringskontext</td>
+          <td>String</td>
+          <td>Ja</td>
+          <td>För att identifiera vem som bekräftar ansökan och spåra ändringar</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata från alla föregående steg (stakeholder, household, object)</li>
+        <li><strong>Validation Service:</strong> Valideringsregler och status för ansökningsdata</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs – all data hämtas från interna system</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Bekräftad ansökan med status "CONFIRMED"</td>
+          <td>Application DB, efterföljande steg (kreditbedömning)</td>
+          <td>ConfirmedApplication</td>
+          <td>Ansökan som är bekräftad och redo för kreditbedömning, inklusive timestamp för bekräftelse och användar-ID</td>
+        </tr>
+        <tr>
+          <td>Bekräftelsemetadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>ConfirmationMetadata</td>
+          <td>Information om vem som bekräftade ansökan, när bekräftelsen skedde, och eventuella kommentarer eller flaggor</td>
+        </tr>
+        <tr>
+          <td>Valideringsresultat</td>
+          <td>Efterföljande steg</td>
+          <td>ValidationResult</td>
+          <td>Resultat från validering av ansökningsdata, inklusive eventuella varningar eller fel som behöver åtgärdas</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+              <li><strong>Validation Service:</strong> Tjänst för validering av ansökningsdata</li>
+              <li><strong>Notification Service:</strong> Tjänst för att skicka bekräftelsemeddelanden till kund</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att hämta ansökningsdata, validera ansökan, och uppdatera status. API:et exponerar endpoints för att bekräfta ansökan och hämta sammanfattningsdata.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när alla föregående steg är slutförda. Vid bekräftelse publiceras event för att trigga nästa steg i processen (kreditbedömning).</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Bekräftad ansökan uppdateras i databasen med status och metadata.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST API för användarinteraktion</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Frontend-komponenter för sammanfattningsvy och bekräftelse</li>
+            </ul>
+          </li>
+          
+          
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li>Epiken förutsätter att relevanta affärsregler och policypunkter finns dokumenterade i separata Business Rules eller DMN.</li><li>Beslut och val inom epiken ska stödja bankens kreditpolicy och riskmandat för berörda produkter.</li><li>Eventuella avvikelser eller undantag ska identifieras och kunna spåras till bakomliggande regel- eller policystöd.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>EPIC-S1: Normalflöde med komplett underlag:</strong> Kunden eller handläggaren granskar sammanfattningen, all information är korrekt och komplett, validering lyckas, och ansökan bekräftas framgångsrikt. Ansökan skickas vidare för kreditbedömning.</li>
+          <li><strong>EPIC-S2: Delvis ofullständigt eller oklart underlag:</strong> Sammanfattningen visar varningar eller ofullständig information. Användaren kan välja att bekräfta ändå (med varningar) eller navigera tillbaka för att komplettera informationen innan bekräftelse.</li>
+          <li><strong>EPIC-S3: Tekniskt fel eller kritisk avvikelse:</strong> Systemfel uppstår vid bekräftelse (t.ex. databasfel, timeout). Ansökan sparas som draft, felet loggas, och användaren informeras. Ansökan kan bekräftas igen när felet är åtgärdat.</li>
+          <li><strong>Edge case: Valideringsfel:</strong> Obligatoriska fält saknas eller validering misslyckas. Användaren kan inte bekräfta ansökan och måste navigera tillbaka för att korrigera informationen.</li>
+          <li><strong>Edge case: Avbruten bekräftelse:</strong> Användaren avbryter bekräftelseprocessen. Ansökan förblir i draft-läge och kan bekräftas senare.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>Kompletta ansökningar med alla sektioner ifyllda korrekt</li>
+          <li>Ansökningar med delvis ofullständig information (varningar men kan bekräftas)</li>
+          <li>Ansökningar med valideringsfel (obligatoriska fält saknas)</li>
+          <li>Ansökningar med olika kombinationer av stakeholder, household, och object-data</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li><strong>Local development:</strong> Lokal databas med testdata</li>
+          <li><strong>Staging:</strong> Staging-miljö med realistiska testdata</li>
+          <li><strong>Integration test:</strong> Test mot isolerad testmiljö med kontrollerade testdata</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde (bekräfta komplett ansökan), edge case (bekräfta med varningar), samt tekniska fel (databasfel, timeout). Tester ska verifiera att sammanfattningen visas korrekt, validering fungerar, och bekräftelse uppdaterar status korrekt.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databasfel:</strong> Vid databasfel när bekräftelse sparas (connection timeout, deadlock) ska systemet logga felet och flagga processen för manuell hantering. Överväg retry för tillfälliga databasfel. Användaren bör informeras om att bekräftelse inte kunde sparas och att de kan försöka igen.</li>
+          <li><strong>Session timeout:</strong> Om användarens session går ut innan bekräftelse sparas ska systemet logga felet och informera användaren. Överväg att spara bekräftelse automatiskt när användaren klickar på bekräftelseknappen för att undvika dataförlust.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) när bekräftelse sparas ska systemet logga felet och informera användaren. Överväg retry för tillfälliga nätverksfel.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Valideringsfel:</strong> Om validering misslyckas (t.ex. ofullständig information, kritiska fel) ska systemet visa tydliga felmeddelanden och förhindra bekräftelse. Användaren bör informeras om vilka fält som saknas eller vilka fel som finns. Validering ska ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Ofullständig information:</strong> Om obligatoriska fält saknas eller subprocesser inte är slutförda ska systemet förhindra bekräftelse och visa tydliga felmeddelanden. Användaren bör informeras om vilka subprocesser som saknas eller vilka fält som saknas.</li>
+          <li><strong>Varningar:</strong> Om varningar finns (t.ex. icke-kritiska fel) ska systemet visa dessa tydligt men tillåta bekräftelse. Användaren bör informeras om konsekvenserna av att bekräfta med varningar.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Parallella subprocesser:</strong> Om subprocesser (stakeholder, household, object) inte är slutförda samtidigt kan bekräftelse förhindras. Systemet ska hantera detta gracefully och informera användaren om vilka subprocesser som saknas.</li>
+          <li><strong>Stora datamängder:</strong> Om sammanfattningen innehåller stora datamängder kan laddningstiden bli lång. Överväg lazy loading eller paginering för bättre prestanda.</li>
+          <li><strong>Historiska data:</strong> Om data ändras under bekräftelseprocessen ska systemet spåra ändringar och logga dem för spårbarhet. Överväg att kräva manuell granskning för stora ändringar.</li>
+          <li><strong>Dubbel bekräftelse:</strong> Om användaren försöker bekräfta flera gånger ska systemet identifiera detta och använda den första giltiga bekräftelsen. Överväg att logga alla försök för spårbarhet.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databas:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga databasfel. Max 3 försök innan processen flaggas för manuell hantering.</li>
+          <li><strong>Session:</strong> Om session går ut ska systemet informera användaren och ge möjlighet att logga in igen. Överväg att spara bekräftelse automatiskt för att undvika dataförlust.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>UI/UX:</strong> Sammanfattningsvyn bör vara tydlig och lättläst med möjlighet att expandera/kollapsa sektioner. Varningar och fel bör markeras tydligt. Bekräftelseknappen bör vara tydlig och endast aktiverad när validering lyckas.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: när bekräftelse sker, vem som bekräftade (kund/handläggare), valideringsstatus, eventuella varningar eller fel, och timestamp. Alla bekräftelser ska loggas för spårbarhet.</li>
+          <li><strong>Prestanda:</strong> Sammanfattningsvyn bör laddas snabbt (< 2 sekunder). Överväg lazy loading för stora datamängder. Cache kan användas för att undvika onödiga databasanrop.</li>
+          <li><strong>Datavalidering:</strong> Validera att alla obligatoriska fält är ifyllda innan bekräftelse tillåts. Verifiera att data är konsistent och att inga kritiska fel finns. Validering bör ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg möjlighet att spara ansökan som PDF för kundens referens. Stöd för delad bekräftelse där flera parter (t.ex. medsökande) måste bekräfta. Integration med e-signatur för digital bekräftelse.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Stakeholder[stakeholder<br/>subprocess]
+    Household[household<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway[Parallel Gateway<br/>Merge]
+    Current[confirm-application<br/>userTask]
+    End[Application Process<br/>End]
+    CreditDecision[Kreditbedömning]
+    
+    Stakeholder --> Gateway
+    Household --> Gateway
+    Object --> Gateway
+    Gateway --> Current
+    Current --> End
+    End --> CreditDecision
+    
+    style Current fill:#3b82f6,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Stakeholder fill:#1d4ed8,color:#fff
+    style Household fill:#1d4ed8,color:#fff
+    style Object fill:#1d4ed8,color:#fff
+    style CreditDecision fill:#10b981,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: stakeholder + household + object subprocesser → Parallel Gateway Merge → confirm-application → Application Process End → Kreditbedömning.</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>stakeholder subprocess:</strong> Måste vara slutförd (register-personal-economy-information)</li>
+        <li><strong>household subprocess:</strong> Måste vara slutförd (register-household-economy-information)</li>
+        <li><strong>object subprocess:</strong> Måste vara slutförd (valuate-property eller objects-valid)</li>
+        <li><strong>Parallel Gateway Merge:</strong> Samlar alla tre subprocesser innan confirm-application körs</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Application Process End:</strong> När confirm-application är klar slutförs Application-processen</li>
+        <li><strong>Kreditbedömning:</strong> Bekräftad ansökan skickas vidare för kreditbedömning och riskanalys</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>Alla epics i stakeholder, household, och object:</strong> Samlar in data som visas i sammanfattningen</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Valideringsregler:</strong> Ansökan måste vara komplett innan bekräftelse</li>
+        <li><strong>Obligatoriska fält:</strong> Regler för vilka fält som är obligatoriska</li>
+        <li><strong>Varningar:</strong> Regler för hantering av varningar vid bekräftelse</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-application.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Screen bostadsrätt</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+    .dmn-table {
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .dmn-table th {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .dmn-table td {
+      vertical-align: top;
+    }
+    .dmn-input {
+      background: #f0f9ff;
+    }
+    .dmn-output {
+      background: #ecfdf5;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Screen bostadsrätt</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Screen bostadsrätt</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-object-information.bpmn</li>
+        <li><strong>Element ID:</strong> evaluate-bostadsratt</li>
+        <li><strong>Nodtyp:</strong> businessRuleTask</li>
+        <li><strong>Version:</strong> 1.0</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Evaluate bostadsrätt är en DMN-beslutsregel (businessRuleTask) som evaluerar bostadsrättens lämplighet som säkerhet för bolånet baserat på bostadsrättsvärde, föreningsskuld, LTV-ratio (loan-to-value), plats, och andra bostadsrättsegenskaper. Regeln utvärderar om bostadsrätten uppfyller bankens krav för säkerhet och bedömer risknivån. Den analyserar bostadsrättsinformation från fetch-bostadsratts-information och BRF-information från fetch-brf-information för att bedöma bostadsrättens värde och lämplighet. Regeln returnerar ett beslut: APPROVED (kan användas som säkerhet) eller REJECTED (kan inte användas som säkerhet) tillsammans med risknivå. Detta är en kritisk del av objektbedömningen och avgör om bostadsrätten kan accepteras som säkerhet för lånet.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>evaluate-bostadsratt</strong> är en del av <strong>object-information</strong> subprocessen i <strong>object</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs efter <strong>fetch-brf-information</strong> när objekttyp är "Bostadsrätt". Efter att bostadsrätten har evaluerats fortsätter processen till gateway "Gateway_0f8c0ne" (Merge) och sedan till End för object-information subprocessen.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    ObjectInfo[object-information<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Object --> ObjectInfo
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Object fill:#1d4ed8,color:#fff
+    style ObjectInfo fill:#1d4ed8,color:#fff
+    style EvaluateBostadsratt fill:#f59e0b,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → object-information → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Object Information Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    ObjectType{object-type<br/>Gateway}
+    FetchFastighet[fetch-fastighets-information<br/>serviceTask]
+    EvaluateFastighet[evaluate-fastighet<br/>businessRuleTask]
+    FetchBostadsratt[fetch-bostadsratts-information<br/>serviceTask]
+    FetchBRF[fetch-brf-information<br/>serviceTask]
+    EvaluateBostadsratt[evaluate-bostadsratt<br/>businessRuleTask]
+    Gateway[Gateway Merge]
+    End[End Event]
+    
+    Start --> ObjectType
+    ObjectType -->|Småhus| FetchFastighet
+    ObjectType -->|Bostadsrätt| FetchBostadsratt
+    FetchFastighet --> EvaluateFastighet
+    EvaluateFastighet --> Gateway
+    FetchBostadsratt --> FetchBRF
+    FetchBRF --> EvaluateBostadsratt
+    EvaluateBostadsratt --> Gateway
+    Gateway --> End
+    
+    style FetchFastighet fill:#3b82f6,color:#fff
+    style EvaluateFastighet fill:#f59e0b,color:#fff
+    style FetchBostadsratt fill:#3b82f6,color:#fff
+    style FetchBRF fill:#3b82f6,color:#fff
+    style EvaluateBostadsratt fill:#f59e0b,color:#fff
+    style ObjectType fill:#fbbf24,color:#000
+          </div>
+          <p class="muted">Object Information Subprocess Flow visar: Start → object-type gateway → fetch-fastighets-information (om Småhus) eller fetch-bostadsratts-information (om Bostadsrätt) → evaluate-fastighet/evaluate-bostadsratt → End.</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>fetch-brf-information:</strong> Måste vara slutförd för att BRF-information ska vara tillgänglig för evaluering</li>
+          <li><strong>fetch-bostadsratts-information:</strong> Måste vara slutförd för att bostadsrättsinformation ska vara tillgänglig för evaluering</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Gateway "Gateway_0f8c0ne":</strong> Merge gateway som samlar flöden från evaluate-fastighet och evaluate-bostadsratt</li>
+          <li><strong>Object Information Subprocess End:</strong> När evaluate-bostadsratt är klar slutförs object-information subprocessen</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Detta är en automatisk bakgrundsprocess (DMN businessRuleTask) som körs utan direkt användarinteraktion. Kunden ser ingen direkt UI, men resultatet påverkar om bostadsrätten kan accepteras som säkerhet.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Processen körs automatiskt efter att bostadsrätts- och BRF-information har hämtats</li><li>Kunden fortsätter med ansökningsprocessen medan bedömningen görs i bakgrunden</li><li>Vid REJECTED får kunden information om varför bostadsrätten inte kan accepteras</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Ingen direkt användarinteraktion – automatisk systemprocess</li>
+          <li><strong>Design:</strong> N/A – backend-process</li>
+        </ul>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare kan se status för bedömningen i systemloggar eller admin-gränssnitt. Bedömningsresultatet visas i ansökningsöversikten tillsammans med bostadsrätts- och BRF-information, risknivå, och eventuella flaggor eller varningar.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Systemet kör bedömningen automatiskt efter att bostadsrätts- och BRF-information har hämtats</li><li>Handläggare ser bedömningsresultatet i ansökningsöversikten</li><li>Vid behov kan handläggare granska bedömningen och begära manuell granskning eller justering</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska bedömningsresultat, Se risknivå och motivering, Begära manuell granskning (vid behov)</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas automatiskt när fetch-brf-information har slutförts och bostadsrätts- och BRF-information är tillgänglig.</li><li>DMN-motorn läser in relevanta indata: bostadsrättsvärde, föreningsskuld, LTV-ratio, plats, och andra bostadsrättsegenskaper från bostadsrätts- och BRF-information.</li><li>DMN-regeln utvärderar indata mot beslutslogik och affärsregler för bostadsrättsbedömning.</li><li>Regeln bedömer bostadsrättens värde, föreningsskuld, LTV-ratio, och plats för att avgöra om bostadsrätten kan accepteras som säkerhet.</li><li>Regeln returnerar ett beslut: APPROVED (kan användas som säkerhet) eller REJECTED (kan inte användas som säkerhet) tillsammans med risknivå (t.ex. LOW, MEDIUM, HIGH) och motivering.</li><li>Resultatet sparas i processens datastore tillsammans med risknivå, motivering, och eventuella flaggor.</li><li>Beroende på resultat fortsätter processen: APPROVED → fortsätt till nästa steg, REJECTED → processen kan avslutas eller flaggas för manuell granskning.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en businessRuleTask där DMN-motorn kör beslutslogik. Gateway "objects-valid" använder resultatet för att avgöra om processen ska fortsätta (All/Some → fortsätt) eller stoppas (None → processen avslutas med fel).</p>
+        <p><strong>Felhantering:</strong> Om bostadsrätts- eller BRF-information saknas eller är ofullständig kan regeln inte köras och processen flaggas för manuell hantering. Om DMN-regeln inte kan returnera ett beslut loggas felet och processen kan avbrytas eller skickas till manuell granskning.</p>
+        <p><strong>Edge cases:</strong> Bostadsrätter med osäker värdering (kan kräva manuell granskning), bostadsrätter med unika egenskaper utan jämförelseobjekt (kan kräva manuell bedömning), bostadsrätter med ofullständig information (kan kräva komplettering), bostadsrätter med höga LTV-ratio eller föreningsskuld (kan kräva manuell granskning), bostadsrätter i riskområden (kan kräva manuell bedömning).</p>
+      </div>
+      
+      <details>
+        <summary>Sekvensdiagram - Bostadsrättsbedömning</summary>
+        <div class="mermaid">
+sequenceDiagram
+    participant Camunda as BPMN Engine<br/>(Camunda)
+    participant Service as Decision Service<br/>(Evaluate Bostadsrätt)
+    participant BostadsrattStore as Bostadsrätt Information Service
+    participant BRFStore as BRF Information Service
+    participant DMN as DMN Decision Engine
+    participant AppDB as Application DB
+    
+    Note over Camunda: Triggas efter<br/>fetch-brf-information
+    Camunda->>Service: Exekvera evaluate-bostadsratt
+    Service->>BostadsrattStore: Hämta bostadsrättsinformation<br/>(värde, storlek, byggår)
+    BostadsrattStore-->>Service: Bostadsrättsinformation
+    
+    Service->>BRFStore: Hämta BRF-information<br/>(föreningsskuld, avgifter)
+    BRFStore-->>Service: BRF-information
+    
+    Service->>Service: Beräkna LTV-ratio<br/>(lånebelopp / bostadsrättsvärde)
+    Service->>DMN: Anropa DMN-regel<br/>(bostadsrättsvärde, föreningsskuld, LTV, plats)
+    DMN->>DMN: Applicera beslutslogik<br/>(DMN Decision Table)
+    DMN-->>Service: Beslut (APPROVED/REJECTED)<br/>+ risknivå + motivering
+    
+    Service->>AppDB: Spara bedömningsresultat<br/>+ risknivå + motivering
+    AppDB-->>Service: Bekräftelse
+    Service->>Camunda: Success + beslut
+    Camunda->>Camunda: Gateway "objects-valid"<br/>avgör nästa steg
+        </div>
+        <p class="muted">Sekvensdiagram visar tidslinje för interaktioner: BPMN Engine triggar Decision Service, som hämtar data från Bostadsrätt och BRF Information Services, beräknar LTV-ratio, anropar DMN Decision Engine för beslutslogik, sparar beslut, och gateway avgör om processen fortsätter eller avslutas.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>Bostadsrättsinformation (värde, storlek, byggår, typ, plats)</td>
+          <td>Bostadsrätt Information Service (från fetch-bostadsratts-information)</td>
+          <td>BostadsrattData</td>
+          <td>Ja</td>
+          <td>Bostadsrättsinformation som används för bedömning</td>
+        </tr>
+        <tr>
+          <td>BRF-information (föreningsskuld, avgifter, ekonomiska nyckeltal)</td>
+          <td>BRF Information Service (från fetch-brf-information)</td>
+          <td>BRFData</td>
+          <td>Ja</td>
+          <td>BRF-information som används för bedömning</td>
+        </tr>
+        <tr>
+          <td>Lånebelopp</td>
+          <td>Ansökningsdata</td>
+          <td>Number</td>
+          <td>Ja</td>
+          <td>För att beräkna LTV-ratio (loan-to-value)</td>
+        </tr>
+        <tr>
+          <td>Bostadsrättsvärde</td>
+          <td>Bostadsrätt Information Service</td>
+          <td>Number</td>
+          <td>Ja</td>
+          <td>För att beräkna LTV-ratio och bedöma bostadsrättens värde</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      <h4>Interna datakällor</h4>
+      <ul>
+        <li><strong>Bostadsrätt Information Service:</strong> Lagrar bostadsrättsinformation från fetch-bostadsratts-information</li>
+        <li><strong>BRF Information Service:</strong> Lagrar BRF-information från fetch-brf-information</li>
+        <li><strong>Application DB:</strong> Ansökningsdata och processkontext</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>Bedömningsresultat (APPROVED/REJECTED)</td>
+          <td>Gateway "objects-valid", efterföljande steg</td>
+          <td>AssessmentResult</td>
+          <td>Beslut från DMN-regeln: APPROVED (kan användas som säkerhet) eller REJECTED (kan inte användas som säkerhet)</td>
+        </tr>
+        <tr>
+          <td>Risknivå (LOW/MEDIUM/HIGH)</td>
+          <td>Processkontext, loggsystem</td>
+          <td>RiskLevel</td>
+          <td>Risknivå baserad på bostadsrättsvärde, föreningsskuld, LTV-ratio, och plats för att bedöma bostadsrättens riskprofil</td>
+        </tr>
+        <tr>
+          <td>Motivering och flaggor</td>
+          <td>Processkontext, loggsystem</td>
+          <td>AssessmentReasoning</td>
+          <td>Detaljerad motivering för beslutet, beräknad LTV-ratio, föreningsskuld, och eventuella flaggor eller varningar</td>
+        </tr>
+        <tr>
+          <td>Validerad bostadsrättsstatus</td>
+          <td>Efterföljande steg</td>
+          <td>ValidatedApartment</td>
+          <td>Status som används av gateway "objects-valid" för att avgöra om processen ska fortsätta eller stoppas</td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>DMN Decision Engine:</strong> Camunda DMN eller liknande för att köra beslutslogik</li>
+              <li><strong>Bostadsrätt Information Service:</strong> Lagrar bostadsrättsinformation från fetch-bostadsratts-information</li>
+              <li><strong>BRF Information Service:</strong> Lagrar BRF-information från fetch-brf-information</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att köra DMN-beslutsregel. API:et exponerar endpoint /api/dmn/evaluate-bostadsratt som tar indata (bostadsrättsvärde, föreningsskuld, LTV-ratio, plats) och returnerar beslut (APPROVED/REJECTED + risknivå).</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas av BPMN event efter fetch-brf-information. Vid lyckad bedömning kan events publiceras för efterföljande steg.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Bedömningsresultat sparas i Application DB för användning i efterföljande steg.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>DMN Decision Engine för beslutslogik</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Loggning via centraliserat loggsystem</li>
+            </ul>
+          </li>
+          
+          <li><strong>Arkitekturdiagram:</strong>
+            <details>
+              <summary>C4 System Context Diagram</summary>
+              <div class="mermaid">
+graph TB
+    Customer[👤 Customer<br/>Kund]
+    Handler[👤 Handler<br/>Handläggare]
+    
+    Epic[Evaluate Bostadsrätt<br/>businessRuleTask]
+    
+    DMNEngine[DMN Decision Engine<br/>Bostadsrättsbedömning]
+    BostadsrattStore[(Bostadsrätt Information Service<br/>Bostadsrättsinfo)]
+    BRFStore[(BRF Information Service<br/>BRF-info)]
+    AppDB[(Application DB<br/>PostgreSQL)]
+    
+    Customer -.->|Triggar via<br/>ansökan| Epic
+    Handler -.->|Granskar<br/>resultat| Epic
+    
+    Epic -->|Använder| DMNEngine
+    Epic -->|Läser| BostadsrattStore
+    Epic -->|Läser| BRFStore
+    Epic -->|Läser/Sparar<br/>ansökningsdata| AppDB
+    
+    style Epic fill:#1d4ed8,color:#fff
+    style DMNEngine fill:#f59e0b,color:#fff
+    style BostadsrattStore fill:#10b981,color:#fff
+    style BRFStore fill:#10b981,color:#fff
+    style AppDB fill:#10b981,color:#fff
+              </div>
+              <p class="muted">System Context Diagram visar epic i centrum med DMN Decision Engine, Bostadsrätt och BRF Information Services, Application DB, och användare (Customer, Handler).</p>
+            </details>
+            
+            <details>
+              <summary>Komponentdiagram</summary>
+              <div class="mermaid">
+graph TB
+    BPMN[BPMN Engine<br/>Camunda]
+    DecisionService[Decision Service<br/>Evaluate Bostadsrätt]
+    DMNEngine[DMN Decision Engine<br/>Bostadsrättsbedömning]
+    BostadsrattStore[Bostadsrätt Information Service<br/>Bostadsrättsinfo]
+    BRFStore[BRF Information Service<br/>BRF-info]
+    AppDB[Application DB<br/>PostgreSQL]
+    
+    BPMN -->|Orkestrerar| DecisionService
+    DecisionService -->|Använder| DMNEngine
+    DecisionService -->|Läser| BostadsrattStore
+    DecisionService -->|Läser| BRFStore
+    DecisionService -->|Läser/Sparar| AppDB
+    
+    DMNEngine -->|Kör beslutslogik| DecisionService
+    
+    style BPMN fill:#1d4ed8,color:#fff
+    style DecisionService fill:#3b82f6,color:#fff
+    style DMNEngine fill:#f59e0b,color:#fff
+    style BostadsrattStore fill:#10b981,color:#fff
+    style BRFStore fill:#10b981,color:#fff
+    style AppDB fill:#10b981,color:#fff
+              </div>
+              <p class="muted">Komponentdiagram visar huvudkomponenter: BPMN Engine orkestrerar Decision Service, som använder DMN Decision Engine för beslutslogik, läser data från Bostadsrätt och BRF Information Services, och sparar beslut i Application DB.</p>
+            </details>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>DMN-beslutslogik:</strong> Regeln implementeras som DMN (Decision Model and Notation) beslutsregel med beslutslogik baserad på bostadsrättsvärde, föreningsskuld, LTV-ratio, och plats. Beslutslogiken kan uppdateras utan kodändringar.</li>
+          <li><strong>Bostadsrättsbedömningskriterier:</strong> Grundläggande kriterier för godkännande: bostadsrättsvärde (t.ex. minimum värde), föreningsskuld (t.ex. maximum skuld per kvadratmeter), LTV-ratio (t.ex. maximum 85%), och plats (t.ex. acceptabel plats).</li>
+          <li><strong>Riskkategorisering:</strong> Bostadsrätter kategoriseras i riskkategorier (LOW, MEDIUM, HIGH) baserat på bostadsrättsvärde, föreningsskuld, LTV-ratio, och plats. Riskkategorin används för att bedöma bostadsrättens riskprofil och kan påverka lånevillkor.</li>
+          <li><strong>LTV-ratio beräkning:</strong> LTV-ratio beräknas som lånebelopp / bostadsrättsvärde. Bostadsrätter med hög LTV-ratio (> 85%) bedöms ha högre risk och kan avvisas eller kräva manuell granskning.</li>
+          <li><strong>Föreningsskuld:</strong> Föreningsskuld per kvadratmeter eller total föreningsskuld bedöms för att avgöra om BRF:en har hälsosam ekonomi. Hög föreningsskuld kan leda till avslag.</li>
+          <li><strong>Policykrav:</strong> Policykrav för risk, säkerhet och produktvillkor ska vara spårbara via kopplade regler. Regeln omfattar grundläggande bostadsrättsbedömning, inte fullständig fastighetsvärdering.</li>
+        </ul>
+        
+        <h3>DMN Decision Table</h3>
+        <p class="muted">Beslutslogik för bostadsrättsbedömning baserat på bostadsrättsvärde, föreningsskuld, LTV-ratio, och plats.</p>
+        <table class="dmn-table">
+          <tr>
+            <th colspan="4" class="dmn-input">Input</th>
+            <th colspan="3" class="dmn-output">Output</th>
+          </tr>
+          <tr>
+            <th>Bostadsrättsvärde<br/>(SEK)</th>
+            <th>Föreningsskuld<br/>(SEK/m²)</th>
+            <th>LTV-ratio<br/>(%)</th>
+            <th>Plats</th>
+            <th>Beslut</th>
+            <th>Risknivå</th>
+            <th>Motivering</th>
+          </tr>
+          <tr>
+            <td>≥ 1.5M</td>
+            <td>≤ 5000</td>
+            <td>≤ 85%</td>
+            <td>Acceptabel</td>
+            <td><strong>APPROVED</strong></td>
+            <td>LOW</td>
+            <td>Alla kriterier uppfyllda. God säkerhet.</td>
+          </tr>
+          <tr>
+            <td>≥ 1.5M</td>
+            <td>≤ 5000</td>
+            <td>80-85%</td>
+            <td>Acceptabel</td>
+            <td><strong>APPROVED</strong></td>
+            <td>MEDIUM</td>
+            <td>Gränsvärden men acceptabel risk. Kräver manuell granskning.</td>
+          </tr>
+          <tr>
+            <td>≥ 1.5M</td>
+            <td>≤ 5000</td>
+            <td>> 85%</td>
+            <td>Acceptabel</td>
+            <td><strong>REJECTED</strong></td>
+            <td>HIGH</td>
+            <td>LTV-ratio för hög. Otillräcklig säkerhet.</td>
+          </tr>
+          <tr>
+            <td>≥ 1.5M</td>
+            <td>> 5000</td>
+            <td>≤ 85%</td>
+            <td>Acceptabel</td>
+            <td><strong>REJECTED</strong></td>
+            <td>MEDIUM</td>
+            <td>Föreningsskuld för hög. Osäker BRF-ekonomi.</td>
+          </tr>
+          <tr>
+            <td>&lt; 1.5M</td>
+            <td>≤ 5000</td>
+            <td>≤ 85%</td>
+            <td>Acceptabel</td>
+            <td><strong>REJECTED</strong></td>
+            <td>MEDIUM</td>
+            <td>Bostadsrättsvärde för lågt. Otillräcklig säkerhet.</td>
+          </tr>
+          <tr>
+            <td>≥ 1.5M</td>
+            <td>≤ 5000</td>
+            <td>≤ 85%</td>
+            <td>Riskområde</td>
+            <td><strong>REJECTED</strong></td>
+            <td>HIGH</td>
+            <td>Plats i riskområde. Hög risk.</td>
+          </tr>
+        </table>
+        <p class="muted"><strong>Hit Policy:</strong> FIRST (första matchande regel används)</p>
+        
+        <h3>Tröskelvärden och Prioritering</h3>
+        <table>
+          <tr>
+            <th>Kriterium</th>
+            <th>Tröskelvärde</th>
+            <th>Prioritering</th>
+            <th>Beskrivning</th>
+          </tr>
+          <tr>
+            <td>Bostadsrättsvärde</td>
+            <td>Minimum 1.5M SEK</td>
+            <td>Hög</td>
+            <td>Bostadsrätter med värde under 1.5M SEK avvisas automatiskt</td>
+          </tr>
+          <tr>
+            <td>LTV-ratio</td>
+            <td>Maximum 85%</td>
+            <td>Hög</td>
+            <td>Bostadsrätter med LTV-ratio över 85% avvisas automatiskt</td>
+          </tr>
+          <tr>
+            <td>Föreningsskuld</td>
+            <td>Maximum 5000 SEK/m²</td>
+            <td>Hög</td>
+            <td>Bostadsrätter med föreningsskuld över 5000 SEK/m² avvisas automatiskt</td>
+          </tr>
+          <tr>
+            <td>Plats</td>
+            <td>Acceptabel plats</td>
+            <td>Kritisk</td>
+            <td>Bostadsrätter i riskområden avvisas automatiskt oavsett andra kriterier</td>
+          </tr>
+          <tr>
+            <td>LTV-ratio (gränsvärden)</td>
+            <td>80-85%</td>
+            <td>Medium</td>
+            <td>Bostadsrätter med LTV-ratio 80-85% kan godkännas men kräver manuell granskning</td>
+          </tr>
+        </table>
+        
+        <details>
+          <summary>Regelträd / Decision Tree</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Evaluate Bostadsrätt<br/>Bostadsrättsbedömning]
+    
+    CheckValue{Bostadsrättsvärde<br/>≥ 1.5M SEK?}
+    CheckDebt{Föreningsskuld<br/>≤ 5000 SEK/m²?}
+    CheckLTV{LTV-ratio<br/>≤ 85%?}
+    CheckLocation{Plats<br/>Acceptabel?}
+    
+    Rejected1[REJECTED<br/>Risk: MEDIUM<br/>Bostadsrättsvärde för lågt]
+    Rejected2[REJECTED<br/>Risk: MEDIUM<br/>Föreningsskuld för hög]
+    Rejected3[REJECTED<br/>Risk: HIGH<br/>LTV-ratio för hög]
+    Rejected4[REJECTED<br/>Risk: HIGH<br/>Plats i riskområde]
+    
+    Approved1[APPROVED<br/>Risk: LOW<br/>Alla kriterier uppfyllda]
+    Approved2[APPROVED<br/>Risk: MEDIUM<br/>Gränsvärden, kräver granskning]
+    
+    Start --> CheckValue
+    CheckValue -->|Nej| Rejected1
+    CheckValue -->|Ja| CheckDebt
+    CheckDebt -->|Nej| Rejected2
+    CheckDebt -->|Ja| CheckLocation
+    CheckLocation -->|Nej| Rejected4
+    CheckLocation -->|Ja| CheckLTV
+    CheckLTV -->|Nej| Rejected3
+    CheckLTV -->|Ja| Approved1
+    
+    CheckLTV -->|80-85%| Approved2
+    
+    style Start fill:#1d4ed8,color:#fff
+    style CheckValue fill:#fbbf24,color:#000
+    style CheckDebt fill:#fbbf24,color:#000
+    style CheckLTV fill:#fbbf24,color:#000
+    style CheckLocation fill:#fbbf24,color:#000
+    style Rejected1 fill:#ef4444,color:#fff
+    style Rejected2 fill:#ef4444,color:#fff
+    style Rejected3 fill:#ef4444,color:#fff
+    style Rejected4 fill:#ef4444,color:#fff
+    style Approved1 fill:#10b981,color:#fff
+    style Approved2 fill:#f59e0b,color:#fff
+          </div>
+          <p class="muted">Regelträd visar beslutslogik: Först kontrolleras bostadsrättsvärde, sedan föreningsskuld, plats, och slutligen LTV-ratio. Varje steg kan leda till APPROVED eller REJECTED med olika risknivåer.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>API Dokumentation</h2>
+      <p class="muted">Beskrivning av API-endpoints som används eller exponeras.</p>
+      
+      <h3>API-endpoints (exponerade)</h3>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Metod</th>
+          <th>Request</th>
+          <th>Response</th>
+          <th>Felkoder</th>
+        </tr>
+        <tr>
+          <td><code>/api/evaluate-bostadsratt</code></td>
+          <td>POST</td>
+          <td><code>{ "bostadsrättsInformation": {...}, "brfInformation": {...}, "bostadsrättsvärde": "number", "föreningsskuld": "number", "plats": "string", "LTV": "number", "applicationId": "uuid" }</code></td>
+          <td><code>{ "beslut": "APPROVED" | "REJECTED", "riskkategori": "string", "motivering": "string", "status": "success" }</code></td>
+          <td>400 (Bad Request), 500 (Server Error)</td>
+        </tr>
+      </table>
+      
+      <h3>DMN Decision Table</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN-fil:</strong> evaluate-bostadsratt.dmn</li>
+          <li><strong>Besluts-ID:</strong> evaluate-bostadsratt</li>
+          <li><strong>Hit Policy:</strong> FIRST (första matchande regel används)</li>
+          <li><strong>Inputs:</strong> bostadsrättsvärde, föreningsskuld, plats, LTV-ratio</li>
+          <li><strong>Outputs:</strong> beslut (APPROVED/REJECTED), riskkategori, motivering</li>
+        </ul>
+      </div>
+      
+      <h3>Autentisering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponerad endpoint:</strong> Kräver OAuth 2.0 Bearer token i Authorization header</li>
+          <li><strong>DMN Engine:</strong> Intern autentisering via API Gateway</li>
+        </ul>
+      </div>
+      
+      <h3>Felhantering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>400 Bad Request:</strong> Ogiltig input (t.ex. saknade obligatoriska fält eller ogiltiga värden)</li>
+          <li><strong>500 Server Error:</strong> Internt serverfel eller DMN Engine-fel</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN Engine-fel:</strong> Om DMN-motorn inte kan köras (500 Server Error, timeout) ska systemet logga felet och flagga processen för manuell granskning. Överväg fallback-beslut (t.ex. REVIEW) vid tekniska fel för att undvika att processen stoppas helt.</li>
+          <li><strong>DMN-modell saknas:</strong> Om DMN-modellen inte hittas (404 Not Found) ska systemet logga felet och flagga processen för manuell granskning. Detta kan hända vid deployment eller modelluppdateringar.</li>
+          <li><strong>Databasfel:</strong> Vid databasfel (connection timeout, deadlock) när indata hämtas ska processen flaggas för manuell hantering och felet loggas med detaljerad information.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Obligatoriska indata saknas:</strong> Om obligatoriska indata saknas (t.ex. bostadsrättsvärde, föreningsskuld, plats, LTV) ska systemet logga felet och flagga processen för manuell granskning. Processen kan inte fortsätta utan dessa data.</li>
+          <li><strong>Ogiltiga indata:</strong> Om indata är ogiltiga (t.ex. negativt bostadsrättsvärde, ogiltig LTV-ratio) ska systemet validera och flagga för manuell verifiering med tydligt felmeddelande.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Gränsfall:</strong> Bostadsrätter som ligger precis på gränsen för bedömningskriterier (t.ex. bostadsrättsvärde precis på minimum, föreningsskuld precis på gräns) kan returnera REVIEW för manuell bedömning. Systemet ska hantera dessa gränsfall korrekt.</li>
+          <li><strong>Osäker värdering:</strong> Om bostadsrättsvärdering är osäker (t.ex. få jämförelseobjekt) ska systemet flagga för manuell granskning. Systemet ska logga varför bedömningen är osäker.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN Engine:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga fel (timeout, 503 Service Unavailable). Max 2 försök innan fallback-beslut (REVIEW) används.</li>
+          <li><strong>Fallback-beslut:</strong> Vid tekniska fel kan systemet använda fallback-beslut (REVIEW) för att undvika att processen stoppas helt. Detta ger manuell granskning möjlighet att bedöma bostadsrätten.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous[fetch-bostadsratts-information<br/>serviceTask]
+    Current[evaluate-bostadsratt<br/>businessRuleTask]
+    Next[fetch-brf-information<br/>serviceTask]
+    ObjectsValid{objects-valid?<br/>Gateway}
+    End[Object Information<br/>Subprocess End]
+    
+    Previous -->|Input till| Current
+    Current --> Next
+    Next --> ObjectsValid
+    ObjectsValid -->|All/Some/None| End
+    
+    style Current fill:#f59e0b,color:#fff
+    style Previous fill:#3b82f6,color:#fff
+    style Next fill:#3b82f6,color:#fff
+    style ObjectsValid fill:#fbbf24,color:#000
+        </div>
+        <p class="muted">Beroendediagram visar: fetch-bostadsratts-information → evaluate-bostadsratt → fetch-brf-information → objects-valid → End.</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>fetch-bostadsratts-information:</strong> Måste vara slutförd för att bostadsrättsinformation ska vara tillgänglig för bedömning</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>fetch-brf-information:</strong> Hämtar BRF-information efter bostadsrättsbedömning (använder organisationsnummer från bedömningen)</li>
+        <li><strong>objects-valid:</strong> Gateway som avgör om objekt är giltiga baserat på bedömningsresultat (All/Some/None)</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>evaluate-fastighet:</strong> Körs parallellt om object-type är "Småhus"</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>DMN-modell:</strong> evaluate-bostadsratt.dmn innehåller beslutslogik och affärsregler</li>
+        <li><strong>Bedömningskriterier:</strong> Bostadsrättsvärde, föreningsskuld, plats, LTV-ratio</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>
+

@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pre-screen party</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+    .dmn-table {
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .dmn-table th {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .dmn-table td {
+      vertical-align: top;
+    }
+    .dmn-input {
+      background: #f0f9ff;
+    }
+    .dmn-output {
+      background: #ecfdf5;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Pre-screen party</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Pre-screen party</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-internal-data-gathering.bpmn</li>
+        <li><strong>Element ID:</strong> pre-screen-party</li>
+        <li><strong>Nodtyp:</strong> businessRuleTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Pre-screen party är en DMN-beslutsregel (businessRuleTask) som gör en initial eligibility check tidigt i kreditresan för att bedöma om en kund eller medpart är lämplig att gå vidare med ansökan. Regeln analyserar grundläggande interna uppgifter som ålder, kreditscore, och anställningsstatus innan mer resurskrävande kontroller genomförs. Syftet är att så tidigt som möjligt sortera bort uppenbart olämpliga eller blockerade parter och prioritera de ärenden där fördjupad kreditprövning är motiverad. Regeln omfattar inte fullständig kreditprövning eller externa upplysningar som hanteras i senare steg.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>pre-screen-party</strong> är en del av <strong>internal-data-gathering</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs efter <strong>fetch-party-information</strong> och använder hämtad partinformation för att göra en initial eligibility check. Resultatet avgör om processen kan fortsätta till <strong>fetch-engagements</strong> (om approved) eller om processen avslutas med "Pre-screening rejected" (om not approved).</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style InternalData fill:#1d4ed8,color:#fff
+    style PreScreen fill:#f59e0b,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Internal Data Gathering Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    FetchParty[fetch-party-information<br/>serviceTask]
+    PreScreen[pre-screen-party<br/>businessRuleTask]
+    Gateway{is-approved<br/>Gateway}
+    FetchEngagements[fetch-engagements<br/>serviceTask]
+    End[End Event]
+    Rejected[Pre-screening<br/>rejected]
+    
+    Start --> FetchParty
+    FetchParty --> PreScreen
+    PreScreen --> Gateway
+    Gateway -->|Yes| FetchEngagements
+    Gateway -->|No| Rejected
+    FetchEngagements --> End
+    
+    style FetchParty fill:#3b82f6,color:#fff
+    style PreScreen fill:#f59e0b,color:#fff
+    style FetchEngagements fill:#3b82f6,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Internal Data Gathering Subprocess Flow visar: fetch-party-information → pre-screen-party → gateway (is-approved) → fetch-engagements (om approved) eller rejected (om not approved).</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>fetch-party-information:</strong> Måste vara slutförd för att partinformation ska vara tillgänglig för eligibility check</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Gateway "is-approved":</strong> Använder resultatet från pre-screen-party för att avgöra om processen ska fortsätta</li>
+          <li><strong>fetch-engagements:</strong> Körs om gateway returnerar "Yes" (is-approved-yes)</li>
+          <li><strong>Pre-screening rejected:</strong> Processen avslutas om gateway returnerar "No" (is-approved-no)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Detta är en automatisk bakgrundsprocess (DMN businessRuleTask) som körs utan direkt användarinteraktion. Kunden ser ingen direkt UI, men resultatet påverkar vilka steg som kan fortsätta i ansökningsprocessen. Om ansökan stoppas (REJECTED) får kunden ett meddelande om att ansökan inte kan fortsätta.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Processen körs automatiskt efter att partinformation har hämtats</li><li>Kunden fortsätter med ansökningsprocessen medan bedömningen görs i bakgrunden</li><li>Resultatet påverkar om kunden kan fortsätta eller om ansökan stoppas</li><li>Vid REJECTED får kunden information om varför ansökan stoppades</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Ingen direkt användarinteraktion – automatisk systemprocess. Kunden kan se status i ansökningsöversikten.</li>
+          <li><strong>Design:</strong> N/A – backend-process</li>
+          
+        </ul>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare kan se resultatet av pre-screen i systemloggar eller admin-gränssnitt. Resultatet (APPROVED/REJECTED/REVIEW) visas i ansökningsöversikten tillsammans med motivering och eventuella flaggor.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Systemet kör pre-screen automatiskt när partinformation är tillgänglig</li><li>Handläggare ser resultatet i ansökningsöversikten</li><li>Vid REJECTED eller REVIEW kan handläggare se motivering och vidta åtgärder</li><li>Handläggare kan överskriva beslutet vid behov (med rätt behörighet)</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska pre-screen-resultat, Se motivering, Överskriv beslut (vid behov), Flagga för manuell granskning</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas automatiskt när fetch-party-information har slutförts och partinformation är tillgänglig.</li><li>DMN-motorn läser in relevanta indata: ålder, kreditscore (om tillgänglig), anställningsstatus, och eventuella interna flaggor eller spärrar.</li><li>DMN-regeln utvärderar indata mot beslutslogik och affärsregler för initial eligibility check.</li><li>Regeln returnerar ett beslut: APPROVED (kan fortsätta), REJECTED (stoppas), eller REVIEW (kräver manuell granskning).</li><li>Resultatet sparas i processens datastore tillsammans med motivering och eventuella flaggor.</li><li>Beroende på resultat fortsätter processen: APPROVED → fetch-engagements, REJECTED → avslutas med fel, REVIEW → flaggas för manuell granskning.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en businessRuleTask (DMN) som använder beslutslogik för att utvärdera eligibility. Gateway "is-approved" använder resultatet från pre-screen för att avgöra om processen ska fortsätta (Yes) eller stoppas (No). Beslutslogiken baseras på ålder (t.ex. 21-75 år), kreditscore (t.ex. minimum 600), och anställningsstatus (aktiv anställning).</p>
+        <p><strong>Felhantering:</strong> Om obligatoriska indata saknas eller DMN-motorn inte kan köras loggas felet och processen flaggas för manuell granskning. Om DMN-motorn returnerar fel eller timeout uppstår loggas detta och processen kan avbrytas eller skickas till felhantering. Alla beslut loggas för spårbarhet och efterkontroll.</p>
+        <p><strong>Edge cases:</strong> Kunder utan kreditscore (kan kräva manuell bedömning), kunder med ofullständig anställningsinformation, kunder med interna spärrar eller varningar, nya kunder utan historik, kunder med ändrad anställningsstatus under processen, gränsfall där beslut kan vara oklart (REVIEW).</p>
+      </div>
+      
+      <details>
+        <summary>Sekvensdiagram - Initial Eligibility Check</summary>
+        <div class="mermaid">
+sequenceDiagram
+    participant Camunda as BPMN Engine<br/>(Camunda)
+    participant Service as Eligibility Service<br/>Pre-screen Party
+    participant DMN as DMN Decision Engine
+    participant PartStore as Part Data Store
+    participant CoreBanking as Core Banking System
+    participant AppDB as Application DB
+    
+    Note over Camunda: Triggas efter<br/>fetch-party-information
+    Camunda->>Service: Exekvera pre-screen-party
+    
+    Service->>PartStore: Hämta partinformation<br/>(ålder, kreditscore,<br/>anställningsstatus)
+    PartStore-->>Service: Partinformation
+    
+    Service->>CoreBanking: Hämta interna spärrar<br/>och varningar
+    CoreBanking-->>Service: Interna spärrar/varningar
+    
+    Service->>Service: Validera indata<br/>(format, obligatoriska fält)
+    
+    Service->>DMN: Utvärdera eligibility<br/>(ålder, kreditscore,<br/>anställningsstatus, spärrar)
+    DMN->>DMN: Applicera beslutslogik<br/>(DMN Decision Table)
+    DMN-->>Service: Beslut (APPROVED/REJECTED/REVIEW)<br/>+ Motivering
+    
+    Service->>AppDB: Spara beslut + motivering<br/>+ metadata
+    AppDB-->>Service: Bekräftelse
+    
+    Service->>Camunda: Resultat (APPROVED/REJECTED/REVIEW)
+    
+    alt APPROVED
+        Camunda->>Camunda: Gateway: is-approved = Yes
+        Camunda->>Camunda: Fortsätt till<br/>fetch-engagements
+    else REJECTED
+        Camunda->>Camunda: Gateway: is-approved = No
+        Camunda->>Camunda: Avsluta processen
+    else REVIEW
+        Camunda->>Camunda: Flagga för manuell granskning
+        Camunda->>Camunda: Pausa processen
+    end
+        </div>
+        <p class="muted">Sekvensdiagram visar tidslinje för interaktioner: BPMN Engine triggar Eligibility Service, som hämtar data från Part Data Store och Core Banking System, validerar indata, anropar DMN Decision Engine för beslutslogik, sparar beslut, och gateway avgör om processen fortsätter, avslutas, eller flaggas för manuell granskning.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Partinformation (personnummer, ålder)</td>
+          <td>Fetch party information (serviceTask)</td>
+          <td>PartyInformation</td>
+          <td>Ja</td>
+          <td>Grundläggande partinformation inklusive personnummer och ålder för eligibility check</td>
+        </tr>
+        <tr>
+          <td>Kreditscore (om tillgänglig)</td>
+          <td>Interna system eller tidigare kreditupplysning</td>
+          <td>Number</td>
+          <td>Nej</td>
+          <td>Kundens kreditscore för initial bedömning. Kan saknas för nya kunder.</td>
+        </tr>
+        <tr>
+          <td>Anställningsstatus</td>
+          <td>Partinformation eller ansökningsdata</td>
+          <td>EmploymentStatus</td>
+          <td>Ja</td>
+          <td>Kundens nuvarande anställningsstatus (aktiv anställning, egenföretagare, pensionär, etc.)</td>
+        </tr>
+        <tr>
+          <td>Interna flaggor och spärrar</td>
+          <td>Core banking system, IS-Part</td>
+          <td>InternalFlags</td>
+          <td>Nej</td>
+          <td>Eventuella interna varningar, spärrar, eller observanda som kan påverka eligibility</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Part Data Store:</strong> Partinformation från fetch-party-information, inklusive personnummer och ålder</li>
+        <li><strong>Core Banking System:</strong> Interna flaggor, spärrar, och observanda för kunden</li>
+        <li><strong>Credit History (om tillgänglig):</strong> Tidigare kreditupplysningar eller interna kreditscore</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs i detta steg – all data hämtas från interna system. Externa kreditupplysningar görs i senare steg.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata och processkontext</li>
+        <li><strong>DMN Decision Table:</strong> Beslutslogik för eligibility check lagras i DMN-modell</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Pre-screen resultat (APPROVED/REJECTED/REVIEW)</td>
+          <td>Gateway "is-approved", efterföljande steg</td>
+          <td>PreScreenResult</td>
+          <td>Beslut från DMN-regeln: APPROVED (kan fortsätta), REJECTED (stoppas), eller REVIEW (kräver manuell granskning)</td>
+        </tr>
+        <tr>
+          <td>Motivering och flaggor</td>
+          <td>Processkontext, loggsystem</td>
+          <td>PreScreenReasoning</td>
+          <td>Motivering för beslutet, eventuella flaggor, och information om vilka kriterier som påverkade beslutet</td>
+        </tr>
+        <tr>
+          <td>Validerad eligibility status</td>
+          <td>Efterföljande steg</td>
+          <td>EligibilityStatus</td>
+          <td>Status som används av gateway "is-approved" för att avgöra om processen ska fortsätta eller stoppas</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>DMN Decision Engine:</strong> Camunda DMN eller liknande för att köra beslutslogik</li>
+              <li><strong>Part Data Store:</strong> Lagrar partinformation från fetch-party-information</li>
+              <li><strong>Core Banking System:</strong> För interna flaggor och spärrar</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att köra DMN-beslutsregel. API:et exponerar endpoint /api/dmn/pre-screen-party som tar indata (ålder, kreditscore, anställningsstatus) och returnerar beslut (APPROVED/REJECTED/REVIEW).</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när fetch-party-information är slutförd. Vid beslut publiceras event för att trigga gateway "is-approved".</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. DMN-beslutslogik lagras i DMN-modell och kan uppdateras utan kodändringar.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>DMN Decision Engine för beslutslogik</li>
+              <li>REST API för DMN-anrop</li>
+              <li>PostgreSQL för datalagring</li>
+            </ul>
+          </li>
+          
+          <li><strong>Arkitekturdiagram:</strong>
+            <details>
+              <summary>C4 System Context Diagram</summary>
+              <div class="mermaid">
+graph TB
+    Customer[👤 Customer<br/>Kund]
+    Handler[👤 Handler<br/>Handläggare]
+    
+    Epic[Pre-screen Party<br/>businessRuleTask / DMN]
+    
+    PartStore[(Part Data Store<br/>Partinformation)]
+    CoreBanking[Core Banking System<br/>Interna spärrar]
+    AppDB[(Application DB<br/>PostgreSQL)]
+    
+    Customer -.->|Triggar via<br/>ansökan| Epic
+    Handler -.->|Granskar<br/>beslut| Epic
+    
+    Epic -->|Läser| PartStore
+    Epic -->|Läser| CoreBanking
+    Epic -->|Läser/Sparar<br/>ansökningsdata| AppDB
+    Epic -->|Sparar<br/>beslut| AppDB
+    
+    style Epic fill:#1d4ed8,color:#fff
+    style PartStore fill:#10b981,color:#fff
+    style CoreBanking fill:#3b82f6,color:#fff
+    style AppDB fill:#10b981,color:#fff
+              </div>
+              <p class="muted">System Context Diagram visar epic i centrum med interna system (Part Data Store, Core Banking System, Application DB) och användare (Customer, Handler).</p>
+            </details>
+            
+            <details>
+              <summary>Komponentdiagram</summary>
+              <div class="mermaid">
+graph TB
+    BPMN[BPMN Engine<br/>Camunda]
+    EligibilityService[Eligibility Service<br/>Pre-screen Party]
+    DMNEngine[DMN Decision Engine<br/>Eligibility Check]
+    PartStore[Part Data Store<br/>Partinformation]
+    CoreBankingClient[Core Banking Client<br/>Interna spärrar]
+    
+    BPMN -->|Orkestrerar| EligibilityService
+    EligibilityService -->|Använder| DMNEngine
+    EligibilityService -->|Läser| PartStore
+    EligibilityService -->|Läser| CoreBankingClient
+    EligibilityService -->|Sparar beslut| AppDB[(Application DB)]
+    
+    DMNEngine -->|Utvärderar| EligibilityService
+    CoreBankingClient -->|Läser| CoreBanking[Core Banking System]
+    
+    style BPMN fill:#1d4ed8,color:#fff
+    style EligibilityService fill:#3b82f6,color:#fff
+    style DMNEngine fill:#8b5cf6,color:#fff
+    style PartStore fill:#10b981,color:#fff
+    style CoreBankingClient fill:#60a5fa,color:#fff
+              </div>
+              <p class="muted">Komponentdiagram visar huvudkomponenter: BPMN Engine orkestrerar Eligibility Service, som använder DMN Decision Engine för beslutslogik, läser data från Part Data Store och Core Banking System, och sparar beslut i Application DB.</p>
+            </details>
+          </li>
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>DMN-beslutslogik:</strong> Regeln implementeras som DMN (Decision Model and Notation) beslutsregel med beslutslogik baserad på ålder, kreditscore, och anställningsstatus. Beslutslogiken kan uppdateras utan kodändringar.</li>
+          <li><strong>Eligibility-kriterier:</strong> Grundläggande kriterier för eligibility: ålder (t.ex. 21-75 år), kreditscore (t.ex. minimum 600 om tillgänglig), aktiv anställningsstatus eller egenföretagare med dokumenterad inkomst.</li>
+          <li><strong>Interna spärrar:</strong> Kunder med aktiva interna spärrar eller varningar ska stoppas (REJECTED) eller flaggas för manuell granskning (REVIEW) enligt gällande rutin.</li>
+          <li><strong>Policykrav:</strong> Policykrav för risk, skuldsättning och produktvillkor ska vara spårbara via kopplade regler. Regeln omfattar inte fullständig kreditprövning som hanteras i senare steg.</li>
+          <li><strong>AML/KYC:</strong> Eventuella AML/KYC-krav hanteras i samverkan med dedikerade kontrollnoder. Pre-screen fokuserar på grundläggande eligibility, inte compliance-kontroller.</li>
+        </ul>
+        
+        <h3>DMN Decision Table</h3>
+        <p class="muted">Beslutslogik för initial eligibility check baserat på ålder, kreditscore, anställningsstatus, och interna spärrar.</p>
+        <table class="dmn-table">
+          <tr>
+            <th colspan="4" class="dmn-input">Input</th>
+            <th colspan="2" class="dmn-output">Output</th>
+          </tr>
+          <tr>
+            <th>Ålder<br/>(år)</th>
+            <th>Kreditscore</th>
+            <th>Anställnings-<br/>status</th>
+            <th>Interna<br/>spärrar</th>
+            <th>Beslut</th>
+            <th>Motivering</th>
+          </tr>
+          <tr>
+            <td>21-75</td>
+            <td>≥ 600</td>
+            <td>Aktiv/Egenföretagare</td>
+            <td>Inga</td>
+            <td><strong>APPROVED</strong></td>
+            <td>Alla kriterier uppfyllda. Etablerad kund utan interna spärrar.</td>
+          </tr>
+          <tr>
+            <td>21-75</td>
+            <td>≥ 600</td>
+            <td>Aktiv/Egenföretagare</td>
+            <td>Aktiv spärr</td>
+            <td><strong>REJECTED</strong></td>
+            <td>Aktiv intern spärr stoppar vidare handläggning.</td>
+          </tr>
+          <tr>
+            <td>21-75</td>
+            <td>≥ 600</td>
+            <td>Aktiv/Egenföretagare</td>
+            <td>Varning/Observanda</td>
+            <td><strong>REVIEW</strong></td>
+            <td>Intern varning kräver manuell prövning.</td>
+          </tr>
+          <tr>
+            <td>&lt; 21</td>
+            <td>≥ 600</td>
+            <td>Aktiv/Egenföretagare</td>
+            <td>Inga</td>
+            <td><strong>REJECTED</strong></td>
+            <td>För låg ålder. Minimum ålder är 21 år.</td>
+          </tr>
+          <tr>
+            <td>21-75</td>
+            <td>&lt; 600</td>
+            <td>Aktiv/Egenföretagare</td>
+            <td>Inga</td>
+            <td><strong>REJECTED</strong></td>
+            <td>För låg kreditscore. Minimum kreditscore är 600.</td>
+          </tr>
+          <tr>
+            <td>21-75</td>
+            <td>≥ 600</td>
+            <td>Arbetslös</td>
+            <td>Inga</td>
+            <td><strong>REJECTED</strong></td>
+            <td>Arbetslös. Aktiv anställning eller egenföretagare krävs.</td>
+          </tr>
+          <tr>
+            <td>20-22</td>
+            <td>595-605</td>
+            <td>Aktiv/Egenföretagare</td>
+            <td>Inga</td>
+            <td><strong>REVIEW</strong></td>
+            <td>Gränsfall. Kräver manuell bedömning.</td>
+          </tr>
+          <tr>
+            <td>21-75</td>
+            <td>Saknas</td>
+            <td>Aktiv/Egenföretagare</td>
+            <td>Inga</td>
+            <td><strong>REVIEW</strong></td>
+            <td>Ofullständig intern databild. Kräver manuell utredning.</td>
+          </tr>
+        </table>
+        <p class="muted"><strong>Hit Policy:</strong> FIRST (första matchande regel används)</p>
+        
+        <h3>Tröskelvärden och Prioritering</h3>
+        <table>
+          <tr>
+            <th>Kriterium</th>
+            <th>Tröskelvärde</th>
+            <th>Prioritering</th>
+            <th>Beskrivning</th>
+          </tr>
+          <tr>
+            <td>Ålder</td>
+            <td>21-75 år</td>
+            <td>Hög</td>
+            <td>Kunder under 21 år eller över 75 år avvisas automatiskt</td>
+          </tr>
+          <tr>
+            <td>Kreditscore</td>
+            <td>Minimum 600 (om tillgänglig)</td>
+            <td>Hög</td>
+            <td>Kunder med kreditscore under 600 avvisas automatiskt. Om kreditscore saknas kan kräva manuell bedömning.</td>
+          </tr>
+          <tr>
+            <td>Anställningsstatus</td>
+            <td>Aktiv anställning eller egenföretagare</td>
+            <td>Kritisk</td>
+            <td>Arbetslösa kunder avvisas automatiskt oavsett andra kriterier</td>
+          </tr>
+          <tr>
+            <td>Interna spärrar</td>
+            <td>Inga aktiva spärrar</td>
+            <td>Kritisk</td>
+            <td>Kunder med aktiva interna spärrar avvisas automatiskt oavsett andra kriterier</td>
+          </tr>
+          <tr>
+            <td>Interna varningar</td>
+            <td>Inga varningar</td>
+            <td>Hög</td>
+            <td>Kunder med interna varningar eller observanda flaggas för manuell granskning (REVIEW)</td>
+          </tr>
+          <tr>
+            <td>Ålder (gränsvärden)</td>
+            <td>20-22 år</td>
+            <td>Medium</td>
+            <td>Kunder med ålder 20-22 år kan kräva manuell granskning</td>
+          </tr>
+          <tr>
+            <td>Kreditscore (gränsvärden)</td>
+            <td>595-605</td>
+            <td>Medium</td>
+            <td>Kunder med kreditscore 595-605 kan kräva manuell granskning</td>
+          </tr>
+        </table>
+        
+        <details>
+          <summary>Regelträd / Decision Tree</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Pre-screen Party<br/>Initial Eligibility Check]
+    
+    CheckSparrar{Interna<br/>spärrar?}
+    CheckAge{Ålder<br/>21-75 år?}
+    CheckScore{Kreditscore<br/>≥ 600?}
+    CheckEmployment{Anställnings-<br/>status?}
+    
+    Rejected1[REJECTED<br/>Aktiv intern spärr]
+    Rejected2[REJECTED<br/>För låg ålder]
+    Rejected3[REJECTED<br/>För låg kreditscore]
+    Rejected4[REJECTED<br/>Arbetslös]
+    
+    Approved1[APPROVED<br/>Alla kriterier uppfyllda]
+    Review1[REVIEW<br/>Intern varning, kräver granskning]
+    Review2[REVIEW<br/>Gränsfall, kräver bedömning]
+    Review3[REVIEW<br/>Ofullständig data]
+    
+    Start --> CheckSparrar
+    CheckSparrar -->|Aktiv spärr| Rejected1
+    CheckSparrar -->|Varning/Observanda| Review1
+    CheckSparrar -->|Inga| CheckAge
+    CheckAge -->|Nej| Rejected2
+    CheckAge -->|Ja| CheckScore
+    CheckScore -->|Nej| Rejected3
+    CheckScore -->|Saknas| Review3
+    CheckScore -->|Ja| CheckEmployment
+    CheckEmployment -->|Arbetslös| Rejected4
+    CheckEmployment -->|Aktiv/Egenföretagare| Approved1
+    
+    CheckAge -->|20-22 år| Review2
+    CheckScore -->|595-605| Review2
+    
+    style Start fill:#1d4ed8,color:#fff
+    style CheckSparrar fill:#fbbf24,color:#000
+    style CheckAge fill:#fbbf24,color:#000
+    style CheckScore fill:#fbbf24,color:#000
+    style CheckEmployment fill:#fbbf24,color:#000
+    style Rejected1 fill:#ef4444,color:#fff
+    style Rejected2 fill:#ef4444,color:#fff
+    style Rejected3 fill:#ef4444,color:#fff
+    style Rejected4 fill:#ef4444,color:#fff
+    style Approved1 fill:#10b981,color:#fff
+    style Review1 fill:#f59e0b,color:#fff
+    style Review2 fill:#f59e0b,color:#fff
+    style Review3 fill:#f59e0b,color:#fff
+          </div>
+          <p class="muted">Regelträd visar beslutslogik: Först kontrolleras interna spärrar (kritisk), sedan ålder, kreditscore, och anställningsstatus. Varje steg kan leda till APPROVED, REJECTED, eller REVIEW.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>BR1: Etablerad kund utan interna spärrar:</strong> Kund med aktiv relation, stabil engagemangsbild, ålder inom gränser, god kreditscore, och inga interna varningar eller spärrar. Regeln markerar kunden som preliminärt godtagbar (APPROVED) och ärendet går vidare till fetch-engagements.</li>
+          <li><strong>BR2: Intern varning kräver manuell prövning:</strong> Kund med intern observanda, exempelvis tidigare avtalsbrott eller noteringar om betalningsproblem, men utan tydlig blockering. Regeln flaggar kunden för manuell granskning (REVIEW), och fortsatt handläggning kräver aktivt ställningstagande från behörig funktion.</li>
+          <li><strong>BR3: Intern spärr stoppar vidare handläggning:</strong> Kund eller part med aktiv intern spärr, exempelvis resultat av tidigare beslut eller särskild riskklassificering. Regeln stoppar ärendet (REJECTED) från att gå vidare i den automatiska processen och rekommenderar avslag eller särskild hantering enligt gällande rutin.</li>
+          <li><strong>BR4: Ofullständig intern databild:</strong> Ny eller nyligen migrerad kund där centrala interna uppgifter saknas eller inte kan läsas in korrekt. Regeln kan inte göra en säker förhandsbedömning, loggar avvikelsen och skickar ärendet till manuell utredning (REVIEW) innan processen får fortsätta.</li>
+          <li><strong>Edge case: Gränsfall:</strong> Kund som ligger precis på gränsen för eligibility-kriterier (t.ex. kreditscore 595-605, ålder 20-22 år). Regeln kan returnera REVIEW för manuell bedömning.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>Testkunder med olika åldrar: 18-20 år (för ung), 21-75 år (godkänd), 76+ år (för gammal)</li>
+          <li>Olika kreditscore: < 600 (under gräns), 600-700 (godkänd), > 700 (hög), saknas (ny kund)</li>
+          <li>Olika anställningsstatus: aktiv anställning, egenföretagare, pensionär, arbetslös, student</li>
+          <li>Testdata för interna flaggor: inga flaggor, varningar, spärrar</li>
+          <li>Mock DMN-responser för olika scenarion (APPROVED, REJECTED, REVIEW)</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li><strong>Local development:</strong> Mock DMN-engine med lokala testdata</li>
+          <li><strong>Staging:</strong> Anslutning till staging-instans av DMN-engine</li>
+          <li><strong>Integration test:</strong> Test mot isolerad testmiljö med kontrollerade testdata</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Scenarierna BR1–BR4 ska mappas till automatiska tester där scenario-ID och namn används i testbeskrivningar. Testerna bör täcka normalflöde (APPROVED), edge cases (REVIEW), samt rejection (REJECTED). Tester ska verifiera att DMN-regeln returnerar korrekt beslut baserat på indata och att beslutet påverkar processflödet korrekt.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN Engine-fel:</strong> Om DMN-motorn inte kan köras (500 Server Error, timeout) ska systemet logga felet och flagga processen för manuell granskning. Överväg fallback-beslut (t.ex. REVIEW) vid tekniska fel för att undvika att processen stoppas helt.</li>
+          <li><strong>DMN-modell saknas:</strong> Om DMN-modellen inte hittas (404 Not Found) ska systemet logga felet och flagga processen för manuell granskning. Detta kan hända vid deployment eller modelluppdateringar.</li>
+          <li><strong>Databasfel:</strong> Vid databasfel (connection timeout, deadlock) när indata hämtas ska processen flaggas för manuell hantering och felet loggas med detaljerad information.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Obligatoriska indata saknas:</strong> Om obligatoriska indata saknas (t.ex. ålder, kreditscore) ska systemet logga felet och flagga processen för manuell granskning. Processen kan inte fortsätta utan dessa data.</li>
+          <li><strong>Ogiltiga indata:</strong> Om indata är ogiltiga (t.ex. negativ ålder, kreditscore > 850) ska systemet validera och flagga för manuell verifiering med tydligt felmeddelande. Kunden kan behöva kontakta banken för att korrigera informationen.</li>
+          <li><strong>Ofullständig databild:</strong> Om centrala interna uppgifter saknas eller inte kan läsas in korrekt ska systemet logga avvikelsen och skicka ärendet till manuell utredning (REVIEW) innan processen får fortsätta.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Gränsfall:</strong> Kunder som ligger precis på gränsen för eligibility-kriterier (t.ex. kreditscore 595-605, ålder 20-22 år) kan returnera REVIEW för manuell bedömning. Systemet ska hantera dessa gränsfall korrekt och flagga för manuell granskning.</li>
+          <li><strong>Nya kunder:</strong> Nya kunder utan historisk data (ingen kreditscore, ingen anställningsstatus) kan kräva manuell bedömning. Systemet ska identifiera detta scenario och returnera REVIEW.</li>
+          <li><strong>Interna flaggor:</strong> Kunder med interna varningar eller observanda (men utan tydlig blockering) ska flaggas för manuell granskning (REVIEW). Systemet ska skilja mellan varningar och spärrar.</li>
+          <li><strong>Historiska data:</strong> Data från olika källor kan vara inkonsistenta (t.ex. olika ålder i olika system) och kräva manuell granskning. Systemet ska identifiera inkonsistenser och flagga för manuell verifiering.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN Engine:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga fel (timeout, 503 Service Unavailable). Max 2 försök innan fallback-beslut (REVIEW) används.</li>
+          <li><strong>Fallback-beslut:</strong> Vid tekniska fel kan systemet använda fallback-beslut (REVIEW) för att undvika att processen stoppas helt. Detta ger manuell granskning möjlighet att bedöma kunden.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>DMN-implementation:</strong> Primära API:er/tjänster: POST /api/dmn/pre-screen-party för exekvering. DMN-beslutslogik lagras i DMN-modell och kan uppdateras utan kodändringar. Överväg versionering av DMN-modeller för spårbarhet.</li>
+          <li><strong>Loggning:</strong> Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll. Logga: indata (ålder, kreditscore, anställningsstatus), beslut (APPROVED/REJECTED/REVIEW), motivering, och eventuella flaggor. Alla beslut ska vara spårbara för compliance och efterkontroll.</li>
+          <li><strong>Prestanda:</strong> DMN-beslut bör vara snabba (< 1 sekund). Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen. Överväg caching av DMN-beslut om samma kund bedöms flera gånger.</li>
+          <li><strong>Datavalidering:</strong> Validera att indata matchar förväntat format innan DMN-anrop. Verifiera att obligatoriska fält finns med och att datatyper är korrekta. Validera ålder (positivt tal, rimligt intervall), kreditscore (0-850 om tillgänglig).</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att inkludera fler kriterier i pre-screen (t.ex. inkomst, skuldsättning) för mer exakt bedömning. Stöd för olika produkter med olika eligibility-kriterier. Integration med machine learning för mer sofistikerad bedömning.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous[fetch-party-information<br/>serviceTask]
+    Current[pre-screen-party<br/>businessRuleTask]
+    Gateway{is-approved<br/>Gateway}
+    Next[fetch-engagements<br/>serviceTask]
+    End[Internal Data Gathering<br/>End]
+    Rejected[Pre-screening<br/>rejected]
+    
+    Previous -->|Input till| Current
+    Current --> Gateway
+    Gateway -->|Yes| Next
+    Gateway -->|No| Rejected
+    Next --> End
+    
+    style Current fill:#f59e0b,color:#fff
+    style Previous fill:#3b82f6,color:#fff
+    style Next fill:#3b82f6,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: fetch-party-information → pre-screen-party → gateway (is-approved) → fetch-engagements (om Yes) eller rejected (om No).</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>fetch-party-information:</strong> Måste vara slutförd för att partinformation ska vara tillgänglig för eligibility check</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Gateway "is-approved":</strong> Använder resultatet från pre-screen-party för att avgöra om processen ska fortsätta</li>
+        <li><strong>fetch-engagements:</strong> Körs om gateway returnerar "Yes" (is-approved-yes)</li>
+        <li><strong>Pre-screening rejected:</strong> Processen avslutas om gateway returnerar "No" (is-approved-no)</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>evaluate-personal-information:</strong> Körs parallellt i stakeholder subprocessen (använder samma grundläggande kriterier)</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>DMN-modell:</strong> pre-screen-party.dmn innehåller beslutslogik och affärsregler. Regeln kan uppdateras utan kodändringar genom att uppdatera DMN-modellen</li>
+        <li><strong>Eligibility criteria:</strong> Ålder, kreditscore, anställningsstatus, interna spärrar</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-internal-data-gathering.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>API Dokumentation</h2>
+      <p class="muted">Beskrivning av API-endpoints som används eller exponeras.</p>
+      
+      <h3>API-endpoints (exponerade)</h3>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Metod</th>
+          <th>Request</th>
+          <th>Response</th>
+          <th>Felkoder</th>
+        </tr>
+        <tr>
+          <td><code>/api/pre-screen-party</code></td>
+          <td>POST</td>
+          <td><code>{ "partyInformation": {...}, "ålder": "number", "kreditscore": "number", "anställningsstatus": "string", "applicationId": "uuid" }</code></td>
+          <td><code>{ "beslut": "APPROVED" | "REJECTED" | "REVIEW", "motivering": "string", "status": "success" }</code></td>
+          <td>400 (Bad Request), 500 (Server Error)</td>
+        </tr>
+      </table>
+      
+      <h3>DMN Decision Table</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN-fil:</strong> pre-screen-party.dmn</li>
+          <li><strong>Besluts-ID:</strong> pre-screen-party</li>
+          <li><strong>Hit Policy:</strong> FIRST (första matchande regel används)</li>
+          <li><strong>Inputs:</strong> ålder, kreditscore, anställningsstatus, interna spärrar</li>
+          <li><strong>Outputs:</strong> beslut (APPROVED/REJECTED/REVIEW), motivering</li>
+        </ul>
+      </div>
+      
+      <h3>Autentisering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponerad endpoint:</strong> Kräver OAuth 2.0 Bearer token i Authorization header</li>
+          <li><strong>DMN Engine:</strong> Intern autentisering via API Gateway</li>
+        </ul>
+      </div>
+      
+      <h3>Felhantering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>400 Bad Request:</strong> Ogiltig input (t.ex. saknade obligatoriska fält eller ogiltiga värden)</li>
+          <li><strong>500 Server Error:</strong> Internt serverfel eller DMN Engine-fel</li>
+        </ul>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

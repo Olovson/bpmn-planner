@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consent to credit check</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Consent to credit check</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Consent to credit check</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-stakeholder.bpmn</li>
+        <li><strong>Element ID:</strong> consent-to-credit-check</li>
+        <li><strong>Nodtyp:</strong> userTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken ger kunden eller medsökande möjlighet att ge explicit samtycke till att banken gör en kreditupplysning. Detta är ett kritiskt steg som krävs enligt konsumentkreditlagen och GDPR innan banken kan hämta kreditupplysning från UC, Bisnode, eller liknande kreditupplysningsföretag. Kunden måste få tydlig information om vad kreditupplysningen innebär, varför den behövs, och vilka rättigheter kunden har. Epiken säkerställer att samtycke är dokumenterat, spårbart, och kan användas som juridiskt underlag för kreditupplysningen.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>consent-to-credit-check</strong> är en del av <strong>stakeholder</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs när gateway "has-consented-to-credit-check" returnerar "No", vilket indikerar att kunden inte redan har gett samtycke. Efter att samtycke har givits (eller om det redan finns) fortsätter processen till <strong>fetch-personal-information</strong> och <strong>fetch-credit-information</strong>.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Stakeholders fill:#1d4ed8,color:#fff
+    style Consent fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Stakeholder Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    HasConsented{has-consented-to-<br/>credit-check?}
+    Consent[consent-to-credit-check<br/>userTask]
+    DidConsent{did-consent?}
+    Gateway[Gateway Merge]
+    FetchPersonal[fetch-personal-information<br/>serviceTask]
+    Evaluate[evaluate-personal-information<br/>businessRuleTask]
+    Gateway2{is-personal-information-<br/>rejected?}
+    FetchCredit[fetch-credit-information<br/>serviceTask]
+    Assess[assess-stakeholder<br/>businessRuleTask]
+    Gateway3{is-stakeholder-<br/>rejected?}
+    Register[register-personal-economy-<br/>information<br/>userTask]
+    End[End Event]
+    Rejected1[Rejected credit check]
+    Rejected2[Rejected personal<br/>information]
+    Rejected3[Rejected stakeholder<br/>evaluation]
+    
+    Start --> HasConsented
+    HasConsented -->|No| Consent
+    HasConsented -->|Yes| Gateway
+    Consent --> DidConsent
+    DidConsent -->|Yes| Gateway
+    DidConsent -->|No| Rejected1
+    Gateway --> FetchPersonal
+    FetchPersonal --> Evaluate
+    Evaluate --> Gateway2
+    Gateway2 -->|No| FetchCredit
+    Gateway2 -->|Yes| Rejected2
+    FetchCredit --> Assess
+    Assess --> Gateway3
+    Gateway3 -->|No| Register
+    Gateway3 -->|Yes| Rejected3
+    Register --> End
+    
+    style Consent fill:#3b82f6,color:#fff
+    style FetchPersonal fill:#3b82f6,color:#fff
+    style Evaluate fill:#f59e0b,color:#fff
+    style FetchCredit fill:#3b82f6,color:#fff
+    style Assess fill:#f59e0b,color:#fff
+    style Register fill:#3b82f6,color:#fff
+    style HasConsented fill:#fbbf24,color:#000
+    style DidConsent fill:#fbbf24,color:#000
+    style Gateway2 fill:#fbbf24,color:#000
+    style Gateway3 fill:#fbbf24,color:#000
+    style Rejected1 fill:#ef4444,color:#fff
+    style Rejected2 fill:#ef4444,color:#fff
+    style Rejected3 fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Stakeholder Subprocess Flow visar: Start → has-consented-to-credit-check → consent-to-credit-check (om No) → did-consent → fetch-personal-information → evaluate-personal-information → fetch-credit-information → assess-stakeholder → register-personal-economy-information (om approved).</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>Start Event:</strong> Stakeholder subprocess startar</li>
+          <li><strong>Gateway "has-consented-to-credit-check":</strong> Kontrollerar om samtycke redan finns. Om "No" → consent-to-credit-check körs</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Gateway "did-consent":</strong> Kontrollerar om kunden gav samtycke. Om "Yes" → processen fortsätter, om "No" → processen avslutas med "Rejected credit check"</li>
+          <li><strong>fetch-personal-information:</strong> Körs efter att samtycke har givits (via Gateway Merge)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Kunden ser en informationssida med tydlig förklaring av vad kreditupplysning innebär, varför den behövs, vilka upplysningar som hämtas, och vilka rättigheter kunden har. Informationen presenteras enligt konsumentkreditlagen med tydlig text och länkar till mer information.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Kunden öppnar samtyckessidan och läser information om kreditupplysning</li><li>Kunden får se tydlig information om vad som hämtas, varför, och vilka rättigheter som finns</li><li>Kunden kan välja att ge samtycke (Ja) eller avböja (Nej)</li><li>Vid samtycke fortsätter processen till fetch-personal-information</li><li>Vid avslag stoppas processen och kunden informeras om konsekvenserna</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Läsa information, Ge samtycke (Ja/Nej), Ladda ner information som PDF, Ställa frågor via chat eller telefon</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+        
+        <details>
+          <summary>User Journey Map</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start<br/>Öppna samtyckesida]
+    Read[Läsa information<br/>om kreditupplysning]
+    Decide{Ge samtycke?<br/>Ja/Nej}
+    Consent[Samtycke<br/>sparas]
+    Continue[Fortsätt process<br/>fetch-personal-information]
+    Reject[Avslag<br/>Process stoppas]
+    
+    Start -->|Laddar informationssida| Read
+    Read -->|Läser| Decide
+    Decide -->|Ja| Consent
+    Decide -->|Nej| Reject
+    Consent -->|Sparar| Continue
+    
+    style Start fill:#dbeafe,color:#000
+    style Read fill:#bfdbfe,color:#000
+    style Decide fill:#fbbf24,color:#000
+    style Consent fill:#10b981,color:#fff
+    style Continue fill:#059669,color:#fff
+    style Reject fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">User Journey Map visar kundens resa från start till bekräftelse, inklusive touchpoints och tidslinje.</p>
+        </details>
+        
+        <details>
+          <summary>Interaktionsflöde</summary>
+          <div class="mermaid">
+sequenceDiagram
+    participant User as Kund/Handläggare
+    participant UI as UI Samtyckesida
+    participant API as API Service
+    participant Store as Consent Store
+    
+    User->>UI: Öppna samtyckesida
+    UI->>API: Hämta samtyckesinformation
+    API-->>UI: Information om kreditupplysning
+    UI-->>User: Visar informationssida
+    
+    User->>UI: Läser information om kreditupplysning
+    User->>UI: Väljer "Ge samtycke" eller "Avböj"
+    
+    alt Ge samtycke
+        UI->>API: Spara samtycke
+        API->>Store: Spara samtycke + timestamp + metadata
+        Store-->>API: Bekräftelse
+        API-->>UI: Success
+        UI-->>User: Bekräftelse + fortsätt till fetch-personal-information
+    else Avböj
+        UI->>API: Spara avslag
+        API->>Store: Spara avslag + timestamp
+        Store-->>API: Bekräftelse
+        API-->>UI: Avslag sparad
+        UI-->>User: Avslag + process stoppas + konsekvenser
+    end
+          </div>
+          <p class="muted">Interaktionsflöde visar UI-skärmar/steg, användarinteraktioner, systemresponser, valideringar och felhantering.</p>
+        </details>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare ser samma informationssida som kunden, men med ytterligare administrativa funktioner. Handläggare kan se om kunden har gett samtycke, när samtycket gavs, och eventuella kommentarer eller flaggor.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Handläggare öppnar ansökan och ser samtyckesstatus</li><li>Handläggare kan se om kunden har gett samtycke eller om det väntar på kundens åtgärd</li><li>Vid avslag kan handläggare se motivering och informera kunden om konsekvenserna</li><li>Handläggare kan ge samtycke å kundens vägnar vid behov (med rätt behörighet och dokumentation)</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska samtyckesstatus, Se när samtycke gavs, Ge samtycke å kundens vägnar (vid behov), Se motivering vid avslag</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas när stakeholder-processen startar och kunden eller medsökande behöver ge samtycke till kreditupplysning.</li><li>Systemet presenterar informationssida med tydlig förklaring av vad kreditupplysning innebär, varför den behövs, och vilka rättigheter kunden har enligt konsumentkreditlagen.</li><li>Kunden läser informationen och väljer att ge samtycke (Ja) eller avböja (Nej).</li><li>Systemet validerar att samtycke är korrekt dokumenterat med timestamp, användar-ID, och IP-adress för spårbarhet.</li><li>Beroende på val: Vid samtycke (Ja) → processen fortsätter till fetch-personal-information. Vid avslag (Nej) → processen stoppas och kunden informeras om att ansökan inte kan fortsätta utan kreditupplysning.</li><li>Gateway "did-consent-to-credit-check" använder resultatet för att avgöra nästa steg.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en userTask där användaren måste ge samtycke. Gateway "did-consent-to-credit-check" använder resultatet för att avgöra om processen ska fortsätta (Yes → fetch-personal-information) eller stoppas (No → processen avslutas med fel). Gateway "has-consented-to-credit-check" kan också kontrollera om samtycke redan finns från tidigare.</p>
+        <p><strong>Felhantering:</strong> Om användaren avbryter eller stänger sidan sparas status som "väntar på samtycke" och användaren kan återkomma senare. Om systemfel uppstår vid sparning av samtycke loggas felet och användaren informeras. Samtycke kan inte ges om obligatorisk information saknas.</p>
+        <p><strong>Edge cases:</strong> Kunder som redan har gett samtycke i tidigare ansökan (kan återanvändas om det är giltigt), kunder som ger samtycke men sedan ångrar sig (kan kräva särskild hantering), medsökande som måste ge separat samtycke, kunder som inte förstår informationen (kan kräva manuell förklaring), tekniska problem som gör att samtycke inte kan sparas.</p>
+      </div>
+      
+      <details>
+        <summary>Process Flow Diagram</summary>
+        <div class="mermaid">
+flowchart TD
+    Start[Start<br/>Epik triggas]
+    LoadInfo[Ladda informationssida<br/>om kreditupplysning]
+    Read[Läs information<br/>+ rättigheter]
+    Decide{Ge samtycke?<br/>Ja/Nej}
+    SaveConsent[Spara samtycke<br/>+ timestamp]
+    SaveReject[Spara avslag<br/>+ timestamp]
+    Continue[Fortsätt process<br/>fetch-personal-information]
+    Stop[Stoppa process<br/>+ informera om konsekvenser]
+    
+    Start --> LoadInfo
+    LoadInfo --> Read
+    Read --> Decide
+    Decide -->|Ja| SaveConsent
+    Decide -->|Nej| SaveReject
+    SaveConsent --> Continue
+    SaveReject --> Stop
+    
+    style Start fill:#1d4ed8,color:#fff
+    style LoadInfo fill:#3b82f6,color:#fff
+    style Read fill:#60a5fa,color:#fff
+    style Decide fill:#fbbf24,color:#000
+    style SaveConsent fill:#10b981,color:#fff
+    style SaveReject fill:#ef4444,color:#fff
+    style Continue fill:#059669,color:#fff
+    style Stop fill:#dc2626,color:#fff
+        </div>
+        <p class="muted">Process Flow Diagram visar steg-för-steg flöde: ladda information, läs, beslutsgateway (Ja/Nej), spara samtycke eller avslag, och fortsätt eller stopp process.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Stakeholder-information (personnummer, namn)</td>
+          <td>Föregående steg i stakeholder-processen</td>
+          <td>StakeholderData</td>
+          <td>Ja</td>
+          <td>Grundläggande information om kunden eller medsökande som ska ge samtycke</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla samtycke till rätt ansökan</td>
+        </tr>
+        <tr>
+          <td>Befintligt samtycke (om tillgängligt)</td>
+          <td>Tidigare ansökningar eller session</td>
+          <td>ConsentStatus</td>
+          <td>Nej</td>
+          <td>Om kunden redan har gett samtycke i tidigare ansökan kan detta återanvändas om det är giltigt</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata och stakeholder-information</li>
+        <li><strong>Consent Registry:</strong> Register över tidigare samtycken för att kontrollera om giltigt samtycke redan finns</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs – all data hämtas från interna system. Kreditupplysning görs i efterföljande steg (fetch-credit-information) efter att samtycke har givits.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+        <li><strong>Consent DB:</strong> Databas för lagring av samtycken med spårbarhet (timestamp, användar-ID, IP-adress)</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Samtycke till kreditupplysning (Ja/Nej)</td>
+          <td>Gateway "did-consent-to-credit-check", efterföljande steg</td>
+          <td>ConsentStatus</td>
+          <td>Explicit samtycke från kunden eller medsökande, dokumenterat med timestamp, användar-ID, och IP-adress för spårbarhet</td>
+        </tr>
+        <tr>
+          <td>Samtyckesmetadata</td>
+          <td>Consent DB, processkontext</td>
+          <td>ConsentMetadata</td>
+          <td>Information om när samtycke gavs, vem som gav det, IP-adress, och eventuella kommentarer eller flaggor</td>
+        </tr>
+        <tr>
+          <td>Validerad samtyckesstatus</td>
+          <td>Efterföljande steg (fetch-personal-information, fetch-credit-information)</td>
+          <td>ValidatedConsent</td>
+          <td>Status som används av gateway "did-consent-to-credit-check" för att avgöra om processen ska fortsätta eller stoppas</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+              <li><strong>Consent Registry:</strong> Register för lagring och validering av samtycken</li>
+              <li><strong>Notification Service:</strong> Tjänst för att skicka bekräftelsemeddelanden till kund</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att spara samtycke och hämta samtyckesstatus. API:et exponerar endpoints för att ge samtycke, kontrollera befintligt samtycke, och hämta samtyckesinformation.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när stakeholder-processen startar. Vid samtycke publiceras event för att trigga nästa steg (fetch-personal-information). Vid avslag publiceras event för att stoppa processen.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Consent DB för lagring av samtycken med spårbarhet.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST API för användarinteraktion</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Frontend-komponenter för samtyckesvy och information</li>
+            </ul>
+          </li>
+          
+          
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>Konsumentkreditlagen:</strong> Kunden måste ge explicit samtycke innan kreditupplysning kan göras. Information om kreditupplysning måste presenteras enligt lagens krav med tydlig text och länkar till mer information.</li>
+          <li><strong>GDPR:</strong> Samtycke måste vara frivilligt, informerat, specifikt, och återkallbart. Kunden har rätt att återkalla samtycke när som helst. Samtycke måste dokumenteras med timestamp och användar-ID för spårbarhet.</li>
+          <li><strong>Spårbarhet:</strong> Alla samtycken måste loggas med timestamp, användar-ID, IP-adress, och eventuella kommentarer för juridiskt underlag och compliance.</li>
+          <li><strong>Giltighet:</strong> Samtycke är giltigt för aktuell ansökan. Om kunden ger nytt samtycke i ny ansökan måste detta dokumenteras separat. Giltigt samtycke kan återanvändas inom rimlig tidsperiod om det är aktuellt.</li>
+          <li><strong>Avslag:</strong> Vid avslag kan ansökan inte fortsätta eftersom kreditupplysning är obligatorisk för kreditbedömning. Kunden informeras tydligt om konsekvenserna av avslag.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>EPIC-S1: Normalflöde med komplett underlag:</strong> Kunden läser informationen om kreditupplysning, förstår vad det innebär, och ger samtycke (Ja). Samtycket sparas korrekt med timestamp och metadata. Processen fortsätter till fetch-personal-information.</li>
+          <li><strong>EPIC-S2: Kunden avböjer samtycke:</strong> Kunden läser informationen men väljer att avböja samtycke (Nej). Systemet informerar kunden om att ansökan inte kan fortsätta utan kreditupplysning. Processen stoppas och kunden får information om konsekvenserna.</li>
+          <li><strong>EPIC-S3: Tekniskt fel eller kritisk avvikelse:</strong> Systemfel uppstår vid sparning av samtycke (t.ex. databasfel, timeout). Felet loggas, användaren informeras, och samtycket kan sparas igen när felet är åtgärdat. Processen väntar på att samtycke ska sparas korrekt.</li>
+          <li><strong>Edge case: Befintligt samtycke:</strong> Kunden har redan gett samtycke i tidigare ansökan. Systemet kontrollerar om samtycket är giltigt och kan återanvändas. Om giltigt kan processen fortsätta utan att kräva nytt samtycke.</li>
+          <li><strong>Edge case: Medsökande:</strong> Vid flera medsökande måste varje person ge separat samtycke. Systemet hanterar detta genom att presentera samtyckesvy för varje medsökande individuellt.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>Testkunder med olika scenarion: ny kund (inget befintligt samtycke), återkommande kund (befintligt samtycke), medsökande (flera personer)</li>
+          <li>Olika samtyckesval: Ja (godkänner), Nej (avböjer), avbruten (stänger sidan)</li>
+          <li>Testdata för olika scenarion: komplett information, ofullständig information, tekniska fel</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li><strong>Local development:</strong> Lokal databas med testdata</li>
+          <li><strong>Staging:</strong> Staging-miljö med realistiska testdata</li>
+          <li><strong>Integration test:</strong> Test mot isolerad testmiljö med kontrollerade testdata</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde (kund ger samtycke), edge case (kund avböjer), samt tekniska fel (databasfel, timeout). Tester ska verifiera att samtycke sparas korrekt med metadata, att gateway fungerar korrekt, och att processen stoppas vid avslag.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databasfel:</strong> Vid databasfel när samtycke sparas (connection timeout, deadlock) ska systemet logga felet och flagga processen för manuell hantering. Överväg retry för tillfälliga databasfel. Kunden bör informeras om att samtycket inte kunde sparas och att de kan försöka igen.</li>
+          <li><strong>Session timeout:</strong> Om användarens session går ut innan samtycke sparas ska systemet logga felet och informera användaren. Överväg att spara samtycke automatiskt när användaren klickar på knappen för att undvika dataförlust.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) när samtycke sparas ska systemet logga felet och informera användaren. Överväg retry för tillfälliga nätverksfel.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Kund avböjer samtycke:</strong> Om kunden väljer "Nej" är detta ett förväntat affärsrelaterat val och ska hanteras gracefully. Processen avslutas med tydligt meddelande om att ansökan inte kan fortsätta utan samtycke.</li>
+          <li><strong>Samtycke saknas:</strong> Om samtycke inte kan hittas eller har återkallats ska processen avbrytas med tydligt felmeddelande. Kunden bör informeras om att de behöver ge samtycke för att fortsätta.</li>
+          <li><strong>Ogiltigt samtycke:</strong> Om samtycke är ogiltigt (t.ex. för gammalt, återkallat) ska processen avbrytas med tydligt felmeddelande. Kunden bör informeras om att de behöver ge nytt samtycke.</li>
+          <li><strong>Spårbarhet:</strong> Om samtycke inte kan sparas med korrekt spårbarhet (timestamp, användar-ID, IP-adress) ska processen flaggas för manuell granskning. Detta är kritiskt för compliance och juridiskt underlag.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Dubbelt samtycke:</strong> Om kunden försöker ge samtycke flera gånger ska systemet identifiera detta och använda det första giltiga samtycket. Överväg att logga alla försök för spårbarhet.</li>
+          <li><strong>Samtycke under process:</strong> Om kunden ger samtycke medan processen redan är igång ska systemet hantera detta korrekt. Överväg att validera samtycke vid varje steg som kräver det.</li>
+          <li><strong>Återkallat samtycke:</strong> Om kunden återkallar samtycke efter att det har givits ska systemet identifiera detta och stoppa processen. Kunden bör informeras om konsekvenserna.</li>
+          <li><strong>Giltighetstid:</strong> Om samtycke har gått ut (t.ex. efter 30 dagar) ska systemet identifiera detta och kräva nytt samtycke. Överväg att informera kunden innan samtycket går ut.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databas:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga databasfel. Max 3 försök innan processen flaggas för manuell hantering.</li>
+          <li><strong>Session:</strong> Om session går ut ska systemet informera användaren och ge möjlighet att logga in igen. Överväg att spara samtycke automatiskt för att undvika dataförlust.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>UI/UX:</strong> Informationssidan bör vara tydlig och lättläst med information enligt konsumentkreditlagen. Samtyckesknappar (Ja/Nej) bör vara tydliga och lätt att förstå. Överväg att inkludera länkar till mer information och möjlighet att ladda ner information som PDF.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: när samtycke gavs, vem som gav det (användar-ID), IP-adress, val (Ja/Nej), och eventuella kommentarer. Alla samtycken måste loggas för compliance och juridiskt underlag. Känslig data (personnummer) bör maskeras i loggar enligt GDPR.</li>
+          <li><strong>Spårbarhet:</strong> Alla samtycken måste sparas med timestamp, användar-ID, IP-adress, och eventuella kommentarer för juridiskt underlag. Överväg digital signering för extra säkerhet.</li>
+          <li><strong>Giltighet:</strong> Validera att samtycke är korrekt dokumenterat innan det används. Kontrollera att samtycke är aktuellt och inte har återkallats. Överväg tidsbegränsning för samtyckens giltighet.</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg möjlighet att återkalla samtycke även efter att det har givits. Stöd för olika typer av samtycke (t.ex. för olika typer av kreditupplysning). Integration med e-signatur för digital signering av samtycke.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    HasConsented{has-consented-to-<br/>credit-check?}
+    Current[consent-to-credit-check<br/>userTask]
+    DidConsent{did-consent?}
+    Gateway[Gateway Merge]
+    Next[fetch-personal-information<br/>serviceTask]
+    Rejected[Rejected credit check]
+    
+    Start --> HasConsented
+    HasConsented -->|No| Current
+    HasConsented -->|Yes| Gateway
+    Current --> DidConsent
+    DidConsent -->|Yes| Gateway
+    DidConsent -->|No| Rejected
+    Gateway --> Next
+    
+    style Current fill:#3b82f6,color:#fff
+    style Next fill:#3b82f6,color:#fff
+    style HasConsented fill:#fbbf24,color:#000
+    style DidConsent fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: Start → has-consented-to-credit-check → consent-to-credit-check (om No) → did-consent → fetch-personal-information (om Yes) eller rejected (om No).</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>Start Event:</strong> Stakeholder subprocess startar</li>
+        <li><strong>Gateway "has-consented-to-credit-check":</strong> Kontrollerar om samtycke redan finns. Om "No" → consent-to-credit-check körs</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Gateway "did-consent":</strong> Kontrollerar om kunden gav samtycke. Om "Yes" → processen fortsätter, om "No" → processen avslutas med "Rejected credit check"</li>
+        <li><strong>fetch-personal-information:</strong> Körs efter att samtycke har givits (via Gateway Merge)</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>register-household-economy-information:</strong> Körs parallellt i household subprocessen (kräver inte samtycke)</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Konsumentkreditlagen:</strong> Kräver explicit samtycke innan kreditupplysning kan göras</li>
+        <li><strong>GDPR:</strong> Samtycke måste vara frivilligt, informerat, specifikt, och återkallbart</li>
+        <li><strong>Spårbarhet:</strong> Bankens policy kräver spårbarhet av alla samtycken</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-stakeholder.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>
+

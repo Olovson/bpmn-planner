@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register source of equity</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Register source of equity</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Register source of equity</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-object.bpmn</li>
+        <li><strong>Element ID:</strong> register-source-of-equity</li>
+        <li><strong>Nodtyp:</strong> userTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken ger kunden möjlighet att registrera källan till eget kapital (kontantinsats) för fastigheten. Detta är en kritisk del av bolåneansökan eftersom banken behöver verifiera att kunden har tillräckligt eget kapital och att källan är legitim. Kunden kan registrera olika källor till eget kapital (t.ex. besparingar, försäljning av annan fastighet, gåva, arv, etc.) och ange belopp för varje källa. Systemet validerar att totalt eget kapital matchar det efterfrågade beloppet och att obligatoriska fält är ifyllda innan informationen kan sparas och processen kan fortsätta.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>register-source-of-equity</strong> är en del av <strong>object</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs när gateway "purposes" returnerar "Purchase (Mortgage commitment)", vilket indikerar att kunden köper en fastighet. Efter att källan till eget kapital har registrerats fortsätter processen till gateway "Gateway_1uyee92" och sedan till <strong>needs-valuation</strong> gateway och eventuellt <strong>valuate-property</strong>.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Object fill:#1d4ed8,color:#fff
+    style RegisterSource fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Object Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Start Event]
+    Purposes{Purposes?<br/>Gateway}
+    RegisterSource[register-source-of-equity<br/>userTask]
+    Gateway1[Gateway Merge]
+    NeedsValuation{needs-valuation?<br/>Gateway}
+    Valuate[valuate-property<br/>serviceTask]
+    Gateway2[Gateway Merge]
+    End[End Event]
+    RegisterLoan[register-loan-details<br/>userTask]
+    ObjectInfo[object-information<br/>subprocess]
+    ObjectsValid{objects-valid?<br/>Gateway}
+    Rejected[Object rejected]
+    
+    Start --> Purposes
+    Purposes -->|Purchase| RegisterSource
+    Purposes -->|Refinancing/Move loan| RegisterLoan
+    RegisterSource --> Gateway1
+    Gateway1 --> NeedsValuation
+    NeedsValuation -->|Yes| Valuate
+    NeedsValuation -->|No| Gateway2
+    Valuate --> Gateway2
+    Gateway2 --> End
+    RegisterLoan --> ObjectInfo
+    ObjectInfo --> ObjectsValid
+    ObjectsValid -->|All| Gateway1
+    ObjectsValid -->|Some| RegisterLoan
+    ObjectsValid -->|None| Rejected
+    
+    style RegisterSource fill:#3b82f6,color:#fff
+    style RegisterLoan fill:#3b82f6,color:#fff
+    style Valuate fill:#3b82f6,color:#fff
+    style ObjectInfo fill:#1d4ed8,color:#fff
+    style Purposes fill:#fbbf24,color:#000
+    style NeedsValuation fill:#fbbf24,color:#000
+    style ObjectsValid fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Object Subprocess Flow visar: Start → purposes gateway → register-source-of-equity (om Purchase) eller register-loan-details (om Refinancing/Move loan) → needs-valuation → valuate-property (om Yes) → End.</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>Start Event:</strong> Object subprocess startar</li>
+          <li><strong>Gateway "purposes":</strong> Måste returnera "Purchase (Mortgage commitment)" för att register-source-of-equity ska köras</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Gateway "Gateway_1uyee92":</strong> Merge gateway som samlar flöden från register-source-of-equity och objects-valid (All)</li>
+          <li><strong>needs-valuation:</strong> Gateway som avgör om fastighetsvärdering behövs</li>
+          <li><strong>valuate-property:</strong> Körs om needs-valuation returnerar "Yes"</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Kunden ser ett formulär för att registrera källan till eget kapital med sektioner för olika källor (besparingar, försäljning av annan fastighet, gåva, arv, etc.). Formuläret visar totalt eget kapital och låter kunden lägga till flera källor.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Kunden öppnar formuläret för källa till eget kapital</li><li>Kunden väljer typ av källa (besparingar, försäljning, gåva, arv, etc.)</li><li>Kunden fyller i belopp för varje källa</li><li>Kunden kan lägga till flera källor om nödvändigt</li><li>Systemet validerar att totalt eget kapital matchar det efterfrågade beloppet</li><li>Kunden bekräftar och sparar informationen</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Fyll i formulär, Välj typ av källa, Lägg till flera källor, Se totalt eget kapital, Spara som draft, Bekräfta och spara</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+        
+        <details>
+          <summary>User Journey Map</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start<br/>Öppna formulär]
+    Select[Välj typ av<br/>källa]
+    Amount[Fyll i belopp<br/>för varje källa]
+    Add[Lägg till flera<br/>källor]
+    Validate{Validering<br/>OK?}
+    Confirm[Bekräfta och<br/>spara]
+    Complete[Klart<br/>Fortsätt process]
+    Error[Felmeddelanden<br/>Korrigera information]
+    
+    Start -->|Laddar formulär| Select
+    Select -->|Väljer| Amount
+    Amount -->|Fyller i| Add
+    Add -->|Lägger till| Validate
+    Validate -->|Nej| Error
+    Error -->|Korrigerar| Select
+    Validate -->|Ja| Confirm
+    Confirm -->|Sparar| Complete
+    
+    style Start fill:#dbeafe,color:#000
+    style Select fill:#bfdbfe,color:#000
+    style Amount fill:#93c5fd,color:#000
+    style Add fill:#60a5fa,color:#fff
+    style Validate fill:#fbbf24,color:#000
+    style Confirm fill:#10b981,color:#fff
+    style Complete fill:#059669,color:#fff
+    style Error fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">User Journey Map visar kundens resa från start till bekräftelse, inklusive touchpoints och tidslinje.</p>
+        </details>
+        
+        <details>
+          <summary>Interaktionsflöde</summary>
+          <div class="mermaid">
+sequenceDiagram
+    participant User as Kund/Handläggare
+    participant UI as UI Formulär
+    participant API as API Service
+    participant Calculator as Equity Calculator
+    participant Validator as Validation Service
+    participant Store as Equity Data Store
+    
+    User->>UI: Öppna formulär för källa till eget kapital
+    UI->>API: Hämta befintlig data (om draft finns)
+    API-->>UI: Befintlig data eller tom formulär
+    UI-->>User: Visar formulär
+    
+    User->>UI: Väljer typ av källa (besparingar, försäljning, gåva, etc.)
+    User->>UI: Fyller i belopp för varje källa
+    UI->>Calculator: Beräkna totalt eget kapital (realtid)
+    Calculator-->>UI: Totalt eget kapital
+    UI-->>User: Visar totalt eget kapital
+    
+    User->>UI: Lägger till flera källor om nödvändigt
+    User->>UI: Klickar "Spara som draft" eller "Bekräfta"
+    
+    alt Bekräfta
+        UI->>Validator: Validera att totalt eget kapital matchar efterfrågat belopp
+        Validator-->>UI: Valideringsresultat
+        
+        alt Validering OK
+            UI->>API: Spara källa till eget kapital
+            API->>Store: Spara källor + totalt eget kapital + metadata
+            Store-->>API: Bekräftelse
+            API-->>UI: Success
+            UI-->>User: Bekräftelse + fortsätt till nästa steg
+        else Validering misslyckas
+            UI-->>User: Felmeddelanden (totalt eget kapital matchar inte)
+            User->>UI: Korrigerar information
+        end
+    else Spara som draft
+        UI->>API: Spara som draft
+        API->>Store: Spara draft
+        Store-->>API: Bekräftelse
+        API-->>UI: Draft sparad
+        UI-->>User: Draft sparad (kan återkomma senare)
+    end
+          </div>
+          <p class="muted">Interaktionsflöde visar UI-skärmar/steg, användarinteraktioner, systemresponser, valideringar och felhantering.</p>
+        </details>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare ser samma formulär som kunden, men med ytterligare administrativa funktioner. Handläggare kan se registrerade källor till eget kapital, totalt eget kapital, och eventuella flaggor eller varningar.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Handläggare öppnar ansökan och ser status för källa till eget kapital</li><li>Handläggare kan se registrerade källor och totalt eget kapital</li><li>Handläggare kan verifiera källor och begära dokumentation vid behov</li><li>Handläggare kan komplettera eller korrigera information vid behov</li><li>Handläggare kan registrera källa till eget kapital å kundens vägnar vid behov</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska registrerade källor, Verifiera källor och begära dokumentation, Komplettera eller korrigera information, Registrera å kundens vägnar (vid behov)</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas när föregående steg i object-processen har slutförts och kunden behöver registrera källa till eget kapital.</li><li>Systemet presenterar formulär för källa till eget kapital med sektioner för olika källor (besparingar, försäljning av annan fastighet, gåva, arv, etc.).</li><li>Kunden eller handläggare väljer typ av källa och fyller i belopp för varje källa. Systemet stödjer flera källor.</li><li>Systemet validerar att totalt eget kapital matchar det efterfrågade beloppet (baserat på fastighetsvärde och lånebelopp) och att obligatoriska fält är ifyllda.</li><li>Kunden eller handläggare bekräftar och sparar informationen. Systemet beräknar totalt eget kapital och verifierar att det är tillräckligt.</li><li>Efter bekräftelse markeras källa till eget kapital som registrerad och processen fortsätter till nästa steg i object-processen.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en userTask där användaren måste registrera källa till eget kapital. Om totalt eget kapital inte matchar det efterfrågade beloppet eller validering misslyckas kan användaren inte bekräfta och måste korrigera informationen. Efter bekräftelse fortsätter processen automatiskt till nästa steg.</p>
+        <p><strong>Felhantering:</strong> Om validering misslyckas visas tydliga felmeddelanden som indikerar vilka fält som behöver korrigeras. Användaren kan spara informationen som draft och återkomma senare. Om systemfel uppstår vid sparning loggas felet och användaren informeras. Om totalt eget kapital inte matchar det efterfrågade beloppet kan användaren justera källor eller belopp.</p>
+        <p><strong>Edge cases:</strong> Kunder med flera källor till eget kapital (kan kräva aggregering), kunder med ofullständig information (kan sparas som draft), negativa eller orimligt höga värden (valideras och avvisas), kunder som ändrar information efter bekräftelse (kan kräva ombekräftelse), kunder med gåvor eller arv som kräver dokumentation.</p>
+      </div>
+      
+      <details>
+        <summary>Process Flow Diagram</summary>
+        <div class="mermaid">
+flowchart TD
+    Start[Start<br/>Epik triggas]
+    LoadForm[Ladda formulär<br/>+ befintlig data om draft]
+    SelectSource[Välj typ av källa<br/>besparingar, försäljning, gåva, etc.]
+    AmountInput[Användarinput<br/>Belopp för varje källa]
+    AddMore{Lägg till<br/>flera källor?}
+    Calculate[Beräkna<br/>totalt eget kapital]
+    Validate{Validering<br/>OK?}
+    SaveDraft{Spara som<br/>draft?}
+    Confirm[Bekräfta och<br/>spara]
+    Save[Spara källa till eget kapital<br/>+ totalt eget kapital]
+    Complete[Klart<br/>Fortsätt process]
+    Error[Felmeddelanden<br/>Korrigera information]
+    
+    Start --> LoadForm
+    LoadForm --> SelectSource
+    SelectSource --> AmountInput
+    AmountInput --> AddMore
+    AddMore -->|Ja| SelectSource
+    AddMore -->|Nej| Calculate
+    Calculate --> Validate
+    Validate -->|Nej| Error
+    Error --> SelectSource
+    Validate -->|Ja| SaveDraft
+    SaveDraft -->|Ja| Save
+    SaveDraft -->|Nej| Confirm
+    Confirm --> Save
+    Save --> Complete
+    
+    style Start fill:#1d4ed8,color:#fff
+    style LoadForm fill:#3b82f6,color:#fff
+    style SelectSource fill:#60a5fa,color:#fff
+    style AmountInput fill:#60a5fa,color:#fff
+    style Calculate fill:#93c5fd,color:#000
+    style Validate fill:#fbbf24,color:#000
+    style Confirm fill:#10b981,color:#fff
+    style Save fill:#10b981,color:#fff
+    style Complete fill:#059669,color:#fff
+    style Error fill:#ef4444,color:#fff
+        </div>
+        <p class="muted">Process Flow Diagram visar steg-för-steg flöde: ladda formulär, välj källa, användarinput, beräkning, validering, draft-sparning, bekräftelse, och sparning.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Fastighetsvärde och lånebelopp</td>
+          <td>Valuate-property (serviceTask) eller ansökningsdata</td>
+          <td>PropertyValue, LoanAmount</td>
+          <td>Ja</td>
+          <td>För att beräkna nödvändigt eget kapital (kontantinsats) som kunden behöver registrera</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla registrerad källa till eget kapital till rätt ansökan</td>
+        </tr>
+        <tr>
+          <td>Befintlig källa till eget kapital (om tillgänglig)</td>
+          <td>Tidigare ansökningar eller session</td>
+          <td>EquitySourceData</td>
+          <td>Nej</td>
+          <td>Om kunden redan har registrerat källa till eget kapital i tidigare ansökan kan denna återanvändas eller användas som utgångspunkt</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata, fastighetsvärde, och lånebelopp</li>
+        <li><strong>Equity Data Store:</strong> Tidigare registrerad källa till eget kapital om tillgänglig</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs – all data registreras av kunden eller handläggare. Källa till eget kapital kan kompletteras med dokumentation (t.ex. kontoutdrag, försäljningskontrakt) som kan laddas upp separat.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+        <li><strong>Equity Data Store:</strong> Lagrar registrerad källa till eget kapital för användning i efterföljande steg</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Registrerad källa till eget kapital (typer, belopp)</td>
+          <td>Equity Data Store, efterföljande steg</td>
+          <td>EquitySourceData</td>
+          <td>Strukturerad källa till eget kapital inklusive typer (besparingar, försäljning, gåva, arv, etc.), belopp för varje källa, och totalt eget kapital</td>
+        </tr>
+        <tr>
+          <td>Beräknat eget kapital och kontantinsats</td>
+          <td>Processkontext, efterföljande steg</td>
+          <td>CalculatedEquity</td>
+          <td>Systemberäknat eget kapital och kontantinsats baserat på registrerade källor och fastighetsvärde för användning i kreditbedömning</td>
+        </tr>
+        <tr>
+          <td>Registreringsstatus och metadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>RegistrationStatus</td>
+          <td>Status för registreringen (completed/draft), timestamp, användar-ID, och eventuella flaggor</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+              <li><strong>Equity Data Store:</strong> Lagrar registrerad källa till eget kapital</li>
+              <li><strong>Property Valuation Service:</strong> Fastighetsvärdering för att beräkna nödvändigt eget kapital</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att spara källa till eget kapital och hämta ekonomidata. API:et exponerar endpoints för att registrera källa till eget kapital, hämta befintlig källa, och validera ekonomidata.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när föregående steg i object-processen är slutförd. Vid bekräftelse publiceras event för att trigga nästa steg i processen.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Equity Data Store för lagring av registrerad källa till eget kapital.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST API för användarinteraktion</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Frontend-komponenter för ekonomiformulär</li>
+            </ul>
+          </li>
+          
+          
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>Validering:</strong> Totalt eget kapital måste matcha det efterfrågade beloppet (baserat på fastighetsvärde och lånebelopp). Belopp för varje källa måste vara positiva tal och rimliga värden. Negativa eller orimligt höga värden avvisas. Obligatoriska fält (t.ex. typ av källa, belopp) måste vara ifyllda innan bekräftelse.</li>
+          <li><strong>Kontantinsatskrav:</strong> Banken kräver minst 15% kontantinsats för bolån (kan variera beroende på produkt och riskprofil). Totalt eget kapital måste vara minst lika stort som nödvändig kontantinsats.</li>
+          <li><strong>Källvalidering:</strong> Vissa källor (t.ex. gåvor, arv) kan kräva dokumentation för verifiering. Systemet bör flagga källor som kan kräva manuell granskning.</li>
+          <li><strong>Draft-funktionalitet:</strong> Kunder kan spara informationen som draft och återkomma senare för att komplettera. Draft-information sparas men processen kan inte fortsätta förrän all obligatorisk information är ifylld och bekräftad.</li>
+          <li><strong>Kreditbedömning:</strong> Registrerad källa till eget kapital används tillsammans med fastighetsvärde och lånebelopp för att bedöma kundens finansieringsmöjligheter i efterföljande steg.</li>
+          <li><strong>Spårbarhet:</strong> Alla ändringar måste loggas med timestamp och användar-ID för spårbarhet och efterkontroll.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>Normalflöde med komplett underlag:</strong> Kunden eller handläggaren har lämnat kompletta och konsistenta uppgifter som uppfyller grundläggande krav.</li><li><strong>Delvis ofullständigt eller oklart underlag:</strong> Enstaka uppgifter saknas eller är motsägelsefulla, men ärendet bedöms kunna kompletteras utan att avbrytas.</li><li><strong>Tekniskt fel eller kritisk avvikelse:</strong> Centrala data inte kan läsas in, valideras eller sparas på ett säkert sätt.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>[Beskrivning av testdata som behövs]</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li>[Miljö 1: t.ex. "Local development"]</li>
+          <li>[Miljö 2: t.ex. "Staging"]</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde, kompletteringsfall samt tekniska fel eller kritiska avvikelser.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databasfel:</strong> Vid databasfel när källa till eget kapital sparas (connection timeout, deadlock) ska systemet logga felet och flagga processen för manuell hantering. Överväg retry för tillfälliga databasfel. Användaren bör informeras om att data inte kunde sparas och att de kan försöka igen.</li>
+          <li><strong>Session timeout:</strong> Om användarens session går ut innan källa till eget kapital sparas ska systemet logga felet och informera användaren. Överväg att spara källa till eget kapital automatiskt när användaren fyller i information för att undvika dataförlust.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) när källa till eget kapital sparas ska systemet logga felet och informera användaren. Överväg retry för tillfälliga nätverksfel.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Valideringsfel:</strong> Om validering misslyckas (t.ex. negativt belopp, ofullständig information, totalt eget kapital matchar inte nödvändig kontantinsats) ska systemet visa tydliga felmeddelanden och låta användaren korrigera informationen. Validering ska ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Ofullständig information:</strong> Om obligatoriska fält saknas (t.ex. källtyp saknas, belopp saknas) ska systemet förhindra bekräftelse och visa tydliga felmeddelanden. Användaren bör informeras om vilka fält som saknas.</li>
+          <li><strong>Kontantinsatskrav:</strong> Om totalt eget kapital inte matchar nödvändig kontantinsats (minst 15% av fastighetsvärde) ska systemet visa tydligt felmeddelande och låta användaren korrigera informationen. Användaren bör informeras om hur mycket som saknas.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Många källor:</strong> Om användaren har många källor till eget kapital (>10) kan formuläret bli svårläst. Överväg att gruppera eller kategorisera källor för bättre översikt.</li>
+          <li><strong>Stora belopp:</strong> Om belopp är mycket stora (>10M SEK) ska systemet validera att detta är rimligt och flagga för manuell granskning om nödvändigt. Överväg att kräva dokumentation för stora belopp.</li>
+          <li><strong>Noll eget kapital:</strong> Om totalt eget kapital är noll ska systemet hantera detta gracefully. Överväg att kräva manuell granskning för kunder med noll eget kapital.</li>
+          <li><strong>Historiska data:</strong> Om källa till eget kapital ändras under ansökningsprocessen ska systemet spåra ändringar och logga dem för spårbarhet. Överväg att kräva manuell granskning för stora ändringar.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databas:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga databasfel. Max 3 försök innan processen flaggas för manuell hantering.</li>
+          <li><strong>Session:</strong> Om session går ut ska systemet informera användaren och ge möjlighet att logga in igen. Överväg att spara källa till eget kapital automatiskt för att undvika dataförlust.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>UI/UX:</strong> Formuläret bör vara tydligt och lättläst med tydliga sektioner för olika källor. Stöd för att lägga till flera källor. Validering ska ske i realtid för snabb feedback. Överväg autocomplete för vanliga källor. Visa totalt eget kapital och nödvändig kontantinsats tydligt.</li>
+          <li><strong>Beräkningar:</strong> Systemet måste beräkna totalt eget kapital korrekt baserat på alla registrerade källor. Överväg att visa både totalt eget kapital och nödvändig kontantinsats för transparens. Beräkningar bör ske i realtid när användaren fyller i information.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: när källa till eget kapital registrerades, vem som registrerade (kund/handläggare), typer av källor, belopp för varje källa, totalt eget kapital, och eventuella flaggor. Alla ändringar ska loggas för spårbarhet.</li>
+          <li><strong>Prestanda:</strong> Formuläret bör laddas snabbt (< 2 sekunder). Beräkningar (totalt eget kapital, kontantinsats) bör ske i realtid när användaren fyller i information.</li>
+          <li><strong>Datavalidering:</strong> Validera att belopp är positiva tal och rimliga värden. Verifiera att obligatoriska fält finns med innan bekräftelse tillåts. Validera att totalt eget kapital matchar nödvändig kontantinsats. Validering bör ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att importera ekonomidata från bankens system om kunden är befintlig kund. Stöd för att ladda upp dokument som stödjer källa till eget kapital (t.ex. kontoutdrag, försäljningskontrakt). Integration med skatteverket för automatisk verifiering av gåvor eller arv.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    Purposes{Purposes?<br/>Gateway}
+    Current[register-source-of-equity<br/>userTask]
+    Gateway1[Gateway Merge]
+    NeedsValuation{needs-valuation?<br/>Gateway}
+    Valuate[valuate-property<br/>serviceTask]
+    Gateway2[Gateway Merge]
+    End[Object Subprocess<br/>End]
+    
+    Start --> Purposes
+    Purposes -->|Purchase| Current
+    Current --> Gateway1
+    Gateway1 --> NeedsValuation
+    NeedsValuation -->|Yes| Valuate
+    NeedsValuation -->|No| Gateway2
+    Valuate --> Gateway2
+    Gateway2 --> End
+    
+    style Current fill:#3b82f6,color:#fff
+    style Valuate fill:#3b82f6,color:#fff
+    style Purposes fill:#fbbf24,color:#000
+    style NeedsValuation fill:#fbbf24,color:#000
+        </div>
+        <p class="muted">Beroendediagram visar: Start → purposes gateway → register-source-of-equity (om Purchase) → Gateway Merge → needs-valuation → valuate-property (om Yes) → End.</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>Start Event:</strong> Object subprocess startar</li>
+        <li><strong>Gateway "purposes":</strong> Måste returnera "Purchase (Mortgage commitment)" för att register-source-of-equity ska köras</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Gateway "Gateway_1uyee92":</strong> Merge gateway som samlar flöden från register-source-of-equity och objects-valid (All)</li>
+        <li><strong>needs-valuation:</strong> Gateway som avgör om fastighetsvärdering behövs</li>
+        <li><strong>valuate-property:</strong> Körs om needs-valuation returnerar "Yes"</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>register-loan-details:</strong> Körs parallellt om purposes är "Refinancing / Move loan"</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Valideringsregler:</strong> Källa till eget kapital måste vara korrekt och komplett</li>
+        <li><strong>Kontantinsatskrav:</strong> Minst 15% av fastighetsvärde</li>
+        <li><strong>Beräkningar:</strong> Regler för beräkning av nödvändig kontantinsats</li>
+        <li><strong>Kreditbedömning:</strong> Regler för användning av källa till eget kapital i kreditbedömning</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-object.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

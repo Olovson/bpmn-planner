@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assess stakeholder</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+    .dmn-table {
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .dmn-table th {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .dmn-table td {
+      vertical-align: top;
+    }
+    .dmn-input {
+      background: #f0f9ff;
+    }
+    .dmn-output {
+      background: #ecfdf5;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Assess stakeholder</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Assess stakeholder</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-stakeholder.bpmn</li>
+        <li><strong>Element ID:</strong> assess-stakeholder</li>
+        <li><strong>Nodtyp:</strong> businessRuleTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Assess stakeholder är en DMN-beslutsregel (businessRuleTask) som evaluerar borrower capacity baserat på årsinkomst, DTI-ratio (debt-to-income), och kredithistorik. Regeln utvärderar om kunden har tillräcklig återbetalningsförmåga för det efterfrågade lånet. Den analyserar kreditupplysning från fetch-credit-information, inkomstdata, och skuldsättning för att bedöma kundens kreditvärdighet och riskprofil. Regeln returnerar ett beslut: APPROVED (kan fortsätta) eller REJECTED (stoppas) tillsammans med riskkategori. Detta är en kritisk del av kreditbedömningen och avgör om processen kan fortsätta till register-personal-economy-information.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>assess-stakeholder</strong> är en del av <strong>stakeholder</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs efter <strong>fetch-credit-information</strong> och använder kreditupplysning, inkomstdata, och skuldsättning för borrower capacity evaluation. Resultatet avgör om processen kan fortsätta till <strong>register-personal-economy-information</strong> (om approved) eller om processen avslutas med "Rejected stakeholder evaluation" (om rejected).</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Stakeholders fill:#1d4ed8,color:#fff
+    style Assess fill:#f59e0b,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Stakeholder Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    HasConsented{has-consented-to-<br/>credit-check?}
+    Consent[consent-to-credit-check<br/>userTask]
+    DidConsent{did-consent?}
+    Gateway[Gateway Merge]
+    FetchPersonal[fetch-personal-information<br/>serviceTask]
+    Evaluate[evaluate-personal-information<br/>businessRuleTask]
+    Gateway2{is-personal-information-<br/>rejected?}
+    FetchCredit[fetch-credit-information<br/>serviceTask]
+    Assess[assess-stakeholder<br/>businessRuleTask]
+    Gateway3{is-stakeholder-<br/>rejected?}
+    Register[register-personal-economy-<br/>information<br/>userTask]
+    End[End Event]
+    Rejected1[Rejected credit check]
+    Rejected2[Rejected personal<br/>information]
+    Rejected3[Rejected stakeholder<br/>evaluation]
+    
+    Start --> HasConsented
+    HasConsented -->|No| Consent
+    HasConsented -->|Yes| Gateway
+    Consent --> DidConsent
+    DidConsent -->|Yes| Gateway
+    DidConsent -->|No| Rejected1
+    Gateway --> FetchPersonal
+    FetchPersonal --> Evaluate
+    Evaluate --> Gateway2
+    Gateway2 -->|No| FetchCredit
+    Gateway2 -->|Yes| Rejected2
+    FetchCredit --> Assess
+    Assess --> Gateway3
+    Gateway3 -->|No| Register
+    Gateway3 -->|Yes| Rejected3
+    Register --> End
+    
+    style FetchPersonal fill:#3b82f6,color:#fff
+    style Consent fill:#3b82f6,color:#fff
+    style Evaluate fill:#f59e0b,color:#fff
+    style FetchCredit fill:#3b82f6,color:#fff
+    style Assess fill:#f59e0b,color:#fff
+    style Register fill:#3b82f6,color:#fff
+    style HasConsented fill:#fbbf24,color:#000
+    style DidConsent fill:#fbbf24,color:#000
+    style Gateway2 fill:#fbbf24,color:#000
+    style Gateway3 fill:#fbbf24,color:#000
+    style Rejected1 fill:#ef4444,color:#fff
+    style Rejected2 fill:#ef4444,color:#fff
+    style Rejected3 fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Stakeholder Subprocess Flow visar: Start → has-consented-to-credit-check → consent-to-credit-check (om No) → did-consent → fetch-personal-information → evaluate-personal-information → fetch-credit-information → assess-stakeholder → register-personal-economy-information (om approved).</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>fetch-credit-information:</strong> Måste vara slutförd för att kreditupplysning ska vara tillgänglig</li>
+          <li><strong>fetch-engagements:</strong> Måste vara slutförd (från internal-data-gathering) för att totala skulder ska kunna beräknas för DTI-ratio</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Gateway "is-stakeholder-rejected":</strong> Använder resultatet från assess-stakeholder för att avgöra om processen ska fortsätta</li>
+          <li><strong>register-personal-economy-information:</strong> Körs om gateway returnerar "No" (approved)</li>
+          <li><strong>Rejected stakeholder evaluation:</strong> Processen avslutas om gateway returnerar "Yes" (rejected)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Detta är en automatisk bakgrundsprocess (DMN businessRuleTask) som körs utan direkt användarinteraktion. Kunden ser ingen direkt UI, men resultatet påverkar om ansökan kan fortsätta eller stoppas.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Processen körs automatiskt efter att kreditupplysning har hämtats</li><li>Kunden fortsätter med ansökningsprocessen medan bedömningen görs i bakgrunden</li><li>Vid REJECTED får kunden information om varför ansökan stoppades</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Ingen direkt användarinteraktion – automatisk systemprocess</li>
+          <li><strong>Design:</strong> N/A – backend-process</li>
+          
+        </ul>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare kan se resultatet av bedömningen i systemloggar eller admin-gränssnitt. Resultatet (APPROVED/REJECTED) visas i ansökningsöversikten tillsammans med riskkategori, motivering, och eventuella flaggor.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Systemet kör bedömningen automatiskt när kreditupplysning är tillgänglig</li><li>Handläggare ser resultatet i ansökningsöversikten</li><li>Vid REJECTED kan handläggare se motivering och riskkategori, och informera kunden</li><li>Handläggare kan överskriva beslutet vid behov (med rätt behörighet)</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska bedömningsresultat, Se riskkategori och motivering, Överskriv beslut (vid behov), Flagga för manuell granskning</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas automatiskt när fetch-credit-information har slutförts och kreditupplysning är tillgänglig.</li><li>DMN-motorn läser in relevanta indata: årsinkomst, DTI-ratio (debt-to-income), kredithistorik från kreditupplysning, och eventuella betalningsanmärkningar.</li><li>DMN-regeln utvärderar indata mot beslutslogik och affärsregler för borrower capacity evaluation.</li><li>Regeln beräknar DTI-ratio baserat på totala skulder och årsinkomst, och bedömer kredithistorik och betalningsanmärkningar.</li><li>Regeln returnerar ett beslut: APPROVED (kan fortsätta) eller REJECTED (stoppas) tillsammans med riskkategori (t.ex. LOW, MEDIUM, HIGH) och motivering.</li><li>Resultatet sparas i processens datastore tillsammans med riskkategori, motivering, och eventuella flaggor.</li><li>Beroende på resultat fortsätter processen: APPROVED → register-personal-economy-information, REJECTED → processen avslutas med fel.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en businessRuleTask (DMN) som använder beslutslogik för att utvärdera borrower capacity. Gateway "is-stakeholder-rejected" använder resultatet för att avgöra om processen ska fortsätta (No → register-personal-economy-information) eller stoppas (Yes → processen avslutas). Beslutslogiken baseras på årsinkomst (t.ex. minimum 200k SEK), DTI-ratio (t.ex. maximum 50%), kredithistorik (inga betalningsanmärkningar), och eventuella varningar.</p>
+        <p><strong>Felhantering:</strong> Om obligatoriska indata saknas eller DMN-motorn inte kan köras loggas felet och processen flaggas för manuell granskning. Om DMN-motorn returnerar fel eller timeout uppstår loggas detta och processen kan avbrytas eller skickas till felhantering. Alla beslut loggas för spårbarhet och efterkontroll.</p>
+        <p><strong>Edge cases:</strong> Kunder med gränsvärden (t.ex. DTI-ratio 48-52%, inkomst 195-205k SEK), kunder med tillfällig inkomst eller variabel inkomst, kunder med gamla betalningsanmärkningar (kan kräva manuell bedömning), kunder med hög inkomst men hög skuldsättning, kunder med ofullständig kreditupplysning (kan kräva manuell bedömning).</p>
+      </div>
+      
+      <details>
+        <summary>Sekvensdiagram - Borrower Capacity Evaluation</summary>
+        <div class="mermaid">
+sequenceDiagram
+    participant Camunda as BPMN Engine<br/>(Camunda)
+    participant Service as Decision Service<br/>Assess Stakeholder
+    participant DMN as DMN Decision Engine
+    participant CreditStore as Credit Data Store
+    participant EngagementsStore as Engagements Data Store
+    participant StakeholderStore as Stakeholder Data Store
+    participant AppDB as Application DB
+    
+    Note over Camunda: Triggas efter<br/>fetch-credit-information
+    Camunda->>Service: Exekvera assess-stakeholder
+    
+    Service->>CreditStore: Hämta kreditupplysning<br/>(kreditscore, betalningsanmärkningar)
+    CreditStore-->>Service: Kreditupplysning
+    
+    Service->>EngagementsStore: Hämta totala skulder
+    EngagementsStore-->>Service: Totala skulder
+    
+    Service->>StakeholderStore: Hämta årsinkomst
+    StakeholderStore-->>Service: Årsinkomst
+    
+    Service->>Service: Beräkna DTI-ratio<br/>(totala skulder / årsinkomst)
+    
+    Service->>DMN: Utvärdera borrower capacity<br/>(årsinkomst, DTI-ratio, kreditscore,<br/>betalningsanmärkningar)
+    DMN->>DMN: Applicera beslutslogik<br/>(DMN Decision Table)
+    DMN-->>Service: Beslut (APPROVED/REJECTED)<br/>+ Riskkategori + Motivering
+    
+    Service->>AppDB: Spara beslut + riskkategori<br/>+ motivering + metadata
+    AppDB-->>Service: Bekräftelse
+    
+    Service->>Camunda: Resultat (APPROVED/REJECTED)<br/>+ riskkategori
+    
+    alt APPROVED
+        Camunda->>Camunda: Gateway: is-stakeholder-rejected = No
+        Camunda->>Camunda: Fortsätt till<br/>register-personal-economy-information
+    else REJECTED
+        Camunda->>Camunda: Gateway: is-stakeholder-rejected = Yes
+        Camunda->>Camunda: Avsluta processen
+    end
+        </div>
+        <p class="muted">Sekvensdiagram visar tidslinje för interaktioner: BPMN Engine triggar Decision Service, som hämtar data från flera Data Stores, beräknar DTI-ratio, anropar DMN Decision Engine för beslutslogik, sparar beslut, och gateway avgör om processen fortsätter eller avslutas.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Kreditupplysning (kreditscore, betalningsanmärkningar, skulder, kredithistorik)</td>
+          <td>Fetch-credit-information (serviceTask)</td>
+          <td>CreditInformation</td>
+          <td>Ja</td>
+          <td>Kreditupplysning inklusive kreditscore, betalningsanmärkningar, skulder, och kredithistorik för borrower capacity evaluation</td>
+        </tr>
+        <tr>
+          <td>Årsinkomst</td>
+          <td>Stakeholder-data eller ansökningsdata</td>
+          <td>Number</td>
+          <td>Ja</td>
+          <td>Kundens årsinkomst för att beräkna DTI-ratio och bedöma återbetalningsförmåga</td>
+        </tr>
+        <tr>
+          <td>Totala skulder</td>
+          <td>Fetch-engagements (serviceTask) eller ansökningsdata</td>
+          <td>Number</td>
+          <td>Ja</td>
+          <td>Kundens totala skulder för att beräkna DTI-ratio (debt-to-income)</td>
+        </tr>
+        <tr>
+          <td>Stakeholder-data</td>
+          <td>Föregående steg i stakeholder-processen</td>
+          <td>StakeholderData</td>
+          <td>Ja</td>
+          <td>Grundläggande stakeholder-information för att identifiera rätt person</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Credit Data Store:</strong> Kreditupplysning från fetch-credit-information, inklusive kreditscore, betalningsanmärkningar, skulder, och kredithistorik</li>
+        <li><strong>Engagements Data Store:</strong> Befintliga engagemang från fetch-engagements för att beräkna totala skulder</li>
+        <li><strong>Stakeholder Data Store:</strong> Stakeholder-information inklusive årsinkomst</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs – all data hämtas från interna system. DMN-regeln använder redan hämtad kreditupplysning och engagemang.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata och processkontext</li>
+        <li><strong>DMN Decision Table:</strong> Beslutslogik för borrower capacity evaluation lagras i DMN-modell</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Bedömningsresultat (APPROVED/REJECTED)</td>
+          <td>Gateway "is-stakeholder-rejected", efterföljande steg</td>
+          <td>AssessmentResult</td>
+          <td>Beslut från DMN-regeln: APPROVED (kan fortsätta) eller REJECTED (stoppas) tillsammans med riskkategori och motivering</td>
+        </tr>
+        <tr>
+          <td>Riskkategori (LOW/MEDIUM/HIGH)</td>
+          <td>Processkontext, loggsystem</td>
+          <td>RiskCategory</td>
+          <td>Riskkategori baserad på DTI-ratio, kreditscore, och kredithistorik för att bedöma kundens riskprofil</td>
+        </tr>
+        <tr>
+          <td>Motivering och flaggor</td>
+          <td>Processkontext, loggsystem</td>
+          <td>AssessmentReasoning</td>
+          <td>Detaljerad motivering för beslutet, beräknad DTI-ratio, och eventuella flaggor eller varningar</td>
+        </tr>
+        <tr>
+          <td>Validerad borrower capacity status</td>
+          <td>Efterföljande steg</td>
+          <td>ValidatedCapacity</td>
+          <td>Status som används av gateway "is-stakeholder-rejected" för att avgöra om processen ska fortsätta eller stoppas</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>DMN Decision Engine:</strong> Camunda DMN eller liknande för att köra beslutslogik</li>
+              <li><strong>Credit Data Store:</strong> Lagrar kreditupplysning från fetch-credit-information</li>
+              <li><strong>Engagements Data Store:</strong> Lagrar engagemang från fetch-engagements</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att köra DMN-beslutsregel. API:et exponerar endpoint /api/dmn/assess-stakeholder som tar indata (årsinkomst, DTI-ratio, kredithistorik) och returnerar beslut (APPROVED/REJECTED + riskkategori).</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när fetch-credit-information är slutförd. Vid beslut publiceras event för att trigga gateway "is-stakeholder-rejected".</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. DMN-beslutslogik lagras i DMN-modell och kan uppdateras utan kodändringar.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>DMN Decision Engine för beslutslogik</li>
+              <li>REST API för DMN-anrop</li>
+              <li>PostgreSQL för datalagring</li>
+            </ul>
+          </li>
+          
+          <li><strong>Arkitekturdiagram:</strong>
+            <details>
+              <summary>C4 System Context Diagram</summary>
+              <div class="mermaid">
+graph TB
+    Customer[👤 Customer<br/>Kund]
+    Handler[👤 Handler<br/>Handläggare]
+    
+    Epic[Assess Stakeholder<br/>businessRuleTask / DMN]
+    
+    CreditStore[(Credit Data Store<br/>Kreditupplysning)]
+    EngagementsStore[(Engagements Data Store<br/>Skulder)]
+    StakeholderStore[(Stakeholder Data Store<br/>Årsinkomst)]
+    AppDB[(Application DB<br/>PostgreSQL)]
+    
+    Customer -.->|Triggar via<br/>ansökan| Epic
+    Handler -.->|Granskar<br/>beslut| Epic
+    
+    Epic -->|Läser| CreditStore
+    Epic -->|Läser| EngagementsStore
+    Epic -->|Läser| StakeholderStore
+    Epic -->|Läser/Sparar<br/>ansökningsdata| AppDB
+    Epic -->|Sparar<br/>beslut| AppDB
+    
+    style Epic fill:#1d4ed8,color:#fff
+    style CreditStore fill:#10b981,color:#fff
+    style EngagementsStore fill:#10b981,color:#fff
+    style StakeholderStore fill:#10b981,color:#fff
+    style AppDB fill:#10b981,color:#fff
+              </div>
+              <p class="muted">System Context Diagram visar epic i centrum med interna system (Credit Data Store, Engagements Data Store, Stakeholder Data Store, Application DB) och användare (Customer, Handler).</p>
+            </details>
+            
+            <details>
+              <summary>Komponentdiagram</summary>
+              <div class="mermaid">
+graph TB
+    BPMN[BPMN Engine<br/>Camunda]
+    DecisionService[Decision Service<br/>Assess Stakeholder]
+    DMNEngine[DMN Decision Engine<br/>Borrower Capacity]
+    CreditStore[Credit Data Store<br/>Kreditupplysning]
+    EngagementsStore[Engagements Data Store<br/>Skulder]
+    StakeholderStore[Stakeholder Data Store<br/>Årsinkomst]
+    
+    BPMN -->|Orkestrerar| DecisionService
+    DecisionService -->|Använder| DMNEngine
+    DecisionService -->|Läser| CreditStore
+    DecisionService -->|Läser| EngagementsStore
+    DecisionService -->|Läser| StakeholderStore
+    DecisionService -->|Sparar beslut| AppDB[(Application DB)]
+    
+    DMNEngine -->|Utvärderar| DecisionService
+    
+    style BPMN fill:#1d4ed8,color:#fff
+    style DecisionService fill:#3b82f6,color:#fff
+    style DMNEngine fill:#8b5cf6,color:#fff
+    style CreditStore fill:#10b981,color:#fff
+    style EngagementsStore fill:#10b981,color:#fff
+    style StakeholderStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">Komponentdiagram visar huvudkomponenter: BPMN Engine orkestrerar Decision Service, som använder DMN Decision Engine för beslutslogik, läser data från flera Data Stores, och sparar beslut i Application DB.</p>
+            </details>
+          </li>
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>DMN-beslutslogik:</strong> Regeln implementeras som DMN (Decision Model and Notation) beslutsregel med beslutslogik baserad på årsinkomst, DTI-ratio, och kredithistorik. Beslutslogiken kan uppdateras utan kodändringar.</li>
+          <li><strong>Borrower capacity-kriterier:</strong> Grundläggande kriterier för godkännande: årsinkomst (t.ex. minimum 200k SEK), DTI-ratio (t.ex. maximum 50%), kreditscore (t.ex. minimum 600), inga betalningsanmärkningar, och stabil kredithistorik.</li>
+          <li><strong>Riskkategorisering:</strong> Kunder kategoriseras i riskkategorier (LOW, MEDIUM, HIGH) baserat på DTI-ratio, kreditscore, och kredithistorik. Riskkategorin används för att bedöma kundens riskprofil och kan påverka lånevillkor.</li>
+          <li><strong>DTI-ratio beräkning:</strong> DTI-ratio beräknas som totala skulder / årsinkomst. Kunder med hög DTI-ratio (> 50%) bedöms ha högre risk och kan avvisas eller kräva manuell granskning.</li>
+          <li><strong>Policykrav:</strong> Policykrav för risk, skuldsättning och produktvillkor ska vara spårbara via kopplade regler. Regeln omfattar grundläggande borrower capacity evaluation, inte fullständig kreditbedömning.</li>
+        </ul>
+        
+        <h3>DMN Decision Table</h3>
+        <p class="muted">Beslutslogik för borrower capacity evaluation baserat på årsinkomst, DTI-ratio, kreditscore, och betalningsanmärkningar.</p>
+        <table class="dmn-table">
+          <tr>
+            <th colspan="4" class="dmn-input">Input</th>
+            <th colspan="3" class="dmn-output">Output</th>
+          </tr>
+          <tr>
+            <th>Årsinkomst<br/>(SEK)</th>
+            <th>DTI-ratio<br/>(%)</th>
+            <th>Kreditscore</th>
+            <th>Betalnings-<br/>anmärkningar</th>
+            <th>Beslut</th>
+            <th>Riskkategori</th>
+            <th>Motivering</th>
+          </tr>
+          <tr>
+            <td>≥ 200k</td>
+            <td>≤ 50%</td>
+            <td>≥ 600</td>
+            <td>Inga</td>
+            <td><strong>APPROVED</strong></td>
+            <td>LOW</td>
+            <td>Alla kriterier uppfyllda. God återbetalningsförmåga.</td>
+          </tr>
+          <tr>
+            <td>≥ 200k</td>
+            <td>≤ 50%</td>
+            <td>≥ 600</td>
+            <td>Ja</td>
+            <td><strong>REJECTED</strong></td>
+            <td>HIGH</td>
+            <td>Betalningsanmärkningar indikerar hög risk.</td>
+          </tr>
+          <tr>
+            <td>≥ 200k</td>
+            <td>40-50%</td>
+            <td>550-600</td>
+            <td>Inga</td>
+            <td><strong>APPROVED</strong></td>
+            <td>MEDIUM</td>
+            <td>Gränsvärden men acceptabel risk. Kräver manuell granskning.</td>
+          </tr>
+          <tr>
+            <td>≥ 200k</td>
+            <td>> 50%</td>
+            <td>≥ 600</td>
+            <td>Inga</td>
+            <td><strong>REJECTED</strong></td>
+            <td>HIGH</td>
+            <td>DTI-ratio för hög. Otillräcklig återbetalningsförmåga.</td>
+          </tr>
+          <tr>
+            <td>≥ 200k</td>
+            <td>≤ 50%</td>
+            <td>&lt; 600</td>
+            <td>Inga</td>
+            <td><strong>REJECTED</strong></td>
+            <td>MEDIUM</td>
+            <td>Kreditscore för låg. Osäker kredithistorik.</td>
+          </tr>
+          <tr>
+            <td>&lt; 200k</td>
+            <td>≤ 50%</td>
+            <td>≥ 600</td>
+            <td>Inga</td>
+            <td><strong>REJECTED</strong></td>
+            <td>MEDIUM</td>
+            <td>Årsinkomst för låg. Otillräcklig återbetalningsförmåga.</td>
+          </tr>
+          <tr>
+            <td>≥ 200k</td>
+            <td>45-50%</td>
+            <td>600-650</td>
+            <td>Inga</td>
+            <td><strong>APPROVED</strong></td>
+            <td>MEDIUM</td>
+            <td>Acceptabel risk. Kräver manuell granskning.</td>
+          </tr>
+        </table>
+        <p class="muted"><strong>Hit Policy:</strong> FIRST (första matchande regel används)</p>
+        
+        <h3>Tröskelvärden och Prioritering</h3>
+        <table>
+          <tr>
+            <th>Kriterium</th>
+            <th>Tröskelvärde</th>
+            <th>Prioritering</th>
+            <th>Beskrivning</th>
+          </tr>
+          <tr>
+            <td>Årsinkomst</td>
+            <td>Minimum 200k SEK</td>
+            <td>Hög</td>
+            <td>Kunder med årsinkomst under 200k SEK avvisas automatiskt</td>
+          </tr>
+          <tr>
+            <td>DTI-ratio</td>
+            <td>Maximum 50%</td>
+            <td>Hög</td>
+            <td>Kunder med DTI-ratio över 50% avvisas automatiskt</td>
+          </tr>
+          <tr>
+            <td>Kreditscore</td>
+            <td>Minimum 600</td>
+            <td>Hög</td>
+            <td>Kunder med kreditscore under 600 avvisas automatiskt</td>
+          </tr>
+          <tr>
+            <td>Betalningsanmärkningar</td>
+            <td>Inga</td>
+            <td>Kritisk</td>
+            <td>Kunder med betalningsanmärkningar avvisas automatiskt oavsett andra kriterier</td>
+          </tr>
+          <tr>
+            <td>DTI-ratio (gränsvärden)</td>
+            <td>40-50%</td>
+            <td>Medium</td>
+            <td>Kunder med DTI-ratio 40-50% kan godkännas men kräver manuell granskning</td>
+          </tr>
+          <tr>
+            <td>Kreditscore (gränsvärden)</td>
+            <td>550-600</td>
+            <td>Medium</td>
+            <td>Kunder med kreditscore 550-600 kan godkännas men kräver manuell granskning</td>
+          </tr>
+        </table>
+        
+        <details>
+          <summary>Regelträd / Decision Tree</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Assess Stakeholder<br/>Borrower Capacity]
+    
+    CheckIncome{Årsinkomst<br/>≥ 200k SEK?}
+    CheckDTI{DTI-ratio<br/>≤ 50%?}
+    CheckScore{Kreditscore<br/>≥ 600?}
+    CheckPayment{Betalnings-<br/>anmärkningar?}
+    
+    Rejected1[REJECTED<br/>Risk: HIGH<br/>Årsinkomst för låg]
+    Rejected2[REJECTED<br/>Risk: HIGH<br/>DTI-ratio för hög]
+    Rejected3[REJECTED<br/>Risk: MEDIUM<br/>Kreditscore för låg]
+    Rejected4[REJECTED<br/>Risk: HIGH<br/>Betalningsanmärkningar]
+    
+    Approved1[APPROVED<br/>Risk: LOW<br/>Alla kriterier uppfyllda]
+    Approved2[APPROVED<br/>Risk: MEDIUM<br/>Gränsvärden, kräver granskning]
+    
+    Start --> CheckIncome
+    CheckIncome -->|Nej| Rejected1
+    CheckIncome -->|Ja| CheckDTI
+    CheckDTI -->|Nej| Rejected2
+    CheckDTI -->|Ja| CheckPayment
+    CheckPayment -->|Ja| Rejected4
+    CheckPayment -->|Nej| CheckScore
+    CheckScore -->|Nej| Rejected3
+    CheckScore -->|Ja| Approved1
+    
+    CheckDTI -->|40-50%| Approved2
+    CheckScore -->|550-600| Approved2
+    
+    style Start fill:#1d4ed8,color:#fff
+    style CheckIncome fill:#fbbf24,color:#000
+    style CheckDTI fill:#fbbf24,color:#000
+    style CheckScore fill:#fbbf24,color:#000
+    style CheckPayment fill:#fbbf24,color:#000
+    style Rejected1 fill:#ef4444,color:#fff
+    style Rejected2 fill:#ef4444,color:#fff
+    style Rejected3 fill:#ef4444,color:#fff
+    style Rejected4 fill:#ef4444,color:#fff
+    style Approved1 fill:#10b981,color:#fff
+    style Approved2 fill:#f59e0b,color:#fff
+          </div>
+          <p class="muted">Regelträd visar beslutslogik: Först kontrolleras årsinkomst, sedan DTI-ratio, betalningsanmärkningar, och slutligen kreditscore. Varje steg kan leda till APPROVED eller REJECTED med olika riskkategorier.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>Happy path:</strong> Tjänsten får kompletta data, alla beroenden svarar OK och flödet går vidare.</li><li><strong>Valideringsfel:</strong> Indata saknar obligatoriska fält eller bryter mot format – tjänsten ska avvisa och logga tydligt.</li><li><strong>Tekniskt fel / beroende nere:</strong> Extern tjänst svarar inte eller ger fel – epiken ska hantera detta enligt övergripande felstrategi.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>[Beskrivning av testdata som behövs]</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li>[Miljö 1: t.ex. "Local development"]</li>
+          <li>[Miljö 2: t.ex. "Staging"]</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Scenarierna ovan bör mappas till automatiska tester där scenarionas namn används i testbeskrivningar.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN Engine-fel:</strong> Om DMN-motorn inte kan köras (500 Server Error, timeout) ska systemet logga felet och flagga processen för manuell granskning. Överväg fallback-beslut (t.ex. REVIEW) vid tekniska fel för att undvika att processen stoppas helt.</li>
+          <li><strong>DMN-modell saknas:</strong> Om DMN-modellen inte hittas (404 Not Found) ska systemet logga felet och flagga processen för manuell granskning. Detta kan hända vid deployment eller modelluppdateringar.</li>
+          <li><strong>Databasfel:</strong> Vid databasfel (connection timeout, deadlock) när indata hämtas (kreditupplysning, engagemang) ska processen flaggas för manuell hantering och felet loggas med detaljerad information.</li>
+          <li><strong>DTI-ratio beräkning:</strong> Om DTI-ratio inte kan beräknas (t.ex. årsinkomst saknas eller är 0) ska systemet logga felet och flagga processen för manuell granskning. Processen kan inte fortsätta utan korrekt DTI-ratio.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Obligatoriska indata saknas:</strong> Om obligatoriska indata saknas (t.ex. årsinkomst, DTI-ratio, kreditscore, kredithistorik) ska systemet logga felet och flagga processen för manuell granskning. Processen kan inte fortsätta utan dessa data.</li>
+          <li><strong>Ogiltiga indata:</strong> Om indata är ogiltiga (t.ex. negativ årsinkomst, DTI-ratio > 100%, kreditscore > 850) ska systemet validera och flagga för manuell verifiering med tydligt felmeddelande.</li>
+          <li><strong>Ofullständig databild:</strong> Om centrala uppgifter saknas (t.ex. kreditupplysning eller engagemang saknas) ska systemet logga avvikelsen och skicka ärendet till manuell utredning (REVIEW) innan processen får fortsätta.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Gränsfall:</strong> Kunder som ligger precis på gränsen för eligibility-kriterier (t.ex. DTI-ratio 40-45%, kreditscore 595-605) kan returnera REVIEW för manuell bedömning. Systemet ska hantera dessa gränsfall korrekt.</li>
+          <li><strong>Höga skulder:</strong> Kunder med mycket höga skulder (DTI-ratio > 50%) kan kräva manuell bedömning även om andra kriterier är uppfyllda. Systemet ska identifiera detta scenario och returnera REVIEW.</li>
+          <li><strong>Historiska data:</strong> Data från olika källor (kreditupplysning vs engagemang) kan vara inkonsistenta och kräva manuell granskning. Systemet ska identifiera inkonsistenser och flagga för manuell verifiering.</li>
+          <li><strong>Delade engagemang:</strong> Kunder med delade engagemang (gemensamma lån med medsökande) kan kräva särskild hantering. Systemet ska identifiera och aggregera delade engagemang korrekt för DTI-ratio beräkning.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN Engine:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga fel (timeout, 503 Service Unavailable). Max 2 försök innan fallback-beslut (REVIEW) används.</li>
+          <li><strong>Fallback-beslut:</strong> Vid tekniska fel kan systemet använda fallback-beslut (REVIEW) för att undvika att processen stoppas helt. Detta ger manuell granskning möjlighet att bedöma kunden.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>DMN-implementation:</strong> Primära API:er/tjänster: POST /api/dmn/assess-stakeholder för exekvering. DMN-beslutslogik lagras i DMN-modell och kan uppdateras utan kodändringar. Överväg versionering av DMN-modeller för spårbarhet.</li>
+          <li><strong>Loggning:</strong> Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll. Logga: indata (årsinkomst, DTI-ratio, kreditscore, kredithistorik), beslut (APPROVED/REJECTED), riskkategori, motivering, och eventuella flaggor. Alla beslut ska vara spårbara för compliance och efterkontroll.</li>
+          <li><strong>Prestanda:</strong> DMN-beslut bör vara snabba (< 1 sekund). Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen. Överväg caching av DMN-beslut om samma kund bedöms flera gånger.</li>
+          <li><strong>Datavalidering:</strong> Validera att indata matchar förväntat format innan DMN-anrop. Verifiera att obligatoriska fält finns med och att datatyper är korrekta. Validera årsinkomst (positivt tal), DTI-ratio (0-100%), kreditscore (0-850).</li>
+          <li><strong>DTI-ratio beräkning:</strong> DTI-ratio beräknas som (totala skulder / årsinkomst) * 100. Överväg att inkludera både befintliga skulder och det efterfrågade lånet i beräkningen för mer exakt bedömning.</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att inkludera fler faktorer i bedömningen (t.ex. boendesituation, anställningsstabilitet) för mer exakt bedömning. Stöd för olika produkter med olika kriterier. Integration med machine learning för mer sofistikerad riskbedömning.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous1[fetch-credit-information<br/>serviceTask]
+    Previous2[fetch-engagements<br/>serviceTask]
+    Current[assess-stakeholder<br/>businessRuleTask]
+    Gateway{is-stakeholder-<br/>rejected?}
+    Next[register-personal-economy-<br/>information<br/>userTask]
+    Rejected[Rejected stakeholder<br/>evaluation]
+    
+    Previous1 -->|Input till| Current
+    Previous2 -->|Input till| Current
+    Current --> Gateway
+    Gateway -->|No| Next
+    Gateway -->|Yes| Rejected
+    
+    style Current fill:#f59e0b,color:#fff
+    style Previous1 fill:#3b82f6,color:#fff
+    style Previous2 fill:#3b82f6,color:#fff
+    style Next fill:#3b82f6,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: fetch-credit-information + fetch-engagements → assess-stakeholder → gateway → register-personal-economy-information (om approved) eller rejected (om rejected).</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>fetch-credit-information:</strong> Måste vara slutförd för att kreditupplysning ska vara tillgänglig</li>
+        <li><strong>fetch-engagements:</strong> Måste vara slutförd (från internal-data-gathering) för att totala skulder ska kunna beräknas för DTI-ratio</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Gateway "is-stakeholder-rejected":</strong> Använder resultatet från assess-stakeholder för att avgöra om processen ska fortsätta</li>
+        <li><strong>register-personal-economy-information:</strong> Körs om gateway returnerar "No" (approved)</li>
+        <li><strong>Rejected stakeholder evaluation:</strong> Processen avslutas om gateway returnerar "Yes" (rejected)</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>register-household-economy-information:</strong> Körs parallellt i household subprocessen (använder samma kreditbedömning)</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>DMN-modell:</strong> assess-stakeholder.dmn innehåller beslutslogik och affärsregler. Regeln kan uppdateras utan kodändringar genom att uppdatera DMN-modellen</li>
+        <li><strong>Kreditpolicy:</strong> Bankens kreditpolicy definierar kriterier för årsinkomst, DTI-ratio, och kredithistorik</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-stakeholder.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>API Dokumentation</h2>
+      <p class="muted">Beskrivning av API-endpoints som används eller exponeras.</p>
+      
+      <h3>API-endpoints (exponerade)</h3>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Metod</th>
+          <th>Request</th>
+          <th>Response</th>
+          <th>Felkoder</th>
+        </tr>
+        <tr>
+          <td><code>/api/assess-stakeholder</code></td>
+          <td>POST</td>
+          <td><code>{ "creditInformation": {...}, "engagements": [...], "årsinkomst": "number", "DTI": "number", "kredithistorik": {...}, "applicationId": "uuid" }</code></td>
+          <td><code>{ "beslut": "APPROVED" | "REJECTED", "riskkategori": "string", "motivering": "string", "status": "success" }</code></td>
+          <td>400 (Bad Request), 500 (Server Error)</td>
+        </tr>
+      </table>
+      
+      <h3>DMN Decision Table</h3>
+      <div class="card">
+        <ul>
+          <li><strong>DMN-fil:</strong> assess-stakeholder.dmn</li>
+          <li><strong>Besluts-ID:</strong> assess-stakeholder</li>
+          <li><strong>Hit Policy:</strong> FIRST (första matchande regel används)</li>
+          <li><strong>Inputs:</strong> årsinkomst, DTI-ratio (debt-to-income), kreditscore, kredithistorik</li>
+          <li><strong>Outputs:</strong> beslut (APPROVED/REJECTED), riskkategori, motivering</li>
+        </ul>
+      </div>
+      
+      <h3>Autentisering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponerad endpoint:</strong> Kräver OAuth 2.0 Bearer token i Authorization header</li>
+          <li><strong>DMN Engine:</strong> Intern autentisering via API Gateway</li>
+        </ul>
+      </div>
+      
+      <h3>Felhantering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>400 Bad Request:</strong> Ogiltig input (t.ex. saknade obligatoriska fält eller ogiltiga värden)</li>
+          <li><strong>500 Server Error:</strong> Internt serverfel eller DMN Engine-fel</li>
+        </ul>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valuate bostad</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Valuate bostad</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Valuate bostad</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-object.bpmn</li>
+        <li><strong>Element ID:</strong> valuate-property</li>
+        <li><strong>Nodtyp:</strong> serviceTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken värderar fastigheten automatiskt genom att hämta data från externa källor som Lantmäteriet, Mäklarstatistik, Booli, och andra fastighetsregister. Detta är en kritisk del av bolåneansökan eftersom fastighetsvärdet avgör maximalt lånebelopp och används i kreditbedömningen. Systemet hämtar information om fastighetens adress, storlek, byggår, och jämför med liknande fastigheter i området för att beräkna ett värderat värde. Värderingen kan vara automatisk (baserat på registerdata) eller kräva manuell granskning vid behov. Resultatet används för att beräkna maximalt lånebelopp och kontantinsatskrav.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>valuate-property</strong> är en del av <strong>object</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs när gateway "needs-valuation" returnerar "Yes", vilket indikerar att fastighetsvärdering behövs. Värdering behövs alltid vid Purchase när källan till eget kapital är försäljning av annan fastighet, eller vid andra ändamål. Efter att fastigheten har värderats fortsätter processen till gateway "Gateway_0u4o84x" och sedan till End.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Object fill:#1d4ed8,color:#fff
+    style Valuate fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Object Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Start Event]
+    Purposes{Purposes?<br/>Gateway}
+    RegisterSource[register-source-of-equity<br/>userTask]
+    Gateway1[Gateway Merge]
+    NeedsValuation{needs-valuation?<br/>Gateway}
+    Valuate[valuate-property<br/>serviceTask]
+    Gateway2[Gateway Merge]
+    End[End Event]
+    RegisterLoan[register-loan-details<br/>userTask]
+    ObjectInfo[object-information<br/>subprocess]
+    ObjectsValid{objects-valid?<br/>Gateway}
+    Rejected[Object rejected]
+    
+    Start --> Purposes
+    Purposes -->|Purchase| RegisterSource
+    Purposes -->|Refinancing/Move loan| RegisterLoan
+    RegisterSource --> Gateway1
+    Gateway1 --> NeedsValuation
+    NeedsValuation -->|Yes| Valuate
+    NeedsValuation -->|No| Gateway2
+    Valuate --> Gateway2
+    Gateway2 --> End
+    RegisterLoan --> ObjectInfo
+    ObjectInfo --> ObjectsValid
+    ObjectsValid -->|All| Gateway1
+    ObjectsValid -->|Some| RegisterLoan
+    ObjectsValid -->|None| Rejected
+    
+    style RegisterSource fill:#3b82f6,color:#fff
+    style RegisterLoan fill:#3b82f6,color:#fff
+    style Valuate fill:#3b82f6,color:#fff
+    style ObjectInfo fill:#1d4ed8,color:#fff
+    style Purposes fill:#fbbf24,color:#000
+    style NeedsValuation fill:#fbbf24,color:#000
+    style ObjectsValid fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Object Subprocess Flow visar: Start → purposes gateway → register-source-of-equity (om Purchase) eller register-loan-details (om Refinancing/Move loan) → needs-valuation → valuate-property (om Yes) → End.</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>Gateway "Gateway_1uyee92":</strong> Merge gateway som samlar flöden från register-source-of-equity och objects-valid (All)</li>
+          <li><strong>needs-valuation:</strong> Gateway som avgör om fastighetsvärdering behövs. Måste returnera "Yes" för att valuate-property ska köras</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Gateway "Gateway_0u4o84x":</strong> Merge gateway som samlar flöden från needs-valuation (No) och valuate-property</li>
+          <li><strong>Object Subprocess End:</strong> När valuate-property är klar slutförs object subprocessen</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Detta är en automatisk bakgrundsprocess (serviceTask) som körs utan direkt användarinteraktion. Kunden ser ingen direkt UI, men resultatet påverkar vilket lånebelopp som kan erbjudas och vilka kontantinsatskrav som gäller.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Processen körs automatiskt när fastighetsinformation är tillgänglig</li><li>Kunden fortsätter med ansökningsprocessen medan värderingen görs i bakgrunden</li><li>Vid slutförd värdering får kunden information om fastighetsvärde och maximalt lånebelopp</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Ingen direkt användarinteraktion – automatisk systemprocess</li>
+          <li><strong>Design:</strong> N/A – backend-process</li>
+          
+        </ul>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare kan se status för värderingen i systemloggar eller admin-gränssnitt. Värderingsresultatet visas i ansökningsöversikten tillsammans med fastighetsinformation, värderingsmetod, och eventuella flaggor eller varningar.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Systemet kör värderingen automatiskt när fastighetsinformation är tillgänglig</li><li>Handläggare ser värderingsresultatet i ansökningsöversikten</li><li>Vid behov kan handläggare granska värderingen och begära manuell värdering eller justering</li><li>Handläggare kan se värderingsmetod och jämförelse med liknande fastigheter</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska värderingsresultat, Se värderingsmetod och jämförelse, Begära manuell värdering (vid behov), Justera värdering (vid behov)</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas automatiskt när fastighetsinformation (adress, fastighetsbeteckning) är tillgänglig från ansökningsdata.</li><li>Systemet identifierar fastighetsinformation (adress, fastighetsbeteckning) från ansökningsdata.</li><li>Ett API-anrop görs till Lantmäteriet, Mäklarstatistik, Booli, eller andra fastighetsregister för att hämta fastighetsinformation (storlek, byggår, typ, etc.).</li><li>Systemet jämför fastigheten med liknande fastigheter i området baserat på storlek, byggår, typ, och plats för att beräkna ett värderat värde.</li><li>Värderingen kan vara automatisk (baserat på registerdata och jämförelse) eller kräva manuell granskning vid behov (t.ex. unika fastigheter, osäker data).</li><li>Värderingsresultatet sparas i processens datastore tillsammans med värderingsmetod, jämförelse, och eventuella flaggor eller varningar.</li><li>Om värderingen lyckas, fortsätter processen till nästa steg. Vid fel loggas informationen och processen kan avbrytas eller skickas till manuell hantering.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en serviceTask utan egna gateways. Den körs sekventiellt när fastighetsinformation är tillgänglig och måste slutföras framgångsrikt för att efterföljande steg ska kunna köras. Om värderingen kräver manuell granskning kan processen flaggas för manuell hantering.</p>
+        <p><strong>Felhantering:</strong> Vid timeout eller fel från fastighetsregister ska systemet logga felet med detaljerad information (felkod, meddelande, timestamp). Vid tillfälliga fel kan retry-logik implementeras med exponentiell backoff. Om fastigheten inte hittas i register kan processen flaggas för manuell värdering. Om värderingen är osäker kan processen flaggas för manuell granskning.</p>
+        <p><strong>Edge cases:</strong> Nya fastigheter som inte finns i register (kan kräva manuell värdering), unika fastigheter utan jämförelseobjekt (kan kräva manuell värdering), fastigheter med ofullständig data (kan kräva manuell komplettering), fastigheter med osäker värdering (kan kräva manuell granskning), data från olika källor som kan vara inkonsistenta.</p>
+      </div>
+      
+      <details>
+        <summary>Sekvensdiagram - Fastighetsvärdering</summary>
+        <div class="mermaid">
+sequenceDiagram
+    participant Camunda as BPMN Engine<br/>(Camunda)
+    participant Service as Valuation Service
+    participant Lantmateriet as Lantmäteriet
+    participant Maklarstatistik as Mäklarstatistik
+    participant Booli as Booli
+    participant Comparison as Comparison Service
+    participant Engine as Valuation Engine
+    participant Store as Valuation Data Store
+    
+    Note over Camunda: Triggas när<br/>fastighetsinfo är tillgänglig
+    Camunda->>Service: Exekvera valuate-property
+    Service->>Service: Identifiera fastighetsinfo<br/>(adress, fastighetsbeteckning)
+    
+    par Parallella API-anrop
+        Service->>Lantmateriet: REST API: Hämta fastighetsinfo<br/>(adress/fastighetsbeteckning)
+        Lantmateriet-->>Service: Fastighetsinfo<br/>(storlek, byggår, typ)
+    and
+        Service->>Maklarstatistik: REST API: Hämta jämförelse<br/>(liknande fastigheter)
+        Maklarstatistik-->>Service: Jämförelseobjekt<br/>(försäljningspriser)
+    and
+        Service->>Booli: REST API: Hämta jämförelse<br/>(liknande fastigheter)
+        Booli-->>Service: Jämförelseobjekt<br/>(försäljningspriser)
+    end
+    
+    Service->>Comparison: Jämför fastighet<br/>med liknande (storlek, byggår, typ, plats)
+    Comparison-->>Service: Jämförelseresultat
+    
+    Service->>Engine: Beräkna värderat värde<br/>(baserat på jämförelse)
+    Engine-->>Service: Värderat värde + metod
+    
+    alt Värdering lyckas
+        Service->>Store: Spara värderingsresultat<br/>+ metadata + jämförelse
+        Store-->>Service: Bekräftelse
+        Service->>Camunda: Success + värderingsresultat
+        Camunda->>Camunda: Publicera event för<br/>efterföljande steg
+    else Värdering osäker eller fel
+        Service->>Camunda: Flagga för manuell granskning
+        Camunda->>Camunda: Pausa processen
+    end
+    
+    alt API-timeout eller fel
+        Service->>Service: Retry med exponentiell backoff
+        Service->>Lantmateriet: Retry API-anrop
+        Lantmateriet-->>Service: Fastighetsinfo
+    else Fallback till alternativ källa
+        Service->>Service: Växla till Mäklarstatistik/Booli
+        Service->>Maklarstatistik: API-anrop till alternativ källa
+        Maklarstatistik-->>Service: Fastighetsinfo
+    else Fastighet hittas inte
+        Lantmateriet-->>Service: 404 Not Found
+        Service->>Camunda: Error: Fastighet hittas inte
+        Camunda->>Camunda: Flagga för manuell värdering
+    end
+        </div>
+        <p class="muted">Sekvensdiagram visar tidslinje för interaktioner: BPMN Engine triggar Valuation Service, som gör parallella API-anrop till flera fastighetsregister, jämför fastigheter, beräknar värderat värde, sparar resultat, och hanterar fel med retry-logik och fallback mellan olika källor.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Fastighetsinformation (adress, fastighetsbeteckning)</td>
+          <td>Ansökningsdata eller föregående steg</td>
+          <td>PropertyInfo</td>
+          <td>Ja</td>
+          <td>Grundläggande fastighetsinformation för att identifiera rätt fastighet i register</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla värdering till rätt ansökan och möjliggöra spårbarhet</td>
+        </tr>
+        <tr>
+          <td>Befintlig värdering (om tillgänglig)</td>
+          <td>Tidigare ansökningar eller session</td>
+          <td>PropertyValuation</td>
+          <td>Nej</td>
+          <td>Om fastigheten redan har värderats i tidigare ansökan kan denna återanvändas eller användas som utgångspunkt</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata och fastighetsinformation</li>
+        <li><strong>Valuation Data Store:</strong> Tidigare värderingar om tillgänglig</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li><strong>Lantmäteriet:</strong> Offentligt register som innehåller fastighetsinformation inklusive fastighetsbeteckning, storlek, byggår, och typ. Detta är primär datakälla för fastighetsinformation.</li>
+        <li><strong>Mäklarstatistik:</strong> Fastighetsregister som innehåller försäljningspriser och marknadsdata för jämförelse med liknande fastigheter.</li>
+        <li><strong>Booli:</strong> Fastighetsregister som innehåller försäljningspriser och marknadsdata för jämförelse med liknande fastigheter.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+        <li><strong>Valuation Data Store:</strong> Lagrar värderingsresultat för användning i efterföljande steg</li>
+      </ul>
+      
+
+      <details>
+        <summary>Data Flow Diagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Input[Fastighetsinformation<br/>Adress, Fastighetsbeteckning]
+    
+    Lantmateriet[Lantmäteriet<br/>Fastighetsinfo]
+    Maklarstatistik[Mäklarstatistik<br/>Jämförelseobjekt]
+    Booli[Booli<br/>Jämförelseobjekt]
+    
+    Transform1[Transformation<br/>Normalisera data]
+    Transform2[Transformation<br/>Jämför fastigheter]
+    Transform3[Transformation<br/>Beräkna värderat värde]
+    
+    Output[Värderingsresultat<br/>Värderat värde, Metod,<br/>Jämförelse, Metadata]
+    
+    Input -->|API-anrop| Lantmateriet
+    Input -->|API-anrop| Maklarstatistik
+    Input -->|API-anrop| Booli
+    
+    Lantmateriet -->|Fastighetsinfo| Transform1
+    Maklarstatistik -->|Jämförelseobjekt| Transform2
+    Booli -->|Jämförelseobjekt| Transform2
+    
+    Transform1 -->|Normaliserad data| Transform2
+    Transform2 -->|Jämförelseresultat| Transform3
+    Transform3 -->|Värderat värde| Output
+    
+    style Input fill:#dbeafe,color:#000
+    style Lantmateriet fill:#fef3c7,color:#000
+    style Maklarstatistik fill:#fef3c7,color:#000
+    style Booli fill:#fef3c7,color:#000
+    style Transform1 fill:#ddd6fe,color:#000
+    style Transform2 fill:#ddd6fe,color:#000
+    style Transform3 fill:#ddd6fe,color:#000
+    style Output fill:#d1fae5,color:#000
+        </div>
+        <p class="muted">Data Flow Diagram visar datakällor (Lantmäteriet, Mäklarstatistik, Booli), datatransformationer (normalisering, jämförelse, beräkning), och datamål (värderingsresultat).</p>
+      </details>
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Värderingsresultat (värderat värde, värderingsmetod, jämförelse)</td>
+          <td>Valuation Data Store, efterföljande steg</td>
+          <td>PropertyValuation</td>
+          <td>Strukturerat värderingsresultat inklusive värderat värde, värderingsmetod, jämförelse med liknande fastigheter, och eventuella flaggor eller varningar</td>
+        </tr>
+        <tr>
+          <td>Fastighetsinformation (storlek, byggår, typ, plats)</td>
+          <td>Processkontext, efterföljande steg</td>
+          <td>PropertyDetails</td>
+          <td>Detaljerad fastighetsinformation från register för användning i kreditbedömning</td>
+        </tr>
+        <tr>
+          <td>Värderingsstatus och metadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>ValuationStatus</td>
+          <td>Status för värderingen (completed/manual_review_required), timestamp, värderingsmetod, datakällor, och eventuella flaggor</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Lantmäteriet:</strong> Offentligt register – primär datakälla för fastighetsinformation</li>
+              <li><strong>Mäklarstatistik:</strong> Fastighetsregister – datakälla för jämförelse med liknande fastigheter</li>
+              <li><strong>Booli:</strong> Fastighetsregister – datakälla för jämförelse med liknande fastigheter</li>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API-anrop till Lantmäteriet, Mäklarstatistik, och Booli för att hämta fastighetsinformation och jämförelse. API:et exponerar endpoints för att söka fastighet baserat på adress eller fastighetsbeteckning. Stödjer filtrering och validering av data. Överväg fallback mellan olika källor om en källa inte är tillgänglig.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när fastighetsinformation är tillgänglig. Vid lyckad värdering kan events publiceras för efterföljande steg.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Värderingsresultat sparas i Valuation Data Store för användning i efterföljande steg.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST-klienter för API-anrop till fastighetsregister</li>
+              <li>Valuation Engine för beräkning av värderat värde</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Loggning via centraliserat loggsystem</li>
+            </ul>
+          </li>
+          
+          <li><strong>Arkitekturdiagram:</strong>
+            <details>
+              <summary>C4 System Context Diagram</summary>
+              <div class="mermaid">
+graph TB
+    Customer[👤 Customer<br/>Kund]
+    Handler[👤 Handler<br/>Handläggare]
+    
+    Epic[Valuate Property<br/>serviceTask]
+    
+    Lantmateriet[Lantmäteriet<br/>Offentligt register]
+    Maklarstatistik[Mäklarstatistik<br/>Fastighetsregister]
+    Booli[Booli<br/>Fastighetsregister]
+    
+    AppDB[(Application DB<br/>PostgreSQL)]
+    ValuationStore[(Valuation Data Store<br/>Värderingsresultat)]
+    
+    Customer -.->|Triggar via<br/>ansökan| Epic
+    Handler -.->|Granskar<br/>värdering| Epic
+    
+    Epic -->|REST API<br/>Hämtar fastighetsinfo| Lantmateriet
+    Epic -->|REST API<br/>Hämtar jämförelse| Maklarstatistik
+    Epic -->|REST API<br/>Hämtar jämförelse| Booli
+    Epic -->|Läser/Sparar<br/>ansökningsdata| AppDB
+    Epic -->|Sparar<br/>värderingsresultat| ValuationStore
+    
+    style Epic fill:#1d4ed8,color:#fff
+    style Lantmateriet fill:#f59e0b,color:#fff
+    style Maklarstatistik fill:#f59e0b,color:#fff
+    style Booli fill:#f59e0b,color:#fff
+    style AppDB fill:#10b981,color:#fff
+    style ValuationStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">System Context Diagram visar epic i centrum med externa system (Lantmäteriet, Mäklarstatistik, Booli), interna system (Application DB, Valuation Data Store), och användare (Customer, Handler).</p>
+            </details>
+            
+            <details>
+              <summary>Komponentdiagram</summary>
+              <div class="mermaid">
+graph TB
+    BPMN[BPMN Engine<br/>Camunda]
+    ValuationService[Valuation Service<br/>Valuate Property]
+    RESTClient1[REST Client<br/>Lantmäteriet]
+    RESTClient2[REST Client<br/>Mäklarstatistik]
+    RESTClient3[REST Client<br/>Booli]
+    ComparisonService[Comparison Service<br/>Jämför fastigheter]
+    ValuationEngine[Valuation Engine<br/>Beräkna värde]
+    ValuationStore[Valuation Data Store<br/>Värderingsresultat]
+    
+    BPMN -->|Orkestrerar| ValuationService
+    ValuationService -->|Använder| RESTClient1
+    ValuationService -->|Använder| RESTClient2
+    ValuationService -->|Använder| RESTClient3
+    ValuationService -->|Använder| ComparisonService
+    ValuationService -->|Använder| ValuationEngine
+    ValuationService -->|Sparar data| ValuationStore
+    
+    RESTClient1 -->|API-anrop| Lantmateriet[Lantmäteriet]
+    RESTClient2 -->|API-anrop| Maklarstatistik[Mäklarstatistik]
+    RESTClient3 -->|API-anrop| Booli[Booli]
+    ComparisonService -->|Jämför| ValuationEngine
+    ValuationEngine -->|Beräknar| ValuationStore
+    
+    style BPMN fill:#1d4ed8,color:#fff
+    style ValuationService fill:#3b82f6,color:#fff
+    style RESTClient1 fill:#60a5fa,color:#fff
+    style RESTClient2 fill:#60a5fa,color:#fff
+    style RESTClient3 fill:#60a5fa,color:#fff
+    style ComparisonService fill:#93c5fd,color:#fff
+    style ValuationEngine fill:#93c5fd,color:#fff
+    style ValuationStore fill:#10b981,color:#fff
+              </div>
+              <p class="muted">Komponentdiagram visar huvudkomponenter: BPMN Engine orkestrerar Valuation Service, som använder flera REST Clients för API-anrop, Comparison Service för jämförelse, Valuation Engine för beräkning, och sparar data i Valuation Data Store.</p>
+            </details>
+          </li>
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+    <section class="doc-section">
+      <h2>API Dokumentation</h2>
+      <p class="muted">Beskrivning av API-endpoints som används eller exponeras.</p>
+      
+      
+      <h3>API-endpoints (exponerade)</h3>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Metod</th>
+          <th>Request</th>
+          <th>Response</th>
+          <th>Felkoder</th>
+        </tr>
+        <tr>
+          <td><code>/api/valuate-property</code></td>
+          <td>POST</td>
+          <td><code>{ "fastighetsbeteckning": "string", "adress": "string", "applicationId": "uuid" }</code></td>
+          <td><code>{ "valuation": { "värderatVärde": "number", "värderingsmetod": "string", "jämförelseobjekt": [...] }, "status": "success", "metadata": { "datakälla": "Lantmäteriet", "timestamp": "ISO8601" } }</code></td>
+          <td>400 (Bad Request), 404 (Not Found), 500 (Server Error), 503 (Service Unavailable)</td>
+        </tr>
+      </table>
+      
+      <h3>Externa API:er (används)</h3>
+      <table>
+        <tr>
+          <th>API</th>
+          <th>Endpoint</th>
+          <th>Autentisering</th>
+          <th>Rate Limit</th>
+          <th>Beskrivning</th>
+        </tr>
+        <tr>
+          <td>Lantmäteriet</td>
+          <td><code>/api/fastighet/{fastighetsbeteckning}</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>100 requests/minut</td>
+          <td>Fastighetsregister för fastighetsinformation (adress, storlek, byggår, typ)</td>
+        </tr>
+        <tr>
+          <td>Mäklarstatistik</td>
+          <td><code>/api/properties/{adress}/comparables</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>50 requests/minut</td>
+          <td>Jämförelseobjekt för fastighetsvärdering baserat på liknande fastigheter i området</td>
+        </tr>
+        <tr>
+          <td>Booli</td>
+          <td><code>/api/properties/{adress}/valuation</code></td>
+          <td>API key (X-API-Key header)</td>
+          <td>50 requests/minut</td>
+          <td>Alternativ fastighetsvärdering baserat på marknadsdata</td>
+        </tr>
+      </table>
+      
+      <h3>Autentisering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponerad endpoint:</strong> Kräver OAuth 2.0 Bearer token i Authorization header</li>
+          <li><strong>Lantmäteriet/Mäklarstatistik/Booli:</strong> API key i X-API-Key header (hanteras av API Gateway)</li>
+        </ul>
+      </div>
+      
+      <h3>Felhantering</h3>
+      <div class="card">
+        <ul>
+          <li><strong>400 Bad Request:</strong> Ogiltig input (t.ex. ogiltig fastighetsbeteckning eller adress)</li>
+          <li><strong>404 Not Found:</strong> Fastighet hittas inte i register</li>
+          <li><strong>500 Server Error:</strong> Internt serverfel</li>
+          <li><strong>503 Service Unavailable:</strong> Extern API är otillgänglig (retry med exponentiell backoff)</li>
+          <li><strong>Timeout:</strong> 30 sekunder för externa API-anrop, retry max 3 gånger</li>
+        </ul>
+      </div>
+    </section>
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>Värderingsmetod:</strong> Värderingen baseras på jämförelse med liknande fastigheter i området. Systemet jämför fastigheten med liknande fastigheter baserat på storlek, byggår, typ, och plats. Värderat värde beräknas som genomsnitt eller median av jämförelseobjekt.</li>
+          <li><strong>Värderingsgränser:</strong> Värderat värde måste vara rimligt baserat på marknadsdata. Om värderingen avviker signifikant från marknadsdata kan processen flaggas för manuell granskning. Värderat värde används för att beräkna maximalt lånebelopp (t.ex. max 85% av värderat värde).</li>
+          <li><strong>Manuell granskning:</strong> Vissa fastigheter kan kräva manuell värdering (t.ex. unika fastigheter, osäker data, avvikande värdering). Systemet bör flagga dessa för manuell granskning.</li>
+          <li><strong>Datakvalitet:</strong> Värdering från olika källor kan variera. Systemet bör hantera inkonsistenser och flagga för manuell granskning vid behov. Överväg att använda flera källor för mer exakt värdering.</li>
+          <li><strong>Spårbarhet:</strong> Alla värderingar måste loggas med timestamp, datakällor, värderingsmetod, och eventuella flaggor för compliance och efterkontroll.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>Normalflöde med komplett underlag:</strong> Kunden eller handläggaren har lämnat kompletta och konsistenta uppgifter som uppfyller grundläggande krav.</li><li><strong>Delvis ofullständigt eller oklart underlag:</strong> Enstaka uppgifter saknas eller är motsägelsefulla, men ärendet bedöms kunna kompletteras utan att avbrytas.</li><li><strong>Tekniskt fel eller kritisk avvikelse:</strong> Centrala data inte kan läsas in, valideras eller sparas på ett säkert sätt.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>[Beskrivning av testdata som behövs]</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li>[Miljö 1: t.ex. "Local development"]</li>
+          <li>[Miljö 2: t.ex. "Staging"]</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde, kompletteringsfall samt tekniska fel eller kritiska avvikelser.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>API-timeout:</strong> Vid timeout från fastighetsregister (30 sekunder) ska systemet logga felet och implementera retry med exponentiell backoff (max 3 försök per källa). Om alla retries misslyckas för en källa, fallback till nästa källa (Lantmäteriet → Mäklarstatistik → Booli).</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) ska systemet logga felet med detaljerad information och implementera retry med exponentiell backoff. Om alla retries misslyckas för en källa, fallback till nästa källa.</li>
+          <li><strong>Databasfel:</strong> Vid databasfel (connection timeout, deadlock) när värderat värde sparas ska processen flaggas för manuell hantering och felet loggas med detaljerad information. Överväg retry för tillfälliga databasfel.</li>
+          <li><strong>Fastighetsregister-fel:</strong> Vid fel från fastighetsregister (503 Service Unavailable, 500 Server Error) ska systemet logga felet och implementera retry med exponentiell backoff. Om alla retries misslyckas för en källa, fallback till nästa källa.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Validering:</strong> Om fastighetsinformation är ogiltig (t.ex. ogiltig adress, ogiltig fastighetsbeteckning) ska processen flaggas för manuell verifiering med tydligt felmeddelande. Kunden kan behöva kontakta banken för att korrigera informationen.</li>
+          <li><strong>Fastighet hittas inte:</strong> Om fastighet inte hittas i fastighetsregister (404 Not Found) ska processen flaggas för manuell verifiering. Detta kan vara förväntat för nya fastigheter eller fastigheter med ogiltiga fastighetsbeteckningar.</li>
+          <li><strong>Osäker värdering:</strong> Om värdering är osäker (t.ex. få jämförelseobjekt, stora avvikelser mellan källor) ska processen flaggas för manuell granskning. Systemet ska logga varför värderingen är osäker.</li>
+          <li><strong>Ofullständig data:</strong> Om fastighetsinformation saknar obligatoriska fält (t.ex. storlek saknas, byggår saknas) ska processen flaggas för manuell komplettering. Systemet ska logga vilka fält som saknas.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Fallback mellan källor:</strong> Om Lantmäteriet inte är tillgänglig ska systemet automatiskt fallback till Mäklarstatistik, och om Mäklarstatistik inte är tillgänglig ska systemet fallback till Booli. Systemet ska logga vilken källa som användes.</li>
+          <li><strong>Olika värderingsmetoder:</strong> Olika källor kan använda olika värderingsmetoder (t.ex. jämförelse vs kostnadsmetod). Systemet ska normalisera värderat värde till en gemensam metod för konsistens.</li>
+          <li><strong>Nya fastigheter:</strong> Nya fastigheter utan historisk data kan sakna jämförelseobjekt. Systemet ska hantera detta gracefully och flagga för manuell granskning om jämförelseobjekt saknas.</li>
+          <li><strong>Historiska data:</strong> Värdering från olika källor kan vara inkonsistenta och kräva manuell granskning. Systemet ska identifiera inkonsistenser och flagga för manuell verifiering.</li>
+          <li><strong>Cache:</strong> Om värdering är cachad (t.ex. värderad inom senaste 30 dagarna) ska systemet använda cachad data för att undvika onödiga anrop. Överväg att validera cache-ålder för att säkerställa att data är aktuell.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Exponentiell backoff:</strong> Retry med växande intervall (1s, 2s, 4s) för tillfälliga fel (timeout, 503 Service Unavailable). Max 3 försök per källa innan fallback till nästa källa.</li>
+          <li><strong>Fallback-strategi:</strong> Om en källa misslyckas efter 3 försök, fallback till nästa källa (Lantmäteriet → Mäklarstatistik → Booli). Om alla källor misslyckas flaggas processen för manuell hantering.</li>
+          <li><strong>Retry-kriterier:</strong> Retry endast för tillfälliga fel (timeout, 503, connection refused). Inte för permanenta fel (400 Bad Request, 404 Not Found, 401 Unauthorized).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>API-anrop:</strong> Epiken exponeras via BPMN serviceTask och kan anropas via processgränssnitt. API-anrop till fastighetsregister bör implementeras med retry-logik för tillfälliga fel och timeout-hantering. Överväg fallback mellan olika källor (Lantmäteriet → Mäklarstatistik → Booli) om en källa inte är tillgänglig.</li>
+          <li><strong>Valuation Engine:</strong> Systemet måste beräkna värderat värde korrekt baserat på jämförelse med liknande fastigheter. Överväg att använda flera källor för mer exakt värdering. Värderingsmetod bör vara transparent och spårbar.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: fastighetsinformation (adress, fastighetsbeteckning), värderat värde, värderingsmetod, datakällor, jämförelseobjekt, eventuella fel eller varningar, och status (success/failure/manual_review_required). Alla värderingar ska loggas för spårbarhet.</li>
+          <li><strong>Prestanda:</strong> API-anrop till fastighetsregister kan ta 2-5 sekunder. Överväg asynkron värdering om det tar längre tid. Cache kan användas för att undvika onödiga anrop om samma fastighet värderas flera gånger (med rimlig tidsbegränsning).</li>
+          <li><strong>Datavalidering:</strong> Validera att fastighetsinformation matchar förväntat format innan värdering. Verifiera att obligatoriska fält finns med (adress, fastighetsbeteckning) och att datatyper är korrekta. Validera att värderat värde är rimligt baserat på marknadsdata.</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att inkludera fler faktorer i värderingen (t.ex. renoveringar, läge, marknadsutveckling) för mer exakt värdering. Stöd för olika värderingsmetoder (t.ex. jämförelse, kostnadsmetod, inkomstmetod). Integration med machine learning för mer sofistikerad värdering baserat på historisk data.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous1[register-source-of-equity<br/>userTask]
+    Previous2[objects-valid<br/>Gateway - All]
+    Gateway1[Gateway Merge]
+    NeedsValuation{needs-valuation?<br/>Gateway}
+    Current[valuate-property<br/>serviceTask]
+    Gateway2[Gateway Merge]
+    End[Object Subprocess<br/>End]
+    
+    Previous1 --> Gateway1
+    Previous2 --> Gateway1
+    Gateway1 --> NeedsValuation
+    NeedsValuation -->|Yes| Current
+    NeedsValuation -->|No| Gateway2
+    Current --> Gateway2
+    Gateway2 --> End
+    
+    style Current fill:#3b82f6,color:#fff
+    style Previous1 fill:#3b82f6,color:#fff
+    style Gateway1 fill:#fbbf24,color:#000
+    style NeedsValuation fill:#fbbf24,color:#000
+    style Gateway2 fill:#fbbf24,color:#000
+        </div>
+        <p class="muted">Beroendediagram visar: register-source-of-equity eller objects-valid (All) → Gateway Merge → needs-valuation → valuate-property (om Yes) → Gateway Merge → End.</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>Gateway "Gateway_1uyee92":</strong> Merge gateway som samlar flöden från register-source-of-equity och objects-valid (All)</li>
+        <li><strong>needs-valuation:</strong> Gateway som avgör om fastighetsvärdering behövs. Måste returnera "Yes" för att valuate-property ska köras</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Gateway "Gateway_0u4o84x":</strong> Merge gateway som samlar flöden från needs-valuation (No) och valuate-property</li>
+        <li><strong>Object Subprocess End:</strong> När valuate-property är klar slutförs object subprocessen</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>object-information:</strong> Körs parallellt i object subprocessen (validerar objektinformation)</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Värderingsregler:</strong> Värderat värde måste vara korrekt och rimligt</li>
+        <li><strong>Jämförelse:</strong> Regler för jämförelse med liknande fastigheter</li>
+        <li><strong>Manuell granskning:</strong> Regler för manuell granskning vid osäker värdering</li>
+        <li><strong>Kreditbedömning:</strong> Regler för användning av värderat värde i kreditbedömning</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-object.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

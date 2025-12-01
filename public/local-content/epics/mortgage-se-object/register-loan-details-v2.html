@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register loan details</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Register loan details</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Register loan details</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-object.bpmn</li>
+        <li><strong>Element ID:</strong> register-loan-details</li>
+        <li><strong>Nodtyp:</strong> userTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken ger kunden möjlighet att registrera detaljerade lånedetaljer för bolånet, inklusive lånebelopp, löptid, räntetyp (fast/rörlig), amorteringsplan, och eventuella specialvillkor. Detta är en kritisk del av bolåneansökan eftersom banken behöver veta exakt vilket lån kunden efterfrågar för att kunna göra en korrekt kreditbedömning. Kunden kan välja mellan olika lånealternativ baserat på fastighetsvärde, eget kapital, och bankens produkter. Systemet validerar att lånedetaljer är rimliga och att obligatoriska fält är ifyllda innan informationen kan sparas och processen kan fortsätta.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>register-loan-details</strong> är en del av <strong>object</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs när gateway "purposes" returnerar "Refinancing / Move loan" eller när gateway "objects-valid" returnerar "Some" (vilket indikerar att vissa objekt behöver uppdateras). Efter att lånedetaljer har registrerats fortsätter processen till <strong>object-information</strong> subprocessen för att validera objekt.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Object fill:#1d4ed8,color:#fff
+    style RegisterLoan fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Object Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Start Event]
+    Purposes{Purposes?<br/>Gateway}
+    RegisterSource[register-source-of-equity<br/>userTask]
+    Gateway1[Gateway Merge]
+    NeedsValuation{needs-valuation?<br/>Gateway}
+    Valuate[valuate-property<br/>serviceTask]
+    Gateway2[Gateway Merge]
+    End[End Event]
+    RegisterLoan[register-loan-details<br/>userTask]
+    ObjectInfo[object-information<br/>subprocess]
+    ObjectsValid{objects-valid?<br/>Gateway}
+    Rejected[Object rejected]
+    
+    Start --> Purposes
+    Purposes -->|Purchase| RegisterSource
+    Purposes -->|Refinancing/Move loan| RegisterLoan
+    RegisterSource --> Gateway1
+    Gateway1 --> NeedsValuation
+    NeedsValuation -->|Yes| Valuate
+    NeedsValuation -->|No| Gateway2
+    Valuate --> Gateway2
+    Gateway2 --> End
+    RegisterLoan --> ObjectInfo
+    ObjectInfo --> ObjectsValid
+    ObjectsValid -->|All| Gateway1
+    ObjectsValid -->|Some| RegisterLoan
+    ObjectsValid -->|None| Rejected
+    
+    style RegisterSource fill:#3b82f6,color:#fff
+    style RegisterLoan fill:#3b82f6,color:#fff
+    style Valuate fill:#3b82f6,color:#fff
+    style ObjectInfo fill:#1d4ed8,color:#fff
+    style Purposes fill:#fbbf24,color:#000
+    style NeedsValuation fill:#fbbf24,color:#000
+    style ObjectsValid fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Object Subprocess Flow visar: Start → purposes gateway → register-source-of-equity (om Purchase) eller register-loan-details (om Refinancing/Move loan) → object-information → objects-valid → (loop tillbaka om Some, eller fortsätt om All).</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>Gateway "purposes":</strong> Måste returnera "Refinancing / Move loan" för att register-loan-details ska köras första gången</li>
+          <li><strong>Gateway "objects-valid":</strong> Om den returnerar "Some" loopar processen tillbaka till register-loan-details</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>object-information:</strong> Subprocess som validerar objektinformation efter att lånedetaljer har registrerats</li>
+          <li><strong>objects-valid:</strong> Gateway som avgör om objekt är giltiga (All/Some/None)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Kunden ser ett formulär för att registrera lånedetaljer med sektioner för lånebelopp, löptid, räntetyp, amorteringsplan, och eventuella specialvillkor. Formuläret kan visa rekommenderade lånealternativ baserat på fastighetsvärde och eget kapital.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Kunden öppnar formuläret för lånedetaljer</li><li>Kunden ser rekommenderade lånealternativ baserat på fastighetsvärde och eget kapital</li><li>Kunden väljer eller anpassar lånebelopp, löptid, räntetyp (fast/rörlig), och amorteringsplan</li><li>Kunden kan lägga till eventuella specialvillkor eller önskemål</li><li>Systemet validerar att lånedetaljer är rimliga och att obligatoriska fält är ifyllda</li><li>Kunden bekräftar och sparar informationen</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Fyll i formulär, Välj lånealternativ, Anpassa lånebelopp och löptid, Välj räntetyp, Välj amorteringsplan, Spara som draft, Bekräfta och spara</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+        
+        <details>
+          <summary>User Journey Map</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start<br/>Öppna formulär]
+    View[Visa rekommenderade<br/>lånealternativ]
+    Select[Välj eller anpassa<br/>lånedetaljer]
+    Validate[Validera<br/>lånedetaljer]
+    Confirm[Bekräfta och<br/>spara]
+    Complete[Klart<br/>Fortsätt process]
+    
+    Start -->|Laddar formulär| View
+    View -->|Ser alternativ| Select
+    Select -->|Fyller i| Validate
+    Validate -->|Validering OK| Confirm
+    Validate -->|Validering misslyckas| Select
+    Confirm -->|Sparar| Complete
+    
+    style Start fill:#dbeafe,color:#000
+    style View fill:#bfdbfe,color:#000
+    style Select fill:#93c5fd,color:#000
+    style Validate fill:#fbbf24,color:#000
+    style Confirm fill:#10b981,color:#fff
+    style Complete fill:#059669,color:#fff
+          </div>
+          <p class="muted">User Journey Map visar kundens resa från start till bekräftelse, inklusive touchpoints och tidslinje.</p>
+        </details>
+        
+        <details>
+          <summary>Interaktionsflöde</summary>
+          <div class="mermaid">
+sequenceDiagram
+    participant User as Kund/Handläggare
+    participant UI as UI Formulär
+    participant API as API Service
+    participant Calculator as Payment Calculator
+    participant Validator as Validation Service
+    participant Store as Loan Data Store
+    
+    User->>UI: Öppna formulär för lånedetaljer
+    UI->>API: Hämta rekommenderade lånealternativ
+    API-->>UI: Lånealternativ (baserat på fastighetsvärde, eget kapital)
+    UI-->>User: Visar formulär + rekommenderade alternativ
+    
+    User->>UI: Väljer eller anpassar lånebelopp, löptid, räntetyp
+    UI->>Calculator: Beräkna månadskostnad (realtid)
+    Calculator-->>UI: Månadskostnad
+    UI-->>User: Visar månadskostnad
+    
+    User->>UI: Fyller i amorteringsplan, specialvillkor
+    User->>UI: Klickar "Spara som draft" eller "Bekräfta"
+    
+    alt Bekräfta
+        UI->>Validator: Validera lånedetaljer
+        Validator-->>UI: Valideringsresultat
+        
+        alt Validering OK
+            UI->>API: Spara lånedetaljer
+            API->>Store: Spara lånedetaljer + månadskostnad
+            Store-->>API: Bekräftelse
+            API-->>UI: Success
+            UI-->>User: Bekräftelse + fortsätt till nästa steg
+        else Validering misslyckas
+            UI-->>User: Felmeddelanden (vilka fält behöver korrigeras)
+            User->>UI: Korrigerar information
+        end
+    else Spara som draft
+        UI->>API: Spara som draft
+        API->>Store: Spara draft
+        Store-->>API: Bekräftelse
+        API-->>UI: Draft sparad
+        UI-->>User: Draft sparad (kan återkomma senare)
+    end
+          </div>
+          <p class="muted">Interaktionsflöde visar UI-skärmar/steg, användarinteraktioner, systemresponser, valideringar och felhantering.</p>
+        </details>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare ser samma formulär som kunden, men med ytterligare administrativa funktioner. Handläggare kan se registrerade lånedetaljer, rekommenderade lånealternativ, och eventuella flaggor eller varningar.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Handläggare öppnar ansökan och ser status för lånedetaljer</li><li>Handläggare kan se registrerade lånedetaljer och rekommenderade lånealternativ</li><li>Handläggare kan verifiera att lånedetaljer är rimliga och korrekta</li><li>Handläggare kan komplettera eller korrigera information vid behov</li><li>Handläggare kan registrera lånedetaljer å kundens vägnar vid behov</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska registrerade lånedetaljer, Verifiera lånebelopp och löptid, Komplettera eller korrigera information, Registrera å kundens vägnar (vid behov)</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas när föregående steg i object-processen har slutförts och kunden behöver registrera lånedetaljer.</li><li>Systemet presenterar formulär för lånedetaljer med sektioner för lånebelopp, löptid, räntetyp, amorteringsplan, och eventuella specialvillkor.</li><li>Systemet beräknar rekommenderade lånealternativ baserat på fastighetsvärde, eget kapital, och bankens produkter.</li><li>Kunden eller handläggare väljer eller anpassar lånebelopp, löptid, räntetyp (fast/rörlig), och amorteringsplan. Systemet stödjer olika lånealternativ.</li><li>Systemet validerar att lånedetaljer är rimliga (t.ex. lånebelopp inte överstiger fastighetsvärde minus eget kapital, löptid inom tillåtna gränser) och att obligatoriska fält är ifyllda.</li><li>Kunden eller handläggare bekräftar och sparar informationen. Systemet beräknar månadskostnad baserat på lånedetaljer.</li><li>Efter bekräftelse markeras lånedetaljer som registrerade och processen fortsätter till nästa steg i object-processen eller kreditbeslut.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en userTask där användaren måste registrera lånedetaljer. Om validering misslyckas kan användaren inte bekräfta och måste korrigera informationen. Efter bekräftelse fortsätter processen automatiskt till nästa steg. Systemet kan rekommendera lånealternativ baserat på kundens profil och bankens produkter.</p>
+        <p><strong>Felhantering:</strong> Om validering misslyckas visas tydliga felmeddelanden som indikerar vilka fält som behöver korrigeras. Användaren kan spara informationen som draft och återkomma senare. Om systemfel uppstår vid sparning loggas felet och användaren informeras. Om lånebelopp överstiger tillåtna gränser kan användaren justera belopp eller löptid.</p>
+        <p><strong>Edge cases:</strong> Kunder med komplexa lånebehov (kan kräva anpassade lösningar), kunder med ofullständig information (kan sparas som draft), lånebelopp som överstiger fastighetsvärde minus eget kapital (valideras och avvisas), löptider utanför tillåtna gränser (valideras och avvisas), kunder som ändrar information efter bekräftelse (kan kräva ombekräftelse).</p>
+      </div>
+      
+      <details>
+        <summary>Process Flow Diagram</summary>
+        <div class="mermaid">
+flowchart TD
+    Start[Start<br/>Epik triggas]
+    LoadForm[Ladda formulär<br/>+ rekommenderade alternativ]
+    UserInput[Användarinput<br/>Lånebelopp, löptid, räntetyp,<br/>amorteringsplan]
+    Calculate[Beräkna<br/>månadskostnad]
+    Validate{Validering<br/>OK?}
+    SaveDraft{Spara som<br/>draft?}
+    Confirm[Bekräfta och<br/>spara]
+    Save[Spara lånedetaljer<br/>+ månadskostnad]
+    Complete[Klart<br/>Fortsätt process]
+    Error[Felmeddelanden<br/>Korrigera information]
+    
+    Start --> LoadForm
+    LoadForm --> UserInput
+    UserInput --> Calculate
+    Calculate --> Validate
+    Validate -->|Nej| Error
+    Error --> UserInput
+    Validate -->|Ja| SaveDraft
+    SaveDraft -->|Ja| Save
+    SaveDraft -->|Nej| Confirm
+    Confirm --> Save
+    Save --> Complete
+    
+    style Start fill:#1d4ed8,color:#fff
+    style LoadForm fill:#3b82f6,color:#fff
+    style UserInput fill:#60a5fa,color:#fff
+    style Calculate fill:#93c5fd,color:#000
+    style Validate fill:#fbbf24,color:#000
+    style Confirm fill:#10b981,color:#fff
+    style Save fill:#10b981,color:#fff
+    style Complete fill:#059669,color:#fff
+    style Error fill:#ef4444,color:#fff
+        </div>
+        <p class="muted">Process Flow Diagram visar steg-för-steg flöde: ladda formulär, användarinput, beräkning, validering, draft-sparning, bekräftelse, och sparning.</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Fastighetsvärde och eget kapital</td>
+          <td>Valuate-property (serviceTask), register-source-of-equity (userTask)</td>
+          <td>PropertyValue, EquityAmount</td>
+          <td>Ja</td>
+          <td>För att beräkna maximalt lånebelopp och rekommenderade lånealternativ</td>
+        </tr>
+        <tr>
+          <td>Bankens produkter och lånealternativ</td>
+          <td>Product Catalog eller konfiguration</td>
+          <td>LoanProducts</td>
+          <td>Ja</td>
+          <td>För att presentera rekommenderade lånealternativ baserat på kundens profil</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla registrerade lånedetaljer till rätt ansökan</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata, fastighetsvärde, och eget kapital</li>
+        <li><strong>Product Catalog:</strong> Bankens produkter och lånealternativ för att presentera rekommenderade alternativ</li>
+        <li><strong>Loan Data Store:</strong> Tidigare registrerade lånedetaljer om tillgänglig</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs – all data registreras av kunden eller handläggare. Lånedetaljer kan kompletteras med räntekalkyler från bankens system.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+        <li><strong>Loan Data Store:</strong> Lagrar registrerade lånedetaljer för användning i efterföljande steg</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Registrerade lånedetaljer (lånebelopp, löptid, räntetyp, amorteringsplan)</td>
+          <td>Loan Data Store, efterföljande steg</td>
+          <td>LoanDetails</td>
+          <td>Strukturerade lånedetaljer inklusive lånebelopp, löptid, räntetyp (fast/rörlig), amorteringsplan, och eventuella specialvillkor</td>
+        </tr>
+        <tr>
+          <td>Beräknad månadskostnad</td>
+          <td>Processkontext, efterföljande steg</td>
+          <td>MonthlyPayment</td>
+          <td>Systemberäknad månadskostnad baserat på lånedetaljer för användning i kreditbedömning</td>
+        </tr>
+        <tr>
+          <td>Registreringsstatus och metadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>RegistrationStatus</td>
+          <td>Status för registreringen (completed/draft), timestamp, användar-ID, och eventuella flaggor</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+              <li><strong>Loan Data Store:</strong> Lagrar registrerade lånedetaljer</li>
+              <li><strong>Product Catalog:</strong> Bankens produkter och lånealternativ</li>
+              <li><strong>Payment Calculator Service:</strong> Tjänst för beräkning av månadskostnad</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att spara lånedetaljer och hämta lånealternativ. API:et exponerar endpoints för att registrera lånedetaljer, hämta rekommenderade lånealternativ, beräkna månadskostnad, och validera lånedetaljer.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när föregående steg i object-processen är slutförd. Vid bekräftelse publiceras event för att trigga nästa steg i processen eller kreditbeslut.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Loan Data Store för lagring av registrerade lånedetaljer.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST API för användarinteraktion</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Frontend-komponenter för låneformulär</li>
+            </ul>
+          </li>
+          
+          
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>Validering:</strong> Lånebelopp måste vara inom tillåtna gränser (t.ex. max 85% av fastighetsvärde minus eget kapital). Löptid måste vara inom tillåtna gränser (t.ex. 5-30 år). Räntetyp måste vara giltig (fast eller rörlig). Obligatoriska fält (t.ex. lånebelopp, löptid, räntetyp) måste vara ifyllda innan bekräftelse.</li>
+          <li><strong>Lånegränser:</strong> Banken har olika lånegränser beroende på produkt och riskprofil. Lånebelopp får inte överstiga fastighetsvärde minus eget kapital. Systemet bör validera att lånebelopp är inom tillåtna gränser.</li>
+          <li><strong>Räntetyper:</strong> Kunden kan välja mellan fast ränta (låst under en period) eller rörlig ränta (varierar med marknadsränta). Systemet bör presentera båda alternativen med för- och nackdelar.</li>
+          <li><strong>Amorteringsplan:</strong> Kunden kan välja mellan olika amorteringsplaner (t.ex. rak amortering, annuitetslån). Systemet bör beräkna månadskostnad baserat på vald plan.</li>
+          <li><strong>Draft-funktionalitet:</strong> Kunder kan spara informationen som draft och återkomma senare för att komplettera. Draft-information sparas men processen kan inte fortsätta förrän all obligatorisk information är ifylld och bekräftad.</li>
+          <li><strong>Kreditbedömning:</strong> Registrerade lånedetaljer används tillsammans med fastighetsvärde, eget kapital, och kundens ekonomi för att bedöma kundens finansieringsmöjligheter i efterföljande steg.</li>
+          <li><strong>Spårbarhet:</strong> Alla ändringar måste loggas med timestamp och användar-ID för spårbarhet och efterkontroll.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>Normalflöde med komplett underlag:</strong> Kunden eller handläggaren har lämnat kompletta och konsistenta uppgifter som uppfyller grundläggande krav.</li><li><strong>Delvis ofullständigt eller oklart underlag:</strong> Enstaka uppgifter saknas eller är motsägelsefulla, men ärendet bedöms kunna kompletteras utan att avbrytas.</li><li><strong>Tekniskt fel eller kritisk avvikelse:</strong> Centrala data inte kan läsas in, valideras eller sparas på ett säkert sätt.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>[Beskrivning av testdata som behövs]</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li>[Miljö 1: t.ex. "Local development"]</li>
+          <li>[Miljö 2: t.ex. "Staging"]</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde, kompletteringsfall samt tekniska fel eller kritiska avvikelser.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databasfel:</strong> Vid databasfel när lånedetaljer sparas (connection timeout, deadlock) ska systemet logga felet och flagga processen för manuell hantering. Överväg retry för tillfälliga databasfel. Användaren bör informeras om att data inte kunde sparas och att de kan försöka igen.</li>
+          <li><strong>Session timeout:</strong> Om användarens session går ut innan lånedetaljer sparas ska systemet logga felet och informera användaren. Överväg att spara lånedetaljer automatiskt när användaren fyller i information för att undvika dataförlust.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) när lånedetaljer sparas ska systemet logga felet och informera användaren. Överväg retry för tillfälliga nätverksfel.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Valideringsfel:</strong> Om validering misslyckas (t.ex. negativt lånebelopp, ofullständig information, lånebelopp överstiger tillåtna gränser) ska systemet visa tydliga felmeddelanden och låta användaren korrigera informationen. Validering ska ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Ofullständig information:</strong> Om obligatoriska fält saknas (t.ex. lånebelopp saknas, löptid saknas) ska systemet förhindra bekräftelse och visa tydliga felmeddelanden. Användaren bör informeras om vilka fält som saknas.</li>
+          <li><strong>Lånegränser:</strong> Om lånebelopp överstiger tillåtna gränser (max 85% av fastighetsvärde) ska systemet visa tydligt felmeddelande och låta användaren korrigera informationen. Användaren bör informeras om maximalt tillåtet lånebelopp.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Stora lånebelopp:</strong> Om lånebelopp är mycket stort (>10M SEK) ska systemet validera att detta är rimligt och flagga för manuell granskning om nödvändigt. Överväg att kräva särskild godkännande för stora lånebelopp.</li>
+          <li><strong>Långa löptider:</strong> Om löptid är mycket lång (>30 år) ska systemet validera att detta är rimligt och flagga för manuell granskning om nödvändigt. Överväg att kräva särskild godkännande för långa löptider.</li>
+          <li><strong>Höga månadskostnader:</strong> Om månadskostnad är mycket hög (>50% av disponibel inkomst) ska systemet identifiera detta och flagga för manuell granskning. Detta kan vara ett tecken på ekonomiska problem.</li>
+          <li><strong>Historiska data:</strong> Om lånedetaljer ändras under ansökningsprocessen ska systemet spåra ändringar och logga dem för spårbarhet. Överväg att kräva manuell granskning för stora ändringar.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databas:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga databasfel. Max 3 försök innan processen flaggas för manuell hantering.</li>
+          <li><strong>Session:</strong> Om session går ut ska systemet informera användaren och ge möjlighet att logga in igen. Överväg att spara lånedetaljer automatiskt för att undvika dataförlust.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>UI/UX:</strong> Formuläret bör vara tydligt och lättläst med tydliga sektioner för lånebelopp, löptid, räntetyp, och amorteringsplan. Stöd för att visa rekommenderade lånealternativ. Validering ska ske i realtid för snabb feedback. Överväg att visa månadskostnad i realtid när användaren ändrar lånedetaljer.</li>
+          <li><strong>Beräkningar:</strong> Systemet måste beräkna månadskostnad korrekt baserat på lånedetaljer. Överväg att visa både månadskostnad och total kostnad för transparens. Beräkningar bör ske i realtid när användaren ändrar lånedetaljer.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: när lånedetaljer registrerades, vem som registrerade (kund/handläggare), lånebelopp, löptid, räntetyp, amorteringsplan, månadskostnad, och eventuella flaggor. Alla ändringar ska loggas för spårbarhet.</li>
+          <li><strong>Prestanda:</strong> Formuläret bör laddas snabbt (< 2 sekunder). Beräkningar (månadskostnad) bör ske i realtid när användaren ändrar lånedetaljer.</li>
+          <li><strong>Datavalidering:</strong> Validera att lånebelopp är positiva tal och inom tillåtna gränser. Verifiera att obligatoriska fält finns med innan bekräftelse tillåts. Validera att löptid är inom tillåtna gränser. Validering bör ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att importera lånedetaljer från bankens system om kunden är befintlig kund. Stöd för att jämföra olika lånealternativ. Integration med räntekalkyler för mer exakta beräkningar.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    Purposes{Purposes?<br/>Gateway}
+    Gateway1[Gateway Merge]
+    Current[register-loan-details<br/>userTask]
+    ObjectInfo[object-information<br/>subprocess]
+    ObjectsValid{objects-valid?<br/>Gateway}
+    Gateway2[Gateway Merge]
+    NeedsValuation{needs-valuation?<br/>Gateway}
+    End[Object Subprocess<br/>End]
+    
+    Start --> Purposes
+    Purposes -->|Refinancing/Move loan| Gateway1
+    Gateway1 --> Current
+    Current --> ObjectInfo
+    ObjectInfo --> ObjectsValid
+    ObjectsValid -->|All| Gateway2
+    ObjectsValid -->|Some| Gateway1
+    ObjectsValid -->|None| End
+    Gateway2 --> NeedsValuation
+    NeedsValuation --> End
+    
+    style Current fill:#3b82f6,color:#fff
+    style ObjectInfo fill:#1d4ed8,color:#fff
+    style Purposes fill:#fbbf24,color:#000
+    style ObjectsValid fill:#fbbf24,color:#000
+    style NeedsValuation fill:#fbbf24,color:#000
+        </div>
+        <p class="muted">Beroendediagram visar: Start → purposes gateway → register-loan-details (om Refinancing/Move loan) → object-information → objects-valid → (loop tillbaka om Some, eller fortsätt om All).</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>Gateway "purposes":</strong> Måste returnera "Refinancing / Move loan" för att register-loan-details ska köras första gången</li>
+        <li><strong>Gateway "objects-valid":</strong> Om den returnerar "Some" loopar processen tillbaka till register-loan-details</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>object-information:</strong> Subprocess som validerar objektinformation efter att lånedetaljer har registrerats</li>
+        <li><strong>objects-valid:</strong> Gateway som avgör om objekt är giltiga (All/Some/None)</li>
+        <li><strong>needs-valuation:</strong> Gateway som avgör om fastighetsvärdering behövs (om All)</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>register-source-of-equity:</strong> Körs parallellt om purposes är "Purchase"</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Valideringsregler:</strong> Lånedetaljer måste vara korrekta och kompletta</li>
+        <li><strong>Lånegränser:</strong> Max 85% av fastighetsvärde</li>
+        <li><strong>Beräkningar:</strong> Regler för beräkning av månadskostnad</li>
+        <li><strong>Kreditbedömning:</strong> Regler för användning av lånedetaljer i kreditbedömning</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-object.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>

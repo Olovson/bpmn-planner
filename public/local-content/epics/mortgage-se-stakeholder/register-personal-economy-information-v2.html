@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register personal economy information</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.1rem;
+    }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted { color: var(--text-muted); font-size: 0.9rem; }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .doc-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+    }
+    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    .mermaid {
+      margin: 16px 0;
+      text-align: center;
+    }
+    details {
+      margin: 12px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+    details summary:hover {
+      background: #bfdbfe;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    
+    
+    <div class="doc-badge">📄 Lokal version – Förbättrat innehåll</div>
+
+    <section class="doc-section">
+      <h1>Epic – Register personal economy information</h1>
+      <ul>
+        <li><strong>Epic-namn:</strong> Register personal economy information</li>
+        <li><strong>BPMN-fil:</strong> mortgage-se-stakeholder.bpmn</li>
+        <li><strong>Element ID:</strong> register-personal-economy-information</li>
+        <li><strong>Nodtyp:</strong> userTask</li>
+        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
+        <li><strong>Ägare:</strong> Produktteam Kredit / Arkitektur</li>
+        <li><strong>Confluence:</strong> <a href="#confluence-link">#confluence-link</a></li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>Syfte & Värde</h2>
+      <p class="muted">Beskrivning av epikens syfte och affärsvärde.</p>
+      <div class="card">
+        <p>Epiken ger kunden eller medsökande möjlighet att registrera sin personliga ekonomi, inklusive inkomst, utgifter, och andra ekonomiska förhållanden. Denna information används för att bedöma kundens återbetalningsförmåga och är kritisk för kreditbedömningen. Kunden kan registrera flera inkomstkällor (lön, egenföretag, kapitalinkomster, etc.) och återkommande utgifter (hyra, räkningar, lån, etc.). Systemet validerar att inkomster och utgifter är rimliga och att obligatoriska fält är ifyllda innan informationen kan sparas och processen kan fortsätta.</p>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Processkontext</h2>
+      <p class="muted">Var epicen befinner sig i Application-processen.</p>
+      <div class="card">
+        <p>Epiken <strong>register-personal-economy-information</strong> är en del av <strong>stakeholder</strong> subprocessen i <strong>mortgage-se-application</strong> processen. Den körs efter <strong>assess-stakeholder</strong> när gateway "is-stakeholder-rejected" returnerar "No" (approved), vilket indikerar att kunden har godkänts för fortsatt handläggning. Efter att personlig ekonomi har registrerats slutförs stakeholder subprocessen och processen fortsätter till <strong>object</strong> subprocessen.</p>
+        
+        <details>
+          <summary>Application Process Flow</summary>
+          <div class="mermaid">
+flowchart TD
+    Start[Application Start]
+    InternalData[internal-data-gathering<br/>subprocess]
+    Gateway1[Parallel Gateway]
+    Household[household<br/>subprocess]
+    Stakeholders[stakeholders<br/>subprocess]
+    Object[object<br/>subprocess]
+    Gateway2[Parallel Gateway]
+    Confirm[confirm-application]
+    End[Application End]
+    
+    Start --> InternalData
+    InternalData --> Gateway1
+    Gateway1 -->|Parallel| Household
+    Gateway1 -->|Parallel| Stakeholders
+    Stakeholders --> Object
+    Household --> Gateway2
+    Stakeholders --> Gateway2
+    Object --> Gateway2
+    Gateway2 -->|All complete| Confirm
+    Confirm --> End
+    
+    style Stakeholders fill:#1d4ed8,color:#fff
+    style Register fill:#3b82f6,color:#fff
+          </div>
+          <p class="muted">Application Process Flow visar övergripande flöde: Application startar → internal-data-gathering → parallellt household och stakeholders → object → confirm-application.</p>
+        </details>
+        
+        <details>
+          <summary>Stakeholder Subprocess Flow</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start Event]
+    HasConsented{has-consented-to-<br/>credit-check?}
+    Consent[consent-to-credit-check<br/>userTask]
+    DidConsent{did-consent?}
+    Gateway[Gateway Merge]
+    FetchPersonal[fetch-personal-information<br/>serviceTask]
+    Evaluate[evaluate-personal-information<br/>businessRuleTask]
+    Gateway2{is-personal-information-<br/>rejected?}
+    FetchCredit[fetch-credit-information<br/>serviceTask]
+    Assess[assess-stakeholder<br/>businessRuleTask]
+    Gateway3{is-stakeholder-<br/>rejected?}
+    Register[register-personal-economy-<br/>information<br/>userTask]
+    End[End Event]
+    Rejected1[Rejected credit check]
+    Rejected2[Rejected personal<br/>information]
+    Rejected3[Rejected stakeholder<br/>evaluation]
+    
+    Start --> HasConsented
+    HasConsented -->|No| Consent
+    HasConsented -->|Yes| Gateway
+    Consent --> DidConsent
+    DidConsent -->|Yes| Gateway
+    DidConsent -->|No| Rejected1
+    Gateway --> FetchPersonal
+    FetchPersonal --> Evaluate
+    Evaluate --> Gateway2
+    Gateway2 -->|No| FetchCredit
+    Gateway2 -->|Yes| Rejected2
+    FetchCredit --> Assess
+    Assess --> Gateway3
+    Gateway3 -->|No| Register
+    Gateway3 -->|Yes| Rejected3
+    Register --> End
+    
+    style FetchPersonal fill:#3b82f6,color:#fff
+    style Consent fill:#3b82f6,color:#fff
+    style Evaluate fill:#f59e0b,color:#fff
+    style FetchCredit fill:#3b82f6,color:#fff
+    style Assess fill:#f59e0b,color:#fff
+    style Register fill:#3b82f6,color:#fff
+    style HasConsented fill:#fbbf24,color:#000
+    style DidConsent fill:#fbbf24,color:#000
+    style Gateway2 fill:#fbbf24,color:#000
+    style Gateway3 fill:#fbbf24,color:#000
+    style Rejected1 fill:#ef4444,color:#fff
+    style Rejected2 fill:#ef4444,color:#fff
+    style Rejected3 fill:#ef4444,color:#fff
+          </div>
+          <p class="muted">Stakeholder Subprocess Flow visar: Start → has-consented-to-credit-check → consent-to-credit-check (om No) → did-consent → fetch-personal-information → evaluate-personal-information → fetch-credit-information → assess-stakeholder → register-personal-economy-information (om approved).</p>
+        </details>
+        
+        <h3>Föregående steg</h3>
+        <ul>
+          <li><strong>assess-stakeholder:</strong> Måste returnera APPROVED (is-stakeholder-rejected = No) för att register-personal-economy-information ska köras</li>
+        </ul>
+        
+        <h3>Efterföljande steg</h3>
+        <ul>
+          <li><strong>Stakeholder Subprocess End:</strong> När register-personal-economy-information är klar slutförs stakeholder subprocessen</li>
+          <li><strong>object subprocess:</strong> Körs efter stakeholder subprocessen</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Användarupplevelse</h2>
+      <p class="muted">Beskrivning av användarupplevelsen för både sökande (kund) och anställd (rådgivare/admin).</p>
+      
+      <h3>Sökande (Kund)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Kunden ser ett formulär för att registrera personlig ekonomi med sektioner för inkomst, utgifter, och andra ekonomiska förhållanden. Formuläret visar tydliga fält för olika typer av inkomst (lön, egenföretag, kapitalinkomster, etc.) och utgifter (hyra, räkningar, lån, etc.).</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Kunden öppnar formuläret för personlig ekonomi</li><li>Kunden fyller i inkomstinformation: lön, egenföretag, kapitalinkomster, och andra inkomstkällor</li><li>Kunden fyller i utgiftsinformation: hyra, räkningar, lån, och andra återkommande utgifter</li><li>Systemet validerar att inkomster och utgifter är rimliga och att obligatoriska fält är ifyllda</li><li>Kunden bekräftar och sparar informationen</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Fyll i formulär, Lägg till flera inkomstkällor, Lägg till flera utgifter, Spara som draft, Bekräfta och spara</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+        
+        <details>
+          <summary>User Journey Map</summary>
+          <div class="mermaid">
+flowchart LR
+    Start[Start<br/>Öppna formulär]
+    Income[Registrera<br/>inkomster]
+    Expenses[Registrera<br/>utgifter]
+    Validate[Validera<br/>information]
+    Confirm[Bekräfta och<br/>spara]
+    Complete[Klart<br/>Fortsätt process]
+    
+    Start -->|Laddar formulär| Income
+    Income -->|Fyller i| Expenses
+    Expenses -->|Fyller i| Validate
+    Validate -->|Validering OK| Confirm
+    Validate -->|Validering misslyckas| Income
+    Confirm -->|Sparar| Complete
+    
+    style Start fill:#dbeafe,color:#000
+    style Income fill:#bfdbfe,color:#000
+    style Expenses fill:#93c5fd,color:#000
+    style Validate fill:#fbbf24,color:#000
+    style Confirm fill:#10b981,color:#fff
+    style Complete fill:#059669,color:#fff
+          </div>
+          <p class="muted">User Journey Map visar kundens resa från start till bekräftelse, inklusive touchpoints och tidslinje.</p>
+        </details>
+        
+        <details>
+          <summary>Interaktionsflöde</summary>
+          <div class="mermaid">
+sequenceDiagram
+    participant User as Kund/Handläggare
+    participant UI as UI Formulär
+    participant API as API Service
+    participant Validator as Validation Service
+    participant Store as Personal Economy Data Store
+    
+    User->>UI: Öppna formulär för personlig ekonomi
+    UI->>API: Hämta befintlig data (om draft finns)
+    API-->>UI: Befintlig data eller tom formulär
+    UI-->>User: Visar formulär
+    
+    User->>UI: Fyller i inkomstinformation (lön, egenföretag, etc.)
+    User->>UI: Fyller i utgiftsinformation (hyra, räkningar, lån, etc.)
+    User->>UI: Klickar "Spara som draft" eller "Bekräfta"
+    
+    alt Bekräfta
+        UI->>Validator: Validera inkomst och utgifter
+        Validator-->>UI: Valideringsresultat
+        
+        alt Validering OK
+            UI->>API: Spara personlig ekonomi
+            API->>Store: Spara inkomst + utgifter + metadata
+            Store-->>API: Bekräftelse
+            API-->>UI: Success
+            UI-->>User: Bekräftelse + fortsätt till nästa steg
+        else Validering misslyckas
+            UI-->>User: Felmeddelanden (vilka fält behöver korrigeras)
+            User->>UI: Korrigerar information
+        end
+    else Spara som draft
+        UI->>API: Spara som draft
+        API->>Store: Spara draft
+        Store-->>API: Bekräftelse
+        API-->>UI: Draft sparad
+        UI-->>User: Draft sparad (kan återkomma senare)
+    end
+          </div>
+          <p class="muted">Interaktionsflöde visar UI-skärmar/steg, användarinteraktioner, systemresponser, valideringar och felhantering.</p>
+        </details>
+      </div>
+      
+      <h3>Anställd (Rådgivare/Admin)</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Vad ser användaren:</strong> Handläggare ser samma formulär som kunden, men med ytterligare administrativa funktioner. Handläggare kan se om kunden har registrerat personlig ekonomi, när informationen registrerades, och eventuella flaggor eller varningar.</li>
+          <li><strong>Steg:</strong> 
+            <ul>
+              <li>Handläggare öppnar ansökan och ser status för personlig ekonomi</li><li>Handläggare kan se registrerad inkomst och utgifter för verifiering</li><li>Handläggare kan komplettera eller korrigera information vid behov</li><li>Handläggare kan registrera personlig ekonomi å kundens vägnar vid behov</li>
+            </ul>
+          </li>
+          <li><strong>Interaktioner:</strong> Granska registrerad ekonomi, Verifiera inkomst och utgifter, Komplettera eller korrigera information, Registrera å kundens vägnar (vid behov)</li>
+          <li><strong>Design:</strong> <a href="#figma-link">[Länk till Figma-design]</a></li>
+          
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Funktionellt flöde</h2>
+      <p class="muted">Steg-för-steg beskrivning av processen.</p>
+      <div class="card">
+        <ol>
+          <li>Epiken triggas när assess-stakeholder har returnerat APPROVED och processen kan fortsätta.</li><li>Systemet presenterar formulär för personlig ekonomi med sektioner för inkomst, utgifter, och andra ekonomiska förhållanden.</li><li>Kunden eller handläggare fyller i inkomstinformation: lön, egenföretag, kapitalinkomster, och andra inkomstkällor. Systemet stödjer flera inkomstkällor.</li><li>Kunden eller handläggare fyller i utgiftsinformation: hyra, räkningar, lån, och andra återkommande utgifter. Systemet stödjer flera utgifter.</li><li>Systemet validerar att inkomster och utgifter är rimliga (positiva tal, realistiska värden) och att obligatoriska fält är ifyllda.</li><li>Kunden eller handläggare bekräftar och sparar informationen. Systemet beräknar total inkomst, totala utgifter, och disponibel inkomst.</li><li>Efter bekräftelse markeras personlig ekonomi som registrerad och processen fortsätter till nästa steg i stakeholder-processen.</li>
+        </ol>
+        <p><strong>Beslutslogik:</strong> Epiken är en userTask där användaren måste registrera personlig ekonomi. Om obligatoriska fält saknas eller validering misslyckas kan användaren inte bekräfta och måste korrigera informationen. Efter bekräftelse fortsätter processen automatiskt till nästa steg.</p>
+        <p><strong>Felhantering:</strong> Om validering misslyckas visas tydliga felmeddelanden som indikerar vilka fält som behöver korrigeras. Användaren kan spara informationen som draft och återkomma senare. Om systemfel uppstår vid sparning loggas felet och användaren informeras. Information kan sparas delvis och kompletteras senare.</p>
+        <p><strong>Edge cases:</strong> Kunder med flera inkomstkällor (kan kräva aggregering), kunder med variabel inkomst (kan kräva genomsnitt eller konservativ bedömning), kunder med ofullständig information (kan sparas som draft), negativa eller orimligt höga värden (valideras och avvisas), kunder som ändrar information efter bekräftelse (kan kräva ombekräftelse).</p>
+      </div>
+      
+      <details>
+        <summary>Process Flow Diagram</summary>
+        <div class="mermaid">
+flowchart TD
+    Start[Start<br/>Epik triggas]
+    LoadForm[Ladda formulär<br/>+ befintlig data om draft]
+    IncomeInput[Användarinput<br/>Inkomstinformation]
+    ExpensesInput[Användarinput<br/>Utgiftsinformation]
+    Calculate[Beräkna<br/>total inkomst, totala utgifter,<br/>disponibel inkomst]
+    Validate{Validering<br/>OK?}
+    SaveDraft{Spara som<br/>draft?}
+    Confirm[Bekräfta och<br/>spara]
+    Save[Spara personlig ekonomi<br/>+ beräkningar]
+    Complete[Klart<br/>Fortsätt process]
+    Error[Felmeddelanden<br/>Korrigera information]
+    
+    Start --> LoadForm
+    LoadForm --> IncomeInput
+    IncomeInput --> ExpensesInput
+    ExpensesInput --> Calculate
+    Calculate --> Validate
+    Validate -->|Nej| Error
+    Error --> IncomeInput
+    Validate -->|Ja| SaveDraft
+    SaveDraft -->|Ja| Save
+    SaveDraft -->|Nej| Confirm
+    Confirm --> Save
+    Save --> Complete
+    
+    style Start fill:#1d4ed8,color:#fff
+    style LoadForm fill:#3b82f6,color:#fff
+    style IncomeInput fill:#60a5fa,color:#fff
+    style ExpensesInput fill:#60a5fa,color:#fff
+    style Calculate fill:#93c5fd,color:#000
+    style Validate fill:#fbbf24,color:#000
+    style Confirm fill:#10b981,color:#fff
+    style Save fill:#10b981,color:#fff
+    style Complete fill:#059669,color:#fff
+    style Error fill:#ef4444,color:#fff
+        </div>
+        <p class="muted">Process Flow Diagram visar steg-för-steg flöde: ladda formulär, användarinput (inkomster, utgifter), beräkning, validering, draft-sparning, bekräftelse, och sparning.</p>
+      </details>
+      
+      <details>
+        <summary>Data Flow Diagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Input1[Inkomstdata<br/>Lön, egenföretag,<br/>kapitalinkomster]
+    Input2[Utgiftsdata<br/>Hyra, räkningar,<br/>lån]
+    
+    Transform1[Aggregera<br/>Total inkomst]
+    Transform2[Aggregera<br/>Totala utgifter]
+    Transform3[Beräkna<br/>Disponibel inkomst]
+    
+    Output[Registrerad<br/>personlig ekonomi]
+    
+    Input1 --> Transform1
+    Input2 --> Transform2
+    Transform1 --> Transform3
+    Transform2 --> Transform3
+    Transform3 --> Output
+    
+    style Input1 fill:#dbeafe,color:#000
+    style Input2 fill:#dbeafe,color:#000
+    style Transform1 fill:#bfdbfe,color:#000
+    style Transform2 fill:#bfdbfe,color:#000
+    style Transform3 fill:#93c5fd,color:#000
+    style Output fill:#10b981,color:#fff
+        </div>
+        <p class="muted">Data Flow Diagram visar datakällor (inkomster, utgifter), datatransformationer (aggregering, beräkning), och datamål (registrerad personlig ekonomi).</p>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2>Inputs & Datakällor</h2>
+      <p class="muted">Beskrivning av inputs och datakällor (interna och externa).</p>
+      
+      <h3>Inputs</h3>
+      <p class="muted">Data som epiken tar emot från föregående steg eller användaren.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Källa</th>
+          <th>Typ</th>
+          <th>Obligatoriskt</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Stakeholder-information</td>
+          <td>Föregående steg i stakeholder-processen</td>
+          <td>StakeholderData</td>
+          <td>Ja</td>
+          <td>Grundläggande stakeholder-information för att identifiera rätt person som ska registrera personlig ekonomi</td>
+        </tr>
+        <tr>
+          <td>Befintlig ekonomidata (om tillgänglig)</td>
+          <td>Tidigare ansökningar eller session</td>
+          <td>EconomyData</td>
+          <td>Nej</td>
+          <td>Om kunden redan har registrerat personlig ekonomi i tidigare ansökan kan denna återanvändas eller användas som utgångspunkt</td>
+        </tr>
+        <tr>
+          <td>Ansöknings-ID</td>
+          <td>Processkontext</td>
+          <td>String/UUID</td>
+          <td>Ja</td>
+          <td>För att koppla registrerad ekonomi till rätt ansökan</td>
+        </tr>
+      </table>
+
+      <h3>Datakällor</h3>
+      <p class="muted">System och källor som epiken hämtar data från.</p>
+      
+      
+      <h4>Interna datakällor (bankens system)</h4>
+      <ul>
+        <li><strong>Application DB:</strong> Ansökningsdata och stakeholder-information</li>
+        <li><strong>Economy Data Store:</strong> Tidigare registrerad ekonomidata om tillgänglig</li>
+      </ul>
+      
+
+      
+      <h4>Externa APIs</h4>
+      <ul>
+        <li>Inga externa APIs – all data registreras av kunden eller handläggare. Ekonomidata kan kompletteras med data från fetch-engagements för att beräkna totala skulder.</li>
+      </ul>
+      
+
+      
+      <h4>Databaser</h4>
+      <ul>
+        <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+        <li><strong>Economy Data Store:</strong> Lagrar registrerad personlig ekonomi för användning i efterföljande steg</li>
+      </ul>
+      
+
+      
+    </section>
+
+    
+
+    <section class="doc-section">
+      <h2>Outputs</h2>
+      <p class="muted">Data som skapas, uppdateras eller skickas vidare.</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Mottagare</th>
+          <th>Typ</th>
+          <th>Beskrivning</th>
+        </tr>
+        
+        <tr>
+          <td>Registrerad personlig ekonomi (inkomst, utgifter)</td>
+          <td>Economy Data Store, efterföljande steg</td>
+          <td>PersonalEconomyData</td>
+          <td>Strukturerad personlig ekonomi inklusive total inkomst, totala utgifter, disponibel inkomst, och detaljerad information om inkomstkällor och utgifter</td>
+        </tr>
+        <tr>
+          <td>Beräknade värden (total inkomst, totala utgifter, disponibel inkomst)</td>
+          <td>Processkontext, efterföljande steg</td>
+          <td>CalculatedEconomy</td>
+          <td>Systemberäknade värden baserat på registrerad inkomst och utgifter för användning i kreditbedömning</td>
+        </tr>
+        <tr>
+          <td>Registreringsstatus och metadata</td>
+          <td>Processkontext, loggsystem</td>
+          <td>RegistrationStatus</td>
+          <td>Status för registreringen (completed/draft), timestamp, användar-ID, och eventuella flaggor</td>
+        </tr>
+      </table>
+    </section>
+
+    
+    <section class="doc-section">
+      <h2>Arkitektur & Systeminteraktioner</h2>
+      <p class="muted">Beskrivning av systemarkitektur, integrationer och teknisk stack.</p>
+      <div class="card">
+        <ul>
+          
+          
+          
+          <li><strong>System som interagerar:</strong>
+            <ul>
+              <li><strong>Application DB:</strong> PostgreSQL-databas för ansökningsdata och processkontext</li>
+              <li><strong>Economy Data Store:</strong> Lagrar registrerad personlig ekonomi</li>
+              <li><strong>Validation Service:</strong> Tjänst för validering av ekonomidata</li>
+            </ul>
+          </li>
+          
+          <li><strong>Integrationer:</strong>
+            <ul>
+              <li><strong>API-integrationer:</strong> REST API för att spara personlig ekonomi och hämta ekonomidata. API:et exponerar endpoints för att registrera ekonomi, hämta befintlig ekonomi, och validera ekonomidata.</li>
+              <li><strong>Event-integrationer:</strong> Processen triggas när assess-stakeholder är slutförd. Vid bekräftelse publiceras event för att trigga nästa steg i processen.</li>
+              <li><strong>Databas-integrationer:</strong> PostgreSQL för ansökningsdata. Economy Data Store för lagring av registrerad personlig ekonomi.</li>
+            </ul>
+          </li>
+          
+          <li><strong>Teknisk stack:</strong>
+            <ul>
+              <li>BPMN-processmotor (Camunda) för orkestrering</li>
+              <li>REST API för användarinteraktion</li>
+              <li>PostgreSQL för datalagring</li>
+              <li>Frontend-komponenter för ekonomiformulär</li>
+            </ul>
+          </li>
+          
+          
+          
+        </ul>
+      </div>
+    </section>
+    
+
+    
+
+    <section class="doc-section">
+      <h2>Affärsregler & Beroenden</h2>
+      <p class="muted">Beskrivning av affärsregler, kreditregler och beroenden.</p>
+      <div class="card">
+        <h3>Affärsregler</h3>
+        <ul>
+          <li><strong>Validering:</strong> Inkomster och utgifter måste vara positiva tal och rimliga värden. Negativa eller orimligt höga värden avvisas. Obligatoriska fält (t.ex. total inkomst) måste vara ifyllda innan bekräftelse.</li>
+          <li><strong>Aggregering:</strong> Systemet aggregerar flera inkomstkällor till total inkomst och flera utgifter till totala utgifter. Disponibel inkomst beräknas som total inkomst minus totala utgifter.</li>
+          <li><strong>Draft-funktionalitet:</strong> Kunder kan spara informationen som draft och återkomma senare för att komplettera. Draft-information sparas men processen kan inte fortsätta förrän all obligatorisk information är ifylld och bekräftad.</li>
+          <li><strong>Kreditbedömning:</strong> Registrerad personlig ekonomi används tillsammans med kreditupplysning och engagemang för att bedöma kundens återbetalningsförmåga i efterföljande steg.</li>
+          <li><strong>Spårbarhet:</strong> Alla ändringar måste loggas med timestamp och användar-ID för spårbarhet och efterkontroll.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Test Information</h2>
+      <p class="muted">Beskrivning av testscenarier, testdata och testmiljöer.</p>
+      <div class="card">
+        <h3>Testscenarier</h3>
+        <ul>
+          <li><strong>Normalflöde med komplett underlag:</strong> Kunden eller handläggaren har lämnat kompletta och konsistenta uppgifter som uppfyller grundläggande krav.</li><li><strong>Delvis ofullständigt eller oklart underlag:</strong> Enstaka uppgifter saknas eller är motsägelsefulla, men ärendet bedöms kunna kompletteras utan att avbrytas.</li><li><strong>Tekniskt fel eller kritisk avvikelse:</strong> Centrala data inte kan läsas in, valideras eller sparas på ett säkert sätt.</li>
+        </ul>
+
+        <h3>Testdata</h3>
+        <ul>
+          <li>[Beskrivning av testdata som behövs]</li>
+        </ul>
+
+        <h3>Testmiljöer</h3>
+        <ul>
+          <li>[Miljö 1: t.ex. "Local development"]</li>
+          <li>[Miljö 2: t.ex. "Staging"]</li>
+        </ul>
+
+        <h3>Automatiska tester</h3>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S3 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka normalflöde, kompletteringsfall samt tekniska fel eller kritiska avvikelser.</p>
+        
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Felhantering & Edge Cases</h2>
+      <p class="muted">Beskrivning av felhantering och edge cases.</p>
+      
+      <h3>Tekniska fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databasfel:</strong> Vid databasfel när ekonomi sparas (connection timeout, deadlock) ska systemet logga felet och flagga processen för manuell hantering. Överväg retry för tillfälliga databasfel. Användaren bör informeras om att data inte kunde sparas och att de kan försöka igen.</li>
+          <li><strong>Session timeout:</strong> Om användarens session går ut innan ekonomi sparas ska systemet logga felet och informera användaren. Överväg att spara ekonomi automatiskt när användaren fyller i information för att undvika dataförlust.</li>
+          <li><strong>Nätverksfel:</strong> Vid nätverksfel (connection refused, DNS failure) när ekonomi sparas ska systemet logga felet och informera användaren. Överväg retry för tillfälliga nätverksfel.</li>
+        </ul>
+      </div>
+      
+      <h3>Affärsrelaterade fel</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Valideringsfel:</strong> Om validering misslyckas (t.ex. negativ inkomst, negativ utgift, ofullständig information) ska systemet visa tydliga felmeddelanden och låta användaren korrigera informationen. Validering ska ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Ofullständig information:</strong> Om obligatoriska fält saknas (t.ex. total inkomst saknas) ska systemet förhindra bekräftelse och visa tydliga felmeddelanden. Användaren bör informeras om vilka fält som saknas.</li>
+          <li><strong>Ogiltiga värden:</strong> Om värden är ogiltiga (t.ex. negativ inkomst, negativ utgift, orimligt höga värden) ska systemet validera och visa tydliga felmeddelanden. Användaren bör informeras om vilka värden som är ogiltiga.</li>
+        </ul>
+      </div>
+      
+      <h3>Edge cases</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Många inkomstkällor/utgifter:</strong> Om användaren har många inkomstkällor eller utgifter (>20) kan formuläret bli svårläst. Överväg att gruppera eller kategorisera inkomstkällor och utgifter för bättre översikt.</li>
+          <li><strong>Noll inkomst:</strong> Om användaren har noll inkomst (t.ex. arbetslös, student) ska systemet hantera detta gracefully. Överväg att kräva manuell granskning för kunder med noll inkomst.</li>
+          <li><strong>Negativ disponibel inkomst:</strong> Om totala utgifter överstiger total inkomst (negativ disponibel inkomst) ska systemet identifiera detta och flagga för manuell granskning. Detta kan vara ett tecken på ekonomiska problem.</li>
+          <li><strong>Historiska data:</strong> Om ekonomidata ändras under ansökningsprocessen ska systemet spåra ändringar och logga dem för spårbarhet. Överväg att kräva manuell granskning för stora ändringar.</li>
+        </ul>
+      </div>
+      
+      <h3>Retry-strategier</h3>
+      <div class="card">
+        <ul>
+          <li><strong>Databas:</strong> Retry med exponentiell backoff (1s, 2s, 4s) för tillfälliga databasfel. Max 3 försök innan processen flaggas för manuell hantering.</li>
+          <li><strong>Session:</strong> Om session går ut ska systemet informera användaren och ge möjlighet att logga in igen. Överväg att spara ekonomi automatiskt för att undvika dataförlust.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Implementation Notes</h2>
+      <p class="muted">Tekniska noteringar, kända begränsningar och framtida förbättringar.</p>
+      <div class="card">
+        <ul>
+          <li><strong>UI/UX:</strong> Formuläret bör vara tydligt och lättläst med tydliga sektioner för inkomst och utgifter. Stöd för att lägga till flera inkomstkällor och utgifter. Validering ska ske i realtid för snabb feedback. Överväg autocomplete för vanliga inkomstkällor och utgifter.</li>
+          <li><strong>Loggning:</strong> Loggning ska omfatta: när ekonomi registrerades, vem som registrerade (kund/handläggare), total inkomst, totala utgifter, disponibel inkomst, och eventuella flaggor. Alla ändringar ska loggas för spårbarhet.</li>
+          <li><strong>Prestanda:</strong> Formuläret bör laddas snabbt (< 2 sekunder). Beräkningar (total inkomst, totala utgifter, disponibel inkomst) bör ske i realtid när användaren fyller i information.</li>
+          <li><strong>Datavalidering:</strong> Validera att inkomster och utgifter är positiva tal och rimliga värden. Verifiera att obligatoriska fält finns med innan bekräftelse tillåts. Validering bör ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).</li>
+          <li><strong>Framtida förbättringar:</strong> Överväg att importera ekonomidata från bankens system om kunden är befintlig kund. Stöd för att ladda upp dokument som stödjer inkomst (t.ex. lönespecifikationer). Integration med skatteverket för automatisk verifiering av inkomst.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2>Relaterade noder</h2>
+      <p class="muted">Länkar till relaterade epics, feature goals och business rules.</p>
+      
+      <details>
+        <summary>Beroendediagram</summary>
+        <div class="mermaid">
+flowchart LR
+    Previous[assess-stakeholder<br/>businessRuleTask]
+    Gateway{is-stakeholder-<br/>rejected?}
+    Current[register-personal-economy-<br/>information<br/>userTask]
+    End[Stakeholder Subprocess<br/>End]
+    Object[object<br/>subprocess]
+    Rejected[Rejected stakeholder<br/>evaluation]
+    
+    Previous --> Gateway
+    Gateway -->|No| Current
+    Gateway -->|Yes| Rejected
+    Current --> End
+    End --> Object
+    
+    style Current fill:#3b82f6,color:#fff
+    style Previous fill:#f59e0b,color:#fff
+    style Gateway fill:#fbbf24,color:#000
+    style Rejected fill:#ef4444,color:#fff
+    style Object fill:#1d4ed8,color:#fff
+        </div>
+        <p class="muted">Beroendediagram visar: assess-stakeholder → gateway → register-personal-economy-information (om approved) → Stakeholder Subprocess End → object subprocess.</p>
+      </details>
+      
+      <h3>Föregående steg</h3>
+      <ul>
+        <li><strong>assess-stakeholder:</strong> Måste returnera APPROVED (is-stakeholder-rejected = No) för att register-personal-economy-information ska köras</li>
+      </ul>
+      
+      <h3>Efterföljande steg</h3>
+      <ul>
+        <li><strong>Stakeholder Subprocess End:</strong> När register-personal-economy-information är klar slutförs stakeholder subprocessen</li>
+        <li><strong>object subprocess:</strong> Körs efter stakeholder subprocessen</li>
+      </ul>
+      
+      <h3>Parallella steg</h3>
+      <ul>
+        <li><strong>register-household-economy-information:</strong> Körs parallellt i household subprocessen (agregerar personlig ekonomi från alla medsökande)</li>
+      </ul>
+      
+      <h3>Business Rules</h3>
+      <ul>
+        <li><strong>Valideringsregler:</strong> Ekonomidata måste vara korrekt och komplett</li>
+        <li><strong>Beräkningar:</strong> Regler för beräkning av disponibel inkomst</li>
+        <li><strong>Kreditbedömning:</strong> Regler för användning av ekonomidata i kreditbedömning</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>BPMN – Process (Bild)</h2>
+      <p class="muted">Bild av BPMN-processen som epiken refererar till.</p>
+      <div class="card">
+        <p><strong>BPMN-diagram:</strong></p>
+        <p><a href="#/bpmn/mortgage-se-stakeholder.bpmn">Visa BPMN-processen</a></p>
+        <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa noden och dess kontext i processen.]</p>
+      </div>
+    </section>
+  
+  </div>
+</body>
+</html>
