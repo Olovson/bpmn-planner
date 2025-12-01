@@ -20,7 +20,7 @@ import { useIntegration } from '@/contexts/IntegrationContext';
 import { STACC_INTEGRATION_MAPPING } from '@/data/staccIntegrationMapping';
 import { extractAllTimelineNodes } from '@/lib/extractTimelineNodes';
 import { supabase } from '@/integrations/supabase/client';
-import { Settings, Filter } from 'lucide-react';
+import { Settings, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import {
@@ -61,6 +61,7 @@ export const PerNodeWorkItemsSection = () => {
 
   const [jiraMappings, setJiraMappings] = useState<Map<string, { jira_name: string | null }>>(new Map());
   const [selectedNodeType, setSelectedNodeType] = useState<NodeTypeFilterValue>('Alla');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Extract all timeline nodes
   const allNodes = useMemo(() => {
@@ -243,12 +244,25 @@ export const PerNodeWorkItemsSection = () => {
             <Settings className="h-5 w-5" />
             <CardTitle>BPMN-aktiviteter & Integrationer</CardTitle>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="h-8 w-8 p-0"
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
         </div>
         <CardDescription>
           Konfigurera extra arbetsmoment per nod. Endast bank-implementerade integrationer behöver dessa i timeline.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      {isExpanded && (
+        <CardContent>
         {enrichedNodes.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>Inga BPMN-noder hittades.</p>
@@ -763,7 +777,8 @@ export const PerNodeWorkItemsSection = () => {
             </div>
           </div>
         )}
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 };

@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { IntegrationDefaultsSection } from '@/components/config/IntegrationDefaultsSection';
 import { PerNodeWorkItemsSection } from '@/components/config/PerNodeWorkItemsSection';
 import { ProjectActivitiesSection } from '@/components/config/ProjectActivitiesSection';
+import { IntegrationsSection } from '@/components/config/IntegrationsSection';
 
 const ConfigurationPage = () => {
   const navigate = useNavigate();
@@ -59,7 +60,7 @@ const ConfigurationPage = () => {
           onSignOut={signOut}
         />
         <main className="ml-16 p-6">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <p>Laddar konfiguration...</p>
           </div>
         </main>
@@ -77,7 +78,7 @@ const ConfigurationPage = () => {
         onSignOut={signOut}
       />
       <main className="ml-16 p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">Projektkonfiguration</h1>
@@ -95,6 +96,8 @@ const ConfigurationPage = () => {
           <ProjectActivitiesSection />
 
           <PerNodeWorkItemsSection />
+
+          <IntegrationsSection />
         </div>
       </main>
     </div>

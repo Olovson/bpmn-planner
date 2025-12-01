@@ -52,7 +52,8 @@
     "improve:feature-goals:batch:v2": "vitest run tests/integration/improve-feature-goals-batch.test.ts -- v2",
     "improve:feature-goals:batch:dry": "vitest run tests/integration/improve-feature-goals-batch.test.ts -- all --dry-run",
     "improve:feature-goals:test": "vitest run tests/integration/improve-feature-goals-batch.test.ts -- v2 --file",
-    "analyze:bpmn-map": "tsx scripts/analyze-bpmn-map-updates.ts"
+    "analyze:bpmn-map": "tsx scripts/analyze-bpmn-map-updates.ts",
+    "check:missing-feature-goals": "tsx scripts/check-missing-feature-goals.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

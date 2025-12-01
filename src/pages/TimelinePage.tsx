@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { useProcessTree } from '@/hooks/useProcessTree';
@@ -10,11 +9,16 @@ import { buildGanttTasksFromProcessTree, type GanttTask } from '@/lib/ganttDataC
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { supabase } from '@/integrations/supabase/client';
 import { useIntegration } from '@/contexts/IntegrationContext';
+import { useTimelineDates, useSaveTimelineDate, applyTimelineDatesToTasks } from '@/hooks/useTimelineDates';
 import { getProcessNodeStyle, type ProcessTreeNode } from '@/lib/processTree';
 import { getFilterableNodeTypeValues, getDefaultFilterSet, getFilterableNodeTypes } from '@/lib/bpmnNodeTypeFilters';
 // Removed buildJiraName import - no longer using fallback logic
 import { gantt } from 'dhtmlx-gantt';
 import 'dhtmlx-gantt/codebase/dhtmlxgantt.css';
+import { Download } from 'lucide-react';
+import { exportTimelineToExcel } from '@/lib/timelineExport';
+import { useGlobalProjectConfig } from '@/contexts/GlobalProjectConfigContext';
+import { createDurationCalculator } from '@/lib/timelineDurationCalculator';
 
 const TimelinePage = () => {
   const navigate = useNavigate();
@@ -23,6 +27,16 @@ const TimelinePage = () => {
   const { data: rootFile } = useRootBpmnFile();
   const { data: processTree, isLoading } = useProcessTree(rootFile || 'mortgage.bpmn');
   const { useStaccIntegration } = useIntegration();
+  const { data: timelineDates } = useTimelineDates(rootFile || 'mortgage.bpmn');
+  const saveTimelineDate = useSaveTimelineDate();
+  const { config: projectConfig, loadConfig } = useGlobalProjectConfig();
+  
+  // Load configuration when root file changes
+  useEffect(() => {
+    if (rootFile) {
+      loadConfig(rootFile);
+    }
+  }, [rootFile, loadConfig]);
   
   const ganttContainerRef = useRef<HTMLDivElement>(null);
   const [tasks, setTasks] = useState<GanttTask[]>([]);
@@ -34,6 +48,19 @@ const TimelinePage = () => {
   const [enabledKinds, setEnabledKinds] = useState<Set<TimelineNodeKind>>(
     () => getDefaultFilterSet() as Set<TimelineNodeKind>,
   );
+
+  // Debug: Log when tasks state changes
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log(
+        `[TimelinePage] Tasks state changed:`,
+        {
+          tasksCount: tasks.length,
+          taskIds: tasks.slice(0, 10).map(t => ({ id: t.id, text: t.text })),
+        }
+      );
+    }
+  }, [tasks]);
 
   // View-only filtered tasks for Timeline (does not affect underlying scheduling)
   const visibleTasks = useMemo(() => {
@@ -52,6 +79,12 @@ const TimelinePage = () => {
   }, [tasks, enabledKinds]);
 
   const toGanttData = (items: GanttTask[]) => {
+    if (import.meta.env.DEV) {
+      console.log(
+        `[TimelinePage] toGanttData called with ${items.length} items`
+      );
+    }
+    
     // Convert to Gantt format
     const ganttTasks = items.map((task) => {
       // Determine integration mode for this task (if we have BPMN identity)
@@ -101,6 +134,13 @@ const TimelinePage = () => {
         const parent = taskMap.get(task.parent);
         if (parent && !added.has(parent.id)) {
           addTask(parent);
+        } else if (!parent) {
+          // Parent doesn't exist - log warning but still add the task
+          if (import.meta.env.DEV) {
+            console.warn(
+              `[TimelinePage] Task "${task.text}" (${task.id}) has missing parent "${task.parent}"`
+            );
+          }
         }
       }
       
@@ -110,6 +150,77 @@ const TimelinePage = () => {
     
     // Add all tasks in correct order
     ganttTasks.forEach(addTask);
+    
+    // If some tasks weren't added, try to add them anyway (they might have invalid parents)
+    const remainingTasks = ganttTasks.filter(t => !added.has(t.id));
+    if (remainingTasks.length > 0) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[TimelinePage] ${remainingTasks.length} tasks were not added in first pass. Adding them now.`
+        );
+      }
+      remainingTasks.forEach(task => {
+        if (!added.has(task.id)) {
+          sorted.push(task);
+          added.add(task.id);
+        }
+      });
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log(
+        `[TimelinePage] toGanttData sorting:`,
+        {
+          inputCount: items.length,
+          ganttTasksCount: ganttTasks.length,
+          sortedCount: sorted.length,
+          addedSetSize: added.size,
+          missingTasks: items.length - sorted.length,
+        }
+      );
+      
+      // Find tasks that weren't added (compare by converting IDs to strings)
+      if (items.length !== sorted.length) {
+        const sortedIds = new Set(sorted.map(t => String(t.id)));
+        const ganttTaskIds = new Set(ganttTasks.map(t => String(t.id)));
+        const missing = ganttTasks.filter(t => !sortedIds.has(String(t.id)));
+        
+        if (missing.length > 0) {
+          console.warn(
+            `[TimelinePage] Tasks not added to sorted list (${missing.length} tasks):`,
+            missing.slice(0, 20).map(t => {
+              const parent = t.parent ? String(t.parent) : '0';
+              const parentExists = parent === '0' || ganttTaskIds.has(parent);
+              return {
+                id: String(t.id),
+                text: t.text,
+                parent,
+                parentExists,
+                type: t.type,
+              };
+            })
+          );
+        }
+        
+        // Also check for tasks with missing parents
+        const tasksWithMissingParents = ganttTasks.filter(t => {
+          const parent = t.parent ? String(t.parent) : '0';
+          return parent !== '0' && !ganttTaskIds.has(parent);
+        });
+        
+        if (tasksWithMissingParents.length > 0) {
+          console.warn(
+            `[TimelinePage] Tasks with missing parents (${tasksWithMissingParents.length} tasks):`,
+            tasksWithMissingParents.slice(0, 20).map(t => ({
+              id: String(t.id),
+              text: t.text,
+              parent: String(t.parent),
+              type: t.type,
+            }))
+          );
+        }
+      }
+    }
     
     const numbered = sorted.map((task, index) => ({
       ...task,
@@ -124,8 +235,24 @@ const TimelinePage = () => {
     const loadTasksWithJiraData = async () => {
       if (!processTree) return;
 
+      // Create duration calculator based on project config
+      const durationCalculator = createDurationCalculator(projectConfig, useStaccIntegration);
+
+      // Get custom activities from config
+      const customActivities = projectConfig?.customActivities || [];
+
       const baseDate = new Date('2026-01-01');
-      const ganttTasks = buildGanttTasksFromProcessTree(processTree, baseDate, 14);
+      const ganttTasks = buildGanttTasksFromProcessTree(processTree, baseDate, durationCalculator, customActivities);
+
+      if (import.meta.env.DEV) {
+        console.log(
+          `[TimelinePage] Built Gantt tasks:`,
+          {
+            ganttTasksCount: ganttTasks.length,
+            customActivitiesCount: customActivities.length,
+          }
+        );
+      }
 
       // Fetch Jira mappings for all tasks
       if (ganttTasks.length > 0) {
@@ -163,59 +290,69 @@ const TimelinePage = () => {
               };
             });
 
-            // Safety net for problematic scheduling after \"Application - Object\":
-            // all nodes AFTER that node are flattened to the same 2-week window.
-            try {
-              const pivotIndex = tasksWithJira.findIndex(
-                (t) =>
-                  t.jira_name === 'Application - Object' ||
-                  t.text === 'Application - Object',
-              );
 
-              if (pivotIndex !== -1 && tasksWithJira[pivotIndex].start_date) {
-                const pivot = tasksWithJira[pivotIndex];
-                const fixedStart = pivot.start_date;
-                const fixedDuration = 14;
+            // Apply saved timeline dates if available
+            const finalTasks = timelineDates
+              ? applyTimelineDatesToTasks(tasksWithJira, timelineDates)
+              : tasksWithJira;
 
-                const addDays = (dateStr: string, days: number): string => {
-                  const d = new Date(dateStr + 'T00:00:00');
-                  d.setDate(d.getDate() + days);
-                  return d.toISOString().split('T')[0];
-                };
-
-                const fixedEnd = addDays(fixedStart, fixedDuration);
-
-                tasksWithJira = tasksWithJira.map((task, idx) =>
-                  idx > pivotIndex
-                    ? {
-                        ...task,
-                        start_date: fixedStart,
-                        end_date: fixedEnd,
-                        duration: fixedDuration,
-                      }
-                    : task,
-                );
-              }
-            } catch (e) {
-              console.warn(
-                '[TimelinePage] Failed to apply fallback scheduling after Application - Object:',
-                e,
+            if (import.meta.env.DEV) {
+              console.log(
+                `[TimelinePage] Setting tasks in state:`,
+                {
+                  ganttTasksCount: ganttTasks.length,
+                  tasksWithJiraCount: tasksWithJira.length,
+                  finalTasksCount: finalTasks.length,
+                  timelineDatesCount: timelineDates?.length || 0,
+                }
               );
             }
 
-            setTasks(tasksWithJira);
+            setTasks(finalTasks);
           }
         } catch (error) {
           console.error('[TimelinePage] Error loading Jira mappings:', error);
-          setTasks(ganttTasks); // Fallback to tasks without Jira data
+          // Apply saved timeline dates even on error
+          const finalTasks = timelineDates
+            ? applyTimelineDatesToTasks(ganttTasks, timelineDates)
+            : ganttTasks;
+          
+          if (import.meta.env.DEV) {
+            console.log(
+              `[TimelinePage] Setting tasks in state (error case):`,
+              {
+                ganttTasksCount: ganttTasks.length,
+                finalTasksCount: finalTasks.length,
+                timelineDatesCount: timelineDates?.length || 0,
+              }
+            );
+          }
+          
+          setTasks(finalTasks);
         }
       } else {
-        setTasks(ganttTasks);
+        // Apply saved timeline dates if available
+        const finalTasks = timelineDates
+          ? applyTimelineDatesToTasks(ganttTasks, timelineDates)
+          : ganttTasks;
+        
+        if (import.meta.env.DEV) {
+          console.log(
+            `[TimelinePage] Setting tasks in state (no Jira mappings):`,
+            {
+              ganttTasksCount: ganttTasks.length,
+              finalTasksCount: finalTasks.length,
+              timelineDatesCount: timelineDates?.length || 0,
+            }
+          );
+        }
+        
+        setTasks(finalTasks);
       }
     };
 
     loadTasksWithJiraData();
-  }, [processTree]);
+  }, [processTree, timelineDates, projectConfig, useStaccIntegration]);
 
   // Initialize DHTMLX Gantt when container is ready and we have tasks
   useEffect(() => {
@@ -254,11 +391,17 @@ const TimelinePage = () => {
           return task.jira_type.charAt(0).toUpperCase() + task.jira_type.slice(1);
         }
       },
-      { name: 'start_date', label: 'Start', width: 100, align: 'center' },
-      { name: 'end_date', label: 'End', width: 100, align: 'center' },
-      { name: 'duration', label: 'Duration (days)', width: 120, align: 'center' },
     ];
     
+    // Helper function to get ISO week number
+    const getWeekNumber = (date: Date): number => {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    };
+
     // Configure scale to show weeks
     gantt.config.scales = [
       { unit: 'month', step: 1, format: '%F %Y' },
@@ -268,24 +411,37 @@ const TimelinePage = () => {
         format: (date: Date) => {
           if (!date || !(date instanceof Date)) return '';
           
-          // Format start date
-          const day = String(date.getDate()).padStart(2, '0');
-          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const month = monthNames[date.getMonth()];
-          const startStr = `${day} ${month}`;
+          // Get week number for start of week (Monday)
+          const weekStart = new Date(date);
+          const dayOfWeek = weekStart.getDay();
+          const diff = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to Monday
+          weekStart.setDate(diff);
           
-          // Format end date (6 days later)
-          const endDate = new Date(date);
-          endDate.setDate(endDate.getDate() + 6);
-          const endDay = String(endDate.getDate()).padStart(2, '0');
-          const endMonth = monthNames[endDate.getMonth()];
-          const endStr = `${endDay} ${endMonth}`;
+          const startWeek = getWeekNumber(weekStart);
+          const startYear = weekStart.getFullYear();
           
-          return `${startStr} - ${endStr}`;
+          // Get week number for end of week (Sunday, 6 days later)
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          const endWeek = getWeekNumber(weekEnd);
+          const endYear = weekEnd.getFullYear();
+          
+          // Format as V51-V52 or V1-V2
+          if (startYear === endYear && startWeek === endWeek) {
+            return `V${startWeek}`;
+          } else if (startYear === endYear) {
+            return `V${startWeek}-V${endWeek}`;
+          } else {
+            // Week spans across year boundary
+            return `V${startWeek} (${startYear})-V${endWeek} (${endYear})`;
+          }
         }
       }
     ];
     gantt.config.scale_height = 50;
+    
+    // Make week columns narrower for better readability
+    gantt.config.min_column_width = 40; // Minimum width for week columns (default is usually 50-60)
     
     // Enable date editing
     gantt.config.editable = true;
@@ -317,6 +473,7 @@ const TimelinePage = () => {
               ? task.end_date.toISOString().split('T')[0]
               : String(task.end_date).split('T')[0];
             
+            // Update local state
             setTasks((prevTasks) =>
               prevTasks.map((t) =>
                 t.id === String(id)
@@ -329,6 +486,17 @@ const TimelinePage = () => {
                   : t
               )
             );
+
+            // Save to database if task has BPMN identity
+            if (task.bpmnFile && task.bpmnElementId && rootFile) {
+              saveTimelineDate.mutate({
+                rootBpmnFile: rootFile,
+                bpmnFile: task.bpmnFile,
+                elementId: task.bpmnElementId,
+                startDate,
+                endDate,
+              });
+            }
           }
           return true;
         });
@@ -340,11 +508,12 @@ const TimelinePage = () => {
         if (tasks.length > 0) {
           const ganttData = toGanttData(tasks);
           
+          // No links - dependencies removed per user request
           gantt.parse({ data: ganttData, links: [] });
           gantt.render();
           
           if (import.meta.env.DEV) {
-            console.log('[TimelinePage] Initial data loaded into Gantt:', ganttData.length, 'tasks');
+                console.log('[TimelinePage] Initial data loaded into Gantt:', ganttData.length, 'tasks');
           }
         }
       } catch (error) {
@@ -396,6 +565,7 @@ const TimelinePage = () => {
         })));
       }
 
+      // No links - dependencies removed per user request
       gantt.clearAll();
       gantt.parse({ data: ganttData, links: [] });
       
@@ -435,20 +605,14 @@ const TimelinePage = () => {
       />
       <main className="flex-1 ml-16 overflow-auto">
         <div className="container mx-auto p-6">
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
+            <div className="mb-6">
+              <div className="mb-2">
                 <h1 className="text-3xl font-bold mb-2">Timeline / Planning View</h1>
                 <p className="text-muted-foreground">
                   Visualize and refine time ordering for BPMN subprocesses (feature goals).
                   Each subprocess is shown with a default 2-week duration starting from 2026-01-01.
                 </p>
               </div>
-              <Button onClick={() => navigate('/configuration')} variant="outline">
-                <Settings className="h-4 w-4 mr-2" />
-                Projektkonfiguration
-              </Button>
-            </div>
             {isLoading && (
               <p className="text-sm text-muted-foreground mt-2">Loading process tree...</p>
             )}
@@ -459,10 +623,11 @@ const TimelinePage = () => {
             )}
 
             {/* BPMN type filter (view-only, same types as Process Explorer) */}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                Filter by BPMN type:
-              </span>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Filter by BPMN type:
+                </span>
               {getFilterableNodeTypes().map((filterConfig) => {
                 const kind = filterConfig.type as TimelineNodeKind;
                 const isActive = enabledKinds.has(kind);
@@ -495,6 +660,21 @@ const TimelinePage = () => {
                   </Button>
                 );
               })}
+              </div>
+              <Button
+                onClick={() => {
+                  if (tasks.length > 0) {
+                    const rootName = rootFile?.replace('.bpmn', '') || 'timeline';
+                    exportTimelineToExcel(tasks, `${rootName}-timeline.xlsx`);
+                  }
+                }}
+                variant="outline"
+                disabled={tasks.length === 0}
+                size="sm"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportera till Excel
+              </Button>
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import {
   scheduleTree,
   type ScheduledNode,
 } from '@/lib/timelineScheduling';
+import type { CustomActivity } from '@/types/globalProjectConfig';
 
 export type SortMode = 'root' | 'subprocess';
 
@@ -40,6 +41,8 @@ export interface GanttTaskMeta {
   subprocessFile?: string | null;
   matchedProcessId?: string | null;
   isReusedSubprocess?: boolean;
+  isCustomActivity?: boolean;
+  customActivityId?: string;
 }
 
 /**
@@ -168,24 +171,30 @@ export function convertToGanttTasks(
  * Builds Gantt tasks from ProcessTree using the new hierarchical scheduling algorithm.
  * 
  * New algorithm:
- * - Each leaf node (timeline node with no timeline node children) gets 2 weeks duration
- * - Each non-leaf node gets duration = 2 weeks × number of leaf nodes in its subtree
+ * - Each leaf node (timeline node with no timeline node children) gets duration from durationCalculator
+ * - Each non-leaf node gets duration = sum of children's durations
  * - Leaf nodes are scheduled sequentially (each starts when previous ends)
  * - Non-leaf nodes get startDate = min of children's startDates, endDate = max of children's endDates
+ * - Custom activities are inserted before or after BPMN activities based on placement
  * 
- * This is the recommended function to use for timeline scheduling.
+ * @param processTree - The process tree to build tasks from
+ * @param baseDate - Start date for the project
+ * @param durationCalculator - Optional function to calculate duration for each node (defaults to 14 days)
+ * @param customActivities - Optional array of custom project activities to include in timeline
+ * @returns Array of Gantt tasks
  */
 export function buildGanttTasksFromProcessTree(
   processTree: ProcessTreeNode | null,
   baseDate: Date = new Date('2026-01-01'),
-  defaultDurationDays: number = 14
+  durationCalculator?: (node: ProcessTreeNode) => number,
+  customActivities: CustomActivity[] = []
 ): GanttTask[] {
   if (!processTree) {
     return [];
   }
 
   // Use new hierarchical scheduling algorithm
-  return buildGanttTasksWithHierarchicalScheduling(processTree, baseDate);
+  return buildGanttTasksWithHierarchicalScheduling(processTree, baseDate, durationCalculator, customActivities);
 }
 
 /**
@@ -249,31 +258,113 @@ export function buildGanttTasksFromProcessTreeLegacy(
 }
 
 /**
+ * Calculate duration in days for a custom activity
+ */
+function calculateCustomActivityDuration(activity: CustomActivity): number {
+  const totalWeeks =
+    (activity.analysisWeeks ?? 0) +
+    (activity.implementationWeeks ?? 0) +
+    (activity.testingWeeks ?? 0) +
+    (activity.validationWeeks ?? 0);
+  
+  // If no work items specified, use legacy weeks field
+  if (totalWeeks === 0 && activity.weeks > 0) {
+    return activity.weeks * 7;
+  }
+  
+  return totalWeeks * 7; // Convert weeks to days
+}
+
+/**
  * New hierarchical scheduling implementation.
- * Uses leaf-count based duration calculation and sequential leaf scheduling.
+ * Uses duration calculator for leaf nodes and sequential leaf scheduling.
+ * Includes custom activities placed before or after BPMN activities.
  */
 function buildGanttTasksWithHierarchicalScheduling(
   processTree: ProcessTreeNode,
   projectStartDate: Date,
+  durationCalculator?: (node: ProcessTreeNode) => number,
+  customActivities: CustomActivity[] = [],
 ): GanttTask[] {
   // Step 1: Compute leafCount and durationDays for all nodes
-  const scheduledTree = computeLeafCountsAndDurations(processTree);
+  const scheduledTree = computeLeafCountsAndDurations(processTree, durationCalculator);
 
-  // Step 2: Schedule all nodes (assign startDate and endDate)
-  const scheduled = scheduleTree(scheduledTree, projectStartDate);
+  // Step 2: Separate custom activities by placement
+  const beforeActivities = customActivities
+    .filter((a) => a.placement === 'before-all')
+    .sort((a, b) => a.order - b.order);
+  
+  const afterActivities = customActivities
+    .filter((a) => a.placement === 'after-all')
+    .sort((a, b) => a.order - b.order);
 
-  // Step 3: Convert scheduled tree to Gantt tasks
+  // Step 3: Calculate total duration for before-activities
+  const beforeActivitiesDuration = beforeActivities.reduce(
+    (sum, activity) => sum + calculateCustomActivityDuration(activity),
+    0
+  );
+
+  // Step 4: Schedule BPMN activities starting after before-activities
+  const bpmnStartDate = new Date(projectStartDate);
+  bpmnStartDate.setDate(bpmnStartDate.getDate() + beforeActivitiesDuration);
+  const scheduled = scheduleTree(scheduledTree, bpmnStartDate);
+
+  // Step 5: Calculate when after-activities should start (after all BPMN activities)
+  const bpmnEndDate = scheduled.endDate || bpmnStartDate;
+  const afterActivitiesStartDate = new Date(bpmnEndDate);
+
+  // Step 6: Convert scheduled tree to Gantt tasks
   const tasks: GanttTask[] = [];
   const rootTaskId = `process:${scheduled.bpmnFile}:${scheduled.processId ?? scheduled.bpmnElementId ?? scheduled.id}`;
 
-  // Add root process node
+  // Step 7: Add before-activities
+  let currentDate = new Date(projectStartDate);
+  for (const activity of beforeActivities) {
+    const durationDays = calculateCustomActivityDuration(activity);
+    const startDate = new Date(currentDate);
+    const endDate = new Date(currentDate);
+    endDate.setDate(endDate.getDate() + durationDays);
+
+    tasks.push({
+      id: `custom-activity-${activity.id}`,
+      text: activity.name,
+      start_date: formatDateForGantt(startDate),
+      end_date: formatDateForGantt(endDate),
+      duration: durationDays,
+      progress: 0,
+      type: 'task',
+      parent: rootTaskId,
+      meta: {
+        kind: 'process',
+        isCustomActivity: true,
+        customActivityId: activity.id,
+      },
+    });
+
+    currentDate = new Date(endDate);
+  }
+
+  // Step 8: Add root process node (adjusted to include before-activities)
   if (scheduled.startDate && scheduled.endDate) {
+    // Root should start from project start (to include before-activities)
+    const rootStartDate = new Date(projectStartDate);
+    // Root should end at the latest of: BPMN end or after-activities end
+    const afterActivitiesEndDate = new Date(afterActivitiesStartDate);
+    for (const activity of afterActivities) {
+      afterActivitiesEndDate.setDate(
+        afterActivitiesEndDate.getDate() + calculateCustomActivityDuration(activity)
+      );
+    }
+    const rootEndDate = new Date(
+      Math.max(scheduled.endDate.getTime(), afterActivitiesEndDate.getTime())
+    );
+
     tasks.push({
       id: rootTaskId,
       text: scheduled.label,
-      start_date: formatDateForGantt(scheduled.startDate),
-      end_date: formatDateForGantt(scheduled.endDate),
-      duration: scheduled.durationDays ?? 14,
+      start_date: formatDateForGantt(rootStartDate),
+      end_date: formatDateForGantt(rootEndDate),
+      duration: Math.ceil((rootEndDate.getTime() - rootStartDate.getTime()) / (1000 * 60 * 60 * 24)),
       progress: 0,
       type: 'project',
       parent: '0',
@@ -295,6 +386,10 @@ function buildGanttTasksWithHierarchicalScheduling(
   }
 
   // Recursively add all timeline nodes
+  let addedNodesCount = 0;
+  let skippedNodesCount = 0;
+  const skippedNodes: Array<{ label: string; id: string; reason: string }> = [];
+  
   const addScheduledNodes = (
     node: ScheduledNode,
     parentTaskId: string,
@@ -336,15 +431,46 @@ function buildGanttTasksWithHierarchicalScheduling(
               (usageIndex.get(subprocessFile) ?? 0) > 1,
           },
         });
+        
+        addedNodesCount++;
 
         // Recursively process children
         const childParentId = isCallActivity ? node.id : parentTaskId;
         for (const child of node.children) {
           addScheduledNodes(child as ScheduledNode, childParentId, usageIndex);
         }
+      } else {
+        // Debug: Log nodes missing dates
+        skippedNodesCount++;
+        skippedNodes.push({
+          label: node.label,
+          id: node.id,
+          reason: 'missing startDate or endDate',
+        });
+        if (import.meta.env.DEV) {
+          console.warn(
+            `[ganttDataConverter] Node "${node.label}" (${node.id}) missing startDate or endDate.`,
+            { startDate: node.startDate, endDate: node.endDate, type: node.type, leafCount: node.leafCount, durationDays: node.durationDays }
+          );
+        }
+        // Still process children even if this node is missing dates
+        const childParentId = node.type === 'callActivity' ? node.id : parentTaskId;
+        for (const child of node.children) {
+          addScheduledNodes(child as ScheduledNode, childParentId, usageIndex);
+        }
       }
     } else {
-      // For process nodes, process all children
+      // For process nodes or non-timeline nodes, process all children
+      if (node.type === 'process') {
+        // Process nodes are skipped but children are processed
+      } else if (!isTimelineNode(node)) {
+        skippedNodesCount++;
+        skippedNodes.push({
+          label: node.label,
+          id: node.id,
+          reason: 'not a timeline node',
+        });
+      }
       for (const child of node.children) {
         addScheduledNodes(child as ScheduledNode, parentTaskId, usageIndex);
       }
@@ -353,6 +479,46 @@ function buildGanttTasksWithHierarchicalScheduling(
 
   const subprocessUsage = buildSubprocessUsageIndex(processTree);
   addScheduledNodes(scheduled, rootTaskId, subprocessUsage);
+
+  // Debug: Log summary of added vs skipped nodes
+  if (import.meta.env.DEV) {
+    console.log(
+      `[ganttDataConverter] Node conversion summary:`,
+      {
+        addedNodes: addedNodesCount,
+        skippedNodes: skippedNodesCount,
+        totalTasks: tasks.length,
+        skippedNodesList: skippedNodes.slice(0, 20), // First 20 skipped nodes
+      }
+    );
+  }
+
+  // Step 9: Add after-activities
+  let afterCurrentDate = new Date(afterActivitiesStartDate);
+  for (const activity of afterActivities) {
+    const durationDays = calculateCustomActivityDuration(activity);
+    const startDate = new Date(afterCurrentDate);
+    const endDate = new Date(afterCurrentDate);
+    endDate.setDate(endDate.getDate() + durationDays);
+
+    tasks.push({
+      id: `custom-activity-${activity.id}`,
+      text: activity.name,
+      start_date: formatDateForGantt(startDate),
+      end_date: formatDateForGantt(endDate),
+      duration: durationDays,
+      progress: 0,
+      type: 'task',
+      parent: rootTaskId,
+      meta: {
+        kind: 'process',
+        isCustomActivity: true,
+        customActivityId: activity.id,
+      },
+    });
+
+    afterCurrentDate = new Date(endDate);
+  }
 
   return tasks;
 }

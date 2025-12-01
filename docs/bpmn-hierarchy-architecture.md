@@ -247,6 +247,32 @@ Grafen används sedan i:
 - diagnostik (missingDependencies i UI),
 - subprocess‑sync‑steget i pipelines.
 
+### 4.4 Hierarki vs. exekveringsordning (sequence flows)
+
+Det är viktigt att skilja på **hierarki** och **exekveringsordning**:
+
+- **Hierarki (vilka noder som är barn till vilka)**  
+  - Byggs uteslutande utifrån BPMN‑struktur (`ProcessDefinition` + `SubprocessLink`):  
+    - Process‑noder (en per BPMN‑fil).  
+    - Call Activities som barn till processer.  
+    - User/Service/BusinessRule Tasks som barn till respektive process eller callActivity.  
+  - Ingen sequence‑flow‑logik används för att avgöra *vem som är parent/barn* – det styrs av process/callActivity‑strukturen.
+
+- **Exekveringsordning (i vilken ordning noderna besöks)**  
+  - Räknas ut *efter* att hierarkin är byggd, via `assignExecutionOrder` +
+    `calculateOrderFromSequenceFlows` (`orderIndex`, `branchId`, `scenarioPath`).  
+  - Sequence flows (`<bpmn:sequenceFlow>`) används här för att hitta start‑noder och
+    exekveringsvägar mellan tasks/callActivities.  
+  - Om sequence flows saknas eller är inkompletta används istället `visualOrderIndex`
+    (baserat på DI‑koordinater, vänster→höger) som fallback för sortering i UI/Gantt.
+
+Praktiskt innebär det att:
+
+- **Trädstrukturen** (t.ex. Mortgage → Application → Internal data gathering → …) är stabil och
+  baserad på process/callActivity‑relationer.  
+- **Ordningen inom en nivå** (vilken task som visas först) styrs av sequence flows om de
+  finns, annars av visuella koordinater.
+
 ---
 
 ## 5. Root‑val i UI (`pickRootBpmnFile`)

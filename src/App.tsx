@@ -26,7 +26,6 @@ import { GlobalProjectConfigProvider } from "./contexts/GlobalProjectConfigConte
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import DocViewer from "./pages/DocViewer";
 import { LlmDebugView } from "./pages/LlmDebugView";
-import IntegrationsPage from "./pages/IntegrationsPage";
 import ConfigurationPage from "./pages/ConfigurationPage";
 import StyleGuidePage from "./pages/StyleGuidePage";
 import { supabase } from "@/integrations/supabase/client";
@@ -110,7 +109,6 @@ const App = () => {
                   <Route path="/bpmn/:filename" element={<Index />} />
                   <Route path="/process-explorer" element={<ProcessExplorer />} />
                   <Route path="/node-matrix" element={<NodeMatrix />} />
-                  <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
                   <Route path="/test-report" element={<TestReport />} />
                   <Route path="/test-scripts" element={<TestScriptsPage />} />
                   <Route path="/node-tests" element={<NodeTestsPage />} />

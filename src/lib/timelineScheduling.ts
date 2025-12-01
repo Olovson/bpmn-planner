@@ -84,18 +84,21 @@ function collectLeafNodesInOrder(
  * Uses post-order traversal (children first, then parent).
  * 
  * Rules:
- * - Leaf nodes: leafCount = 1, durationDays = 14 (2 weeks)
- * - Non-leaf nodes: leafCount = sum of children's leafCounts, durationDays = leafCount * 14
+ * - Leaf nodes: leafCount = 1, durationDays = calculated from durationCalculator
+ * - Non-leaf nodes: leafCount = sum of children's leafCounts, durationDays = sum of children's durationDays
  * 
- * This function mutates the tree by adding leafCount and durationDays properties.
+ * @param node - The node to compute durations for
+ * @param durationCalculator - Function that calculates duration in days for a node
+ * @returns ScheduledNode with leafCount and durationDays computed
  */
 export function computeLeafCountsAndDurations(
   node: ProcessTreeNode,
+  durationCalculator?: (node: ProcessTreeNode) => number,
 ): ScheduledNode {
   // Post-order: process children first
   const scheduledChildren: ScheduledNode[] = node.children
     .filter((child) => isTimelineNode(child))
-    .map((child) => computeLeafCountsAndDurations(child));
+    .map((child) => computeLeafCountsAndDurations(child, durationCalculator));
 
   const scheduledNode: ScheduledNode = {
     ...node,
@@ -115,8 +118,16 @@ export function computeLeafCountsAndDurations(
   }
 
   // Calculate durationDays
-  // For all nodes: duration = leafCount * 14 days (2 weeks per leaf)
-  scheduledNode.durationDays = (scheduledNode.leafCount ?? 0) * 14;
+  if (isLeafNode(node)) {
+    // Leaf node: use duration calculator or default to 14 days
+    scheduledNode.durationDays = durationCalculator ? durationCalculator(node) : 14;
+  } else {
+    // Non-leaf node: sum of children's durationDays
+    scheduledNode.durationDays = scheduledChildren.reduce(
+      (sum, child) => sum + (child.durationDays ?? 0),
+      0,
+    );
+  }
 
   return scheduledNode;
 }
@@ -126,7 +137,7 @@ export function computeLeafCountsAndDurations(
  * 
  * Algorithm:
  * 1. Collect all leaf nodes in order
- * 2. Schedule leaf nodes sequentially (each starts when previous ends)
+ * 2. Schedule leaf nodes sequentially (each starts when previous ends, using their computed durationDays)
  * 3. Propagate dates upward: parent's startDate = min of children's startDates,
  *    parent's endDate = max of children's endDates
  * 
@@ -141,23 +152,96 @@ export function scheduleTree(
   // Step 1: Collect all leaf nodes in order
   const leafNodes = collectLeafNodesInOrder(rootNode);
 
+  if (import.meta.env.DEV) {
+    console.log(`[timelineScheduling] Collected ${leafNodes.length} leaf nodes for scheduling`);
+    
+    // Log all leaf nodes with their indices to see the full sequence
+    const leafNodesInfo = leafNodes.slice(0, 30).map((n, idx) => ({
+      index: idx,
+      label: n.label,
+      id: n.id,
+      durationDays: n.durationDays,
+      type: n.type,
+    }));
+    console.log(`[timelineScheduling] All leaf nodes (first 30):`, leafNodesInfo);
+    
+    // Specifically log nodes 12-25 to see what's happening around the gap
+    console.log(
+      `[timelineScheduling] Leaf nodes 12-25 (around the gap):`,
+      leafNodes.slice(12, 26).map((n, idx) => ({
+        index: 12 + idx,
+        label: n.label,
+        id: n.id,
+        durationDays: n.durationDays,
+        type: n.type,
+        bpmnFile: n.bpmnFile,
+        elementId: n.bpmnElementId,
+      }))
+    );
+    
+    const householdIndex = leafNodes.findIndex((n) => 
+      n.label?.toLowerCase().includes('household') || 
+      n.label?.toLowerCase().includes('register household')
+    );
+    if (householdIndex !== -1) {
+      console.log(
+        `[timelineScheduling] Found Household node at index ${householdIndex}: "${leafNodes[householdIndex].label}"`,
+        { 
+          id: leafNodes[householdIndex].id,
+          durationDays: leafNodes[householdIndex].durationDays,
+          nextNodes: leafNodes.slice(householdIndex + 1, householdIndex + 15).map((n, idx) => ({
+            index: householdIndex + 1 + idx,
+            label: n.label,
+            id: n.id,
+            durationDays: n.durationDays,
+            type: n.type,
+          }))
+        }
+      );
+    }
+  }
+
   // Step 2: Schedule leaf nodes sequentially
-  // Each leaf node gets 2 weeks, starting when the previous one ends
+  // Each leaf node uses its computed durationDays, starting when the previous one ends
   const leafSchedules = new Map<string, { start: Date; end: Date }>();
   let currentDate = new Date(projectStartDate);
 
   for (const leaf of leafNodes) {
     const startDate = new Date(currentDate);
     const endDate = new Date(currentDate);
-    endDate.setDate(endDate.getDate() + 14); // 2 weeks
+    const durationDays = leaf.durationDays ?? 14; // Fallback to 14 days if not computed
+    endDate.setDate(endDate.getDate() + durationDays);
 
     leafSchedules.set(leaf.id, { start: startDate, end: endDate });
+    
+    // Debug: Log scheduling for all nodes to see the sequence
+    if (import.meta.env.DEV) {
+      const leafIndex = leafNodes.indexOf(leaf);
+      // Log all nodes, but especially around the gap (12-25)
+      if (leafIndex <= 25) {
+        console.log(
+          `[timelineScheduling] Scheduled leaf ${leafIndex}: "${leaf.label}"`,
+          {
+            id: leaf.id,
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            durationDays,
+            currentDateBefore: currentDate.toISOString().split('T')[0],
+            type: leaf.type,
+          }
+        );
+      }
+    }
+    
     currentDate = new Date(endDate); // Next leaf starts when this one ends
   }
 
   // Step 3: Propagate dates upward from leaves to parents
   const scheduleNode = (node: ScheduledNode): ScheduledNode => {
-    const scheduledChildren = node.children.map((child) =>
+    // IMPORTANT: Only process timeline node children, not all children
+    // This ensures we don't try to schedule non-timeline nodes (like gateways, events, etc.)
+    const timelineChildren = node.children.filter((child) => isTimelineNode(child));
+    const scheduledChildren = timelineChildren.map((child) =>
       scheduleNode(child as ScheduledNode),
     );
 
@@ -172,6 +256,18 @@ export function scheduleTree(
       if (schedule) {
         scheduledNode.startDate = schedule.start;
         scheduledNode.endDate = schedule.end;
+      } else {
+        // This should never happen if collectLeafNodesInOrder worked correctly
+        if (import.meta.env.DEV) {
+          console.error(
+            `[timelineScheduling] Leaf node "${node.label}" (${node.id}) not found in leafSchedules!`,
+            { 
+              leafNodeIds: Array.from(leafSchedules.keys()).slice(0, 10),
+              nodeType: node.type,
+              hasChildren: node.children.length > 0,
+            }
+          );
+        }
       }
     } else {
       // Non-leaf node: min start, max end from children
@@ -189,6 +285,20 @@ export function scheduleTree(
         scheduledNode.endDate = new Date(
           Math.max(...childDates.map((d) => d.end.getTime())),
         );
+      } else {
+        // Debug: Log non-leaf nodes with no children dates
+        if (import.meta.env.DEV && scheduledChildren.length > 0) {
+          console.warn(
+            `[timelineScheduling] Non-leaf node "${scheduledNode.label}" (${scheduledNode.id}) has no children with dates.`,
+            {
+              childrenCount: scheduledChildren.length,
+              childrenWithDates: scheduledChildren.filter((c) => c.startDate && c.endDate).length,
+              childrenLabels: scheduledChildren.map((c) => c.label),
+              timelineChildrenCount: timelineChildren.length,
+              allChildrenCount: node.children.length,
+            }
+          );
+        }
       }
     }
 
