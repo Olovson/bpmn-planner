@@ -805,22 +805,142 @@ flowchart TD
       <div class="card">
         <h3>Testscenarier</h3>
         <ul>
-          <li><strong>Happy path:</strong> Tjänsten får kompletta data, alla beroenden svarar OK och flödet går vidare.</li><li><strong>Valideringsfel:</strong> Indata saknar obligatoriska fält eller bryter mot format – tjänsten ska avvisa och logga tydligt.</li><li><strong>Tekniskt fel / beroende nere:</strong> Extern tjänst svarar inte eller ger fel – epiken ska hantera detta enligt övergripande felstrategi.</li>
+          <li><strong>EPIC-S1: Normalflöde - Alla kriterier uppfyllda (APPROVED, LOW risk):</strong> Kunden har årsinkomst ≥ 200k SEK, DTI-ratio ≤ 50%, kreditscore ≥ 600, och inga betalningsanmärkningar. DMN-regeln returnerar APPROVED med riskkategori LOW. Processen fortsätter till register-personal-economy-information.</li>
+          <li><strong>EPIC-S2: Betalningsanmärkningar - Automatisk avvisning (REJECTED, HIGH risk):</strong> Kunden har årsinkomst ≥ 200k SEK, DTI-ratio ≤ 50%, kreditscore ≥ 600, men har betalningsanmärkningar. DMN-regeln returnerar REJECTED med riskkategori HIGH oavsett andra kriterier. Processen stoppas via gateway "is-stakeholder-rejected".</li>
+          <li><strong>EPIC-S3: Gränsfall - Acceptabel risk med manuell granskning (APPROVED, MEDIUM risk):</strong> Kunden har årsinkomst ≥ 200k SEK, DTI-ratio 40-50%, kreditscore 550-600, och inga betalningsanmärkningar. DMN-regeln returnerar APPROVED med riskkategori MEDIUM. Processen fortsätter men flaggas för manuell granskning.</li>
+          <li><strong>EPIC-S4: Hög DTI-ratio - Otillräcklig återbetalningsförmåga (REJECTED, HIGH risk):</strong> Kunden har årsinkomst ≥ 200k SEK, DTI-ratio > 50%, kreditscore ≥ 600, och inga betalningsanmärkningar. DMN-regeln returnerar REJECTED med riskkategori HIGH. Processen stoppas.</li>
+          <li><strong>EPIC-S5: Låg kreditscore - Osäker kredithistorik (REJECTED, MEDIUM risk):</strong> Kunden har årsinkomst ≥ 200k SEK, DTI-ratio ≤ 50%, kreditscore < 600, och inga betalningsanmärkningar. DMN-regeln returnerar REJECTED med riskkategori MEDIUM. Processen stoppas.</li>
+          <li><strong>EPIC-S6: Låg årsinkomst - Otillräcklig återbetalningsförmåga (REJECTED, MEDIUM risk):</strong> Kunden har årsinkomst < 200k SEK, DTI-ratio ≤ 50%, kreditscore ≥ 600, och inga betalningsanmärkningar. DMN-regeln returnerar REJECTED med riskkategori MEDIUM. Processen stoppas.</li>
+          <li><strong>EPIC-S7: Tekniskt fel - DMN Engine timeout eller fel:</strong> DMN-motorn svarar inte, returnerar timeout, eller ger 500 Server Error. Systemet loggar felet, implementerar retry med exponentiell backoff, och använder fallback-beslut (REVIEW) om alla retries misslyckas. Processen flaggas för manuell granskning.</li>
+          <li><strong>Edge case: Gränsfall - DTI-ratio precis på gränsen:</strong> Kunden har DTI-ratio 49.5% (precis under gränsen) eller 50.5% (precis över gränsen). Systemet ska hantera gränsvärden korrekt och returnera APPROVED (MEDIUM risk) eller REJECTED (HIGH risk) baserat på exakt värde.</li>
+          <li><strong>Edge case: Gränsfall - Kreditscore precis på gränsen:</strong> Kunden har kreditscore 599 (precis under gränsen) eller 600 (precis på gränsen). Systemet ska hantera gränsvärden korrekt och returnera REJECTED eller APPROVED baserat på exakt värde.</li>
+          <li><strong>Edge case: Delade engagemang:</strong> Kunden har delade engagemang (gemensamma lån med medsökande). Systemet ska aggregera delade engagemang korrekt för DTI-ratio beräkning. Om aggregering misslyckas ska processen flaggas för manuell granskning.</li>
+          <li><strong>Edge case: Ofullständig databild:</strong> Obligatoriska indata saknas (t.ex. årsinkomst saknas, kreditupplysning saknas, engagemang saknas). Systemet ska logga felet och flagga processen för manuell granskning (REVIEW). Processen kan inte fortsätta utan dessa data.</li>
+          <li><strong>Edge case: Inkonsistent data:</strong> Data från olika källor är inkonsistenta (t.ex. olika årsinkomst i olika system, olika DTI-ratio beräkningar). Systemet ska identifiera inkonsistenser och flagga för manuell verifiering.</li>
         </ul>
 
         <h3>Testdata</h3>
         <ul>
-          <li>[Beskrivning av testdata som behövs]</li>
+          <li><strong>EPIC-S1 - Godkänd kund (APPROVED, LOW):</strong>
+            <ul>
+              <li>Årsinkomst: 500k SEK</li>
+              <li>DTI-ratio: 30%</li>
+              <li>Kreditscore: 750</li>
+              <li>Betalningsanmärkningar: Inga</li>
+              <li>Förväntat resultat: APPROVED, LOW risk</li>
+            </ul>
+          </li>
+          <li><strong>EPIC-S2 - Betalningsanmärkningar (REJECTED, HIGH):</strong>
+            <ul>
+              <li>Årsinkomst: 500k SEK</li>
+              <li>DTI-ratio: 30%</li>
+              <li>Kreditscore: 750</li>
+              <li>Betalningsanmärkningar: Ja (1 anmärkning från 2023)</li>
+              <li>Förväntat resultat: REJECTED, HIGH risk</li>
+            </ul>
+          </li>
+          <li><strong>EPIC-S3 - Gränsfall (APPROVED, MEDIUM):</strong>
+            <ul>
+              <li>Årsinkomst: 250k SEK</li>
+              <li>DTI-ratio: 45%</li>
+              <li>Kreditscore: 580</li>
+              <li>Betalningsanmärkningar: Inga</li>
+              <li>Förväntat resultat: APPROVED, MEDIUM risk</li>
+            </ul>
+          </li>
+          <li><strong>EPIC-S4 - Hög DTI-ratio (REJECTED, HIGH):</strong>
+            <ul>
+              <li>Årsinkomst: 300k SEK</li>
+              <li>DTI-ratio: 55%</li>
+              <li>Kreditscore: 700</li>
+              <li>Betalningsanmärkningar: Inga</li>
+              <li>Förväntat resultat: REJECTED, HIGH risk</li>
+            </ul>
+          </li>
+          <li><strong>EPIC-S5 - Låg kreditscore (REJECTED, MEDIUM):</strong>
+            <ul>
+              <li>Årsinkomst: 400k SEK</li>
+              <li>DTI-ratio: 35%</li>
+              <li>Kreditscore: 550</li>
+              <li>Betalningsanmärkningar: Inga</li>
+              <li>Förväntat resultat: REJECTED, MEDIUM risk</li>
+            </ul>
+          </li>
+          <li><strong>EPIC-S6 - Låg årsinkomst (REJECTED, MEDIUM):</strong>
+            <ul>
+              <li>Årsinkomst: 180k SEK</li>
+              <li>DTI-ratio: 30%</li>
+              <li>Kreditscore: 700</li>
+              <li>Betalningsanmärkningar: Inga</li>
+              <li>Förväntat resultat: REJECTED, MEDIUM risk</li>
+            </ul>
+          </li>
+          <li><strong>Gränsfall - DTI-ratio:</strong>
+            <ul>
+              <li>Testdata 1: DTI-ratio 49.5% → Förväntat: APPROVED, MEDIUM risk</li>
+              <li>Testdata 2: DTI-ratio 50.0% → Förväntat: APPROVED, MEDIUM risk (gränsvärde)</li>
+              <li>Testdata 3: DTI-ratio 50.1% → Förväntat: REJECTED, HIGH risk</li>
+            </ul>
+          </li>
+          <li><strong>Gränsfall - Kreditscore:</strong>
+            <ul>
+              <li>Testdata 1: Kreditscore 599 → Förväntat: REJECTED, MEDIUM risk</li>
+              <li>Testdata 2: Kreditscore 600 → Förväntat: APPROVED, LOW risk (gränsvärde)</li>
+              <li>Testdata 3: Kreditscore 550 → Förväntat: REJECTED eller APPROVED (MEDIUM risk) beroende på andra kriterier</li>
+            </ul>
+          </li>
+          <li><strong>Gränsfall - Årsinkomst:</strong>
+            <ul>
+              <li>Testdata 1: Årsinkomst 199k SEK → Förväntat: REJECTED, MEDIUM risk</li>
+              <li>Testdata 2: Årsinkomst 200k SEK → Förväntat: APPROVED eller REJECTED beroende på andra kriterier</li>
+              <li>Testdata 3: Årsinkomst 201k SEK → Förväntat: APPROVED eller REJECTED beroende på andra kriterier</li>
+            </ul>
+          </li>
+          <li><strong>Delade engagemang:</strong>
+            <ul>
+              <li>Kund med delade engagemang: 2 bolån (50% ansvar vardera), 1 personlån (100% ansvar)</li>
+              <li>Totala skulder: 1.5M SEK (bolån) + 200k SEK (personlån) = 1.7M SEK</li>
+              <li>Årsinkomst: 500k SEK</li>
+              <li>DTI-ratio: 340% (felaktig om delade engagemang inte aggregeras korrekt)</li>
+              <li>Korrekt DTI-ratio: 170% (om delade engagemang aggregeras korrekt)</li>
+            </ul>
+          </li>
+          <li><strong>Ofullständig databild:</strong>
+            <ul>
+              <li>Testdata 1: Årsinkomst saknas → Förväntat: REVIEW (manuell granskning)</li>
+              <li>Testdata 2: Kreditupplysning saknas → Förväntat: REVIEW (manuell granskning)</li>
+              <li>Testdata 3: Engagemang saknas → Förväntat: REVIEW (manuell granskning, DTI-ratio kan inte beräknas)</li>
+            </ul>
+          </li>
+          <li><strong>Mock DMN-responser:</strong>
+            <ul>
+              <li>Success response: {"decision": "APPROVED", "riskCategory": "LOW", "reasoning": "Alla kriterier uppfyllda"}</li>
+              <li>Rejection response: {"decision": "REJECTED", "riskCategory": "HIGH", "reasoning": "Betalningsanmärkningar indikerar hög risk"}</li>
+              <li>Review response: {"decision": "REVIEW", "riskCategory": "MEDIUM", "reasoning": "Ofullständig databild"}</li>
+              <li>Error response: 500 Server Error, 503 Service Unavailable, timeout</li>
+            </ul>
+          </li>
         </ul>
 
         <h3>Testmiljöer</h3>
         <ul>
-          <li>[Miljö 1: t.ex. "Local development"]</li>
-          <li>[Miljö 2: t.ex. "Staging"]</li>
+          <li><strong>Local development:</strong> Mock DMN-engine med lokala testdata. Mock-responser för alla scenarion (EPIC-S1 till EPIC-S7) och edge cases. Mock kreditupplysning och engagemang från fetch-credit-information och fetch-engagements.</li>
+          <li><strong>Staging:</strong> Anslutning till staging-instans av DMN-engine. Realistiska testdata från staging-databas. Integration med staging-instanser av fetch-credit-information och fetch-engagements.</li>
+          <li><strong>Integration test:</strong> Test mot isolerad testmiljö med kontrollerade testdata. Fullständig integration med alla beroenden (kreditupplysning, engagemang, stakeholder-data). Verifiering av hela beslutsflödet från indata till output.</li>
         </ul>
 
         <h3>Automatiska tester</h3>
-        <p>Scenarierna ovan bör mappas till automatiska tester där scenarionas namn används i testbeskrivningar.</p>
+        <p>Affärs-scenarierna EPIC-S1–EPIC-S7 ska mappas mot automatiska tester där scenario-ID och namn används i testfallens benämningar. Testerna bör täcka:</p>
+        <ul>
+          <li><strong>Normalflöde (EPIC-S1):</strong> Verifiera att DMN-regeln returnerar APPROVED (LOW risk) när alla kriterier är uppfyllda. Verifiera att beslutet påverkar gateway "is-stakeholder-rejected" korrekt (No → processen fortsätter).</li>
+          <li><strong>Automatisk avvisning (EPIC-S2, S4, S5, S6):</strong> Verifiera att DMN-regeln returnerar REJECTED med korrekt riskkategori när kriterier inte är uppfyllda. Verifiera att beslutet påverkar gateway "is-stakeholder-rejected" korrekt (Yes → processen stoppas).</li>
+          <li><strong>Gränsfall (EPIC-S3):</strong> Verifiera att DMN-regeln returnerar APPROVED (MEDIUM risk) för gränsvärden och att processen flaggas för manuell granskning. Verifiera att beslutet påverkar processflödet korrekt.</li>
+          <li><strong>Tekniska fel (EPIC-S7):</strong> Verifiera att systemet hanterar DMN Engine-fel korrekt (retry med exponentiell backoff, fallback-beslut REVIEW). Verifiera att processen flaggas för manuell granskning vid tekniska fel.</li>
+          <li><strong>Edge cases:</strong> Verifiera gränsvärden (DTI-ratio 49.5%, 50.0%, 50.1%, kreditscore 599, 600, 550, årsinkomst 199k, 200k, 201k SEK). Verifiera hantering av delade engagemang (korrekt aggregering för DTI-ratio beräkning). Verifiera hantering av ofullständig databild (REVIEW vid saknade indata).</li>
+          <li><strong>Validering:</strong> Verifiera att indata valideras korrekt (årsinkomst ≥ 0, DTI-ratio 0-100%, kreditscore 0-850, betalningsanmärkningar boolean). Verifiera att ogiltiga indata flaggas för manuell verifiering.</li>
+          <li><strong>Spårbarhet:</strong> Verifiera att alla beslut loggas med timestamp, indata, output, riskkategori, och motivering. Verifiera att beslut är spårbara för compliance och efterkontroll.</li>
+        </ul>
+        <p><strong>Teststruktur:</strong> Varje testscenario (EPIC-S1 till EPIC-S7) ska ha separata testfall som verifierar både DMN-beslutet och processflödet. Edge cases ska ha dedikerade testfall. Tekniska fel ska testas med mock DMN-engine som simulerar olika felscenarion.</p>
         
       </div>
     </section>

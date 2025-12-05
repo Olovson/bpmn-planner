@@ -38,9 +38,9 @@ interface ProcessTreeD3Props {
 
 export interface ProcessTreeD3Api {
   zoomToFitCurrentTree: () => void;
-  exportSvg: () => void;
-  exportPng: () => void;
-  exportPdf: () => void;
+  exportSvg: () => Promise<void>;
+  exportPng: () => Promise<void>;
+  exportPdf: () => Promise<void>;
 }
 
 const getColorForNodeType = (type: ProcessNodeType): string => {
@@ -111,7 +111,7 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
   const { useStaccIntegration } = useIntegration();
 
   // Hjälpfunktion för att förbereda SVG för export
-  const prepareSvgForExport = (): { svgString: string; viewBox: string } | null => {
+  const prepareSvgForExport = async (): Promise<{ svgString: string; viewBox: string } | null> => {
     const svgElement = svgRef.current;
     if (!svgElement) {
       console.warn('[ProcessTreeD3] Cannot export: SVG element not found');
@@ -126,23 +126,26 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
         return null;
       }
 
-      const transform = gElement.getAttribute('transform') || '';
+      // Hämta D3 zoom transform från SVG-elementet
+      // D3 lagrar transformen på SVG-elementet under __zoom
+      const currentTransform = (svgElement as any).__zoom || d3.zoomIdentity;
       
       // Klona SVG och ta bort class-attribut
       const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
       clonedSvg.removeAttribute('class');
       clonedSvg.removeAttribute('style');
 
-      // Hitta det klonade <g>-elementet och applicera transformen direkt på dess barn
       const clonedG = clonedSvg.querySelector('g.tree-root') as SVGGElement;
-      if (clonedG && transform) {
-        // Applicera transformen på alla barn istället för på <g>
+      
+      // Applicera transformen på barnen istället för på gruppen
+      if (clonedG && currentTransform) {
+        const transformStr = currentTransform.toString();
         const children = Array.from(clonedG.children);
         children.forEach((child) => {
           const childTransform = child.getAttribute('transform') || '';
           const combinedTransform = childTransform 
-            ? `${transform} ${childTransform}` 
-            : transform;
+            ? `${transformStr} ${childTransform}` 
+            : transformStr;
           child.setAttribute('transform', combinedTransform);
         });
         clonedG.removeAttribute('transform');
@@ -179,10 +182,12 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
         }
       });
 
-      // Beräkna faktiska dimensioner från trädet
+      // Beräkna viewBox baserat på transformerade koordinater
       const treeData = treeDataRef.current;
       let viewBox = '0 0 1200 800';
-      if (treeData) {
+      
+      if (treeData && currentTransform) {
+        // Beräkna ursprungliga bounds
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         treeData.descendants().forEach(d => {
           if (d.x < minX) minX = d.x;
@@ -190,7 +195,47 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
           if (d.y < minY) minY = d.y;
           if (d.y > maxY) maxY = d.y;
         });
-        const padding = 100;
+        
+        // Applicera transform på hörnpunkter
+        const corners = [
+          { x: minX, y: minY },
+          { x: maxX, y: minY },
+          { x: minX, y: maxY },
+          { x: maxX, y: maxY }
+        ];
+        
+        let transformedMinX = Infinity, transformedMaxX = -Infinity;
+        let transformedMinY = Infinity, transformedMaxY = -Infinity;
+        
+        corners.forEach(corner => {
+          // D3 tree layout: d.x är vertikal (y i SVG), d.y är horisontell (x i SVG)
+          // Transform appliceras med applyX och applyY
+          const transformedX = currentTransform.applyX(corner.y); // corner.y är x-koordinat i SVG
+          const transformedY = currentTransform.applyY(corner.x); // corner.x är y-koordinat i SVG
+          
+          if (transformedX < transformedMinY) transformedMinY = transformedX;
+          if (transformedX > transformedMaxY) transformedMaxY = transformedX;
+          if (transformedY < transformedMinX) transformedMinX = transformedY;
+          if (transformedY > transformedMaxX) transformedMaxX = transformedY;
+        });
+        
+        if (transformedMinX !== Infinity && transformedMaxX !== Infinity && 
+            transformedMinY !== Infinity && transformedMaxY !== Infinity) {
+          const padding = 20;
+          const width = transformedMaxY - transformedMinY + padding * 2;
+          const height = transformedMaxX - transformedMinX + padding * 2;
+          viewBox = `${transformedMinY - padding} ${transformedMinX - padding} ${width} ${height}`;
+        }
+      } else if (treeData) {
+        // Ingen transform - använd ursprungliga koordinater
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        treeData.descendants().forEach(d => {
+          if (d.x < minX) minX = d.x;
+          if (d.x > maxX) maxX = d.x;
+          if (d.y < minY) minY = d.y;
+          if (d.y > maxY) maxY = d.y;
+        });
+        const padding = 20;
         const width = maxY - minY + padding * 2;
         const height = maxX - minX + padding * 2;
         viewBox = `${minY - padding} ${minX - padding} ${width} ${height}`;
@@ -205,12 +250,17 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       return { svgString, viewBox };
     } catch (error) {
       console.error('[ProcessTreeD3] Error preparing SVG for export:', error);
+      // Se till att ta bort SVG från DOM även vid fel
+      const clonedSvg = document.body.querySelector('svg[style*="-9999px"]') as SVGSVGElement;
+      if (clonedSvg && clonedSvg.parentNode) {
+        clonedSvg.parentNode.removeChild(clonedSvg);
+      }
       return null;
     }
   };
 
-  const handleExportSvg = () => {
-    const prepared = prepareSvgForExport();
+  const handleExportSvg = async () => {
+    const prepared = await prepareSvgForExport();
     if (!prepared) {
       alert('Kunde inte exportera SVG. Kontrollera konsolen för mer information.');
       return;
@@ -228,8 +278,8 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
     URL.revokeObjectURL(url);
   };
 
-  const handleExportPng = () => {
-    const prepared = prepareSvgForExport();
+  const handleExportPng = async () => {
+    const prepared = await prepareSvgForExport();
     if (!prepared) {
       alert('Kunde inte exportera PNG. Kontrollera konsolen för mer information.');
       return;
@@ -245,7 +295,7 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
     }
 
     const [, , , width, height] = viewBoxMatch;
-    const scale = 2; // 2x för högre kvalitet
+    const scale = 8; // 8x för mycket hög upplösning (600+ DPI för skarp print)
     const scaledWidth = Math.ceil(parseFloat(width) * scale);
     const scaledHeight = Math.ceil(parseFloat(height) * scale);
 
@@ -265,7 +315,10 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       const canvas = document.createElement('canvas');
       canvas.width = scaledWidth;
       canvas.height = scaledHeight;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { 
+        alpha: false, // Ingen transparens för bättre kvalitet
+        desynchronized: false // Bättre kvalitet
+      });
       
       if (!ctx) {
         alert('Kunde inte skapa canvas för PNG-export.');
@@ -273,14 +326,18 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
         return;
       }
 
+      // Förbättra rendering-kvalitet
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
       // Vit bakgrund
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, scaledWidth, scaledHeight);
       
-      // Rita SVG
+      // Rita SVG med hög kvalitet
       ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
 
-      // Ladda ner PNG
+      // Ladda ner PNG med hög kvalitet (1.0 = 100% kvalitet)
       canvas.toBlob((blob) => {
         if (!blob) {
           alert('Kunde inte skapa PNG-fil.');
@@ -296,7 +353,7 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
         a.click();
         URL.revokeObjectURL(pngUrl);
         URL.revokeObjectURL(url);
-      }, 'image/png');
+      }, 'image/png', 1.0); // 1.0 = 100% kvalitet (högsta möjliga)
     };
 
     img.onerror = () => {
@@ -307,8 +364,8 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
     img.src = url;
   };
 
-  const handleExportPdf = () => {
-    const prepared = prepareSvgForExport();
+  const handleExportPdf = async () => {
+    const prepared = await prepareSvgForExport();
     if (!prepared) {
       alert('Kunde inte exportera PDF. Kontrollera konsolen för mer information.');
       return;
