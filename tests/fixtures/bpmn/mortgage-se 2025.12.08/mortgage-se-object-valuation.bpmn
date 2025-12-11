@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.40.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:collaboration id="Collaboration_1vbpl37">
+    <bpmn:participant id="Participant_0hcllfv" name="Object valuation" processRef="mortgage-se-object-valuation" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-object-valuation" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_0phwfmw">
+      <bpmn:lane id="Lane_09igjz3" name="System">
+        <bpmn:flowNodeRef>fetch-fastighets-valuation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>start-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>object-type</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fetch-bostadsratts-valuation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0f8c0ne</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>process-end-event</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:serviceTask id="fetch-fastighets-valuation" name="Fetch fastighets-valuation">
+      <bpmn:incoming>object-type-smahus</bpmn:incoming>
+      <bpmn:outgoing>Flow_1nl8bl7</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_1j4jtep">
+        <bpmn:targetRef>DataStoreReference_16ysmlz</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:dataStoreReference id="DataStoreReference_16ysmlz" name="Fastighet valuation service" />
+    <bpmn:startEvent id="start-event">
+      <bpmn:outgoing>Flow_1cbhztn</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="object-type" name="Object type">
+      <bpmn:incoming>Flow_1cbhztn</bpmn:incoming>
+      <bpmn:outgoing>object-type-smahus</bpmn:outgoing>
+      <bpmn:outgoing>object-type-bostadsratt</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="object-type-smahus" name="Småhus" sourceRef="object-type" targetRef="fetch-fastighets-valuation" />
+    <bpmn:sequenceFlow id="Flow_1nl8bl7" sourceRef="fetch-fastighets-valuation" targetRef="Gateway_0f8c0ne" />
+    <bpmn:sequenceFlow id="object-type-bostadsratt" name="Bostadsrätt" sourceRef="object-type" targetRef="fetch-bostadsratts-valuation" />
+    <bpmn:sequenceFlow id="Flow_1cbhztn" sourceRef="start-event" targetRef="object-type" />
+    <bpmn:sequenceFlow id="dsadsad" name="" sourceRef="Gateway_0f8c0ne" targetRef="process-end-event" />
+    <bpmn:serviceTask id="fetch-bostadsratts-valuation" name="Fetch bostadsrätts-valuation">
+      <bpmn:incoming>object-type-bostadsratt</bpmn:incoming>
+      <bpmn:outgoing>Flow_00r9zi3</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_0bn3pxs">
+        <bpmn:targetRef>DataStoreReference_1cdjo60</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:dataStoreReference id="DataStoreReference_1cdjo60" name="Bostadsrätt valuation service" />
+    <bpmn:sequenceFlow id="Flow_00r9zi3" sourceRef="fetch-bostadsratts-valuation" targetRef="Gateway_0f8c0ne" />
+    <bpmn:exclusiveGateway id="Gateway_0f8c0ne">
+      <bpmn:incoming>Flow_1nl8bl7</bpmn:incoming>
+      <bpmn:incoming>Flow_00r9zi3</bpmn:incoming>
+      <bpmn:outgoing>dsadsad</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="process-end-event">
+      <bpmn:incoming>dsadsad</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1vbpl37">
+      <bpmndi:BPMNShape id="Participant_0hcllfv_di" bpmnElement="Participant_0hcllfv" isHorizontal="true">
+        <dc:Bounds x="129" y="80" width="750" height="600" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_09igjz3_di" bpmnElement="Lane_09igjz3" isHorizontal="true">
+        <dc:Bounds x="159" y="80" width="720" height="600" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1hw6ki8_di" bpmnElement="fetch-fastighets-valuation">
+        <dc:Bounds x="480" y="130" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_16ysmlz_di" bpmnElement="DataStoreReference_16ysmlz">
+        <dc:Bounds x="505" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="490" y="312" width="82" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event">
+        <dc:Bounds x="219" y="302" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1abpwin_di" bpmnElement="object-type" isMarkerVisible="true">
+        <dc:Bounds x="345" y="295" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="302" y="283" width="56" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0n75wap_di" bpmnElement="fetch-bostadsratts-valuation">
+        <dc:Bounds x="480" y="430" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_1cdjo60_di" bpmnElement="DataStoreReference_1cdjo60">
+        <dc:Bounds x="505" y="555" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="489" y="612" width="82" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0f8c0ne_di" bpmnElement="Gateway_0f8c0ne" isMarkerVisible="true">
+        <dc:Bounds x="665" y="295" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1064" y="26" width="52" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ukrfd4_di" bpmnElement="process-end-event">
+        <dc:Bounds x="812" y="302" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0pg7vd5_di" bpmnElement="object-type-smahus">
+        <di:waypoint x="370" y="295" />
+        <di:waypoint x="370" y="170" />
+        <di:waypoint x="480" y="170" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="380" y="143" width="41" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1nl8bl7_di" bpmnElement="Flow_1nl8bl7">
+        <di:waypoint x="580" y="170" />
+        <di:waypoint x="690" y="170" />
+        <di:waypoint x="690" y="295" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16f2ff2_di" bpmnElement="object-type-bostadsratt">
+        <di:waypoint x="370" y="345" />
+        <di:waypoint x="370" y="470" />
+        <di:waypoint x="480" y="470" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="382" y="443" width="56" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1cbhztn_di" bpmnElement="Flow_1cbhztn">
+        <di:waypoint x="255" y="320" />
+        <di:waypoint x="345" y="320" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0u6yk2h_di" bpmnElement="dsadsad">
+        <di:waypoint x="715" y="320" />
+        <di:waypoint x="812" y="320" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1225" y="79" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00r9zi3_di" bpmnElement="Flow_00r9zi3">
+        <di:waypoint x="580" y="470" />
+        <di:waypoint x="690" y="470" />
+        <di:waypoint x="690" y="345" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_1j4jtep_di" bpmnElement="DataOutputAssociation_1j4jtep">
+        <di:waypoint x="530" y="210" />
+        <di:waypoint x="530" y="255" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_0bn3pxs_di" bpmnElement="DataOutputAssociation_0bn3pxs">
+        <di:waypoint x="530" y="510" />
+        <di:waypoint x="530" y="555" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

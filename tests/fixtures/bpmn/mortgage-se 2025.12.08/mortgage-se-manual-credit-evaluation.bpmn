@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:collaboration id="Collaboration_1v0pynq">
+    <bpmn:participant id="Participant_19uyuzs" name="Manual credit evaluation" processRef="mortgage-se-manual-credit-evaluation" />
+    <bpmn:textAnnotation id="TextAnnotation_0elpepz">
+      <bpmn:text>Requirement types
+
+- Object valuation
+- Documentation (blue)
+- Advanced underwriting:
+  - Automatic credit evaluation rules (yellow)
+  - Credit decision reevaluation (yellow)
+  - Appeal handling (red)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0inq3ee" associationDirection="None" sourceRef="TextAnnotation_0elpepz" targetRef="requirements" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-manual-credit-evaluation" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_0mclnap">
+      <bpmn:lane id="Lane_1ppy68i" name="System">
+        <bpmn:flowNodeRef>start-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>requirements</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_06cad2w</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>documentation-assessment</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>credit-evaluation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_02p0qya</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>rejected</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1xyj9n6</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>needs-auw</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>all-documentation-approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0q79pdz</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_1laxdwq</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>process-end-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_17jod5m</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_1g0t63q" name="Case worker">
+        <bpmn:flowNodeRef>object-control</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>advanced-underwriting</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>event-request-additional-documentation</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_1hd6dp3" name="Stakeholder">
+        <bpmn:flowNodeRef>upload-documentation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>auw-upload-documentation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1mrw0am</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:userTask id="upload-documentation" name="Upload documentation">
+      <bpmn:incoming>Flow_1iw9ts0</bpmn:incoming>
+      <bpmn:outgoing>Flow_1653cf4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:callActivity id="object-control" name="Object control">
+      <bpmn:incoming>requirements-object-valuation</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ggt9w5</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:startEvent id="start-event">
+      <bpmn:outgoing>Flow_1cbhztn</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:inclusiveGateway id="requirements" name="Requirements?">
+      <bpmn:incoming>Flow_1cbhztn</bpmn:incoming>
+      <bpmn:outgoing>requirements-documentation</bpmn:outgoing>
+      <bpmn:outgoing>requirements-object-valuation</bpmn:outgoing>
+      <bpmn:outgoing>requirements-auw</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_06cad2w">
+      <bpmn:incoming>all-documentation-approved-no</bpmn:incoming>
+      <bpmn:incoming>requirements-documentation</bpmn:incoming>
+      <bpmn:outgoing>Flow_1iw9ts0</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:callActivity id="documentation-assessment" name="Documentation assessment">
+      <bpmn:incoming>Flow_1653cf4</bpmn:incoming>
+      <bpmn:outgoing>Flow_1t5ddwu</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:boundaryEvent id="Event_17jod5m" name="Credit reevaluation required" attachedToRef="documentation-assessment">
+      <bpmn:outgoing>Flow_1ktplom</bpmn:outgoing>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_0325cbf" escalationRef="Escalation_3g6tkfr" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_1iw9ts0" sourceRef="Gateway_06cad2w" targetRef="upload-documentation" />
+    <bpmn:sequenceFlow id="Flow_1653cf4" sourceRef="upload-documentation" targetRef="documentation-assessment" />
+    <bpmn:sequenceFlow id="requirements-object-valuation" name="Object control" sourceRef="requirements" targetRef="object-control" />
+    <bpmn:sequenceFlow id="Flow_1ggt9w5" sourceRef="object-control" targetRef="Gateway_02p0qya" />
+    <bpmn:sequenceFlow id="Flow_1ywy6zd" sourceRef="event-request-additional-documentation" targetRef="auw-upload-documentation" />
+    <bpmn:sequenceFlow id="Flow_12w93zo" sourceRef="auw-upload-documentation" targetRef="Event_1mrw0am" />
+    <bpmn:sequenceFlow id="Flow_1cbhztn" sourceRef="start-event" targetRef="requirements" />
+    <bpmn:sequenceFlow id="requirements-documentation" name="Documentation" sourceRef="requirements" targetRef="Gateway_06cad2w" />
+    <bpmn:sequenceFlow id="requirements-auw" name="Advanced underwriting" sourceRef="requirements" targetRef="Gateway_0q79pdz" />
+    <bpmn:sequenceFlow id="all-documentation-approved-no" name="No" sourceRef="all-documentation-approved" targetRef="Gateway_06cad2w" />
+    <bpmn:sequenceFlow id="Flow_1t5ddwu" sourceRef="documentation-assessment" targetRef="Gateway_02p0qya" />
+    <bpmn:sequenceFlow id="Flow_1ktplom" sourceRef="Event_17jod5m" targetRef="credit-evaluation" />
+    <bpmn:sequenceFlow id="Flow_1rv23j4" sourceRef="credit-evaluation" targetRef="rejected" />
+    <bpmn:sequenceFlow id="rejected-no" name="No" sourceRef="rejected" targetRef="Gateway_02p0qya" />
+    <bpmn:sequenceFlow id="Flow_1l5lf0k" sourceRef="Gateway_02p0qya" targetRef="all-documentation-approved" />
+    <bpmn:sequenceFlow id="rejected-yes" name="Yes" sourceRef="rejected" targetRef="Event_1xyj9n6" />
+    <bpmn:sequenceFlow id="Flow_0z38ie6" sourceRef="Gateway_0q79pdz" targetRef="needs-auw" />
+    <bpmn:sequenceFlow id="needs-auw-yes" name="Yes" sourceRef="needs-auw" targetRef="advanced-underwriting" />
+    <bpmn:sequenceFlow id="needs-auw-no" name="No" sourceRef="needs-auw" targetRef="Gateway_1laxdwq" />
+    <bpmn:sequenceFlow id="all-documentation-approved-yes" name="Yes" sourceRef="all-documentation-approved" targetRef="Gateway_0q79pdz" />
+    <bpmn:sequenceFlow id="Flow_1hporpx" sourceRef="advanced-underwriting" targetRef="Gateway_1laxdwq" />
+    <bpmn:sequenceFlow id="Flow_158y4kx" sourceRef="Gateway_1laxdwq" targetRef="process-end-event" />
+    <bpmn:boundaryEvent id="event-request-additional-documentation" name="Request additional documentation" cancelActivity="false" attachedToRef="advanced-underwriting">
+      <bpmn:outgoing>Flow_1ywy6zd</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0ge5nwr" />
+    </bpmn:boundaryEvent>
+    <bpmn:userTask id="advanced-underwriting" name="Perform advanced underwriting">
+      <bpmn:incoming>needs-auw-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_1hporpx</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="process-end-event">
+      <bpmn:incoming>Flow_158y4kx</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gateway_1laxdwq">
+      <bpmn:incoming>Flow_1hporpx</bpmn:incoming>
+      <bpmn:incoming>needs-auw-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_158y4kx</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:inclusiveGateway id="Gateway_0q79pdz">
+      <bpmn:incoming>requirements-auw</bpmn:incoming>
+      <bpmn:incoming>all-documentation-approved-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_0z38ie6</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:exclusiveGateway id="all-documentation-approved" name="All documentation approved?">
+      <bpmn:incoming>Flow_1l5lf0k</bpmn:incoming>
+      <bpmn:outgoing>all-documentation-approved-no</bpmn:outgoing>
+      <bpmn:outgoing>all-documentation-approved-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="needs-auw" name="Needs advanced underwriting?">
+      <bpmn:incoming>Flow_0z38ie6</bpmn:incoming>
+      <bpmn:outgoing>needs-auw-yes</bpmn:outgoing>
+      <bpmn:outgoing>needs-auw-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_1xyj9n6" name="Automatically rejected">
+      <bpmn:incoming>rejected-yes</bpmn:incoming>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_1iloqu1" escalationRef="Escalation_1k75avo" />
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="rejected" name="Rejected?">
+      <bpmn:incoming>Flow_1rv23j4</bpmn:incoming>
+      <bpmn:outgoing>rejected-yes</bpmn:outgoing>
+      <bpmn:outgoing>rejected-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_02p0qya">
+      <bpmn:incoming>Flow_1t5ddwu</bpmn:incoming>
+      <bpmn:incoming>rejected-no</bpmn:incoming>
+      <bpmn:incoming>Flow_1ggt9w5</bpmn:incoming>
+      <bpmn:outgoing>Flow_1l5lf0k</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:callActivity id="credit-evaluation" name="Automatic Credit Evaluation" calledElement="credit-evaluation">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_1ktplom</bpmn:incoming>
+      <bpmn:outgoing>Flow_1rv23j4</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:endEvent id="Event_1mrw0am">
+      <bpmn:incoming>Flow_12w93zo</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="auw-upload-documentation" name="Upload documentation">
+      <bpmn:incoming>Flow_1ywy6zd</bpmn:incoming>
+      <bpmn:outgoing>Flow_12w93zo</bpmn:outgoing>
+    </bpmn:userTask>
+  </bpmn:process>
+  <bpmn:error id="Error_030920h" name="manual-credit-evaluation-rejected" errorCode="manual-credit-evaluation-rejected" />
+  <bpmn:escalation id="Escalation_3g6tkfr" name="credit-reevaluation-required" escalationCode="credit-reevaluation-required" />
+  <bpmn:escalation id="Escalation_1k75avo" name="credit-evaluation-automatically-rejected" escalationCode="credit-evaluation-automatically-rejected" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1v0pynq">
+      <bpmndi:BPMNShape id="Participant_19uyuzs_di" bpmnElement="Participant_19uyuzs" isHorizontal="true">
+        <dc:Bounds x="129" y="100" width="2541" height="1050" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1hd6dp3_di" bpmnElement="Lane_1hd6dp3" isHorizontal="true">
+        <dc:Bounds x="159" y="300" width="2511" height="290" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1g0t63q_di" bpmnElement="Lane_1g0t63q" isHorizontal="true">
+        <dc:Bounds x="159" y="100" width="2511" height="200" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1ppy68i_di" bpmnElement="Lane_1ppy68i" isHorizontal="true">
+        <dc:Bounds x="159" y="590" width="2511" height="560" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_02ah5ch" bpmnElement="upload-documentation">
+        <dc:Bounds x="770" y="380" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_19eiij7_di" bpmnElement="object-control">
+        <dc:Bounds x="770" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event">
+        <dc:Bounds x="202" y="682" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0ssxfwm_di" bpmnElement="requirements">
+        <dc:Bounds x="515" y="675" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="452" y="663" width="75" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0symi90" bpmnElement="Gateway_06cad2w" isMarkerVisible="true">
+        <dc:Bounds x="675" y="675" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1uf1fcs_di" bpmnElement="documentation-assessment">
+        <dc:Bounds x="990" y="660" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0qt0aqr_di" bpmnElement="advanced-underwriting">
+        <dc:Bounds x="2180" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ukrfd4_di" bpmnElement="process-end-event">
+        <dc:Bounds x="2572" y="682" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_12crl0c_di" bpmnElement="Gateway_1laxdwq" isMarkerVisible="true">
+        <dc:Bounds x="2435" y="675" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1eqyl02_di" bpmnElement="Gateway_0q79pdz">
+        <dc:Bounds x="1905" y="675" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1j2lpsi_di" bpmnElement="all-documentation-approved" isMarkerVisible="true">
+        <dc:Bounds x="1735" y="675" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1656" y="656" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1tzst98_di" bpmnElement="needs-auw" isMarkerVisible="true">
+        <dc:Bounds x="2065" y="675" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2048" y="736" width="83" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1c25tfy_di" bpmnElement="Event_1xyj9n6" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="1602" y="822" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1587" y="865" width="66" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_110xnb8_di" bpmnElement="rejected" isMarkerVisible="true">
+        <dc:Bounds x="1435" y="815" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1435" y="875" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_02p0qya_di" bpmnElement="Gateway_02p0qya" isMarkerVisible="true">
+        <dc:Bounds x="1435" y="675" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_16bnskh_di" bpmnElement="credit-evaluation">
+        <dc:Bounds x="1210" y="800" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1mrw0am_di" bpmnElement="Event_1mrw0am">
+        <dc:Bounds x="2262" y="512" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0usq28d" bpmnElement="auw-upload-documentation">
+        <dc:Bounds x="2230" y="380" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_018x80o_di" bpmnElement="event-request-additional-documentation">
+        <dc:Bounds x="2262" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2293" y="257" width="73" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_17jod5m_di" bpmnElement="Event_17jod5m">
+        <dc:Bounds x="1072" y="722" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1115" y="720" width="60" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_093xjnx" bpmnElement="Flow_1iw9ts0">
+        <di:waypoint x="700" y="675" />
+        <di:waypoint x="700" y="420" />
+        <di:waypoint x="770" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0yto080" bpmnElement="Flow_1653cf4">
+        <di:waypoint x="870" y="420" />
+        <di:waypoint x="930" y="420" />
+        <di:waypoint x="930" y="700" />
+        <di:waypoint x="990" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1uednr6_di" bpmnElement="requirements-object-valuation">
+        <di:waypoint x="540" y="675" />
+        <di:waypoint x="540" y="210" />
+        <di:waypoint x="770" y="210" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="556" y="618" width="68" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ggt9w5_di" bpmnElement="Flow_1ggt9w5">
+        <di:waypoint x="870" y="210" />
+        <di:waypoint x="1460" y="210" />
+        <di:waypoint x="1460" y="675" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ywy6zd_di" bpmnElement="Flow_1ywy6zd">
+        <di:waypoint x="2280" y="268" />
+        <di:waypoint x="2280" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12w93zo_di" bpmnElement="Flow_12w93zo">
+        <di:waypoint x="2280" y="460" />
+        <di:waypoint x="2280" y="512" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1cbhztn_di" bpmnElement="Flow_1cbhztn">
+        <di:waypoint x="238" y="700" />
+        <di:waypoint x="515" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1qs36mr_di" bpmnElement="requirements-documentation">
+        <di:waypoint x="565" y="700" />
+        <di:waypoint x="675" y="700" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="583" y="673" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0e1uqti_di" bpmnElement="requirements-auw">
+        <di:waypoint x="540" y="725" />
+        <di:waypoint x="540" y="1060" />
+        <di:waypoint x="1930" y="1060" />
+        <di:waypoint x="1930" y="725" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="550" y="752" width="60" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0m3abhi" bpmnElement="all-documentation-approved-no">
+        <di:waypoint x="1760" y="725" />
+        <di:waypoint x="1760" y="970" />
+        <di:waypoint x="700" y="970" />
+        <di:waypoint x="700" y="725" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1772" y="737" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1t5ddwu_di" bpmnElement="Flow_1t5ddwu">
+        <di:waypoint x="1090" y="700" />
+        <di:waypoint x="1435" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ktplom_di" bpmnElement="Flow_1ktplom">
+        <di:waypoint x="1090" y="758" />
+        <di:waypoint x="1090" y="840" />
+        <di:waypoint x="1210" y="840" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1rv23j4_di" bpmnElement="Flow_1rv23j4">
+        <di:waypoint x="1310" y="840" />
+        <di:waypoint x="1435" y="840" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1qxygko_di" bpmnElement="rejected-no">
+        <di:waypoint x="1460" y="815" />
+        <di:waypoint x="1460" y="725" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1472" y="769" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1l5lf0k_di" bpmnElement="Flow_1l5lf0k">
+        <di:waypoint x="1485" y="700" />
+        <di:waypoint x="1735" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0uk9olh_di" bpmnElement="rejected-yes">
+        <di:waypoint x="1485" y="840" />
+        <di:waypoint x="1602" y="840" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1529" y="823" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0z38ie6_di" bpmnElement="Flow_0z38ie6">
+        <di:waypoint x="1955" y="700" />
+        <di:waypoint x="2065" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_01zuwud_di" bpmnElement="needs-auw-yes">
+        <di:waypoint x="2090" y="675" />
+        <di:waypoint x="2090" y="210" />
+        <di:waypoint x="2180" y="210" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2101" y="639" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_090vf0u_di" bpmnElement="needs-auw-no">
+        <di:waypoint x="2115" y="700" />
+        <di:waypoint x="2435" y="700" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2142" y="682" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_06hmfn7_di" bpmnElement="all-documentation-approved-yes">
+        <di:waypoint x="1785" y="700" />
+        <di:waypoint x="1905" y="700" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1811" y="682" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1hporpx_di" bpmnElement="Flow_1hporpx">
+        <di:waypoint x="2280" y="210" />
+        <di:waypoint x="2460" y="210" />
+        <di:waypoint x="2460" y="675" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_158y4kx_di" bpmnElement="Flow_158y4kx">
+        <di:waypoint x="2485" y="700" />
+        <di:waypoint x="2572" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_0ffygmn" bpmnElement="TextAnnotation_0elpepz">
+        <dc:Bounds x="260" y="790" width="260" height="130" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_0inq3ee_di" bpmnElement="Association_0inq3ee">
+        <di:waypoint x="411" y="790" />
+        <di:waypoint x="525" y="710" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:collaboration id="Collaboration_05dzvcx">
+    <bpmn:participant id="Participant_05vs5j5" name="Disbursement" processRef="mortgage-se-disbursement" />
+    <bpmn:textAnnotation id="TextAnnotation_1lnl8t3">
+      <bpmn:text>Vilken information skickas här?
+Eventuellt räcker det med eventet: Signing completed</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_19qxvla" associationDirection="None" sourceRef="handle-disbursement" targetRef="TextAnnotation_1lnl8t3" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-disbursement" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_05casj5">
+      <bpmn:lane id="Lane_1336qon" name="System">
+        <bpmn:flowNodeRef>start-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>handle-disbursement</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_15wjsxm</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>disbursement-completed</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0gubmbi</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>disbursement-cancelled</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>disbursement-cancelled-escalate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>archive-documents</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="start-event">
+      <bpmn:outgoing>Flow_1o0uuwd</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="handle-disbursement" name="Handle disbursement">
+      <bpmn:incoming>Flow_1o0uuwd</bpmn:incoming>
+      <bpmn:outgoing>Flow_0geszxp</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_0ocx7f1">
+        <bpmn:targetRef>DataStoreReference_12opog2</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:eventBasedGateway id="Gateway_15wjsxm">
+      <bpmn:incoming>Flow_0geszxp</bpmn:incoming>
+      <bpmn:outgoing>Flow_178gpcv</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0l5s06k</bpmn:outgoing>
+    </bpmn:eventBasedGateway>
+    <bpmn:intermediateCatchEvent id="disbursement-completed" name="Disbursement completed">
+      <bpmn:incoming>Flow_178gpcv</bpmn:incoming>
+      <bpmn:outgoing>Flow_11bdea0</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1atbyvi" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="Event_0gubmbi">
+      <bpmn:incoming>Flow_0qzovsm</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataStoreReference id="DataStoreReference_12opog2" name="Core system" />
+    <bpmn:intermediateCatchEvent id="disbursement-cancelled" name="Disbursement cancelled">
+      <bpmn:incoming>Flow_0l5s06k</bpmn:incoming>
+      <bpmn:outgoing>Flow_0apx5zn</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0kfg9vb" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="disbursement-cancelled-escalate">
+      <bpmn:incoming>Flow_0apx5zn</bpmn:incoming>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_1oua0va" escalationRef="Escalation_2lmfmcn" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1o0uuwd" sourceRef="start-event" targetRef="handle-disbursement" />
+    <bpmn:sequenceFlow id="Flow_0geszxp" sourceRef="handle-disbursement" targetRef="Gateway_15wjsxm" />
+    <bpmn:sequenceFlow id="Flow_178gpcv" sourceRef="Gateway_15wjsxm" targetRef="disbursement-completed" />
+    <bpmn:sequenceFlow id="Flow_0l5s06k" sourceRef="Gateway_15wjsxm" targetRef="disbursement-cancelled" />
+    <bpmn:sequenceFlow id="Flow_11bdea0" sourceRef="disbursement-completed" targetRef="archive-documents" />
+    <bpmn:sequenceFlow id="Flow_0qzovsm" sourceRef="archive-documents" targetRef="Event_0gubmbi" />
+    <bpmn:sequenceFlow id="Flow_0apx5zn" sourceRef="disbursement-cancelled" targetRef="disbursement-cancelled-escalate" />
+    <bpmn:serviceTask id="archive-documents" name="Archive documents">
+      <bpmn:incoming>Flow_11bdea0</bpmn:incoming>
+      <bpmn:outgoing>Flow_0qzovsm</bpmn:outgoing>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmn:escalation id="Escalation_2lmfmcn" name="disbursement-cancelled-escalate" escalationCode="disbursement-cancelled-escalate" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_05dzvcx">
+      <bpmndi:BPMNShape id="Participant_05vs5j5_di" bpmnElement="Participant_05vs5j5" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1090" height="490" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1336qon_di" bpmnElement="Lane_1336qon" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="1060" height="490" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event">
+        <dc:Bounds x="242" y="209" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_17025ou_di" bpmnElement="handle-disbursement" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="390" y="187" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_15wjsxm_di" bpmnElement="Gateway_15wjsxm">
+        <dc:Bounds x="605" y="202" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_108wa3q_di" bpmnElement="disbursement-completed">
+        <dc:Bounds x="772" y="209" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="756" y="252" width="68" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0gubmbi_di" bpmnElement="Event_0gubmbi">
+        <dc:Bounds x="1132" y="209" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_12opog2_di" bpmnElement="DataStoreReference_12opog2">
+        <dc:Bounds x="415" y="335" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="409" y="392" width="62" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1qxoif3_di" bpmnElement="disbursement-cancelled">
+        <dc:Bounds x="612" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="666" y="346" width="68" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0geqldo_di" bpmnElement="disbursement-cancelled-escalate" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="612" y="462" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0t2gzps_di" bpmnElement="archive-documents">
+        <dc:Bounds x="930" y="187" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1o0uuwd_di" bpmnElement="Flow_1o0uuwd">
+        <di:waypoint x="278" y="227" />
+        <di:waypoint x="390" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0geszxp_di" bpmnElement="Flow_0geszxp">
+        <di:waypoint x="490" y="227" />
+        <di:waypoint x="605" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_178gpcv_di" bpmnElement="Flow_178gpcv">
+        <di:waypoint x="655" y="227" />
+        <di:waypoint x="772" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0l5s06k_di" bpmnElement="Flow_0l5s06k">
+        <di:waypoint x="630" y="252" />
+        <di:waypoint x="630" y="342" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11bdea0_di" bpmnElement="Flow_11bdea0">
+        <di:waypoint x="808" y="227" />
+        <di:waypoint x="930" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0qzovsm_di" bpmnElement="Flow_0qzovsm">
+        <di:waypoint x="1030" y="227" />
+        <di:waypoint x="1132" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0apx5zn_di" bpmnElement="Flow_0apx5zn">
+        <di:waypoint x="630" y="378" />
+        <di:waypoint x="630" y="462" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_1lnl8t3_di" bpmnElement="TextAnnotation_1lnl8t3">
+        <dc:Bounds x="400" y="100" width="340" height="41" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_0ocx7f1_di" bpmnElement="DataOutputAssociation_0ocx7f1">
+        <di:waypoint x="440" y="267" />
+        <di:waypoint x="440" y="335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_19qxvla_di" bpmnElement="Association_19qxvla">
+        <di:waypoint x="444" y="187" />
+        <di:waypoint x="448" y="141" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

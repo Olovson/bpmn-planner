@@ -1,0 +1,781 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:collaboration id="Collaboration_1vbpl37">
+    <bpmn:participant id="Participant_0hcllfv" name="Object control" processRef="mortgage-se-object-control" />
+    <bpmn:textAnnotation id="TextAnnotation_1axppls">
+      <bpmn:text>Caseworker fetches document either from Tambur or asks stakeholder for documentation</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_0z2gaev">
+      <bpmn:text>Caseworker controls documentation and adds all info relevant for the case</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_0vv16t8">
+      <bpmn:text>Work In Progress ...</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1i2tn81" associationDirection="None" sourceRef="TextAnnotation_0vv16t8" targetRef="Participant_0hcllfv" />
+    <bpmn:textAnnotation id="TextAnnotation_1kt1cr5">
+      <bpmn:text>Mulig at vi kan ha en DMN Tabell her for å vurdere data inputtet.
+F eks:
+boyta kontroll</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_0ajl0rm">
+      <bpmn:text>Diskuter case hvor dette ikke trengs</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_0ae7dwx">
+      <bpmn:text>Om man trenger å hente verdi fra mekler</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_02ell3a">
+      <bpmn:text>Ta fram och registrera information om BRF som saknas</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1dc5t4l" associationDirection="None" sourceRef="needs-valuation" targetRef="TextAnnotation_0ajl0rm" />
+    <bpmn:association id="Association_0e417vg" associationDirection="None" sourceRef="control-lagenhetsutdrag" targetRef="TextAnnotation_1axppls" />
+    <bpmn:association id="Association_0r6dnai" associationDirection="None" sourceRef="control-lagenhetsutdrag" targetRef="TextAnnotation_0z2gaev" />
+    <bpmn:association id="Association_1ir6ib8" associationDirection="None" sourceRef="object-approved" targetRef="TextAnnotation_1kt1cr5" />
+    <bpmn:association id="Association_0f4tlpv" associationDirection="None" sourceRef="register-brf-information" targetRef="TextAnnotation_02ell3a" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-object-control" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_0phwfmw">
+      <bpmn:lane id="Lane_1bzpczn" name="Valuator">
+        <bpmn:flowNodeRef>determine-object-value</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_194mce8</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_1wq9x6x" name="Caseworker">
+        <bpmn:flowNodeRef>has-brf-information</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>register-brf-information</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>object-information</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_04ut3n0</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>brf-screening-result</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1pqluun</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>review-brf</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>control-lagenhetsutdrag</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>object-approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1yyhlmr</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0wgmopw</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>brf-approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0i6cize</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1xw2q1t</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_14f9my2</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_0lsdej7" name="Stakeholder">
+        <bpmn:flowNodeRef>Event_0xm12vg</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>upload-documentation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0co53lt</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>upload-object-valuation-document</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>review-changes</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>changes-accepted</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_11ji9em</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_09igjz3" name="System">
+        <bpmn:flowNodeRef>start-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>is-bostadsratt</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0qigv85</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>needs-valuation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0df2uib</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>process-end-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>changes-made</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_165hz99</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>credit-evaluation-rejected</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0fgu1si</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>credit-evaluation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>stakeholder-review</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:sequenceFlow id="is-bostadsratt-yes" name="Yes" sourceRef="is-bostadsratt" targetRef="Gateway_14f9my2" />
+    <bpmn:sequenceFlow id="Flow_1t65kyb" sourceRef="control-lagenhetsutdrag" targetRef="object-approved" />
+    <bpmn:sequenceFlow id="needs-valuation-yes" name="Yes" sourceRef="needs-valuation" targetRef="determine-object-value" />
+    <bpmn:sequenceFlow id="Flow_00qg51q" sourceRef="determine-object-value" targetRef="Gateway_0df2uib" />
+    <bpmn:sequenceFlow id="is-bostadsratt-no" name="No" sourceRef="is-bostadsratt" targetRef="Gateway_0qigv85" />
+    <bpmn:sequenceFlow id="object-approved-yes" name="Yes" sourceRef="object-approved" targetRef="Gateway_0qigv85" />
+    <bpmn:sequenceFlow id="Flow_1dfs1w2" sourceRef="Gateway_0qigv85" targetRef="needs-valuation" />
+    <bpmn:sequenceFlow id="needs-valuation-no" name="No" sourceRef="needs-valuation" targetRef="Gateway_0df2uib" />
+    <bpmn:sequenceFlow id="Flow_1omyh9m" sourceRef="Gateway_0df2uib" targetRef="changes-made" />
+    <bpmn:sequenceFlow id="Flow_1u0wig6" sourceRef="Gateway_165hz99" targetRef="process-end-event" />
+    <bpmn:sequenceFlow id="changes-made-no" name="No" sourceRef="changes-made" targetRef="Gateway_165hz99" />
+    <bpmn:sequenceFlow id="changes-made-yes" name="Yes" sourceRef="changes-made" targetRef="credit-evaluation" />
+    <bpmn:sequenceFlow id="changes-accepted-yes" name="Yes" sourceRef="changes-accepted" targetRef="Gateway_165hz99" />
+    <bpmn:sequenceFlow id="credit-evaluation-rejected-no" name="No" sourceRef="credit-evaluation-rejected" targetRef="stakeholder-review" />
+    <bpmn:sequenceFlow id="changes-accepted-no" name="No" sourceRef="changes-accepted" targetRef="Event_11ji9em" />
+    <bpmn:sequenceFlow id="Flow_1l2keyq" sourceRef="credit-evaluation" targetRef="credit-evaluation-rejected" />
+    <bpmn:sequenceFlow id="credit-evaluation-rejected-yes" name="Yes" sourceRef="credit-evaluation-rejected" targetRef="Event_0fgu1si" />
+    <bpmn:sequenceFlow id="Flow_0167gxa" sourceRef="upload-documentation" targetRef="Event_0xm12vg" />
+    <bpmn:sequenceFlow id="object-approved-no" name="No" sourceRef="object-approved" targetRef="Event_1yyhlmr" />
+    <bpmn:sequenceFlow id="Flow_16bcbti" sourceRef="Event_1xw2q1t" targetRef="upload-documentation" />
+    <bpmn:sequenceFlow id="Flow_0hr7m91" sourceRef="Event_194mce8" targetRef="upload-object-valuation-document" />
+    <bpmn:sequenceFlow id="Flow_0cguw1v" sourceRef="upload-object-valuation-document" targetRef="Event_0co53lt" />
+    <bpmn:sequenceFlow id="Flow_0zd5hz0" sourceRef="review-changes" targetRef="changes-accepted" />
+    <bpmn:sequenceFlow id="stakeholder-review-yes" name="Yes" sourceRef="stakeholder-review" targetRef="review-changes" />
+    <bpmn:sequenceFlow id="stakeholder-review-no" name="No" sourceRef="stakeholder-review" targetRef="Gateway_165hz99" />
+    <bpmn:sequenceFlow id="Flow_1nc4bwi" sourceRef="start-event" targetRef="is-bostadsratt" />
+    <bpmn:sequenceFlow id="has-brf-information-yes" name="Yes" sourceRef="has-brf-information" targetRef="Gateway_04ut3n0" />
+    <bpmn:sequenceFlow id="has-brf-information-no" name="No" sourceRef="has-brf-information" targetRef="register-brf-information" />
+    <bpmn:sequenceFlow id="brf-screening-result-rejected" name="Rejected" sourceRef="brf-screening-result" targetRef="Event_1pqluun" />
+    <bpmn:sequenceFlow id="Flow_1vxqbir" sourceRef="object-information" targetRef="Gateway_04ut3n0" />
+    <bpmn:sequenceFlow id="Flow_1ag6euz" sourceRef="Gateway_04ut3n0" targetRef="brf-screening-result" />
+    <bpmn:sequenceFlow id="brf-screening-result-accepted" name="Accepted" sourceRef="brf-screening-result" targetRef="Gateway_0wgmopw" />
+    <bpmn:sequenceFlow id="Flow_15o3nji" sourceRef="Gateway_0wgmopw" targetRef="control-lagenhetsutdrag" />
+    <bpmn:sequenceFlow id="brf-screening-result-review" name="Review" sourceRef="brf-screening-result" targetRef="review-brf" />
+    <bpmn:sequenceFlow id="Flow_0g8xk4m" sourceRef="review-brf" targetRef="brf-approved" />
+    <bpmn:sequenceFlow id="brf-approved-yes" name="Yes" sourceRef="brf-approved" targetRef="Gateway_0wgmopw" />
+    <bpmn:sequenceFlow id="brf-approved-no" name="No" sourceRef="brf-approved" targetRef="Event_0i6cize" />
+    <bpmn:sequenceFlow id="Flow_0vgcod9" sourceRef="register-brf-information" targetRef="object-information" />
+    <bpmn:startEvent id="start-event">
+      <bpmn:outgoing>Flow_1nc4bwi</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_0p4x73i" sourceRef="Gateway_14f9my2" targetRef="has-brf-information" />
+    <bpmn:sequenceFlow id="brf-screening-result-missing-info" name="BRF information missing" sourceRef="brf-screening-result" targetRef="Gateway_14f9my2" />
+    <bpmn:exclusiveGateway id="is-bostadsratt" name="Is bostadsrätt?">
+      <bpmn:incoming>Flow_1nc4bwi</bpmn:incoming>
+      <bpmn:outgoing>is-bostadsratt-yes</bpmn:outgoing>
+      <bpmn:outgoing>is-bostadsratt-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="has-brf-information" name="Has BRF information">
+      <bpmn:incoming>Flow_0p4x73i</bpmn:incoming>
+      <bpmn:outgoing>has-brf-information-yes</bpmn:outgoing>
+      <bpmn:outgoing>has-brf-information-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="register-brf-information" name="Register BRF information">
+      <bpmn:incoming>has-brf-information-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_0vgcod9</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_1wr6nyv">
+        <bpmn:targetRef>DataStoreReference_09sc1vy</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:userTask>
+    <bpmn:dataStoreReference id="DataStoreReference_09sc1vy" name="BRF information database" />
+    <bpmn:userTask id="determine-object-value" name="Determine object value">
+      <bpmn:incoming>needs-valuation-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_00qg51q</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:callActivity id="object-information" name="Object information">
+      <bpmn:incoming>Flow_0vgcod9</bpmn:incoming>
+      <bpmn:outgoing>Flow_1vxqbir</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:exclusiveGateway id="Gateway_04ut3n0">
+      <bpmn:incoming>has-brf-information-yes</bpmn:incoming>
+      <bpmn:incoming>Flow_1vxqbir</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ag6euz</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="brf-screening-result" name="BRF screening result">
+      <bpmn:incoming>Flow_1ag6euz</bpmn:incoming>
+      <bpmn:outgoing>brf-screening-result-rejected</bpmn:outgoing>
+      <bpmn:outgoing>brf-screening-result-accepted</bpmn:outgoing>
+      <bpmn:outgoing>brf-screening-result-review</bpmn:outgoing>
+      <bpmn:outgoing>brf-screening-result-missing-info</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_1pqluun" name="BRF rejected">
+      <bpmn:incoming>brf-screening-result-rejected</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_188hb17" errorRef="Error_1t95jmk" />
+    </bpmn:endEvent>
+    <bpmn:userTask id="review-brf" name="Review BRF">
+      <bpmn:incoming>brf-screening-result-review</bpmn:incoming>
+      <bpmn:outgoing>Flow_0g8xk4m</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="control-lagenhetsutdrag" name="Control lägenhets-utdrag">
+      <bpmn:incoming>Flow_15o3nji</bpmn:incoming>
+      <bpmn:outgoing>Flow_1t65kyb</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="Event_0xm12vg">
+      <bpmn:incoming>Flow_0167gxa</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="object-approved" name="Object approved?" default="object-approved-yes">
+      <bpmn:incoming>Flow_1t65kyb</bpmn:incoming>
+      <bpmn:outgoing>object-approved-no</bpmn:outgoing>
+      <bpmn:outgoing>object-approved-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_1yyhlmr" name="Object rejected">
+      <bpmn:incoming>object-approved-no</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_1hxukqb" errorRef="Error_0nouvlm" />
+    </bpmn:endEvent>
+    <bpmn:userTask id="upload-documentation" name="Upload documentation">
+      <bpmn:incoming>Flow_16bcbti</bpmn:incoming>
+      <bpmn:outgoing>Flow_0167gxa</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="Event_0co53lt">
+      <bpmn:incoming>Flow_0cguw1v</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="upload-object-valuation-document" name="Upload object valuation documentation">
+      <bpmn:incoming>Flow_0hr7m91</bpmn:incoming>
+      <bpmn:outgoing>Flow_0cguw1v</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="review-changes" name="Review changes">
+      <bpmn:incoming>stakeholder-review-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_0zd5hz0</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="changes-accepted" name="Changes accepted?">
+      <bpmn:incoming>Flow_0zd5hz0</bpmn:incoming>
+      <bpmn:outgoing>changes-accepted-yes</bpmn:outgoing>
+      <bpmn:outgoing>changes-accepted-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_11ji9em">
+      <bpmn:incoming>changes-accepted-no</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_0xx2bu1" errorRef="Error_1rbhigu" />
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gateway_0qigv85">
+      <bpmn:incoming>object-approved-yes</bpmn:incoming>
+      <bpmn:incoming>is-bostadsratt-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_1dfs1w2</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="needs-valuation" name="Needs valuation?">
+      <bpmn:incoming>Flow_1dfs1w2</bpmn:incoming>
+      <bpmn:outgoing>needs-valuation-yes</bpmn:outgoing>
+      <bpmn:outgoing>needs-valuation-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_0df2uib">
+      <bpmn:incoming>Flow_00qg51q</bpmn:incoming>
+      <bpmn:incoming>needs-valuation-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_1omyh9m</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="process-end-event">
+      <bpmn:incoming>Flow_1u0wig6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="changes-made" name="Changes made?">
+      <bpmn:incoming>Flow_1omyh9m</bpmn:incoming>
+      <bpmn:outgoing>changes-made-no</bpmn:outgoing>
+      <bpmn:outgoing>changes-made-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_165hz99">
+      <bpmn:incoming>changes-made-no</bpmn:incoming>
+      <bpmn:incoming>changes-accepted-yes</bpmn:incoming>
+      <bpmn:incoming>stakeholder-review-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_1u0wig6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="credit-evaluation-rejected" name="Rejected?">
+      <bpmn:incoming>Flow_1l2keyq</bpmn:incoming>
+      <bpmn:outgoing>credit-evaluation-rejected-yes</bpmn:outgoing>
+      <bpmn:outgoing>credit-evaluation-rejected-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_0fgu1si">
+      <bpmn:incoming>credit-evaluation-rejected-yes</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_1ssdovb" errorRef="Error_0emv9cs" />
+    </bpmn:endEvent>
+    <bpmn:callActivity id="credit-evaluation" name="Automatic Credit Evaluation" calledElement="credit-evaluation">
+      <bpmn:incoming>changes-made-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_1l2keyq</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:exclusiveGateway id="stakeholder-review" name="Stakeholder review?">
+      <bpmn:incoming>credit-evaluation-rejected-no</bpmn:incoming>
+      <bpmn:outgoing>stakeholder-review-yes</bpmn:outgoing>
+      <bpmn:outgoing>stakeholder-review-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_0wgmopw">
+      <bpmn:incoming>brf-screening-result-accepted</bpmn:incoming>
+      <bpmn:incoming>brf-approved-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_15o3nji</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="brf-approved" name="BRF approved">
+      <bpmn:incoming>Flow_0g8xk4m</bpmn:incoming>
+      <bpmn:outgoing>brf-approved-yes</bpmn:outgoing>
+      <bpmn:outgoing>brf-approved-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_0i6cize" name="BRF rejected">
+      <bpmn:incoming>brf-approved-no</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_0g0q0bh" errorRef="Error_1t95jmk" />
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="Event_194mce8" name="Request mäklarvärdering" cancelActivity="false" attachedToRef="determine-object-value">
+      <bpmn:outgoing>Flow_0hr7m91</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_10y9w5m" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Event_1xw2q1t" name="Request lägenhetsutdrag" cancelActivity="false" attachedToRef="control-lagenhetsutdrag">
+      <bpmn:outgoing>Flow_16bcbti</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0n55aj6" />
+    </bpmn:boundaryEvent>
+    <bpmn:exclusiveGateway id="Gateway_14f9my2">
+      <bpmn:incoming>is-bostadsratt-yes</bpmn:incoming>
+      <bpmn:incoming>brf-screening-result-missing-info</bpmn:incoming>
+      <bpmn:outgoing>Flow_0p4x73i</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:association id="Association_11i9vmk" associationDirection="None" sourceRef="Event_194mce8" targetRef="TextAnnotation_0ae7dwx" />
+  </bpmn:process>
+  <bpmn:error id="Error_1t95jmk" name="brf-rejected" errorCode="brf-rejected" camunda:errorMessage="brf-rejected" />
+  <bpmn:error id="Error_1rbhigu" name="changes-rejected" errorCode="changes-rejected" camunda:errorMessage="changes-rejected" />
+  <bpmn:error id="Error_0nouvlm" name="object-rejected" errorCode="object-rejected" camunda:errorMessage="object-rejected" />
+  <bpmn:error id="Error_0emv9cs" name="rejected" errorCode="rejected" camunda:errorMessage="rejected" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1vbpl37">
+      <bpmndi:BPMNShape id="Participant_0hcllfv_di" bpmnElement="Participant_0hcllfv" isHorizontal="true">
+        <dc:Bounds x="129" y="180" width="3611" height="1600" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_09igjz3_di" bpmnElement="Lane_09igjz3" isHorizontal="true">
+        <dc:Bounds x="159" y="1220" width="3581" height="560" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_0lsdej7_di" bpmnElement="Lane_0lsdej7" isHorizontal="true">
+        <dc:Bounds x="159" y="960" width="3581" height="260" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1wq9x6x_di" bpmnElement="Lane_1wq9x6x" isHorizontal="true">
+        <dc:Bounds x="159" y="410" width="3581" height="550" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1bzpczn_di" bpmnElement="Lane_1bzpczn" isHorizontal="true">
+        <dc:Bounds x="159" y="180" width="3581" height="230" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event">
+        <dc:Bounds x="219" y="1682" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1ynlyej_di" bpmnElement="is-bostadsratt" isMarkerVisible="true">
+        <dc:Bounds x="345" y="1675" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="334" y="1732" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0jxzmj8_di" bpmnElement="has-brf-information" isMarkerVisible="true">
+        <dc:Bounds x="625" y="745" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="623" y="802" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_140poeu_di" bpmnElement="register-brf-information">
+        <dc:Bounds x="760" y="600" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_09sc1vy_di" bpmnElement="DataStoreReference_09sc1vy">
+        <dc:Bounds x="785" y="475" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="770" y="445" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_05e26nc_di" bpmnElement="determine-object-value">
+        <dc:Bounds x="2610" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_05duyvg_di" bpmnElement="object-information">
+        <dc:Bounds x="960" y="600" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_04ut3n0_di" bpmnElement="Gateway_04ut3n0" isMarkerVisible="true">
+        <dc:Bounds x="1155" y="745" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_10we8vj" bpmnElement="brf-screening-result" isMarkerVisible="true">
+        <dc:Bounds x="1305" y="745" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1243" y="714" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0xmuai6" bpmnElement="Event_1pqluun" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="1312" y="882" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1298" y="928" width="65" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0k6wfpy_di" bpmnElement="review-brf">
+        <dc:Bounds x="1440" y="600" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1r3g8w3_di" bpmnElement="control-lagenhetsutdrag">
+        <dc:Bounds x="1900" y="730" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0xm12vg_di" bpmnElement="Event_0xm12vg">
+        <dc:Bounds x="1982" y="1152" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0b3bi4v_di" bpmnElement="object-approved" isMarkerVisible="true" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="2145" y="745" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2126" y="721" width="87" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1lk2got_di" bpmnElement="Event_1yyhlmr" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="2152" y="862" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2134" y="905" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1xnzteh_di" bpmnElement="upload-documentation">
+        <dc:Bounds x="1950" y="1010" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0co53lt_di" bpmnElement="Event_0co53lt">
+        <dc:Bounds x="2692" y="1142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_00ge2tc_di" bpmnElement="upload-object-valuation-document">
+        <dc:Bounds x="2660" y="1010" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0jslgz5_di" bpmnElement="review-changes">
+        <dc:Bounds x="3000" y="1010" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0gebx8h_di" bpmnElement="changes-accepted" isMarkerVisible="true">
+        <dc:Bounds x="3185" y="1025" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3185" y="988" width="51" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1i1o7wi_di" bpmnElement="Event_11ji9em" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="3192" y="1142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0qigv85_di" bpmnElement="Gateway_0qigv85" isMarkerVisible="true">
+        <dc:Bounds x="2315" y="1675" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0yap17w_di" bpmnElement="needs-valuation" isMarkerVisible="true" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="2495" y="1675" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2477" y="1735" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0df2uib_di" bpmnElement="Gateway_0df2uib" isMarkerVisible="true" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="2855" y="1675" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ukrfd4_di" bpmnElement="process-end-event">
+        <dc:Bounds x="3662" y="1682" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1bh6zgf_di" bpmnElement="changes-made" isMarkerVisible="true">
+        <dc:Bounds x="3025" y="1675" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3010" y="1732" width="81" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_165hz99_di" bpmnElement="Gateway_165hz99" isMarkerVisible="true">
+        <dc:Bounds x="3445" y="1675" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0i0g9a6_di" bpmnElement="credit-evaluation-rejected" isMarkerVisible="true">
+        <dc:Bounds x="3025" y="1415" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2965" y="1433" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0tvopvz_di" bpmnElement="Event_0fgu1si" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="3172" y="1422" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_16bnskh_di" bpmnElement="credit-evaluation">
+        <dc:Bounds x="3000" y="1510" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1bj3zlb_di" bpmnElement="stakeholder-review" isMarkerVisible="true">
+        <dc:Bounds x="3025" y="1285" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2950" y="1296" width="59" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0wgmopw_di" bpmnElement="Gateway_0wgmopw" isMarkerVisible="true">
+        <dc:Bounds x="1725" y="745" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0h9ywf4_di" bpmnElement="brf-approved" isMarkerVisible="true">
+        <dc:Bounds x="1625" y="615" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1615" y="672" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1hjdwb1_di" bpmnElement="Event_0i6cize" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="1632" y="512" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1618" y="488" width="65" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_14f9my2_di" bpmnElement="Gateway_14f9my2" isMarkerVisible="true">
+        <dc:Bounds x="485" y="745" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_02mi574_di" bpmnElement="Event_1xw2q1t">
+        <dc:Bounds x="1982" y="792" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2010" y="826" width="79" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1fxlzl1_di" bpmnElement="Event_194mce8">
+        <dc:Bounds x="2692" y="332" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2745" y="340" width="79" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1uhzy4s_di" bpmnElement="is-bostadsratt-yes">
+        <di:waypoint x="370" y="1675" />
+        <di:waypoint x="370" y="770" />
+        <di:waypoint x="485" y="770" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="381" y="1637" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1t65kyb_di" bpmnElement="Flow_1t65kyb">
+        <di:waypoint x="2000" y="770" />
+        <di:waypoint x="2145" y="770" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05ow1y2_di" bpmnElement="needs-valuation-yes">
+        <di:waypoint x="2520" y="1675" />
+        <di:waypoint x="2520" y="310" />
+        <di:waypoint x="2610" y="310" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2531" y="1636" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00qg51q_di" bpmnElement="Flow_00qg51q">
+        <di:waypoint x="2710" y="310" />
+        <di:waypoint x="2880" y="310" />
+        <di:waypoint x="2880" y="1675" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ta0dic_di" bpmnElement="is-bostadsratt-no">
+        <di:waypoint x="395" y="1700" />
+        <di:waypoint x="2315" y="1700" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="532" y="1682" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0s0tg9d_di" bpmnElement="object-approved-yes">
+        <di:waypoint x="2195" y="770" />
+        <di:waypoint x="2340" y="770" />
+        <di:waypoint x="2340" y="1675" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2231" y="752" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1dfs1w2_di" bpmnElement="Flow_1dfs1w2">
+        <di:waypoint x="2365" y="1700" />
+        <di:waypoint x="2495" y="1700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_142u6qi_di" bpmnElement="needs-valuation-no">
+        <di:waypoint x="2545" y="1700" />
+        <di:waypoint x="2855" y="1700" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2584" y="1682" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1omyh9m_di" bpmnElement="Flow_1omyh9m">
+        <di:waypoint x="2905" y="1700" />
+        <di:waypoint x="3025" y="1700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1u0wig6_di" bpmnElement="Flow_1u0wig6">
+        <di:waypoint x="3495" y="1700" />
+        <di:waypoint x="3662" y="1700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0b42cyu_di" bpmnElement="changes-made-no">
+        <di:waypoint x="3075" y="1700" />
+        <di:waypoint x="3445" y="1700" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3102" y="1682" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0q4zjtg_di" bpmnElement="changes-made-yes">
+        <di:waypoint x="3050" y="1675" />
+        <di:waypoint x="3050" y="1590" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3061" y="1643" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0wiabx8_di" bpmnElement="changes-accepted-yes">
+        <di:waypoint x="3235" y="1050" />
+        <di:waypoint x="3470" y="1050" />
+        <di:waypoint x="3470" y="1675" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3261" y="1032" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_09xpvdw_di" bpmnElement="credit-evaluation-rejected-no">
+        <di:waypoint x="3050" y="1415" />
+        <di:waypoint x="3050" y="1335" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3062" y="1383" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13sv49v_di" bpmnElement="changes-accepted-no">
+        <di:waypoint x="3210" y="1075" />
+        <di:waypoint x="3210" y="1142" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3218" y="1095" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1l2keyq_di" bpmnElement="Flow_1l2keyq">
+        <di:waypoint x="3050" y="1510" />
+        <di:waypoint x="3050" y="1465" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1q4jov4_di" bpmnElement="credit-evaluation-rejected-yes">
+        <di:waypoint x="3075" y="1440" />
+        <di:waypoint x="3172" y="1440" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3091" y="1422" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0167gxa_di" bpmnElement="Flow_0167gxa">
+        <di:waypoint x="2000" y="1090" />
+        <di:waypoint x="2000" y="1152" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ebqmia_di" bpmnElement="object-approved-no">
+        <di:waypoint x="2170" y="795" />
+        <di:waypoint x="2170" y="862" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2178" y="809" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16bcbti_di" bpmnElement="Flow_16bcbti">
+        <di:waypoint x="2000" y="828" />
+        <di:waypoint x="2000" y="1010" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0hr7m91_di" bpmnElement="Flow_0hr7m91">
+        <di:waypoint x="2710" y="368" />
+        <di:waypoint x="2710" y="1010" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0cguw1v_di" bpmnElement="Flow_0cguw1v">
+        <di:waypoint x="2710" y="1090" />
+        <di:waypoint x="2710" y="1142" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0zd5hz0_di" bpmnElement="Flow_0zd5hz0">
+        <di:waypoint x="3100" y="1050" />
+        <di:waypoint x="3185" y="1050" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1exc6s8_di" bpmnElement="stakeholder-review-yes">
+        <di:waypoint x="3050" y="1285" />
+        <di:waypoint x="3050" y="1090" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3061" y="1243" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1byc7ae_di" bpmnElement="stakeholder-review-no">
+        <di:waypoint x="3075" y="1310" />
+        <di:waypoint x="3470" y="1310" />
+        <di:waypoint x="3470" y="1675" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3082" y="1292" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1nc4bwi_di" bpmnElement="Flow_1nc4bwi">
+        <di:waypoint x="255" y="1700" />
+        <di:waypoint x="345" y="1700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00ilf3b_di" bpmnElement="has-brf-information-yes">
+        <di:waypoint x="675" y="770" />
+        <di:waypoint x="1155" y="770" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="701" y="752" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1dd4jxu_di" bpmnElement="has-brf-information-no">
+        <di:waypoint x="650" y="745" />
+        <di:waypoint x="650" y="640" />
+        <di:waypoint x="760" y="640" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="658" y="703" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0llzzkb" bpmnElement="brf-screening-result-rejected">
+        <di:waypoint x="1330" y="795" />
+        <di:waypoint x="1330" y="882" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1338" y="833" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1vxqbir_di" bpmnElement="Flow_1vxqbir">
+        <di:waypoint x="1060" y="640" />
+        <di:waypoint x="1180" y="640" />
+        <di:waypoint x="1180" y="745" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ag6euz_di" bpmnElement="Flow_1ag6euz">
+        <di:waypoint x="1205" y="770" />
+        <di:waypoint x="1305" y="770" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16p0j00_di" bpmnElement="brf-screening-result-accepted">
+        <di:waypoint x="1355" y="770" />
+        <di:waypoint x="1725" y="770" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1518" y="752" width="46" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_15o3nji_di" bpmnElement="Flow_15o3nji">
+        <di:waypoint x="1775" y="770" />
+        <di:waypoint x="1900" y="770" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1fmotpx_di" bpmnElement="brf-screening-result-review">
+        <di:waypoint x="1330" y="745" />
+        <di:waypoint x="1330" y="640" />
+        <di:waypoint x="1440" y="640" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1341" y="690" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0g8xk4m_di" bpmnElement="Flow_0g8xk4m">
+        <di:waypoint x="1540" y="640" />
+        <di:waypoint x="1625" y="640" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0c5rbyq_di" bpmnElement="brf-approved-yes">
+        <di:waypoint x="1675" y="640" />
+        <di:waypoint x="1750" y="640" />
+        <di:waypoint x="1750" y="745" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1704" y="622" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0o27oun_di" bpmnElement="brf-approved-no">
+        <di:waypoint x="1650" y="615" />
+        <di:waypoint x="1650" y="548" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1658" y="579" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0vgcod9_di" bpmnElement="Flow_0vgcod9">
+        <di:waypoint x="860" y="640" />
+        <di:waypoint x="960" y="640" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0p4x73i_di" bpmnElement="Flow_0p4x73i">
+        <di:waypoint x="535" y="770" />
+        <di:waypoint x="625" y="770" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0lb6aun_di" bpmnElement="brf-screening-result-missing-info" bioc:stroke="#831311" color:border-color="#831311">
+        <di:waypoint x="1316" y="781" />
+        <di:waypoint x="1180" y="890" />
+        <di:waypoint x="510" y="890" />
+        <di:waypoint x="510" y="795" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="805" y="856" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_11i9vmk_di" bpmnElement="Association_11i9vmk">
+        <di:waypoint x="2719" y="334" />
+        <di:waypoint x="2757" y="265" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_1axppls_di" bpmnElement="TextAnnotation_1axppls">
+        <dc:Bounds x="1820" y="580" width="100" height="113" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0z2gaev_di" bpmnElement="TextAnnotation_0z2gaev">
+        <dc:Bounds x="1930" y="550" width="100" height="98" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0vv16t8_di" bpmnElement="TextAnnotation_0vv16t8">
+        <dc:Bounds x="530" y="80" width="138" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_1kt1cr5_di" bpmnElement="TextAnnotation_1kt1cr5">
+        <dc:Bounds x="2100" y="580" width="100" height="113" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0ajl0rm_di" bpmnElement="TextAnnotation_0ajl0rm">
+        <dc:Bounds x="2560" y="1580" width="100" height="56" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0ae7dwx_di" bpmnElement="TextAnnotation_0ae7dwx">
+        <dc:Bounds x="2730" y="210" width="100" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_02ell3a_di" bpmnElement="TextAnnotation_02ell3a">
+        <dc:Bounds x="880" y="460" width="150" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_1wr6nyv_di" bpmnElement="DataOutputAssociation_1wr6nyv">
+        <di:waypoint x="810" y="600" />
+        <di:waypoint x="810" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1i2tn81_di" bpmnElement="Association_1i2tn81">
+        <di:waypoint x="601" y="110" />
+        <di:waypoint x="610" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1dc5t4l_di" bpmnElement="Association_1dc5t4l">
+        <di:waypoint x="2532" y="1687" />
+        <di:waypoint x="2575" y="1636" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0e417vg_di" bpmnElement="Association_0e417vg">
+        <di:waypoint x="1936" y="730" />
+        <di:waypoint x="1920" y="687" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0r6dnai_di" bpmnElement="Association_0r6dnai">
+        <di:waypoint x="1958" y="730" />
+        <di:waypoint x="1972" y="648" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1ir6ib8_di" bpmnElement="Association_1ir6ib8">
+        <di:waypoint x="2172" y="747" />
+        <di:waypoint x="2178" y="693" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0f4tlpv_di" bpmnElement="Association_0f4tlpv">
+        <di:waypoint x="839" y="600" />
+        <di:waypoint x="897" y="520" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

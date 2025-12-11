@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-11-24T08:38:11.404Z",
+  "generated_at": "2025-12-08T00:00:00.000Z",
   "note": "Initial BPMN map exported from Supabase (bpmn_files + bpmn_dependencies). Review and edit manually.",
   "orchestration": {
     "root_process": "mortgage"
@@ -126,6 +126,12 @@
       "description": "mortgage-se-manual-credit-evaluation",
       "call_activities": [
         {
+          "bpmn_id": "object-control",
+          "name": "Object control",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-object-control.bpmn"
+        },
+        {
           "bpmn_id": "documentation-assessment",
           "name": "Documentation assessment",
           "called_element": null,
@@ -173,6 +179,27 @@
       ]
     },
     {
+      "id": "mortgage-se-object-control",
+      "alias": "Object Control",
+      "bpmn_file": "mortgage-se-object-control.bpmn",
+      "process_id": "mortgage-se-object-control",
+      "description": "mortgage-se-object-control",
+      "call_activities": [
+        {
+          "bpmn_id": "object-information",
+          "name": "Object information",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-object-information.bpmn"
+        },
+        {
+          "bpmn_id": "credit-evaluation",
+          "name": "Automatic Credit Evaluation",
+          "called_element": "credit-evaluation",
+          "subprocess_bpmn_file": "mortgage-se-credit-evaluation.bpmn"
+        }
+      ]
+    },
+    {
       "id": "mortgage-se-object-information",
       "alias": "Object Information",
       "bpmn_file": "mortgage-se-object-information.bpmn",
@@ -196,6 +223,14 @@
       ]
     },
     {
+      "id": "mortgage-se-object-valuation",
+      "alias": "Object Valuation",
+      "bpmn_file": "mortgage-se-object-valuation.bpmn",
+      "process_id": "mortgage-se-object-valuation",
+      "description": "mortgage-se-object-valuation",
+      "call_activities": []
+    },
+    {
       "id": "mortgage-se-offer",
       "alias": "Offer",
       "bpmn_file": "mortgage-se-offer.bpmn",
@@ -204,6 +239,18 @@
       "call_activities": [
         {
           "bpmn_id": "credit-decision",
+          "name": "Credit decision",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-credit-decision.bpmn"
+        },
+        {
+          "bpmn_id": "documentation-assessment",
+          "name": "Documentation assessment",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-documentation-assessment.bpmn"
+        },
+        {
+          "bpmn_id": "sales-contract-credit-decision",
           "name": "Credit decision",
           "called_element": null,
           "subprocess_bpmn_file": "mortgage-se-credit-decision.bpmn"
@@ -259,9 +306,15 @@
         },
         {
           "bpmn_id": "offer",
-          "name": "Offer",
+          "name": "Offer preparation",
           "called_element": "offer",
           "subprocess_bpmn_file": "mortgage-se-offer.bpmn"
+        },
+        {
+          "bpmn_id": "object-valuation",
+          "name": "Object valuation",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-object-valuation.bpmn"
         },
         {
           "bpmn_id": "collateral-registration",
