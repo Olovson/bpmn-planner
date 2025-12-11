@@ -81,6 +81,12 @@ interface FeatureGoalDoc {
   lastModified?: Date;
 }
 
+interface BpmnActivity {
+  id: string;
+  name: string;
+  type: 'serviceTask' | 'userTask' | 'businessRuleTask' | 'callActivity' | 'subProcess' | 'exclusiveGateway' | 'inclusiveGateway' | 'parallelGateway';
+}
+
 interface SyncAnalysis {
   newFeatureGoals: FeatureGoal[];
   removedFeatureGoals: FeatureGoal[];
@@ -88,6 +94,7 @@ interface SyncAnalysis {
     featureGoal: FeatureGoal;
     oldDoc?: FeatureGoalDoc;
     changes: string[];
+    missingActivities?: BpmnActivity[];
   }>;
   existingDocs: FeatureGoalDoc[];
   orphanedDocs: FeatureGoalDoc[];
@@ -237,6 +244,7 @@ function extractFeatureGoalsFromBpmnFiles(archiveDir: string): FeatureGoal[] {
 
 /**
  * Läsa alla feature goal dokumentationsfiler
+ * Letar i exports/feature-goals (där manuellt förbättrade filer ligger)
  */
 function readFeatureGoalDocs(docsDir: string): FeatureGoalDoc[] {
   if (!fs.existsSync(docsDir)) {
@@ -248,11 +256,6 @@ function readFeatureGoalDocs(docsDir: string): FeatureGoalDoc[] {
     .map(filename => {
       const filepath = path.join(docsDir, filename);
       const stats = fs.statSync(filepath);
-      
-      // Parse filename to extract information
-      // Format: local--{ProcessName}-{CallActivityName}-v2.html
-      // or: {bpmnFile}-{elementId}-v2.html
-      const cleanName = filename.replace(/^local--/, '').replace(/-v2\.html$/, '').replace(/\.html$/, '');
       
       return {
         filename,
@@ -304,16 +307,34 @@ function matchFeatureGoalToDoc(
     
     const normalizedDocName = normalizeForMatching(cleanName);
     
+    // Strategy 0: Exact name match FIRST (viktigast - undviker fel matchningar)
+    // Detta måste köras först för att undvika att "Application" matchar "Application-Household"
+    if (normalizedName.length > 3 && normalizedDocName === normalizedName) {
+      return doc;
+    }
+    
     // Strategy 1: Match parent + element ID (e.g., "mortgage-se-application-stakeholder")
+    // Också hantera fall där parent och element är samma (e.g., "mortgage-se-application-application")
     if (normalizedDocName === `${normalizedParent}-${normalizedElementId}` ||
+        normalizedDocName === `${normalizedParent}-${normalizedParent}` || // För fall där element ID = parent name
         normalizedDocName.includes(`${normalizedParent}-${normalizedElementId}-`) ||
-        normalizedDocName.endsWith(`-${normalizedParent}-${normalizedElementId}`)) {
+        normalizedDocName.endsWith(`-${normalizedParent}-${normalizedElementId}`) ||
+        normalizedDocName.endsWith(`-${normalizedParent}-${normalizedParent}`)) {
       return doc;
     }
     
     // Strategy 2: Match parent + name (e.g., "Application-Stakeholder")
-    if (normalizedDocName.includes(`${normalizedParent}-${normalizedName}`) ||
-        normalizedDocName.includes(`${normalizedName}-${normalizedParent}`)) {
+    // Men inte om doc name är exakt samma som name (för att undvika fel matchning)
+    // OCH vi måste kolla att det faktiskt är en kombination, inte bara att name ingår
+    const parentNamePattern = `${normalizedParent}-${normalizedName}`;
+    const nameParentPattern = `${normalizedName}-${normalizedParent}`;
+    if (normalizedDocName !== normalizedName &&
+        (normalizedDocName.startsWith(parentNamePattern + '-') ||
+         normalizedDocName === parentNamePattern ||
+         normalizedDocName.startsWith(nameParentPattern + '-') ||
+         normalizedDocName === nameParentPattern ||
+         normalizedDocName.endsWith('-' + parentNamePattern) ||
+         normalizedDocName.endsWith('-' + nameParentPattern))) {
       return doc;
     }
     
@@ -340,26 +361,229 @@ function matchFeatureGoalToDoc(
     if (featureGoal.subprocess_bpmn_file) {
       const subprocessBase = featureGoal.subprocess_bpmn_file.replace('.bpmn', '');
       const normalizedSubprocess = normalizeForMatching(subprocessBase);
+      const subprocessLastPart = normalizedSubprocess.split('-').pop() || '';
       
       // Check if doc name matches subprocess name (with or without parent prefix)
+      // Men inte om doc name bara innehåller en del av subprocess (för att undvika fel matchningar)
       if (normalizedDocName === normalizedSubprocess ||
           normalizedDocName.endsWith(`-${normalizedSubprocess}`) ||
-          normalizedDocName.startsWith(`${normalizedSubprocess}-`)) {
+          normalizedDocName.startsWith(`${normalizedSubprocess}-`) ||
+          normalizedSubprocess === normalizedDocName ||
+          (subprocessLastPart.length > 5 && normalizedDocName === subprocessLastPart)) { // Bara om lastPart är tillräckligt långt och exakt match
         return doc;
       }
     }
     
-    // Strategy 6: Match by name only (if name is unique enough)
-    if (normalizedName.length > 5 && normalizedDocName.includes(normalizedName)) {
-      // Additional check: make sure it's not too generic
-      const commonWords = ['application', 'credit', 'document', 'evaluation', 'decision'];
-      if (!commonWords.some(word => normalizedName === word)) {
-        return doc;
-      }
-    }
+    // Strategy 6: (Nu flyttad till Strategy 0 ovan för att köras först)
   }
   
   return null;
+}
+
+/**
+ * Extrahera aktiviteter från en BPMN-fil (för en specifik subprocess)
+ */
+function extractActivitiesFromBpmnFile(
+  archiveDir: string,
+  featureGoal: FeatureGoal
+): BpmnActivity[] {
+  const activities: BpmnActivity[] = [];
+  
+  // Hitta BPMN-filen för subprocessen
+  let bpmnFilePath: string;
+  if (featureGoal.subprocess_bpmn_file) {
+    bpmnFilePath = path.join(archiveDir, featureGoal.subprocess_bpmn_file);
+  } else if (featureGoal.called_element) {
+    // Försök hitta fil baserat på called_element
+    const possibleFiles = [
+      path.join(archiveDir, `${featureGoal.called_element}.bpmn`),
+      path.join(archiveDir, `mortgage-se-${featureGoal.called_element}.bpmn`),
+    ];
+    bpmnFilePath = possibleFiles.find(f => fs.existsSync(f)) || '';
+  } else {
+    // Om ingen subprocess-fil, använd parent-filen
+    bpmnFilePath = path.join(archiveDir, featureGoal.parent_bpmn_file);
+  }
+  
+  if (!fs.existsSync(bpmnFilePath)) {
+    return activities;
+  }
+  
+  const content = fs.readFileSync(bpmnFilePath, 'utf-8');
+  
+  // Extrahera serviceTask
+  const serviceTaskRegex = /<(?:bpmn:)?serviceTask[^>]*>/gi;
+  let match;
+  while ((match = serviceTaskRegex.exec(content)) !== null) {
+    const id = getAttr(match[0], 'id');
+    const name = getAttr(match[0], 'name') || id;
+    if (id) {
+      activities.push({ id, name, type: 'serviceTask' });
+    }
+  }
+  
+  // Extrahera userTask
+  const userTaskRegex = /<(?:bpmn:)?userTask[^>]*>/gi;
+  while ((match = userTaskRegex.exec(content)) !== null) {
+    const id = getAttr(match[0], 'id');
+    const name = getAttr(match[0], 'name') || id;
+    if (id) {
+      activities.push({ id, name, type: 'userTask' });
+    }
+  }
+  
+  // Extrahera businessRuleTask
+  const businessRuleTaskRegex = /<(?:bpmn:)?businessRuleTask[^>]*>/gi;
+  while ((match = businessRuleTaskRegex.exec(content)) !== null) {
+    const id = getAttr(match[0], 'id');
+    const name = getAttr(match[0], 'name') || id;
+    if (id) {
+      activities.push({ id, name, type: 'businessRuleTask' });
+    }
+  }
+  
+  // Extrahera callActivity (barn-call activities)
+  const callActivityRegex = /<(?:bpmn:)?callActivity[^>]*>/gi;
+  while ((match = callActivityRegex.exec(content)) !== null) {
+    const id = getAttr(match[0], 'id');
+    const name = getAttr(match[0], 'name') || id;
+    if (id && id !== featureGoal.bpmn_id) { // Exkludera själva feature goal call activity
+      activities.push({ id, name, type: 'callActivity' });
+    }
+  }
+  
+  // Extrahera subProcess (barn-subprocesses)
+  const subProcessRegex = /<(?:bpmn:)?subProcess[^>]*>/gi;
+  while ((match = subProcessRegex.exec(content)) !== null) {
+    const id = getAttr(match[0], 'id');
+    const name = getAttr(match[0], 'name') || id;
+    if (id && id !== featureGoal.bpmn_id) { // Exkludera själva feature goal subprocess
+      activities.push({ id, name, type: 'subProcess' });
+    }
+  }
+  
+  // Extrahera gateways (viktiga för flödesbeskrivning)
+  const gatewayRegex = /<(?:bpmn:)?(?:exclusive|inclusive|parallel)Gateway[^>]*>/gi;
+  while ((match = gatewayRegex.exec(content)) !== null) {
+    const id = getAttr(match[0], 'id');
+    const name = getAttr(match[0], 'name') || id;
+    const tagName = match[0].match(/<(?:bpmn:)?(\w+)/)?.[1] || '';
+    let type: BpmnActivity['type'] = 'exclusiveGateway';
+    if (tagName.includes('inclusive')) type = 'inclusiveGateway';
+    if (tagName.includes('parallel')) type = 'parallelGateway';
+    
+    if (id && name && name !== id) { // Bara gateways med namn (viktiga beslutspunkter)
+      activities.push({ id, name, type });
+    }
+  }
+  
+  return activities;
+}
+
+/**
+ * Extrahera nämnda aktiviteter från HTML-dokumentationen
+ */
+function extractActivitiesFromHtml(htmlContent: string): Set<string> {
+  const mentionedActivities = new Set<string>();
+  
+  // Normalisera HTML-innehåll för sökning
+  const normalized = htmlContent.toLowerCase();
+  
+  // Funktion för att extrahera ord från text
+  const extractWords = (text: string): void => {
+    // Ta bort HTML-taggar först
+    const textOnly = text.replace(/<[^>]+>/g, ' ');
+    // Dela upp i ord (hantera camelCase, kebab-case, etc.)
+    const words = textOnly
+      .split(/[\s,\-:;.()\[\]{}]+/)
+      .filter(w => w.length > 2)
+      .map(w => w.trim());
+    
+    words.forEach(word => {
+      // Normalisera för matchning (ta bort specialtecken)
+      const normalized = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normalized.length > 2) {
+        mentionedActivities.add(normalized);
+      }
+      
+      // Lägg också till delar av camelCase (t.ex. "fetchCredit" -> "fetch", "credit")
+      const camelCaseParts = word.split(/(?=[A-Z])/).map(p => p.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      camelCaseParts.forEach(part => {
+        if (part.length > 2) {
+          mentionedActivities.add(part);
+        }
+      });
+    });
+  };
+  
+  // 1. I listor (ul/li)
+  const listItemRegex = /<li[^>]*>([^<]+)/gi;
+  let match;
+  while ((match = listItemRegex.exec(htmlContent)) !== null) {
+    extractWords(match[1]);
+  }
+  
+  // 2. I tabeller
+  const tableCellRegex = /<t[dh][^>]*>([^<]+)/gi;
+  while ((match = tableCellRegex.exec(htmlContent)) !== null) {
+    extractWords(match[1]);
+  }
+  
+  // 3. I h2/h3 rubriker
+  const headingRegex = /<h[23][^>]*>([^<]+)/gi;
+  while ((match = headingRegex.exec(htmlContent)) !== null) {
+    extractWords(match[1]);
+  }
+  
+  // 4. I paragraftext (p-taggar)
+  const paragraphRegex = /<p[^>]*>([^<]+)/gi;
+  while ((match = paragraphRegex.exec(htmlContent)) !== null) {
+    extractWords(match[1]);
+  }
+  
+  // 5. I div-taggar med text (för att fånga upp mer innehåll)
+  const divRegex = /<div[^>]*>([^<]{10,})/gi;
+  while ((match = divRegex.exec(htmlContent)) !== null) {
+    extractWords(match[1]);
+  }
+  
+  return mentionedActivities;
+}
+
+/**
+ * Jämför BPMN-aktiviteter med HTML-dokumentationen
+ */
+function findMissingActivities(
+  bpmnActivities: BpmnActivity[],
+  htmlContent: string
+): BpmnActivity[] {
+  const mentioned = extractActivitiesFromHtml(htmlContent);
+  const missing: BpmnActivity[] = [];
+  
+  for (const activity of bpmnActivities) {
+    // Normalisera aktivitetsnamn för matchning
+    const normalizedName = normalizeForMatching(activity.name);
+    const normalizedId = normalizeForMatching(activity.id);
+    
+    // Kolla om aktiviteten nämns i HTML
+    let found = false;
+    for (const mentionedName of mentioned) {
+      if (mentionedName.includes(normalizedName) || 
+          mentionedName.includes(normalizedId) ||
+          normalizedName.includes(mentionedName) ||
+          normalizedId.includes(mentionedName)) {
+        found = true;
+        break;
+      }
+    }
+    
+    // Om aktiviteten inte hittades, lägg till som saknad
+    if (!found) {
+      missing.push(activity);
+    }
+  }
+  
+  return missing;
 }
 
 /**
@@ -367,7 +591,8 @@ function matchFeatureGoalToDoc(
  */
 function analyzeSync(
   featureGoals: FeatureGoal[],
-  docs: FeatureGoalDoc[]
+  docs: FeatureGoalDoc[],
+  archiveDir: string
 ): SyncAnalysis {
   const newFeatureGoals: FeatureGoal[] = [];
   const removedFeatureGoals: FeatureGoal[] = [];
@@ -375,6 +600,7 @@ function analyzeSync(
     featureGoal: FeatureGoal;
     oldDoc?: FeatureGoalDoc;
     changes: string[];
+    missingActivities?: BpmnActivity[];
   }> = [];
   const matchedDocs = new Set<string>();
   
@@ -387,23 +613,36 @@ function analyzeSync(
     } else {
       matchedDocs.add(matchedDoc.filename);
       
-      // Check for changes (simplified - could be enhanced)
+      // Analysera saknade aktiviteter (innehållsanalys)
       const changes: string[] = [];
+      let missingActivities: BpmnActivity[] = [];
       
-      // Check if name changed (would need to parse HTML to be sure)
-      // For now, we'll just mark as potentially changed if doc is old
-      const docAge = Date.now() - matchedDoc.lastModified!.getTime();
-      const daysOld = docAge / (1000 * 60 * 60 * 24);
-      
-      if (daysOld > 7) {
-        changes.push(`Dokumentation är ${Math.round(daysOld)} dagar gammal och kan vara inaktuell`);
+      try {
+        const htmlContent = fs.readFileSync(matchedDoc.filepath, 'utf-8');
+        const bpmnActivities = extractActivitiesFromBpmnFile(archiveDir, fg);
+        missingActivities = findMissingActivities(bpmnActivities, htmlContent);
+        
+        if (missingActivities.length > 0) {
+          const activityTypes = missingActivities.map(a => a.type).filter((v, i, a) => a.indexOf(v) === i);
+          changes.push(
+            `Saknar ${missingActivities.length} aktivitet(er) i dokumentationen: ` +
+            `${missingActivities.slice(0, 3).map(a => a.name || a.id).join(', ')}` +
+            (missingActivities.length > 3 ? ` (+${missingActivities.length - 3} fler)` : '') +
+            ` (typer: ${activityTypes.join(', ')})`
+          );
+        }
+      } catch (error) {
+        // Om vi inte kan läsa filen eller extrahera aktiviteter, ignorera
+        console.warn(`   ⚠️  Kunde inte analysera aktiviteter för ${matchedDoc.filename}: ${error instanceof Error ? error.message : String(error)}`);
       }
       
+      // Lägg till som ändrad endast om det finns faktiska skillnader (saknade aktiviteter)
       if (changes.length > 0) {
         changedFeatureGoals.push({
           featureGoal: fg,
           oldDoc: matchedDoc,
           changes,
+          missingActivities: missingActivities.length > 0 ? missingActivities : undefined,
         });
       }
     }
@@ -490,6 +729,29 @@ function generateReport(analysis: SyncAnalysis, archiveDir: string, docsDir: str
         report.push(`- ${change}`);
       });
       report.push('');
+      
+      // Visa saknade aktiviteter i detalj
+      if (item.missingActivities && item.missingActivities.length > 0) {
+        report.push('**Saknade aktiviteter i dokumentationen:**');
+        report.push('');
+        report.push('| Typ | ID | Namn |');
+        report.push('|-----|----|------|');
+        for (const activity of item.missingActivities) {
+          const typeLabel = {
+            serviceTask: 'Service Task',
+            userTask: 'User Task',
+            businessRuleTask: 'Business Rule Task',
+            callActivity: 'Call Activity',
+            subProcess: 'SubProcess',
+            exclusiveGateway: 'Gateway (Exclusive)',
+            inclusiveGateway: 'Gateway (Inclusive)',
+            parallelGateway: 'Gateway (Parallel)',
+          }[activity.type] || activity.type;
+          report.push(`| ${typeLabel} | \`${activity.id}\` | ${activity.name || '(saknar namn)'} |`);
+        }
+        report.push('');
+      }
+      
       report.push('**Åtgärd:** Granska och uppdatera dokumentationen om nödvändigt.');
       report.push('');
     }
@@ -642,7 +904,8 @@ async function main() {
     
     // Analysera
     console.log('🔍 Analyserar skillnader...');
-    const analysis = analyzeSync(featureGoals, docs);
+    console.log('   Analyserar BPMN-aktiviteter vs dokumentation...');
+    const analysis = analyzeSync(featureGoals, docs, archiveDir);
     console.log('   ✅ Analys klar');
     console.log('');
     
