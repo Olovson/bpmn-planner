@@ -8,50 +8,59 @@
   <title>Offer</title>
   <style>
     :root {
-      color-scheme: light;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --card-bg: #ffffff;
       --primary: #1d4ed8;
       --text-strong: #0f172a;
-      --text-muted: #475569;
+      --text-muted: #64748b;
       --border: #e2e8f0;
-      --accent: #dbeafe;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
     }
     body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 16px;
+      padding: 24px;
       background: #ffffff;
       color: var(--text-strong);
-      line-height: 1.7;
-    }
-    .doc-shell {
-      max-width: 960px;
+      line-height: 1.6;
+      max-width: 1200px;
       margin: 0 auto;
     }
     h1 {
-      font-size: 1.5rem;
-      margin: 0 0 24px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
     }
     h2 {
       color: var(--primary);
-      margin: 24px 0 12px;
-      font-size: 1.1rem;
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
     }
     p { margin: 0 0 12px; }
-    ul { padding-left: 20px; margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0;
-      background: var(--card-bg);
+      margin: 16px 0;
+      background: white;
       border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
     }
     table th,
     table td {
       border-bottom: 1px solid var(--border);
-      padding: 8px;
+      padding: 12px;
       text-align: left;
     }
     table th {
@@ -62,20 +71,64 @@
     table tr:last-child td {
       border-bottom: none;
     }
-    .muted { color: var(--text-muted); font-size: 0.9rem; }
-    a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 500;
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
     }
-    a:hover { text-decoration: underline; }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
     .doc-section {
-      margin-bottom: 24px;
-      padding: 16px;
-      background: var(--card-bg);
+      margin-bottom: 16px;
+      background: white;
       border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
     }
-    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
     .doc-badge {
       display: inline-flex;
       align-items: center;
@@ -87,6 +140,16 @@
       font-size: 0.8rem;
       font-weight: 600;
       margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
     }
     .llm-fallback-banner {
       padding: 8px 12px;
@@ -119,41 +182,94 @@
       color: #2563eb;
       margin-bottom: 16px;
     }
-  </style>
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
 </head>
 <body>
-
-    <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
       📄 Lokal version – Förbättrat innehåll
     </div>
   
-  <div class="doc-shell">
     
-    
+      
+
+
     
     <section class="doc-section">
-      <h2>Beskrivning av FGoal</h2>
-      <p>Offer hanterar erbjudandet till kunden efter godkänt kreditbeslut. Processen startar när "Offer created" event (Event_111bwbu) har triggats efter Credit Decision. Processen kan gå direkt till beslutsfattande om erbjudandet, eller kan gå via avancerad underwriting och ytterligare kreditbeslut om kunden begär ändringar. När kunden fattar beslut kan de acceptera erbjudandet (med validering av lånebelopp, kontonummer, datum), avvisa erbjudandet, eller begära ändringar. Om erbjudandet löper ut, triggas timeout. När erbjudandet är accepterat, går processen vidare till "event-loan-ready" → Document Generation.</p>
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+<p>Offer är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Start event:</strong> Processen startar när Offer call activity anropas</li>
+        <li><strong>Gateway (initial routing):</strong> Avgör om processen går direkt till beslutsfattande eller via avancerad underwriting</li>
+        <li><strong>Decide on offer:</strong> User task (Stakeholder lane) där kunden fattar beslut om erbjudandet (acceptera, avvisa, eller begära ändringar)</li>
+        <li><strong>Offer decision gateway:</strong> Avgör om kunden accepterar, avvisar, eller begär ändringar</li>
+        <li><strong>Perform advanced underwriting:</strong> User task (Caseworker lane) som utförs när kunden begär ändringar (kan triggas av caseworker)</li>
+        <li><strong>Credit decision (call activity):</strong> Ytterligare kreditbeslut inom Offer-processen (använder samma BPMN-fil som huvudprocessens Credit Decision)</li>
+        <li><strong>Credit decision approved gateway:</strong> Avgör om kreditbeslut är godkänt - om nej, avvisas med "Credit decision rejected"</li>
+        <li><strong>Timer event:</strong> På "Decide on offer", kan trigga timeout om erbjudandet löper ut</li>
+        <li><strong>Felhantering:</strong> Processen kan avvisas, trigga timeout, eller loopa för ändringar</li>
+      
+    <li><strong>Upload sales contract</strong> (userTask)</li>
+    <li><strong>Sales contract assessed?</strong> (exclusiveGateway)</li>
+    <li><strong>Sales contract uploaded?</strong> (exclusiveGateway)</li>
+  </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Confluence länk</h2>
-      <p><a href="https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data">https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data</a></p>
-    </section>
-
-    <section class="doc-section">
-      <h2>Processteg - Input</h2>
-      <ul>
-        <li>Credit Decision är klar och godkänd (event-credit-decision-completed)</li>
-        <li>"Offer created" event (Event_111bwbu) har triggats</li>
-        <li>Kreditbeslut är fattat och godkänt</li>
-        <li>Processen startar när Offer call activity anropas från mortgage.bpmn i huvudflödet (entry-18 branch) efter Event_111bwbu</li>
-      </ul>
-    </section>
-
-    <section class="doc-section">
-      <h2>Processteg - Output</h2>
-      <ul>
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+<ul>
         <li>Erbjudandet är presenterat till kunden</li>
         <li>Om erbjudandet är accepterat: Processen avslutas och huvudprocessen fortsätter med "event-loan-ready" → Document Generation (validering av lånebelopp, kontonummer, datum)</li>
         <li>Om erbjudandet är avvisat: "event-offer-rejected" end event triggas som avslutar processen med "Offer declined"</li>
@@ -162,11 +278,15 @@
         <li>Om kreditbeslut avvisas: "Credit decision rejected" end event triggas</li>
         <li>Message event "event-offer-accepted" triggas (topic: event-offer-accepted) när erbjudandet är accepterat</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Omfattning</h2>
-      <ul>
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+<ul>
         <li><strong>Start event:</strong> Processen startar när Offer call activity anropas</li>
         <li><strong>Gateway (initial routing):</strong> Avgör om processen går direkt till beslutsfattande eller via avancerad underwriting</li>
         <li><strong>Decide on offer:</strong> User task (Stakeholder lane) där kunden fattar beslut om erbjudandet (acceptera, avvisa, eller begära ändringar)</li>
@@ -177,11 +297,15 @@
         <li><strong>Timer event:</strong> På "Decide on offer", kan trigga timeout om erbjudandet löper ut</li>
         <li><strong>Felhantering:</strong> Processen kan avvisas, trigga timeout, eller loopa för ändringar</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Avgränsning</h2>
-      <ul>
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
         <li>Credit Decision (huvudprocess) ingår inte - den sker tidigare i huvudprocessen</li>
         <li>Document Generation ingår inte - den sker efter Offer när erbjudandet är accepterat</li>
         <li>Signing ingår inte - den sker efter Document Generation</li>
@@ -190,11 +314,15 @@
         <li>KYC-processen ingår inte - den sker tidigare i huvudprocessen</li>
         <li>Förskottsflödet (event-trigger-advance) hanteras i huvudprocessen, inte i Offer-processen</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Beroenden</h2>
-      <ul>
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
         <li><strong>Mortgage huvudprocess:</strong> Offer anropas från mortgage.bpmn i huvudflödet (entry-18 branch) när Event_111bwbu (Offer created) triggas</li>
         <li><strong>Credit Decision (huvudprocess):</strong> Credit Decision måste vara slutförd och godkänd innan Offer startar</li>
         <li><strong>Credit Decision (subprocess):</strong> Ytterligare kreditbeslut inom Offer-processen (använder samma BPMN-fil som huvudprocessens Credit Decision)</li>
@@ -203,17 +331,25 @@
         <li><strong>Document Generation:</strong> Efter accepterat erbjudande går processen vidare till Document Generation via event-loan-ready</li>
         <li><strong>Felhantering:</strong> Processen kan avvisas, trigga timeout, eller loopa för ändringar</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>BPMN - Process</h2>
-      <p><a href="#/bpmn/mortgage-se-offer.bpmn">Visa BPMN-processen för Offer</a></p>
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage-se-offer.bpmn">Visa BPMN-processen för Offer</a></p>
       <p class="muted">Processen startar, kan gå direkt till beslutsfattande om erbjudandet, eller kan gå via avancerad underwriting och ytterligare kreditbeslut om kunden begär ändringar. När kunden fattar beslut kan de acceptera erbjudandet (med validering av lånebelopp, kontonummer, datum), avvisa erbjudandet, eller begära ändringar. Om erbjudandet löper ut, triggas timeout. Processen kan loopa för att hantera ändringar.</p>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Testgenerering</h2>
-      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
 
       <h3>Testscenarier</h3>
       <table>
@@ -554,10 +690,45 @@
     
         </tbody>
       </table>
+        </div>
+      </details>
     </section>
-  
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+        </div>
+      </details>
+    </section>
 
-  
-  </div>
-  </body>
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <ul>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      <ul>
+        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
+        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
+        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
 </html>

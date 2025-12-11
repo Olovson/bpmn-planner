@@ -5,7 +5,7 @@
   <meta name="x-feature-goal-template-version" content="v2" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Document generation</title>
+  <title>Collateral registration</title>
   <style>
     :root {
       --primary: #1d4ed8;
@@ -238,7 +238,7 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Document generation är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Collateral registration är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
         </div>
       </details>
     </section>
@@ -246,10 +246,12 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Förskottet är redo (event-advance-ready) i huvudprocessen</li>
-        <li>Offer är accepterad och kunden har begärt förskott (event-trigger-advance boundary event på offer)</li>
-        <li>Processen startar när Document Generation Advance call activity anropas från mortgage.bpmn i förskottsflödet (entry-19 branch)</li>
+<p>Processen startar när:</p>
+      <ul>
+        <li><strong>Lånet har betalats ut:</strong> Huvudprocessen har slutfört låneutbetalningen</li>
+        <li><strong>Säkerhetsregistrering behövs:</strong> En beslutspunkt i huvudprocessen avgör att säkerhetsregistrering krävs för lånet</li>
+        <li><strong>Fastighetsinformation är tillgänglig:</strong> Information om fastighetstyp (småhus eller bostadsrätt) och objektuppgifter från Application-processen</li>
+        <li><strong>Låneuppgifter är tillgängliga:</strong> Lånebelopp, löptid och andra relevanta uppgifter från huvudprocessen</li>
       </ul>
         </div>
       </details>
@@ -259,10 +261,15 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Dokument för förskottsutbetalning är genererade och lagrade i Document generation service</li>
-        <li>Processen avslutas och huvudprocessen fortsätter med Signing Advance för signering av förskottsdokument</li>
-        <li>Dokument är redo för signering i Signing Advance-processen</li>
+<p>Processen avslutas när:</p>
+      <ul>
+        <li><strong>Säkerheten är registrerad och verifierad:</strong> Säkerheten är registrerad i rätt register (Inskrivningsmyndigheten för småhus eller BRF för bostadsrätt) och verifieringen är bekräftad</li>
+        <li><strong>Huvudprocessen fortsätter:</strong> När processen är klar fortsätter huvudprocessen med nästa steg</li>
+      </ul>
+      <p><strong>Felhantering och loop-mekanismer:</strong></p>
+      <ul>
+        <li>Om verifieringen misslyckas kan processen loopa tillbaka för ny verifiering</li>
+        <li>Om verifieringen dröjer kan systemet skicka påminnelser automatiskt (via timer) eller handläggaren kan skicka manuella påminnelser (via meddelande)</li>
       </ul>
         </div>
       </details>
@@ -272,11 +279,47 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li><strong>Select documents:</strong> Business rule task som väljer vilka dokument som ska genereras för förskottsutbetalning baserat på affärsregler</li>
-        <li><strong>Generate Document:</strong> Service task som genererar dokument via Document generation service (multi-instance loop för att hantera flera dokument)</li>
-        <li><strong>Document generation service:</strong> Data store där genererade dokument lagras</li>
-        <li><strong>Processen använder samma BPMN-fil som vanlig Document Generation men anropas i förskottsflödet</strong></li>
+<h3>1. Fastighetstyp - Beslutspunkt</h3>
+      <p>Processen börjar med att avgöra vilken typ av fastighet det rör sig om:</p>
+      <ul>
+        <li><strong>Småhus:</strong> Ansökan ska skickas till Inskrivningsmyndigheten</li>
+        <li><strong>Bostadsrätt:</strong> Meddelande om panträtt ska skickas till bostadsrättsföreningen</li>
+      </ul>
+
+      <h3>2. Distribution av ansökan/meddelande</h3>
+      <p><strong>För småhus:</strong></p>
+      <ul>
+        <li>Handläggaren distribuerar ansökan till Inskrivningsmyndigheten</li>
+        <li>Ansökan kan skickas via post/e-post eller via Inskrivningsmyndighetens portal</li>
+        <li>För pappersansökningar: 30 dagars väntetid</li>
+        <li>För portalansökningar: 1 dags väntetid</li>
+      </ul>
+      <p><strong>För bostadsrätt:</strong></p>
+      <ul>
+        <li>Handläggaren distribuerar meddelande om panträtt till bostadsrättsföreningen</li>
+      </ul>
+
+      <h3>3. Verifiering av registrering</h3>
+      <p>Efter distribution väntar processen på verifiering. Två vägar är möjliga:</p>
+      <ul>
+        <li><strong>Automatisk verifiering:</strong> Systemet tar emot ett meddelande om att dokumentet är verifierat</li>
+        <li><strong>Manuell verifiering:</strong> Om systemet inte får verifiering inom tidsgränsen (30 dagar för papper, 1 dag för portal), måste handläggaren manuellt verifiera registreringen</li>
+      </ul>
+
+      <h3>4. Verifieringsbeslut</h3>
+      <p>Efter manuell verifiering avgörs om verifieringen är godkänd:</p>
+      <ul>
+        <li><strong>Ja:</strong> Processen fortsätter mot avslut</li>
+        <li><strong>Nej:</strong> Processen loopar tillbaka för ny distribution och verifiering</li>
+      </ul>
+
+      <h3>5. Påminnelser</h3>
+      <p>Om verifieringen dröjer kan processen ta emot olika typer av påminnelser:</p>
+      <ul>
+        <li><strong>Automatisk påminnelse:</strong> Systemet skickar en påminnelse automatiskt efter en viss tid (timer)</li>
+        <li><strong>Manuell påminnelse:</strong> Handläggaren kan skicka en manuell påminnelse (meddelande)</li>
+        <li><strong>Dokument verifierat:</strong> Systemet tar emot meddelande om att dokumentet är verifierat</li>
+        <li><strong>Dokument inte verifierat:</strong> Systemet tar emot meddelande om att dokumentet inte är verifierat, vilket kan trigga ny verifiering</li>
       </ul>
         </div>
       </details>
@@ -287,11 +330,11 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
-        <li>Vanlig Document Generation (i huvudflödet) ingår inte - det är en separat process</li>
-        <li>Signering ingår inte - den sker i Signing Advance-processen efter Document Generation Advance</li>
-        <li>Disbursement Advance ingår inte - den sker efter Signing Advance</li>
-        <li>Offer-processen ingår inte - den triggar förskottsflödet via boundary event</li>
+        <li>Låneutbetalning ingår inte - den sker i huvudprocessen innan Collateral Registration</li>
+        <li>Signering ingår inte - den sker i huvudprocessen innan Collateral Registration</li>
+        <li>Kreditbeslut ingår inte - det sker tidigare i huvudprocessen</li>
         <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Eftermarknadsprocesser och uppdateringar av registreringar ingår inte</li>
       </ul>
         </div>
       </details>
@@ -302,12 +345,12 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Mortgage huvudprocess:</strong> Document Generation Advance anropas från mortgage.bpmn i förskottsflödet (entry-19 branch) när event-advance-ready triggas</li>
-        <li><strong>Offer-processen:</strong> Offer måste vara accepterad och kunden måste ha begärt förskott (event-trigger-advance boundary event) innan Document Generation Advance startar</li>
-        <li><strong>Document generation service:</strong> Genomför faktisk generering och lagring av dokument</li>
-        <li><strong>Document selection rules (DMN):</strong> Automatisk val av vilka dokument som ska genereras för förskottsutbetalning</li>
-        <li><strong>Signing Advance:</strong> Efter dokumentgenerering går processen vidare till Signing Advance för signering</li>
-        <li><strong>Disbursement Advance:</strong> Efter signering går processen vidare till Disbursement Advance för utbetalning av förskottet</li>
+        <li><strong>Mortgage huvudprocess:</strong> Collateral Registration anropas från mortgage.bpmn efter låneutbetalning när säkerhetsregistrering behövs</li>
+        <li><strong>Inskrivningsmyndigheten:</strong> För småhus - tar emot ansökan via post/e-post eller portal (30 dagar papper, 1 dag portal)</li>
+        <li><strong>BRF (Bostadsrättsförening):</strong> För bostadsrätt - tar emot meddelande om panträtt</li>
+        <li><strong>Caseworker-system:</strong> Handläggare behöver tillgång till system för att distribuera ansökningar och verifiera registreringar</li>
+        <li><strong>Fastighetsinformation:</strong> Från Application-processen (objekt/fastighetstyp, värdering, etc.)</li>
+        <li><strong>Låneuppgifter:</strong> Från huvudprocessen (belopp, löptid, etc.)</li>
       </ul>
         </div>
       </details>
@@ -317,8 +360,42 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-document-generation.bpmn">Visa BPMN-processen för Document Generation</a></p>
-      <p class="muted">Processen startar med val av dokument via business rules, genererar dokument via Document generation service (multi-instance loop), och lagrar dokument i Document generation service. Processen använder samma BPMN-fil som vanlig Document Generation men anropas i förskottsflödet när event-advance-ready triggas.</p>
+<p><a href="#/bpmn/mortgage-se-collateral-registration.bpmn">Visa BPMN-processen för Collateral Registration</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när säkerhetsregistrering behövs efter låneutbetalning</li>
+        <li><strong>Fastighetstyp:</strong> En beslutspunkt avgör om det är småhus eller bostadsrätt</li>
+        <li><strong>Distribution:</strong>
+          <ul>
+            <li>För småhus: Handläggaren distribuerar ansökan till Inskrivningsmyndigheten</li>
+            <li>För bostadsrätt: Handläggaren distribuerar meddelande om panträtt till BRF</li>
+          </ul>
+        </li>
+        <li><strong>Vänta på verifiering:</strong> Processen väntar på antingen:
+          <ul>
+            <li>Automatisk verifiering via meddelande (för portalansökningar kan detta komma efter 1 dag)</li>
+            <li>Timer-event som triggas efter tidsgränsen (30 dagar för papper, 1 dag för portal)</li>
+          </ul>
+        </li>
+        <li><strong>Manuell verifiering (om timer triggas):</strong> Handläggaren verifierar manuellt registreringen</li>
+        <li><strong>Verifieringsbeslut:</strong> En beslutspunkt avgör om verifieringen är godkänd:
+          <ul>
+            <li>Om ja: Processen fortsätter mot avslut</li>
+            <li>Om nej: Processen loopar tillbaka till distribution för ny försök</li>
+          </ul>
+        </li>
+        <li><strong>Påminnelser (parallellt):</strong> Medan processen väntar på verifiering kan den ta emot:
+          <ul>
+            <li>Automatisk påminnelse (timer)</li>
+            <li>Manuell påminnelse (meddelande från handläggare)</li>
+            <li>Dokument verifierat (meddelande)</li>
+            <li>Dokument inte verifierat (meddelande)</li>
+          </ul>
+          Alla dessa händelser samlas ihop och processen fortsätter mot verifieringsbeslutet eller avslut
+        </li>
+        <li><strong>Avslut:</strong> När säkerheten är verifierad och registrerad avslutas processen</li>
+      </ol>
         </div>
       </details>
     </section>
@@ -347,23 +424,45 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – förskottsdokument genererade</td>
+        <td>Normalflöde – småhus registrerat</td>
         <td>Happy</td>
-        <td>system</td>
+        <td>advisor</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Select documents business rule task väljer förskottsdokument baserat på ansökningsdata. Generate Document service task genererar förskottsdokument (multi-instance loop). Dokument lagras i Document generation service. Processen avslutas och går vidare till Signing Advance via event Documents generated.</td>
+        <td>Fastighetstyp gateway avgör "Småhus". Ansökan distribueras till Inskrivningsmyndigheten. Verifiering mottas (verified event). Processen avslutas när säkerheten är verifierad.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Dokumentgenerering misslyckas – felhantering</td>
-        <td>Error</td>
+        <td>Normalflöde – bostadsrätt registrerad</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Fastighetstyp gateway avgör "Bostadsrätt". Meddelande distribueras till BRF. Verifiering mottas (verified event). Processen avslutas när säkerheten är verifierad.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Verifiering dröjer – påminnelse skickas</td>
+        <td>Edge</td>
         <td>system</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td>Ansökan/meddelande distribueras, men verifiering dröjer. Timer event triggas. Påminnelse skickas automatiskt eller manuellt (message event). Efter påminnelse mottas verifiering. Processen avslutas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Verifiering misslyckas – manuell verifiering</td>
+        <td>Edge</td>
+        <td>advisor</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Generate Document service task misslyckas för ett eller flera förskottsdokument (t.ex. template-fel, data-fel, eller service-fel). Systemet hanterar felet gracefully och processen kan antingen retry, avvisas, eller kräva manuell hantering.</td>
+        <td>Verifiering mottas men är "Not verified" (event-based gateway). Manuell verifiering genomförs. Processen loopar tillbaka om verifieringen misslyckas, eller avslutas när verifierad.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -392,11 +491,38 @@
             
         <tr>
           <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
+          <td>fr-smhus</td>
           <td>navigate</td>
           <td>-</td>
           <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
+          <td>Navigera till för småhus</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>fr-smhus</td>
+          <td>fill</td>
+          <td>[TODO: Lägg till locator för första fältet]</td>
+          <td>[TODO: Definiera testdata]</td>
+          <td>Fyll i information för för småhus</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>fr-smhus</td>
+          <td>click</td>
+          <td>[TODO: Lägg till locator för submit-knapp]</td>
+          <td>-</td>
+          <td>Skicka/Submit</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>fr-smhus-confirmation</td>
+          <td>verify</td>
+          <td>[TODO: Lägg till locator för bekräftelsemeddelande]</td>
+          <td>-</td>
+          <td>Verifiera bekräftelse</td>
         </tr>
       
           </tbody>
@@ -405,7 +531,7 @@
     
       <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
         <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
+          <strong>S2: Påminnelser kan skickas automatiskt (timer) ell...</strong> (Klicka för att expandera)
         </summary>
         <table style="margin-top: 12px;">
           <thead>
@@ -422,11 +548,11 @@
             
         <tr>
           <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
+          <td>fr-smhus</td>
           <td>navigate</td>
           <td>-</td>
           <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
+          <td>Navigera till för småhus</td>
         </tr>
       
           </tbody>
@@ -458,30 +584,66 @@
         <tbody>
           
       <tr>
-        <td>Select documents</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/select-documents]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Business rule task som väljer vilka dokument som ska genereras för förskottsu...</td>
-      </tr>
-    
-      <tr>
-        <td>Generate Document</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/generate-document]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Service task som genererar dokument via Document generation service (multi-in...</td>
-      </tr>
-    
-      <tr>
-        <td>Document generation service</td>
+        <td>Property type gateway</td>
         <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /document-generation-service]</td>
+        <td>[TODO: Lägg till route, t.ex. /property-type-gateway]</td>
         <td>-</td>
         <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Data store där genererade dokument lagras</td>
+        <td>Avgör om det är småhus eller bostadsrätt</td>
+      </tr>
+    
+      <tr>
+        <td>För småhus</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /för-småhus]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>"Distribute Ansökan till inskrivningsmyndigheten" (user task) - skickar ansök...</td>
+      </tr>
+    
+      <tr>
+        <td>För bostadsrätt</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /för-bostadsrätt]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>"Distribute notice of pledge to BRF" (user task) - skickar meddelande om pant...</td>
+      </tr>
+    
+      <tr>
+        <td>Verifiering</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /verifiering]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Väntar på antingen "Verified" (message event) eller "Wait for system update" ...</td>
+      </tr>
+    
+      <tr>
+        <td>Manuell verifiering</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /manuell-verifiering]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Om timer triggas, "Verify" (user task) för att manuellt verifiera registreringen</td>
+      </tr>
+    
+      <tr>
+        <td>Is verified gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /is-verified-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om verifieringen är godkänd - om nej, loopar tillbaka för ny verifiering</td>
+      </tr>
+    
+      <tr>
+        <td>Påminnelser</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /påminnelser]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Event-based gateway kan ta emot "Reminder" (timer), "Manual reminder" (messag...</td>
       </tr>
     
         </tbody>

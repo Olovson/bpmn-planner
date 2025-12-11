@@ -8,50 +8,59 @@
   <title>Disbursement</title>
   <style>
     :root {
-      color-scheme: light;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --card-bg: #ffffff;
       --primary: #1d4ed8;
       --text-strong: #0f172a;
-      --text-muted: #475569;
+      --text-muted: #64748b;
       --border: #e2e8f0;
-      --accent: #dbeafe;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
     }
     body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 16px;
+      padding: 24px;
       background: #ffffff;
       color: var(--text-strong);
-      line-height: 1.7;
-    }
-    .doc-shell {
-      max-width: 960px;
+      line-height: 1.6;
+      max-width: 1200px;
       margin: 0 auto;
     }
     h1 {
-      font-size: 1.5rem;
-      margin: 0 0 24px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
     }
     h2 {
       color: var(--primary);
-      margin: 24px 0 12px;
-      font-size: 1.1rem;
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
     }
     p { margin: 0 0 12px; }
-    ul { padding-left: 20px; margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0;
-      background: var(--card-bg);
+      margin: 16px 0;
+      background: white;
       border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
     }
     table th,
     table td {
       border-bottom: 1px solid var(--border);
-      padding: 8px;
+      padding: 12px;
       text-align: left;
     }
     table th {
@@ -62,20 +71,64 @@
     table tr:last-child td {
       border-bottom: none;
     }
-    .muted { color: var(--text-muted); font-size: 0.9rem; }
-    a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 500;
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
     }
-    a:hover { text-decoration: underline; }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
     .doc-section {
-      margin-bottom: 24px;
-      padding: 16px;
-      background: var(--card-bg);
+      margin-bottom: 16px;
+      background: white;
       border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
     }
-    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
     .doc-badge {
       display: inline-flex;
       align-items: center;
@@ -87,6 +140,16 @@
       font-size: 0.8rem;
       font-weight: 600;
       margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
     }
     .llm-fallback-banner {
       padding: 8px 12px;
@@ -119,51 +182,99 @@
       color: #2563eb;
       margin-bottom: 16px;
     }
-  </style>
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
 </head>
 <body>
-
-    <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
       📄 Lokal version – Förbättrat innehåll
     </div>
   
-  <div class="doc-shell">
     
-    
-    
-    <section class="doc-section">
-      <h2>Beskrivning av FGoal</h2>
-      <p>Disbursement Advance hanterar utbetalning av förskott (advance) på bolånet. Processen startar när ett förskott behövs (triggras via "event-trigger-advance" från Offer-processen) och genomför samma utbetalningsprocess som vanlig Disbursement, men i ett förskottsflöde. Processen inkluderar utvärdering av utbetalningsregler, manuell kontroll (om nödvändig), verifiering med fyra ögon (om nödvändig), kontroll av köp-krav (om det är köp), faktisk utbetalning via Core system, och arkivering av dokument.</p>
-    </section>
+      
 
-    <section class="doc-section">
-      <h2>Confluence länk</h2>
-      <p><a href="https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data">https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data</a></p>
-    </section>
 
+    
     <section class="doc-section">
-      <h2>Processteg - Input</h2>
-      <ul>
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+<p>Disbursement är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+<ul>
         <li>Förskott behövs (triggras via "event-trigger-advance" boundary event på Offer-processen, non-interrupting)</li>
         <li>Dokumentgenerering för förskott är klar (document-generation-advance)</li>
         <li>Signering för förskott är klar (signing-advance)</li>
         <li>Processen startar när Disbursement Advance call activity anropas från mortgage.bpmn</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Processteg - Output</h2>
-      <ul>
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+<ul>
         <li>Förskottet är utbetalt via Core system</li>
         <li>Dokument är arkiverade i Document archive service</li>
         <li>Processen avslutas och huvudprocessen fortsätter med "event-advance-paid-out"</li>
         <li>Om manuell kontroll krävs eller ändringar begärs, kan processen loopa tillbaka för omarbetning</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Omfattning</h2>
-      <ul>
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+<ul>
         <li><strong>Evaluate disbursement rules:</strong> Business rule task som utvärderar om manuell kontroll behövs</li>
         <li><strong>Needs manual control gateway:</strong> Avgör om manuell kontroll krävs eller om processen kan fortsätta automatiskt</li>
         <li><strong>Disbursement control:</strong> User task (Controller) för manuell kontroll av utbetalningen</li>
@@ -175,22 +286,30 @@
         <li><strong>Disburse loan:</strong> Service task som genomför faktisk utbetalning via Core system</li>
         <li><strong>Archive documents:</strong> Service task som arkiverar dokument i Document archive service</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Avgränsning</h2>
-      <ul>
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
         <li>Vanlig Disbursement (för hela lånet) ingår inte - den sker senare i huvudprocessen</li>
         <li>Signering ingår inte - den sker i signing-advance innan Disbursement Advance</li>
         <li>Dokumentgenerering ingår inte - den sker i document-generation-advance innan Disbursement Advance</li>
         <li>Offer-processen ingår inte - den triggar förskottsflödet men är en separat process</li>
         <li>Kollateralregistrering ingår inte - den sker senare i huvudprocessen</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Beroenden</h2>
-      <ul>
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
         <li><strong>Mortgage huvudprocess:</strong> Disbursement Advance anropas från mortgage.bpmn i förskottsflödet (entry-19 branch)</li>
         <li><strong>Offer-processen:</strong> Triggar förskottsflödet via "event-trigger-advance" boundary event (non-interrupting)</li>
         <li><strong>Document generation advance:</strong> Dokumentgenerering för förskott måste vara klar innan signering</li>
@@ -200,17 +319,25 @@
         <li><strong>Caseworker-system:</strong> Controller och Approver behöver tillgång till system för manuell kontroll och verifiering</li>
         <li><strong>Disbursement rules (DMN):</strong> Automatisk utvärdering av om manuell kontroll behövs</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>BPMN - Process</h2>
-      <p><a href="#/bpmn/mortgage-se-disbursement.bpmn">Visa BPMN-processen för Disbursement</a></p>
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage-se-disbursement.bpmn">Visa BPMN-processen för Disbursement</a></p>
       <p class="muted">Processen startar med utvärdering av utbetalningsregler, avgör om manuell kontroll behövs, genomför kontroll och verifiering med fyra ögon (om nödvändig), kontrollerar köp-krav (om det är köp), genomför utbetalning via Core system, och arkiverar dokument. Processen använder samma BPMN-fil som vanlig Disbursement men anropas i förskottsflödet.</p>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Testgenerering</h2>
-      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
 
       <h3>Testscenarier</h3>
       <table>
@@ -470,10 +597,45 @@
     
         </tbody>
       </table>
+        </div>
+      </details>
     </section>
-  
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+        </div>
+      </details>
+    </section>
 
-  
-  </div>
-  </body>
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <ul>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      <ul>
+        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
+        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
+        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
 </html>

@@ -5,82 +5,431 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Feature Goal – Mall v2</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; max-width: 960px; margin: 0 auto; padding: 32px; line-height: 1.5; }
-    h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
-    h2 { color: #1d4ed8; margin-top: 32px; }
-    ul { padding-left: 20px; }
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0;
+      line-height: 1.6;
+      color: var(--text-strong);
+    }
+    .doc-container {
+      display: flex;
+      gap: 32px;
+      padding: 24px;
+    }
+    .doc-main {
+      flex: 1;
+      min-width: 0;
+    }
+    .doc-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 24px;
+      height: fit-content;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+    }
+    .toc {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .toc-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin: 0 0 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .toc-item {
+      margin: 0;
+    }
+    .toc-link {
+      display: block;
+      padding: 6px 8px;
+      color: var(--text-strong);
+      text-decoration: none;
+      font-size: 0.9rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .toc-link:hover {
+      background: var(--accent);
+      color: var(--primary);
+    }
+    .toc-link.active {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .toc-link.level-2 {
+      padding-left: 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    h1 {
+      color: var(--text-strong);
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      margin: 0 0 32px;
+      font-size: 2rem;
+    }
+    h2 {
+      color: var(--primary);
+      margin: 48px 0 16px;
+      font-size: 1.5rem;
+      scroll-margin-top: 80px;
+      position: relative;
+    }
+    h2::before {
+      content: '';
+      display: block;
+      height: 80px;
+      margin-top: -80px;
+      visibility: hidden;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
     li { margin-bottom: 8px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    table th, table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
-    table th { background: #e0e7ff; }
-    .muted { color: #64748b; font-size: 14px; }
-    .card { background: #f8f9fa; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #1d4ed8; }
-    img { max-width: 100%; height: auto; border: 1px solid #cbd5e1; border-radius: 4px; margin: 12px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 32px;
+      padding: 24px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .collapsible {
+      margin: 16px 0;
+    }
+    .collapsible-summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      user-select: none;
+    }
+    .collapsible-summary:hover {
+      background: var(--accent);
+    }
+    .collapsible-content {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    @media (max-width: 1024px) {
+      .doc-container {
+        flex-direction: column;
+      }
+      .doc-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+      }
+      .toc {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Feature Goal – Mall v2</h1>
+  <div class="doc-container">
+    <aside class="doc-sidebar">
+      <nav class="toc">
+        <h3 class="toc-title">Innehåll</h3>
+        <ul class="toc-list">
+          <li class="toc-item"><a href="#beskrivning" class="toc-link">Beskrivning av FGoal</a></li>
+          <li class="toc-item"><a href="#confluence" class="toc-link">Confluence</a></li>
+          <li class="toc-item"><a href="#input" class="toc-link">Processteg - Input</a></li>
+          <li class="toc-item"><a href="#output" class="toc-link">Processteg - Output</a></li>
+          <li class="toc-item"><a href="#omfattning" class="toc-link">Omfattning</a></li>
+          <li class="toc-item"><a href="#avgransning" class="toc-link">Avgränsning</a></li>
+          <li class="toc-item"><a href="#beroenden" class="toc-link">Beroenden</a></li>
+          <li class="toc-item"><a href="#bpmn" class="toc-link">BPMN - Process</a></li>
+          <li class="toc-item"><a href="#testgenerering" class="toc-link">Testgenerering</a></li>
+          <li class="toc-item"><a href="#effekt" class="toc-link">Effekt</a></li>
+          <li class="toc-item"><a href="#user-stories" class="toc-link">User stories</a></li>
+          <li class="toc-item"><a href="#acceptanskriterier" class="toc-link">Acceptanskriterier</a></li>
+        </ul>
+      </nav>
+    </aside>
+    
+    <main class="doc-main">
+      <h1>Feature Goal – Mall v2</h1>
 
-  <h2>Beskrivning av FGoal</h2>
-  <p class="muted">Övergripande beskrivning av leveransen.</p>
-  <div class="card">
-    <p>[Beskriv vad FGoalet innebär, vilka aktiviteter som ingår, och vilket värde det ger. Använd konkreta beskrivningar av vad som händer i processen.]</p>
+      <section id="beskrivning" class="doc-section">
+        <h2>Beskrivning av FGoal</h2>
+        <p class="muted">Övergripande beskrivning av leveransen.</p>
+        <div class="card">
+          <p>[Beskriv vad FGoalet innebär, vilka aktiviteter som ingår, och vilket värde det ger. Använd konkreta beskrivningar av vad som händer i processen.]</p>
+        </div>
+      </section>
+
+      <section id="confluence" class="doc-section">
+        <h2>Confluence</h2>
+        <p class="muted">Länk till huvudsidan i Confluence.</p>
+        <p><a href="#confluence-link">[Länk till Confluence-sida]</a></p>
+      </section>
+
+      <section id="input" class="doc-section">
+        <h2>Processteg - Input</h2>
+        <p class="muted">När processen startar.</p>
+        <ul>
+          <li>[Input 1: t.ex. "Kund är identifierad med bank-ID"]</li>
+          <li>[Input 2: t.ex. "Ansökan är initierad"]</li>
+          <li>[Input 3: t.ex. "Grundläggande kunddata är tillgänglig"]</li>
+        </ul>
+      </section>
+
+      <section id="output" class="doc-section">
+        <h2>Processteg - Output</h2>
+        <p class="muted">Förväntad utkomst.</p>
+        <ul>
+          <li>[Output 1: t.ex. "Information om part har hämtats och regler har hanterats"]</li>
+          <li>[Output 2: t.ex. "Part är skapad eller uppdaterad"]</li>
+          <li>[Output 3: t.ex. "Screeningresultat är tillgängligt"]</li>
+        </ul>
+      </section>
+
+      <section id="omfattning" class="doc-section">
+        <h2>Omfattning</h2>
+        <p class="muted">Innehåll i leveransen.</p>
+        <ul>
+          <li>[Omfattningspunkt 1: t.ex. "Part som finns hämtas"]</li>
+          <li>[Omfattningspunkt 2: t.ex. "Part som inte finns skapas"]</li>
+          <li>[Omfattningspunkt 3: t.ex. "Part prövas mot sanktionslistan"]</li>
+          <li>[Omfattningspunkt 4: t.ex. "Part prövas mot interna regler"]</li>
+          <li>[Omfattningspunkt 5: t.ex. "Skötsel historik hämtas för senare hantering i flödet"]</li>
+          <li>[Omfattningspunkt 6: t.ex. "Befintliga låneengagemang hämtas för senare hantering i flödet"]</li>
+        </ul>
+      </section>
+
+      <section id="avgransning" class="doc-section">
+        <h2>Avgränsning</h2>
+        <p class="muted">Det som inte ingår i D1 leveransen.</p>
+        <ul>
+          <li>[Avgränsning 1: t.ex. "Skyddad person hanteras inte"]</li>
+          <li>[Avgränsning 2: t.ex. "Personal hanteras inte"]</li>
+          <li>[Avgränsning 3: t.ex. "Överklagan av beslut? (fråga om detta ska ingå)"]</li>
+        </ul>
+      </section>
+
+      <section id="beroenden" class="doc-section">
+        <h2>Beroenden</h2>
+        <p class="muted">Förklarande beskrivning av beroendet till satelitteam.</p>
+        <ul>
+          <li><strong>[Satelitteam 1]:</strong> [Beskrivning av vad som behövs från detta team, t.ex. "CIA - Sanktionsscreening"]</li>
+          <li><strong>[Satelitteam 2]:</strong> [Beskrivning av vad som behövs från detta team, t.ex. "SAP? (fråga om detta är korrekt)"]</li>
+          <li><strong>[Satelitteam 3]:</strong> [Beskrivning av vad som behövs från detta team, t.ex. "Insolvency - Conduct history"]</li>
+          <li><strong>[Satelitteam 4]:</strong> [Beskrivning av vad som behövs från detta team, t.ex. "IS-Part - Partinformation"]</li>
+        </ul>
+      </section>
+
+      <section id="bpmn" class="doc-section">
+        <h2>BPMN - Process</h2>
+        <p class="muted">Bild av den subprocess som feature goalet refererar till.</p>
+        <div class="card">
+          <p><strong>BPMN-diagram:</strong></p>
+          <img src="#bpmn-image-placeholder" alt="BPMN Process Diagram" />
+          <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa den subprocess som feature goalet refererar till.]</p>
+        </div>
+      </section>
+
+      <section id="testgenerering" class="doc-section">
+        <h2>Testgenerering</h2>
+        <p class="muted">Testscenarier, UI Flow, testdata-referenser, implementation mapping.</p>
+        <details>
+          <summary>Testscenarier (Klicka för att expandera)</summary>
+          <div class="collapsible-content">
+            <p>[Testscenarier-tabell här]</p>
+          </div>
+        </details>
+        <details>
+          <summary>UI Flow per Scenario (Klicka för att expandera)</summary>
+          <div class="collapsible-content">
+            <p>[UI Flow-tabeller här]</p>
+          </div>
+        </details>
+        <details>
+          <summary>Testdata-referenser (Klicka för att expandera)</summary>
+          <div class="collapsible-content">
+            <p>[Testdata-referenser här]</p>
+          </div>
+        </details>
+        <details>
+          <summary>Implementation Mapping (Klicka för att expandera)</summary>
+          <div class="collapsible-content">
+            <p>[Implementation Mapping-tabell här]</p>
+          </div>
+        </details>
+      </section>
+
+      <section id="effekt" class="doc-section">
+        <h2>Effekt</h2>
+        <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+        <div class="card">
+          <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+          <ul>
+            <li>[Effekt 1: t.ex. "Ökad automatisering genom att systemet automatiskt utvärderar ansökan mot affärsregler, vilket minskar manuellt arbete med X%"]</li>
+            <li>[Effekt 2: t.ex. "Förbättrad beslutsnoggranhet genom strukturerad beslutsnivådirigering baserat på risk och komplexitet"]</li>
+            <li>[Effekt 3: t.ex. "Snabbare beslutsprocess genom straight-through processing för lågriskansökningar"]</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="user-stories" class="doc-section">
+        <h2>User stories</h2>
+        <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+        <div class="card">
+          <ul>
+            <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+            <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+            <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+          </ul>
+          <p class="muted">[Exempel: "Som kreditevaluator vill jag att systemet automatiskt dirigerar ansökningar till rätt beslutsnivå så att jag kan fokusera på komplexa ansökningar som kräver min expertis"]</p>
+        </div>
+      </section>
+
+      <section id="acceptanskriterier" class="doc-section">
+        <h2>Acceptanskriterier</h2>
+        <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+        <div class="card">
+          <ul>
+            <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
+            <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
+            <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå (Four eyes, Committee eller Board)"]</li>
+            <li>[Acceptanskriterium 4: t.ex. "Processen ska kunna eskalera med 'Manual re-evaluation required' om omvärdering krävs"]</li>
+          </ul>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <h2>Confluence</h2>
-  <p class="muted">Länk till huvudsidan i Confluence.</p>
-  <p><a href="#confluence-link">[Länk till Confluence-sida]</a></p>
-
-  <h2>Processteg - Input</h2>
-  <p class="muted">När processen startar.</p>
-  <ul>
-    <li>[Input 1: t.ex. "Kund är identifierad med bank-ID"]</li>
-    <li>[Input 2: t.ex. "Ansökan är initierad"]</li>
-    <li>[Input 3: t.ex. "Grundläggande kunddata är tillgänglig"]</li>
-  </ul>
-
-  <h2>Processteg - Output</h2>
-  <p class="muted">Förväntad utkomst.</p>
-  <ul>
-    <li>[Output 1: t.ex. "Information om part har hämtats och regler har hanterats"]</li>
-    <li>[Output 2: t.ex. "Part är skapad eller uppdaterad"]</li>
-    <li>[Output 3: t.ex. "Screeningresultat är tillgängligt"]</li>
-  </ul>
-
-  <h2>Omfattning</h2>
-  <p class="muted">Innehåll i leveransen.</p>
-  <ul>
-    <li>[Omfattningspunkt 1: t.ex. "Part som finns hämtas"]</li>
-    <li>[Omfattningspunkt 2: t.ex. "Part som inte finns skapas"]</li>
-    <li>[Omfattningspunkt 3: t.ex. "Part prövas mot sanktionslistan"]</li>
-    <li>[Omfattningspunkt 4: t.ex. "Part prövas mot interna regler"]</li>
-    <li>[Omfattningspunkt 5: t.ex. "Skötsel historik hämtas för senare hantering i flödet"]</li>
-    <li>[Omfattningspunkt 6: t.ex. "Befintliga låneengagemang hämtas för senare hantering i flödet"]</li>
-  </ul>
-
-  <h2>Avgränsning</h2>
-  <p class="muted">Det som inte ingår i D1 leveransen.</p>
-  <ul>
-    <li>[Avgränsning 1: t.ex. "Skyddad person hanteras inte"]</li>
-    <li>[Avgränsning 2: t.ex. "Personal hanteras inte"]</li>
-    <li>[Avgränsning 3: t.ex. "Överklagan av beslut? (fråga om detta ska ingå)"]</li>
-  </ul>
-
-  <h2>Beroenden</h2>
-  <p class="muted">Förklarande beskrivning av beroendet till satelitteam.</p>
-  <ul>
-    <li><strong>[Satelitteam 1]:</strong> [Beskrivning av vad som behövs från detta team, t.ex. "CIA - Sanktionsscreening"]</li>
-    <li><strong>[Satelitteam 2]:</strong> [Beskrivning av vad som behövs från detta team, t.ex. "SAP? (fråga om detta är korrekt)"]</li>
-    <li><strong>[Satelitteam 3]:</strong> [Beskrivning av vad som behövs från detta team, t.ex. "Insolvency - Conduct history"]</li>
-    <li><strong>[Satelitteam 4]:</strong> [Beskrivning av vad som behövs från detta team, t.ex. "IS-Part - Partinformation"]</li>
-  </ul>
-
-  <h2>BPMN-processteg</h2>
-  <p class="muted">Bild av den subprocess som feature goalet refererar till.</p>
-  <div class="card">
-    <p><strong>BPMN-diagram:</strong></p>
-    <img src="#bpmn-image-placeholder" alt="BPMN Process Diagram" />
-    <p class="muted">[Beskrivning av BPMN-processen eller länk till BPMN-viewer. Bilden ska visa den subprocess som feature goalet refererar till.]</p>
-  </div>
+  <script>
+    // Highlight active TOC item on scroll
+    const sections = document.querySelectorAll('section[id]');
+    const tocLinks = document.querySelectorAll('.toc-link');
+    
+    function updateActiveTOC() {
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+        if (window.pageYOffset >= sectionTop - 100) {
+          current = section.getAttribute('id');
+        }
+      });
+      
+      tocLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === `#${current}`) {
+          link.classList.add('active');
+        }
+      });
+    }
+    
+    window.addEventListener('scroll', updateActiveTOC);
+    updateActiveTOC();
+  </script>
 </body>
 </html>

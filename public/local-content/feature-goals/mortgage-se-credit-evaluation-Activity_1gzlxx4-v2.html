@@ -5,7 +5,7 @@
   <meta name="x-feature-goal-template-version" content="v2" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Per signee</title>
+  <title>Automatic Credit Evaluation</title>
   <style>
     :root {
       --primary: #1d4ed8;
@@ -238,7 +238,7 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Per signee är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Automatic Credit Evaluation är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
         </div>
       </details>
     </section>
@@ -247,9 +247,9 @@
         <summary>Processteg - Input</summary>
         <div class="section-content">
 <ul>
-        <li>Digitala dokumentpaket har bearbetats i per-digital-document-package subprocess</li>
-        <li>Signeringsordrar är redo för signee-hantering</li>
-        <li>Signee är identifierad och redo för notifiering</li>
+        <li>Manual Credit Evaluation-processen har bedömt att en ny automatisk kreditevaluering behövs</li>
+        <li>Uppdaterad dokumentation eller ändrade förutsättningar är tillgängliga</li>
+        <li>Ansökningsdata är redo för ny automatisk utvärdering</li>
       </ul>
         </div>
       </details>
@@ -260,10 +260,9 @@
         <summary>Processteg - Output</summary>
         <div class="section-content">
 <ul>
-        <li>Signee har notifierats om signering</li>
-        <li>Alla signeringsordrar för signee har bearbetats (via per-sign-order subprocess)</li>
-        <li>Bekräftelse att alla signeringar är genomförda</li>
-        <li>Resultat flödar tillbaka till Signing-processen för lagring av signerade dokument</li>
+        <li>Komplett automatisk kreditevaluering med uppdaterade data</li>
+        <li>Beslut om ansökan ska avvisas automatiskt (rejected gateway)</li>
+        <li>Resultatet flödar tillbaka till Manual Credit Evaluation-processen för vidare hantering</li>
       </ul>
         </div>
       </details>
@@ -274,11 +273,12 @@
         <summary>Omfattning</summary>
         <div class="section-content">
 <ul>
-        <li>Multi-instance bearbetning av alla signees</li>
-        <li>Notifiering av signee om signering (Notify sign event)</li>
-        <li>Hantering av alla signeringsordrar för signee via per-sign-order subprocess</li>
-        <li>Bekräftelse att alla signeringar är genomförda</li>
-        <li>Integration med Signing-processen för lagring av signerade dokument</li>
+        <li>Hämtning av produktinformation och prissättning</li>
+        <li>Amortisationsberäkning</li>
+        <li>Multi-instance bearbetning av alla hushåll i ansökan (affordability-beräkningar)</li>
+        <li>Riskklassificering</li>
+        <li>Policyutvärdering mot affärsregler</li>
+        <li>Automatiskt avvisningsbeslut om ansökan inte uppfyller kriterier</li>
       </ul>
         </div>
       </details>
@@ -289,10 +289,10 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
-        <li>Dokumentpaket-hantering sker i per-digital-document-package subprocess, inte i denna subprocess</li>
-        <li>Individuell signeringsorder-hantering sker i per-sign-order subprocess, inte i denna subprocess</li>
-        <li>Manuell signering hanteras separat i Signing-processen, inte i denna subprocess</li>
-        <li>Denna subprocess fokuserar enbart på signee-nivå, inte på dokumentpaket- eller sign-order-nivå</li>
+        <li>Manuell granskning och advanced underwriting sker i Manual Credit Evaluation-processen, inte här</li>
+        <li>Objektvärdering hanteras separat i Manual Credit Evaluation</li>
+        <li>Dokumentationshantering sker i Documentation assessment, inte i denna subprocess</li>
+        <li>Denna subprocess fokuserar enbart på automatisk utvärdering, inte på manuella åtgärder</li>
       </ul>
         </div>
       </details>
@@ -303,10 +303,12 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Notifieringssystem:</strong> För att notifiera signee om signering</li>
-        <li><strong>Per-sign-order subprocess:</strong> För att hantera individuella signeringsordrar för signee</li>
-        <li><strong>Signing-processen:</strong> För att triggra subprocessen och hantera resultat</li>
-        <li><strong>Signing provider:</strong> För att hantera signering och bekräftelse</li>
+        <li><strong>Manual Credit Evaluation-processen:</strong> För att triggra kreditomvärdering när uppdaterad dokumentation finns</li>
+        <li><strong>KALP-system:</strong> Beräknar hushållsaffordability</li>
+        <li><strong>Pricing engine:</strong> Hämtar produkt- och prissättningsdata</li>
+        <li><strong>Affärsregelmotor (DMN):</strong> Utvärderar mot policykriterier och affärsregler</li>
+        <li><strong>Riskklassificeringssystem:</strong> Klassificerar risknivå baserat på utvärderingsresultat</li>
+        <li><strong>Kunddata och engagemangsdata:</strong> För hushållsbehandling och affordability-beräkningar</li>
       </ul>
         </div>
       </details>
@@ -316,161 +318,11 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-signing.bpmn">Visa BPMN-processen för Per signee</a></p>
+<p><a href="#/bpmn/mortgage-se-credit-evaluation.bpmn">Visa BPMN-processen för Automatic Credit Evaluation</a></p>
         </div>
       </details>
     </section>
 
-    <section class="doc-section">
-      <details>
-        <summary>Testgenerering</summary>
-        <div class="section-content">
-<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
-
-      <h3>Testscenarier</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Namn</th>
-            <th>Typ</th>
-            <th>Persona</th>
-            <th>Risk Level</th>
-            <th>Assertion Type</th>
-            <th>Outcome</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          
-      <tr>
-        <td><strong>S1</strong></td>
-        <td>Normalflöde – signee notifierad</td>
-        <td>Happy</td>
-        <td>customer</td>
-        <td>P0</td>
-        <td>functional</td>
-        <td>Multi-instance subprocess körs för varje signee. Signee notifieras om signering (t.ex. e-post, SMS, eller in-app notifikation). Processen fortsätter med Per sign order subprocess för varje sign order.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S2</strong></td>
-        <td>Multi-instance – flera signees</td>
-        <td>Happy</td>
-        <td>customer</td>
-        <td>P1</td>
-        <td>functional</td>
-        <td>Processen körs för flera signees (multi-instance loop). Varje signee notifieras om signering. Alla signees notifieras. Processen fortsätter när alla är notifierade.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S3</strong></td>
-        <td>Notifikation misslyckas – felhantering</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P2</td>
-        <td>functional</td>
-        <td>Notifikation misslyckas för en signee (t.ex. ogiltig e-postadress, eller notifikationsservice är otillgänglig). Systemet hanterar felet gracefully och processen kan antingen retry, använda alternativ notifikationsmetod, eller kräva manuell hantering.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-        </tbody>
-      </table>
-
-      <h3>UI Flow per Scenario</h3>
-      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
-      
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-
-      <h3>Testdata-referenser</h3>
-      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
-      <ul>
-        
-      <li><strong>[TODO: data-profile-id]</strong>: [TODO: Definiera testdata för denna process]</li>
-    
-      </ul>
-
-      <h3>Implementation Mapping</h3>
-      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
-      <table>
-        <thead>
-          <tr>
-            <th>BPMN Aktivitet</th>
-            <th>Type</th>
-            <th>Route/Endpoint</th>
-            <th>Method</th>
-            <th>Base URL</th>
-            <th>Kommentar</th>
-          </tr>
-        </thead>
-        <tbody>
-          
-        </tbody>
-      </table>
-        </div>
-      </details>
-    </section>
     <section class="doc-section">
       <details>
         <summary>Effekt</summary>
@@ -510,3 +362,4 @@
     </section>
       </body>
 </html>
+

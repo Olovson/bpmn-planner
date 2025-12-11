@@ -8,50 +8,59 @@
   <title>Automatic Credit Evaluation</title>
   <style>
     :root {
-      color-scheme: light;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --card-bg: #ffffff;
       --primary: #1d4ed8;
       --text-strong: #0f172a;
-      --text-muted: #475569;
+      --text-muted: #64748b;
       --border: #e2e8f0;
-      --accent: #dbeafe;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
     }
     body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 16px;
+      padding: 24px;
       background: #ffffff;
       color: var(--text-strong);
-      line-height: 1.7;
-    }
-    .doc-shell {
-      max-width: 960px;
+      line-height: 1.6;
+      max-width: 1200px;
       margin: 0 auto;
     }
     h1 {
-      font-size: 1.5rem;
-      margin: 0 0 24px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
     }
     h2 {
       color: var(--primary);
-      margin: 24px 0 12px;
-      font-size: 1.1rem;
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
     }
     p { margin: 0 0 12px; }
-    ul { padding-left: 20px; margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0;
-      background: var(--card-bg);
+      margin: 16px 0;
+      background: white;
       border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
     }
     table th,
     table td {
       border-bottom: 1px solid var(--border);
-      padding: 8px;
+      padding: 12px;
       text-align: left;
     }
     table th {
@@ -62,20 +71,64 @@
     table tr:last-child td {
       border-bottom: none;
     }
-    .muted { color: var(--text-muted); font-size: 0.9rem; }
-    a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 500;
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
     }
-    a:hover { text-decoration: underline; }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
     .doc-section {
-      margin-bottom: 24px;
-      padding: 16px;
-      background: var(--card-bg);
+      margin-bottom: 16px;
+      background: white;
       border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
     }
-    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
     .doc-badge {
       display: inline-flex;
       align-items: center;
@@ -87,6 +140,16 @@
       font-size: 0.8rem;
       font-weight: 600;
       margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
     }
     .llm-fallback-banner {
       padding: 8px 12px;
@@ -119,85 +182,206 @@
       color: #2563eb;
       margin-bottom: 16px;
     }
-  </style>
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
 </head>
 <body>
-
-    <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
       📄 Lokal version – Förbättrat innehåll
     </div>
   
-  <div class="doc-shell">
     
-    
-    
-    <section class="doc-section">
-      <h2>Beskrivning av FGoal</h2>
-      <p>Automatic Credit Evaluation (första utvärderingen) är den initiala automatiska kreditevalueringen i Mortgage Commitment-processen. Den körs direkt efter processstart eller när nya villkor läggs till, och bedömer om mortgage commitment ska godkännas baserat på aktuell ansökningsdata. Om utvärderingen godkänner ansökan kan processen fortsätta med objektvärdering och beslutsfattande.</p>
-    </section>
+      
 
-    <section class="doc-section">
-      <h2>Confluence länk</h2>
-      <p><a href="https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data">https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data</a></p>
-    </section>
 
+    
     <section class="doc-section">
-      <h2>Processteg - Input</h2>
-      <ul>
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+<p>Automatic Credit Evaluation är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+<ul>
         <li>Mortgage Commitment-processen har startat</li>
         <li>Ansökningsdata är tillgänglig för automatisk utvärdering</li>
         <li>Eventuellt: Nya villkor har lagts till via "Add loan terms" beslut</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Processteg - Output</h2>
-      <ul>
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+<ul>
         <li>Beslut om mortgage commitment ska godkännas (is-mortgage-commitment-approved gateway)</li>
         <li>Om godkänt: Processen fortsätter till objektvärdering och beslutsfattande</li>
         <li>Om underkänt: Ansökan avvisas automatiskt (Automatically rejected event)</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Omfattning</h2>
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+<h3>1. Produkt- och prishämtning</h3>
       <ul>
-        <li>Komplett automatisk kreditevaluering inklusive produkt- och prishämtning, amortisationsberäkning, hushållsbehandling, riskklassificering och policyutvärdering</li>
-        <li>Bedömning av ansökan mot policykriterier för mortgage commitment</li>
-        <li>Automatiskt godkännande eller avvisning baserat på utvärderingsresultat</li>
-        <li>Integration med Mortgage Commitment-processen för vidare beslut</li>
+        <li><strong>Välj produkt:</strong> Systemet väljer rätt produkt baserat på ansökningsdata (affärsregler)</li>
+        <li><strong>Hämta pris:</strong> Systemet hämtar prissättningsdata från Pricing engine</li>
+        <li><strong>Beräkna amortisering:</strong> Systemet beräknar amortisering baserat på produkt och pris (affärsregler)</li>
       </ul>
+
+      <h3>2. Stakeholder-behandling (för varje stakeholder)</h3>
+      <p>För varje stakeholder (sökande) i ansökan:</p>
+      <ul>
+        <li><strong>Behöver uppdaterad kreditinformation?</strong> En beslutspunkt avgör om uppdaterad kreditinformation behöver hämtas</li>
+        <li><strong>Om ja:</strong> Systemet hämtar uppdaterad kreditinformation från Personal credit information source</li>
+        <li><strong>Om nej:</strong> Processen fortsätter direkt</li>
+      </ul>
+
+      <h3>3. Hushållsbehandling (för varje hushåll)</h3>
+      <p>För varje hushåll i ansökan:</p>
+      <ul>
+        <li><strong>Beräkna hushållsaffordability:</strong> Systemet beräknar hushållens ekonomiska kapacitet och affordability-mått med KALP-systemet (Stacc Affordability). Beräkningen baseras på inkomster, utgifter, befintliga skulder och ekonomiska åtaganden</li>
+        <li><strong>Utvärdera hushåll:</strong> Systemet utvärderar hushållens affordability mot utlåningspolicykriterier (affärsregler). Utvärderingen baseras på skuldkvoter, stresstester och policygränser</li>
+        <li><strong>Utvärdera stakeholders:</strong> Systemet utvärderar stakeholders i hushållet (affärsregler)</li>
+      </ul>
+
+      <h3>4. Riskklassificering</h3>
+      <ul>
+        <li><strong>Hämta riskklassificering:</strong> Systemet hämtar riskklassificering från Risk engine baserat på kreditscore, ekonomiska data och ansökningskarakteristika</li>
+      </ul>
+
+      <h3>5. Ansökningsutvärdering</h3>
+      <ul>
+        <li><strong>Utvärdera ansökan:</strong> Systemet utvärderar ansökan baserat på alla insamlade data (affärsregler)</li>
+      </ul>
+
+      <h3>6. Policyutvärdering</h3>
+      <ul>
+        <li><strong>Utvärdera kreditpolicyer:</strong> Systemet gör en slutgiltig utvärdering av ansökan mot alla kreditpolicyer och utlåningskriterier. Utvärderingen konsoliderar risk, affordability och policyefterlevnad</li>
+      </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Avgränsning</h2>
-      <ul>
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
         <li>Objektvärdering sker separat i Object information subprocess</li>
         <li>Dokumentationshantering sker i Documentation assessment, inte i denna subprocess</li>
         <li>Omvärdering vid ändrade villkor sker i credit-evaluation-2, inte i denna första utvärdering</li>
         <li>Manuell granskning och beslutsfattande sker i Mortgage Commitment-processen, inte i denna automatiska subprocess</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Beroenden</h2>
-      <ul>
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
         <li><strong>KALP-system:</strong> Beräknar hushållsaffordability</li>
         <li><strong>Pricing engine:</strong> Hämtar produkt- och prissättningsdata</li>
         <li><strong>Affärsregelmotor (DMN):</strong> Utvärderar mot policykriterier för mortgage commitment</li>
         <li><strong>Riskklassificeringssystem:</strong> Klassificerar risknivå baserat på utvärderingsresultat</li>
         <li><strong>Kunddata och engagemangsdata:</strong> För hushållsbehandling och affordability-beräkningar</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>BPMN - Process</h2>
-      <p><a href="#/bpmn/mortgage-se-credit-evaluation.bpmn">Visa BPMN-processen för Automatic Credit Evaluation</a></p>
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage-se-credit-evaluation.bpmn">Visa BPMN-processen för Automatic Credit Evaluation</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Mortgage Commitment-processen har startat och ansökningsdata är redo för automatisk utvärdering</li>
+        <li><strong>Välj produkt:</strong> Systemet väljer rätt produkt baserat på ansökningsdata (affärsregler)</li>
+        <li><strong>Hämta pris:</strong> Systemet hämtar prissättningsdata från Pricing engine</li>
+        <li><strong>Beräkna amortisering:</strong> Systemet beräknar amortisering baserat på produkt och pris (affärsregler)</li>
+        <li><strong>Stakeholder-loop (för varje stakeholder):</strong>
+          <ul>
+            <li>En beslutspunkt avgör om uppdaterad kreditinformation behöver hämtas</li>
+            <li>Om ja: Systemet hämtar uppdaterad kreditinformation från Personal credit information source</li>
+            <li>Om nej: Processen fortsätter direkt</li>
+          </ul>
+        </li>
+        <li><strong>Hushålls-loop (för varje hushåll):</strong>
+          <ul>
+            <li>Systemet beräknar hushållens ekonomiska kapacitet och affordability-mått med KALP-systemet (Stacc Affordability)</li>
+            <li>Systemet utvärderar hushållens affordability mot utlåningspolicykriterier (affärsregler)</li>
+            <li>Systemet utvärderar stakeholders i hushållet (affärsregler)</li>
+          </ul>
+        </li>
+        <li><strong>Hämta riskklassificering:</strong> Systemet hämtar riskklassificering från Risk engine</li>
+        <li><strong>Utvärdera ansökan:</strong> Systemet utvärderar ansökan baserat på alla insamlade data (affärsregler)</li>
+        <li><strong>Utvärdera kreditpolicyer:</strong> Systemet gör en slutgiltig utvärdering av ansökan mot alla kreditpolicyer och utlåningskriterier</li>
+        <li><strong>Avslut:</strong> Processen avslutas med komplett kreditevaluering inklusive risk- och affordability-bedömning</li>
+      </ol>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Testgenerering</h2>
-      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
 
       <h3>Testscenarier</h3>
       <table>
@@ -359,10 +543,45 @@
           
         </tbody>
       </table>
+        </div>
+      </details>
     </section>
-  
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+        </div>
+      </details>
+    </section>
 
-  
-  </div>
-  </body>
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <ul>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      <ul>
+        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
+        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
+        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
 </html>

@@ -8,50 +8,59 @@
   <title>Signing</title>
   <style>
     :root {
-      color-scheme: light;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --card-bg: #ffffff;
       --primary: #1d4ed8;
       --text-strong: #0f172a;
-      --text-muted: #475569;
+      --text-muted: #64748b;
       --border: #e2e8f0;
-      --accent: #dbeafe;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
     }
     body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 16px;
+      padding: 24px;
       background: #ffffff;
       color: var(--text-strong);
-      line-height: 1.7;
-    }
-    .doc-shell {
-      max-width: 960px;
+      line-height: 1.6;
+      max-width: 1200px;
       margin: 0 auto;
     }
     h1 {
-      font-size: 1.5rem;
-      margin: 0 0 24px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
     }
     h2 {
       color: var(--primary);
-      margin: 24px 0 12px;
-      font-size: 1.1rem;
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
     }
     p { margin: 0 0 12px; }
-    ul { padding-left: 20px; margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0;
-      background: var(--card-bg);
+      margin: 16px 0;
+      background: white;
       border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
     }
     table th,
     table td {
       border-bottom: 1px solid var(--border);
-      padding: 8px;
+      padding: 12px;
       text-align: left;
     }
     table th {
@@ -62,20 +71,64 @@
     table tr:last-child td {
       border-bottom: none;
     }
-    .muted { color: var(--text-muted); font-size: 0.9rem; }
-    a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 500;
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
     }
-    a:hover { text-decoration: underline; }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
     .doc-section {
-      margin-bottom: 24px;
-      padding: 16px;
-      background: var(--card-bg);
+      margin-bottom: 16px;
+      background: white;
       border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
     }
-    .doc-section + .doc-section { margin-top: 16px; }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
     .doc-badge {
       display: inline-flex;
       align-items: center;
@@ -87,6 +140,16 @@
       font-size: 0.8rem;
       font-weight: 600;
       margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
     }
     .llm-fallback-banner {
       padding: 8px 12px;
@@ -119,51 +182,99 @@
       color: #2563eb;
       margin-bottom: 16px;
     }
-  </style>
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
 </head>
 <body>
-
-    <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
       📄 Lokal version – Förbättrat innehåll
     </div>
   
-  <div class="doc-shell">
     
-    
-    
-    <section class="doc-section">
-      <h2>Beskrivning av FGoal</h2>
-      <p>Signing hanterar signeringen av lånedokument. Processen startar när "Documents generated" event (Event_1u29t2f) har triggats efter Document Generation. Processen stöder både digital och manuell signering. För digital signering: dokumentpaket skapas, signeringsorder skapas per dokumentpaket, signering sker per signee och per sign order, och signerade dokument lagras. För manuell signering: dokument distribueras, dokument laddas upp, dokument verifieras, och påminnelser kan skickas. När signeringen är klar, går processen vidare till "event-signing-completed" → Disbursement.</p>
-    </section>
+      
 
-    <section class="doc-section">
-      <h2>Confluence länk</h2>
-      <p><a href="https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data">https://confluence.sbab.se/spaces/PC/pages/276205652/Application+-+Internal+data+gathering+-+Inh%C3%A4mta+intern+data</a></p>
-    </section>
 
+    
     <section class="doc-section">
-      <h2>Processteg - Input</h2>
-      <ul>
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+<p>Signing är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+<ul>
         <li>Document Generation är klar (Documents generated event - Event_1u29t2f)</li>
         <li>Dokument är genererade och redo för signering</li>
         <li>Processen startar när Signing call activity anropas från mortgage.bpmn i huvudflödet (entry-18 branch) efter Event_1u29t2f</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Processteg - Output</h2>
-      <ul>
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+<ul>
         <li>Dokument är signerade (digitalt eller manuellt)</li>
         <li>Signerade dokument är lagrade</li>
         <li>Processen avslutas och huvudprocessen fortsätter med "event-signing-completed" → Disbursement</li>
         <li>Om signering avvisas: "signing-rejected" boundary event triggas som avslutar processen med "Signing rejected" end event</li>
         <li>Message event "event-signing-completed" triggas (topic: event-signing-completed) när signeringen är klar</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Omfattning</h2>
-      <ul>
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+<ul>
         <li><strong>Signing methods gateway:</strong> Avgör om signering sker digitalt eller manuellt (inclusive gateway - båda kan vara aktiva)</li>
         <li><strong>Digital signering:</strong>
           <ul>
@@ -183,22 +294,30 @@
         </li>
         <li><strong>Felhantering:</strong> "signing-rejected" boundary event på signing call activity i huvudprocessen kan avbryta processen</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Avgränsning</h2>
-      <ul>
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
         <li>Document Generation ingår inte - den sker tidigare i huvudprocessen</li>
         <li>Disbursement ingår inte - den sker efter Signing</li>
         <li>Offer-processen ingår inte - den sker tidigare i huvudprocessen</li>
         <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
         <li>KYC-processen ingår inte - den sker tidigare i huvudprocessen</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Beroenden</h2>
-      <ul>
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
         <li><strong>Mortgage huvudprocess:</strong> Signing anropas från mortgage.bpmn i huvudflödet (entry-18 branch) när Event_1u29t2f (Documents generated) triggas</li>
         <li><strong>Document Generation:</strong> Document Generation måste vara slutförd innan Signing startar</li>
         <li><strong>Signing provider:</strong> Externa system för digital signering (PADES i SE - behöver verifieras)</li>
@@ -207,17 +326,25 @@
         <li><strong>Disbursement:</strong> Efter signering går processen vidare till Disbursement via event-signing-completed</li>
         <li><strong>Felhantering:</strong> Om signering avvisas, triggas "signing-rejected" escalation</li>
       </ul>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>BPMN - Process</h2>
-      <p><a href="#/bpmn/mortgage-se-signing.bpmn">Visa BPMN-processen för Signing</a></p>
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage-se-signing.bpmn">Visa BPMN-processen för Signing</a></p>
       <p class="muted">Processen stöder både digital och manuell signering. För digital signering: dokumentpaket skapas, signeringsorder skapas per dokumentpaket, signering sker per signee och per sign order, och signerade dokument lagras. För manuell signering: dokument distribueras, dokument laddas upp, dokument verifieras, och påminnelser kan skickas. Processen använder multi-instance subprocesses för att hantera flera dokumentpaket, signees, och sign orders.</p>
+        </div>
+      </details>
     </section>
 
     <section class="doc-section">
-      <h2>Testgenerering</h2>
-      <p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
 
       <h3>Testscenarier</h3>
       <table>
@@ -457,10 +584,45 @@
     
         </tbody>
       </table>
+        </div>
+      </details>
     </section>
-  
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+        </div>
+      </details>
+    </section>
 
-  
-  </div>
-  </body>
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <ul>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      <ul>
+        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
+        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
+        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
 </html>

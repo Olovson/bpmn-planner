@@ -5,7 +5,7 @@
   <meta name="x-feature-goal-template-version" content="v2" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Per signee</title>
+  <title>Credit decision</title>
   <style>
     :root {
       --primary: #1d4ed8;
@@ -238,7 +238,7 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Per signee är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Credit decision är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
         </div>
       </details>
     </section>
@@ -246,10 +246,21 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Digitala dokumentpaket har bearbetats i per-digital-document-package subprocess</li>
-        <li>Signeringsordrar är redo för signee-hantering</li>
-        <li>Signee är identifierad och redo för notifiering</li>
+<p>Processen startar när:</p>
+      <ul>
+        <li><strong>Sales contract-ändringar har begärts:</strong> Kunden har begärt ändringar i offer via sales contract-hantering</li>
+        <li><strong>Advanced underwriting är klar:</strong> Offer-processen har slutfört advanced underwriting för de nya förutsättningarna och ansökan är redo för slutgiltigt kreditbeslut</li>
+        <li><strong>All information är tillgänglig:</strong> All nödvändig information för kreditbeslut är samlad och tillgänglig, inklusive:
+          <ul>
+            <li>Kreditscore och kreditupplysningar</li>
+            <li>Skuldkvoter (DTI-ratio)</li>
+            <li>Inkomstverifiering</li>
+            <li>Riskfaktorer</li>
+            <li>Advanced underwriting-resultat</li>
+            <li>Sales contract-ändringar</li>
+          </ul>
+        </li>
+        <li><strong>Ansökningsdata är komplett:</strong> Alla ansökningsdata är redo för slutgiltig bedömning med de nya förutsättningarna</li>
       </ul>
         </div>
       </details>
@@ -259,11 +270,12 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Signee har notifierats om signering</li>
-        <li>Alla signeringsordrar för signee har bearbetats (via per-sign-order subprocess)</li>
-        <li>Bekräftelse att alla signeringar är genomförda</li>
-        <li>Resultat flödar tillbaka till Signing-processen för lagring av signerade dokument</li>
+<p>Processen avslutas med:</p>
+      <ul>
+        <li><strong>Slutgiltigt kreditbeslut:</strong> Ett beslut om ansökan ska godkännas eller avvisas baserat på de nya förutsättningarna</li>
+        <li><strong>Om godkänt:</strong> Offer-processen kan fortsätta med att skapa uppdaterat offer för kunden baserat på sales contract-ändringarna</li>
+        <li><strong>Om omvärdering krävs:</strong> Processen kan eskalera med "Manual re-evaluation required" för ytterligare bedömning</li>
+        <li><strong>Om avvisat:</strong> Offer-processen avslutas med "Credit decision rejected" event</li>
       </ul>
         </div>
       </details>
@@ -273,12 +285,14 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li>Multi-instance bearbetning av alla signees</li>
-        <li>Notifiering av signee om signering (Notify sign event)</li>
-        <li>Hantering av alla signeringsordrar för signee via per-sign-order subprocess</li>
-        <li>Bekräftelse att alla signeringar är genomförda</li>
-        <li>Integration med Signing-processen för lagring av signerade dokument</li>
+<p>Se huvuddokumentationen för Credit decision-processen. Denna specifika anropning sker i kontexten av sales contract-hantering och inkluderar:</p>
+      <ul>
+        <li>Automatisk beslutsnivåbestämning baserat på uppdaterade förutsättningar</li>
+        <li>Beslutsnivådirigering (Straight through, Four eyes, Committee, eller Board)</li>
+        <li>Manuell granskning (om krävs)</li>
+        <li>Sammanställning av granskningar</li>
+        <li>Omvärderingsbeslut</li>
+        <li>Slutgiltigt beslut</li>
       </ul>
         </div>
       </details>
@@ -289,10 +303,11 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
-        <li>Dokumentpaket-hantering sker i per-digital-document-package subprocess, inte i denna subprocess</li>
-        <li>Individuell signeringsorder-hantering sker i per-sign-order subprocess, inte i denna subprocess</li>
-        <li>Manuell signering hanteras separat i Signing-processen, inte i denna subprocess</li>
-        <li>Denna subprocess fokuserar enbart på signee-nivå, inte på dokumentpaket- eller sign-order-nivå</li>
+        <li>Sales contract-hantering och ändringsbegäran sker i Offer-processen, inte i denna subprocess</li>
+        <li>Advanced underwriting sker i Offer-processen, inte i denna subprocess</li>
+        <li>Offer-skapande sker i Offer-processen, inte i denna subprocess</li>
+        <li>Automatisk kreditevaluering sker i separata subprocesser, inte i denna manuella beslutsprocess</li>
+        <li>Denna subprocess fokuserar enbart på manuellt kreditbeslut i samband med sales contract-ändringar, inte på automatisk utvärdering eller offer-skapande</li>
       </ul>
         </div>
       </details>
@@ -303,10 +318,11 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Notifieringssystem:</strong> För att notifiera signee om signering</li>
-        <li><strong>Per-sign-order subprocess:</strong> För att hantera individuella signeringsordrar för signee</li>
-        <li><strong>Signing-processen:</strong> För att triggra subprocessen och hantera resultat</li>
-        <li><strong>Signing provider:</strong> För att hantera signering och bekräftelse</li>
+        <li><strong>Offer-processen:</strong> För att triggra kreditbeslut efter sales contract-ändringar och advanced underwriting</li>
+        <li><strong>Sales contract-hantering:</strong> För att tillhandahålla information om begärda ändringar</li>
+        <li><strong>Kreditbeslutssystem:</strong> För att stödja manuell bedömning och beslutsfattande</li>
+        <li><strong>All tillgänglig ansökningsinformation:</strong> För att fatta välgrundade kreditbeslut med de nya förutsättningarna</li>
+        <li><strong>Advanced underwriting-resultat:</strong> Som input för kreditbeslutet</li>
       </ul>
         </div>
       </details>
@@ -316,161 +332,11 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-signing.bpmn">Visa BPMN-processen för Per signee</a></p>
+<p><a href="#/bpmn/mortgage-se-credit-decision.bpmn">Visa BPMN-processen för Credit decision</a></p>
         </div>
       </details>
     </section>
 
-    <section class="doc-section">
-      <details>
-        <summary>Testgenerering</summary>
-        <div class="section-content">
-<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
-
-      <h3>Testscenarier</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Namn</th>
-            <th>Typ</th>
-            <th>Persona</th>
-            <th>Risk Level</th>
-            <th>Assertion Type</th>
-            <th>Outcome</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          
-      <tr>
-        <td><strong>S1</strong></td>
-        <td>Normalflöde – signee notifierad</td>
-        <td>Happy</td>
-        <td>customer</td>
-        <td>P0</td>
-        <td>functional</td>
-        <td>Multi-instance subprocess körs för varje signee. Signee notifieras om signering (t.ex. e-post, SMS, eller in-app notifikation). Processen fortsätter med Per sign order subprocess för varje sign order.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S2</strong></td>
-        <td>Multi-instance – flera signees</td>
-        <td>Happy</td>
-        <td>customer</td>
-        <td>P1</td>
-        <td>functional</td>
-        <td>Processen körs för flera signees (multi-instance loop). Varje signee notifieras om signering. Alla signees notifieras. Processen fortsätter när alla är notifierade.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S3</strong></td>
-        <td>Notifikation misslyckas – felhantering</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P2</td>
-        <td>functional</td>
-        <td>Notifikation misslyckas för en signee (t.ex. ogiltig e-postadress, eller notifikationsservice är otillgänglig). Systemet hanterar felet gracefully och processen kan antingen retry, använda alternativ notifikationsmetod, eller kräva manuell hantering.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-        </tbody>
-      </table>
-
-      <h3>UI Flow per Scenario</h3>
-      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
-      
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-
-      <h3>Testdata-referenser</h3>
-      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
-      <ul>
-        
-      <li><strong>[TODO: data-profile-id]</strong>: [TODO: Definiera testdata för denna process]</li>
-    
-      </ul>
-
-      <h3>Implementation Mapping</h3>
-      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
-      <table>
-        <thead>
-          <tr>
-            <th>BPMN Aktivitet</th>
-            <th>Type</th>
-            <th>Route/Endpoint</th>
-            <th>Method</th>
-            <th>Base URL</th>
-            <th>Kommentar</th>
-          </tr>
-        </thead>
-        <tbody>
-          
-        </tbody>
-      </table>
-        </div>
-      </details>
-    </section>
     <section class="doc-section">
       <details>
         <summary>Effekt</summary>
@@ -510,3 +376,4 @@
     </section>
       </body>
 </html>
+

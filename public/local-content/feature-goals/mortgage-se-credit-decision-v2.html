@@ -5,7 +5,7 @@
   <meta name="x-feature-goal-template-version" content="v2" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Document generation</title>
+  <title>Credit decision</title>
   <style>
     :root {
       --primary: #1d4ed8;
@@ -238,7 +238,7 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Document generation är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Credit decision är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
         </div>
       </details>
     </section>
@@ -246,10 +246,19 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Förskottet är redo (event-advance-ready) i huvudprocessen</li>
-        <li>Offer är accepterad och kunden har begärt förskott (event-trigger-advance boundary event på offer)</li>
-        <li>Processen startar när Document Generation Advance call activity anropas från mortgage.bpmn i förskottsflödet (entry-19 branch)</li>
+<p>Processen startar när:</p>
+      <ul>
+        <li><strong>Advanced underwriting är klar:</strong> Offer-processen har slutfört advanced underwriting och ansökan är redo för slutgiltigt kreditbeslut</li>
+        <li><strong>All information är tillgänglig:</strong> All nödvändig information för kreditbeslut är samlad och tillgänglig, inklusive:
+          <ul>
+            <li>Kreditscore och kreditupplysningar</li>
+            <li>Skuldkvoter (DTI-ratio)</li>
+            <li>Inkomstverifiering</li>
+            <li>Riskfaktorer</li>
+            <li>Advanced underwriting-resultat</li>
+          </ul>
+        </li>
+        <li><strong>Ansökningsdata är komplett:</strong> Alla ansökningsdata är redo för slutgiltig bedömning</li>
       </ul>
         </div>
       </details>
@@ -259,10 +268,12 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Dokument för förskottsutbetalning är genererade och lagrade i Document generation service</li>
-        <li>Processen avslutas och huvudprocessen fortsätter med Signing Advance för signering av förskottsdokument</li>
-        <li>Dokument är redo för signering i Signing Advance-processen</li>
+<p>Processen avslutas med:</p>
+      <ul>
+        <li><strong>Slutgiltigt kreditbeslut:</strong> Ett beslut om ansökan ska godkännas eller avvisas</li>
+        <li><strong>Om godkänt:</strong> Offer-processen kan fortsätta med att skapa offer för kunden</li>
+        <li><strong>Om omvärdering krävs:</strong> Processen kan eskalera med "Manual re-evaluation required" för ytterligare bedömning</li>
+        <li><strong>Om avvisat:</strong> Offer-processen avslutas med "Credit decision rejected" event</li>
       </ul>
         </div>
       </details>
@@ -272,12 +283,42 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li><strong>Select documents:</strong> Business rule task som väljer vilka dokument som ska genereras för förskottsutbetalning baserat på affärsregler</li>
-        <li><strong>Generate Document:</strong> Service task som genererar dokument via Document generation service (multi-instance loop för att hantera flera dokument)</li>
-        <li><strong>Document generation service:</strong> Data store där genererade dokument lagras</li>
-        <li><strong>Processen använder samma BPMN-fil som vanlig Document Generation men anropas i förskottsflödet</strong></li>
+<h3>1. Automatisk beslutsnivåbestämning</h3>
+      <p>Systemet utvärderar automatiskt ansökan mot affärsregler för att avgöra vilken beslutsnivå som krävs:</p>
+      <ul>
+        <li><strong>Input:</strong> Kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer</li>
+        <li><strong>Output:</strong> Beslutsnivå (Straight through, Four eyes, Committee, eller Board)</li>
       </ul>
+
+      <h3>2. Beslutsnivådirigering</h3>
+      <p>En beslutspunkt dirigerar ansökan till rätt beslutsnivå baserat på lånebelopp, riskbedömning och policyregler:</p>
+      <ul>
+        <li><strong>Straight through:</strong> Automatisk godkännande för enkla, lågriskansökningar - processen avslutas direkt</li>
+        <li><strong>Four eyes:</strong> Manuell granskning av en kreditevaluator krävs</li>
+        <li><strong>Committee:</strong> Granskning av kreditkommittén krävs för komplexa ansökningar</li>
+        <li><strong>Board:</strong> Granskning av styrelsen krävs för höga belopp eller strategiska beslut</li>
+      </ul>
+
+      <h3>3. Manuell granskning</h3>
+      <p>Beroende på beslutsnivå genomförs manuell granskning:</p>
+      <ul>
+        <li><strong>Board:</strong> Styrelsen granskar höga belopp, policyundantag eller strategiska lånebeslut</li>
+        <li><strong>Committee:</strong> Kreditkommittén granskar komplexa ansökningar med högre risk eller värde</li>
+        <li><strong>Four eyes:</strong> En kreditevaluator granskar ansökan enligt fyra ögon-principen</li>
+      </ul>
+
+      <h3>4. Sammanställning av granskningar</h3>
+      <p>Efter manuell granskning samlas alla beslutsvägar ihop för slutgiltig bedömning.</p>
+
+      <h3>5. Omvärderingsbeslut</h3>
+      <p>En beslutspunkt avgör om ytterligare omvärdering behövs:</p>
+      <ul>
+        <li><strong>Nej:</strong> Processen avslutas med godkänt beslut</li>
+        <li><strong>Ja:</strong> Manuell omvärdering krävs - processen eskaleras med "Manual re-evaluation required"</li>
+      </ul>
+
+      <h3>6. Slutgiltigt beslut</h3>
+      <p>Alla godkända beslutsvägar samlas ihop och processen avslutas med slutgiltigt kreditbeslut.</p>
         </div>
       </details>
     </section>
@@ -287,11 +328,10 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
-        <li>Vanlig Document Generation (i huvudflödet) ingår inte - det är en separat process</li>
-        <li>Signering ingår inte - den sker i Signing Advance-processen efter Document Generation Advance</li>
-        <li>Disbursement Advance ingår inte - den sker efter Signing Advance</li>
-        <li>Offer-processen ingår inte - den triggar förskottsflödet via boundary event</li>
-        <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Advanced underwriting sker i Offer-processen, inte i denna subprocess</li>
+        <li>Offer-skapande sker i Offer-processen, inte i denna subprocess</li>
+        <li>Automatisk kreditevaluering sker i separata subprocesser, inte i denna manuella beslutsprocess</li>
+        <li>Denna subprocess fokuserar enbart på manuellt kreditbeslut, inte på automatisk utvärdering eller offer-skapande</li>
       </ul>
         </div>
       </details>
@@ -302,12 +342,10 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Mortgage huvudprocess:</strong> Document Generation Advance anropas från mortgage.bpmn i förskottsflödet (entry-19 branch) när event-advance-ready triggas</li>
-        <li><strong>Offer-processen:</strong> Offer måste vara accepterad och kunden måste ha begärt förskott (event-trigger-advance boundary event) innan Document Generation Advance startar</li>
-        <li><strong>Document generation service:</strong> Genomför faktisk generering och lagring av dokument</li>
-        <li><strong>Document selection rules (DMN):</strong> Automatisk val av vilka dokument som ska genereras för förskottsutbetalning</li>
-        <li><strong>Signing Advance:</strong> Efter dokumentgenerering går processen vidare till Signing Advance för signering</li>
-        <li><strong>Disbursement Advance:</strong> Efter signering går processen vidare till Disbursement Advance för utbetalning av förskottet</li>
+        <li><strong>Offer-processen:</strong> För att triggra kreditbeslut efter advanced underwriting</li>
+        <li><strong>Kreditbeslutssystem:</strong> För att stödja manuell bedömning och beslutsfattande</li>
+        <li><strong>All tillgänglig ansökningsinformation:</strong> För att fatta välgrundade kreditbeslut</li>
+        <li><strong>Advanced underwriting-resultat:</strong> Som input för kreditbeslutet</li>
       </ul>
         </div>
       </details>
@@ -317,8 +355,37 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-document-generation.bpmn">Visa BPMN-processen för Document Generation</a></p>
-      <p class="muted">Processen startar med val av dokument via business rules, genererar dokument via Document generation service (multi-instance loop), och lagrar dokument i Document generation service. Processen använder samma BPMN-fil som vanlig Document Generation men anropas i förskottsflödet när event-advance-ready triggas.</p>
+<p><a href="#/bpmn/mortgage-se-credit-decision.bpmn">Visa BPMN-processen för Credit decision</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när advanced underwriting är klar och ansökan är redo för slutgiltigt kreditbeslut</li>
+        <li><strong>Automatisk beslutsnivåbestämning:</strong> Systemet utvärderar automatiskt ansökan mot affärsregler (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) för att avgöra vilken beslutsnivå som krävs</li>
+        <li><strong>Beslutsnivådirigering:</strong> En beslutspunkt dirigerar ansökan till rätt beslutsnivå:
+          <ul>
+            <li><strong>Straight through:</strong> Automatisk godkännande - processen går direkt till avslut</li>
+            <li><strong>Four eyes:</strong> Manuell granskning av kreditevaluator krävs</li>
+            <li><strong>Committee:</strong> Granskning av kreditkommittén krävs</li>
+            <li><strong>Board:</strong> Granskning av styrelsen krävs</li>
+          </ul>
+        </li>
+        <li><strong>Manuell granskning (om krävs):</strong> Beroende på beslutsnivå genomförs manuell granskning:
+          <ul>
+            <li>Board granskar höga belopp, policyundantag eller strategiska beslut</li>
+            <li>Committee granskar komplexa ansökningar med högre risk eller värde</li>
+            <li>Four eyes granskar ansökan enligt fyra ögon-principen</li>
+          </ul>
+        </li>
+        <li><strong>Sammanställning:</strong> Efter manuell granskning samlas alla beslutsvägar ihop</li>
+        <li><strong>Omvärderingsbeslut:</strong> En beslutspunkt avgör om ytterligare omvärdering behövs:
+          <ul>
+            <li><strong>Nej:</strong> Processen fortsätter mot avslut</li>
+            <li><strong>Ja:</strong> Manuell omvärdering krävs - processen eskaleras med "Manual re-evaluation required"</li>
+          </ul>
+        </li>
+        <li><strong>Slutgiltigt beslut:</strong> Alla godkända beslutsvägar (straight through och godkända manuella granskningar) samlas ihop</li>
+        <li><strong>Avslut:</strong> Processen avslutas med slutgiltigt kreditbeslut (godkänt eller avvisat)</li>
+      </ol>
         </div>
       </details>
     </section>
@@ -347,23 +414,45 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – förskottsdokument genererade</td>
+        <td>Normalflöde – straight-through godkänt</td>
         <td>Happy</td>
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Select documents business rule task väljer förskottsdokument baserat på ansökningsdata. Generate Document service task genererar förskottsdokument (multi-instance loop). Dokument lagras i Document generation service. Processen avslutas och går vidare till Signing Advance via event Documents generated.</td>
+        <td>Credit decision rules utvärderar ansökan. Decision criteria gateway avgör "Straight through". Processen avslutas med godkänt beslut. Offer-processen kan fortsätta med att skapa offer.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Dokumentgenerering misslyckas – felhantering</td>
-        <td>Error</td>
-        <td>system</td>
+        <td>Fyra ögon-granskning krävs – godkänt</td>
+        <td>Happy</td>
+        <td>advisor</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Generate Document service task misslyckas för ett eller flera förskottsdokument (t.ex. template-fel, data-fel, eller service-fel). Systemet hanterar felet gracefully och processen kan antingen retry, avvisas, eller kräva manuell hantering.</td>
+        <td>Credit decision rules avgör att fyra ögon-granskning krävs. Evaluate application four-eyes genomförs. Reevaluate gateway avgör "No" (ingen omvärdering behövs). Processen avslutas med godkänt beslut.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Omvärdering krävs – manuell omvärdering godkänt</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Fyra ögon-granskning krävs. Reevaluate gateway avgör "Yes" (omvärdering behövs). Manual reevaluation required genomförs. Processen avslutas med godkänt beslut efter omvärdering.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Kreditbeslut avvisat</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Credit decision rules eller fyra ögon-granskning avvisar ansökan. Processen avslutas med avslag. Offer-processen avslutas med "Credit decision rejected" event.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -405,7 +494,37 @@
     
       <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
         <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
+          <strong>S2: Om avvisat: Offer-processen avslutas med "Credi...</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
         </summary>
         <table style="margin-top: 12px;">
           <thead>
@@ -457,33 +576,6 @@
         </thead>
         <tbody>
           
-      <tr>
-        <td>Select documents</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/select-documents]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Business rule task som väljer vilka dokument som ska genereras för förskottsu...</td>
-      </tr>
-    
-      <tr>
-        <td>Generate Document</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/generate-document]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Service task som genererar dokument via Document generation service (multi-in...</td>
-      </tr>
-    
-      <tr>
-        <td>Document generation service</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /document-generation-service]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Data store där genererade dokument lagras</td>
-      </tr>
-    
         </tbody>
       </table>
         </div>

@@ -1,17 +1,17 @@
 # Feature Goal Dokumentation - Status
 
-**Genererad:** 2025-12-11T18:41:18.372Z
+**Genererad:** 2025-12-11T21:18:29.619Z
 **BPMN-källa:** mortgage-se 2025.12.11 18:11
 
 ---
 
 ## 📊 Sammanfattning
 
-- 📝 **Total HTML-filer:** 40
-- ✅ **Matchade feature goals:** 26 (av 34 totalt)
-- ⚠️  **Orphaned (saknar feature goal):** 14
-- ✨ **Förbättrade:** 2
-- 📋 **Återstående:** 38
+- 📝 **Total HTML-filer:** 32
+- ✅ **Matchade feature goals:** 19 (av 34 totalt)
+- ⚠️  **Orphaned (saknar feature goal):** 13
+- ✨ **Förbättrade:** 4
+- 📋 **Återstående:** 28
 
 ---
 
@@ -19,46 +19,31 @@
 
 Dessa filer matchar feature goals i BPMN-filerna. Markera med `[x]` när du har förbättrat dem.
 
-- [x] `local--Appeal-v2.html` ✨ Förbättrad
-- [x] `local--Application-Household-v2.html` ✨ Förbättrad
-- [ ] `local--Application-Internal-data-gathering-v2.html`
-- [ ] `local--Application-Object-v2.html`
-  - Feature Goal: Object (`object`) ⚠️ 5 saknade aktiviteter
-- [ ] `local--Application-Stakeholder-v2.html`
-  - Feature Goal: Stakeholder (`stakeholder`) ⚠️ 3 saknade aktiviteter
-- [ ] `local--Application-v2.html`
-  - Feature Goal: Application (`application`) ⚠️ 2 saknade aktiviteter
-- [ ] `local--Automatic-Credit-Evaluation-For-each-household-v2.html`
-  - Feature Goal: Automatic Credit Evaluation (`Activity_1gzlxx4`) ⚠️ 2 saknade aktiviteter
-- [ ] `local--Automatic-Credit-Evaluation-v2.html`
-  - Feature Goal: Automatic Credit Evaluation (`credit-evaluation-1`) ⚠️ 2 saknade aktiviteter
-- [ ] `local--Collateral-Registration-v2.html`
-- [ ] `local--Credit-Decision-v2.html`
-- [ ] `local--Disbursement-v2.html`
-- [ ] `local--Document-Generation-v2.html`
-- [ ] `local--Manual-Credit-Evaluation-Documentation-assessment-v2.html`
-  - Feature Goal: Documentation assessment (`documentation-assessment`) ⚠️ 2 saknade aktiviteter
-- [ ] `local--Manual-Credit-Evaluation-v2.html`
-- [ ] `local--Mortgage-Commitment-Documentation-assessment-v2.html`
-  - Feature Goal: Documentation assessment (`documentation-assessment`) ⚠️ 2 saknade aktiviteter
-- [ ] `local--Mortgage-Commitment-Object-information-v2.html`
-- [ ] `local--Mortgage-Commitment-v2.html`
-- [ ] `local--mortgage-kyc-v2.html`
-  - Feature Goal: KYC (`kyc`) ⚠️ 3 saknade aktiviteter
-- [ ] `local--mortgage-object-valuation-v2.html`
-- [ ] `local--mortgage-se-manual-credit-evaluation-object-control-v2.html`
-  - Feature Goal: Object control (`object-control`) ⚠️ 13 saknade aktiviteter
-- [ ] `local--mortgage-se-object-control-object-information-v2.html`
-  - Feature Goal: Object information (`object-information`) ⚠️ 2 saknade aktiviteter
-- [ ] `local--mortgage-se-offer-documentation-assessment-v2.html`
+- [ ] `mortgage-se-appeal-v2.html`
+- [ ] `mortgage-se-application-v2.html`
+- [ ] `mortgage-se-collateral-registration-v2.html`
+- [ ] `mortgage-se-credit-decision-sales-contract-credit-decision-v2.html`
+  - Feature Goal: Credit decision (`credit-decision`) ⚠️ 1 saknade aktiviteter
+- [ ] `mortgage-se-credit-evaluation-Activity_1gzlxx4-v2.html`
+  - Feature Goal: Automatic Credit Evaluation (`Activity_1gzlxx4`) ⚠️ 7 saknade aktiviteter
+- [x] `mortgage-se-disbursement-disbursement-advance-v2.html` ✨ Förbättrad
+- [x] `mortgage-se-document-generation-document-generation-advance-v2.html` ✨ Förbättrad
+- [ ] `mortgage-se-documentation-assessment-v2.html`
   - Feature Goal: Documentation assessment (`documentation-assessment`) ⚠️ 3 saknade aktiviteter
-- [ ] `local--mortgage-se-stakeholder-internal-data-gathering-v2.html`
-  - Feature Goal: Internal data gathering (`internal-data-gathering`) ⚠️ 4 saknade aktiviteter
-- [ ] `local--Object-Object-information-v2.html`
-- [ ] `local--Offer-Credit-decision-v2.html`
-  - Feature Goal: Offer preparation (`offer`) ⚠️ 4 saknade aktiviteter
-- [ ] `local--Signing-Advance-v2.html`
-  - Feature Goal: Signing (`signing`) ⚠️ 2 saknade aktiviteter
+- [ ] `mortgage-se-household-v2.html`
+- [ ] `mortgage-se-internal-data-gathering-v2.html`
+- [ ] `mortgage-se-kyc-v2.html`
+- [ ] `mortgage-se-manual-credit-evaluation-v2.html`
+- [ ] `mortgage-se-mortgage-commitment-v2.html`
+- [ ] `mortgage-se-object-control-v2.html`
+  - Feature Goal: Object (`object`) ⚠️ 5 saknade aktiviteter
+- [ ] `mortgage-se-object-information-v2.html`
+- [ ] `mortgage-se-object-valuation-v2.html`
+- [ ] `mortgage-se-offer-v2.html`
+  - Feature Goal: Offer preparation (`offer`) ⚠️ 3 saknade aktiviteter
+- [x] `mortgage-se-signing-per-digital-document-package-v2.html` ✨ Förbättrad
+- [ ] `mortgage-se-stakeholder-v2.html`
+  - Feature Goal: Stakeholder (`stakeholder`) ⚠️ 3 saknade aktiviteter
 
 ---
 
@@ -79,33 +64,31 @@ För varje fil, avgör:
 
 Markera med `[x]` när du har tagit beslut och utfört åtgärden.
 
-- [ ] `local--Application-Stakeholders-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-Activity_17f0nvn-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Disbursement-Advance-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-se-credit-decision-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Document-Generation-Advance-v2.html` (Senast ändrad: 2025-12-01)
+- [x] `mortgage-se-credit-evaluation-credit-evaluation-1-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--KALP-kvar-att-leva-pa-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-se-credit-evaluation-credit-evaluation-2-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--KYC-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-se-credit-evaluation-loop-household-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Manual-Credit-Evaluation-Automatic-Credit-Evaluation-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-se-credit-evaluation-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Mortgage-Commitment-Automatic-Credit-Evaluation-1-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-se-disbursement-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Mortgage-Commitment-Automatic-Credit-Evaluation-2-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-se-document-generation-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Offer-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-se-object-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Signing-Per-digital-document-package-v2.html` (Senast ändrad: 2025-11-29)
+- [ ] `mortgage-se-signing-per-sign-order-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Signing-Per-sign-order-v2.html` (Senast ändrad: 2025-11-29)
+- [ ] `mortgage-se-signing-per-signee-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Signing-Per-signee-v2.html` (Senast ändrad: 2025-11-29)
+- [ ] `mortgage-se-signing-signing-advance-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Signing-v2.html` (Senast ändrad: 2025-12-01)
-  - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
-- [ ] `local--Update-party-v2.html` (Senast ändrad: 2025-12-01)
+- [ ] `mortgage-se-signing-v2.html` (Senast ändrad: 2025-12-11)
   - [ ] Identifierad åtgärd: [ ] Ta bort | [ ] Uppdatera | [ ] Behåll
 
 ---
