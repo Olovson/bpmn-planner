@@ -10,8 +10,8 @@
 - 📝 **Total HTML-filer:** 40
 - ✅ **Matchade feature goals:** 26 (av 34 totalt)
 - ⚠️  **Orphaned (saknar feature goal):** 14
-- ✨ **Förbättrade:** 1
-- 📋 **Återstående:** 39
+- ✨ **Förbättrade:** 2
+- 📋 **Återstående:** 38
 
 ---
 
@@ -20,7 +20,7 @@
 Dessa filer matchar feature goals i BPMN-filerna. Markera med `[x]` när du har förbättrat dem.
 
 - [x] `local--Appeal-v2.html` ✨ Förbättrad
-- [ ] `local--Application-Household-v2.html`
+- [x] `local--Application-Household-v2.html` ✨ Förbättrad
 - [ ] `local--Application-Internal-data-gathering-v2.html`
 - [ ] `local--Application-Object-v2.html`
   - Feature Goal: Object (`object`) ⚠️ 5 saknade aktiviteter

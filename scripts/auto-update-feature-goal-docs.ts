@@ -29,8 +29,10 @@ import {
   readFeatureGoalDocs, 
   extractActivitiesFromBpmnFile 
 } from './analyze-feature-goal-sync';
+import { getFeatureGoalDocFileKey } from '../src/lib/nodeArtifactPaths';
 
-const DOCS_DIR = path.join(__dirname, '../exports/feature-goals');
+// Appen läser från public/local-content/feature-goals/ med formatet {bpmnFile}-{elementId}-v2.html
+const DOCS_DIR = path.join(__dirname, '../public/local-content/feature-goals');
 const BPMN_MAP_PATH = path.join(__dirname, '../bpmn-map.json');
 
 // Hitta senaste archive-mappen (kopierat från analyze-feature-goal-sync.ts)
@@ -233,10 +235,12 @@ async function main() {
   // Skapa nya HTML-filer för nya feature goals
   let createdCount = 0;
   for (const newFg of analysis.newFeatureGoals) {
-    // Hitta rätt filnamn baserat på matchning
-    // För nu, skapa baserat på parent + elementId
-    const parentBase = newFg.parent_bpmn_file.replace('.bpmn', '');
-    const filename = `local--${parentBase}-${newFg.bpmn_id}-v2.html`;
+    // Använd samma filnamnformat som appen förväntar sig
+    // Format: {bpmnFile}-{elementId}-v2.html
+    // För call activities: använd subprocess_bpmn_file, annars parent_bpmn_file
+    const bpmnFile = newFg.subprocess_bpmn_file || newFg.parent_bpmn_file;
+    const fileKey = getFeatureGoalDocFileKey(bpmnFile, newFg.bpmn_id, 'v2');
+    const filename = fileKey.replace('feature-goals/', ''); // Ta bort prefix
     const filepath = path.join(DOCS_DIR, filename);
     
     // Hoppa över om filen redan finns

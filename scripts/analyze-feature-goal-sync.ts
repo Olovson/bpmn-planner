@@ -244,7 +244,7 @@ function extractFeatureGoalsFromBpmnFiles(archiveDir: string): FeatureGoal[] {
 
 /**
  * Läsa alla feature goal dokumentationsfiler
- * Letar i exports/feature-goals (där manuellt förbättrade filer ligger)
+ * Letar i public/local-content/feature-goals/ (där manuellt förbättrade filer ligger och appen läser dem)
  */
 export function readFeatureGoalDocs(docsDir: string): FeatureGoalDoc[] {
   if (!fs.existsSync(docsDir)) {
@@ -884,7 +884,8 @@ async function main() {
     process.exit(1);
   }
   
-  const docsDir = path.join(__dirname, '../exports/feature-goals');
+  // Läs från public/local-content/feature-goals/ (där appen läser filerna)
+  const docsDir = path.join(__dirname, '../public/local-content/feature-goals');
   
   try {
     console.log('='.repeat(80));

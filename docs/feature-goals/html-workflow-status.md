@@ -49,7 +49,12 @@ För framtida iterationer, JSON-export/import är förberedd:
 
 ## 📝 Noteringar
 
-- HTML-filer i `public/local-content/` är **statiska** och versionerade lokalt
+- HTML-filer i `public/local-content/feature-goals/` är **statiska** och versionerade lokalt
 - Dessa filer **ersätter inte** Supabase Storage-filer, de prioriteras bara för v2
+- **🔒 SKYDD MOT ÖVERSKRIVNING:** Filer i `public/local-content/feature-goals/` skrivs **ALDRIG** över av:
+  - Appen (laddar upp till Supabase Storage, inte till lokal mapp)
+  - Automatiska script (skriver till `exports/feature-goals/` eller Supabase Storage)
+  - LLM-generering (sparas till Supabase Storage)
+- Dina manuellt förbättrade filer är säkra och kan redigeras utan att oroa dig för överskrivning
 - För att synka till Supabase, använd `import:feature-goals` script (kommer att uppdateras för JSON i framtiden)
 

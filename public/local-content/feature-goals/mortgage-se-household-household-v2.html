@@ -133,7 +133,7 @@
     
     <section class="doc-section">
       <h2>Beskrivning av FGoal</h2>
-      <p>Household hanterar hushållsinformation i Application-processen. Processen startar när "Internal data gathering completed" event har triggats och processen går via parallel gateway till Household (parallellt med Stakeholders). Processen körs som multi-instance call activity för varje household. När Household-processen är klar, går processen vidare till parallel gateway som sammanför Household och Stakeholders innan Confirm Application.</p>
+      <p>Household är en kundaktivitet där kunden (Stakeholder) registrerar hushållens ekonomi för varje household i ansökan. Kunden fyller i hushållens inkomster och utgifter, inklusive bilar och billån, barn, underhållsbidrag, och andra inkomster/utgifter. Processen har en "Skip step?" gateway som möjliggör att hoppa över registreringen om informationen redan finns tillgänglig. Household anropas inuti "stakeholders" subprocess i Application-processen, sekventiellt före Stakeholder call activity, och körs en gång per household eftersom stakeholders subprocessen är multi-instance.</p>
     </section>
 
     <section class="doc-section">
@@ -144,9 +144,10 @@
     <section class="doc-section">
       <h2>Processteg - Input</h2>
       <ul>
-        <li>Internal Data Gathering är klar (internal-data-completed event)</li>
-        <li>Households är identifierade</li>
-        <li>Processen startar när Household call activity anropas från mortgage-se-application.bpmn i Application-processen (multi-instance per household) via parallel gateway efter Internal Data Gathering</li>
+        <li>Object-processen är klar i Application-processen</li>
+        <li>stakeholders subprocess startar (multi-instance, körs per household)</li>
+        <li>Processen startar när Household call activity anropas inuti stakeholders subprocess i mortgage-se-application.bpmn</li>
+        <li>stakeholders subprocess är multi-instance (körs per household), vilket innebär att Household anropas en gång per household</li>
       </ul>
     </section>
 
@@ -154,16 +155,21 @@
       <h2>Processteg - Output</h2>
       <ul>
         <li>Hushållsinformation är samlad och hanterad</li>
-        <li>Processen avslutas och Application-processen fortsätter med parallel gateway som sammanför Household och Stakeholders innan Confirm Application</li>
+        <li>Processen avslutas och flödet går vidare till Stakeholder call activity (sekventiellt, inte parallellt)</li>
+        <li>Efter Stakeholder slutförs stakeholders subprocessen, som går vidare till skip-confirm-application gateway i Application-processen</li>
       </ul>
     </section>
 
     <section class="doc-section">
       <h2>Omfattning</h2>
       <ul>
-        <li><strong>Household (call activity):</strong> Multi-instance call activity som hanterar hushållsinformation för varje household</li>
-        <li><strong>Processen körs parallellt med Stakeholders:</strong> Household och Stakeholders körs parallellt via parallel gateway</li>
-        <li><strong>Processen är multi-instance:</strong> Körs för varje household i ansökan</li>
+        <li><strong>Household (call activity):</strong> Call activity som hanterar hushållsinformation, anropas inuti stakeholders subprocess</li>
+        <li><strong>User Task:</strong> "Register household economy infomation" (register-household-economy-information) - Stakeholder lane</li>
+        <li><strong>Exclusive Gateway:</strong> "Skip step?" (skip-register-household-economy-information) - möjliggör att hoppa över registrering</li>
+        <li><strong>Gateway_1v71ek3:</strong> Namnlös exclusive gateway som samlar flöden från både "Register household economy" och "Skip step" gateway</li>
+        <li><strong>Multi-instance aspekt:</strong> stakeholders subprocess är multi-instance (körs per household), vilket innebär att Household anropas en gång per household</li>
+        <li><strong>Sekventiellt flöde:</strong> Household → Stakeholder (inte parallellt)</li>
+        <li><strong>Text Annotation:</strong> Information om expenses (Cars + carloans, Children, Child support, Other expenses) och incomes (Child support, Other incomes)</li>
       </ul>
     </section>
 
@@ -171,27 +177,48 @@
       <h2>Avgränsning</h2>
       <ul>
         <li>Internal Data Gathering ingår inte - den sker tidigare i Application-processen</li>
-        <li>Stakeholders-processen ingår inte - den körs parallellt med Household</li>
-        <li>Object-processen ingår inte - den sker i Stakeholders-subprocessen</li>
-        <li>Confirm Application ingår inte - den sker efter Household och Stakeholders</li>
+        <li>Object-processen ingår inte - den sker före stakeholders subprocess</li>
+        <li>stakeholders subprocess ingår inte - Household anropas inuti den, men subprocessen i sig ingår inte</li>
+        <li>Stakeholder call activity ingår inte - den körs efter Household, sekventiellt</li>
+        <li>skip-confirm-application gateway ingår inte - den sker efter stakeholders subprocess</li>
+        <li>Confirm Application ingår inte - den sker efter stakeholders subprocess och skip-confirm-application</li>
       </ul>
     </section>
 
     <section class="doc-section">
       <h2>Beroenden</h2>
       <ul>
-        <li><strong>Application huvudprocess:</strong> Household anropas från mortgage-se-application.bpmn i Application-processen via parallel gateway efter Internal Data Gathering</li>
-        <li><strong>Internal Data Gathering:</strong> Internal Data Gathering måste vara slutförd innan Household startar</li>
-        <li><strong>Households:</strong> Households måste vara identifierade innan Household startar</li>
-        <li><strong>Stakeholders:</strong> Household körs parallellt med Stakeholders via parallel gateway</li>
-        <li><strong>Confirm Application:</strong> Efter Household och Stakeholders går processen vidare till Confirm Application via parallel gateway</li>
+        <li><strong>Application huvudprocess (mortgage-se-application.bpmn):</strong>
+          <ul>
+            <li>Household anropas inuti stakeholders subprocess (multi-instance, "Per household")</li>
+            <li>Flöde: Object → stakeholders subprocess → Household → Stakeholder → stakeholders subprocess slutförs → skip-confirm-application</li>
+          </ul>
+        </li>
+        <li><strong>Object-processen:</strong> Måste vara slutförd innan stakeholders subprocess startar</li>
+        <li><strong>stakeholders subprocess:</strong> Household anropas inuti denna subprocess, som är multi-instance (körs per household)</li>
+        <li><strong>Stakeholder call activity:</strong> Anropas sekventiellt EFTER Household inom stakeholders subprocess</li>
+        <li><strong>Error Events:</strong>
+          <ul>
+            <li>stakeholders subprocess har boundary event (Event_1dhapnx) som kan trigga "Stakeholder rejected" (Error_0xx0ma1) → "Stakeholder rejected" end event</li>
+            <li>Detta påverkar Household indirekt om det triggas</li>
+          </ul>
+        </li>
+        <li><strong>Escalation Events:</strong>
+          <ul>
+            <li>securities-assessments-invalid (Escalation_2vm8k3e) - definierad men används inte direkt i Household-processen</li>
+          </ul>
+        </li>
       </ul>
     </section>
 
     <section class="doc-section">
       <h2>BPMN - Process</h2>
-      <p><a href="#/bpmn/mortgage-se-application-household.bpmn">Visa BPMN-processen för Household</a></p>
-      <p class="muted">Processen hanterar hushållsinformation i Application-processen. Processen körs som multi-instance för varje household, parallellt med Stakeholders-processen via parallel gateway.</p>
+      <p><a href="#/bpmn/mortgage-se-household.bpmn">Visa BPMN-processen för Household</a></p>
+      <p class="muted">Processen hanterar hushållsinformation i Application-processen.</p>
+      <p class="muted"><strong>Flöde i Household-processen:</strong> Start event → "Skip step?" gateway → Om No: "Register household economy infomation" user task (Stakeholder lane) → Gateway_1v71ek3 (samlar flöden) → End event. Om Yes: Hoppa över user task och gå direkt till Gateway_1v71ek3 → End event.</p>
+      <p class="muted"><strong>Text Annotation:</strong> Processen innehåller information om expenses (Cars + carloans, Children, Child support, Other expenses) och incomes (Child support, Other incomes).</p>
+      <p class="muted"><strong>Flöde i Application-processen:</strong> Household anropas inuti stakeholders subprocess (multi-instance, "Per household"). Flödet är sekventiellt: stakeholders subprocess startar → Household → Stakeholder → stakeholders subprocess slutförs → skip-confirm-application gateway → KALP/Confirm application.</p>
+      <p class="muted"><strong>Multi-instance:</strong> stakeholders subprocess är multi-instance (körs per household), vilket innebär att Household anropas en gång per household. Household i sig är inte multi-instance, men anropas inuti en multi-instance subprocess.</p>
     </section>
 
     <section class="doc-section">

@@ -27,7 +27,8 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const DOCS_DIR = path.join(__dirname, '../exports/feature-goals');
+// Läs från public/local-content/feature-goals/ (där appen läser filerna)
+const DOCS_DIR = path.join(__dirname, '../public/local-content/feature-goals');
 const BPMN_MAP_PATH = path.join(__dirname, '../bpmn-map.json');
 const STATUS_FILE = path.join(__dirname, '../docs/feature-goals/FEATURE_GOAL_STATUS.md');
 

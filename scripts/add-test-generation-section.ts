@@ -701,6 +701,16 @@ function addTestGenerationSection(filePath: string, dryRun: boolean = false): vo
       console.log(`  - Extracted ${info.activities.length} activities`);
       console.log(`  - Generated ${generateTestScenarios(info).length} scenarios`);
     } else {
+      // ⚠️ SKYDD: Kontrollera om filen redan har manuellt förbättrat innehåll
+      // (identifierat genom att den har "Lokal version" badge)
+      const hasLocalBadge = html.includes('Lokal version') || html.includes('local-version-badge');
+      
+      if (hasLocalBadge && !process.argv.includes('--force')) {
+        console.log(`⚠️  SKIPPAR ${filename} - Filen har manuellt förbättrat innehåll (har "Lokal version" badge)`);
+        console.log(`   Använd --force för att skriva över ändå (rekommenderas INTE)`);
+        continue;
+      }
+      
       writeFileSync(filePath, newHtml, 'utf-8');
       console.log(`✅ Updated ${filePath}`);
     }

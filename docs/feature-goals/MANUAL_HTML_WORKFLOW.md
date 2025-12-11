@@ -25,6 +25,40 @@ public/local-content/feature-goals/
 
 **Namngivning:** `{bpmnFile}-{elementId}-v2.html`
 
+### 🔒 Skydd mot överskrivning
+
+**VIKTIGT:** Filer i `public/local-content/feature-goals/` skrivs **ALDRIG** över av appen:
+
+- ✅ Appen läser bara från denna mapp (via `fetchFeatureGoalHtml()`)
+- ✅ Appen laddar upp genererade filer till **Supabase Storage**, inte till denna mapp
+- ✅ `auto-update-feature-goal-docs.ts` skriver **TILL** denna mapp (efter uppdatering), men skriver bara över filer som den själv har skapat automatiskt
+- ✅ Alla script som genererar innehåll skriver till Supabase Storage eller `public/local-content/`, inte till `exports/`
+
+**Dina manuellt förbättrade filer är säkra!** Du kan redigera dem utan att oroa dig för att de ska skrivas över.
+
+### 🔄 Hantera tidigare förbättrade filer (när du kör arbetsprocessen igen)
+
+**När du kör arbetsprocessen igen** (t.ex. efter nya BPMN-filer eller när du vill förbättra fler filer):
+
+1. **Befintliga förbättrade filer behålls:**
+   - Filer i `public/local-content/feature-goals/` skrivs **ALDRIG** över automatiskt
+   - Status-listan (`FEATURE_GOAL_STATUS.md`) behåller dina markerade checkboxar
+   - När du kör `generate-feature-goal-status.ts` igen, behålls dina markerade filer
+
+2. **Nya BPMN-filer kan skapa nya feature goals:**
+   - Nya feature goals identifieras i sync-rapporten
+   - `auto-update-feature-goal-docs.ts` skapar nya filer direkt i `public/local-content/feature-goals/` med rätt filnamnformat
+   - Filerna skapas med grundläggande struktur och TODO-kommentarer som du kan förbättra
+
+3. **Uppdatera befintliga filer:**
+   - Om en befintlig feature goal har ändrats i BPMN-filerna, visas detta i sync-rapporten
+   - `auto-update-feature-goal-docs.ts` uppdaterar automatiskt filer i `public/local-content/feature-goals/` genom att lägga till saknade aktiviteter
+   - Du kan sedan manuellt förbättra innehållet ytterligare
+
+4. **Backup-rekommendation:**
+   - Innan du börjar en ny arbetsprocess, överväg att skapa en backup av `public/local-content/feature-goals/`
+   - Eller committa ändringar till git innan du fortsätter
+
 ## 🔄 Workflow
 
 ### Steg 0: Identifiera filer som behöver uppdateras
@@ -188,8 +222,11 @@ public/local-content/feature-goals/
 1. **Öppna befintlig HTML-fil**:
    ```bash
    # Exempel: Redigera Appeal Feature Goal
-   code exports/feature-goals/local--Appeal-v2.html
+   # Filerna ligger i public/local-content/feature-goals/ (där appen läser dem)
+   code public/local-content/feature-goals/mortgage-se-appeal-appeal-v2.html
    ```
+   
+   **Viktigt:** Filerna ska ligga i `public/local-content/feature-goals/` med formatet `{bpmnFile}-{elementId}-v2.html` (t.ex. `mortgage-se-appeal-appeal-v2.html`). Detta är där appen läser filerna från.
 
 ### Steg 5: Redigera HTML-filer
 
@@ -205,10 +242,44 @@ Uppdatera innehållet baserat på analysen från Steg 1. V2-templaten har följa
 - **BPMN - Process** - Referens till BPMN-processen
 - **Testgenerering** - Testscenarier, UI Flow, testdata-referenser, implementation mapping
 
+#### Riktlinjer för "Beskrivning av FGoal"
+
+**Viktiga krav:**
+1. **Tydlighet och läsbarhet:**
+   - Använd korta meningar
+   - Undvik långa, komplexa meningar med många kommatecken
+   - Dela upp information i tydliga punkter om det behövs
+
+2. **Nämn vem som utför aktiviteten:**
+   - **Kundaktivitet:** "Kunden (Stakeholder) registrerar/fyller i..."
+   - **Handläggaraktivitet:** "Handläggaren (Caseworker) granskar/bedömer..."
+   - **Systemaktivitet:** "Systemet hämtar/beräknar..."
+   - **Business Rule:** "DMN-regler bedömer/evaluerar..."
+
+3. **Fokusera på VAD processen gör:**
+   - Börja med syftet/resultatet (vad gör processen?)
+   - Nämn vem som utför aktiviteten
+   - Beskriv huvudaktiviteten konkret
+   - Teknisk information (var den anropas, flöde) kan nämnas men ska inte dominera
+
+4. **Affärsorienterat språk:**
+   - Använd affärstermer, inte bara tekniska termer
+   - Beskriv värde och syfte, inte bara mekanik
+   - Var konkret om vad som händer (t.ex. "registrerar hushållsekonomi" istället för "hanterar information")
+
+**Exempel på bra beskrivning:**
+- ✅ "Household är en kundaktivitet där kunden (Stakeholder) registrerar hushållens ekonomi..."
+- ✅ "Appeal hanterar överklaganden när en kreditansökan har blivit automatiskt avvisad. Processen möjliggör för kunden (Stakeholder) att skicka in en överklagan..."
+
+**Exempel på dålig beskrivning:**
+- ❌ "Household anropas inuti stakeholders subprocess som är multi-instance..." (fokuserar på teknik, inte syfte)
+- ❌ "Processen hanterar information och går via gateway..." (vagt, nämner inte vem som gör vad)
+
 **Tips:**
 - Använd information från BPMN-filen för att fylla i faktiskt innehåll
 - Var konkret och affärsnära
 - Fokusera på vad som faktiskt händer i processen
+- Kontrollera att beskrivningen är lättläst och tydlig
 
 ### Steg 6: Visa i appen
 
