@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1456k0q" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.24.0">
+  <bpmn:collaboration id="Collaboration_093oe2i">
+    <bpmn:participant id="Participant_1b1awwj" name="Documentation assessment" processRef="mortgage-se-documentation-assessment" />
+    <bpmn:textAnnotation id="TextAnnotation_1m1ro5i">
+      <bpmn:text>Did documentation assessment result in updated economy information?
+
+Example: documented income differs from application income.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_0g5jbh9">
+      <bpmn:text>Per uploaded document:
+- Documentation incomplete?
+- Otherwise, any changes?
+- Per change: stakeholder review yes/no</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0fu3pwt" associationDirection="None" sourceRef="assess-documentation" targetRef="TextAnnotation_0g5jbh9" />
+    <bpmn:association id="Association_05t7nq9" associationDirection="None" sourceRef="TextAnnotation_1m1ro5i" targetRef="review-changes" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-documentation-assessment" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_00b29u5">
+      <bpmn:lane id="Lane_1skik6o" name="Stakeholder">
+        <bpmn:flowNodeRef>review-changes</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>changes-accepted</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_022k9vg" name="Case worker">
+        <bpmn:flowNodeRef>Gateway_09bzv5v</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>assess-documentation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>stakeholder-review</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0qnt8qq</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>any-documentation-incomplete</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>credit-reevaluation-required</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>documentation-incomplete</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_18squmw" name="System">
+        <bpmn:flowNodeRef>analyse-documentation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:exclusiveGateway id="Gateway_09bzv5v">
+      <bpmn:incoming>Flow_111ev2y</bpmn:incoming>
+      <bpmn:incoming>changes-accepted-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_0xtpzwu</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="assess-documentation" name="Assess documentation">
+      <bpmn:incoming>Flow_0xtpzwu</bpmn:incoming>
+      <bpmn:outgoing>Flow_0k1b518</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="stakeholder-review" name="Stakeholder review?">
+      <bpmn:incoming>Flow_0k1b518</bpmn:incoming>
+      <bpmn:outgoing>Flow_18eeaae</bpmn:outgoing>
+      <bpmn:outgoing>Flow_07tlcfk</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="review-changes" name="Review changes">
+      <bpmn:incoming>Flow_18eeaae</bpmn:incoming>
+      <bpmn:outgoing>Flow_1kau0fc</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="changes-accepted" name="Changes accepted?">
+      <bpmn:incoming>Flow_1kau0fc</bpmn:incoming>
+      <bpmn:outgoing>changes-accepted-yes</bpmn:outgoing>
+      <bpmn:outgoing>changes-accepted-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_0qnt8qq">
+      <bpmn:incoming>changes-accepted-yes</bpmn:incoming>
+      <bpmn:incoming>Flow_07tlcfk</bpmn:incoming>
+      <bpmn:outgoing>Flow_1n00hxf</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="any-documentation-incomplete" name="Any documentation incomplete?">
+      <bpmn:incoming>Flow_1n00hxf</bpmn:incoming>
+      <bpmn:outgoing>any-documentation-incomplete-no</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1xuakc2</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="credit-reevaluation-required">
+      <bpmn:incoming>any-documentation-incomplete-no</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="documentation-incomplete" name="Documentation incomplete">
+      <bpmn:incoming>Flow_1xuakc2</bpmn:incoming>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_0tx4tf2" escalationRef="Escalation_2lovrr3" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_111ev2y" sourceRef="analyse-documentation" targetRef="Gateway_09bzv5v" />
+    <bpmn:sequenceFlow id="changes-accepted-no" name="No" sourceRef="changes-accepted" targetRef="Gateway_09bzv5v" />
+    <bpmn:sequenceFlow id="Flow_0xtpzwu" sourceRef="Gateway_09bzv5v" targetRef="assess-documentation" />
+    <bpmn:sequenceFlow id="Flow_04j9m6c" sourceRef="StartEvent_1" targetRef="analyse-documentation" />
+    <bpmn:sequenceFlow id="Flow_0k1b518" sourceRef="assess-documentation" targetRef="stakeholder-review" />
+    <bpmn:sequenceFlow id="Flow_18eeaae" sourceRef="stakeholder-review" targetRef="review-changes" />
+    <bpmn:sequenceFlow id="Flow_07tlcfk" sourceRef="stakeholder-review" targetRef="Gateway_0qnt8qq" />
+    <bpmn:sequenceFlow id="Flow_1kau0fc" sourceRef="review-changes" targetRef="changes-accepted" />
+    <bpmn:sequenceFlow id="changes-accepted-yes" name="Yes" sourceRef="changes-accepted" targetRef="Gateway_0qnt8qq" />
+    <bpmn:sequenceFlow id="Flow_1n00hxf" sourceRef="Gateway_0qnt8qq" targetRef="any-documentation-incomplete" />
+    <bpmn:sequenceFlow id="any-documentation-incomplete-no" name="No" sourceRef="any-documentation-incomplete" targetRef="credit-reevaluation-required" />
+    <bpmn:sequenceFlow id="Flow_1xuakc2" name="Yes" sourceRef="any-documentation-incomplete" targetRef="documentation-incomplete" />
+    <bpmn:serviceTask id="analyse-documentation" name="Analyse documentation">
+      <bpmn:incoming>Flow_04j9m6c</bpmn:incoming>
+      <bpmn:outgoing>Flow_111ev2y</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_04j9m6c</bpmn:outgoing>
+    </bpmn:startEvent>
+  </bpmn:process>
+  <bpmn:escalation id="Escalation_2pk7ivb" name="credit-reevaluation-required" escalationCode="credit-reevaluation-required" />
+  <bpmn:escalation id="Escalation_2lovrr3" name="documentation-incomplete" escalationCode="documentation-incomplete" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_093oe2i">
+      <bpmndi:BPMNShape id="Participant_1b1awwj_di" bpmnElement="Participant_1b1awwj" isHorizontal="true">
+        <dc:Bounds x="132" y="210" width="1358" height="800" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_18squmw_di" bpmnElement="Lane_18squmw" isHorizontal="true">
+        <dc:Bounds x="162" y="820" width="1328" height="190" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_022k9vg_di" bpmnElement="Lane_022k9vg" isHorizontal="true">
+        <dc:Bounds x="162" y="520" width="1328" height="300" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1skik6o_di" bpmnElement="Lane_1skik6o" isHorizontal="true">
+        <dc:Bounds x="162" y="210" width="1328" height="310" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_09bzv5v_di" bpmnElement="Gateway_09bzv5v" isMarkerVisible="true">
+        <dc:Bounds x="365" y="605" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1s25mts_di" bpmnElement="assess-documentation">
+        <dc:Bounds x="520" y="590" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_17zfhoe" bpmnElement="stakeholder-review" isMarkerVisible="true">
+        <dc:Bounds x="725" y="605" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="721" y="665" width="59" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1c5qur6_di" bpmnElement="review-changes">
+        <dc:Bounds x="880" y="370" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0itjdhg_di" bpmnElement="changes-accepted" isMarkerVisible="true">
+        <dc:Bounds x="1085" y="385" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1044" y="366" width="51" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0qnt8qq_di" bpmnElement="Gateway_0qnt8qq" isMarkerVisible="true">
+        <dc:Bounds x="1085" y="605" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_156vw1x_di" bpmnElement="any-documentation-incomplete" isMarkerVisible="true">
+        <dc:Bounds x="1245" y="605" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1233" y="555" width="73" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1a4c0gc_di" bpmnElement="credit-reevaluation-required">
+        <dc:Bounds x="1392" y="612" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1590" y="630" width="60" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_05ru7js_di" bpmnElement="documentation-incomplete">
+        <dc:Bounds x="1392" y="722" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1373" y="765" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0vtw4z1_di" bpmnElement="analyse-documentation">
+        <dc:Bounds x="340" y="880" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="212" y="902" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_111ev2y_di" bpmnElement="Flow_111ev2y">
+        <di:waypoint x="390" y="880" />
+        <di:waypoint x="390" y="655" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ebm3ox_di" bpmnElement="changes-accepted-no">
+        <di:waypoint x="1110" y="385" />
+        <di:waypoint x="1110" y="270" />
+        <di:waypoint x="390" y="270" />
+        <di:waypoint x="390" y="605" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1122" y="353" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0xtpzwu_di" bpmnElement="Flow_0xtpzwu">
+        <di:waypoint x="415" y="630" />
+        <di:waypoint x="520" y="630" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_04j9m6c_di" bpmnElement="Flow_04j9m6c">
+        <di:waypoint x="248" y="920" />
+        <di:waypoint x="340" y="920" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0k1b518_di" bpmnElement="Flow_0k1b518">
+        <di:waypoint x="620" y="630" />
+        <di:waypoint x="725" y="630" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18eeaae_di" bpmnElement="Flow_18eeaae">
+        <di:waypoint x="750" y="605" />
+        <di:waypoint x="750" y="410" />
+        <di:waypoint x="880" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_07tlcfk_di" bpmnElement="Flow_07tlcfk">
+        <di:waypoint x="775" y="630" />
+        <di:waypoint x="1085" y="630" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1kau0fc_di" bpmnElement="Flow_1kau0fc">
+        <di:waypoint x="980" y="410" />
+        <di:waypoint x="1085" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0vog8c1_di" bpmnElement="changes-accepted-yes">
+        <di:waypoint x="1110" y="435" />
+        <di:waypoint x="1110" y="605" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1121" y="445" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1n00hxf_di" bpmnElement="Flow_1n00hxf">
+        <di:waypoint x="1135" y="630" />
+        <di:waypoint x="1245" y="630" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_083a9et_di" bpmnElement="any-documentation-incomplete-no">
+        <di:waypoint x="1295" y="630" />
+        <di:waypoint x="1392" y="630" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1322" y="612" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1xuakc2_di" bpmnElement="Flow_1xuakc2">
+        <di:waypoint x="1270" y="655" />
+        <di:waypoint x="1270" y="740" />
+        <di:waypoint x="1392" y="740" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1276" y="683" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_1m1ro5i_di" bpmnElement="TextAnnotation_1m1ro5i">
+        <dc:Bounds x="1050" y="80" width="180" height="100" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0g5jbh9_di" bpmnElement="TextAnnotation_0g5jbh9">
+        <dc:Bounds x="500" y="710" width="240" height="84" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_0fu3pwt_di" bpmnElement="Association_0fu3pwt">
+        <di:waypoint x="562" y="670" />
+        <di:waypoint x="553" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_05t7nq9_di" bpmnElement="Association_05t7nq9">
+        <di:waypoint x="1103" y="180" />
+        <di:waypoint x="960" y="370" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

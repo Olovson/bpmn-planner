@@ -1,0 +1,597 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:collaboration id="Komplettering">
+    <bpmn:participant id="Participant_1xdhher" name="Mortgage commitment" processRef="mortgage-se-mortgage-commitment" />
+    <bpmn:textAnnotation id="TextAnnotation_0b37nfh">
+      <bpmn:text>Supported evaluation of additional "object" terms:
+size, type, location, max loan amount, energiklass...
+
+Unsupported term changes:
+Economy information - income etc.
+Needs new application.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1s0gq0n" associationDirection="None" sourceRef="TextAnnotation_0b37nfh" targetRef="decision-add-terms" />
+    <bpmn:textAnnotation id="TextAnnotation_0t97dgd">
+      <bpmn:text>Rejected (exempel):
+- BRF för få lägenheter
+- BRF för stora lokalintäkter</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0ncc0k3" associationDirection="None" sourceRef="is-object-approved" targetRef="TextAnnotation_0t97dgd" />
+    <bpmn:textAnnotation id="TextAnnotation_1y6szvg">
+      <bpmn:text>Til diskusjon:
+Skal vi hente data om objekt her. eller skal vi bare prøve det mot terms?
+
+Forslag:
+Interested in object Går add loan terms veien (om det er utenfor terms)
+Og kun won bidding round går ned hit</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_00411j8" associationDirection="None" sourceRef="object-information" targetRef="TextAnnotation_1y6szvg" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-mortgage-commitment" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_1xo9xuj">
+      <bpmn:lane id="Lane_164iypf" name="System">
+        <bpmn:flowNodeRef>start-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_1hxgyw1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>credit-evaluation-1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>is-mortgage-commitment-approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0tae8fa</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0upjuan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>mortgage-commitment-ready</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>is-object-evaluated</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>object-information</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_14ve2uc</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>is-object-approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>has-terms-changed</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0p2vba1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>credit-evaluation-2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0bsnrjk</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>is-terms-approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_11954vc</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>won-bidding-round</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0az10av</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_16t3y9s" name="Stakeholder">
+        <bpmn:flowNodeRef>mortgage-commitment-decision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_17kvnul</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0rkod04</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_1xrvxr3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1t9r73x</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0z4ifsl</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="start-event">
+      <bpmn:outgoing>Flow_16u2qn6</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="Gateway_1hxgyw1">
+      <bpmn:incoming>Flow_16u2qn6</bpmn:incoming>
+      <bpmn:incoming>Flow_0orf9wu</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ndjta3</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:callActivity id="credit-evaluation-1" name="Automatic Credit Evaluation">
+      <bpmn:incoming>Flow_1ndjta3</bpmn:incoming>
+      <bpmn:outgoing>Flow_1xnru8c</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:exclusiveGateway id="is-mortgage-commitment-approved" name="Is mortgage commitment approved?" default="is-mortgage-commitment-approved-yes">
+      <bpmn:incoming>Flow_1xnru8c</bpmn:incoming>
+      <bpmn:outgoing>is-mortgage-commitment-approved-no</bpmn:outgoing>
+      <bpmn:outgoing>is-mortgage-commitment-approved-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_0tae8fa" name="Automatically rejected">
+      <bpmn:incoming>is-mortgage-commitment-approved-no</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_1040wxn" errorRef="Error_1yybxq1" />
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gateway_0upjuan">
+      <bpmn:incoming>Flow_1jlq37h</bpmn:incoming>
+      <bpmn:incoming>Flow_1phb919</bpmn:incoming>
+      <bpmn:outgoing>Flow_011wh3v</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:intermediateThrowEvent id="mortgage-commitment-ready" name="Mortgage comitment ready">
+      <bpmn:incoming>is-mortgage-commitment-approved-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_1phb919</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1ixh6bd" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:exclusiveGateway id="is-object-evaluated" name="Is object evaluated?">
+      <bpmn:incoming>decision-proceed</bpmn:incoming>
+      <bpmn:outgoing>Flow_02wen6m</bpmn:outgoing>
+      <bpmn:outgoing>is-property-evaluated-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:callActivity id="object-information" name="Object information">
+      <bpmn:incoming>Flow_02wen6m</bpmn:incoming>
+      <bpmn:outgoing>Flow_0elu9n5</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:exclusiveGateway id="Gateway_14ve2uc">
+      <bpmn:incoming>is-property-evaluated-yes</bpmn:incoming>
+      <bpmn:incoming>Flow_0elu9n5</bpmn:incoming>
+      <bpmn:outgoing>Flow_15wuhaj</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="is-object-approved" name="Object rejected?">
+      <bpmn:incoming>Flow_15wuhaj</bpmn:incoming>
+      <bpmn:outgoing>is-object-rejected-yes</bpmn:outgoing>
+      <bpmn:outgoing>is-object-rejected-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="has-terms-changed" name="Has terms changed?">
+      <bpmn:incoming>is-object-rejected-no</bpmn:incoming>
+      <bpmn:outgoing>has-terms-changed-yes</bpmn:outgoing>
+      <bpmn:outgoing>has-terms-changed-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_0p2vba1">
+      <bpmn:incoming>is-object-rejected-yes</bpmn:incoming>
+      <bpmn:incoming>Flow_04n526m</bpmn:incoming>
+      <bpmn:outgoing>Flow_1jlq37h</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:callActivity id="credit-evaluation-2" name="Automatic Credit Evaluation">
+      <bpmn:incoming>has-terms-changed-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_1sl6c0h</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:exclusiveGateway id="Gateway_0bsnrjk">
+      <bpmn:incoming>has-terms-changed-no</bpmn:incoming>
+      <bpmn:incoming>Flow_1sl6c0h</bpmn:incoming>
+      <bpmn:outgoing>Flow_0gym6ov</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="is-terms-approved" name="Is terms approved?">
+      <bpmn:incoming>Flow_0gym6ov</bpmn:incoming>
+      <bpmn:outgoing>is-terms-approved-no</bpmn:outgoing>
+      <bpmn:outgoing>is-terms-approved-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_11954vc">
+      <bpmn:incoming>is-terms-approved-no</bpmn:incoming>
+      <bpmn:incoming>won-bidding-round-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_04n526m</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="mortgage-commitment-decision" name="Decision?">
+      <bpmn:incoming>Flow_0mu1ob6</bpmn:incoming>
+      <bpmn:outgoing>decision-add-terms</bpmn:outgoing>
+      <bpmn:outgoing>decision-proceed</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_17kvnul">
+      <bpmn:incoming>decision-add-terms</bpmn:incoming>
+      <bpmn:incoming>Flow_1gwcru4</bpmn:incoming>
+      <bpmn:outgoing>Flow_0orf9wu</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_0rkod04" name="Mortgage commitment expired">
+      <bpmn:incoming>Flow_0maxwss</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_1np7kqv" errorRef="Error_12j4z7b" />
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="won-bidding-round" name="Won bidding round?">
+      <bpmn:incoming>is-terms-approved-yes</bpmn:incoming>
+      <bpmn:outgoing>won-bidding-round-yes</bpmn:outgoing>
+      <bpmn:outgoing>won-bidding-round-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:subProcess id="Activity_1xrvxr3">
+      <bpmn:incoming>Flow_011wh3v</bpmn:incoming>
+      <bpmn:outgoing>Flow_0mu1ob6</bpmn:outgoing>
+      <bpmn:startEvent id="Event_18rlgin">
+        <bpmn:outgoing>Flow_03g2l11</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:callActivity id="documentation-assessment" name="Documentation assessment">
+        <bpmn:incoming>Flow_0l4v39q</bpmn:incoming>
+        <bpmn:outgoing>Flow_14iefmj</bpmn:outgoing>
+      </bpmn:callActivity>
+      <bpmn:userTask id="decide-mortgage-commitment" name="Decide on mortgage commitment">
+        <bpmn:incoming>Flow_03g2l11</bpmn:incoming>
+        <bpmn:outgoing>Flow_0ael636</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:boundaryEvent id="Event_0o7mt0k" name="Upload documentation" cancelActivity="false" attachedToRef="decide-mortgage-commitment">
+        <bpmn:outgoing>Flow_0l4v39q</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="MessageEventDefinition_1kqsx8k" />
+      </bpmn:boundaryEvent>
+      <bpmn:endEvent id="Event_08klgt4">
+        <bpmn:incoming>Flow_14iefmj</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_14iefmj" sourceRef="documentation-assessment" targetRef="Event_08klgt4" />
+      <bpmn:sequenceFlow id="Flow_03g2l11" sourceRef="Event_18rlgin" targetRef="decide-mortgage-commitment" />
+      <bpmn:endEvent id="Event_09xxhnw">
+        <bpmn:incoming>Flow_0ael636</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_0ael636" sourceRef="decide-mortgage-commitment" targetRef="Event_09xxhnw" />
+      <bpmn:sequenceFlow id="Flow_0l4v39q" sourceRef="Event_0o7mt0k" targetRef="documentation-assessment" />
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="Event_1t9r73x" name="Credit re-evaluation required" attachedToRef="Activity_1xrvxr3">
+      <bpmn:outgoing>Flow_1gwcru4</bpmn:outgoing>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_1dxin7k" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Event_0z4ifsl" attachedToRef="Activity_1xrvxr3">
+      <bpmn:outgoing>Flow_0maxwss</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_06pl74s" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_16u2qn6" sourceRef="start-event" targetRef="Gateway_1hxgyw1" />
+    <bpmn:sequenceFlow id="Flow_0orf9wu" sourceRef="Gateway_17kvnul" targetRef="Gateway_1hxgyw1" />
+    <bpmn:sequenceFlow id="Flow_1ndjta3" sourceRef="Gateway_1hxgyw1" targetRef="credit-evaluation-1" />
+    <bpmn:sequenceFlow id="Flow_1xnru8c" sourceRef="credit-evaluation-1" targetRef="is-mortgage-commitment-approved" />
+    <bpmn:sequenceFlow id="is-mortgage-commitment-approved-yes" name="Yes" sourceRef="is-mortgage-commitment-approved" targetRef="mortgage-commitment-ready" />
+    <bpmn:sequenceFlow id="is-mortgage-commitment-approved-no" name="No" sourceRef="is-mortgage-commitment-approved" targetRef="Event_0tae8fa" />
+    <bpmn:sequenceFlow id="Flow_1phb919" sourceRef="mortgage-commitment-ready" targetRef="Gateway_0upjuan" />
+    <bpmn:sequenceFlow id="Flow_1jlq37h" sourceRef="Gateway_0p2vba1" targetRef="Gateway_0upjuan" />
+    <bpmn:sequenceFlow id="Flow_011wh3v" sourceRef="Gateway_0upjuan" targetRef="Activity_1xrvxr3" />
+    <bpmn:sequenceFlow id="decision-proceed" name="Won bidding round / Interested in object" sourceRef="mortgage-commitment-decision" targetRef="is-object-evaluated" />
+    <bpmn:sequenceFlow id="is-property-evaluated-yes" name="Yes" sourceRef="is-object-evaluated" targetRef="Gateway_14ve2uc" />
+    <bpmn:sequenceFlow id="Flow_02wen6m" name="No" sourceRef="is-object-evaluated" targetRef="object-information" />
+    <bpmn:sequenceFlow id="Flow_0elu9n5" sourceRef="object-information" targetRef="Gateway_14ve2uc" />
+    <bpmn:sequenceFlow id="Flow_15wuhaj" sourceRef="Gateway_14ve2uc" targetRef="is-object-approved" />
+    <bpmn:sequenceFlow id="is-object-rejected-no" name="No" sourceRef="is-object-approved" targetRef="has-terms-changed" />
+    <bpmn:sequenceFlow id="is-object-rejected-yes" name="Yes" sourceRef="is-object-approved" targetRef="Gateway_0p2vba1" />
+    <bpmn:sequenceFlow id="has-terms-changed-yes" name="Yes" sourceRef="has-terms-changed" targetRef="credit-evaluation-2" />
+    <bpmn:sequenceFlow id="has-terms-changed-no" name="No" sourceRef="has-terms-changed" targetRef="Gateway_0bsnrjk" />
+    <bpmn:sequenceFlow id="Flow_04n526m" sourceRef="Gateway_11954vc" targetRef="Gateway_0p2vba1" />
+    <bpmn:sequenceFlow id="Flow_1sl6c0h" sourceRef="credit-evaluation-2" targetRef="Gateway_0bsnrjk" />
+    <bpmn:sequenceFlow id="Flow_0gym6ov" sourceRef="Gateway_0bsnrjk" targetRef="is-terms-approved" />
+    <bpmn:sequenceFlow id="is-terms-approved-no" name="No" sourceRef="is-terms-approved" targetRef="Gateway_11954vc" />
+    <bpmn:sequenceFlow id="is-terms-approved-yes" name="Yes" sourceRef="is-terms-approved" targetRef="won-bidding-round" />
+    <bpmn:sequenceFlow id="won-bidding-round-no" name="No" sourceRef="won-bidding-round" targetRef="Gateway_11954vc" />
+    <bpmn:sequenceFlow id="Flow_0mu1ob6" sourceRef="Activity_1xrvxr3" targetRef="mortgage-commitment-decision" />
+    <bpmn:sequenceFlow id="decision-add-terms" name="Add loan terms" sourceRef="mortgage-commitment-decision" targetRef="Gateway_17kvnul" />
+    <bpmn:sequenceFlow id="Flow_1gwcru4" sourceRef="Event_1t9r73x" targetRef="Gateway_17kvnul" />
+    <bpmn:sequenceFlow id="Flow_0maxwss" sourceRef="Event_0z4ifsl" targetRef="Event_0rkod04" />
+    <bpmn:sequenceFlow id="won-bidding-round-yes" name="Yes" sourceRef="won-bidding-round" targetRef="Event_0az10av" />
+    <bpmn:endEvent id="Event_0az10av">
+      <bpmn:incoming>won-bidding-round-yes</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmn:message id="Message_221us2v" name="interested-in-object" />
+  <bpmn:message id="Message_2pgcfpv" name="return-to-proof-of-finance" />
+  <bpmn:message id="Message_228dq77" name="won-bidding-round" />
+  <bpmn:message id="Message_2sfosgg" name="change-terms" />
+  <bpmn:error id="Error_1yybxq1" name="mortgage-commitment-rejected" errorCode="mortgage-commitment-rejected" />
+  <bpmn:error id="Error_12j4z7b" name="mortgage-commitment-timeout" errorCode="mortgage-commitment-timeout" />
+  <bpmn:escalation id="Escalation_1jd0mi0" name="mortgage-commitment-ready" escalationCode="mortgage-commitment-ready" />
+  <bpmn:message id="Message_0j968r1" name="update-party" />
+  <bpmn:escalation id="Escalation_1lt21et" name="credit-reevaluation-required" escalationCode="credit-reevaluation-required" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Komplettering">
+      <bpmndi:BPMNShape id="Participant_1xdhher_di" bpmnElement="Participant_1xdhher" isHorizontal="true">
+        <dc:Bounds x="129" y="110" width="3291" height="1140" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_16t3y9s_di" bpmnElement="Lane_16t3y9s" isHorizontal="true">
+        <dc:Bounds x="159" y="110" width="3261" height="660" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_164iypf_di" bpmnElement="Lane_164iypf" isHorizontal="true">
+        <dc:Bounds x="159" y="770" width="3261" height="480" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event">
+        <dc:Bounds x="209" y="979" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1hxgyw1_di" bpmnElement="Gateway_1hxgyw1" isMarkerVisible="true">
+        <dc:Bounds x="325" y="972" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1xe2bcw_di" bpmnElement="credit-evaluation-1">
+        <dc:Bounds x="470" y="957" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_08x52km_di" bpmnElement="is-mortgage-commitment-approved" isMarkerVisible="true">
+        <dc:Bounds x="675" y="972" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="670" y="922" width="60" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0ctcxji_di" bpmnElement="Event_0tae8fa" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="682" y="1082" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="668" y="1125" width="66" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0upjuan_di" bpmnElement="Gateway_0upjuan" isMarkerVisible="true">
+        <dc:Bounds x="965" y="972" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0fcir81_di" bpmnElement="mortgage-commitment-ready">
+        <dc:Bounds x="832" y="979" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="810" y="1022" width="82" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_09k4h0h_di" bpmnElement="is-object-evaluated" isMarkerVisible="true">
+        <dc:Bounds x="1915" y="972" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1914" y="1032" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0qbnipr_di" bpmnElement="object-information" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="2040" y="820" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_14ve2uc_di" bpmnElement="Gateway_14ve2uc" isMarkerVisible="true">
+        <dc:Bounds x="2205" y="972" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1nqiytg_di" bpmnElement="is-object-approved" isMarkerVisible="true">
+        <dc:Bounds x="2365" y="972" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2352" y="948" width="81" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0gvxnrd_di" bpmnElement="has-terms-changed" isMarkerVisible="true">
+        <dc:Bounds x="2535" y="972" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2535" y="1029" width="51" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0p2vba1_di" bpmnElement="Gateway_0p2vba1" isMarkerVisible="true">
+        <dc:Bounds x="2365" y="1145" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_15uyzux" bpmnElement="credit-evaluation-2">
+        <dc:Bounds x="2650" y="820" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0bsnrjk_di" bpmnElement="Gateway_0bsnrjk" isMarkerVisible="true">
+        <dc:Bounds x="2815" y="972" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1soa0dn_di" bpmnElement="is-terms-approved" isMarkerVisible="true">
+        <dc:Bounds x="2985" y="972" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2986" y="941" width="52" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0j9404j" bpmnElement="Gateway_11954vc" isMarkerVisible="true">
+        <dc:Bounds x="2985" y="1145" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1ie7cmi_di" bpmnElement="mortgage-commitment-decision" isMarkerVisible="true">
+        <dc:Bounds x="1755" y="464" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1710" y="452" width="49" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_17kvnul_di" bpmnElement="Gateway_17kvnul" isMarkerVisible="true">
+        <dc:Bounds x="1105" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_135a8vn_di" bpmnElement="Event_0rkod04" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="962" y="382" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="950" y="425" width="60" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0si79kr" bpmnElement="won-bidding-round" isMarkerVisible="true">
+        <dc:Bounds x="3175" y="972" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3170" y="934" width="61" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1xrvxr3_di" bpmnElement="Activity_1xrvxr3" isExpanded="true">
+        <dc:Bounds x="1130" y="320" width="490" height="368" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_18rlgin_di" bpmnElement="Event_18rlgin">
+        <dc:Bounds x="1170" y="580" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1n5x46r" bpmnElement="documentation-assessment">
+        <dc:Bounds x="1280" y="378" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_154xx9s" bpmnElement="decide-mortgage-commitment">
+        <dc:Bounds x="1330" y="558" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_08klgt4_di" bpmnElement="Event_08klgt4">
+        <dc:Bounds x="1432" y="400" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_09xxhnw_di" bpmnElement="Event_09xxhnw">
+        <dc:Bounds x="1532" y="580" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_17x7e68" bpmnElement="Event_0o7mt0k">
+        <dc:Bounds x="1312" y="540" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1229" y="544" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_14iefmj_di" bpmnElement="Flow_14iefmj">
+        <di:waypoint x="1380" y="418" />
+        <di:waypoint x="1432" y="418" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03g2l11_di" bpmnElement="Flow_03g2l11">
+        <di:waypoint x="1206" y="598" />
+        <di:waypoint x="1330" y="598" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ael636_di" bpmnElement="Flow_0ael636">
+        <di:waypoint x="1430" y="598" />
+        <di:waypoint x="1532" y="598" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0l4v39q_di" bpmnElement="Flow_0l4v39q">
+        <di:waypoint x="1330" y="540" />
+        <di:waypoint x="1330" y="458" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_16u0nil_di" bpmnElement="Event_0az10av">
+        <dc:Bounds x="3352" y="979" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1pbsy3k_di" bpmnElement="Event_0z4ifsl">
+        <dc:Bounds x="1112" y="382" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0nhr6rt_di" bpmnElement="Event_1t9r73x">
+        <dc:Bounds x="1112" y="302" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1051" y="300" width="51" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_16u2qn6_di" bpmnElement="Flow_16u2qn6">
+        <di:waypoint x="245" y="997" />
+        <di:waypoint x="325" y="997" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0orf9wu_di" bpmnElement="Flow_0orf9wu">
+        <di:waypoint x="1105" y="200" />
+        <di:waypoint x="350" y="200" />
+        <di:waypoint x="350" y="972" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ndjta3_di" bpmnElement="Flow_1ndjta3">
+        <di:waypoint x="375" y="997" />
+        <di:waypoint x="470" y="997" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1xnru8c_di" bpmnElement="Flow_1xnru8c">
+        <di:waypoint x="570" y="997" />
+        <di:waypoint x="675" y="997" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_02mkamw_di" bpmnElement="is-mortgage-commitment-approved-yes">
+        <di:waypoint x="725" y="997" />
+        <di:waypoint x="832" y="997" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="770" y="979" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ft6f8k_di" bpmnElement="is-mortgage-commitment-approved-no">
+        <di:waypoint x="700" y="1022" />
+        <di:waypoint x="700" y="1082" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="708" y="1033" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1phb919_di" bpmnElement="Flow_1phb919">
+        <di:waypoint x="868" y="997" />
+        <di:waypoint x="965" y="997" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1jlq37h_di" bpmnElement="Flow_1jlq37h">
+        <di:waypoint x="2365" y="1170" />
+        <di:waypoint x="990" y="1170" />
+        <di:waypoint x="990" y="1022" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_011wh3v_di" bpmnElement="Flow_011wh3v">
+        <di:waypoint x="990" y="972" />
+        <di:waypoint x="990" y="489" />
+        <di:waypoint x="1130" y="489" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1txbc24_di" bpmnElement="decision-proceed">
+        <di:waypoint x="1780" y="514" />
+        <di:waypoint x="1780" y="997" />
+        <di:waypoint x="1915" y="997" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1787" y="538" width="87" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1osdk01_di" bpmnElement="is-property-evaluated-yes">
+        <di:waypoint x="1965" y="997" />
+        <di:waypoint x="2205" y="997" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1991" y="979" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_02wen6m_di" bpmnElement="Flow_02wen6m">
+        <di:waypoint x="1940" y="972" />
+        <di:waypoint x="1940" y="860" />
+        <di:waypoint x="2040" y="860" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1952" y="941" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0elu9n5_di" bpmnElement="Flow_0elu9n5">
+        <di:waypoint x="2140" y="860" />
+        <di:waypoint x="2230" y="860" />
+        <di:waypoint x="2230" y="972" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_15wuhaj_di" bpmnElement="Flow_15wuhaj">
+        <di:waypoint x="2255" y="997" />
+        <di:waypoint x="2365" y="997" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1xm6i1r_di" bpmnElement="is-object-rejected-no">
+        <di:waypoint x="2415" y="997" />
+        <di:waypoint x="2535" y="997" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2433" y="979" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1pm0i9t_di" bpmnElement="is-object-rejected-yes">
+        <di:waypoint x="2390" y="1022" />
+        <di:waypoint x="2390" y="1145" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2397" y="1029" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1iz9k8e_di" bpmnElement="has-terms-changed-yes">
+        <di:waypoint x="2560" y="972" />
+        <di:waypoint x="2560" y="860" />
+        <di:waypoint x="2650" y="860" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2566" y="943" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_01p8dq4_di" bpmnElement="has-terms-changed-no">
+        <di:waypoint x="2585" y="997" />
+        <di:waypoint x="2815" y="997" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2610" y="979" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_04n526m_di" bpmnElement="Flow_04n526m">
+        <di:waypoint x="2985" y="1170" />
+        <di:waypoint x="2415" y="1170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1sl6c0h_di" bpmnElement="Flow_1sl6c0h">
+        <di:waypoint x="2750" y="860" />
+        <di:waypoint x="2840" y="860" />
+        <di:waypoint x="2840" y="972" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0gym6ov_di" bpmnElement="Flow_0gym6ov">
+        <di:waypoint x="2865" y="997" />
+        <di:waypoint x="2985" y="997" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11bpb4u_di" bpmnElement="is-terms-approved-no">
+        <di:waypoint x="3010" y="1022" />
+        <di:waypoint x="3010" y="1145" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3018" y="1033" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05tcxp3_di" bpmnElement="is-terms-approved-yes">
+        <di:waypoint x="3035" y="997" />
+        <di:waypoint x="3175" y="997" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3053" y="979" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ifcinx_di" bpmnElement="won-bidding-round-no">
+        <di:waypoint x="3200" y="1022" />
+        <di:waypoint x="3200" y="1170" />
+        <di:waypoint x="3035" y="1170" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3208" y="1033" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0mu1ob6_di" bpmnElement="Flow_0mu1ob6">
+        <di:waypoint x="1620" y="489" />
+        <di:waypoint x="1755" y="489" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0sy2n4u_di" bpmnElement="decision-add-terms">
+        <di:waypoint x="1780" y="464" />
+        <di:waypoint x="1780" y="200" />
+        <di:waypoint x="1155" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1794" y="404" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1gwcru4_di" bpmnElement="Flow_1gwcru4">
+        <di:waypoint x="1130" y="302" />
+        <di:waypoint x="1130" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0maxwss_di" bpmnElement="Flow_0maxwss">
+        <di:waypoint x="1112" y="400" />
+        <di:waypoint x="998" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0181ay6_di" bpmnElement="won-bidding-round-yes">
+        <di:waypoint x="3225" y="997" />
+        <di:waypoint x="3352" y="997" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3241" y="979" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_00411j8_di" bpmnElement="Association_00411j8">
+        <di:waypoint x="2090" y="820" />
+        <di:waypoint x="2090" y="760" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_0b37nfh_di" bpmnElement="TextAnnotation_0b37nfh">
+        <dc:Bounds x="1870" y="280" width="327" height="98" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0t97dgd_di" bpmnElement="TextAnnotation_0t97dgd">
+        <dc:Bounds x="2200" y="1060" width="169.99673344947735" height="55.749128919860624" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_1s0gq0n_di" bpmnElement="Association_1s0gq0n">
+        <di:waypoint x="1870" y="345" />
+        <di:waypoint x="1780" y="382" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0ncc0k3_di" bpmnElement="Association_0ncc0k3">
+        <di:waypoint x="2374" y="1006" />
+        <di:waypoint x="2277" y="1060" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_1y6szvg_di" bpmnElement="TextAnnotation_1y6szvg">
+        <dc:Bounds x="1950" y="650" width="400" height="110" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

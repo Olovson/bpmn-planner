@@ -680,17 +680,26 @@ async function archiveBpmnFiles(sourceDir: string): Promise<ArchiveResult> {
   try {
     // Hitta befintlig bpmn-map.json (i projektroten)
     const existingMapPath = path.join(__dirname, '../bpmn-map.json');
+    const projectRootMapPath = path.join(__dirname, '../bpmn-map.json');
     
     console.log('');
     console.log('Uppdaterar bpmn-map.json...');
     const { map, warnings, changes } = updateBpmnMap(destinationDir, existingMapPath);
     
+    // Spara i arkivmappen
     bpmnMapPath = path.join(destinationDir, 'bpmn-map.json');
     fs.writeFileSync(bpmnMapPath, JSON.stringify(map, null, 2), 'utf-8');
     bpmnMapWarnings = warnings;
     bpmnMapChanges = changes;
     
-    console.log(`✅ bpmn-map.json skapad: ${bpmnMapPath}`);
+    console.log(`✅ bpmn-map.json skapad i arkivmappen: ${bpmnMapPath}`);
+    
+    // Uppdatera även projektrotens bpmn-map.json
+    console.log('');
+    console.log('Uppdaterar projektrotens bpmn-map.json...');
+    fs.writeFileSync(projectRootMapPath, JSON.stringify(map, null, 2), 'utf-8');
+    console.log(`✅ Projektrotens bpmn-map.json uppdaterad: ${projectRootMapPath}`);
+    
     if (warnings.length > 0) {
       console.log(`⚠️  ${warnings.length} varningar (se diff-rapporten för detaljer)`);
     }
@@ -852,7 +861,9 @@ async function main() {
       console.log('🗺️  BPMN MAP UPPDATERING');
       console.log('='.repeat(80));
       console.log('');
-      console.log(`📄 bpmn-map.json skapad: ${result.bpmnMapPath}`);
+      console.log(`📄 bpmn-map.json skapad i arkivmappen: ${result.bpmnMapPath}`);
+      const projectRootMapPath = path.join(__dirname, '../bpmn-map.json');
+      console.log(`📄 Projektrotens bpmn-map.json uppdaterad: ${projectRootMapPath}`);
       console.log('');
       console.log('📊 Sammanfattning:');
       console.log(`   ✅ Nya mappningar: ${result.bpmnMapChanges.added}`);

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:escalation id="Escalation_2vm8k3e" name="securities-assessments-invalid" escalationCode="securities-assessments-invalid" />
+  <bpmn:collaboration id="Collaboration_0154cel">
+    <bpmn:participant id="Participant_17niwd2" name="Household" processRef="mortgage-se-household" />
+    <bpmn:textAnnotation id="TextAnnotation_1y8kwgg">
+      <bpmn:text>Expenses:
+Cars + carloans
+Children
+Child support
+Other expenses
+
+Incomes:
+Child support
+Other incomes</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1hnwrjj" associationDirection="None" sourceRef="register-household-economy-information" targetRef="TextAnnotation_1y8kwgg" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-household" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_0usfs0i">
+      <bpmn:lane id="Lane_0h605mo" name="Stakeholder">
+        <bpmn:flowNodeRef>Event_0thxdf9</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>register-household-economy-information</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_10dekgp</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_1v71ek3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>skip-register-household-economy-information</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Event_0thxdf9">
+      <bpmn:outgoing>Flow_0sjo7ft</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="register-household-economy-information" name="Register household economy infomation">
+      <bpmn:incoming>skip-register-household-economy-information-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_12rjvme</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="Event_10dekgp">
+      <bpmn:incoming>Flow_03gb7d6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gateway_1v71ek3">
+      <bpmn:incoming>Flow_12rjvme</bpmn:incoming>
+      <bpmn:incoming>skip-register-household-economy-information-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_03gb7d6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="skip-register-household-economy-information" name="Skip step?">
+      <bpmn:incoming>Flow_0sjo7ft</bpmn:incoming>
+      <bpmn:outgoing>skip-register-household-economy-information-no</bpmn:outgoing>
+      <bpmn:outgoing>skip-register-household-economy-information-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_0sjo7ft" sourceRef="Event_0thxdf9" targetRef="skip-register-household-economy-information" />
+    <bpmn:sequenceFlow id="skip-register-household-economy-information-no" name="No" sourceRef="skip-register-household-economy-information" targetRef="register-household-economy-information" />
+    <bpmn:sequenceFlow id="Flow_12rjvme" sourceRef="register-household-economy-information" targetRef="Gateway_1v71ek3" />
+    <bpmn:sequenceFlow id="Flow_03gb7d6" sourceRef="Gateway_1v71ek3" targetRef="Event_10dekgp" />
+    <bpmn:sequenceFlow id="skip-register-household-economy-information-yes" name="Yes" sourceRef="skip-register-household-economy-information" targetRef="Gateway_1v71ek3" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0154cel">
+      <bpmndi:BPMNShape id="Participant_17niwd2_di" bpmnElement="Participant_17niwd2" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="640" height="460" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_0h605mo_di" bpmnElement="Lane_0h605mo" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="610" height="460" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0thxdf9_di" bpmnElement="Event_0thxdf9">
+        <dc:Bounds x="242" y="432" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1hab06k_di" bpmnElement="register-household-economy-information">
+        <dc:Bounds x="430" y="410" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_10dekgp_di" bpmnElement="Event_10dekgp">
+        <dc:Bounds x="712" y="432" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1v71ek3_di" bpmnElement="Gateway_1v71ek3" isMarkerVisible="true">
+        <dc:Bounds x="585" y="425" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0aqphb6_di" bpmnElement="skip-register-household-economy-information" isMarkerVisible="true">
+        <dc:Bounds x="325" y="425" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="324" y="482" width="52" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0sjo7ft_di" bpmnElement="Flow_0sjo7ft">
+        <di:waypoint x="278" y="450" />
+        <di:waypoint x="325" y="450" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1y7rya1_di" bpmnElement="skip-register-household-economy-information-no">
+        <di:waypoint x="375" y="450" />
+        <di:waypoint x="430" y="450" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="395" y="432" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12rjvme_di" bpmnElement="Flow_12rjvme">
+        <di:waypoint x="530" y="450" />
+        <di:waypoint x="585" y="450" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03gb7d6_di" bpmnElement="Flow_03gb7d6">
+        <di:waypoint x="635" y="450" />
+        <di:waypoint x="712" y="450" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0fr9x53_di" bpmnElement="skip-register-household-economy-information-yes">
+        <di:waypoint x="350" y="425" />
+        <di:waypoint x="350" y="140" />
+        <di:waypoint x="610" y="140" />
+        <di:waypoint x="610" y="425" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="361" y="383" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1hnwrjj_di" bpmnElement="Association_1hnwrjj">
+        <di:waypoint x="478" y="410" />
+        <di:waypoint x="476" y="352" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_1y8kwgg_di" bpmnElement="TextAnnotation_1y8kwgg">
+        <dc:Bounds x="420" y="210" width="120" height="142" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

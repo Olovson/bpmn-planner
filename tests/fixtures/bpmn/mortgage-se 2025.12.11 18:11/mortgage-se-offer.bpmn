@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:error id="Error_030920h" name="credit-evaluation-aborted" errorCode="credit-evaluation-aborted" />
+  <bpmn:escalation id="Escalation_016l7ta" name="finansieringsbevis-terminate-end" escalationCode="finansieringsbevis-terminate-end" />
+  <bpmn:collaboration id="Collaboration_0jizenv">
+    <bpmn:participant id="Participant_0wgcoy3" name="Offer preparation" processRef="mortgage-se-offer" />
+    <bpmn:textAnnotation id="TextAnnotation_0mduqzy">
+      <bpmn:text>Accept:
+- Loan Amount / parts
+- Dates
+- Validation
+
+Refinance / move:
+- Account number(s)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_0ykdkzo">
+      <bpmn:text>Request changes - may be triggered
+by caseworker</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_01odqdi" associationDirection="None" sourceRef="TextAnnotation_0ykdkzo" targetRef="offer-decision-request-changes" />
+    <bpmn:association id="Association_1iy2nyc" associationDirection="None" sourceRef="offer-decision" targetRef="TextAnnotation_0mduqzy" />
+    <bpmn:textAnnotation id="TextAnnotation_0vv16t8">
+      <bpmn:text>Work In Progress ...</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_08tkyel" associationDirection="None" sourceRef="TextAnnotation_0vv16t8" targetRef="offer-decision-request-changes" />
+    <bpmn:textAnnotation id="TextAnnotation_1rn6c2v">
+      <bpmn:text>Behov for dette?</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0hqizji" associationDirection="None" sourceRef="sales-contract-credit-decision" targetRef="TextAnnotation_1rn6c2v" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-offer" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_07vqo9j">
+      <bpmn:lane id="Lane_1g7vsp2" name="Caseworker">
+        <bpmn:flowNodeRef>advanced-underwriting</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>credit-decision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>credit-decision-approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0h20g8l</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sales-contract-advanced-underwriting</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sales-contract-credit-decision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1c99mw4</bpmn:flowNodeRef>
+        <bpmn:childLaneSet id="LaneSet_1d4b3rp" />
+      </bpmn:lane>
+      <bpmn:lane id="Lane_0kzcftz" name="Stakeholder">
+        <bpmn:flowNodeRef>start-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sales-contract-assessed</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_18jx4nb</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sales-contract-uploaded</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0ldnqm0</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0m9hox9</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0hrcun3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>offer-decision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>finansieringsbevis-terminate-end</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>decide-offer</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>process-end-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>event-offer-rejected</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>documentation-assessment</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_017jq28</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>documentation-incomplete</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>upload-sales-contract</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sales-contract-request-changes</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:sequenceFlow id="Flow_1jo2wb1" sourceRef="Event_017jq28" targetRef="finansieringsbevis-terminate-end" />
+    <bpmn:sequenceFlow id="offer-decision-decline" name="Decline offer" sourceRef="offer-decision" targetRef="event-offer-rejected" />
+    <bpmn:sequenceFlow id="offer-decision-accept" name="Accept offer" sourceRef="offer-decision" targetRef="process-end-event" />
+    <bpmn:sequenceFlow id="Flow_0q8jsaq" sourceRef="decide-offer" targetRef="offer-decision" />
+    <bpmn:sequenceFlow id="sales-contract-assessed-yes" name="Yes" sourceRef="sales-contract-assessed" targetRef="Gateway_0m9hox9" />
+    <bpmn:sequenceFlow id="credit-decision-approved-yes" name="Yes" sourceRef="credit-decision-approved" targetRef="Gateway_0hrcun3" />
+    <bpmn:sequenceFlow id="credit-decision-approved-no" name="No" sourceRef="credit-decision-approved" targetRef="Event_0h20g8l" />
+    <bpmn:sequenceFlow id="Flow_1kfz8ig" sourceRef="credit-decision" targetRef="credit-decision-approved" />
+    <bpmn:sequenceFlow id="Flow_0xn8e37" sourceRef="advanced-underwriting" targetRef="credit-decision" />
+    <bpmn:sequenceFlow id="offer-decision-request-changes" name="Request changes" sourceRef="offer-decision" targetRef="advanced-underwriting" />
+    <bpmn:sequenceFlow id="Flow_16n2ck3" sourceRef="Gateway_0hrcun3" targetRef="decide-offer" />
+    <bpmn:sequenceFlow id="Flow_07iil1n" sourceRef="start-event" targetRef="sales-contract-assessed" />
+    <bpmn:sequenceFlow id="Flow_1xqs76i" sourceRef="Gateway_0m9hox9" targetRef="Gateway_0hrcun3" />
+    <bpmn:sequenceFlow id="sales-contract-assessed-no" name="No" sourceRef="sales-contract-assessed" targetRef="Gateway_18jx4nb" />
+    <bpmn:sequenceFlow id="Flow_0j86lza" sourceRef="documentation-assessment" targetRef="Gateway_0m9hox9" />
+    <bpmn:sequenceFlow id="Flow_16k1e9n" sourceRef="upload-sales-contract" targetRef="Gateway_0ldnqm0" />
+    <bpmn:startEvent id="start-event">
+      <bpmn:outgoing>Flow_07iil1n</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_0buwnn7" sourceRef="Gateway_18jx4nb" targetRef="sales-contract-uploaded" />
+    <bpmn:sequenceFlow id="Flow_0tne2j0" sourceRef="documentation-incomplete" targetRef="Gateway_18jx4nb" />
+    <bpmn:sequenceFlow id="sales-contract-uploaded-no" name="No" sourceRef="sales-contract-uploaded" targetRef="upload-sales-contract" />
+    <bpmn:sequenceFlow id="Flow_02v11os" sourceRef="Gateway_0ldnqm0" targetRef="documentation-assessment" />
+    <bpmn:sequenceFlow id="sales-contract-uploaded-yes" name="Yes" sourceRef="sales-contract-uploaded" targetRef="Gateway_0ldnqm0" />
+    <bpmn:exclusiveGateway id="sales-contract-assessed" name="Sales contract assessed?">
+      <bpmn:incoming>Flow_07iil1n</bpmn:incoming>
+      <bpmn:outgoing>sales-contract-assessed-yes</bpmn:outgoing>
+      <bpmn:outgoing>sales-contract-assessed-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_18jx4nb">
+      <bpmn:incoming>sales-contract-assessed-no</bpmn:incoming>
+      <bpmn:incoming>Flow_0tne2j0</bpmn:incoming>
+      <bpmn:outgoing>Flow_0buwnn7</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="sales-contract-uploaded" name="Sales contract uploaded?">
+      <bpmn:incoming>Flow_0buwnn7</bpmn:incoming>
+      <bpmn:outgoing>sales-contract-uploaded-no</bpmn:outgoing>
+      <bpmn:outgoing>sales-contract-uploaded-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_0ldnqm0">
+      <bpmn:incoming>Flow_16k1e9n</bpmn:incoming>
+      <bpmn:incoming>sales-contract-uploaded-yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_02v11os</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="advanced-underwriting" name="Perform advanced underwriting">
+      <bpmn:incoming>offer-decision-request-changes</bpmn:incoming>
+      <bpmn:outgoing>Flow_0xn8e37</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:callActivity id="credit-decision" name="Credit decision">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_0xn8e37</bpmn:incoming>
+      <bpmn:outgoing>Flow_1kfz8ig</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:exclusiveGateway id="credit-decision-approved" name="Approved?">
+      <bpmn:incoming>Flow_1kfz8ig</bpmn:incoming>
+      <bpmn:outgoing>credit-decision-approved-no</bpmn:outgoing>
+      <bpmn:outgoing>credit-decision-approved-yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_0h20g8l" name="Credit decision rejected">
+      <bpmn:incoming>credit-decision-approved-no</bpmn:incoming>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_1457gek" escalationRef="Escalation_1o4rs8b" />
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gateway_0m9hox9">
+      <bpmn:incoming>sales-contract-assessed-yes</bpmn:incoming>
+      <bpmn:incoming>Flow_0j86lza</bpmn:incoming>
+      <bpmn:outgoing>Flow_1xqs76i</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_0hrcun3">
+      <bpmn:incoming>credit-decision-approved-yes</bpmn:incoming>
+      <bpmn:incoming>Flow_1xqs76i</bpmn:incoming>
+      <bpmn:outgoing>Flow_16n2ck3</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="offer-decision" name="Decision">
+      <bpmn:incoming>Flow_0q8jsaq</bpmn:incoming>
+      <bpmn:outgoing>offer-decision-request-changes</bpmn:outgoing>
+      <bpmn:outgoing>offer-decision-decline</bpmn:outgoing>
+      <bpmn:outgoing>offer-decision-accept</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="finansieringsbevis-terminate-end" name="Offer expired">
+      <bpmn:incoming>Flow_1jo2wb1</bpmn:incoming>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_14xgjfj" escalationRef="Escalation_016l7ta" />
+    </bpmn:endEvent>
+    <bpmn:userTask id="decide-offer" name="Decide on offer">
+      <bpmn:incoming>Flow_16n2ck3</bpmn:incoming>
+      <bpmn:outgoing>Flow_0q8jsaq</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="process-end-event">
+      <bpmn:incoming>offer-decision-accept</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="event-offer-rejected" name="Offer declined">
+      <bpmn:incoming>offer-decision-decline</bpmn:incoming>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_0wx19oc" escalationRef="Escalation_335oqci" />
+    </bpmn:endEvent>
+    <bpmn:callActivity id="documentation-assessment" name="Documentation assessment">
+      <bpmn:incoming>Flow_02v11os</bpmn:incoming>
+      <bpmn:outgoing>Flow_0j86lza</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:boundaryEvent id="Event_017jq28" name="" attachedToRef="decide-offer">
+      <bpmn:outgoing>Flow_1jo2wb1</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_04oj0d3" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="documentation-incomplete" name="Documentation incomplete" attachedToRef="documentation-assessment">
+      <bpmn:outgoing>Flow_0tne2j0</bpmn:outgoing>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_0t3y4di" />
+    </bpmn:boundaryEvent>
+    <bpmn:userTask id="upload-sales-contract" name="Upload sales contract">
+      <bpmn:incoming>sales-contract-uploaded-no</bpmn:incoming>
+      <bpmn:outgoing>Flow_16k1e9n</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:boundaryEvent id="sales-contract-request-changes" name="Request changes" cancelActivity="false" attachedToRef="upload-sales-contract">
+      <bpmn:outgoing>Flow_012rzmf</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0jp5kt5" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_012rzmf" sourceRef="sales-contract-request-changes" targetRef="sales-contract-advanced-underwriting" />
+    <bpmn:sequenceFlow id="Flow_1yi017e" sourceRef="sales-contract-credit-decision" targetRef="Event_1c99mw4" />
+    <bpmn:sequenceFlow id="Flow_1oio4da" sourceRef="sales-contract-advanced-underwriting" targetRef="sales-contract-credit-decision" />
+    <bpmn:userTask id="sales-contract-advanced-underwriting" name="Perform advanced underwriting">
+      <bpmn:incoming>Flow_012rzmf</bpmn:incoming>
+      <bpmn:outgoing>Flow_1oio4da</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:callActivity id="sales-contract-credit-decision" name="Credit decision">
+      <bpmn:incoming>Flow_1oio4da</bpmn:incoming>
+      <bpmn:outgoing>Flow_1yi017e</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:endEvent id="Event_1c99mw4">
+      <bpmn:incoming>Flow_1yi017e</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmn:message id="Message_1lbhovc" name="purchase-made" />
+  <bpmn:message id="Message_13trmbd" name="return-to-proof-of-finance" />
+  <bpmn:message id="Message_1gq5hbr" name="offer-rejected" />
+  <bpmn:escalation id="Escalation_335oqci" name="event-offer-rejected" escalationCode="event-offer-rejected" />
+  <bpmn:escalation id="Escalation_18ddofd" name="event-return-to-proof-of-finance" escalationCode="event-return-to-proof-of-finance" />
+  <bpmn:escalation id="Escalation_26ogfaj" name="reevaluation-required" escalationCode="reevaluation-required" />
+  <bpmn:escalation id="Escalation_1o4rs8b" name="credit-decision-rejected" escalationCode="credit-decision-rejected" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0jizenv">
+      <bpmndi:BPMNShape id="Participant_0wgcoy3_di" bpmnElement="Participant_0wgcoy3" isHorizontal="true">
+        <dc:Bounds x="129" y="40" width="2531" height="910" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_0kzcftz_di" bpmnElement="Lane_0kzcftz" isHorizontal="true">
+        <dc:Bounds x="159" y="450" width="2501" height="500" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1g7vsp2_di" bpmnElement="Lane_1g7vsp2" isHorizontal="true">
+        <dc:Bounds x="159" y="40" width="2501" height="410" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event">
+        <dc:Bounds x="229" y="549" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0dg2nt6_di" bpmnElement="sales-contract-assessed" isMarkerVisible="true">
+        <dc:Bounds x="375" y="542" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="365" y="505" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_18jx4nb_di" bpmnElement="Gateway_18jx4nb" isMarkerVisible="true">
+        <dc:Bounds x="505" y="685" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0wh5m0r_di" bpmnElement="sales-contract-uploaded" isMarkerVisible="true">
+        <dc:Bounds x="655" y="685" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="645" y="647.5" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0ldnqm0_di" bpmnElement="Gateway_0ldnqm0" isMarkerVisible="true">
+        <dc:Bounds x="1035" y="685" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1pag22t_di" bpmnElement="advanced-underwriting">
+        <dc:Bounds x="2110" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_065g0i6_di" bpmnElement="credit-decision">
+        <dc:Bounds x="2330" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0akmgio_di" bpmnElement="credit-decision-approved" isMarkerVisible="true">
+        <dc:Bounds x="2545" y="215" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2493" y="203" width="54" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0tz55sl_di" bpmnElement="Event_0h20g8l" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="2552" y="332" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2534" y="376" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0m9hox9_di" bpmnElement="Gateway_0m9hox9" isMarkerVisible="true">
+        <dc:Bounds x="1395" y="542" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0hrcun3_di" bpmnElement="Gateway_0hrcun3" isMarkerVisible="true">
+        <dc:Bounds x="1565" y="542" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1ktbtd4_di" bpmnElement="offer-decision" isMarkerVisible="true">
+        <dc:Bounds x="1955" y="542" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1918" y="533" width="43" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_17ch5lz_di" bpmnElement="finansieringsbevis-terminate-end" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="1722" y="692" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1709" y="738" width="64" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0o56zza_di" bpmnElement="decide-offer">
+        <dc:Bounds x="1740" y="527" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ukrfd4_di" bpmnElement="process-end-event">
+        <dc:Bounds x="2552" y="549" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1i7ew69_di" bpmnElement="event-offer-rejected" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="2552" y="692" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2537" y="735" width="69" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1s5g4r7_di" bpmnElement="documentation-assessment">
+        <dc:Bounds x="1200" y="670" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_15hifb3_di" bpmnElement="upload-sales-contract">
+        <dc:Bounds x="820" y="670" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0gv0p4l" bpmnElement="sales-contract-advanced-underwriting" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="870" y="340" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1k1pqvw" bpmnElement="sales-contract-credit-decision" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="870" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1c99mw4_di" bpmnElement="Event_1c99mw4" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="902" y="112" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0qh7x83_di" bpmnElement="sales-contract-request-changes" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="902" y="652" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="927" y="630" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1s9fxg7_di" bpmnElement="documentation-incomplete">
+        <dc:Bounds x="1182" y="732" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1113" y="776" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_07slsbc_di" bpmnElement="Event_017jq28">
+        <dc:Bounds x="1722" y="589" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="321" y="547" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1jo2wb1_di" bpmnElement="Flow_1jo2wb1">
+        <di:waypoint x="1740" y="625" />
+        <di:waypoint x="1740" y="692" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0vfufdq_di" bpmnElement="offer-decision-decline">
+        <di:waypoint x="1980" y="592" />
+        <di:waypoint x="1980" y="710" />
+        <di:waypoint x="2552" y="710" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1989" y="623" width="62" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_19s1tlv_di" bpmnElement="offer-decision-accept">
+        <di:waypoint x="2005" y="567" />
+        <di:waypoint x="2552" y="567" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2050" y="543" width="59" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0q8jsaq_di" bpmnElement="Flow_0q8jsaq">
+        <di:waypoint x="1840" y="567" />
+        <di:waypoint x="1955" y="567" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0228bgn_di" bpmnElement="sales-contract-assessed-yes">
+        <di:waypoint x="425" y="567" />
+        <di:waypoint x="1395" y="567" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="447" y="543" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0r1i9m4_di" bpmnElement="credit-decision-approved-yes">
+        <di:waypoint x="2570" y="215" />
+        <di:waypoint x="2570" y="120" />
+        <di:waypoint x="1590" y="120" />
+        <di:waypoint x="1590" y="542" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2577" y="173" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11vjg2v_di" bpmnElement="credit-decision-approved-no">
+        <di:waypoint x="2570" y="265" />
+        <di:waypoint x="2570" y="332" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2578" y="292" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1kfz8ig_di" bpmnElement="Flow_1kfz8ig">
+        <di:waypoint x="2430" y="240" />
+        <di:waypoint x="2545" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0xn8e37_di" bpmnElement="Flow_0xn8e37">
+        <di:waypoint x="2210" y="240" />
+        <di:waypoint x="2330" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ritoyt_di" bpmnElement="offer-decision-request-changes">
+        <di:waypoint x="1980" y="542" />
+        <di:waypoint x="1980" y="240" />
+        <di:waypoint x="2110" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1987" y="484" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16n2ck3_di" bpmnElement="Flow_16n2ck3">
+        <di:waypoint x="1615" y="567" />
+        <di:waypoint x="1740" y="567" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_07iil1n_di" bpmnElement="Flow_07iil1n">
+        <di:waypoint x="265" y="567" />
+        <di:waypoint x="375" y="567" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1xqs76i_di" bpmnElement="Flow_1xqs76i">
+        <di:waypoint x="1445" y="567" />
+        <di:waypoint x="1565" y="567" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1i4hqeb_di" bpmnElement="sales-contract-assessed-no">
+        <di:waypoint x="400" y="592" />
+        <di:waypoint x="400" y="710" />
+        <di:waypoint x="505" y="710" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="413" y="609" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0j86lza_di" bpmnElement="Flow_0j86lza">
+        <di:waypoint x="1300" y="710" />
+        <di:waypoint x="1420" y="710" />
+        <di:waypoint x="1420" y="592" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16k1e9n_di" bpmnElement="Flow_16k1e9n">
+        <di:waypoint x="920" y="710" />
+        <di:waypoint x="1035" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0buwnn7_di" bpmnElement="Flow_0buwnn7">
+        <di:waypoint x="555" y="710" />
+        <di:waypoint x="655" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0tne2j0_di" bpmnElement="Flow_0tne2j0">
+        <di:waypoint x="1200" y="768" />
+        <di:waypoint x="1200" y="890" />
+        <di:waypoint x="530" y="890" />
+        <di:waypoint x="530" y="735" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0bp5gb5_di" bpmnElement="sales-contract-uploaded-no">
+        <di:waypoint x="705" y="710" />
+        <di:waypoint x="820" y="710" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="732" y="692" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_02v11os_di" bpmnElement="Flow_02v11os">
+        <di:waypoint x="1085" y="710" />
+        <di:waypoint x="1200" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0v0lkrs_di" bpmnElement="sales-contract-uploaded-yes">
+        <di:waypoint x="680" y="735" />
+        <di:waypoint x="680" y="820" />
+        <di:waypoint x="1060" y="820" />
+        <di:waypoint x="1060" y="735" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="691" y="750" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_012rzmf_di" bpmnElement="Flow_012rzmf" bioc:stroke="#6b3c00" color:border-color="#6b3c00">
+        <di:waypoint x="920" y="652" />
+        <di:waypoint x="920" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1yi017e_di" bpmnElement="Flow_1yi017e">
+        <di:waypoint x="920" y="200" />
+        <di:waypoint x="920" y="148" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_19by1td" bpmnElement="Flow_1oio4da">
+        <di:waypoint x="920" y="340" />
+        <di:waypoint x="920" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_0mduqzy_di" bpmnElement="TextAnnotation_0mduqzy">
+        <dc:Bounds x="2130" y="580" width="199.99367408906883" height="113.36032388663968" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_11qotrc" bpmnElement="TextAnnotation_0ykdkzo">
+        <dc:Bounds x="1830" y="320" width="130" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0vv16t8_di" bpmnElement="TextAnnotation_0vv16t8">
+        <dc:Bounds x="1900" y="150" width="138" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_1rn6c2v_di" bpmnElement="TextAnnotation_1rn6c2v">
+        <dc:Bounds x="970" y="120" width="99.99156545209178" height="40.48582995951417" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_01odqdi_di" bpmnElement="Association_01odqdi">
+        <di:waypoint x="1940" y="375" />
+        <di:waypoint x="1980" y="540" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1iy2nyc_di" bpmnElement="Association_1iy2nyc">
+        <di:waypoint x="2003" y="565" />
+        <di:waypoint x="2130" y="626" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_08tkyel_di" bpmnElement="Association_08tkyel">
+        <di:waypoint x="1979" y="180" />
+        <di:waypoint x="2018" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0hqizji_di" bpmnElement="Association_0hqizji">
+        <di:waypoint x="958" y="200" />
+        <di:waypoint x="996" y="160" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
