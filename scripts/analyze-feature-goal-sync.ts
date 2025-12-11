@@ -141,7 +141,7 @@ function findLatestArchiveFolder(): string | null {
  * Extrahera feature goals (call activities och subprocesses) från bpmn-map.json
  * Använder samma logik som appen
  */
-function extractFeatureGoalsFromMap(bpmnMapPath: string): FeatureGoal[] {
+export function extractFeatureGoalsFromMap(bpmnMapPath: string): FeatureGoal[] {
   const content = fs.readFileSync(bpmnMapPath, 'utf-8');
   const rawBpmnMap = JSON.parse(content);
   const bpmnMap = loadBpmnMap(rawBpmnMap);
@@ -246,7 +246,7 @@ function extractFeatureGoalsFromBpmnFiles(archiveDir: string): FeatureGoal[] {
  * Läsa alla feature goal dokumentationsfiler
  * Letar i exports/feature-goals (där manuellt förbättrade filer ligger)
  */
-function readFeatureGoalDocs(docsDir: string): FeatureGoalDoc[] {
+export function readFeatureGoalDocs(docsDir: string): FeatureGoalDoc[] {
   if (!fs.existsSync(docsDir)) {
     return [];
   }
@@ -338,6 +338,23 @@ function matchFeatureGoalToDoc(
       return doc;
     }
     
+    // Strategy 2b: Match kortform av parent + name (e.g., "Application-Internal-data-gathering")
+    // Dokumentationen kan använda kortform av parent (t.ex. "application" istället för "mortgage-se-application")
+    const parentShortForm = normalizedParent.split('-').pop() || normalizedParent; // Sista delen av parent (t.ex. "application" från "mortgage-se-application")
+    if (parentShortForm !== normalizedParent && parentShortForm.length > 3) { // Bara om det faktiskt är en kortform
+      const shortParentNamePattern = `${parentShortForm}-${normalizedName}`;
+      const shortNameParentPattern = `${normalizedName}-${parentShortForm}`;
+      if (normalizedDocName !== normalizedName &&
+          (normalizedDocName.startsWith(shortParentNamePattern + '-') ||
+           normalizedDocName === shortParentNamePattern ||
+           normalizedDocName.startsWith(shortNameParentPattern + '-') ||
+           normalizedDocName === shortNameParentPattern ||
+           normalizedDocName.endsWith('-' + shortParentNamePattern) ||
+           normalizedDocName.endsWith('-' + shortNameParentPattern))) {
+        return doc;
+      }
+    }
+    
     // Strategy 3: Match subprocess file name + element ID
     if (featureGoal.subprocess_bpmn_file) {
       const subprocessBase = featureGoal.subprocess_bpmn_file.replace('.bpmn', '');
@@ -383,7 +400,7 @@ function matchFeatureGoalToDoc(
 /**
  * Extrahera aktiviteter från en BPMN-fil (för en specifik subprocess)
  */
-function extractActivitiesFromBpmnFile(
+export function extractActivitiesFromBpmnFile(
   archiveDir: string,
   featureGoal: FeatureGoal
 ): BpmnActivity[] {
@@ -589,7 +606,7 @@ function findMissingActivities(
 /**
  * Analysera skillnader
  */
-function analyzeSync(
+export function analyzeSync(
   featureGoals: FeatureGoal[],
   docs: FeatureGoalDoc[],
   archiveDir: string

@@ -145,28 +145,35 @@
       <h2>Processteg - Input</h2>
       <ul>
         <li>Kreditansökan har blivit automatiskt avvisad (is-automatically-rejected-yes)</li>
-        <li>Alternativt: Manuell kreditevaluering har blivit automatiskt avvisad (credit-evaluation-automatically-rejected)</li>
-        <li>Processen startar när Appeal call activity anropas från huvudprocessen mortgage</li>
+        <li>Alternativt: Manuell kreditevaluering har blivit automatiskt avvisad (credit-evaluation-automatically-rejected escalation)</li>
+        <li>Processen startar när Appeal call activity anropas från huvudprocessen mortgage.bpmn via Gateway_0f1a2lu</li>
+        <li>Gateway_0f1a2lu samlar flöden från både is-automatically-rejected-yes och från Manual credit evaluation när den triggar "Automatically rejected" escalation</li>
       </ul>
     </section>
 
     <section class="doc-section">
       <h2>Processteg - Output</h2>
       <ul>
-        <li>Om överklagan accepteras: Ansökan går vidare till manuell kreditevaluering (manual-credit-evaluation)</li>
-        <li>Om överklagan avvisas: Processen kan loopa tillbaka för att kunden kan skicka in en ny överklagan</li>
-        <li>Om timeout (30 dagar): Ansökan avvisas automatiskt (application-automatically-rejected) via escalation "appeal-timeout"</li>
+        <li>Om överklagan accepteras: Ansökan går vidare via Gateway_1qiy2jr till manuell kreditevaluering (manual-credit-evaluation)</li>
+        <li>Om överklagan avvisas: Processen loopar tillbaka via Gateway_1v59ktc så kunden kan skicka in en ny överklagan</li>
+        <li><strong>Timeout-hantering (två olika mekanismer):</strong>
+          <ul>
+            <li><strong>Timeout i Appeal-processen:</strong> Om "Submit appeal" user task inte slutförs inom 30 dagar (P30D), triggas boundary event "event-appeal-timeout" → end event "appeal-timeout" med escalation "appeal-timeout"</li>
+            <li><strong>Timeout på Appeal call activity:</strong> Om hela Appeal call activity i mortgage.bpmn timeout, triggas boundary event "event-appeal-timeout" → "application-automatically-rejected" end event</li>
+          </ul>
+        </li>
       </ul>
     </section>
 
     <section class="doc-section">
       <h2>Omfattning</h2>
       <ul>
-        <li>Stakeholder kan skicka in överklagan via user task "Submit appeal"</li>
-        <li>Caseworker granskar överklagan via user task "Screen appeal"</li>
+        <li>Stakeholder kan skicka in överklagan via user task "Submit appeal" (Stakeholder lane)</li>
+        <li>Caseworker granskar överklagan via user task "Screen appeal" (Caseworker lane)</li>
         <li>Beslut om överklagan accepteras eller avvisas via gateway "Screening accepted?"</li>
-        <li>Timeout-hantering på 30 dagar (P30D) för "Submit appeal" task</li>
-        <li>Loop-mekanism som möjliggör flera överklagansförsök om den första avvisas</li>
+        <li>Gateway_1v59ktc (namnlös exclusive gateway) som hanterar loop-mekanismen när screening avvisas</li>
+        <li>Timeout-hantering på 30 dagar (P30D) för "Submit appeal" task via boundary event "event-appeal-timeout"</li>
+        <li>Loop-mekanism som möjliggör flera överklagansförsök om den första avvisas (via Gateway_1v59ktc)</li>
       </ul>
     </section>
 
@@ -183,9 +190,36 @@
     <section class="doc-section">
       <h2>Beroenden</h2>
       <ul>
-        <li><strong>Mortgage huvudprocess:</strong> Appeal anropas från mortgage.bpmn när en ansökan har blivit automatiskt avvisad</li>
-        <li><strong>Manual credit evaluation:</strong> Om överklagan accepteras, går processen vidare till manuell kreditevaluering</li>
-        <li><strong>Timeout-hantering:</strong> Om överklagan inte skickas in inom 30 dagar, triggas escalation "appeal-timeout" som avvisar ansökan automatiskt</li>
+        <li><strong>Mortgage huvudprocess (mortgage.bpmn):</strong>
+          <ul>
+            <li>Appeal anropas via Gateway_0f1a2lu när is-automatically-rejected = Yes</li>
+            <li>Appeal call activity har boundary event "event-appeal-timeout" som triggar escalation "appeal-timeout" (Escalation_0b3ql7g) → "application-automatically-rejected" end event</li>
+            <li>Appeal går vidare via Gateway_1qiy2jr till Manual credit evaluation</li>
+          </ul>
+        </li>
+        <li><strong>Manual credit evaluation:</strong>
+          <ul>
+            <li>Om överklagan accepteras, går processen vidare till manuell kreditevaluering via Gateway_1qiy2jr</li>
+            <li>Manual credit evaluation kan trigga "Automatically rejected" escalation (Escalation_3ron523, credit-evaluation-automatically-rejected) som går tillbaka till Gateway_0f1a2lu → Appeal (loop-mekanism)</li>
+          </ul>
+        </li>
+        <li><strong>Timeout-hantering (två olika mekanismer):</strong>
+          <ul>
+            <li><strong>I Appeal-processen:</strong> Boundary event "event-appeal-timeout" på "Submit appeal" task (30 dagar P30D) → end event "appeal-timeout" med escalation "appeal-timeout" (Escalation_34epnhh)</li>
+            <li><strong>I mortgage.bpmn:</strong> Boundary event "event-appeal-timeout" på Appeal call activity → escalation "appeal-timeout" (Escalation_0b3ql7g) → "application-automatically-rejected"</li>
+          </ul>
+        </li>
+        <li><strong>Escalation Events:</strong>
+          <ul>
+            <li>appeal-timeout (både i Appeal-processen och mortgage.bpmn)</li>
+            <li>credit-evaluation-automatically-rejected (från Manual credit evaluation, kan trigga loop tillbaka till Appeal)</li>
+          </ul>
+        </li>
+        <li><strong>Message Events:</strong>
+          <ul>
+            <li>event-appeal-requested (Message_3g9un62) - definierad men används inte direkt i processen</li>
+          </ul>
+        </li>
         <li><strong>Caseworker-system:</strong> Handläggare behöver tillgång till system för att granska överklagan</li>
         <li><strong>Stakeholder-portal:</strong> Kunden behöver tillgång till portal för att skicka in överklagan</li>
       </ul>
@@ -194,7 +228,10 @@
     <section class="doc-section">
       <h2>BPMN - Process</h2>
       <p><a href="#/bpmn/mortgage-se-appeal.bpmn">Visa BPMN-processen för Appeal</a></p>
-      <p class="muted">Processen innehåller två lanes: "Stakeholder" (kund) och "Caseworker" (handläggare). Processen startar med en start event, går via en gateway till "Submit appeal" (Stakeholder), sedan till "Screen appeal" (Caseworker), och beslutar via gateway om överklagan accepteras eller avvisas.</p>
+      <p class="muted">Processen innehåller två lanes: "Stakeholder" (kund) och "Caseworker" (handläggare).</p>
+      <p class="muted"><strong>Flöde i Appeal-processen:</strong> Start event → Gateway_1v59ktc (loop-gateway) → "Submit appeal" (Stakeholder lane) → "Screen appeal" (Caseworker lane) → "Screening accepted?" gateway → Om Yes: End event (går vidare till Manual credit evaluation via Gateway_1qiy2jr i mortgage.bpmn) / Om No: Loop tillbaka via Gateway_1v59ktc.</p>
+      <p class="muted"><strong>Timeout-hantering:</strong> "Submit appeal" user task har boundary event "event-appeal-timeout" (Timer: P30D) som triggar end event "appeal-timeout" med escalation "appeal-timeout".</p>
+      <p class="muted"><strong>Flöde i mortgage.bpmn:</strong> Appeal anropas från Gateway_0f1a2lu när is-automatically-rejected = Yes. Appeal call activity har boundary event "event-appeal-timeout" som går till "application-automatically-rejected". När Appeal slutförs, går flödet via Gateway_1qiy2jr till Manual credit evaluation. Manual credit evaluation kan trigga "Automatically rejected" escalation som går tillbaka till Gateway_0f1a2lu → Appeal (loop).</p>
     </section>
 
     <section class="doc-section">
