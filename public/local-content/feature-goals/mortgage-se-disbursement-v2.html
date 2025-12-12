@@ -151,37 +151,6 @@
       font-size: 0.9rem;
       font-weight: 500;
     }
-    .llm-fallback-banner {
-      padding: 8px 12px;
-      margin-bottom: 16px;
-      border-radius: 6px;
-      background-color: #fefce8;
-      color: #854d0e;
-      border: 1px solid #fef9c3;
-      font-size: 0.85rem;
-    }
-    .llm-fallback-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      margin-bottom: 12px;
-      border-radius: 4px;
-      background-color: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffeeba;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .llm-fallback-details {
-      font-size: 0.8rem;
-      color: #4b5563;
-      margin-bottom: 16px;
-      white-space: pre-wrap;
-    }
-    .llm-fallback-local-note {
-      font-size: 0.8rem;
-      color: #2563eb;
-      margin-bottom: 16px;
-    }
     details {
       margin: 16px 0;
     }
@@ -209,13 +178,6 @@
       border-radius: 0 0 6px 6px;
       margin-top: 0;
     }
-    img {
-      max-width: 100%;
-      height: auto;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      margin: 12px 0;
-    }
     a {
       color: var(--primary);
       text-decoration: none;
@@ -229,16 +191,18 @@
       📄 Lokal version – Förbättrat innehåll
     </div>
   
-    
-      
-
-
-    
     <section class="doc-section">
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Disbursement är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Disbursement är en systemaktivitet där systemet automatiskt hanterar utbetalning av lån. Processen syftar till att säkerställa att utbetalning sker korrekt när alla förutsättningar är uppfyllda, och att dokument arkiveras efter slutförd utbetalning.</p>
+      <p>Processen börjar med att systemet hanterar utbetalning via "Handle disbursement" service task. Utbetalningsinformation sparas i "Core system" datastore. Systemet väntar sedan på antingen "Disbursement completed" eller "Disbursement cancelled" message events via event-based gateway. Om utbetalning är slutförd, arkiverar systemet dokument via "Archive documents" service task innan processen avslutas normalt. Om utbetalning är avbruten, eskaleras processen med "Disbursement cancelled-escalate" end event (escalation event).</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från Mortgage-processen:</p>
+      <ul>
+        <li><strong>Mortgage - Huvudprocessen (mortgage.bpmn):</strong> När utbetalning behöver hanteras efter att alla förutsättningar är uppfyllda (t.ex. efter signering). Ny information: Information om lånet och utbetalning som behöver hanteras. Anropas via "disbursement" call activity.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -246,11 +210,16 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Signering är klar (event-signing-completed) i huvudprocessen</li>
-        <li>Dokumentgenerering är klar (document-generation)</li>
-        <li>Offer är accepterad och signerad</li>
-        <li>Processen startar när Disbursement call activity anropas från mortgage.bpmn</li>
+      <p>Disbursement-processen startar när:</p>
+      <ul>
+        <li><strong>Utbetalningsinformation är tillgänglig:</strong> All nödvändig information för utbetalning är samlad, inklusive låneinformation, utbetalningsbelopp och mottagarinformation</li>
+        <li><strong>Externa tjänster är tillgängliga:</strong> "Core system" datastore måste vara tillgänglig för att hantera utbetalning</li>
+        <li><strong>Processkontext:</strong> Disbursement anropas via call activity. Alla relevanta processvariabler, inklusive låneinformation och utbetalningsdata, skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Mortgage - Huvudprocessen:</strong> Alla förutsättningar för utbetalning är uppfyllda (t.ex. signering är slutförd). Information om lånet och utbetalning är tillgänglig. Processen anropas via "disbursement" call activity.</li>
       </ul>
         </div>
       </details>
@@ -260,13 +229,19 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Hela lånet är utbetalt via Core system</li>
-        <li>Dokument är arkiverade i Document archive service</li>
-        <li>Processen avslutas och huvudprocessen fortsätter med "event-loan-paid-out"</li>
-        <li>Efter utbetalning avgörs om kollateralregistrering behövs (needs-collateral-registration gateway)</li>
-        <li>Om manuell kontroll krävs eller ändringar begärs, kan processen loopa tillbaka för omarbetning</li>
-        <li>Om utbetalningen avbryts, triggas "disbursement-interrupted" escalation som avslutar processen</li>
+      <p>När Disbursement-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Utbetalning är hanterad:</strong> Systemet har automatiskt hanterat utbetalning via "Handle disbursement" service task. Utbetalningsinformation har sparats i "Core system" datastore</li>
+        <li><strong>Utbetalningsstatus är bekräftad:</strong> Systemet har mottagit antingen "Disbursement completed" eller "Disbursement cancelled" message event via event-based gateway</li>
+        <li><strong>Hushållsaffordabilitet är beräknad:</strong> För varje hushåll har systemet beräknat hushållsaffordabilitet via "Calculate household affordabilty" service task (med data från "Stacc Affordability" datastore) och bedömt hushållet via "Evaluate household" business rule task</li>
+        <li><strong>Stakeholder-bedömning är slutförd:</strong> För varje stakeholder har systemet bedömt stakeholder via "Evaluate stakeholders" business rule task, inklusive eventuell uppdaterad kreditinformation från "Personal credit information source" datastore</li>
+        <li><strong>Kreditpolicybedömning är slutförd:</strong> Systemet har bedömt ansökan mot kreditpolicyer via "Evaluate application" och "Evaluate credit policies" business rule tasks</li>
+        <li><strong>Processen avslutas normalt:</strong> När kreditevaluering är slutförd, avslutas processen normalt och anropande processen fortsätter med nästa steg baserat på evalueringsresultatet</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Mortgage - Huvudprocessen:</strong> Utbetalningsstatus returneras till Mortgage-processen via "disbursement" call activity. Om utbetalning är slutförd, har dokument arkiverats och processen avslutas normalt. Om utbetalning är avbruten, eskaleras processen med "Disbursement cancelled-escalate" event.</li>
       </ul>
         </div>
       </details>
@@ -276,18 +251,32 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li><strong>Evaluate disbursement rules:</strong> Business rule task som utvärderar om manuell kontroll behövs</li>
-        <li><strong>Needs manual control gateway:</strong> Avgör om manuell kontroll krävs eller om processen kan fortsätta automatiskt</li>
-        <li><strong>Disbursement control:</strong> User task (Controller) för manuell kontroll av utbetalningen</li>
-        <li><strong>Needs four eyes verification gateway:</strong> Avgör om verifiering med fyra ögon krävs</li>
-        <li><strong>Verify disbursement details:</strong> User task (Approver) för verifiering med fyra ögon</li>
-        <li><strong>Changes requested gateway:</strong> Avgör om ändringar begärs - om ja, loopar tillbaka till Disbursement control</li>
-        <li><strong>Is purpose purchase gateway:</strong> Avgör om det är köp - om ja, krävs extra kontroll</li>
-        <li><strong>Control purchase disbursement requirements:</strong> User task (Controller) för att kontrollera köp-krav</li>
-        <li><strong>Disburse loan:</strong> Service task som genomför faktisk utbetalning via Core system</li>
-        <li><strong>Archive documents:</strong> Service task som arkiverar dokument i Document archive service</li>
-        <li><strong>Felhantering:</strong> Boundary event "disbursement-interrupted" kan avbryta processen</li>
+      <p>Disbursement-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Hantera utbetalning</h3>
+      <ul>
+        <li><strong>Handle disbursement (service task):</strong> Systemet hanterar utbetalning av lånet. Utbetalningsinformation sparas i "Core system" datastore för vidare användning</li>
+      </ul>
+
+      <h3>2. Vänta på utbetalningsstatus</h3>
+      <ul>
+        <li><strong>Event-based gateway:</strong> Systemet väntar på antingen "Disbursement completed" eller "Disbursement cancelled" message events:
+          <ul>
+            <li><strong>Disbursement completed:</strong> Utbetalning är slutförd, processen går till "Archive documents" service task</li>
+            <li><strong>Disbursement cancelled:</strong> Utbetalning är avbruten, processen går till "Disbursement cancelled-escalate" end event (escalation event)</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>3. Arkivera dokument (om utbetalning slutförd)</h3>
+      <ul>
+        <li><strong>Archive documents (service task):</strong> Systemet arkiverar dokument efter slutförd utbetalning. Dokument sparas för långsiktig lagring och compliance</li>
+      </ul>
+
+      <h3>4. Avslut</h3>
+      <ul>
+        <li><strong>Processen avslutas normalt:</strong> När dokument är arkiverade, avslutas processen normalt och anropande processen fortsätter med nästa steg</li>
+        <li><strong>Processen eskaleras (om utbetalning avbruten):</strong> Om utbetalning är avbruten, eskaleras processen med "Disbursement cancelled-escalate" end event (escalation event) för manuell hantering</li>
       </ul>
         </div>
       </details>
@@ -298,11 +287,11 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
-        <li>Disbursement Advance (förskott) ingår inte - det är en separat process i förskottsflödet</li>
-        <li>Signering ingår inte - den sker i signing-processen innan Disbursement</li>
-        <li>Dokumentgenerering ingår inte - den sker i document-generation-processen innan Disbursement</li>
-        <li>Kollateralregistrering ingår inte - den sker efter Disbursement (om nödvändig)</li>
-        <li>Offer-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Signering sker i "Signing"-processen, inte i denna subprocess</li>
+        <li>Dokumentgenerering sker i "Document generation"-processen, inte i denna subprocess</li>
+        <li>Denna subprocess fokuserar enbart på utbetalning och arkivering, inte på signering eller dokumentgenerering</li>
+        <li>Kreditbeslut sker i "Credit Decision"-processen, inte i denna subprocess</li>
+        <li>Offer-skapande sker i "Offer"-processen, inte i denna subprocess</li>
       </ul>
         </div>
       </details>
@@ -313,14 +302,10 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Mortgage huvudprocess:</strong> Disbursement anropas från mortgage.bpmn i huvudflödet (entry-18 branch) efter signering</li>
-        <li><strong>Signing-processen:</strong> Signering måste vara klar (event-signing-completed) innan Disbursement startar</li>
-        <li><strong>Document generation:</strong> Dokumentgenerering måste vara klar innan signering</li>
-        <li><strong>Core system:</strong> Genomför faktisk utbetalning av hela lånet</li>
-        <li><strong>Document archive service:</strong> Arkiverar dokument efter utbetalning</li>
-        <li><strong>Caseworker-system:</strong> Controller och Approver behöver tillgång till system för manuell kontroll och verifiering</li>
-        <li><strong>Disbursement rules (DMN):</strong> Automatisk utvärdering av om manuell kontroll behövs</li>
-        <li><strong>Collateral registration:</strong> Efter utbetalning avgörs om kollateralregistrering behövs</li>
+        <li><strong>Core system (datastore):</strong> För att hantera utbetalning via "Handle disbursement" service task</li>
+        <li><strong>Mortgage-processen:</strong> För att triggra utbetalning när alla förutsättningar är uppfyllda (t.ex. efter signering)</li>
+        <li><strong>Signing-processen:</strong> För att säkerställa att dokument är signerade innan utbetalning kan ske</li>
+        <li><strong>Externa system:</strong> För att skicka "Disbursement completed" eller "Disbursement cancelled" message events när utbetalningsstatus är bekräftad</li>
       </ul>
         </div>
       </details>
@@ -330,8 +315,27 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-disbursement.bpmn">Visa BPMN-processen för Disbursement</a></p>
-      <p class="muted">Processen startar med utvärdering av utbetalningsregler, avgör om manuell kontroll behövs, genomför kontroll och verifiering med fyra ögon (om nödvändig), kontrollerar köp-krav (om det är köp), genomför utbetalning via Core system, och arkiverar dokument. Processen använder samma BPMN-fil som Disbursement Advance men anropas i huvudflödet efter signering.</p>
+      <p><a href="#/bpmn/mortgage-se-disbursement.bpmn">Visa BPMN-processen för Disbursement</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Disbursement anropas från Mortgage-processen via "disbursement" call activity</li>
+        <li><strong>Handle disbursement (service task):</strong> Systemet hanterar utbetalning av lånet. Utbetalningsinformation sparas i "Core system" datastore</li>
+        <li><strong>Event-based gateway:</strong> Systemet väntar på antingen "Disbursement completed" eller "Disbursement cancelled" message events:
+          <ul>
+            <li><strong>Disbursement completed:</strong> Utbetalning är slutförd, processen går till "Archive documents" service task</li>
+            <li><strong>Disbursement cancelled:</strong> Utbetalning är avbruten, processen går till "Disbursement cancelled-escalate" end event (escalation event)</li>
+          </ul>
+        </li>
+        <li><strong>Archive documents (service task - om utbetalning slutförd):</strong> Systemet arkiverar dokument efter slutförd utbetalning</li>
+        <li><strong>Avslut:</strong> När dokument är arkiverade, avslutas processen normalt och Mortgage-processen fortsätter med nästa steg. Om utbetalning är avbruten, eskaleras processen med "Disbursement cancelled-escalate" event för manuell hantering</li>
+      </ol>
+      
+      <h3>Anropningsställen</h3>
+      <p>Denna process anropas från följande ställen:</p>
+      <ul>
+        <li><strong>Mortgage - Huvudprocessen:</strong> Anropas från "mortgage.bpmn" via "disbursement" call activity. När utbetalning behöver hanteras efter att alla förutsättningar är uppfyllda (t.ex. efter signering).</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -360,152 +364,39 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – automatisk utbetalning</td>
+        <td>Normalflöde – utbetalning slutförd och dokument arkiverade</td>
         <td>Happy</td>
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Evaluate disbursement rules avgör att ingen manuell kontroll behövs. Utbetalning sker automatiskt via Core system. Dokument arkiveras. Processen avslutas och går vidare till kollateralregistrering (om nödvändig) eller avslutas.</td>
+        <td>Systemet hanterar utbetalning korrekt, mottar "Disbursement completed" message event, arkiverar dokument, och processen avslutas normalt. Processen avslutas normalt och anropande processen fortsätter med nästa steg.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Manuell kontroll krävs – utbetalning godkänd</td>
-        <td>Happy</td>
-        <td>advisor</td>
+        <td>Utbetalning avbruten – eskalering</td>
+        <td>Edge</td>
+        <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Evaluate disbursement rules avgör att manuell kontroll behövs. Controller kontrollerar, Approver verifierar med fyra ögon. Utbetalning godkänns. Utbetalning sker via Core system. Dokument arkiveras. Processen avslutas.</td>
+        <td>Om utbetalning är avbruten, mottar systemet "Disbursement cancelled" message event, eskaleras processen med "Disbursement cancelled-escalate" end event (escalation event) för manuell hantering.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Köp-krav kontroll – köp med extra kontroll</td>
+        <td>Core system otillgängligt – felhantering</td>
         <td>Edge</td>
-        <td>advisor</td>
+        <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Is purpose purchase gateway avgör att det är köp. Controller kontrollerar köp-krav. Utbetalning sker via Core system. Dokument arkiveras. Processen avslutas.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S4</strong></td>
-        <td>Ändringar begärda – loop tillbaka</td>
-        <td>Edge</td>
-        <td>advisor</td>
-        <td>P2</td>
-        <td>functional</td>
-        <td>Manuell kontroll krävs. Controller begär ändringar. Changes requested gateway loopar tillbaka till Disbursement control. Ändringar görs. Utbetalning godkänns. Processen fortsätter.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S5</strong></td>
-        <td>Utbetalning avbruten – felhantering</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P0</td>
-        <td>functional</td>
-        <td>Utbetalning via Core system misslyckas eller avbryts. "disbursement-interrupted" escalation triggas. Processen avslutas med felhantering.</td>
+        <td>Om "Core system" datastore inte är tillgänglig, hanterar systemet felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalerar till anropande processen.</td>
         <td>✅ Planerad</td>
       </tr>
     
         </tbody>
       </table>
-
-      <h3>UI Flow per Scenario</h3>
-      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
-      
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>disbursement-control</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>Navigera till disbursement control</td>
-        </tr>
-      
-        <tr>
-          <td>2</td>
-          <td>disbursement-control</td>
-          <td>fill</td>
-          <td>[TODO: Lägg till locator för första fältet]</td>
-          <td>[TODO: Definiera testdata]</td>
-          <td>Fyll i information för disbursement control</td>
-        </tr>
-      
-        <tr>
-          <td>3</td>
-          <td>disbursement-control</td>
-          <td>click</td>
-          <td>[TODO: Lägg till locator för submit-knapp]</td>
-          <td>-</td>
-          <td>Skicka/Submit</td>
-        </tr>
-      
-        <tr>
-          <td>4</td>
-          <td>disbursement-control-confirmation</td>
-          <td>verify</td>
-          <td>[TODO: Lägg till locator för bekräftelsemeddelande]</td>
-          <td>-</td>
-          <td>Verifiera bekräftelse</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Om manuell kontroll krävs eller ändringar begär...</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>disbursement-control</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>Navigera till disbursement control</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
 
       <h3>Testdata-referenser</h3>
       <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
@@ -530,96 +421,6 @@
         </thead>
         <tbody>
           
-      <tr>
-        <td>Evaluate disbursement rules</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/evaluate-disbursement-rules]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Business rule task som utvärderar om manuell kontroll behövs</td>
-      </tr>
-    
-      <tr>
-        <td>Needs manual control gateway</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /needs-manual-control-gateway]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Avgör om manuell kontroll krävs eller om processen kan fortsätta automatiskt</td>
-      </tr>
-    
-      <tr>
-        <td>Disbursement control</td>
-        <td>UI</td>
-        <td>[TODO: Lägg till route, t.ex. /disbursement-control]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>User task (Controller) för manuell kontroll av utbetalningen</td>
-      </tr>
-    
-      <tr>
-        <td>Needs four eyes verification gateway</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /needs-four-eyes-verification-gateway]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Avgör om verifiering med fyra ögon krävs</td>
-      </tr>
-    
-      <tr>
-        <td>Verify disbursement details</td>
-        <td>UI</td>
-        <td>[TODO: Lägg till route, t.ex. /verify-disbursement-details]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>User task (Approver) för verifiering med fyra ögon</td>
-      </tr>
-    
-      <tr>
-        <td>Changes requested gateway</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /changes-requested-gateway]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Avgör om ändringar begärs - om ja, loopar tillbaka till Disbursement control</td>
-      </tr>
-    
-      <tr>
-        <td>Is purpose purchase gateway</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /is-purpose-purchase-gateway]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Avgör om det är köp - om ja, krävs extra kontroll</td>
-      </tr>
-    
-      <tr>
-        <td>Control purchase disbursement requirements</td>
-        <td>UI</td>
-        <td>[TODO: Lägg till route, t.ex. /control-purchase-disbursement-requirements]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>User task (Controller) för att kontrollera köp-krav</td>
-      </tr>
-    
-      <tr>
-        <td>Disburse loan</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/disburse-loan]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Service task som genomför faktisk utbetalning via Core system</td>
-      </tr>
-    
-      <tr>
-        <td>Archive documents</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/archive-documents]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Service task som arkiverar dokument i Document archive service</td>
-      </tr>
-    
         </tbody>
       </table>
         </div>
@@ -630,7 +431,15 @@
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      
+      <h3>Automatiserad utbetalning</h3>
+      <p>Genom automatisk hantering av utbetalning kan systemet säkerställa att utbetalning sker korrekt när alla förutsättningar är uppfyllda. Detta kan minska manuell hantering med upp till 80-90% jämfört med manuell process och säkerställa att utbetalningar sker i rätt tid och med rätt belopp.</p>
+      
+      <h3>Automatiserad arkivering</h3>
+      <p>Genom automatisk arkivering av dokument efter slutförd utbetalning kan systemet säkerställa att alla dokument är korrekt arkiverade för långsiktig lagring och compliance. Detta kan minska manuell hantering med upp till 70-80% och förbättra compliance med arkiveringskrav.</p>
+      
+      <h3>Eskalering vid avbruten utbetalning</h3>
+      <p>Genom automatisk eskalering när utbetalning är avbruten kan systemet säkerställa att avbrutna utbetalningar hanteras korrekt och manuellt. Detta kan minska risken för att avbrutna utbetalningar glöms bort eller hanteras felaktigt med upp till 50-60%.</p>
         </div>
       </details>
     </section>
@@ -640,10 +449,16 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som system</strong> vill jag automatiskt hantera utbetalning via "Core system" datastore <strong>så att</strong> utbetalning sker korrekt utan manuell intervention, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt hantera utbetalning via "Handle disbursement" service task, spara utbetalningsinformation i "Core system" datastore, och vänta på "Disbursement completed" eller "Disbursement cancelled" message events.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt arkivera dokument efter slutförd utbetalning <strong>så att</strong> dokument är korrekt arkiverade för långsiktig lagring och compliance. <em>Acceptanskriterier: Systemet ska automatiskt arkivera dokument via "Archive documents" service task när "Disbursement completed" message event mottas.</em></li>
+      </ul>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hanterar utbetalning <strong>så att</strong> jag endast behöver hantera avbrutna utbetalningar, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt hantera utbetalning, och endast avbrutna utbetalningar ska eskaleras med "Disbursement cancelled-escalate" event för manuell hantering.</em></li>
       </ul>
         </div>
       </details>
@@ -654,13 +469,41 @@
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>Hantera utbetalning</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>"Handle disbursement" service task ska automatiskt hantera utbetalning av lånet. Utbetalningsinformation ska sparas i "Core system" datastore för vidare användning</li>
+      </ul>
+      
+      <h3>Vänta på utbetalningsstatus</h3>
+      <ul>
+        <li>"Event-based gateway" ska korrekt vänta på antingen "Disbursement completed" eller "Disbursement cancelled" message events</li>
+        <li>Om "Disbursement completed" mottas, ska processen gå till "Archive documents" service task</li>
+        <li>Om "Disbursement cancelled" mottas, ska processen gå till "Disbursement cancelled-escalate" end event (escalation event)</li>
+      </ul>
+      
+      <h3>Arkivera dokument</h3>
+      <ul>
+        <li>"Archive documents" service task ska automatiskt arkivera dokument efter slutförd utbetalning. Dokument ska sparas för långsiktig lagring och compliance</li>
+      </ul>
+      
+      <h3>Processflöde och avslut</h3>
+      <ul>
+        <li>När dokument är arkiverade, ska processen avslutas normalt och anropande processen fortsätta med nästa steg</li>
+        <li>Om utbetalning är avbruten, ska processen eskaleras med "Disbursement cancelled-escalate" end event (escalation event) för manuell hantering</li>
+        <li>Alla processvariabler ska skickas med när Disbursement anropas från anropande processen för att säkerställa fullständig kontext</li>
+        <li>Utbetalningsstatus ska korrekt sparas och vara tillgänglig för anropande processen</li>
+      </ul>
+      
+      <h3>Felhantering och eskalering</h3>
+      <ul>
+        <li>Om "Core system" datastore inte är tillgänglig, ska processen hantera felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalera till anropande processen</li>
+        <li>Om utbetalning misslyckas, ska processen hantera felet på ett tydligt sätt och signalera till anropande processen</li>
+        <li>Om utbetalning är avbruten, ska processen eskaleras korrekt med "Disbursement cancelled-escalate" event för manuell hantering</li>
       </ul>
         </div>
       </details>
     </section>
       </body>
 </html>
+

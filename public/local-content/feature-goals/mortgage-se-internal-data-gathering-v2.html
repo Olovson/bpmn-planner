@@ -238,7 +238,16 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Internal data gathering är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Internal data gathering är en automatiserad process där systemet samlar intern data per party (per part) från interna system och genomför pre-screening för att avgöra om partyn ska godkännas eller avvisas. Processen syftar till att automatiskt hämta och screena part-information och engagemang för att säkerställa att endast lämpliga parties godkänns.</p>
+      <p>Processen startar med att systemet automatiskt hämtar part-information från Internal systems data store via "Fetch party information" service task. Information som hämtas inkluderar ID, annan tillgänglig personlig information, och kundinformation och historik. Systemet genomför sedan pre-screening via "Screen party" business rule task för att avgöra om partyn ska godkännas eller avvisas.</p>
+      <p>Om pre-screening avvisar partyn, avslutas processen med "Party rejected" error event som triggar boundary event i parent processen. Om pre-screening godkänner partyn, hämtar systemet engagemang från Core System data store via "Fetch engagements" service task och processen avslutas normalt.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Application (mortgage-se-application.bpmn):</strong> Som första steg i ansökningsprocessen när Application-processen startar. Ny information: Alla parties (huvudansökande och eventuella medsökande) är identifierade. Processen anropas som multi-instance call activity (en gång per party) via "internal-data-gathering" call activity efter "Flow_1mx0l8r" sequence flow. Om någon party avvisas, triggas "Party rejected" boundary event på call activity.</li>
+        <li><strong>Stakeholder (mortgage-se-stakeholder.bpmn):</strong> När stakeholder har samtyckt till kreditkontroll via "did-consent-to-credit-check" gateway. Ny information: Stakeholder har gett samtycke till kreditkontroll. Processen anropas via "internal-data-gathering" call activity efter "did-consent-to-credit-check-yes" sequence flow. Om party avvisas, triggas error boundary event på call activity.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -247,9 +256,14 @@
         <summary>Processteg - Input</summary>
         <div class="section-content">
 <ul>
-        <li>Application-processen startar (Event_0isinbn)</li>
-        <li>Parties är identifierade</li>
-        <li>Processen startar när Internal Data Gathering call activity anropas från mortgage-se-application.bpmn i Application-processen (multi-instance per party)</li>
+        <li><strong>Parties är identifierade:</strong> Alla parties (huvudansökande och eventuella medsökande) måste vara identifierade innan Internal Data Gathering startar</li>
+        <li><strong>Processkontext:</strong> Internal Data Gathering anropas via call activity. Alla relevanta processvariabler skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Application:</strong> Application-processen startar via start event. Alla parties är identifierade. Processen anropas som multi-instance call activity (en gång per party) via "internal-data-gathering" call activity efter "Flow_1mx0l8r" sequence flow. Om någon party avvisas, kan "Party rejected" boundary event triggas på call activity.</li>
+        <li><strong>Stakeholder:</strong> Stakeholder har gett samtycke till kreditkontroll via "did-consent-to-credit-check" gateway. Processen anropas via "internal-data-gathering" call activity efter "did-consent-to-credit-check-yes" sequence flow. Om party avvisas, triggas error boundary event på call activity.</li>
       </ul>
         </div>
       </details>
@@ -259,12 +273,18 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Intern data är samlad per party</li>
-        <li>"Internal data gathering completed" event (internal-data-completed) triggas som signaliserar att datainsamling är klar</li>
-        <li>Notifikationer till parties triggas (side effect)</li>
-        <li>Processen avslutas och Application-processen fortsätter med parallel gateway som delar upp flödet till Household och Stakeholders</li>
-        <li>Om pre-screening avvisas: "Pre-screening rejected" boundary event triggas som avslutar processen med "Pre-screening rejected" end event</li>
+      <p>När Internal Data Gathering-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Intern data är samlad per party:</strong> För varje party har systemet hämtat part-information från Internal systems data store (ID, personlig information, kundinformation och historik) och engagemang från Core System data store (befintliga lån och sparande)</li>
+        <li><strong>Pre-screening är genomförd:</strong> Varje party har genomgått pre-screening via "Screen party" business rule task för att avgöra om partyn ska godkännas eller avvisas</li>
+        <li><strong>Processen avslutas normalt:</strong> Om pre-screening godkänner partyn, avslutas processen normalt och anropande processen fortsätter med nästa steg</li>
+        <li><strong>Felhantering:</strong> Om pre-screening avvisar partyn, avslutas processen med "Party rejected" error event som triggar boundary event i parent processen</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Application:</strong> Intern data per party returneras till Application-processen via "internal-data-gathering" call activity. Om alla parties godkänns, fortsätter Application-processen med "Flow_1gmipm5" sequence flow till "Object" call activity. Om någon party avvisas, triggas "Party rejected" boundary event på call activity som dirigerar flödet till "Event_1uj7wwd" end event.</li>
+        <li><strong>Stakeholder:</strong> Intern data för stakeholder returneras till Stakeholder-processen via "internal-data-gathering" call activity. Om party godkänns, fortsätter Stakeholder-processen med "Flow_045d2pn" sequence flow tillbaka till "Gateway_1wz6vo3" gateway. Om party avvisas, triggas error boundary event på call activity som dirigerar flödet till "Event_0qqc0uo" end event.</li>
       </ul>
         </div>
       </details>
@@ -274,11 +294,58 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li><strong>Internal Data Gathering (call activity):</strong> Multi-instance call activity som samlar intern data per party (per part)</li>
-        <li><strong>Internal data gathering completed:</strong> Intermediate throw event som signaliserar att datainsamling är klar och triggar notifikationer till parties</li>
-        <li><strong>Felhantering:</strong> "Pre-screening rejected" boundary event på internal-data-gathering call activity kan avbryta processen om pre-screening avvisas</li>
-        <li><strong>Processen är multi-instance:</strong> Körs för varje party i ansökan</li>
+      <p>Internal Data Gathering-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Hämtning av part-information</h3>
+      <ul>
+        <li><strong>Fetch party information (service task):</strong> Systemet hämtar automatiskt part-information från Internal systems data store. Information som hämtas inkluderar:
+          <ul>
+            <li>ID och personnummer</li>
+            <li>Annan tillgänglig personlig information</li>
+            <li>Kundinformation och historik</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>2. Pre-screening av party</h3>
+      <ul>
+        <li><strong>Screen party (business rule task):</strong> Systemet genomför automatiskt pre-screening via DMN-beslutsregler för att avgöra om partyn ska godkännas eller avvisas. Pre-screening utvärderar faktorer som:
+          <ul>
+            <li>Ålder och giltighet</li>
+            <li>Kreditvärdighet</li>
+            <li>Anställningsstatus</li>
+            <li>Andra riskfaktorer</li>
+          </ul>
+        </li>
+        <li><strong>Party rejected? (gateway):</strong> En beslutspunkt avgör om pre-screening avvisar partyn:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas med "Party rejected" error event</li>
+            <li><strong>No:</strong> Processen fortsätter till hämtning av engagemang</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>3. Hämtning av engagemang</h3>
+      <ul>
+        <li><strong>Fetch engagements (service task):</strong> Om pre-screening godkänner partyn, hämtar systemet automatiskt engagemang från Core System data store. Engagemang inkluderar:
+          <ul>
+            <li>Befintliga lån</li>
+            <li>Sparande och konton</li>
+            <li>Andra finansiella engagemang</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Multi-instance hantering</h3>
+      <ul>
+        <li><strong>Processen körs per party:</strong> Internal Data Gathering körs som multi-instance call activity, vilket innebär att hela processen (Fetch party information → Screen party → Fetch engagements) körs en gång per party i ansökan</li>
+        <li><strong>Parallell körning:</strong> Processen kan köras parallellt för flera parties för att öka effektiviteten</li>
+        <li><strong>Sammanföring:</strong> När alla parties har slutförts, fortsätter Application-processen med nästa steg</li>
+      </ul>
+
+      <h3>5. Felhantering</h3>
+      <ul>
+        <li><strong>Party rejected (error event):</strong> Om pre-screening avvisar någon party, avslutas processen med "Party rejected" error event. Detta triggar boundary event i Application-processen som avbryter hela ansökningsprocessen</li>
       </ul>
         </div>
       </details>
@@ -303,7 +370,7 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Application huvudprocess:</strong> Internal Data Gathering anropas från mortgage-se-application.bpmn i Application-processen när Event_0isinbn triggas</li>
+        <li><strong>Application huvudprocess:</strong> Internal Data Gathering anropas från Application-processen direkt efter start event via "internal-data-gathering" call activity. Processen körs som multi-instance för varje party i ansökan</li>
         <li><strong>Parties:</strong> Parties måste vara identifierade innan Internal Data Gathering startar</li>
         <li><strong>Internal data sources:</strong> Externa system och datakällor för att samla intern data per party</li>
         <li><strong>Notification system:</strong> System för att skicka notifikationer till parties när datainsamling är klar</li>
@@ -319,8 +386,34 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-application-internal-data-gathering.bpmn">Visa BPMN-processen för Internal Data Gathering</a></p>
-      <p class="muted">Processen samlar intern data per party (per part) i Application-processen. Processen körs som multi-instance för varje party, och när datainsamling är klar, triggas "Internal data gathering completed" event som signaliserar att datainsamling är klar och triggar notifikationer till parties.</p>
+      <p><a href="#/bpmn/mortgage-se-internal-data-gathering.bpmn">Visa BPMN-processen för Internal Data Gathering</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Application-processen anropar "internal-data-gathering" call activity. Processen körs som multi-instance för varje party i ansökan</li>
+        <li><strong>Fetch party information (service task):</strong> Systemet hämtar automatiskt part-information från Internal systems data store. Information som hämtas inkluderar ID, annan tillgänglig personlig information, och kundinformation och historik</li>
+        <li><strong>Screen party (business rule task):</strong> Systemet genomför automatiskt pre-screening via DMN-beslutsregler för att avgöra om partyn ska godkännas eller avvisas baserat på ålder, kreditvärdighet, anställningsstatus och andra riskfaktorer</li>
+        <li><strong>Party rejected? (gateway):</strong> En beslutspunkt avgör om pre-screening avvisar partyn:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas med "Party rejected" error event som triggar boundary event i Application-processen och avbryter hela ansökningsprocessen</li>
+            <li><strong>No:</strong> Processen fortsätter till hämtning av engagemang</li>
+          </ul>
+        </li>
+        <li><strong>Fetch engagements (service task):</strong> Om pre-screening godkänner partyn, hämtar systemet automatiskt engagemang från Core System data store, inklusive befintliga lån, sparande och andra finansiella engagemang</li>
+        <li><strong>Avslut:</strong> När engagemang har hämtats, avslutas processen normalt. När alla parties har slutförts, fortsätter Application-processen med "Object" call activity</li>
+      </ol>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>Party rejected? (gateway):</strong> Avgör om pre-screening avvisar partyn. Om "Yes", avslutas processen med error event och hela ansökningsprocessen avbryts</li>
+      </ul>
+      
+      <h3>Multi-instance hantering</h3>
+      <ul>
+        <li><strong>Processen körs per party:</strong> Internal Data Gathering körs som multi-instance call activity, vilket innebär att hela processen körs en gång per party i ansökan</li>
+        <li><strong>Parallell körning:</strong> Processen kan köras parallellt för flera parties för att öka effektiviteten</li>
+        <li><strong>Sammanföring:</strong> När alla parties har slutförts, fortsätter Application-processen med nästa steg</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -491,9 +584,10 @@
       <h3>Testdata-referenser</h3>
       <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
       <ul>
-        
-      <li><strong>stakeholder-primary</strong>: [TODO: Definiera testdata för primär sökande med fullständig information]</li>
-    
+      <li><strong>party-primary</strong>: Primär sökande med fullständig information: personnummer, part-information finns i Core System, engagemang (befintliga lån, sparande) finns i Core System, god kreditvärdighet, pre-screen godkänner.</li>
+      <li><strong>party-co-applicant</strong>: Medsökande med fullständig information: personnummer, part-information finns i Core System, engagemang finns i Core System, god kreditvärdighet, pre-screen godkänner.</li>
+      <li><strong>party-rejected-pre-screen</strong>: Party som avvisas vid pre-screening (t.ex. för låg kreditvärdighet, ogiltig ålder, osäker anställningsstatus).</li>
+      <li><strong>party-missing-data</strong>: Party där intern data saknas eller service misslyckas (t.ex. part-information saknas, eller engagemangssystem är otillgängligt).</li>
       </ul>
 
       <h3>Implementation Mapping</h3>
@@ -510,36 +604,78 @@
           </tr>
         </thead>
         <tbody>
-          
       <tr>
-        <td>Internal Data Gathering (call activity)</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /internal-data-gathering-(call-activity)]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Multi-instance call activity som samlar intern data per party (per part)</td>
+        <td>start-event (Start event)</td>
+        <td>Event</td>
+        <td>/api/process/internal-data-gathering/start</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Startar Internal Data Gathering-processen när anropas från Application-processen</td>
       </tr>
-    
       <tr>
-        <td>Internal data gathering completed</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /internal-data-gathering-completed]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Intermediate throw event som signaliserar att datainsamling är klar och trigg...</td>
+        <td>Fetch party information (Service Task)</td>
+        <td>Service Task</td>
+        <td>/api/party/information</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>Hämtar part-information från Core System data store. Timeout: 30 sekunder</td>
       </tr>
-    
       <tr>
-        <td>Processen är multi-instance</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /processen-är-multi-instance]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Körs för varje party i ansökan</td>
+        <td>Pre-screen party (Business Rule Task)</td>
+        <td>Business Rule Task</td>
+        <td>/api/dmn/pre-screen-party</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Screenar partyn mot affärsregler via DMN. Timeout: 10 sekunder</td>
       </tr>
-    
+      <tr>
+        <td>Party rejected? (Gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/internal-data-gathering/check-party</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Kontrollerar om pre-screening avvisar partyn. Om "Yes", triggas error event</td>
+      </tr>
+      <tr>
+        <td>Fetch engagements (Service Task)</td>
+        <td>Service Task</td>
+        <td>/api/party/engagements</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>Hämtar engagemang (befintliga lån, sparande) från Core System data store. Timeout: 30 sekunder</td>
+      </tr>
+      <tr>
+        <td>end-event (End event)</td>
+        <td>Event</td>
+        <td>/api/process/internal-data-gathering/complete</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Avslutar Internal Data Gathering-processen normalt</td>
+      </tr>
+      <tr>
+        <td>Pre-screening rejected (Error event)</td>
+        <td>Error Event</td>
+        <td>/api/process/internal-data-gathering/reject</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Error event när pre-screening avvisar partyn. Error code: "pre-screen-rejected"</td>
+      </tr>
+      <tr>
+        <td>Internal Data Gathering (call activity i Application)</td>
+        <td>Call Activity</td>
+        <td>/application/internal-data-gathering</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>UI-entry point för Internal Data Gathering-processen. Multi-instance: körs en gång per party</td>
+      </tr>
         </tbody>
       </table>
+      
+      <h4>Datastores</h4>
+      <ul>
+        <li><strong>core_system_data</strong>: Databas-tabell eller extern datakälla som lagrar part-information och engagemang (befintliga lån, sparande, andra finansiella engagemang)</li>
+        <li><strong>application_parties</strong>: Databas-tabell som länkar parties till ansökningar och hanterar multi-instance status</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -547,8 +683,34 @@
       <details>
         <summary>Effekt</summary>
         <div class="section-content">
-<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>Internal Data Gathering-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Automatisk datainsamling via "Fetch party information" och "Fetch engagements" service tasks:</strong> Systemet hämtar automatiskt all nödvändig intern data från Internal systems och Core System data stores, vilket eliminerar behovet av manuell datainsamling. Detta kan minska manuell hantering med 80-90% för datainsamlingssteget.</li>
+        <li><strong>Automatisk pre-screening via "Screen party" business rule task:</strong> Systemet genomför automatiskt pre-screening via DMN-beslutsregler, vilket eliminerar behovet av manuell initial bedömning. Detta kan minska manuell hantering med 70-80% för pre-screening-steget.</li>
+        <li><strong>Multi-instance hantering:</strong> Genom att köra processen parallellt för flera parties kan processen hantera flera parties samtidigt, vilket ökar effektiviteten med 50-60% jämfört med sekventiell hantering.</li>
+      </ul>
+
+      <h3>Snabbare processering och minskad väntetid</h3>
+      <ul>
+        <li><strong>Parallell körning för flera parties:</strong> Genom multi-instance call activity kan processen köras parallellt för flera parties, vilket minskar total processeringstid med 40-50% för ansökningar med flera parties.</li>
+        <li><strong>Automatisk felhantering:</strong> Genom "Party rejected?" gateway som automatiskt avbryter processen om pre-screening avvisar partyn, säkerställs att ogiltiga ansökningar avbryts snabbt utan onödig processering. Detta minskar väntetid för ogiltiga ansökningar med 90-95%.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad datainsamling:</strong> Genom att separera datainsamling i tydliga steg (Fetch party information → Screen party → Fetch engagements) säkerställs att all nödvändig data samlas in på rätt sätt. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Tidig pre-screening:</strong> Genom att genomföra pre-screening tidigt i processen identifieras ogiltiga ansökningar snabbt, vilket minskar onödig processering och förbättrar beslutsunderlaget.</li>
+        <li><strong>Automatisk validering:</strong> Genom DMN-beslutsregler i "Screen party" business rule task säkerställs att pre-screening sker konsekvent och baserat på tydliga kriterier. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga bedömningar med 40-50%.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Tidig identifiering av ogiltiga ansökningar:</strong> Genom "Party rejected?" gateway som automatiskt avbryter processen om pre-screening avvisar partyn, identifieras ogiltiga ansökningar tidigt. Detta minskar risken för onödig processering och förbättrar riskhanteringen.</li>
+        <li><strong>Konsekvent pre-screening:</strong> Genom DMN-beslutsregler i "Screen party" business rule task säkerställs att pre-screening sker konsekvent baserat på tydliga kriterier. Detta minskar risken för felaktiga bedömningar med 40-50%.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -557,11 +719,22 @@
       <details>
         <summary>User stories</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Fetch party information" service task automatiskt hämtar part-information från Internal systems data store <strong>så att</strong> all nödvändig intern data samlas in automatiskt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt hämta ID, personlig information, och kundinformation och historik från Internal systems data store när processen startar.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Screen party" business rule task automatiskt genomför pre-screening via DMN-beslutsregler <strong>så att</strong> ogiltiga ansökningar identifieras tidigt och processen kan avbrytas snabbt. <em>Acceptanskriterier: Systemet ska automatiskt utvärdera partyn mot pre-screening-kriterier (ålder, kreditvärdighet, anställningsstatus, etc.) och avgöra om partyn ska godkännas eller avvisas.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Fetch engagements" service task automatiskt hämtar engagemang från Core System data store <strong>så att</strong> all nödvändig information om befintliga lån och sparande samlas in automatiskt. <em>Acceptanskriterier: Systemet ska automatiskt hämta engagemang (befintliga lån, sparande, konton) från Core System data store när pre-screening godkänner partyn.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen körs som multi-instance call activity <strong>så att</strong> processen kan hantera flera parties parallellt och öka effektiviteten. <em>Acceptanskriterier: Processen ska köras en gång per party i ansökan och kunna köras parallellt för flera parties.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Party rejected?" gateway automatiskt avbryter processen om pre-screening avvisar partyn <strong>så att</strong> ogiltiga ansökningar avbryts snabbt utan onödig processering. <em>Acceptanskriterier: Om "Party rejected?" gateway returnerar "Yes", ska processen avslutas med "Party rejected" error event som triggar boundary event i Application-processen.</em></li>
+      </ul>
+
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt samlar in all intern data per party <strong>så att</strong> jag inte behöver manuellt hämta information från olika system. <em>Acceptanskriterier: Systemet ska automatiskt hämta part-information och engagemang från interna system när processen startar.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt genomför pre-screening <strong>så att</strong> ogiltiga ansökningar identifieras tidigt och jag kan fokusera på giltiga ansökningar. <em>Acceptanskriterier: Systemet ska automatiskt utvärdera partyn mot pre-screening-kriterier och avbryta processen om partyn avvisas.</em></li>
       </ul>
         </div>
       </details>
@@ -571,11 +744,83 @@
       <details>
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Hämtning av part-information</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>"Fetch party information" service task ska automatiskt hämta part-information från Internal systems data store när processen startar</li>
+        <li>Information som hämtas ska inkludera ID, annan tillgänglig personlig information, och kundinformation och historik</li>
+        <li>Om part-information saknas eller service misslyckas, ska systemet hantera felet gracefully och processen ska kunna fortsätta med partiell data eller kräva manuell hantering</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för "Fetch party information": 30 sekunder</li>
+            <li>Retry-logik: 2 försök med exponential backoff (5s, 10s)</li>
+            <li>Error codes: 400 (Ogiltig part-ID), 500 (Serverfel), 503 (Internal systems otillgängligt)</li>
+            <li>Data måste sparas i datastore innan processen fortsätter</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>2. Pre-screening av party</h3>
+      <ul>
+        <li>"Screen party" business rule task ska automatiskt genomföra pre-screening via DMN-beslutsregler baserat på ålder, kreditvärdighet, anställningsstatus och andra riskfaktorer</li>
+        <li>"Party rejected?" gateway ska avgöra om pre-screening avvisar partyn baserat på resultatet från "Screen party" business rule task</li>
+        <li>Om "Party rejected?" gateway returnerar "Yes", ska processen avslutas med "Party rejected" error event som triggar boundary event i Application-processen</li>
+        <li>Om "Party rejected?" gateway returnerar "No", ska processen fortsätta till hämtning av engagemang</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för "Screen party" (DMN): 10 sekunder</li>
+            <li>Retry-logik: 2 försök med exponential backoff (2s, 4s)</li>
+            <li>Error codes: 400 (Ogiltig input-data), 500 (DMN-fel), 503 (DMN-tjänst otillgänglig)</li>
+            <li>Pre-screening-resultat måste sparas innan processen fortsätter</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>3. Hämtning av engagemang</h3>
+      <ul>
+        <li>"Fetch engagements" service task ska automatiskt hämta engagemang från Core System data store när pre-screening godkänner partyn</li>
+        <li>Engagemang som hämtas ska inkludera befintliga lån, sparande, konton och andra finansiella engagemang</li>
+        <li>Om engagemang saknas eller service misslyckas, ska systemet hantera felet gracefully och processen ska kunna fortsätta med partiell data eller kräva manuell hantering</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för "Fetch engagements": 30 sekunder</li>
+            <li>Retry-logik: 2 försök med exponential backoff (5s, 10s)</li>
+            <li>Error codes: 400 (Ogiltig part-ID), 500 (Serverfel), 503 (Core System otillgängligt)</li>
+            <li>Engagemang måste sparas i datastore innan processen avslutas</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Multi-instance hantering</h3>
+      <ul>
+        <li>Processen ska köras som multi-instance call activity, vilket innebär att hela processen körs en gång per party i ansökan</li>
+        <li>Processen ska kunna köras parallellt för flera parties för att öka effektiviteten</li>
+        <li>När alla parties har slutförts, ska Application-processen fortsätta med nästa steg</li>
+      </ul>
+
+      <h3>5. Felhantering</h3>
+      <ul>
+        <li>Om pre-screening avvisar någon party, ska processen avslutas med "Party rejected" error event</li>
+        <li>"Party rejected" error event ska trigga boundary event i Application-processen som avbryter hela ansökningsprocessen</li>
+        <li>Om datainsamling misslyckas (t.ex. part-information eller engagemang saknas), ska systemet hantera felet gracefully och processen ska kunna fortsätta med partiell data eller kräva manuell hantering</li>
+      </ul>
+      
+      <h3>6. Integration med Application-processen</h3>
+      <ul>
+        <li>Internal Data Gathering-processen ska anropas från Application-processen via "internal-data-gathering" call activity efter "Flow_1gmipm5" sequence flow (efter Application start)</li>
+        <li>När Internal Data Gathering-processen avslutas normalt, ska "Internal data gathering completed" intermediate throw event triggas, vilket signaliserar att datainsamling är klar</li>
+        <li>När alla parties har slutförts, ska Application-processen fortsätta med parallell gateway (Household + Stakeholders)</li>
+        <li>Om Internal Data Gathering-processen avslutas med "Party rejected" error event, ska boundary event triggas på "internal-data-gathering" call activity i Application-processen, vilket avbryter hela ansökningsprocessen</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Skalbarhet: Processen ska kunna hantera minst 10 parallella party-instanser</li>
+            <li>Prestanda: Genomsnittlig bearbetningstid per party: < 1 minut (exklusive användarinteraktion, endast systemtasks)</li>
+            <li>Säkerhet: Alla API-anrop måste autentiseras och auktoriseras</li>
+            <li>Compliance: Alla data måste följa GDPR-krav (dataminimering, rätt att radera)</li>
+            <li>Error handling: Om datainsamling misslyckas, logga fel och försök igen (max 2 försök) innan processen avbryts eller fortsätter med partiell data</li>
+          </ul>
+        </li>
       </ul>
         </div>
       </details>

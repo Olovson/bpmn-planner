@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Application</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+
+    <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+<p>Application är en omfattande kundaktivitet där kunden samlar in och validerar all nödvändig information för en bolåneansökan. Processen startar automatiskt med intern datainsamling där systemet hämtar befintlig kunddata och gör en initial pre-screening. Därefter fortsätter processen med att kunden parallellt fyller i information om hushållsekonomi (inkomster, utgifter, tillgångar, låneuppgifter) och stakeholders (personlig information för alla involverade parter samt fastighetsinformation). När all data är insamlad och validerad mot affärsregler, bekräftar kunden ansökan innan den går vidare till automatisk kreditevaluering.</p>
+      <p>Detta är primärt en kundaktivitet där kunden interagerar med systemet via kundportalen för att fylla i och bekräfta information. Systemet stödjer processen genom automatisk datainsamling, validering mot affärsregler, och beräkning av maximalt lånebelopp baserat på hushållsaffordability.</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+<p>Application-processen startar när en kund initierar en bolåneansökan i Mortgage huvudprocessen. Följande information är tillgänglig vid start:</p>
+      <ul>
+        <li><strong>Grundläggande ansökningsdata:</strong> Ansöknings-ID, kund-ID, ansökningstyp (köp, flytt, omlåning), önskat belopp, löptid, och fastighetstyp</li>
+        <li><strong>Kundinformation:</strong> Identifierad kund med grundläggande uppgifter från kärnsystemet</li>
+        <li><strong>Processkontext:</strong> Application anropas automatiskt från Mortgage huvudprocessen som första steg i kreditprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+<p>När Application-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Komplett ansökningsdata:</strong> All nödvändig information är insamlad och validerad, inklusive:
+          <ul>
+            <li>Intern data för alla identifierade parter (pre-screen genomförd)</li>
+            <li>Hushållsekonomi (inkomster, utgifter, tillgångar, låneuppgifter)</li>
+            <li>Stakeholder-information för alla involverade parter (personlig information, kreditupplysning, bedömning)</li>
+            <li>Objekt/fastighetsinformation (fastighetstyp, värdering, säkerhetsregistrering, bedömning)</li>
+          </ul>
+        </li>
+        <li><strong>KALP-beräkning:</strong> Systemet har beräknat maximalt lånebelopp baserat på hushållsaffordability (KALP = Kvar Att Leva På)</li>
+        <li><strong>Ansökan bekräftad:</strong> Kunden har bekräftat att all information är korrekt via "Confirm application"-steget (eller steget har hoppats över om det inte krävs)</li>
+        <li><strong>Kreditinformation hämtad:</strong> Systemet har hämtat kreditinformation från externa källor (t.ex. UC3) för alla stakeholders</li>
+        <li><strong>Processen avslutas:</strong> Ansökan går vidare till kreditevaluering i Mortgage huvudprocessen</li>
+      </ul>
+      <p><strong>Felhantering:</strong> Om något steg misslyckas, kan processen avslutas med följande fel:</p>
+      <ul>
+        <li><strong>Pre-screen rejected:</strong> En eller flera parter uppfyller inte grundläggande krav (t.ex. ålder, anställningsstatus, kreditvärdighet)</li>
+        <li><strong>Stakeholder rejected:</strong> En stakeholder (t.ex. medlåntagare) avvisas baserat på bedömning</li>
+        <li><strong>Object rejected:</strong> Fastigheten/bostadsrätten avvisas baserat på bedömning (t.ex. för hög LTV, dålig belägenhet)</li>
+        <li><strong>Application rejected:</strong> KALP-beräkningen visar att maximalt lånebelopp är under tröskelvärde eller under ansökt belopp (beroende på ansökningstyp)</li>
+        <li><strong>Timeout:</strong> Kunden har inte bekräftat ansökan inom tidsgränsen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+<p>Application-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Intern datainsamling</h3>
+      <ul>
+        <li><strong>Internal data gathering:</strong> Hämtar befintlig kunddata från interna system (part, engagemang, kreditinformation) och gör pre-screening via DMN-beslutsregel. Processen körs automatiskt för varje identifierad part (multi-instance), vilket innebär att om ansökan innehåller flera parter (t.ex. huvudansökande och medlåntagare), genomförs datainsamling och pre-screening för varje part separat.</li>
+      </ul>
+
+      <h3>2. Objektinformation</h3>
+      <ul>
+        <li><strong>Object:</strong> Samlar in grundläggande information om fastigheten/bostadsrätten som ansökan gäller. Detta sker innan stakeholders-processen startar.</li>
+      </ul>
+
+      <h3>3. Parallell datainsamling</h3>
+      <p>Efter att intern data och objektinformation är insamlad, startar två parallella flöden:</p>
+      <ul>
+        <li><strong>Household:</strong> Samlar in hushållsekonomi, personlig ekonomi, källa till eget kapital och låneuppgifter. Detta är en kundaktivitet där kunden fyller i ekonomisk information. Processen körs som multi-instance, vilket innebär att den kan köras för flera hushåll om det behövs.</li>
+        <li><strong>Stakeholders (subprocess "Per household"):</strong> Samlar in information om alla involverade parter (stakeholders). Denna subprocess körs också som multi-instance - en gång per hushåll. Inne i subprocessen genomförs två steg sekventiellt för varje stakeholder:
+          <ul>
+            <li><strong>Household (call activity):</strong> Först samlas hushållsekonomi in för den specifika stakeholder:n (detta är en separat Household-process som körs inuti stakeholders-subprocessen)</li>
+            <li><strong>Stakeholder (call activity):</strong> Sedan registreras personlig information, samtycke till kreditupplysning ges, systemet hämtar och utvärderar personlig information automatiskt, och stakeholder bedöms via DMN-beslutsregel</li>
+            <li><strong>Object (call activity):</strong> Slutligen hanteras fastighetsinformation (fastighetstyp, värdering, säkerhetsregistrering) och fastighet/bostadsrätt utvärderas via DMN</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. KALP-beräkning och bekräftelse</h3>
+      <ul>
+        <li><strong>Skip step? (beslutspunkt):</strong> Efter att Household och Stakeholders är klara, avgörs om bekräftelsesteget ska hoppas över eller inte. Om bekräftelse hoppas över, beräknas KALP direkt och processen går vidare till kreditupplysning utan kundens bekräftelse. Om bekräftelse inte hoppas över, går processen direkt vidare till bekräftelsesteget.</li>
+        <li><strong>KALP (automatisk beräkning):</strong> Om bekräftelsesteget ska hoppas över, beräknar systemet automatiskt maximalt lånebelopp baserat på hushållsaffordability (KALP = Kvar Att Leva På). Detta är en automatisk beräkning som tar hänsyn till inkomster, utgifter, befintliga lån och andra ekonomiska faktorer för att avgöra hur mycket kunden kan låna.</li>
+        <li><strong>Screen KALP (affärsregelutvärdering):</strong> Efter KALP-beräkningen utvärderas resultatet automatiskt mot affärsregler via DMN-beslutsregel. Beroende på ansökningstyp (köp, flytt, omlåning) och om maximalt lånebelopp är under tröskelvärde eller under ansökt belopp, kan ansökan avvisas automatiskt. Reglerna varierar beroende på ansökningstyp:
+          <ul>
+            <li><strong>För köp:</strong> Om maximalt lånebelopp är under tröskelvärde → avvisa. Om maximalt lånebelopp är under ansökt belopp → sätt ansökt belopp till maximalt belopp. Om maximalt lånebelopp är över ansökt belopp → inga ändringar.</li>
+            <li><strong>För flytt/omlåning:</strong> Om maximalt lånebelopp är under ansökt belopp → avvisa.</li>
+          </ul>
+        </li>
+        <li><strong>KALP OK? (beslutspunkt):</strong> Avgör om KALP-beräkningen och screening är godkänd. Om ja, går processen vidare till bekräftelse (om bekräftelse inte hoppades över) eller direkt till kreditupplysning (om bekräftelse hoppades över). Om nej, avvisas ansökan automatiskt.</li>
+        <li><strong>Confirm application (kundaktivitet):</strong> Kunden bekräftar att all information är korrekt innan ansökan går vidare. Kunden ser en sammanfattning av all insamlad information (intern data, hushåll, stakeholders, objekt) och bekräftar att allt är korrekt. Detta steg har en timeout - om kunden inte bekräftar inom tidsgränsen, avslutas processen med timeout-fel.</li>
+      </ul>
+
+      <h3>5. Kreditupplysning</h3>
+      <ul>
+        <li><strong>Sammanför flöden (beslutspunkt):</strong> Efter att antingen bekräftelse är klar (om bekräftelse inte hoppades över) eller direktflödet är klart (om bekräftelse hoppades över), samlas båda flöden ihop innan kreditupplysning startar. Detta säkerställer att kreditupplysning bara startar när antingen bekräftelse är klar eller bekräftelse har hoppats över.</li>
+        <li><strong>Fetch credit information (automatisk hämtning):</strong> Efter att flöden har samlats ihop, hämtar systemet automatiskt kreditinformation från externa källor (t.ex. UC3) för alla stakeholders. Detta körs som multi-instance - en gång per stakeholder. Kreditinformationen lagras i datastore "Personal credit information source" för användning i senare steg i kreditprocessen.</li>
+      </ul>
+
+      <h3>Felhantering</h3>
+      <ul>
+        <li><strong>Pre-screen rejected:</strong> Om en eller flera parter avvisas vid pre-screening (från Internal data gathering), triggas ett error event som avslutar processen</li>
+        <li><strong>Stakeholder rejected:</strong> Om en stakeholder avvisas (från Stakeholder call activity), triggas ett error event som avslutar processen</li>
+        <li><strong>Object rejected:</strong> Om fastigheten/bostadsrätten avvisas (från Object call activity), triggas ett error event som avslutar processen</li>
+        <li><strong>Application rejected:</strong> Om KALP-beräkningen eller screening visar att ansökan ska avvisas, avslutas processen med error event</li>
+        <li><strong>Timeout:</strong> Om kunden inte bekräftar ansökan inom tidsgränsen, avslutas processen med timeout-fel</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Kreditevaluering ingår inte - den sker i huvudprocessen efter Application</li>
+        <li>KYC-processen ingår inte - den sker i huvudprocessen efter Application</li>
+        <li>Kreditbeslut ingår inte - det sker i huvudprocessen efter Application</li>
+        <li>Dokumentgenerering ingår inte - den sker senare i huvudprocessen</li>
+        <li>Signering och utbetalning ingår inte - de sker senare i huvudprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<p>Application-processen är beroende av följande system, processer och regler:</p>
+      
+      <h3>Processer</h3>
+      <ul>
+        <li><strong>Mortgage huvudprocess:</strong> Application anropas från Mortgage huvudprocessen som första steg i kreditprocessen. När Application är slutförd, fortsätter huvudprocessen med kreditevaluering</li>
+        <li><strong>Internal data gathering (subprocess):</strong> Hämtar data från interna system (part, engagemang, kreditinformation) och gör pre-screening via DMN-beslutsregel. Körs automatiskt för varje identifierad part</li>
+        <li><strong>Household (subprocess):</strong> Samlar in hushållsekonomi, personlig ekonomi, källa till eget kapital och låneuppgifter. Detta är en kundaktivitet som körs parallellt med Stakeholders-processen</li>
+        <li><strong>Stakeholders (subprocess "Per household"):</strong> Hanterar information om alla involverade parter och deras fastigheter. Innehåller Household, Stakeholder och Object call activities som körs sekventiellt för varje stakeholder</li>
+        <li><strong>Stakeholder (subprocess):</strong> Registrerar personlig information, hanterar samtycke till kreditupplysning, hämtar och utvärderar personlig information, och bedömer stakeholder via DMN</li>
+        <li><strong>Object (subprocess):</strong> Hanterar fastighetsinformation (fastighetstyp, värdering, säkerhetsregistrering) och utvärderar fastighet/bostadsrätt via DMN</li>
+      </ul>
+
+      <h3>Affärsregler (DMN)</h3>
+      <ul>
+        <li><strong>Pre-screen Party:</strong> Bedömer om en part uppfyller grundläggande krav för att fortsätta med ansökan (t.ex. ålder, anställningsstatus, kreditvärdighet). Används i Internal data gathering</li>
+        <li><strong>Assess Stakeholder:</strong> Bedömer borrower capacity för en stakeholder baserat på årsinkomst, DTI-ratio (debt-to-income), och kredithistorik. Används i Stakeholder-processen</li>
+        <li><strong>Evaluate Fastighet:</strong> Bedömer om en fastighet (hus) uppfyller krav baserat på fastighetsvärde, skick, LTV (loan-to-value), och belägenhet. Används i Object-processen för fastigheter</li>
+        <li><strong>Evaluate Bostadsrätt:</strong> Bedömer om en bostadsrätt uppfyller krav baserat på lägenhetsvärde, föreningsskuld, och LTV. Används i Object-processen för bostadsrätter</li>
+      </ul>
+
+      <h3>System och tjänster</h3>
+      <ul>
+        <li><strong>Interna system:</strong>
+          <ul>
+            <li><strong>Partsystem:</strong> För att hämta grundläggande kundinformation</li>
+            <li><strong>Engagemangssystem:</strong> För att hämta befintliga engagemang och låneuppgifter</li>
+            <li><strong>KALP-system:</strong> För att beräkna maximalt lånebelopp baserat på hushållsaffordability</li>
+          </ul>
+        </li>
+        <li><strong>Externa system:</strong>
+          <ul>
+            <li><strong>Kreditupplysningstjänster (t.ex. UC3):</strong> För att hämta kreditinformation för alla stakeholders</li>
+          </ul>
+        </li>
+        <li><strong>Kundportal:</strong> För att kunden ska kunna fylla i information (hushållsekonomi, stakeholder-information, objekt-information) och bekräfta ansökan</li>
+      </ul>
+
+      <h3>Data</h3>
+      <ul>
+        <li><strong>KALP (data store):</strong> Lagrar resultatet av KALP-beräkningen (maximalt lånebelopp)</li>
+        <li><strong>Personal credit information source (data store):</strong> Lagrar kreditinformation som hämtats från externa källor</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage-se-application.bpmn">Visa BPMN-processen för Application</a></p>
+      
+      <h3>Processflöde</h3>
+      <p>Application-processen följer följande flöde:</p>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Application anropas från Mortgage huvudprocessen</li>
+        <li><strong>Intern datainsamling:</strong> Systemet hämtar automatiskt befintlig kunddata från interna system och gör pre-screening för varje identifierad part (multi-instance). Om någon part avvisas vid pre-screening, avslutas processen med "Party rejected"-fel</li>
+        <li><strong>Objektinformation:</strong> Grundläggande information om fastigheten/bostadsrätten samlas in. Om objektet avvisas, avslutas processen med "Object rejected"-fel</li>
+        <li><strong>Parallell datainsamling:</strong> Två flöden startar parallellt:
+          <ul>
+            <li><strong>Household:</strong> Kunden fyller i hushållsekonomi (körs som multi-instance om det finns flera hushåll)</li>
+            <li><strong>Stakeholders (subprocess "Per household"):</strong> För varje hushåll (multi-instance) genomförs sekventiellt:
+              <ol>
+                <li>Household (call activity) - hushållsekonomi för den specifika stakeholder:n</li>
+                <li>Stakeholder (call activity) - personlig information och bedömning</li>
+                <li>Object (call activity) - fastighetsinformation och bedömning</li>
+              </ol>
+              Om någon stakeholder eller objekt avvisas, avslutas processen med respektive fel
+            </li>
+          </ul>
+        </li>
+        <li><strong>Bekräftelse eller hoppa över:</strong> Efter att båda parallella flöden är klara, avgörs om bekräftelsesteget ska hoppas över:
+          <ul>
+            <li><strong>Om ja (hoppa över):</strong> Systemet beräknar KALP (maximalt lånebelopp), screenar resultatet mot affärsregler, och om godkänt går direkt vidare till kreditupplysning</li>
+            <li><strong>Om nej (inte hoppa över):</strong> Processen går direkt vidare till bekräftelsesteget</li>
+          </ul>
+        </li>
+        <li><strong>KALP-beräkning och screening:</strong> Om bekräftelse hoppades över, beräknas maximalt lånebelopp och screenas. Om screening visar att ansökan ska avvisas (t.ex. maximalt belopp under tröskelvärde eller under ansökt belopp för vissa ansökningstyper), avslutas processen med "Application rejected"-fel</li>
+        <li><strong>Bekräftelse:</strong> Kunden bekräftar att all information är korrekt. Detta steg har en timeout - om kunden inte bekräftar inom tidsgränsen, avslutas processen med "Timeout"-fel</li>
+        <li><strong>Kreditupplysning:</strong> Systemet hämtar kreditinformation från externa källor (t.ex. UC3) för alla stakeholders (multi-instance)</li>
+        <li><strong>Slut:</strong> Processen avslutas och ansökan går vidare till kreditevaluering i Mortgage huvudprocessen</li>
+      </ol>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>"Skip step?" gateway:</strong> Avgör om bekräftelsesteget ska hoppas över eller inte. Om bekräftelse hoppas över, beräknas KALP direkt och processen går vidare till kreditupplysning utan kundens bekräftelse</li>
+        <li><strong>"KALP OK?" gateway:</strong> Avgör om KALP-beräkningen och screening är godkänd. Om nej, avvisas ansökan automatiskt. Om ja, går processen vidare till bekräftelse (om bekräftelse inte hoppades över) eller direkt till kreditupplysning</li>
+        <li><strong>"Sammanför flöden" gateway:</strong> Samlar ihop flöden från både bekräftelsesteget (om det inte hoppades över) och direktflödet (om bekräftelse hoppades över), innan kreditupplysning startar. Detta säkerställer att kreditupplysning bara startar när antingen bekräftelse är klar eller bekräftelse har hoppats över</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – komplett ansökan med en stakeholder</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>All data insamlad: intern data (pre-screen godkänd), hushåll, en stakeholder med objekt. Ansökan bekräftad och klar för kreditevaluering.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Normalflöde – ansökan med flera stakeholders (sambo/medlåntagare)</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>All data insamlad med flera stakeholders (huvudsökande + sambo/medlåntagare). Varje stakeholder har eget objekt. Alla pre-screen godkända.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Pre-screen rejected – kund uppfyller inte grundläggande krav</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Pre-screen DMN avvisar kunden (t.ex. för låg kreditvärdighet, ålder, anställningsstatus). Processen avslutas med error event "Pre-screening rejected".</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Stakeholder rejected – en stakeholder uppfyller inte krav</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>En stakeholder (t.ex. medlåntagare) avvisas av Assess Stakeholder DMN. Processen avslutas med error event "Stakeholder rejected".</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>Object rejected – fastighet/bostadsrätt uppfyller inte krav</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Fastighet/bostadsrätt avvisas av Evaluate Fastighet/Bostadsrätt DMN (t.ex. för hög LTV, dålig belägenhet). Processen avslutas med error event "Object rejected".</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Komplettering behövs – ofullständig hushållsekonomi</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td>Hushållsekonomi saknar viktig information (t.ex. källa till eget kapital). Systemet kräver komplettering innan ansökan kan bekräftas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>KALP-beräkning när bekräftelse hoppas över</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Skip step gateway hoppar över bekräftelse, KALP beräknas automatiskt (maximalt belopp = 2 500 000 SEK), Screen KALP returnerar "APPROVED" för köpansökan, KALP OK gateway godkänner, processen går direkt till Fetch credit information utan kundens bekräftelse</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>Application rejected - KALP under ansökt belopp (flytt/omlåning)</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>KALP-beräkning visar maximalt lånebelopp = 2 000 000 SEK, ansökt belopp = 2 500 000 SEK, Screen KALP avvisar för flytt/omlåning (regel: om maximalt belopp är under ansökt belopp → avvisa), "application rejected" error event triggas, tydligt felmeddelande visas: "Ansökan avvisad: Maximalt lånebelopp (2 000 000 SEK) är under ansökt belopp (2 500 000 SEK)"</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>Application rejected - KALP under tröskelvärde (köp)</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>KALP-beräkning visar maximalt lånebelopp = 500 000 SEK (under tröskelvärde), Screen KALP avvisar för köpansökan (regel: om maximalt belopp är under tröskelvärde → avvisa), "application rejected" error event triggas, tydligt felmeddelande visas</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S10</strong></td>
+        <td>Köpansökan - KALP justerar ansökt belopp till maximalt belopp</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>KALP-beräkning visar maximalt lånebelopp = 2 500 000 SEK, ansökt belopp = 2 000 000 SEK, Screen KALP justerar ansökt belopp till maximalt belopp (regel för köp: om maximalt belopp är under ansökt belopp → sätt ansökt belopp till maximalt belopp), KALP OK gateway godkänner, processen fortsätter</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S11</strong></td>
+        <td>Timeout på Confirm application</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Kunden bekräftar inte ansökan inom tidsgränsen (30 dagar), timeout boundary event triggas på "Confirm application" user task, "application-timeout" error event triggas, processen avslutas, tydligt felmeddelande visas: "Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar)"</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S12</strong></td>
+        <td>Fetch credit information - multi-instance för flera stakeholders</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Efter bekräftelse eller skip step, Fetch credit information startar automatiskt som multi-instance - en gång per stakeholder (huvudansökande och medlåntagare), kreditinformation hämtas från externa källor (t.ex. UC3) för varje stakeholder separat, information lagras i datastore "Personal credit information source", processen avslutas normalt</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett ansökan med en stakeholder</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>application-start</td>
+          <td>navigate</td>
+          <td>nav-application</td>
+          <td>customer-standard</td>
+          <td>Navigera till Application-processen från Mortgage huvudprocess</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>internal-data-gathering</td>
+          <td>navigate</td>
+          <td>nav-internal-data</td>
+          <td>customer-standard</td>
+          <td>Internal data gathering startar automatiskt (multi-instance per part). Vänta på att systemet hämtar data från interna system.</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>internal-data-gathering</td>
+          <td>verify</td>
+          <td>pre-screen-result-approved</td>
+          <td>customer-standard</td>
+          <td>Verifiera att Pre-screen Party DMN returnerar "APPROVED"</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>household</td>
+          <td>navigate</td>
+          <td>nav-household</td>
+          <td>customer-standard</td>
+          <td>Navigera till Household-formulär (körs parallellt med Stakeholders)</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>household</td>
+          <td>fill</td>
+          <td>input-household-economy</td>
+          <td>customer-standard</td>
+          <td>Fyll i hushållsekonomi (inkomster, utgifter, tillgångar)</td>
+        </tr>
+      
+        <tr>
+          <td>6</td>
+          <td>household</td>
+          <td>fill</td>
+          <td>input-personal-economy</td>
+          <td>customer-standard</td>
+          <td>Fyll i personlig ekonomi (löner, andra inkomster)</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>household</td>
+          <td>fill</td>
+          <td>input-equity-source</td>
+          <td>customer-standard</td>
+          <td>Fyll i källa till eget kapital</td>
+        </tr>
+      
+        <tr>
+          <td>8</td>
+          <td>household</td>
+          <td>fill</td>
+          <td>input-loan-details</td>
+          <td>customer-standard</td>
+          <td>Fyll i låneuppgifter (befintliga lån, krediter)</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>household</td>
+          <td>click</td>
+          <td>btn-submit-household</td>
+          <td>customer-standard</td>
+          <td>Skicka in Household-data</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>stakeholders</td>
+          <td>navigate</td>
+          <td>nav-stakeholders</td>
+          <td>customer-standard</td>
+          <td>Navigera till Stakeholders (körs parallellt med Household)</td>
+        </tr>
+      
+        <tr>
+          <td>11</td>
+          <td>stakeholder</td>
+          <td>navigate</td>
+          <td>nav-stakeholder</td>
+          <td>customer-standard</td>
+          <td>Navigera till Stakeholder-formulär (första stakeholder = huvudansökande)</td>
+        </tr>
+      
+        <tr>
+          <td>12</td>
+          <td>stakeholder</td>
+          <td>fill</td>
+          <td>input-personal-info</td>
+          <td>customer-standard</td>
+          <td>Fyll i personlig information (namn, personnummer, kontaktuppgifter)</td>
+        </tr>
+      
+        <tr>
+          <td>13</td>
+          <td>stakeholder</td>
+          <td>click</td>
+          <td>checkbox-credit-consent</td>
+          <td>customer-standard</td>
+          <td>Ge samtycke till kreditupplysning</td>
+        </tr>
+      
+        <tr>
+          <td>14</td>
+          <td>stakeholder</td>
+          <td>click</td>
+          <td>btn-submit-stakeholder</td>
+          <td>customer-standard</td>
+          <td>Skicka in Stakeholder-data. Systemet hämtar och utvärderar personlig information automatiskt.</td>
+        </tr>
+      
+        <tr>
+          <td>15</td>
+          <td>stakeholder</td>
+          <td>verify</td>
+          <td>assess-stakeholder-approved</td>
+          <td>customer-standard</td>
+          <td>Verifiera att Assess Stakeholder DMN returnerar "APPROVED"</td>
+        </tr>
+      
+        <tr>
+          <td>16</td>
+          <td>object</td>
+          <td>navigate</td>
+          <td>nav-object</td>
+          <td>customer-standard</td>
+          <td>Navigera till Object-formulär (körs sekventiellt efter Stakeholder)</td>
+        </tr>
+      
+        <tr>
+          <td>17</td>
+          <td>object</td>
+          <td>select</td>
+          <td>select-property-type</td>
+          <td>customer-standard</td>
+          <td>Välj fastighetstyp (Fastighet eller Bostadsrätt)</td>
+        </tr>
+      
+        <tr>
+          <td>18</td>
+          <td>object</td>
+          <td>fill</td>
+          <td>input-property-valuation</td>
+          <td>customer-standard</td>
+          <td>Fyll i fastighetsvärdering</td>
+        </tr>
+      
+        <tr>
+          <td>19</td>
+          <td>object</td>
+          <td>click</td>
+          <td>btn-submit-object</td>
+          <td>customer-standard</td>
+          <td>Skicka in Object-data. Systemet utvärderar fastighet/bostadsrätt via DMN.</td>
+        </tr>
+      
+        <tr>
+          <td>20</td>
+          <td>object</td>
+          <td>verify</td>
+          <td>evaluate-property-approved</td>
+          <td>customer-standard</td>
+          <td>Verifiera att Evaluate Fastighet/Bostadsrätt DMN returnerar "APPROVED"</td>
+        </tr>
+      
+        <tr>
+          <td>21</td>
+          <td>confirm-application</td>
+          <td>navigate</td>
+          <td>nav-confirm-application</td>
+          <td>customer-standard</td>
+          <td>När både Household och Stakeholders är klara, navigera till Confirm application</td>
+        </tr>
+      
+        <tr>
+          <td>22</td>
+          <td>confirm-application</td>
+          <td>verify</td>
+          <td>summary-all-data</td>
+          <td>customer-standard</td>
+          <td>Verifiera att sammanfattning visar all insamlad data (intern data, hushåll, stakeholder, objekt)</td>
+        </tr>
+      
+        <tr>
+          <td>23</td>
+          <td>confirm-application</td>
+          <td>click</td>
+          <td>btn-confirm-application</td>
+          <td>customer-standard</td>
+          <td>Bekräfta ansökan</td>
+        </tr>
+      
+        <tr>
+          <td>24</td>
+          <td>application-completed</td>
+          <td>verify</td>
+          <td>success-message</td>
+          <td>customer-standard</td>
+          <td>Verifiera att ansökan är bekräftad och processen avslutas. Ansökan går vidare till kreditevaluering.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Normalflöde – ansökan med flera stakeholders</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-3</td>
+          <td>application-start, internal-data-gathering</td>
+          <td>navigate, verify</td>
+          <td>nav-application, pre-screen-result-approved</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Samma som S1 steg 1-3: Starta process, internal data gathering, pre-screen godkänd</td>
+        </tr>
+      
+        <tr>
+          <td>4-9</td>
+          <td>household</td>
+          <td>navigate, fill, click</td>
+          <td>nav-household, input-household-economy, btn-submit-household</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Samma som S1 steg 4-9: Fyll i hushållsekonomi</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>stakeholders</td>
+          <td>navigate</td>
+          <td>nav-stakeholders</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Navigera till Stakeholders</td>
+        </tr>
+      
+        <tr>
+          <td>11-15</td>
+          <td>stakeholder</td>
+          <td>navigate, fill, click, verify</td>
+          <td>nav-stakeholder, input-personal-info, btn-submit-stakeholder, assess-stakeholder-approved</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Första stakeholder (huvudansökande) - samma som S1 steg 11-15</td>
+        </tr>
+      
+        <tr>
+          <td>16-20</td>
+          <td>object</td>
+          <td>navigate, select, fill, click, verify</td>
+          <td>nav-object, select-property-type, input-property-valuation, btn-submit-object, evaluate-property-approved</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Första objektet - samma som S1 steg 16-20</td>
+        </tr>
+      
+        <tr>
+          <td>21</td>
+          <td>stakeholders</td>
+          <td>click</td>
+          <td>btn-add-stakeholder</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Lägg till ytterligare stakeholder (sambo/medlåntagare)</td>
+        </tr>
+      
+        <tr>
+          <td>22-26</td>
+          <td>stakeholder</td>
+          <td>navigate, fill, click, verify</td>
+          <td>nav-stakeholder, input-personal-info, btn-submit-stakeholder, assess-stakeholder-approved</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Andra stakeholder (sambo/medlåntagare) - fyll i och verifiera godkänd</td>
+        </tr>
+      
+        <tr>
+          <td>27-31</td>
+          <td>object</td>
+          <td>navigate, select, fill, click, verify</td>
+          <td>nav-object, select-property-type, input-property-valuation, btn-submit-object, evaluate-property-approved</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Andra objektet (för andra stakeholder) - fyll i och verifiera godkänd</td>
+        </tr>
+      
+        <tr>
+          <td>32-34</td>
+          <td>confirm-application</td>
+          <td>navigate, verify, click</td>
+          <td>nav-confirm-application, summary-all-data, btn-confirm-application</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Bekräfta ansökan med flera stakeholders - samma som S1 steg 21-23</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: Pre-screen rejected</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-2</td>
+          <td>application-start, internal-data-gathering</td>
+          <td>navigate</td>
+          <td>nav-application, nav-internal-data</td>
+          <td>customer-rejected</td>
+          <td>Starta process, internal data gathering startar automatiskt</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>internal-data-gathering</td>
+          <td>verify</td>
+          <td>pre-screen-result-rejected</td>
+          <td>customer-rejected</td>
+          <td>Verifiera att Pre-screen Party DMN returnerar "REJECTED" (t.ex. för låg kreditvärdighet, ålder, anställningsstatus)</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>pre-screening-rejected</td>
+          <td>verify</td>
+          <td>error-message-pre-screen</td>
+          <td>customer-rejected</td>
+          <td>Verifiera att error event "Pre-screening rejected" triggas och processen avslutas</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>pre-screening-rejected</td>
+          <td>verify</td>
+          <td>rejection-reason</td>
+          <td>customer-rejected</td>
+          <td>Verifiera att anledning till avslag visas för kunden</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S4: Stakeholder rejected</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-9</td>
+          <td>application-start till household</td>
+          <td>navigate, verify, fill, click</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy, btn-submit-household</td>
+          <td>customer-stakeholder-rejected</td>
+          <td>Samma som S1 steg 1-9: Starta process, internal data OK, fyll i hushåll</td>
+        </tr>
+      
+        <tr>
+          <td>10-13</td>
+          <td>stakeholders, stakeholder</td>
+          <td>navigate, fill, click</td>
+          <td>nav-stakeholders, nav-stakeholder, input-personal-info, checkbox-credit-consent, btn-submit-stakeholder</td>
+          <td>customer-stakeholder-rejected</td>
+          <td>Navigera till stakeholders, fyll i stakeholder-information (medlåntagare med dålig kreditvärdighet)</td>
+        </tr>
+      
+        <tr>
+          <td>14</td>
+          <td>stakeholder</td>
+          <td>verify</td>
+          <td>assess-stakeholder-rejected</td>
+          <td>customer-stakeholder-rejected</td>
+          <td>Verifiera att Assess Stakeholder DMN returnerar "REJECTED"</td>
+        </tr>
+      
+        <tr>
+          <td>15</td>
+          <td>stakeholder-rejected</td>
+          <td>verify</td>
+          <td>error-message-stakeholder</td>
+          <td>customer-stakeholder-rejected</td>
+          <td>Verifiera att error event "Stakeholder rejected" triggas och processen avslutas</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S5: Object rejected</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-15</td>
+          <td>application-start till stakeholder</td>
+          <td>navigate, verify, fill, click</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy, input-personal-info, assess-stakeholder-approved</td>
+          <td>customer-object-rejected</td>
+          <td>Samma som S1 steg 1-15: Starta process, internal data OK, hushåll OK, stakeholder OK</td>
+        </tr>
+      
+        <tr>
+          <td>16-18</td>
+          <td>object</td>
+          <td>navigate, select, fill</td>
+          <td>nav-object, select-property-type, input-property-valuation</td>
+          <td>customer-object-rejected</td>
+          <td>Navigera till object, välj fastighetstyp, fyll i värdering (t.ex. för hög LTV, dålig belägenhet)</td>
+        </tr>
+      
+        <tr>
+          <td>19</td>
+          <td>object</td>
+          <td>click</td>
+          <td>btn-submit-object</td>
+          <td>customer-object-rejected</td>
+          <td>Skicka in Object-data. Systemet utvärderar via DMN.</td>
+        </tr>
+      
+        <tr>
+          <td>20</td>
+          <td>object</td>
+          <td>verify</td>
+          <td>evaluate-property-rejected</td>
+          <td>customer-object-rejected</td>
+          <td>Verifiera att Evaluate Fastighet/Bostadsrätt DMN returnerar "REJECTED"</td>
+        </tr>
+      
+        <tr>
+          <td>21</td>
+          <td>object-rejected</td>
+          <td>verify</td>
+          <td>error-message-object</td>
+          <td>customer-object-rejected</td>
+          <td>Verifiera att error event "Object rejected" triggas och processen avslutas</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S6: Komplettering behövs</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-9</td>
+          <td>application-start till household</td>
+          <td>navigate, verify, fill</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy</td>
+          <td>customer-incomplete</td>
+          <td>Starta process, internal data OK, börja fylla i hushållsekonomi</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>household</td>
+          <td>fill</td>
+          <td>input-equity-source</td>
+          <td>customer-incomplete</td>
+          <td>Lämna "Källa till eget kapital" tomt eller ofullständig</td>
+        </tr>
+      
+        <tr>
+          <td>11</td>
+          <td>household</td>
+          <td>click</td>
+          <td>btn-submit-household</td>
+          <td>customer-incomplete</td>
+          <td>Försök skicka in Household-data med ofullständig information</td>
+        </tr>
+      
+        <tr>
+          <td>12</td>
+          <td>household</td>
+          <td>verify</td>
+          <td>validation-error-equity-source</td>
+          <td>customer-incomplete</td>
+          <td>Verifiera att valideringsfel visas för saknad källa till eget kapital</td>
+        </tr>
+      
+        <tr>
+          <td>13</td>
+          <td>household</td>
+          <td>fill</td>
+          <td>input-equity-source</td>
+          <td>customer-incomplete</td>
+          <td>Komplettera med källa till eget kapital</td>
+        </tr>
+      
+        <tr>
+          <td>14</td>
+          <td>household</td>
+          <td>click</td>
+          <td>btn-submit-household</td>
+          <td>customer-incomplete</td>
+          <td>Skicka in kompletterad Household-data</td>
+        </tr>
+      
+        <tr>
+          <td>15-23</td>
+          <td>stakeholders till confirm-application</td>
+          <td>navigate, fill, click, verify</td>
+          <td>nav-stakeholders, input-personal-info, btn-confirm-application</td>
+          <td>customer-incomplete</td>
+          <td>Fortsätt med stakeholders och objekt, bekräfta ansökan (samma som S1 steg 10-23)</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S7: KALP-beräkning när bekräftelse hoppas över</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-20</td>
+          <td>application-start till object</td>
+          <td>navigate, verify, fill, click</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy, btn-submit-object</td>
+          <td>customer-skip-confirm</td>
+          <td>Samma som S1 steg 1-20: Intern data (pre-screen godkänd), Household, Stakeholders, Object</td>
+        </tr>
+      
+        <tr>
+          <td>21</td>
+          <td>skip-step-gateway</td>
+          <td>verify</td>
+          <td>skip-confirm-yes</td>
+          <td>customer-skip-confirm</td>
+          <td>Verifiera att Skip step gateway avgör att bekräftelse ska hoppas över ("Yes")</td>
+        </tr>
+      
+        <tr>
+          <td>22</td>
+          <td>kalp-calculation</td>
+          <td>verify</td>
+          <td>kalp-result</td>
+          <td>customer-skip-confirm</td>
+          <td>Verifiera att KALP-beräkningen är klar och visar maximalt lånebelopp = 2 500 000 SEK (baserat på inkomster, utgifter, befintliga lån)</td>
+        </tr>
+      
+        <tr>
+          <td>23</td>
+          <td>screen-kalp</td>
+          <td>verify</td>
+          <td>screen-kalp-approved</td>
+          <td>customer-skip-confirm</td>
+          <td>Verifiera att Screen KALP DMN returnerar "APPROVED" för köpansökan (maximalt belopp = 2 500 000 SEK, ansökt belopp = 2 000 000 SEK, över ansökt belopp → inga ändringar)</td>
+        </tr>
+      
+        <tr>
+          <td>24</td>
+          <td>kalp-ok-gateway</td>
+          <td>verify</td>
+          <td>kalp-ok-yes</td>
+          <td>customer-skip-confirm</td>
+          <td>Verifiera att KALP OK gateway avgör att KALP är OK ("Yes") baserat på Screen KALP resultat</td>
+        </tr>
+      
+        <tr>
+          <td>25</td>
+          <td>sammanfor-floden-gateway</td>
+          <td>verify</td>
+          <td>floden-sammanforda</td>
+          <td>customer-skip-confirm</td>
+          <td>Verifiera att Sammanför flöden gateway samlar ihop skip-flödet (bekräftelse hoppades över)</td>
+        </tr>
+      
+        <tr>
+          <td>26</td>
+          <td>fetch-credit-information</td>
+          <td>verify</td>
+          <td>credit-info-fetched</td>
+          <td>customer-skip-confirm</td>
+          <td>Verifiera att Fetch credit information startar automatiskt (multi-instance per stakeholder), hämtar kreditinformation från externa källor (t.ex. UC3) för huvudansökande</td>
+        </tr>
+      
+        <tr>
+          <td>27</td>
+          <td>application-completed</td>
+          <td>verify</td>
+          <td>success-message</td>
+          <td>customer-skip-confirm</td>
+          <td>Verifiera att ansökan är klar och processen avslutas normalt. Ansökan går vidare till kreditevaluering utan kundens bekräftelse.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S8: Application rejected - KALP under ansökt belopp (flytt/omlåning)</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-20</td>
+          <td>application-start till object</td>
+          <td>navigate, verify, fill, click</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy, btn-submit-object</td>
+          <td>customer-kalp-rejected-move</td>
+          <td>Samma som S1 steg 1-20: Intern data (pre-screen godkänd), Household, Stakeholders, Object</td>
+        </tr>
+      
+        <tr>
+          <td>21</td>
+          <td>skip-step-gateway</td>
+          <td>verify</td>
+          <td>skip-confirm-no</td>
+          <td>customer-kalp-rejected-move</td>
+          <td>Verifiera att Skip step gateway avgör att bekräftelse inte ska hoppas över ("No")</td>
+        </tr>
+      
+        <tr>
+          <td>22</td>
+          <td>kalp-calculation</td>
+          <td>verify</td>
+          <td>kalp-result</td>
+          <td>customer-kalp-rejected-move</td>
+          <td>Verifiera att KALP-beräkningen är klar och visar maximalt lånebelopp = 2 000 000 SEK (lägre än ansökt belopp = 2 500 000 SEK)</td>
+        </tr>
+      
+        <tr>
+          <td>23</td>
+          <td>screen-kalp</td>
+          <td>verify</td>
+          <td>screen-kalp-rejected</td>
+          <td>customer-kalp-rejected-move</td>
+          <td>Verifiera att Screen KALP DMN returnerar "REJECTED" för flytt/omlåning (regel: om maximalt belopp = 2 000 000 SEK är under ansökt belopp = 2 500 000 SEK → avvisa)</td>
+        </tr>
+      
+        <tr>
+          <td>24</td>
+          <td>kalp-ok-gateway</td>
+          <td>verify</td>
+          <td>kalp-ok-no</td>
+          <td>customer-kalp-rejected-move</td>
+          <td>Verifiera att KALP OK gateway avgör att KALP inte är OK ("No") baserat på Screen KALP resultat</td>
+        </tr>
+      
+        <tr>
+          <td>25</td>
+          <td>application-rejected</td>
+          <td>verify</td>
+          <td>error-message-application-rejected</td>
+          <td>customer-kalp-rejected-move</td>
+          <td>Verifiera att "application rejected" error event triggas och processen avslutas</td>
+        </tr>
+      
+        <tr>
+          <td>26</td>
+          <td>application-rejected</td>
+          <td>verify</td>
+          <td>rejection-reason</td>
+          <td>customer-kalp-rejected-move</td>
+          <td>Verifiera att tydligt felmeddelande visas: "Ansökan avvisad: Maximalt lånebelopp (2 000 000 SEK) är under ansökt belopp (2 500 000 SEK)"</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S9: Application rejected - KALP under tröskelvärde (köp)</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-20</td>
+          <td>application-start till object</td>
+          <td>navigate, verify, fill, click</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy, btn-submit-object</td>
+          <td>customer-kalp-rejected-threshold</td>
+          <td>Samma som S1 steg 1-20: Intern data (pre-screen godkänd), Household, Stakeholders, Object</td>
+        </tr>
+      
+        <tr>
+          <td>21</td>
+          <td>skip-step-gateway</td>
+          <td>verify</td>
+          <td>skip-confirm-no</td>
+          <td>customer-kalp-rejected-threshold</td>
+          <td>Verifiera att Skip step gateway avgör att bekräftelse inte ska hoppas över ("No")</td>
+        </tr>
+      
+        <tr>
+          <td>22</td>
+          <td>kalp-calculation</td>
+          <td>verify</td>
+          <td>kalp-result</td>
+          <td>customer-kalp-rejected-threshold</td>
+          <td>Verifiera att KALP-beräkningen är klar och visar maximalt lånebelopp = 500 000 SEK (under tröskelvärde)</td>
+        </tr>
+      
+        <tr>
+          <td>23</td>
+          <td>screen-kalp</td>
+          <td>verify</td>
+          <td>screen-kalp-rejected</td>
+          <td>customer-kalp-rejected-threshold</td>
+          <td>Verifiera att Screen KALP DMN returnerar "REJECTED" för köpansökan (regel: om maximalt belopp = 500 000 SEK är under tröskelvärde → avvisa)</td>
+        </tr>
+      
+        <tr>
+          <td>24</td>
+          <td>kalp-ok-gateway</td>
+          <td>verify</td>
+          <td>kalp-ok-no</td>
+          <td>customer-kalp-rejected-threshold</td>
+          <td>Verifiera att KALP OK gateway avgör att KALP inte är OK ("No") baserat på Screen KALP resultat</td>
+        </tr>
+      
+        <tr>
+          <td>25</td>
+          <td>application-rejected</td>
+          <td>verify</td>
+          <td>error-message-application-rejected</td>
+          <td>customer-kalp-rejected-threshold</td>
+          <td>Verifiera att "application rejected" error event triggas och processen avslutas</td>
+        </tr>
+      
+        <tr>
+          <td>26</td>
+          <td>application-rejected</td>
+          <td>verify</td>
+          <td>rejection-reason</td>
+          <td>customer-kalp-rejected-threshold</td>
+          <td>Verifiera att tydligt felmeddelande visas med anledning till avslag (KALP under tröskelvärde)</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S10: Köpansökan - KALP justerar ansökt belopp till maximalt belopp</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-20</td>
+          <td>application-start till object</td>
+          <td>navigate, verify, fill, click</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy, btn-submit-object</td>
+          <td>customer-kalp-adjusted</td>
+          <td>Samma som S1 steg 1-20: Intern data (pre-screen godkänd), Household, Stakeholders, Object</td>
+        </tr>
+      
+        <tr>
+          <td>21</td>
+          <td>skip-step-gateway</td>
+          <td>verify</td>
+          <td>skip-confirm-no</td>
+          <td>customer-kalp-adjusted</td>
+          <td>Verifiera att Skip step gateway avgör att bekräftelse inte ska hoppas över ("No")</td>
+        </tr>
+      
+        <tr>
+          <td>22</td>
+          <td>kalp-calculation</td>
+          <td>verify</td>
+          <td>kalp-result</td>
+          <td>customer-kalp-adjusted</td>
+          <td>Verifiera att KALP-beräkningen är klar och visar maximalt lånebelopp = 2 500 000 SEK (högre än ansökt belopp = 2 000 000 SEK)</td>
+        </tr>
+      
+        <tr>
+          <td>23</td>
+          <td>screen-kalp</td>
+          <td>verify</td>
+          <td>screen-kalp-approved-adjusted</td>
+          <td>customer-kalp-adjusted</td>
+          <td>Verifiera att Screen KALP DMN returnerar "APPROVED" för köpansökan och justerar ansökt belopp från 2 000 000 SEK till 2 500 000 SEK (regel för köp: om maximalt belopp är under ansökt belopp → sätt ansökt belopp till maximalt belopp)</td>
+        </tr>
+      
+        <tr>
+          <td>24</td>
+          <td>confirm-application</td>
+          <td>verify</td>
+          <td>adjusted-loan-amount</td>
+          <td>customer-kalp-adjusted</td>
+          <td>Verifiera att sammanfattningen visar justerat ansökt belopp = 2 500 000 SEK (istället för ursprungligt 2 000 000 SEK)</td>
+        </tr>
+      
+        <tr>
+          <td>25</td>
+          <td>confirm-application</td>
+          <td>click</td>
+          <td>btn-confirm-application</td>
+          <td>customer-kalp-adjusted</td>
+          <td>Bekräfta ansökan med justerat belopp</td>
+        </tr>
+      
+        <tr>
+          <td>26</td>
+          <td>application-completed</td>
+          <td>verify</td>
+          <td>success-message</td>
+          <td>customer-kalp-adjusted</td>
+          <td>Verifiera att ansökan är bekräftad med justerat belopp och processen avslutas normalt</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S11: Timeout på Confirm application</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-20</td>
+          <td>application-start till object</td>
+          <td>navigate, verify, fill, click</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy, btn-submit-object</td>
+          <td>customer-timeout</td>
+          <td>Samma som S1 steg 1-20: Intern data (pre-screen godkänd), Household, Stakeholders, Object</td>
+        </tr>
+      
+        <tr>
+          <td>21</td>
+          <td>skip-step-gateway</td>
+          <td>verify</td>
+          <td>skip-confirm-no</td>
+          <td>customer-timeout</td>
+          <td>Verifiera att Skip step gateway avgör att bekräftelse inte ska hoppas över ("No")</td>
+        </tr>
+      
+        <tr>
+          <td>22</td>
+          <td>kalp-calculation</td>
+          <td>verify</td>
+          <td>kalp-result</td>
+          <td>customer-timeout</td>
+          <td>Verifiera att KALP-beräkningen är klar och Screen KALP returnerar "APPROVED"</td>
+        </tr>
+      
+        <tr>
+          <td>23</td>
+          <td>kalp-ok-gateway</td>
+          <td>verify</td>
+          <td>kalp-ok-yes</td>
+          <td>customer-timeout</td>
+          <td>Verifiera att KALP OK gateway avgör att KALP är OK ("Yes")</td>
+        </tr>
+      
+        <tr>
+          <td>24</td>
+          <td>confirm-application</td>
+          <td>navigate</td>
+          <td>nav-confirm-application</td>
+          <td>customer-timeout</td>
+          <td>Navigera till Confirm application</td>
+        </tr>
+      
+        <tr>
+          <td>25</td>
+          <td>confirm-application</td>
+          <td>verify</td>
+          <td>summary-all-data</td>
+          <td>customer-timeout</td>
+          <td>Verifiera att sammanfattning visar all insamlad data</td>
+        </tr>
+      
+        <tr>
+          <td>26</td>
+          <td>confirm-application</td>
+          <td>wait</td>
+          <td>timeout-30-days</td>
+          <td>customer-timeout</td>
+          <td>Vänta 30 dagar utan att bekräfta ansökan (eller simulera timeout)</td>
+        </tr>
+      
+        <tr>
+          <td>27</td>
+          <td>timeout-boundary-event</td>
+          <td>verify</td>
+          <td>timeout-triggered</td>
+          <td>customer-timeout</td>
+          <td>Verifiera att timeout boundary event triggas på "Confirm application" user task efter 30 dagar</td>
+        </tr>
+      
+        <tr>
+          <td>28</td>
+          <td>application-timeout</td>
+          <td>verify</td>
+          <td>error-message-timeout</td>
+          <td>customer-timeout</td>
+          <td>Verifiera att "application-timeout" error event triggas och processen avslutas</td>
+        </tr>
+      
+        <tr>
+          <td>29</td>
+          <td>application-timeout</td>
+          <td>verify</td>
+          <td>timeout-message</td>
+          <td>customer-timeout</td>
+          <td>Verifiera att tydligt felmeddelande visas: "Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar)"</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S12: Fetch credit information - multi-instance för flera stakeholders</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-23</td>
+          <td>application-start till confirm-application</td>
+          <td>navigate, verify, fill, click</td>
+          <td>nav-application, pre-screen-result-approved, input-household-economy, btn-confirm-application</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Samma som S2 steg 1-34: Intern data, Household, flera Stakeholders med Object, bekräftelse</td>
+        </tr>
+      
+        <tr>
+          <td>24</td>
+          <td>sammanfor-floden-gateway</td>
+          <td>verify</td>
+          <td>floden-sammanforda</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Verifiera att Sammanför flöden gateway samlar ihop bekräftelse-flödet</td>
+        </tr>
+      
+        <tr>
+          <td>25</td>
+          <td>fetch-credit-information</td>
+          <td>verify</td>
+          <td>credit-info-fetching-stakeholder-1</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Verifiera att Fetch credit information startar automatiskt för första stakeholder (huvudansökande), hämtar kreditinformation från externa källor (t.ex. UC3)</td>
+        </tr>
+      
+        <tr>
+          <td>26</td>
+          <td>fetch-credit-information</td>
+          <td>verify</td>
+          <td>credit-info-fetched-stakeholder-1</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Verifiera att kreditinformation för första stakeholder är hämtad och lagrad i datastore "Personal credit information source"</td>
+        </tr>
+      
+        <tr>
+          <td>27</td>
+          <td>fetch-credit-information</td>
+          <td>verify</td>
+          <td>credit-info-fetching-stakeholder-2</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Verifiera att Fetch credit information fortsätter automatiskt för andra stakeholder (medlåntagare), hämtar kreditinformation från externa källor (t.ex. UC3)</td>
+        </tr>
+      
+        <tr>
+          <td>28</td>
+          <td>fetch-credit-information</td>
+          <td>verify</td>
+          <td>credit-info-fetched-stakeholder-2</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Verifiera att kreditinformation för andra stakeholder är hämtad och lagrad i datastore "Personal credit information source"</td>
+        </tr>
+      
+        <tr>
+          <td>29</td>
+          <td>application-completed</td>
+          <td>verify</td>
+          <td>success-message</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Verifiera att ansökan är klar, all kreditinformation är hämtad för alla stakeholders (multi-instance), och processen avslutas normalt. Ansökan går vidare till kreditevaluering.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>customer-standard</strong>: Standard kundprofil för normalflöde - god kreditvärdighet, fast anställning, tillräcklig inkomst, standard fastighet med god LTV</li>
+    
+      <li><strong>customer-multi-stakeholder</strong>: Kundprofil med flera stakeholders (huvudansökande + sambo/medlåntagare) - båda med god kreditvärdighet, varje stakeholder har eget objekt</li>
+    
+      <li><strong>customer-rejected</strong>: Kundprofil som avvisas vid pre-screen - låg kreditvärdighet (&lt;600), eller ogiltig ålder, eller osäker anställningsstatus</li>
+    
+      <li><strong>customer-stakeholder-rejected</strong>: Kundprofil där huvudansökande är OK men medlåntagare avvisas - medlåntagare med dålig kreditvärdighet eller hög skuldsättning</li>
+    
+      <li><strong>customer-object-rejected</strong>: Kundprofil där kund och stakeholder är OK men fastighet avvisas - för hög LTV (&gt;85%), dålig belägenhet, eller hög föreningsskuld (bostadsrätt)</li>
+    
+      <li><strong>customer-incomplete</strong>: Kundprofil med ofullständig information - saknar viktiga fält som källa till eget kapital, eller ofullständiga låneuppgifter</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>Application (start)</td>
+        <td>UI</td>
+        <td>/mortgage/application</td>
+        <td>GET</td>
+        <td>https://portal.sbab.se</td>
+        <td>Startpunkt för Application-processen. Anropas från Mortgage huvudprocess.</td>
+      </tr>
+    
+      <tr>
+        <td>Internal data gathering</td>
+        <td>API + UI</td>
+        <td>/api/application/internal-data-gathering<br>/mortgage/application/internal-data</td>
+        <td>POST (API)<br>GET (UI)</td>
+        <td>https://api.sbab.se<br>https://portal.sbab.se</td>
+        <td>Hämtar befintlig kunddata från interna system (part, engagemang, kreditinformation). Körs automatiskt som multi-instance per part. Anropar Pre-screen Party DMN.</td>
+      </tr>
+    
+      <tr>
+        <td>Household</td>
+        <td>Both</td>
+        <td>/api/application/household<br>/mortgage/application/household</td>
+        <td>POST (API)<br>GET/POST (UI)</td>
+        <td>https://api.sbab.se<br>https://portal.sbab.se</td>
+        <td>Samlar in hushållsekonomi, personlig ekonomi, källa till eget kapital och låneuppgifter. Körs parallellt med Stakeholders som multi-instance.</td>
+      </tr>
+    
+      <tr>
+        <td>Stakeholders (subprocess)</td>
+        <td>UI</td>
+        <td>/mortgage/application/stakeholders</td>
+        <td>GET</td>
+        <td>https://portal.sbab.se</td>
+        <td>Översiktssida för alla stakeholders. Hanterar multi-instance för flera stakeholders.</td>
+      </tr>
+    
+      <tr>
+        <td>Stakeholder</td>
+        <td>Both</td>
+        <td>/api/application/stakeholder<br>/mortgage/application/stakeholder</td>
+        <td>POST (API)<br>GET/POST (UI)</td>
+        <td>https://api.sbab.se<br>https://portal.sbab.se</td>
+        <td>Registrerar personlig information, samtycke till kreditupplysning. Systemet hämtar och utvärderar personlig information automatiskt. Anropar Assess Stakeholder DMN.</td>
+      </tr>
+    
+      <tr>
+        <td>Object</td>
+        <td>Both</td>
+        <td>/api/application/object<br>/mortgage/application/object</td>
+        <td>POST (API)<br>GET/POST (UI)</td>
+        <td>https://api.sbab.se<br>https://portal.sbab.se</td>
+        <td>Hanterar fastighetsinformation (fastighetstyp, värdering, säkerhetsregistrering). Anropar Evaluate Fastighet eller Evaluate Bostadsrätt DMN beroende på fastighetstyp.</td>
+      </tr>
+    
+      <tr>
+        <td>Confirm application</td>
+        <td>UI</td>
+        <td>/mortgage/application/confirm</td>
+        <td>GET/POST</td>
+        <td>https://portal.sbab.se</td>
+        <td>User task där kunden bekräftar att all information är korrekt. Visar sammanfattning av all insamlad data. När bekräftad, avslutas Application-processen och ansökan går vidare till kreditevaluering.</td>
+      </tr>
+    
+      <tr>
+        <td>Pre-screen Party (DMN)</td>
+        <td>API</td>
+        <td>/api/dmn/pre-screen-party</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>DMN-beslutsregel för initial eligibility check. Input: Age, Credit Score, Employment Status. Output: APPROVED / REJECTED / REVIEW.</td>
+      </tr>
+    
+      <tr>
+        <td>Assess Stakeholder (DMN)</td>
+        <td>API</td>
+        <td>/api/dmn/assess-stakeholder</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>DMN-beslutsregel för att utvärdera borrower capacity. Input: Annual Income, DTI Ratio, Credit History. Output: APPROVED / REJECTED + Risk Category.</td>
+      </tr>
+    
+      <tr>
+        <td>Evaluate Fastighet (DMN)</td>
+        <td>API</td>
+        <td>/api/dmn/evaluate-fastighet</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>DMN-beslutsregel för hus-evaluering. Input: Property Value, Condition, LTV, Location. Output: APPROVED / REJECTED + Risk Level.</td>
+      </tr>
+    
+      <tr>
+        <td>Evaluate Bostadsrätt (DMN)</td>
+        <td>API</td>
+        <td>/api/dmn/evaluate-bostadsratt</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>DMN-beslutsregel för bostadsrätt-evaluering. Input: Apartment Value, Association Debt, LTV. Output: APPROVED / REJECTED + Risk Level.</td>
+      </tr>
+    
+      <tr>
+        <td>KALP</td>
+        <td>API</td>
+        <td>/api/application/kalp</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Beräknar maximalt lånebelopp baserat på hushållsaffordability (KALP = Kvar Att Leva På). Input: inkomster, utgifter, befintliga lån, andra ekonomiska faktorer. Output: maximalt lånebelopp (KALP). Lagras i datastore "KALP".</td>
+      </tr>
+    
+      <tr>
+        <td>Screen KALP (DMN)</td>
+        <td>API</td>
+        <td>/api/dmn/screen-kalp</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>DMN-beslutsregel för att screena KALP-resultat mot affärsregler. Input: KALP (maximalt lånebelopp), ansökt belopp, ansökningstyp (köp, flytt, omlåning). Output: APPROVED / REJECTED + motivering. Regler: För köp - om maximalt belopp är under tröskelvärde → avvisa, om maximalt belopp är under ansökt belopp → sätt ansökt belopp till maximalt belopp, om maximalt belopp är över ansökt belopp → inga ändringar. För flytt/omlåning - om maximalt belopp är under ansökt belopp → avvisa.</td>
+      </tr>
+    
+      <tr>
+        <td>KALP OK? (gateway)</td>
+        <td>Logic</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Logisk gateway som avgör om KALP-beräkningen och screening är godkänd baserat på Screen KALP resultat. Om "Yes" → fortsätt till bekräftelse eller kreditupplysning. Om "No" → trigga "application rejected" error event.</td>
+      </tr>
+    
+      <tr>
+        <td>Skip step? (gateway)</td>
+        <td>Logic</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Logisk gateway som avgör om bekräftelsesteget ska hoppas över baserat på affärslogik. Om "Yes" → gå direkt till KALP-beräkning och kreditupplysning. Om "No" → gå till bekräftelsesteget.</td>
+      </tr>
+    
+      <tr>
+        <td>Sammanför flöden (gateway)</td>
+        <td>Logic</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Logisk gateway som samlar ihop både bekräftelse-flödet (från "Confirm application") och skip-flödet (från "Skip step?" gateway "Yes"), så att "Fetch credit information" bara startar när antingen bekräftelse är klar eller bekräftelse har hoppats över.</td>
+      </tr>
+    
+      <tr>
+        <td>Fetch credit information</td>
+        <td>API</td>
+        <td>/api/application/fetch-credit-information</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Hämtar kreditinformation från externa källor (t.ex. UC3) för alla stakeholders. Körs automatiskt som multi-instance - en gång per stakeholder. Input: stakeholder-ID. Output: kreditinformation. Lagras i datastore "Personal credit information source" för användning i senare steg i kreditprocessen.</td>
+      </tr>
+    
+      <tr>
+        <td>Timeout boundary event (Confirm application)</td>
+        <td>Event</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Timeout boundary event på "Confirm application" user task. Triggas efter 30 dagar om kunden inte bekräftar ansökan. Triggar "application-timeout" error event, avslutar processen, och visar tydligt felmeddelande till kunden.</td>
+      </tr>
+    
+        </tbody>
+      </table>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>Application-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Ökad automatisering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Automatisk datainsamling via "Internal data gathering":</strong> Systemet hämtar automatiskt befintlig kunddata (part, engagemang, kreditinformation) från interna system för alla identifierade parter (multi-instance). För återkommande kunder elimineras detta behovet av manuell datainmatning, vilket kan minska handläggningstid med upp till 40% för kända kunder jämfört med manuell process.</li>
+        <li><strong>Automatisk pre-screening via DMN-beslutsregel:</strong> Systemet utför automatiskt pre-screening för varje part (ålder, anställningsstatus, kreditvärdighet) och avvisar ansökningar där parter inte uppfyller grundläggande krav via "pre-screen rejected" error event. Detta eliminerar manuell initial validering och minskar antalet ansökningar som når handläggare med 30-50%.</li>
+        <li><strong>Automatisk KALP-beräkning och screening:</strong> När bekräftelsesteget hoppas över via "Skip step?" gateway, beräknar systemet automatiskt maximalt lånebelopp (KALP) och screener resultatet via "Screen KALP" DMN-beslutsregel. För köpansökningar justeras ansökt belopp automatiskt till maximalt belopp om det är lägre, vilket eliminerar behovet av manuell justering och minskar handläggningstid med 15-20%.</li>
+        <li><strong>Automatisk kreditupplysning via "Fetch credit information":</strong> Systemet hämtar automatiskt kreditinformation från externa källor (t.ex. UC3) för alla stakeholders (multi-instance) när ansökan är bekräftad eller bekräftelse har hoppats över. Detta eliminerar manuell kreditupplysning och säkerställer att all information är tillgänglig när ansökan når handläggare.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad datainsamling via parallella flöden:</strong> Genom att köra "Household" och "Stakeholders" parallellt säkerställs att all nödvändig information samlas in strukturerat. Multi-instance-mekanismer för flera parter, hushåll och stakeholders säkerställer att varje part bedöms individuellt, vilket minskar risken för felaktiga ansökningar med 25-35%.</li>
+        <li><strong>Automatisk validering via DMN-beslutsregler:</strong> Systemet validerar automatiskt stakeholders och objekt mot affärsregler via DMN-beslutsregler och avvisar ansökningar där stakeholders eller objekt inte uppfyller krav via error events (stakeholder rejected, object rejected). Detta säkerställer att endast ansökningar som uppfyller grundläggande krav går vidare, vilket förbättrar beslutsunderlaget för kreditevaluering.</li>
+        <li><strong>Komplett datainsamling innan bekräftelse:</strong> Genom "Confirm application" steget med sammanfattning av all insamlad information (intern data, hushåll, stakeholders, objekt) säkerställs att kunden kan kontrollera att allt är korrekt innan ansökan går vidare. Detta minskar risken för felaktiga ansökningar och förbättrar datakvaliteten med 20-30%.</li>
+      </ul>
+
+      <h3>Snabbare beslutsprocess och minskad väntetid</h3>
+      <ul>
+        <li><strong>Tidig avvisning via automatisk screening:</strong> Genom automatisk pre-screening, stakeholder-validering, objekt-validering och KALP-screening kan ansökningar som inte uppfyller grundläggande krav avvisas tidigt i processen (innan kreditevaluering). Detta sparar tid och resurser genom att eliminera onödig handläggning av osannolika ansökningar, vilket minskar genomsnittlig handläggningstid med 30-40%.</li>
+        <li><strong>Parallell datainsamling minskar total tid:</strong> Genom att köra "Household" och "Stakeholders" parallellt kan kunden slutföra ansökan snabbare än om processen var sekventiell. Detta minskar total tid för ansökan från kundens perspektiv med 25-35% jämfört med sekventiell process.</li>
+        <li><strong>Automatisk timeout-hantering:</strong> Genom timeout-mekanism på "Confirm application" säkerställs att ansökningar där kunden inte bekräftar inom tidsgränsen avslutas automatiskt via "Timeout" error event och inte fastnar i systemet. Detta minskar antalet fastnade ansökningar med 90-95%.</li>
+      </ul>
+
+      <h3>Förbättrad kundupplevelse och minskat avhopp</h3>
+      <ul>
+        <li><strong>Strukturerad process med tydlig feedback:</strong> Genom tydlig strukturering av processen (intern data → objekt → parallell datainsamling → KALP → bekräftelse → kreditupplysning) och tydlig feedback vid avvisning (pre-screen rejected, stakeholder rejected, object rejected, application rejected, timeout) förstår kunden processen bättre. Detta kan öka kundnöjdheten med 15-25% och minska avhopp i ansökningsprocessen med 20-30%.</li>
+        <li><strong>Automatisk justering av ansökt belopp för köpansökningar:</strong> Genom att automatiskt justera ansökt belopp till maximalt lånebelopp för köpansökningar när KALP visar att kunden kan låna mer än ansökt, får kunden rätt belopp utan att behöva ändra ansökan. Detta förbättrar kundupplevelsen och minskar behovet av manuell justering.</li>
+        <li><strong>Sammanfattning innan bekräftelse:</strong> Genom "Confirm application" steget med sammanfattning av all insamlad information kan kunden kontrollera att allt är korrekt innan ansökan går vidare. Detta minskar risken för fel och förbättrar kundens förtroende för processen.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Tidig riskidentifiering via automatisk screening:</strong> Genom automatisk pre-screening, stakeholder-validering, objekt-validering och KALP-screening identifieras och avvisas ansökningar med hög risk tidigt i processen (innan kreditevaluering). Detta minskar risken för felaktiga kreditbeslut med 40-50% och potentiella förluster med 30-40%.</li>
+        <li><strong>Multi-instance felhantering:</strong> Genom multi-instance-mekanismer för flera parter, hushåll och stakeholders kan varje part bedömas individuellt och avvisas separat via error events (pre-screen rejected, stakeholder rejected). Detta säkerställer att endast ansökningar där alla parter uppfyller krav går vidare, vilket minskar risken för felaktiga beslut.</li>
+        <li><strong>Automatisk timeout-hantering:</strong> Genom timeout-mekanism på "Confirm application" säkerställs att ansökningar där kunden inte bekräftar inom tidsgränsen avslutas automatiskt och inte fastnar i systemet. Detta minskar risken för föråldrade ansökningar och förbättrar riskhanteringen.</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Kundperspektiv</h3>
+      <ul>
+        <li><strong>Som kund</strong> vill jag att systemet automatiskt hämtar min befintliga information via "Internal data gathering" (part, engagemang, kreditinformation) <strong>så att</strong> jag inte behöver fylla i information som banken redan har om mig, särskilt viktigt för återkommande kunder. <em>Acceptanskriterier: Systemet ska visa hämtad information i ett tydligt format, markera fält som är auto-ifyllda, och tillåta mig att ändra information om den är felaktig.</em></li>
+        <li><strong>Som kund</strong> vill jag att systemet automatiskt gör pre-screening för mig och mina medlåntagare via DMN-beslutsregel <strong>så att</strong> jag får tidig feedback om någon av oss inte uppfyller grundläggande krav (ålder, anställningsstatus, kreditvärdighet). <em>Acceptanskriterier: Om pre-screening avvisar en part, ska jag få ett tydligt meddelande som förklarar vilket krav som inte uppfylldes (t.ex. "Ålder under 18 år" eller "Kreditscore under 300"), vilken part som avvisades, och att ansökan inte kan fortsätta.</em></li>
+        <li><strong>Som kund</strong> vill jag kunna fylla i information om hushållsekonomi (Household) och stakeholders-information parallellt <strong>så att</strong> jag kan slutföra ansökan snabbare än om jag måste göra det sekventiellt. <em>Acceptanskriterier: Jag ska kunna öppna både Household- och Stakeholders-formulären samtidigt i separata flikar/fönster, och spara progress i varje formulär oberoende av varandra. Systemet ska validera varje formulär separat och visa tydligt vilka formulär som är kompletta.</em></li>
+        <li><strong>Som kund med flera hushåll</strong> vill jag kunna registrera ekonomi för varje hushåll separat via multi-instance Household-processen <strong>så att</strong> systemet kan bedöma varje hushåll individuellt</li>
+        <li><strong>Som kund med sambo/medlåntagare</strong> vill jag kunna lägga till flera stakeholders i "Per household" subprocessen <strong>så att</strong> både min och min partners ekonomi tas med i bedömningen via multi-instance Stakeholder-processen</li>
+        <li><strong>Som kund</strong> vill jag att systemet automatiskt beräknar maximalt lånebelopp (KALP) när bekräftelsesteget hoppas över <strong>så att</strong> jag vet hur mycket jag kan låna innan jag bekräftar ansökan</li>
+        <li><strong>Som kund med köpansökan</strong> vill jag att systemet automatiskt justerar mitt ansökta belopp till maximalt lånebelopp om KALP visar att jag kan låna mer än jag ansökt om <strong>så att</strong> jag får rätt belopp utan att behöva ändra ansökan</li>
+        <li><strong>Som kund med flytt/omlåning</strong> vill jag att systemet automatiskt avvisar ansökan om KALP visar att maximalt lånebelopp är under ansökt belopp <strong>så att</strong> jag får tydlig feedback om att ansökan inte kan godkännas</li>
+        <li><strong>Som kund</strong> vill jag kunna se en sammanfattning av all insamlad information (intern data, hushåll, stakeholders, objekt) innan jag bekräftar ansökan via "Confirm application" <strong>så att</strong> jag kan kontrollera att allt är korrekt innan ansökan går vidare. <em>Acceptanskriterier: Sammanfattningen ska visa alla insamlade data i ett strukturerat format med tydliga rubriker (Intern data, Hushållsekonomi, Stakeholders, Objekt), tillåta mig att gå tillbaka och ändra information, och visa en tydlig "Bekräfta"-knapp. Om någon information saknas, ska systemet visa en varning och inte tillåta bekräftelse.</em></li>
+        <li><strong>Som kund</strong> vill jag få tydlig feedback om varför ansökan avvisas (pre-screen rejected, stakeholder rejected, object rejected, application rejected, timeout) <strong>så att</strong> jag förstår vad som behöver förbättras eller ändras. <em>Acceptanskriterier: Varje avvisning ska innehålla ett tydligt felmeddelande på svenska som förklarar orsaken (t.ex. "Ansökan avvisad: Maximalt lånebelopp (2 500 000 SEK) är under ansökt belopp (3 000 000 SEK)"), vilken part/objekt som avvisades, och konkreta steg för att förbättra situationen (t.ex. "Överväg att sänka ansökt belopp eller öka eget kapital").</em></li>
+        <li><strong>Som kund</strong> vill jag att systemet automatiskt hämtar kreditinformation från externa källor (t.ex. UC3) för mig och mina medlåntagare via "Fetch credit information" <strong>så att</strong> banken har komplett information för kreditbeslut</li>
+      </ul>
+
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt gör pre-screening via DMN-beslutsregel i "Internal data gathering" för alla parter <strong>så att</strong> ansökningar där parter inte uppfyller grundläggande krav (ålder, anställningsstatus, kreditvärdighet) avvisas automatiskt innan de når mig</li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt validerar stakeholders och objekt mot affärsregler via DMN-beslutsregler <strong>så att</strong> ansökningar där stakeholders eller objekt inte uppfyller krav avvisas automatiskt via error events (stakeholder rejected, object rejected)</li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt beräknar maximalt lånebelopp (KALP) och screener resultatet via "Screen KALP" DMN-beslutsregel <strong>så att</strong> ansökningar som inte uppfyller KALP-kriterier avvisas automatiskt via "Application rejected" error event</li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hämtar kreditinformation från externa källor (t.ex. UC3) för alla stakeholders via "Fetch credit information" <strong>så att</strong> jag har komplett information i datastore "Personal credit information source" när ansökan kommer till mig för granskning</li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hanterar timeout på "Confirm application" <strong>så att</strong> ansökningar där kunden inte bekräftar inom tidsgränsen avslutas automatiskt via "Timeout" error event och inte fastnar i systemet</li>
+      </ul>
+
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som systemadministratör</strong> vill jag att "Internal data gathering" körs som multi-instance för varje identifierad part <strong>så att</strong> datainsamling och pre-screening sker separat för huvudansökande och medlåntagare, och att varje part kan avvisas individuellt via "pre-screen rejected" error event</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Household" och "Stakeholders" körs parallellt <strong>så att</strong> kunden kan fylla i både hushållsekonomi och stakeholder-information samtidigt, vilket minskar total tid för ansökan</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Per household" subprocessen körs som multi-instance <strong>så att</strong> flera hushåll kan hanteras separat, och att varje hushåll kan avvisas individuellt via "stakeholder rejected" error event</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Stakeholder" call activity körs som multi-instance inuti "Per household" subprocessen <strong>så att</strong> flera stakeholders (t.ex. huvudansökande och medlåntagare) kan hanteras sekventiellt (Household → Stakeholder → Object) för varje hushåll</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Skip step?" gateway avgör om bekräftelsesteget ska hoppas över <strong>så att</strong> processen kan gå direkt till KALP-beräkning och kreditupplysning utan kundens bekräftelse när det är lämpligt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Screen KALP" DMN-beslutsregel använder olika regler för köp vs flytt/omlåning <strong>så att</strong> köpansökningar kan justera ansökt belopp till maximalt belopp, medan flytt/omlåning avvisas om maximalt belopp är under ansökt belopp</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "KALP OK?" gateway avgör om KALP-beräkningen och screening är godkänd <strong>så att</strong> processen kan gå vidare till bekräftelse eller kreditupplysning, eller avvisas via "Application rejected" error event</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden" gateway samlar ihop både bekräftelse-flödet och skip-flödet <strong>så att</strong> "Fetch credit information" bara startar när antingen bekräftelse är klar eller bekräftelse har hoppats över</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Fetch credit information" körs som multi-instance för varje stakeholder <strong>så att</strong> kreditinformation hämtas separat för huvudansökande och medlåntagare, och lagras i datastore "Personal credit information source"</li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen hanterar alla error events (pre-screen rejected, stakeholder rejected, object rejected, application rejected, timeout) via boundary events <strong>så att</strong> processen avslutas korrekt med tydliga felmeddelanden till kunden</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Intern datainsamling och pre-screening</h3>
+      <ul>
+        <li>Systemet ska automatiskt hämta befintlig kunddata från interna system (part, engagemang, kreditinformation) för alla identifierade parter i ansökan via "Internal data gathering" call activity</li>
+        <li>"Internal data gathering" ska köras som multi-instance för varje identifierad part, så att datainsamling och pre-screening sker separat för huvudansökande och medlåntagare</li>
+        <li>Systemet ska automatiskt utföra pre-screening via DMN-beslutsregel för varje part och kontrollera grundläggande krav (ålder ≥ 18 år, anställningsstatus, kreditscore ≥ 300)</li>
+        <li>Om en eller flera parter avvisas vid pre-screening, ska systemet trigga "pre-screen rejected" error event via boundary event på "Internal data gathering" call activity, avsluta processen, och visa tydligt felmeddelande till kunden som förklarar vilket krav som inte uppfylldes och vilken part som avvisades</li>
+        <li>Om alla parter godkänns vid pre-screening, ska processen fortsätta till "Object" call activity</li>
+      </ul>
+
+      <h3>2. Objektinformation och validering</h3>
+      <ul>
+        <li>Systemet ska samla in grundläggande information om fastigheten/bostadsrätten som ansökan gäller via "Object" call activity innan stakeholders-processen startar</li>
+        <li>Om fastigheten/bostadsrätten avvisas vid validering (t.ex. för hög LTV, dålig belägenhet), ska systemet trigga "object rejected" error event via boundary event på "Object" call activity, avsluta processen, och visa tydligt felmeddelande till kunden</li>
+        <li>Om objektet godkänns, ska processen fortsätta till "Stakeholders" subprocess</li>
+      </ul>
+
+      <h3>3. Parallell datainsamling (Household och Stakeholders)</h3>
+      <ul>
+        <li>Systemet ska köra "Household" och "Stakeholders" parallellt efter att intern data och objektinformation är insamlad, så att kunden kan fylla i både hushållsekonomi och stakeholder-information samtidigt</li>
+        <li>Kunden ska kunna öppna både Household- och Stakeholders-formulären samtidigt i separata flikar/fönster, spara progress i varje formulär oberoende av varandra, och systemet ska validera varje formulär separat och visa tydligt vilka formulär som är kompletta</li>
+        <li>"Household" call activity ska köras som multi-instance för flera hushåll om det behövs, så att varje hushåll kan registreras separat</li>
+        <li>"Stakeholders" subprocess ("Per household") ska köras som multi-instance - en gång per hushåll</li>
+        <li>Inne i "Stakeholders" subprocessen ska "Household" → "Stakeholder" → "Object" call activities köras sekventiellt för varje stakeholder, och "Stakeholder" call activity ska köras som multi-instance för flera stakeholders (t.ex. huvudansökande och medlåntagare)</li>
+        <li>Om en stakeholder avvisas vid validering, ska systemet trigga "stakeholder rejected" error event via boundary event på "Stakeholders" subprocess, avsluta processen, och visa tydligt felmeddelande till kunden</li>
+        <li>När både "Household" och "Stakeholders" är klara, ska processen fortsätta till "Skip step?" gateway</li>
+      </ul>
+
+      <h3>4. KALP-beräkning och screening</h3>
+      <ul>
+        <li>"Skip step?" gateway ska avgöra om bekräftelsesteget ska hoppas över eller inte baserat på affärslogik</li>
+        <li>Om bekräftelse hoppas över ("Yes"), ska processen gå direkt till "Sammanför flöden" gateway och sedan "Fetch credit information"</li>
+        <li>Om bekräftelse inte hoppas över ("No"), ska systemet automatiskt beräkna maximalt lånebelopp baserat på hushållsaffordability (KALP) via "KALP" service task, lagra resultatet i datastore "KALP", och fortsätta till "Screen KALP" business rule task</li>
+        <li>"Screen KALP" DMN-beslutsregel ska utvärdera KALP-resultatet mot affärsregler baserat på ansökningstyp:
+          <ul>
+            <li><strong>För köp:</strong> Om maximalt lånebelopp är under tröskelvärde → avvisa. Om maximalt lånebelopp är under ansökt belopp → sätt ansökt belopp till maximalt belopp. Om maximalt lånebelopp är över ansökt belopp → inga ändringar.</li>
+            <li><strong>För flytt/omlåning:</strong> Om maximalt lånebelopp är under ansökt belopp → avvisa.</li>
+          </ul>
+        </li>
+        <li>"KALP OK?" gateway ska avgöra om KALP-beräkningen och screening är godkänd baserat på "Screen KALP" resultat</li>
+        <li>Om KALP inte är OK ("No"), ska systemet trigga "application rejected" error event, avsluta processen, och visa tydligt felmeddelande till kunden som förklarar orsaken (t.ex. "Maximalt lånebelopp (2 500 000 SEK) är under ansökt belopp (3 000 000 SEK)") och konkreta steg för att förbättra situationen</li>
+        <li>Om KALP är OK ("Yes"), ska processen fortsätta till "Confirm application" user task (om bekräftelse inte hoppades över) eller direkt till "Sammanför flöden" gateway (om bekräftelse hoppades över)</li>
+      </ul>
+
+      <h3>5. Bekräftelse och timeout-hantering</h3>
+      <ul>
+        <li>Kunden ska kunna se en sammanfattning av all insamlad information (intern data, hushåll, stakeholders, objekt) i "Confirm application" user task, med tydliga rubriker (Intern data, Hushållsekonomi, Stakeholders, Objekt), möjlighet att gå tillbaka och ändra information, och en tydlig "Bekräfta"-knapp</li>
+        <li>Om någon information saknas, ska systemet visa en varning och inte tillåta bekräftelse</li>
+        <li>Om kunden bekräftar ansökan, ska processen fortsätta till "Sammanför flöden" gateway</li>
+        <li>Om kunden inte bekräftar ansökan inom tidsgränsen (t.ex. 30 dagar), ska systemet trigga timeout boundary event på "Confirm application" user task, trigga "application-timeout" error event, avsluta processen, och visa tydligt felmeddelande till kunden</li>
+      </ul>
+
+      <h3>6. Kreditupplysning</h3>
+      <ul>
+        <li>"Sammanför flöden" gateway ska samla ihop både bekräftelse-flödet (från "Confirm application") och skip-flödet (från "Skip step?" gateway "Yes"), så att "Fetch credit information" bara startar när antingen bekräftelse är klar eller bekräftelse har hoppats över</li>
+        <li>Systemet ska automatiskt hämta kreditinformation från externa källor (t.ex. UC3) för alla stakeholders via "Fetch credit information" service task när ansökan är bekräftad eller bekräftelse har hoppats över</li>
+        <li>"Fetch credit information" ska köras som multi-instance - en gång per stakeholder, så att kreditinformation hämtas separat för huvudansökande och medlåntagare</li>
+        <li>Kreditinformationen ska lagras i datastore "Personal credit information source" för användning i senare steg i kreditprocessen</li>
+        <li>När kreditupplysning är klar, ska processen avslutas normalt och ansökan ska gå vidare till kreditevaluering i Mortgage huvudprocessen</li>
+      </ul>
+
+      <h3>7. Felhantering och error events</h3>
+      <ul>
+        <li>Systemet ska hantera alla error events via boundary events på relevanta call activities/user tasks:
+          <ul>
+            <li>"pre-screen rejected" error event via boundary event på "Internal data gathering" call activity</li>
+            <li>"object rejected" error event via boundary event på "Object" call activity</li>
+            <li>"stakeholder rejected" error event via boundary event på "Stakeholders" subprocess</li>
+            <li>"application rejected" error event via "KALP OK?" gateway "No" flöde</li>
+            <li>"application-timeout" error event via timeout boundary event på "Confirm application" user task</li>
+          </ul>
+        </li>
+        <li>Varje error event ska avsluta processen med korrekt felmeddelande till kunden som förklarar orsaken, vilken part/objekt som avvisades, och konkreta steg för att förbättra situationen</li>
+        <li>Felmeddelanden ska vara på svenska, tydliga och affärsorienterade (inte tekniska), och ska innehålla konkreta siffror där relevant (t.ex. "Maximalt lånebelopp (2 500 000 SEK) är under ansökt belopp (3 000 000 SEK)")</li>
+      </ul>
+
+      <h3>8. Multi-instance och parallellitet</h3>
+      <ul>
+        <li>Processen ska stödja multi-instance för flera parter, hushåll och stakeholders:
+          <ul>
+            <li>"Internal data gathering" som multi-instance för varje identifierad part</li>
+            <li>"Household" som multi-instance för flera hushåll</li>
+            <li>"Stakeholders" subprocess som multi-instance - en gång per hushåll</li>
+            <li>"Stakeholder" call activity som multi-instance inuti "Stakeholders" subprocessen</li>
+            <li>"Fetch credit information" som multi-instance för varje stakeholder</li>
+          </ul>
+        </li>
+        <li>Varje multi-instance ska hanteras separat med korrekt felhantering, så att om en instans avvisas, påverkar det inte andra instanser</li>
+        <li>"Household" och "Stakeholders" ska köras parallellt, så att kunden kan fylla i både hushållsekonomi och stakeholder-information samtidigt</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+</body>
+</html>

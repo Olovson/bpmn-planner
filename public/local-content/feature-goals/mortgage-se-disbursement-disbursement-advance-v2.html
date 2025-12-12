@@ -238,7 +238,15 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Disbursement är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Disbursement är en process där utbetalning av lån genomförs efter att alla nödvändiga steg är slutförda. Processen syftar till att säkerställa att utbetalning sker på rätt sätt med korrekt kontroll och verifiering.</p>
+      <p>Processen inkluderar automatisk utvärdering av utbetalningsregler, manuell kontroll vid behov, verifiering med fyra ögon för högre belopp, och faktisk utbetalning via Core system. Processen kan hantera både vanlig utbetalning och förskottsutbetalning.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig utbetalning (mortgage.bpmn):</strong> Efter att signering är klar i huvudflödet. Ny information: Signerade dokument från "signing" call activity. Processen anropas via "disbursement" call activity efter "Flow_0vtuz4d" sequence flow. Om utbetalning avbryts, triggas "disbursement-interrupted" boundary event på call activity.</li>
+        <li><strong>Huvudprocessen - Förskottsutbetalning (mortgage.bpmn):</strong> Efter att signering är klar för förskott. Ny information: Signerade dokument för förskott från "signing-advance" call activity. Processen anropas via "disbursement-advance" call activity efter "Flow_0d7j912" sequence flow.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -247,10 +255,14 @@
         <summary>Processteg - Input</summary>
         <div class="section-content">
 <ul>
-        <li>Förskott behövs (triggras via "event-trigger-advance" boundary event på Offer-processen, non-interrupting)</li>
-        <li>Dokumentgenerering för förskott är klar (document-generation-advance)</li>
-        <li>Signering för förskott är klar (signing-advance)</li>
-        <li>Processen startar när Disbursement Advance call activity anropas från mortgage.bpmn</li>
+        <li><strong>Signering är klar:</strong> Alla nödvändiga dokument är signerade</li>
+        <li><strong>Processkontext:</strong> Disbursement anropas via call activity. Alla relevanta processvariabler skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig utbetalning:</strong> Signering är klar via "signing" call activity. Signerade dokument är tillgängliga. Processen anropas via "disbursement" call activity efter "Flow_0vtuz4d" sequence flow. Om utbetalning avbryts, kan "disbursement-interrupted" boundary event triggas på call activity.</li>
+        <li><strong>Huvudprocessen - Förskottssutbetalning:</strong> Signering för förskott är klar via "signing-advance" call activity. Signerade dokument för förskott är tillgängliga. Processen anropas via "disbursement-advance" call activity efter "Flow_0d7j912" sequence flow.</li>
       </ul>
         </div>
       </details>
@@ -261,10 +273,15 @@
         <summary>Processteg - Output</summary>
         <div class="section-content">
 <ul>
-        <li>Förskottet är utbetalt via Core system</li>
-        <li>Dokument är arkiverade i Document archive service</li>
-        <li>Processen avslutas och huvudprocessen fortsätter med "event-advance-paid-out"</li>
-        <li>Om manuell kontroll krävs eller ändringar begärs, kan processen loopa tillbaka för omarbetning</li>
+        <li><strong>Utbetalning är genomförd:</strong> Lånet eller förskottet är utbetalt via Core system</li>
+        <li><strong>Dokument är arkiverade:</strong> Dokument är arkiverade i Document archive service</li>
+        <li><strong>Processen avslutas:</strong> När utbetalning är klar, avslutas processen normalt och anropande processen fortsätter med nästa steg</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig utbetalning:</strong> Utbetalning returneras till huvudprocessen via "disbursement" call activity. Om utbetalning är klar, fortsätter huvudprocessen med "Flow_0wxwicl" sequence flow till "event-loan-paid-out". Om utbetalning avbryts, triggas "disbursement-interrupted" boundary event på call activity. Om ändringar behövs, triggas "Changes needed" boundary event på call activity.</li>
+        <li><strong>Huvudprocessen - Förskottsutbetalning:</strong> Förskottsutbetalning returneras till huvudprocessen via "disbursement-advance" call activity. Om utbetalning är klar, fortsätter huvudprocessen med "Flow_09pbc3u" sequence flow till "event-advance-paid-out".</li>
       </ul>
         </div>
       </details>

@@ -151,37 +151,6 @@
       font-size: 0.9rem;
       font-weight: 500;
     }
-    .llm-fallback-banner {
-      padding: 8px 12px;
-      margin-bottom: 16px;
-      border-radius: 6px;
-      background-color: #fefce8;
-      color: #854d0e;
-      border: 1px solid #fef9c3;
-      font-size: 0.85rem;
-    }
-    .llm-fallback-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      margin-bottom: 12px;
-      border-radius: 4px;
-      background-color: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffeeba;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .llm-fallback-details {
-      font-size: 0.8rem;
-      color: #4b5563;
-      margin-bottom: 16px;
-      white-space: pre-wrap;
-    }
-    .llm-fallback-local-note {
-      font-size: 0.8rem;
-      color: #2563eb;
-      margin-bottom: 16px;
-    }
     details {
       margin: 16px 0;
     }
@@ -209,13 +178,6 @@
       border-radius: 0 0 6px 6px;
       margin-top: 0;
     }
-    img {
-      max-width: 100%;
-      height: auto;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      margin: 12px 0;
-    }
     a {
       color: var(--primary);
       text-decoration: none;
@@ -229,16 +191,19 @@
       📄 Lokal version – Förbättrat innehåll
     </div>
   
-    
-      
-
-
-    
     <section class="doc-section">
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Document generation är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Document generation är en systemaktivitet där systemet automatiskt genererar dokument för låneansökningar. Processen syftar till att säkerställa att alla nödvändiga dokument genereras korrekt baserat på låneinformation och dokumenttyper som behövs.</p>
+      <p>Processen börjar med att systemet förbereder lånet via "Prepare loan" service task. Därefter väljer systemet vilka dokument som behöver genereras via "Select documents" business rule task baserat på låneinformation och dokumenttyper. För varje dokument som behöver genereras, genererar systemet dokumentet via "Generate Document" service task (multi-instance loop). Genererade dokument sparas i "Document generation service" datastore innan processen avslutas.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Mortgage - Normal dokumentgenerering (mortgage.bpmn):</strong> När dokument behöver genereras för låneansökan. Ny information: Låneinformation och dokumenttyper som behöver genereras. Anropas via "document-generation" call activity.</li>
+        <li><strong>Mortgage - Advance dokumentgenerering (mortgage.bpmn):</strong> När dokument behöver genereras i förväg (advance). Ny information: Låneinformation och dokumenttyper som behöver genereras i förväg. Anropas via "document-generation-advance" call activity.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -246,11 +211,17 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Offer är accepterad och lånet är redo (event-loan-ready) i huvudprocessen</li>
-        <li>Offer-processen är slutförd</li>
-        <li>Message event "event-offer-accepted" har triggats (topic: event-offer-accepted)</li>
-        <li>Processen startar när Document Generation call activity anropas från mortgage.bpmn i huvudflödet (entry-18 branch) efter event-loan-ready</li>
+      <p>Document generation-processen startar när:</p>
+      <ul>
+        <li><strong>Låneinformation är tillgänglig:</strong> All nödvändig information för dokumentgenerering är samlad, inklusive låneinformation, dokumenttyper och eventuell party- och objektinformation</li>
+        <li><strong>Externa tjänster är tillgängliga:</strong> "Document generation service" datastore måste vara tillgänglig för att generera och lagra dokument</li>
+        <li><strong>Processkontext:</strong> Document generation anropas via call activity. Alla relevanta processvariabler, inklusive låneinformation och dokumenttyper, skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Mortgage - Normal dokumentgenerering:</strong> Låneinformation och dokumenttyper som behöver genereras är tillgängliga. Processen anropas via "document-generation" call activity.</li>
+        <li><strong>Mortgage - Advance dokumentgenerering:</strong> Låneinformation och dokumenttyper som behöver genereras i förväg (advance) är tillgängliga. Processen anropas via "document-generation-advance" call activity.</li>
       </ul>
         </div>
       </details>
@@ -260,11 +231,32 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Dokument för hela lånet är genererade och lagrade i Document generation service</li>
-        <li>Processen avslutas och huvudprocessen fortsätter med "Documents generated" event (Event_1u29t2f)</li>
-        <li>Message event "event-offer-accepted" triggas (topic: event-offer-accepted) som signalerar att dokument är redo</li>
-        <li>Dokument är redo för signering i Signing-processen</li>
+      <p>När Document generation-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Lånet är förberett:</strong> Systemet har förberett lånet via "Prepare loan" service task och låneinformation är tillgänglig för dokumentgenerering</li>
+        <li><strong>Dokumenttyper är valda:</strong> Systemet har valt vilka dokument som behöver genereras via "Select documents" business rule task baserat på låneinformation och dokumenttyper</li>
+        <li><strong>Alla dokument är genererade:</strong> För varje dokument som behöver genereras har systemet genererat dokumentet via "Generate Document" service task (multi-instance loop). Genererade dokument har sparats i "Document generation service" datastore</li>
+        <li><strong>Processen avslutas normalt:</strong> När alla dokument är genererade och lagrade, avslutas processen normalt och anropande processen fortsätter med nästa steg (t.ex. signering)</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Mortgage - Normal dokumentgenerering:</strong> Genererade dokument returneras till Mortgage-processen via "document-generation" call activity. Resultatet används för att fortsätta med nästa steg i låneprocessen (t.ex. signering).</li>
+        <li><strong>Mortgage - Advance dokumentgenerering:</strong> Genererade dokument returneras till Mortgage-processen via "document-generation-advance" call activity. Resultatet används för att fortsätta med nästa steg i låneprocessen med advance-genererade dokument.</li>
+      </ul>
+        <li><strong>Hushållsaffordabilitet är beräknad:</strong> För varje hushåll har systemet beräknat hushållsaffordabilitet via "Calculate household affordabilty" service task (med data från "Stacc Affordability" datastore) och bedömt hushållet via "Evaluate household" business rule task</li>
+        <li><strong>Stakeholder-bedömning är slutförd:</strong> För varje stakeholder har systemet bedömt stakeholder via "Evaluate stakeholders" business rule task, inklusive eventuell uppdaterad kreditinformation från "Personal credit information source" datastore</li>
+        <li><strong>Kreditpolicybedömning är slutförd:</strong> Systemet har bedömt ansökan mot kreditpolicyer via "Evaluate application" och "Evaluate credit policies" business rule tasks</li>
+        <li><strong>Processen avslutas normalt:</strong> När kreditevaluering är slutförd, avslutas processen normalt och anropande processen fortsätter med nästa steg baserat på evalueringsresultatet</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> Kreditevaluering returneras till Manual Credit Evaluation-processen via "Activity_1gzlxx4" call activity. Resultatet används för att komplettera manuell kreditevaluering och kan påverka slutgiltigt beslut i manuell process.</li>
+        <li><strong>Mortgage Commitment - Första utvärdering:</strong> Kreditevaluering returneras till Mortgage Commitment-processen via "credit-evaluation-1" call activity. Resultatet används för att avgöra om mortgage commitment kan godkännas eller om ytterligare utvärdering behövs.</li>
+        <li><strong>Mortgage Commitment - Andra utvärdering:</strong> Uppdaterad kreditevaluering returneras till Mortgage Commitment-processen via "credit-evaluation-2" call activity. Resultatet används för att avgöra om mortgage commitment kan godkännas baserat på uppdaterad objektinformation.</li>
+        <li><strong>Object Control:</strong> Uppdaterad kreditevaluering returneras till Object Control-processen via "credit-evaluation-2" call activity. Resultatet används för att avgöra om ändringar kräver omvärdering eller om processen kan fortsätta.</li>
+        <li><strong>Mortgage - Huvudprocessen:</strong> Kreditevaluering returneras till Mortgage-processen via "credit-evaluation" call activity. Resultatet används för att avgöra om ansökan kan godkännas automatiskt eller om manuell kreditevaluering krävs via "Manual credit evaluation" call activity.</li>
       </ul>
         </div>
       </details>
@@ -274,11 +266,26 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li><strong>Select documents:</strong> Business rule task som väljer vilka dokument som ska genereras för hela lånet baserat på affärsregler</li>
-        <li><strong>Generate Document:</strong> Service task som genererar dokument via Document generation service (multi-instance loop för att hantera flera dokument)</li>
-        <li><strong>Document generation service:</strong> Data store där genererade dokument lagras</li>
-        <li><strong>Processen använder samma BPMN-fil som Document Generation Advance men anropas i huvudflödet efter Offer</strong></li>
+      <p>Document generation-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Förbereda lån</h3>
+      <ul>
+        <li><strong>Prepare loan (service task):</strong> Systemet förbereder lånet med all nödvändig information (t.ex. loan parts, loan numbers, party- och objektinformation) som behövs för dokumentgenerering</li>
+      </ul>
+
+      <h3>2. Välja dokument</h3>
+      <ul>
+        <li><strong>Select documents (business rule task):</strong> Systemet väljer vilka dokument som behöver genereras baserat på låneinformation och dokumenttyper via affärsregler. Beslutet baseras på faktorer som lånebelopp, låntyp, dokumenttyper och eventuella särskilda krav</li>
+      </ul>
+
+      <h3>3. Generera dokument (multi-instance loop)</h3>
+      <ul>
+        <li><strong>Generate Document (service task - multi-instance loop):</strong> För varje dokument som behöver genereras, genererar systemet dokumentet via "Document generation service" datastore. Dokument genereras baserat på låneinformation och dokumenttyper. Genererade dokument sparas i datastoren för vidare användning</li>
+      </ul>
+
+      <h3>4. Avslut</h3>
+      <ul>
+        <li><strong>Processen avslutas normalt:</strong> När alla dokument är genererade och lagrade, avslutas processen normalt och anropande processen fortsätter med nästa steg (t.ex. signering)</li>
       </ul>
         </div>
       </details>
@@ -289,11 +296,11 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
-        <li>Document Generation Advance (i förskottsflödet) ingår inte - det är en separat process</li>
-        <li>Signering ingår inte - den sker i Signing-processen efter Document Generation</li>
-        <li>Disbursement ingår inte - den sker efter Signing</li>
-        <li>Offer-processen ingår inte - den triggar Document Generation via event-loan-ready</li>
-        <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Manuell kreditevaluering sker i "Manual Credit Evaluation"-processen, inte i denna subprocess</li>
+        <li>Kreditbeslut (godkännande/avslag) sker i "Credit Decision"-processen, inte i denna subprocess</li>
+        <li>Denna subprocess fokuserar enbart på automatisk kreditevaluering, inte på manuell granskning eller slutgiltiga beslut</li>
+        <li>Objektinformation hämtas i "Object Information"-processen, inte i denna subprocess</li>
+        <li>Dokumentationshantering sker i andra subprocesser, inte i denna subprocess</li>
       </ul>
         </div>
       </details>
@@ -304,12 +311,13 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Mortgage huvudprocess:</strong> Document Generation anropas från mortgage.bpmn i huvudflödet (entry-18 branch) när event-loan-ready triggas</li>
-        <li><strong>Offer-processen:</strong> Offer måste vara accepterad och event-loan-ready måste ha triggats innan Document Generation startar</li>
-        <li><strong>Document generation service:</strong> Genomför faktisk generering och lagring av dokument</li>
-        <li><strong>Document selection rules (DMN):</strong> Automatisk val av vilka dokument som ska genereras för hela lånet</li>
-        <li><strong>Signing:</strong> Efter dokumentgenerering går processen vidare till Signing för signering</li>
-        <li><strong>Disbursement:</strong> Efter signering går processen vidare till Disbursement för utbetalning</li>
+        <li><strong>Pricing engine (datastore):</strong> För att hämta prisinformation via "Fetch price" service task</li>
+        <li><strong>Risk engine (datastore):</strong> För att hämta riskklassificering via "Fetch risk classification" service task</li>
+        <li><strong>Personal credit information source (datastore):</strong> För att hämta uppdaterad kreditinformation för stakeholders via "Fetch credit information" service task</li>
+        <li><strong>Stacc Affordability (datastore):</strong> För att beräkna hushållsaffordabilitet via "Calculate household affordabilty" service task</li>
+        <li><strong>Affärsregelmotor (DMN):</strong> För att bedöma produktval, amortering, hushållsaffordabilitet, stakeholder-bedömning, ansökan och kreditpolicyer via business rule tasks</li>
+        <li><strong>Application-processen:</strong> För att tillhandahålla komplett ansökningsinformation inklusive objekt, hushåll och stakeholders</li>
+        <li><strong>Object Information-processen:</strong> För att tillhandahålla uppdaterad objektinformation när processen anropas från Mortgage Commitment eller Object Control</li>
       </ul>
         </div>
       </details>
@@ -319,8 +327,46 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-document-generation.bpmn">Visa BPMN-processen för Document Generation</a></p>
-      <p class="muted">Processen startar med val av dokument via business rules, genererar dokument via Document generation service (multi-instance loop), och lagrar dokument i Document generation service. Processen använder samma BPMN-fil som Document Generation Advance men anropas i huvudflödet när event-loan-ready triggas efter Offer.</p>
+      <p><a href="#/bpmn/mortgage-se-document-generation.bpmn">Visa BPMN-processen för Document generation</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Document generation anropas från anropande processen (t.ex. Mortgage, Mortgage Commitment, Object Control, Manual Credit Evaluation) via call activity</li>
+        <li><strong>Select product (business rule task):</strong> Systemet väljer produkt baserat på ansökningsdata via affärsregler</li>
+        <li><strong>Fetch price (service task):</strong> Systemet hämtar prisinformation från "Pricing engine" datastore</li>
+        <li><strong>Determine amortisation (business rule task):</strong> Systemet beräknar amortering baserat på produktval, prisinformation och ansökningsdata via affärsregler</li>
+        <li><strong>For each stakeholder (subprocess - multi-instance loop):</strong> Systemet bearbetar varje stakeholder:
+          <ul>
+            <li><strong>Needs updated Credit information (gateway):</strong> Avgör om uppdaterad kreditinformation behövs:
+              <ul>
+                <li><strong>Yes:</strong> Processen går till "Fetch credit information" service task som hämtar information från "Personal credit information source" datastore</li>
+                <li><strong>No:</strong> Processen fortsätter direkt till nästa steg</li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li><strong>For each household (subprocess - multi-instance loop):</strong> Systemet bearbetar varje hushåll:
+          <ul>
+            <li><strong>Calculate household affordabilty (service task):</strong> Systemet beräknar hushållsaffordabilitet baserat på inkomst, utgifter, befintliga skulder och ekonomiska förpliktelser. Data hämtas från "Stacc Affordability" datastore</li>
+            <li><strong>Evaluate household (business rule task):</strong> Systemet bedömer hushållsaffordabilitet mot låne- och policykriterier via affärsregler</li>
+            <li><strong>Evaluate stakeholders (business rule task):</strong> Systemet bedömer stakeholders i hushållet via affärsregler</li>
+          </ul>
+        </li>
+        <li><strong>Fetch risk classification (service task):</strong> Systemet hämtar riskklassificering från "Risk engine" datastore</li>
+        <li><strong>Evaluate application (business rule task):</strong> Systemet bedömer ansökan baserat på riskklassificering, hushållsaffordabilitet och stakeholder-bedömningar via affärsregler</li>
+        <li><strong>Evaluate credit policies (business rule task):</strong> Systemet bedömer ansökan mot alla kreditpolicyer och lånekriterier via affärsregler</li>
+        <li><strong>Avslut:</strong> När kreditevaluering är slutförd, avslutas processen normalt och anropande processen fortsätter med nästa steg baserat på evalueringsresultatet</li>
+      </ol>
+      
+      <h3>Anropningsställen</h3>
+      <p>Denna process anropas från följande ställen:</p>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> Anropas från "mortgage-se-manual-credit-evaluation.bpmn" via "Activity_1gzlxx4" call activity med called_element "credit-evaluation". Efter manuell kreditevaluering när automatisk kreditevaluering behövs som del av den manuella processen.</li>
+        <li><strong>Mortgage Commitment - Första utvärdering:</strong> Anropas från "mortgage-se-mortgage-commitment.bpmn" via "credit-evaluation-1" call activity. När automatisk kreditevaluering behövs för första gången i mortgage commitment-processen.</li>
+        <li><strong>Mortgage Commitment - Andra utvärdering:</strong> Anropas från "mortgage-se-mortgage-commitment.bpmn" via "credit-evaluation-2" call activity. När automatisk kreditevaluering behövs igen efter att objektinformation har uppdaterats.</li>
+        <li><strong>Object Control:</strong> Anropas från "mortgage-se-object-control.bpmn" via "credit-evaluation-2" call activity med called_element "credit-evaluation". När automatisk kreditevaluering behövs efter att objektkontroll har genomförts och objektinformation har uppdaterats.</li>
+        <li><strong>Mortgage - Huvudprocessen:</strong> Anropas från "mortgage.bpmn" via "credit-evaluation" call activity. När automatisk kreditevaluering behövs för första gången i huvudprocessen efter att Application-processen är slutförd.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -354,98 +400,34 @@
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Select documents business rule task väljer dokument baserat på ansökningsdata. Generate Document service task genererar alla dokument (multi-instance loop). Dokument lagras i Document generation service. Processen avslutas och går vidare till Signing via event Documents generated.</td>
+        <td>Systemet förbereder lånet, väljer dokumenttyper, genererar alla dokument via multi-instance loop, och lagrar genererade dokument. Processen avslutas normalt och anropande processen fortsätter med nästa steg (t.ex. signering).</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Dokumentgenerering misslyckas – felhantering</td>
-        <td>Error</td>
+        <td>Document generation service otillgängligt – felhantering</td>
+        <td>Edge</td>
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Generate Document service task misslyckas för ett eller flera dokument (t.ex. template-fel, data-fel, eller service-fel). Systemet hanterar felet gracefully och processen kan antingen retry, avvisas, eller kräva manuell hantering.</td>
+        <td>Om "Document generation service" datastore inte är tillgänglig, hanterar systemet felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalerar till anropande processen.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Multi-instance – flera dokumenttyper</td>
-        <td>Happy</td>
+        <td>Flera dokumenttyper – multi-instance loop</td>
+        <td>Edge</td>
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Select documents väljer flera dokumenttyper (t.ex. låneavtal, säkerhetsavtal, kreditavtal). Generate Document körs som multi-instance loop för varje dokumenttyp. Alla dokument genereras och lagras korrekt.</td>
+        <td>För låneansökningar med flera dokumenttyper, bearbetar systemet varje dokumenttyp korrekt via multi-instance loop. Alla dokument genereras och lagras innan processen avslutas.</td>
         <td>✅ Planerad</td>
       </tr>
     
         </tbody>
       </table>
-
-      <h3>UI Flow per Scenario</h3>
-      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
-      
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
 
       <h3>Testdata-referenser</h3>
       <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
@@ -470,33 +452,6 @@
         </thead>
         <tbody>
           
-      <tr>
-        <td>Select documents</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/select-documents]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Business rule task som väljer vilka dokument som ska genereras för hela lånet...</td>
-      </tr>
-    
-      <tr>
-        <td>Generate Document</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/generate-document]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Service task som genererar dokument via Document generation service (multi-in...</td>
-      </tr>
-    
-      <tr>
-        <td>Document generation service</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /document-generation-service]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Data store där genererade dokument lagras</td>
-      </tr>
-    
         </tbody>
       </table>
         </div>
@@ -507,7 +462,15 @@
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      
+      <h3>Automatiserad dokumentgenerering</h3>
+      <p>Genom automatisk generering av dokument kan systemet säkerställa att alla nödvändiga dokument genereras korrekt baserat på låneinformation och dokumenttyper. Detta kan minska manuell hantering med upp till 80-90% jämfört med manuell process och säkerställa att dokument genereras i rätt tid och med rätt innehåll.</p>
+      
+      <h3>Konsistent dokumentgenerering</h3>
+      <p>Genom att använda samma dokumentgenereringsprocess för alla låneansökningar (oavsett var processen anropas från) säkerställs konsistent dokumentgenerering. Detta kan minska risken för inkonsistenta dokument med upp till 40-50% och förbättra kvaliteten på genererade dokument.</p>
+      
+      <h3>Återanvändbar process</h3>
+      <p>Genom att Document generation är en återanvändbar call activity som kan anropas från flera ställen (t.ex. Mortgage normal dokumentgenerering, Mortgage advance dokumentgenerering) elimineras duplicerad logik och säkerställs konsistent dokumentgenerering. Detta kan minska underhållskostnader med upp till 30-40% och förbättra systemets övergripande kvalitet.</p>
         </div>
       </details>
     </section>
@@ -517,10 +480,16 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som system</strong> vill jag automatiskt generera dokument via "Document generation service" datastore <strong>så att</strong> dokument genereras korrekt utan manuell intervention, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt förbereda lånet, välja dokumenttyper, generera alla dokument via multi-instance loop, och lagra genererade dokument i "Document generation service" datastore.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt välja dokumenttyper baserat på låneinformation via affärsregler <strong>så att</strong> rätt dokument genereras för varje låneansökan. <em>Acceptanskriterier: "Select documents" business rule task ska korrekt välja dokumenttyper baserat på låneinformation och dokumenttyper via affärsregler.</em></li>
+      </ul>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt genererar dokument <strong>så att</strong> jag endast behöver granska genererade dokument när det behövs, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt generera alla nödvändiga dokument, och genererade dokument ska vara tillgängliga för granskning och signering.</em></li>
       </ul>
         </div>
       </details>
@@ -531,13 +500,39 @@
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>Förbereda lån</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>"Prepare loan" service task ska automatiskt förbereda lånet med all nödvändig information (t.ex. loan parts, loan numbers, party- och objektinformation) som behövs för dokumentgenerering</li>
+      </ul>
+      
+      <h3>Välja dokument</h3>
+      <ul>
+        <li>"Select documents" business rule task ska korrekt välja vilka dokument som behöver genereras baserat på låneinformation och dokumenttyper via affärsregler</li>
+      </ul>
+      
+      <h3>Generera dokument</h3>
+      <ul>
+        <li>"Generate Document" service task ska automatiskt generera dokument via multi-instance loop för varje dokument som behöver genereras</li>
+        <li>Genererade dokument ska sparas i "Document generation service" datastore för vidare användning</li>
+        <li>Multi-instance loop ska korrekt bearbeta varje dokumenttyp som behöver genereras</li>
+      </ul>
+      
+      <h3>Processflöde och avslut</h3>
+      <ul>
+        <li>När alla dokument är genererade och lagrade, ska processen avslutas normalt och anropande processen fortsätta med nästa steg (t.ex. signering)</li>
+        <li>Alla processvariabler ska skickas med när Document generation anropas från anropande processen för att säkerställa fullständig kontext</li>
+        <li>Genererade dokument ska korrekt sparas och vara tillgängliga för anropande processen</li>
+      </ul>
+      
+      <h3>Felhantering</h3>
+      <ul>
+        <li>Om "Document generation service" datastore inte är tillgänglig, ska processen hantera felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalera till anropande processen</li>
+        <li>Om dokumentgenerering misslyckas, ska processen hantera felet på ett tydligt sätt och signalera till anropande processen</li>
       </ul>
         </div>
       </details>
     </section>
       </body>
 </html>
+

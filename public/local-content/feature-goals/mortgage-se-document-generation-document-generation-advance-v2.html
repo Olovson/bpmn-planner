@@ -238,7 +238,15 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Document generation är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Document generation är en automatiserad process där systemet genererar alla nödvändiga dokument för låneavtal och relaterade processer. Processen syftar till att automatiskt skapa och lagra dokument baserat på affärsregler och ansökningsdata.</p>
+      <p>Processen väljer först vilka dokument som ska genereras baserat på affärsregler via business rule task, och genererar sedan dokument via Document generation service. Processen kan hantera både vanlig dokumentgenerering och dokumentgenerering för förskott.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig dokumentgenerering (mortgage.bpmn):</strong> Efter att offer är accepterad i huvudflödet. Ny information: Accepterat offer från "offer" call activity. Processen anropas via "document-generation" call activity efter "Flow_0qnrs78" sequence flow.</li>
+        <li><strong>Huvudprocessen - Förskottsdokumentgenerering (mortgage.bpmn):</strong> Efter att förskott är redo när kunden begärt förskott. Ny information: Förskott är redo från "event-advance-ready" när "event-trigger-advance" boundary event har triggats på "offer" call activity. Processen anropas via "document-generation-advance" call activity efter "Flow_19p7nff" sequence flow.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -247,9 +255,14 @@
         <summary>Processteg - Input</summary>
         <div class="section-content">
 <ul>
-        <li>Förskottet är redo (event-advance-ready) i huvudprocessen</li>
-        <li>Offer är accepterad och kunden har begärt förskott (event-trigger-advance boundary event på offer)</li>
-        <li>Processen startar när Document Generation Advance call activity anropas från mortgage.bpmn i förskottsflödet (entry-19 branch)</li>
+        <li><strong>Ansökningsdata är tillgänglig:</strong> All nödvändig information för dokumentgenerering är samlad och tillgänglig</li>
+        <li><strong>Processkontext:</strong> Document generation anropas via call activity. Alla relevanta processvariabler skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig dokumentgenerering:</strong> Offer är accepterad via "offer" call activity. Accepterat offer är tillgängligt. Processen anropas via "document-generation" call activity efter "Flow_0qnrs78" sequence flow.</li>
+        <li><strong>Huvudprocessen - Förskottsdokumentgenerering:</strong> Förskott är redo via "event-advance-ready" när "event-trigger-advance" boundary event har triggats på "offer" call activity. Förskottsinformation är tillgänglig. Processen anropas via "document-generation-advance" call activity efter "Flow_19p7nff" sequence flow.</li>
       </ul>
         </div>
       </details>
@@ -260,9 +273,14 @@
         <summary>Processteg - Output</summary>
         <div class="section-content">
 <ul>
-        <li>Dokument för förskottsutbetalning är genererade och lagrade i Document generation service</li>
-        <li>Processen avslutas och huvudprocessen fortsätter med Signing Advance för signering av förskottsdokument</li>
-        <li>Dokument är redo för signering i Signing Advance-processen</li>
+        <li><strong>Dokument är genererade:</strong> Alla nödvändiga dokument är genererade och lagrade i Document generation service</li>
+        <li><strong>Processen avslutas:</strong> När dokumentgenerering är klar, avslutas processen normalt och anropande processen fortsätter med nästa steg</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig dokumentgenerering:</strong> Genererade dokument returneras till huvudprocessen via "document-generation" call activity. Om dokumentgenerering är klar, fortsätter huvudprocessen med "Flow_103801l" sequence flow till "Event_1u29t2f" (Documents generated), som sedan triggar "signing" call activity via "Flow_13h9ucs" sequence flow.</li>
+        <li><strong>Huvudprocessen - Förskottsdokumentgenerering:</strong> Genererade dokument för förskott returneras till huvudprocessen via "document-generation-advance" call activity. Om dokumentgenerering är klar, fortsätter huvudprocessen med "Flow_0be9cnv" sequence flow till "signing-advance" call activity.</li>
       </ul>
         </div>
       </details>

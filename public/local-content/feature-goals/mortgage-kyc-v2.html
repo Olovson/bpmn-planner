@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KYC</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+    
+      
+
+
+    
+    <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+      <p>KYC (Know Your Customer) är en compliance-process där systemet utvärderar kundens identitet, riskprofil och compliance-status för att säkerställa att kunden uppfyller AML (Anti-Money Laundering) och KYC-krav. Processen anropas från Mortgage huvudprocessen som multi-instance call activity, vilket innebär att den körs en gång per stakeholder (huvudansökande och eventuella medsökande) i ansökan.</p>
+      <p>Processen startar med att systemet hämtar befintlig KYC-data från Internal KYC service via "Fetch KYC" service task. Systemet avgör sedan om självdeklaration behövs via "KYC questions needed?" gateway. Om självdeklaration behövs, fyller stakeholder i självdeklaration via "Submit self declaration" user task. Systemet hämtar sedan AML/KYC riskpoäng från Internal aml service via "Fetch AML/KYC risk score" service task och sanktions- och PEP-screening från Sanction screening provider via "Fetch sanctions and PEP" service task.</p>
+      <p>Systemet utvärderar sedan KYC/AML-compliance via "Evaluate KYC/AML" business rule task med DMN-beslutsregler. Om manuell granskning behövs, granskar Compliance-teamet KYC via "Review KYC" user task. Om KYC godkänns, avslutas processen normalt. Om KYC avvisas, avslutas processen med "Rejected" escalation event som triggar boundary event i huvudprocessen.</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+      <p>KYC-processen startar när:</p>
+      <ul>
+        <li><strong>Kreditevaluering är klar:</strong> Huvudprocessen (Mortgage) har slutfört kreditevaluering och är redo för KYC-compliance-utvärdering</li>
+        <li><strong>Kundidentifikation är tillgänglig:</strong> Kundidentifikation och ansökningsdata är tillgänglig från tidigare steg i huvudprocessen</li>
+        <li><strong>Processkontext:</strong> KYC anropas från Mortgage huvudprocessen via "kyc" call activity. Processen körs som multi-instance call activity, vilket innebär att den körs en gång per stakeholder (huvudansökande och eventuella medsökande) i ansökan</li>
+        <li><strong>Stakeholders är identifierade:</strong> Alla stakeholders (huvudansökande och eventuella medsökande) måste vara identifierade innan KYC startar</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+      <p>När KYC-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>KYC/AML-compliance är utvärderad:</strong> Varje stakeholder har genomgått KYC/AML-compliance-utvärdering via "Evaluate KYC/AML" business rule task med DMN-beslutsregler. Utvärderingen baseras på självdeklaration, AML/KYC riskpoäng, och sanktions- och PEP-screeningresultat</li>
+        <li><strong>Riskpoäng och screeningresultat är tillgängliga:</strong> AML/KYC riskpoäng från Internal aml service och sanktions- och PEP-screeningresultat från Sanction screening provider är samlade och tillgängliga för compliance-utvärdering</li>
+        <li><strong>Processen avslutas normalt:</strong> Om KYC godkänns (antingen automatiskt via "Needs review?" gateway "No" eller efter manuell granskning via "Approved?" gateway "Yes"), avslutas processen normalt och huvudprocessen fortsätter med nästa steg</li>
+        <li><strong>Felhantering:</strong> Om KYC avvisas (antingen automatiskt via "Evaluate KYC/AML" business rule task eller efter manuell granskning via "Approved?" gateway "No"), avslutas processen med "Rejected" escalation event som triggar boundary event i huvudprocessen och avbryter hela ansökningsprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+      <p>KYC-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Hämtning av befintlig KYC-data</h3>
+      <ul>
+        <li><strong>Fetch KYC (service task):</strong> Systemet hämtar automatiskt befintlig KYC-data från Internal KYC service data store. Om befintlig data finns, kan processen hoppa över självdeklaration</li>
+      </ul>
+
+      <h3>2. Beslut om självdeklaration</h3>
+      <ul>
+        <li><strong>KYC questions needed? (gateway):</strong> En beslutspunkt avgör om självdeklaration behövs baserat på befintlig KYC-data:
+          <ul>
+            <li><strong>Yes:</strong> Processen går till "Submit self declaration" user task</li>
+            <li><strong>No:</strong> Processen hoppar över självdeklaration och går direkt till hämtning av riskpoäng och screening</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>3. Självdeklaration (om behövs)</h3>
+      <ul>
+        <li><strong>Submit self declaration (user task):</strong> Om självdeklaration behövs, fyller stakeholder i självdeklaration för KYC-compliance. Information som samlas in inkluderar:
+          <ul>
+            <li>PEP-status (Politically Exposed Person)</li>
+            <li>Källa till medel (Source of Funds)</li>
+            <li>Syfte med transaktionen</li>
+            <li>Andra relevanta compliance-uppgifter</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Hämtning av riskpoäng och screening</h3>
+      <ul>
+        <li><strong>Fetch AML/KYC risk score (service task):</strong> Systemet hämtar automatiskt AML/KYC riskpoäng från Internal aml service data store. Riskpoängen baseras på kundens profil, historik och andra riskfaktorer</li>
+        <li><strong>Fetch sanctions and PEP (service task):</strong> Systemet hämtar automatiskt sanktions- och PEP-screeningresultat från Sanction screening provider data store. Screening kontrollerar om kunden finns i sanktionslistor eller är politiskt exponerad</li>
+      </ul>
+
+      <h3>5. Utvärdering av KYC/AML-compliance</h3>
+      <ul>
+        <li><strong>Evaluate KYC/AML (business rule task):</strong> Systemet utvärderar automatiskt KYC/AML-compliance via DMN-beslutsregler (table-bisnode-credit, table-own-experience). Utvärderingen baseras på självdeklaration, AML/KYC riskpoäng, och sanktions- och PEP-screeningresultat</li>
+        <li><strong>Needs review? (gateway):</strong> En beslutspunkt avgör om manuell granskning behövs baserat på resultatet från "Evaluate KYC/AML" business rule task:
+          <ul>
+            <li><strong>Yes:</strong> Processen går till "Review KYC" user task för manuell granskning</li>
+            <li><strong>No:</strong> Processen avslutas normalt utan manuell granskning</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>6. Manuell granskning (om behövs)</h3>
+      <ul>
+        <li><strong>Review KYC (user task):</strong> Om manuell granskning behövs, granskar Compliance-teamet KYC-compliance baserat på all tillgänglig data (självdeklaration, AML/KYC riskpoäng, sanktions- och PEP-screeningresultat)</li>
+        <li><strong>Approved? (gateway):</strong> En beslutspunkt avgör om KYC är godkänd efter manuell granskning:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas normalt</li>
+            <li><strong>No:</strong> Processen avslutas med "Rejected" escalation event</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>7. Multi-instance hantering</h3>
+      <ul>
+        <li><strong>Processen körs per stakeholder:</strong> KYC körs som multi-instance call activity, vilket innebär att hela processen körs en gång per stakeholder (huvudansökande och eventuella medsökande) i ansökan</li>
+        <li><strong>Parallell körning:</strong> Processen kan köras parallellt för flera stakeholders för att öka effektiviteten</li>
+        <li><strong>Sammanföring:</strong> När alla stakeholders har slutförts, fortsätter huvudprocessen med nästa steg</li>
+      </ul>
+
+      <h3>8. Felhantering</h3>
+      <ul>
+        <li><strong>Rejected (escalation event):</strong> Om KYC avvisas (antingen automatiskt via "Evaluate KYC/AML" business rule task eller efter manuell granskning via "Approved?" gateway "No"), avslutas processen med "Rejected" escalation event. Detta triggar boundary event i huvudprocessen som avbryter hela ansökningsprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Credit evaluation ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Credit decision ingår inte - den sker efter KYC</li>
+        <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Offer-processen ingår inte - den sker senare i huvudprocessen</li>
+        <li>Signering och Disbursement ingår inte - de sker senare i huvudprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Mortgage huvudprocess:</strong> KYC anropas från mortgage.bpmn i huvudflödet (entry-18 branch) när event-credit-evaluation-complete triggas</li>
+        <li><strong>Credit evaluation:</strong> Kreditevaluering måste vara klar innan KYC startar</li>
+        <li><strong>Internal aml service:</strong> Hämtar AML/KYC riskpoäng för compliance-utvärdering</li>
+        <li><strong>Sanction screening provider:</strong> Hämtar sanktions- och PEP-screeningresultat</li>
+        <li><strong>KYC/AML business rules (DMN):</strong> Automatisk utvärdering av KYC/AML-compliance (table-bisnode-credit, table-own-experience)</li>
+        <li><strong>Compliance-team:</strong> Genomför manuell granskning vid behov (Review KYC user task)</li>
+        <li><strong>Stakeholder/Customer:</strong> Fyller i självdeklaration för KYC-compliance</li>
+        <li><strong>Credit decision:</strong> Efter KYC går processen vidare till Credit decision</li>
+        <li><strong>Multi-instance loop:</strong> Processen kan köras för flera stakeholders (t.ex. huvudkund och medsökande)</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+      <p><a href="#/bpmn/mortgage-se-kyc.bpmn">Visa BPMN-processen för KYC</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Mortgage huvudprocessen anropar "kyc" call activity. Processen körs som multi-instance för varje stakeholder i ansökan</li>
+        <li><strong>Fetch KYC (service task):</strong> Systemet hämtar automatiskt befintlig KYC-data från Internal KYC service data store</li>
+        <li><strong>KYC questions needed? (gateway):</strong> En beslutspunkt avgör om självdeklaration behövs:
+          <ul>
+            <li><strong>Yes:</strong> Processen går till "Submit self declaration" user task</li>
+            <li><strong>No:</strong> Processen hoppar över självdeklaration och går direkt till hämtning av riskpoäng och screening</li>
+          </ul>
+        </li>
+        <li><strong>Submit self declaration (user task, om behövs):</strong> Om självdeklaration behövs, fyller stakeholder i självdeklaration för KYC-compliance (PEP-status, källa till medel, syfte med transaktionen, etc.)</li>
+        <li><strong>Fetch AML/KYC risk score (service task):</strong> Systemet hämtar automatiskt AML/KYC riskpoäng från Internal aml service data store</li>
+        <li><strong>Fetch sanctions and PEP (service task):</strong> Systemet hämtar automatiskt sanktions- och PEP-screeningresultat från Sanction screening provider data store</li>
+        <li><strong>Evaluate KYC/AML (business rule task):</strong> Systemet utvärderar automatiskt KYC/AML-compliance via DMN-beslutsregler (table-bisnode-credit, table-own-experience) baserat på självdeklaration, AML/KYC riskpoäng, och sanktions- och PEP-screeningresultat</li>
+        <li><strong>Needs review? (gateway):</strong> En beslutspunkt avgör om manuell granskning behövs:
+          <ul>
+            <li><strong>Yes:</strong> Processen går till "Review KYC" user task för manuell granskning</li>
+            <li><strong>No:</strong> Processen avslutas normalt utan manuell granskning</li>
+          </ul>
+        </li>
+        <li><strong>Review KYC (user task, om behövs):</strong> Om manuell granskning behövs, granskar Compliance-teamet KYC-compliance baserat på all tillgänglig data</li>
+        <li><strong>Approved? (gateway, om manuell granskning):</strong> En beslutspunkt avgör om KYC är godkänd efter manuell granskning:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas normalt</li>
+            <li><strong>No:</strong> Processen avslutas med "Rejected" escalation event</li>
+          </ul>
+        </li>
+        <li><strong>Avslut:</strong> När KYC är godkänd (antingen automatiskt eller efter manuell granskning), avslutas processen normalt. När alla stakeholders har slutförts, fortsätter huvudprocessen med nästa steg. Om KYC avvisas, avslutas processen med "Rejected" escalation event som avbryter hela ansökningsprocessen</li>
+      </ol>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>KYC questions needed? (gateway):</strong> Avgör om självdeklaration behövs baserat på befintlig KYC-data</li>
+        <li><strong>Needs review? (gateway):</strong> Avgör om manuell granskning behövs baserat på resultatet från "Evaluate KYC/AML" business rule task</li>
+        <li><strong>Approved? (gateway):</strong> Avgör om KYC är godkänd efter manuell granskning. Om "No", avslutas processen med escalation event</li>
+      </ul>
+      
+      <h3>Multi-instance hantering</h3>
+      <ul>
+        <li><strong>Processen körs per stakeholder:</strong> KYC körs som multi-instance call activity, vilket innebär att hela processen körs en gång per stakeholder i ansökan</li>
+        <li><strong>Parallell körning:</strong> Processen kan köras parallellt för flera stakeholders för att öka effektiviteten</li>
+        <li><strong>Sammanföring:</strong> När alla stakeholders har slutförts, fortsätter huvudprocessen med nästa steg</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – KYC godkänd automatiskt</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>compliance</td>
+        <td>Självdeklaration skickad, AML/KYC riskpoäng och sanktionsscreening OK, Evaluate KYC/AML godkänner automatiskt. Ingen manuell granskning behövs. Processen avslutas och går vidare till Credit decision.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Manuell granskning krävs – KYC godkänd efter review</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>compliance</td>
+        <td>Evaluate KYC/AML flaggar för manuell granskning (t.ex. högre riskpoäng). Compliance-teamet granskar och godkänner. Processen avslutas och går vidare till Credit decision.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>KYC avvisad – manuell granskning avvisar</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>compliance</td>
+        <td>Manuell granskning krävs, Compliance-teamet avvisar KYC (t.ex. PEP-match, sanktionsmatch, eller allvarlig AML-risk). "kyc-rejected" escalation triggas och processen avslutas med "KYC rejected" end event.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>KYC avvisad – automatiskt avslag vid hög risk</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>compliance</td>
+        <td>Evaluate KYC/AML avvisar automatiskt (t.ex. PEP-match i sanktionsscreening, mycket hög AML-riskpoäng). "kyc-rejected" escalation triggas direkt utan manuell granskning. Processen avslutas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>Multi-instance – KYC för flera stakeholders</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>compliance</td>
+        <td>KYC-processen körs för flera stakeholders (huvudansökande + medsökande). Båda genomgår självdeklaration, AML/KYC screening, och sanktionsscreening. Båda godkänns. Processen avslutas när alla stakeholders är godkända.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Ofullständig självdeklaration – komplettering krävs</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td>Självdeklaration saknar viktig information (t.ex. PEP-status, politiskt exponerad person). Systemet kräver komplettering innan processen kan fortsätta.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – KYC godkänd automatiskt</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>kyc-start</td>
+          <td>navigate</td>
+          <td>nav-kyc</td>
+          <td>customer-standard</td>
+          <td>KYC-processen startar automatiskt när event-credit-evaluation-complete triggas i huvudprocessen</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>submit-self-declaration</td>
+          <td>navigate</td>
+          <td>nav-self-declaration</td>
+          <td>customer-standard</td>
+          <td>Navigera till självdeklarationsformulär (Stakeholder lane)</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>submit-self-declaration</td>
+          <td>fill</td>
+          <td>input-pep-status</td>
+          <td>customer-standard</td>
+          <td>Fyll i PEP-status (Politically Exposed Person) - välj "No"</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>submit-self-declaration</td>
+          <td>fill</td>
+          <td>input-source-of-funds</td>
+          <td>customer-standard</td>
+          <td>Fyll i källa till medel (Source of Funds)</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>submit-self-declaration</td>
+          <td>fill</td>
+          <td>input-purpose-of-transaction</td>
+          <td>customer-standard</td>
+          <td>Fyll i syfte med transaktionen</td>
+        </tr>
+      
+        <tr>
+          <td>6</td>
+          <td>submit-self-declaration</td>
+          <td>click</td>
+          <td>btn-submit-declaration</td>
+          <td>customer-standard</td>
+          <td>Skicka in självdeklaration</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>fetch-aml-kyc-risk</td>
+          <td>verify</td>
+          <td>api-aml-risk-score</td>
+          <td>customer-standard</td>
+          <td>Systemet hämtar AML/KYC riskpoäng från Internal aml service automatiskt (Service task). Verifiera att riskpoäng är låg (&lt;30).</td>
+        </tr>
+      
+        <tr>
+          <td>8</td>
+          <td>fetch-screening-and-sanctions</td>
+          <td>verify</td>
+          <td>api-sanctions-pep-screening</td>
+          <td>customer-standard</td>
+          <td>Systemet hämtar sanktions- och PEP-screening från Sanction screening provider automatiskt (Service task). Verifiera att ingen match hittas.</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>assess-kyc-aml</td>
+          <td>verify</td>
+          <td>dmn-evaluate-kyc-aml-approved</td>
+          <td>customer-standard</td>
+          <td>Evaluate KYC/AML business rule task körs automatiskt. Verifiera att DMN (table-bisnode-credit, table-own-experience) returnerar "APPROVED".</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>needs-review</td>
+          <td>verify</td>
+          <td>gateway-needs-review-no</td>
+          <td>customer-standard</td>
+          <td>Needs review gateway avgör att ingen manuell granskning behövs (No). Processen går direkt till process end event.</td>
+        </tr>
+      
+        <tr>
+          <td>11</td>
+          <td>kyc-completed</td>
+          <td>verify</td>
+          <td>success-message-kyc-approved</td>
+          <td>customer-standard</td>
+          <td>Verifiera att KYC är godkänd och processen avslutas. Huvudprocessen fortsätter med Credit decision.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Manuell granskning krävs – KYC godkänd efter review</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-6</td>
+          <td>kyc-start till submit-self-declaration</td>
+          <td>navigate, fill, click</td>
+          <td>nav-kyc, input-pep-status, btn-submit-declaration</td>
+          <td>customer-review-needed</td>
+          <td>Samma som S1 steg 1-6: Starta process, fyll i självdeklaration (med högre riskprofil)</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>fetch-aml-kyc-risk</td>
+          <td>verify</td>
+          <td>api-aml-risk-score</td>
+          <td>customer-review-needed</td>
+          <td>Systemet hämtar AML/KYC riskpoäng. Verifiera att riskpoäng är medelhög (30-60).</td>
+        </tr>
+      
+        <tr>
+          <td>8</td>
+          <td>fetch-screening-and-sanctions</td>
+          <td>verify</td>
+          <td>api-sanctions-pep-screening</td>
+          <td>customer-review-needed</td>
+          <td>Systemet hämtar sanktions- och PEP-screening. Verifiera att ingen direkt match hittas, men flaggad för review.</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>assess-kyc-aml</td>
+          <td>verify</td>
+          <td>dmn-evaluate-kyc-aml-review-needed</td>
+          <td>customer-review-needed</td>
+          <td>Evaluate KYC/AML DMN returnerar "REVIEW_NEEDED" (inte direkt avslag, men kräver manuell granskning).</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>needs-review</td>
+          <td>verify</td>
+          <td>gateway-needs-review-yes</td>
+          <td>customer-review-needed</td>
+          <td>Needs review gateway avgör att manuell granskning behövs (Yes). Processen går till Review KYC user task.</td>
+        </tr>
+      
+        <tr>
+          <td>11</td>
+          <td>review-kyc</td>
+          <td>navigate</td>
+          <td>nav-review-kyc</td>
+          <td>customer-review-needed</td>
+          <td>Compliance-teamet navigerar till Review KYC user task (Compliance lane)</td>
+        </tr>
+      
+        <tr>
+          <td>12</td>
+          <td>review-kyc</td>
+          <td>verify</td>
+          <td>summary-kyc-data</td>
+          <td>customer-review-needed</td>
+          <td>Verifiera att sammanfattning visar all KYC-data (självdeklaration, AML-riskpoäng, sanktionsscreening)</td>
+        </tr>
+      
+        <tr>
+          <td>13</td>
+          <td>review-kyc</td>
+          <td>click</td>
+          <td>btn-approve-kyc</td>
+          <td>customer-review-needed</td>
+          <td>Compliance-teamet godkänner KYC efter manuell granskning</td>
+        </tr>
+      
+        <tr>
+          <td>14</td>
+          <td>kyc-approved</td>
+          <td>verify</td>
+          <td>gateway-approved-yes</td>
+          <td>customer-review-needed</td>
+          <td>Approved gateway avgör att KYC är godkänd (Yes). Processen går till process end event.</td>
+        </tr>
+      
+        <tr>
+          <td>15</td>
+          <td>kyc-completed</td>
+          <td>verify</td>
+          <td>success-message-kyc-approved</td>
+          <td>customer-review-needed</td>
+          <td>Verifiera att KYC är godkänd efter manuell granskning och processen avslutas.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: KYC avvisad – manuell granskning avvisar</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-10</td>
+          <td>kyc-start till needs-review</td>
+          <td>navigate, fill, verify</td>
+          <td>nav-kyc, input-pep-status, gateway-needs-review-yes</td>
+          <td>customer-kyc-rejected</td>
+          <td>Samma som S2 steg 1-10: Starta process, fyll i självdeklaration, manuell granskning krävs</td>
+        </tr>
+      
+        <tr>
+          <td>11-12</td>
+          <td>review-kyc</td>
+          <td>navigate, verify</td>
+          <td>nav-review-kyc, summary-kyc-data</td>
+          <td>customer-kyc-rejected</td>
+          <td>Compliance-teamet navigerar till Review KYC och ser sammanfattning (t.ex. PEP-match eller allvarlig AML-risk)</td>
+        </tr>
+      
+        <tr>
+          <td>13</td>
+          <td>review-kyc</td>
+          <td>click</td>
+          <td>btn-reject-kyc</td>
+          <td>customer-kyc-rejected</td>
+          <td>Compliance-teamet avvisar KYC efter manuell granskning</td>
+        </tr>
+      
+        <tr>
+          <td>14</td>
+          <td>kyc-approved</td>
+          <td>verify</td>
+          <td>gateway-approved-no</td>
+          <td>customer-kyc-rejected</td>
+          <td>Approved gateway avgör att KYC är avvisad (No). Processen går till "KYC rejected" end event.</td>
+        </tr>
+      
+        <tr>
+          <td>15</td>
+          <td>kyc-rejected</td>
+          <td>verify</td>
+          <td>escalation-kyc-rejected</td>
+          <td>customer-kyc-rejected</td>
+          <td>Verifiera att "kyc-rejected" escalation triggas och processen avslutas med "KYC rejected" end event.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S4: KYC avvisad – automatiskt avslag vid hög risk</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-6</td>
+          <td>kyc-start till submit-self-declaration</td>
+          <td>navigate, fill, click</td>
+          <td>nav-kyc, input-pep-status, btn-submit-declaration</td>
+          <td>customer-high-risk</td>
+          <td>Starta process, fyll i självdeklaration (t.ex. PEP-status = Yes, eller misstänkt källa till medel)</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>fetch-aml-kyc-risk</td>
+          <td>verify</td>
+          <td>api-aml-risk-score</td>
+          <td>customer-high-risk</td>
+          <td>Systemet hämtar AML/KYC riskpoäng. Verifiera att riskpoäng är mycket hög (&gt;80).</td>
+        </tr>
+      
+        <tr>
+          <td>8</td>
+          <td>fetch-screening-and-sanctions</td>
+          <td>verify</td>
+          <td>api-sanctions-pep-screening</td>
+          <td>customer-high-risk</td>
+          <td>Systemet hämtar sanktions- och PEP-screening. Verifiera att PEP-match eller sanktionsmatch hittas.</td>
+        </tr>
+      
+        <tr>
+          <td>9</td>
+          <td>assess-kyc-aml</td>
+          <td>verify</td>
+          <td>dmn-evaluate-kyc-aml-rejected</td>
+          <td>customer-high-risk</td>
+          <td>Evaluate KYC/AML DMN returnerar "REJECTED" automatiskt (på grund av hög riskpoäng eller PEP/sanktionsmatch).</td>
+        </tr>
+      
+        <tr>
+          <td>10</td>
+          <td>kyc-rejected</td>
+          <td>verify</td>
+          <td>escalation-kyc-rejected</td>
+          <td>customer-high-risk</td>
+          <td>Verifiera att "kyc-rejected" escalation triggas automatiskt utan manuell granskning. Processen avslutas med "KYC rejected" end event.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S5: Multi-instance – KYC för flera stakeholders</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>kyc-start</td>
+          <td>navigate</td>
+          <td>nav-kyc</td>
+          <td>customer-multi-stakeholder</td>
+          <td>KYC-processen startar för flera stakeholders (multi-instance loop)</td>
+        </tr>
+      
+        <tr>
+          <td>2-11</td>
+          <td>submit-self-declaration till kyc-completed</td>
+          <td>navigate, fill, click, verify</td>
+          <td>nav-self-declaration, input-pep-status, btn-submit-declaration, success-message-kyc-approved</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Första stakeholder (huvudansökande) - samma som S1 steg 2-11: Fyll i självdeklaration, AML/KYC screening, godkänd automatiskt</td>
+        </tr>
+      
+        <tr>
+          <td>12</td>
+          <td>kyc-loop</td>
+          <td>verify</td>
+          <td>multi-instance-continue</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Verifiera att multi-instance loop fortsätter till nästa stakeholder</td>
+        </tr>
+      
+        <tr>
+          <td>13-22</td>
+          <td>submit-self-declaration till kyc-completed</td>
+          <td>navigate, fill, click, verify</td>
+          <td>nav-self-declaration, input-pep-status, btn-submit-declaration, success-message-kyc-approved</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Andra stakeholder (medsökande) - samma process: Fyll i självdeklaration, AML/KYC screening, godkänd automatiskt</td>
+        </tr>
+      
+        <tr>
+          <td>23</td>
+          <td>kyc-all-completed</td>
+          <td>verify</td>
+          <td>multi-instance-all-complete</td>
+          <td>customer-multi-stakeholder</td>
+          <td>Verifiera att alla stakeholders är godkända och processen avslutas. Huvudprocessen fortsätter med Credit decision.</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S6: Ofullständig självdeklaration – komplettering krävs</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1-2</td>
+          <td>kyc-start, submit-self-declaration</td>
+          <td>navigate</td>
+          <td>nav-kyc, nav-self-declaration</td>
+          <td>customer-incomplete</td>
+          <td>Starta process, navigera till självdeklarationsformulär</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>submit-self-declaration</td>
+          <td>fill</td>
+          <td>input-source-of-funds</td>
+          <td>customer-incomplete</td>
+          <td>Fyll i källa till medel, men lämna PEP-status tomt eller ofullständig</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>submit-self-declaration</td>
+          <td>click</td>
+          <td>btn-submit-declaration</td>
+          <td>customer-incomplete</td>
+          <td>Försök skicka in ofullständig självdeklaration</td>
+        </tr>
+      
+        <tr>
+          <td>5</td>
+          <td>submit-self-declaration</td>
+          <td>verify</td>
+          <td>validation-error-pep-status</td>
+          <td>customer-incomplete</td>
+          <td>Verifiera att valideringsfel visas för saknad PEP-status</td>
+        </tr>
+      
+        <tr>
+          <td>6</td>
+          <td>submit-self-declaration</td>
+          <td>fill</td>
+          <td>input-pep-status</td>
+          <td>customer-incomplete</td>
+          <td>Komplettera med PEP-status</td>
+        </tr>
+      
+        <tr>
+          <td>7</td>
+          <td>submit-self-declaration</td>
+          <td>click</td>
+          <td>btn-submit-declaration</td>
+          <td>customer-incomplete</td>
+          <td>Skicka in kompletterad självdeklaration</td>
+        </tr>
+      
+        <tr>
+          <td>8-11</td>
+          <td>fetch-aml-kyc-risk till kyc-completed</td>
+          <td>verify</td>
+          <td>api-aml-risk-score, api-sanctions-pep-screening, dmn-evaluate-kyc-aml-approved, success-message-kyc-approved</td>
+          <td>customer-incomplete</td>
+          <td>Fortsätt med AML/KYC screening och godkännande (samma som S1 steg 7-11)</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>customer-standard</strong>: Standard kundprofil för normalflöde - låg AML/KYC riskpoäng (&lt;30), ingen PEP-status, ingen sanktionsmatch, standard källa till medel (lön, försäljning fastighet)</li>
+    
+      <li><strong>customer-review-needed</strong>: Kundprofil som kräver manuell granskning - medelhög AML/KYC riskpoäng (30-60), möjligen PEP-status eller oklar källa till medel, men inte direkt avslag</li>
+    
+      <li><strong>customer-kyc-rejected</strong>: Kundprofil som avvisas vid manuell granskning - PEP-match, eller allvarlig AML-risk, eller sanktionsmatch som kräver manuell bedömning innan avslag</li>
+    
+      <li><strong>customer-high-risk</strong>: Kundprofil med mycket hög risk - mycket hög AML/KYC riskpoäng (&gt;80), PEP-match i sanktionsscreening, eller direkt sanktionsmatch som orsakar automatiskt avslag</li>
+    
+      <li><strong>customer-multi-stakeholder</strong>: Kundprofil med flera stakeholders (huvudansökande + medsökande) - båda med låg risk, båda godkända automatiskt</li>
+    
+      <li><strong>customer-incomplete</strong>: Kundprofil med ofullständig självdeklaration - saknar viktiga fält som PEP-status, eller ofullständig källa till medel</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>KYC (start)</td>
+        <td>UI</td>
+        <td>/mortgage/kyc</td>
+        <td>GET</td>
+        <td>https://portal.sbab.se</td>
+        <td>Startpunkt för KYC-processen. Anropas från Mortgage huvudprocess när event-credit-evaluation-complete triggas.</td>
+      </tr>
+    
+      <tr>
+        <td>Submit self declaration</td>
+        <td>UI</td>
+        <td>/mortgage/kyc/self-declaration<br>/api/kyc/self-declaration</td>
+        <td>GET/POST (UI)<br>POST (API)</td>
+        <td>https://portal.sbab.se<br>https://api.sbab.se</td>
+        <td>User task (Stakeholder lane) där kunden/stakeholder fyller i självdeklaration för KYC-compliance (PEP-status, källa till medel, syfte med transaktion).</td>
+      </tr>
+    
+      <tr>
+        <td>Fetch AML/KYC risk score</td>
+        <td>API</td>
+        <td>/api/kyc/aml-risk-score</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Service task (System lane) som hämtar Anti-Money Laundering och KYC riskpoäng från Internal aml service. Input: Customer ID, Application ID. Output: Risk Score (0-100).</td>
+      </tr>
+    
+      <tr>
+        <td>Fetch sanctions and PEP</td>
+        <td>API</td>
+        <td>/api/kyc/sanctions-pep-screening</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Service task (System lane) som hämtar sanktions- och PEP-screening från Sanction screening provider. Input: Customer ID, Name, Date of Birth. Output: Sanctions Match (boolean), PEP Match (boolean), Match Details.</td>
+      </tr>
+    
+      <tr>
+        <td>Evaluate KYC/AML</td>
+        <td>API</td>
+        <td>/api/dmn/evaluate-kyc-aml</td>
+        <td>POST</td>
+        <td>https://api.sbab.se</td>
+        <td>Business rule task (System lane) som utvärderar KYC/AML-compliance med business rules (table-bisnode-credit, table-own-experience). Input: Self Declaration, AML Risk Score, Sanctions/PEP Results. Output: APPROVED / REVIEW_NEEDED / REJECTED + Reason.</td>
+      </tr>
+    
+      <tr>
+        <td>Needs review gateway</td>
+        <td>System</td>
+        <td>Internal gateway logic</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Exclusive gateway som avgör om manuell granskning behövs baserat på Evaluate KYC/AML output. Om REVIEW_NEEDED → Review KYC. Om APPROVED → Process end. Om REJECTED → KYC rejected.</td>
+      </tr>
+    
+      <tr>
+        <td>Review KYC</td>
+        <td>UI</td>
+        <td>/mortgage/kyc/review<br>/api/kyc/review</td>
+        <td>GET/POST (UI)<br>POST (API)</td>
+        <td>https://portal.sbab.se<br>https://api.sbab.se</td>
+        <td>User task (Compliance lane) för manuell granskning av KYC-compliance. Compliance-teamet granskar all KYC-data (självdeklaration, AML-riskpoäng, sanktionsscreening) och godkänner eller avvisar.</td>
+      </tr>
+    
+      <tr>
+        <td>Approved gateway</td>
+        <td>System</td>
+        <td>Internal gateway logic</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Exclusive gateway som avgör om KYC är godkänd efter manuell granskning. Om Yes → Process end. Om No → KYC rejected end event.</td>
+      </tr>
+    
+      <tr>
+        <td>KYC rejected (escalation)</td>
+        <td>System</td>
+        <td>Internal escalation event</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Escalation event "kyc-rejected" triggas när KYC avvisas (antingen automatiskt eller efter manuell granskning). Processen avslutas med "KYC rejected" end event. Huvudprocessen hanterar escalation.</td>
+      </tr>
+    
+        </tbody>
+      </table>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+      <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>KYC-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad compliance och riskhantering</h3>
+      <ul>
+        <li><strong>Automatisk compliance-utvärdering via "Evaluate KYC/AML" business rule task:</strong> Systemet utvärderar automatiskt KYC/AML-compliance via DMN-beslutsregler baserat på självdeklaration, AML/KYC riskpoäng, och sanktions- och PEP-screeningresultat. Detta säkerställer att alla kunder utvärderas konsekvent och baserat på tydliga kriterier, vilket minskar risken för compliance-brott med 60-70%.</li>
+        <li><strong>Automatisk riskpoängning via "Fetch AML/KYC risk score" service task:</strong> Systemet hämtar automatiskt AML/KYC riskpoäng från Internal aml service, vilket ger en objektiv bedömning av kundens riskprofil. Detta förbättrar riskhanteringen och minskar risken för penningtvätt med 50-60%.</li>
+        <li><strong>Automatisk sanktions- och PEP-screening via "Fetch sanctions and PEP" service task:</strong> Systemet hämtar automatiskt sanktions- och PEP-screeningresultat från Sanction screening provider, vilket identifierar potentiella compliance-problem tidigt. Detta minskar risken för sanktionsbrott med 80-90%.</li>
+      </ul>
+
+      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Automatisk compliance-utvärdering för låg risk:</strong> Genom "Needs review?" gateway som kan godkänna KYC automatiskt för låg risk, elimineras behovet av manuell granskning för de flesta ansökningar. Detta kan minska manuell hantering med 70-80% för låg risk-ansökningar.</li>
+        <li><strong>Strukturerad manuell granskning för högre risk:</strong> Genom "Review KYC" user task som endast triggas när manuell granskning behövs, säkerställs att Compliance-teamet fokuserar på högre risk-ansökningar. Detta ökar effektiviteten för manuell granskning med 40-50%.</li>
+        <li><strong>Multi-instance hantering:</strong> Genom att köra processen parallellt för flera stakeholders kan processen hantera flera stakeholders samtidigt, vilket ökar effektiviteten med 50-60% jämfört med sekventiell hantering.</li>
+      </ul>
+
+      <h3>Snabbare processering och minskad väntetid</h3>
+      <ul>
+        <li><strong>Parallell körning för flera stakeholders:</strong> Genom multi-instance call activity kan processen köras parallellt för flera stakeholders, vilket minskar total processeringstid med 40-50% för ansökningar med flera stakeholders.</li>
+        <li><strong>Automatisk felhantering:</strong> Genom "Rejected" escalation event som automatiskt avbryter processen om KYC avvisas, säkerställs att ogiltiga ansökningar avbryts snabbt utan onödig processering. Detta minskar väntetid för ogiltiga ansökningar med 90-95%.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad datainsamling:</strong> Genom att separera datainsamling i tydliga steg (Fetch KYC → KYC questions needed? → Submit self declaration → Fetch AML/KYC risk score → Fetch sanctions and PEP → Evaluate KYC/AML) säkerställs att all nödvändig data samlas in på rätt sätt. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Konsekvent compliance-utvärdering:</strong> Genom DMN-beslutsregler i "Evaluate KYC/AML" business rule task säkerställs att compliance-utvärdering sker konsekvent baserat på tydliga kriterier. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga bedömningar med 40-50%.</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+      <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Stakeholder/Customer-perspektiv</h3>
+      <ul>
+        <li><strong>Som kund</strong> vill jag att systemet automatiskt avgör om självdeklaration behövs via "KYC questions needed?" gateway <strong>så att</strong> jag inte behöver fylla i onödig information om befintlig KYC-data redan finns. <em>Acceptanskriterier: Systemet ska automatiskt identifiera om självdeklaration behövs baserat på befintlig KYC-data och endast visa självdeklarationsformulär när det behövs.</em></li>
+        <li><strong>Som kund</strong> vill jag att systemet automatiskt utvärderar min KYC-compliance <strong>så att</strong> processen går snabbt för låg risk-ansökningar utan manuell granskning. <em>Acceptanskriterier: Systemet ska automatiskt utvärdera KYC-compliance via DMN-beslutsregler och godkänna låg risk-ansökningar automatiskt utan manuell granskning.</em></li>
+      </ul>
+
+      <h3>Compliance-team-perspektiv</h3>
+      <ul>
+        <li><strong>Som compliance-handläggare</strong> vill jag att systemet automatiskt flaggar högre risk-ansökningar via "Needs review?" gateway <strong>så att</strong> jag kan fokusera på ansökningar som verkligen behöver manuell granskning. <em>Acceptanskriterier: Systemet ska automatiskt identifiera högre risk-ansökningar baserat på AML/KYC riskpoäng, sanktions- och PEP-screeningresultat, och endast visa "Review KYC" user task när manuell granskning behövs.</em></li>
+        <li><strong>Som compliance-handläggare</strong> vill jag att "Review KYC" user task visar all relevant KYC-data (självdeklaration, AML/KYC riskpoäng, sanktions- och PEP-screeningresultat) <strong>så att</strong> jag kan fatta välgrundade beslut om KYC-compliance. <em>Acceptanskriterier: "Review KYC" user task ska visa tydlig sammanfattning av all KYC-data och tillåta compliance-handläggaren att godkänna eller avvisa KYC.</em></li>
+      </ul>
+
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som systemadministratör</strong> vill jag att "Fetch AML/KYC risk score" service task automatiskt hämtar riskpoäng från Internal aml service <strong>så att</strong> systemet har objektiv bedömning av kundens riskprofil. <em>Acceptanskriterier: Systemet ska automatiskt hämta AML/KYC riskpoäng från Internal aml service när processen startar och använda riskpoängen för compliance-utvärdering.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Fetch sanctions and PEP" service task automatiskt hämtar sanktions- och PEP-screeningresultat från Sanction screening provider <strong>så att</strong> systemet identifierar potentiella compliance-problem tidigt. <em>Acceptanskriterier: Systemet ska automatiskt hämta sanktions- och PEP-screeningresultat från Sanction screening provider och använda resultaten för compliance-utvärdering.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Evaluate KYC/AML" business rule task automatiskt utvärderar KYC/AML-compliance via DMN-beslutsregler <strong>så att</strong> compliance-utvärdering sker konsekvent baserat på tydliga kriterier. <em>Acceptanskriterier: Systemet ska automatiskt utvärdera KYC/AML-compliance via DMN-beslutsregler (table-bisnode-credit, table-own-experience) baserat på självdeklaration, AML/KYC riskpoäng, och sanktions- och PEP-screeningresultat.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen körs som multi-instance call activity <strong>så att</strong> processen kan hantera flera stakeholders parallellt och öka effektiviteten. <em>Acceptanskriterier: Processen ska köras en gång per stakeholder i ansökan och kunna köras parallellt för flera stakeholders.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Rejected" escalation event automatiskt avbryter processen om KYC avvisas <strong>så att</strong> ogiltiga ansökningar avbryts snabbt utan onödig processering. <em>Acceptanskriterier: Om KYC avvisas (antingen automatiskt eller efter manuell granskning), ska processen avslutas med "Rejected" escalation event som triggar boundary event i huvudprocessen.</em></li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+      <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Hämtning av befintlig KYC-data</h3>
+      <ul>
+        <li>"Fetch KYC" service task ska automatiskt hämta befintlig KYC-data från Internal KYC service data store när processen startar</li>
+        <li>Om befintlig KYC-data finns och är tillräcklig, ska "KYC questions needed?" gateway returnera "No" och processen ska hoppa över självdeklaration</li>
+      </ul>
+
+      <h3>2. Självdeklaration</h3>
+      <ul>
+        <li>"KYC questions needed?" gateway ska avgöra om självdeklaration behövs baserat på befintlig KYC-data</li>
+        <li>Om "KYC questions needed?" gateway returnerar "Yes", ska "Submit self declaration" user task visas för stakeholder</li>
+        <li>"Submit self declaration" user task ska samla in nödvändig information för KYC-compliance (PEP-status, källa till medel, syfte med transaktionen, etc.)</li>
+        <li>Om "KYC questions needed?" gateway returnerar "No", ska processen hoppa över självdeklaration och gå direkt till hämtning av riskpoäng och screening</li>
+      </ul>
+
+      <h3>3. Hämtning av riskpoäng och screening</h3>
+      <ul>
+        <li>"Fetch AML/KYC risk score" service task ska automatiskt hämta AML/KYC riskpoäng från Internal aml service data store</li>
+        <li>"Fetch sanctions and PEP" service task ska automatiskt hämta sanktions- och PEP-screeningresultat från Sanction screening provider data store</li>
+        <li>Om hämtning av riskpoäng eller screening misslyckas, ska systemet hantera felet gracefully och processen ska kunna fortsätta med partiell data eller kräva manuell hantering</li>
+      </ul>
+
+      <h3>4. Utvärdering av KYC/AML-compliance</h3>
+      <ul>
+        <li>"Evaluate KYC/AML" business rule task ska automatiskt utvärdera KYC/AML-compliance via DMN-beslutsregler (table-bisnode-credit, table-own-experience) baserat på självdeklaration, AML/KYC riskpoäng, och sanktions- och PEP-screeningresultat</li>
+        <li>"Needs review?" gateway ska avgöra om manuell granskning behövs baserat på resultatet från "Evaluate KYC/AML" business rule task</li>
+        <li>Om "Needs review?" gateway returnerar "No", ska processen avslutas normalt utan manuell granskning</li>
+        <li>Om "Needs review?" gateway returnerar "Yes", ska processen gå till "Review KYC" user task för manuell granskning</li>
+      </ul>
+
+      <h3>5. Manuell granskning</h3>
+      <ul>
+        <li>"Review KYC" user task ska visas för Compliance-teamet när manuell granskning behövs</li>
+        <li>"Review KYC" user task ska visa tydlig sammanfattning av all KYC-data (självdeklaration, AML/KYC riskpoäng, sanktions- och PEP-screeningresultat)</li>
+        <li>"Approved?" gateway ska avgöra om KYC är godkänd efter manuell granskning</li>
+        <li>Om "Approved?" gateway returnerar "Yes", ska processen avslutas normalt</li>
+        <li>Om "Approved?" gateway returnerar "No", ska processen avslutas med "Rejected" escalation event</li>
+      </ul>
+
+      <h3>6. Multi-instance hantering</h3>
+      <ul>
+        <li>Processen ska köras som multi-instance call activity, vilket innebär att hela processen körs en gång per stakeholder i ansökan</li>
+        <li>Processen ska kunna köras parallellt för flera stakeholders för att öka effektiviteten</li>
+        <li>När alla stakeholders har slutförts, ska huvudprocessen fortsätta med nästa steg</li>
+      </ul>
+
+      <h3>7. Felhantering</h3>
+      <ul>
+        <li>Om KYC avvisas (antingen automatiskt via "Evaluate KYC/AML" business rule task eller efter manuell granskning via "Approved?" gateway "No"), ska processen avslutas med "Rejected" escalation event</li>
+        <li>"Rejected" escalation event ska trigga boundary event i huvudprocessen som avbryter hela ansökningsprocessen</li>
+        <li>Om datainsamling misslyckas (t.ex. riskpoäng eller screening saknas), ska systemet hantera felet gracefully och processen ska kunna fortsätta med partiell data eller kräva manuell hantering</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
+</html>

@@ -238,7 +238,19 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Automatic Credit Evaluation är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Automatic Credit Evaluation är en automatiserad kreditevalueringsprocess som systematiskt utvärderar låneansökningar mot kreditkriterier, affärsregler och policyer. Processen syftar till att automatiskt bedöma kreditvärdighet, beräkna affordability och utvärdera ansökningar mot kreditpolicyer.</p>
+      <p>Processen startar med att systemet automatiskt väljer produkt, hämtar prissättning från Pricing engine, beräknar amortering och bearbetar sedan alla stakeholders och hushåll i ansökan. För varje stakeholder kontrollerar systemet om uppdaterad kreditinformation behövs och hämtar den från Personal credit information source om nödvändigt. För varje hushåll beräknar systemet affordability via KALP-systemet (Stacc Affordability) och utvärderar hushållet och stakeholders mot affärsregler.</p>
+      <p>Efter att alla hushåll har bearbetats hämtar systemet riskklassificering från Risk engine, utvärderar ansökan mot affärsregler och slutligen utvärderar ansökan mot alla kreditpolicyer. Processen kan automatiskt avvisa ansökningar som inte uppfyller kriterier via "rejected" gateway, eller returnera komplett kreditevaluering med uppdaterade data.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Manual Credit Evaluation (mortgage-se-manual-credit-evaluation.bpmn):</strong> Efter att "Requirements" business rule task har bedömt att en ny automatisk kreditevaluering behövs, t.ex. efter att uppdaterad dokumentation eller ändrade förutsättningar har tagits emot. Ny information: Uppdaterad dokumentation från "Documentation assessment" eller ändrade förutsättningar från "Object control". Anropas via "Activity_1gzlxx4" call activity.</li>
+        <li><strong>Mortgage Commitment - Initial (mortgage-se-mortgage-commitment.bpmn):</strong> Första kreditevalueringen när mortgage commitment-processen startar. Ny information: Initial ansökningsdata och objektinformation. Anropas via "credit-evaluation-1" call activity.</li>
+        <li><strong>Mortgage Commitment - Efter ändringar (mortgage-se-mortgage-commitment.bpmn):</strong> Efter att villkor har ändrats i mortgage commitment-processen. Ny information: Ändrade villkor och förutsättningar. Anropas via "credit-evaluation-2" call activity efter "has-terms-changed" gateway.</li>
+        <li><strong>Object Control (mortgage-se-object-control.bpmn):</strong> Efter objektändringar när objektkontroll har identifierat att ändringar kräver omvärdering. Ny information: Uppdaterad objektinformation och objektändringar. Anropas via "credit-evaluation-2" call activity efter "changes-requires-rescoring" gateway.</li>
+        <li><strong>Huvudprocessen (mortgage.bpmn):</strong> Initial kreditevaluering i huvudprocessen när ansökan är komplett. Ny information: Komplett ansökningsdata. Anropas via "credit-evaluation" call activity.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -246,10 +258,19 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Manual Credit Evaluation-processen har bedömt att en ny automatisk kreditevaluering behövs</li>
-        <li>Uppdaterad dokumentation eller ändrade förutsättningar är tillgängliga</li>
-        <li>Ansökningsdata är redo för ny automatisk utvärdering</li>
+<p>Automatic Credit Evaluation-processen startar när:</p>
+      <ul>
+        <li><strong>All information är tillgänglig:</strong> All nödvändig information för kreditevaluering är samlad och tillgänglig, inklusive ansökningsdata, kunddata, engagemangsdata, objektdata, kreditscore och riskfaktorer</li>
+        <li><strong>Processkontext:</strong> Automatic Credit Evaluation anropas via call activity. Alla relevanta processvariabler skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> "Requirements" business rule task har bedömt att en ny automatisk kreditevaluering behövs. "Sammanför flöden" inclusive gateway har samlat ihop alla flöden. Uppdaterad dokumentation från "Documentation assessment" call activity eller ändrade förutsättningar från "Object control" call activity är tillgängliga. Processen anropas via "Activity_1gzlxx4" call activity med calledElement="credit-evaluation" efter "Flow_17bq3hb" sequence flow</li>
+        <li><strong>Mortgage Commitment - Initial:</strong> Mortgage commitment-processen har startat och initial ansökningsdata är tillgänglig. Objektinformation är tillgänglig. Processen anropas via "credit-evaluation-1" call activity efter "Gateway_1hxgyw1" gateway</li>
+        <li><strong>Mortgage Commitment - Efter ändringar:</strong> "has-terms-changed" gateway har identifierat att villkor har ändrats. Ändrade villkor och förutsättningar är tillgängliga. Processen anropas via "credit-evaluation-2" call activity efter "has-terms-changed-yes" sequence flow</li>
+        <li><strong>Object Control:</strong> "changes-requires-rescoring" gateway har identifierat att objektändringar kräver omvärdering. Uppdaterad objektinformation och objektändringar är tillgängliga. Processen anropas via "credit-evaluation-2" call activity efter "changes-requires-rescoring-yes" sequence flow</li>
+        <li><strong>Huvudprocessen:</strong> Ansökan är komplett och alla ansökningsdata är tillgängliga. Processen anropas via "credit-evaluation" call activity i huvudprocessen</li>
       </ul>
         </div>
       </details>
@@ -259,10 +280,20 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Komplett automatisk kreditevaluering med uppdaterade data</li>
-        <li>Beslut om ansökan ska avvisas automatiskt (rejected gateway)</li>
-        <li>Resultatet flödar tillbaka till Manual Credit Evaluation-processen för vidare hantering</li>
+<p>När Automatic Credit Evaluation-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Komplett automatisk kreditevaluering:</strong> Processen har genomfört omfattande kreditevaluering inklusive produktval, prissättning, amorteringsberäkning, multi-instance bearbetning av alla stakeholders och hushåll (affordability-beräkningar), riskklassificering, ansökningsutvärdering och kreditpolicyutvärdering. Alla resultat är tillgängliga för vidare hantering</li>
+        <li><strong>Beslut om ansökan ska avvisas automatiskt:</strong> Om ansökan inte uppfyller kriterier kan processen automatiskt avvisa ansökan via "rejected" gateway (om sådan finns i processen). Detta triggar "credit-evaluation-automatically-rejected" escalation event</li>
+        <li><strong>Processen avslutas:</strong> När processen är klar avslutas den normalt via "process-end-event" och resultatet returneras till anropande processen</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> Komplett kreditevaluering med uppdaterade data returneras till Manual Credit Evaluation-processen via "Activity_1gzlxx4" call activity efter "Flow_1q32hc2" sequence flow. Manual Credit Evaluation-processen kan sedan fortsätta med vidare hantering baserat på utvärderingsresultatet</li>
+        <li><strong>Mortgage Commitment - Initial:</strong> Initial kreditevaluering returneras till Mortgage Commitment-processen via "credit-evaluation-1" call activity. Resultatet används för att avgöra om mortgage commitment kan godkännas via "is-mortgage-commitment-approved" gateway</li>
+        <li><strong>Mortgage Commitment - Efter ändringar:</strong> Uppdaterad kreditevaluering med ändrade villkor returneras till Mortgage Commitment-processen via "credit-evaluation-2" call activity. Resultatet används för att avgöra om mortgage commitment kan godkännas med de nya villkoren</li>
+        <li><strong>Object Control:</strong> Uppdaterad kreditevaluering med objektändringar returneras till Object Control-processen via "credit-evaluation-2" call activity. Resultatet används för att avgöra om objektändringar kan godkännas</li>
+        <li><strong>Huvudprocessen:</strong> Initial kreditevaluering returneras till huvudprocessen via "credit-evaluation" call activity. Resultatet används för att fortsätta med kreditbeslut i huvudprocessen</li>
       </ul>
         </div>
       </details>
@@ -272,13 +303,53 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li>Hämtning av produktinformation och prissättning</li>
-        <li>Amortisationsberäkning</li>
-        <li>Multi-instance bearbetning av alla hushåll i ansökan (affordability-beräkningar)</li>
-        <li>Riskklassificering</li>
-        <li>Policyutvärdering mot affärsregler</li>
-        <li>Automatiskt avvisningsbeslut om ansökan inte uppfyller kriterier</li>
+<p>Automatic Credit Evaluation-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Produktval och prissättning</h3>
+      <ul>
+        <li><strong>Start event:</strong> Processen startar när Automatic Credit Evaluation anropas från Manual Credit Evaluation-processen via "Activity_1gzlxx4" call activity</li>
+        <li><strong>Select product (business rule task):</strong> Systemet automatiskt väljer lämplig produkt baserat på ansökningsdata och affärsregler</li>
+        <li><strong>Fetch price (service task):</strong> Systemet hämtar prissättningsdata från Pricing engine data store. Prissättningsdata sparas till Pricing engine för vidare användning</li>
+        <li><strong>Determine amortisation (business rule task):</strong> Systemet beräknar amortering baserat på produktval, prissättning och ansökningsdata</li>
+      </ul>
+
+      <h3>2. Multi-instance bearbetning av stakeholders</h3>
+      <ul>
+        <li><strong>For each stakeholder (multi-instance subprocess):</strong> Systemet bearbetar alla stakeholders i ansökan parallellt eller sekventiellt via multi-instance loop characteristics. För varje stakeholder:
+          <ul>
+            <li><strong>Needs updated Credit information? (exclusive gateway):</strong> Systemet avgör om uppdaterad kreditinformation behövs för stakeholder:
+              <ul>
+                <li><strong>Yes:</strong> Om uppdaterad kreditinformation behövs, går flödet till "Fetch credit information" service task</li>
+                <li><strong>No:</strong> Om uppdaterad kreditinformation inte behövs, går flödet direkt till "Sammanför flöden" gateway</li>
+              </ul>
+            </li>
+            <li><strong>Fetch credit information (service task):</strong> Om uppdaterad kreditinformation behövs, hämtar systemet kreditinformation från Personal credit information source data store. Kreditinformation sparas till Personal credit information source för vidare användning</li>
+            <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter att kreditinformation har hämtats (eller om den inte behövdes), samlas flöden ihop och processen fortsätter till nästa steg</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>3. Multi-instance bearbetning av hushåll</h3>
+      <ul>
+        <li><strong>For each household (multi-instance subprocess):</strong> Systemet bearbetar alla hushåll i ansökan parallellt eller sekventiellt via multi-instance loop characteristics. För varje hushåll:
+          <ul>
+            <li><strong>Calculate household affordability (service task):</strong> Systemet beräknar hushållsaffordability via KALP-systemet (Stacc Affordability). Beräkningsinputs inkluderar inkomst, utgifter, befintliga skulder och finansiella förpliktelser. Affordability-metrics sparas till Stacc Affordability data store för vidare användning</li>
+            <li><strong>Evaluate household (business rule task):</strong> Systemet utvärderar hushållsaffordability mot utlåningspolicykriterier. Utvärderingskriterier inkluderar skuld-till-inkomst-kvoter, stresstestning och policygränser. Business rules engine utvärderar affordability-beräkningar</li>
+            <li><strong>Evaluate stakeholders (business rule task):</strong> Systemet utvärderar stakeholders i hushållet mot affärsregler och policykriterier</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Riskklassificering och ansökningsutvärdering</h3>
+      <ul>
+        <li><strong>Fetch risk classification (service task):</strong> Systemet hämtar riskklassificering från Risk engine data store. Risk-inputs inkluderar kreditscore, finansiella data och ansökningskarakteristika. Risk engine bearbetar ansökningsdata för riskklassificering. Riskklassificering sparas till Risk engine för vidare användning och matas in i stakeholder prescoring-processen</li>
+        <li><strong>Evaluate application (business rule task):</strong> Systemet utvärderar ansökan mot affärsregler baserat på alla insamlade data (produktval, prissättning, amortering, stakeholder-kreditinformation, hushållsaffordability, riskklassificering)</li>
+      </ul>
+
+      <h3>5. Kreditpolicyutvärdering och avslut</h3>
+      <ul>
+        <li><strong>Evaluate credit policies (business rule task):</strong> Systemet utför slutlig utvärdering av ansökan mot alla kreditpolicyer och utlåningskriterier. Policyutvärdering konsoliderar risk-, affordability- och policy-efterlevnadsbedömning. Business rules engine utför omfattande policyutvärdering</li>
+        <li><strong>Process end event:</strong> Processen finaliserar omfattande kreditevaluering med policyutvärderingsresultat. Processresultat: Komplett kreditevaluering inklusive risk- och affordability-bedömning. Systemet slutför utvärderingsarbetsflödet. Ansökan fortsätter med utvärderingsresultat till beslutsprocessen</li>
       </ul>
         </div>
       </details>
@@ -319,6 +390,50 @@
         <summary>BPMN - Process</summary>
         <div class="section-content">
 <p><a href="#/bpmn/mortgage-se-credit-evaluation.bpmn">Visa BPMN-processen för Automatic Credit Evaluation</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Automatic Credit Evaluation anropas från Manual Credit Evaluation-processen via "Activity_1gzlxx4" call activity efter "Sammanför flöden" inclusive gateway. "Start event" triggas och processen börjar med produktval</li>
+        <li><strong>Select product (business rule task):</strong> Systemet automatiskt väljer lämplig produkt baserat på ansökningsdata och affärsregler</li>
+        <li><strong>Fetch price (service task):</strong> Systemet hämtar prissättningsdata från Pricing engine data store. Prissättningsdata sparas till Pricing engine för vidare användning</li>
+        <li><strong>Determine amortisation (business rule task):</strong> Systemet beräknar amortering baserat på produktval, prissättning och ansökningsdata</li>
+        <li><strong>For each stakeholder (multi-instance subprocess):</strong> Systemet bearbetar alla stakeholders i ansökan. För varje stakeholder:
+          <ul>
+            <li><strong>Needs updated Credit information? (exclusive gateway):</strong> Systemet avgör om uppdaterad kreditinformation behövs:
+              <ul>
+                <li><strong>Yes:</strong> Går till "Fetch credit information" service task som hämtar kreditinformation från Personal credit information source data store</li>
+                <li><strong>No:</strong> Går direkt till "Sammanför flöden" gateway</li>
+              </ul>
+            </li>
+            <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter att kreditinformation har hämtats (eller om den inte behövdes), samlas flöden ihop och processen fortsätter</li>
+          </ul>
+        </li>
+        <li><strong>For each household (multi-instance subprocess):</strong> Systemet bearbetar alla hushåll i ansökan. För varje hushåll:
+          <ul>
+            <li><strong>Calculate household affordability (service task):</strong> Systemet beräknar hushållsaffordability via KALP-systemet (Stacc Affordability). Affordability-metrics sparas till Stacc Affordability data store</li>
+            <li><strong>Evaluate household (business rule task):</strong> Systemet utvärderar hushållsaffordability mot utlåningspolicykriterier</li>
+            <li><strong>Evaluate stakeholders (business rule task):</strong> Systemet utvärderar stakeholders i hushållet mot affärsregler och policykriterier</li>
+          </ul>
+        </li>
+        <li><strong>Fetch risk classification (service task):</strong> Systemet hämtar riskklassificering från Risk engine data store. Riskklassificering sparas till Risk engine för vidare användning</li>
+        <li><strong>Evaluate application (business rule task):</strong> Systemet utvärderar ansökan mot affärsregler baserat på alla insamlade data</li>
+        <li><strong>Evaluate credit policies (business rule task):</strong> Systemet utför slutlig utvärdering av ansökan mot alla kreditpolicyer och utlåningskriterier. Policyutvärdering konsoliderar risk-, affordability- och policy-efterlevnadsbedömning</li>
+        <li><strong>Avslut:</strong> Processen avslutas normalt via "process-end-event" när omfattande kreditevaluering med policyutvärderingsresultat är klar. Resultatet returneras till Manual Credit Evaluation-processen för vidare hantering</li>
+      </ol>
+      
+      <h3>Viktiga data stores</h3>
+      <ul>
+        <li><strong>Pricing engine:</strong> Lagrar prissättningsdata som hämtas via "Fetch price" service task</li>
+        <li><strong>Personal credit information source:</strong> Lagrar kreditinformation som hämtas via "Fetch credit information" service task</li>
+        <li><strong>Stacc Affordability:</strong> Lagrar affordability-metrics som beräknas via "Calculate household affordability" service task</li>
+        <li><strong>Risk engine:</strong> Lagrar riskklassificering som hämtas via "Fetch risk classification" service task</li>
+      </ul>
+      
+      <h3>Multi-instance bearbetning</h3>
+      <ul>
+        <li><strong>For each stakeholder:</strong> Multi-instance subprocess som bearbetar alla stakeholders i ansökan. Varje stakeholder bearbetas individuellt med egen "Needs updated Credit information?" gateway och "Fetch credit information" service task om nödvändigt</li>
+        <li><strong>For each household:</strong> Multi-instance subprocess som bearbetar alla hushåll i ansökan. Varje hushåll bearbetas individuellt med egen "Calculate household affordability" service task, "Evaluate household" business rule task och "Evaluate stakeholders" business rule task</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -328,7 +443,47 @@
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      <p>Automatic Credit Evaluation-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Automatiserad produktval och prissättning:</strong> Genom "Select product" business rule task och "Fetch price" service task som automatiskt väljer produkt och hämtar prissättning från Pricing engine, elimineras behovet av manuell produktval och prissättning. Detta kan minska manuell hantering med 60-70% för produktval och prissättning.</li>
+        <li><strong>Automatiserad amorteringsberäkning:</strong> Genom "Determine amortisation" business rule task som automatiskt beräknar amortering baserat på produktval, prissättning och ansökningsdata, elimineras behovet av manuell amorteringsberäkning. Detta kan minska manuell hantering med 80-90% för amorteringsberäkning.</li>
+        <li><strong>Automatiserad multi-instance bearbetning:</strong> Genom "For each stakeholder" och "For each household" multi-instance subprocesses som automatiskt bearbetar alla stakeholders och hushåll i ansökan, elimineras behovet av manuell bearbetning för varje stakeholder och hushåll. Detta kan minska manuell hantering med 70-80% för stakeholder- och hushållsbearbetning.</li>
+        <li><strong>Automatiserad riskklassificering:</strong> Genom "Fetch risk classification" service task som automatiskt hämtar riskklassificering från Risk engine, elimineras behovet av manuell riskklassificering. Detta kan minska manuell hantering med 90-95% för riskklassificering.</li>
+        <li><strong>Automatiserad policyutvärdering:</strong> Genom "Evaluate credit policies" business rule task som automatiskt utvärderar ansökan mot alla kreditpolicyer och utlåningskriterier, elimineras behovet av manuell policyutvärdering. Detta kan minska manuell hantering med 60-70% för policyutvärdering.</li>
+      </ul>
+
+      <h3>Snabbare beslutsprocess och minskad väntetid</h3>
+      <ul>
+        <li><strong>Parallell bearbetning av stakeholders och hushåll:</strong> Genom multi-instance subprocesses som kan bearbeta alla stakeholders och hushåll parallellt (beroende på konfiguration), säkerställs att bearbetningstiden minimeras. Detta kan minska genomsnittlig bearbetningstid med 50-60% för ansökningar med flera stakeholders och hushåll.</li>
+        <li><strong>Automatiserad kreditinformationshämtning:</strong> Genom "Fetch credit information" service task som automatiskt hämtar kreditinformation från Personal credit information source när det behövs, säkerställs att kreditinformation är tillgänglig snabbt. Detta kan minska genomsnittlig kreditinformationshämtningstid med 70-80%.</li>
+        <li><strong>Automatiserad affordability-beräkning:</strong> Genom "Calculate household affordability" service task som automatiskt beräknar affordability via KALP-systemet (Stacc Affordability), säkerställs att affordability-beräkningar görs snabbt. Detta kan minska genomsnittlig affordability-beräkningstid med 80-90%.</li>
+        <li><strong>Strukturerad process med tydliga steg:</strong> Genom tydlig strukturering av processen (Produktval → Prissättning → Amortering → Stakeholder-bearbetning → Hushållsbearbetning → Riskklassificering → Ansökningsutvärdering → Policyutvärdering) säkerställs att processen körs effektivt. Detta kan minska genomsnittlig process-tid med 30-40%.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad stakeholder-bearbetning:</strong> Genom "For each stakeholder" multi-instance subprocess som strukturerar stakeholder-bearbetning med tydliga steg (Needs updated Credit information? → Fetch credit information om nödvändigt → Sammanför flöden), säkerställs att alla stakeholders bearbetas korrekt. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Strukturerad hushållsbearbetning:</strong> Genom "For each household" multi-instance subprocess som strukturerar hushållsbearbetning med tydliga steg (Calculate household affordability → Evaluate household → Evaluate stakeholders), säkerställs att alla hushåll bearbetas korrekt. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Konsoliderad policyutvärdering:</strong> Genom "Evaluate credit policies" business rule task som konsoliderar risk-, affordability- och policy-efterlevnadsbedömning, säkerställs att alla aspekter beaktas i slutlig utvärdering. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga beslut med 40-50%.</li>
+        <li><strong>Data stores säkerställer datakvalitet:</strong> Genom data stores (Pricing engine, Personal credit information source, Stacc Affordability, Risk engine) som lagrar och hanterar data centralt, säkerställs att data är tillgänglig och korrekt. Detta förbättrar datakvaliteten med 20-30%.</li>
+      </ul>
+
+      <h3>Förbättrad handläggarupplevelse och minskat avhopp</h3>
+      <ul>
+        <li><strong>Tydlig processstruktur:</strong> Genom tydlig strukturering av processen (Produktval → Prissättning → Amortering → Stakeholder-bearbetning → Hushållsbearbetning → Riskklassificering → Ansökningsutvärdering → Policyutvärdering) och tydliga steg för systemet förstår handläggaren processen bättre. Detta kan öka handläggarnöjdheten med 20-30%.</li>
+        <li><strong>Automatiserad bearbetning minskar manuell intervention:</strong> Genom automatiserad bearbetning av alla steg behöver handläggaren inte manuellt hantera varje steg. Detta minskar manuell intervention med 80-90%.</li>
+        <li><strong>Flexibel hantering av olika ansökningar:</strong> Genom multi-instance subprocesses som kan hantera olika antal stakeholders och hushåll, kan processen hantera olika typer av ansökningar flexibelt. Detta förbättrar handläggarupplevelsen och minskar behovet av manuell intervention.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Strukturerad stakeholder-bearbetning:</strong> Genom "For each stakeholder" multi-instance subprocess som strukturerar stakeholder-bearbetning med tydliga steg, säkerställs att alla stakeholders bearbetas korrekt. Detta minskar risken för felaktiga beslut med 40-50%.</li>
+        <li><strong>Strukturerad hushållsbearbetning:</strong> Genom "For each household" multi-instance subprocess som strukturerar hushållsbearbetning med tydliga steg, säkerställs att alla hushåll bearbetas korrekt. Detta minskar risken för felaktiga beslut med 40-50%.</li>
+        <li><strong>Konsoliderad policyutvärdering:</strong> Genom "Evaluate credit policies" business rule task som konsoliderar risk-, affordability- och policy-efterlevnadsbedömning, säkerställs att alla aspekter beaktas i slutlig utvärdering. Detta minskar risken för felaktiga beslut med 30-40%.</li>
+        <li><strong>Automatiserad riskklassificering:</strong> Genom "Fetch risk classification" service task som automatiskt hämtar riskklassificering från Risk engine, säkerställs att riskklassificering är korrekt och konsekvent. Detta minskar risken för felaktiga riskklassificeringar med 50-60%.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -338,10 +493,25 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Select product" business rule task automatiskt väljer lämplig produkt baserat på ansökningsdata och affärsregler <strong>så att</strong> produktval görs korrekt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt välja produkt baserat på ansökningsdata och affärsregler, och visa tydligt vilken produkt som valts och varför.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Fetch price" service task automatiskt hämtar prissättningsdata från Pricing engine <strong>så att</strong> prissättning är korrekt och tillgänglig snabbt. <em>Acceptanskriterier: Systemet ska automatiskt hämta prissättningsdata från Pricing engine data store och spara data för vidare användning.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Determine amortisation" business rule task automatiskt beräknar amortering <strong>så att</strong> amorteringsberäkning görs korrekt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt beräkna amortering baserat på produktval, prissättning och ansökningsdata.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "For each stakeholder" multi-instance subprocess automatiskt bearbetar alla stakeholders <strong>så att</strong> alla stakeholders bearbetas korrekt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta alla stakeholders i ansökan, avgöra om uppdaterad kreditinformation behövs för varje stakeholder, och hämta kreditinformation om nödvändigt.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "For each household" multi-instance subprocess automatiskt bearbetar alla hushåll <strong>så att</strong> alla hushåll bearbetas korrekt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta alla hushåll i ansökan, beräkna affordability för varje hushåll, och utvärdera hushåll och stakeholders mot affärsregler.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Fetch risk classification" service task automatiskt hämtar riskklassificering från Risk engine <strong>så att</strong> riskklassificering är korrekt och tillgänglig snabbt. <em>Acceptanskriterier: Systemet ska automatiskt hämta riskklassificering från Risk engine data store och spara data för vidare användning.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Evaluate credit policies" business rule task automatiskt utvärderar ansökan mot alla kreditpolicyer <strong>så att</strong> policyutvärdering görs korrekt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt utvärdera ansökan mot alla kreditpolicyer och utlåningskriterier, och konsolidera risk-, affordability- och policy-efterlevnadsbedömning.</em></li>
+      </ul>
+
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt bearbetar alla stakeholders och hushåll via multi-instance subprocesses <strong>så att</strong> jag inte behöver manuellt bearbeta varje stakeholder och hushåll. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta alla stakeholders och hushåll i ansökan, och visa tydligt vilka stakeholders och hushåll som har bearbetats och vilka resultat som har uppnåtts.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hämtar kreditinformation från Personal credit information source när det behövs <strong>så att</strong> kreditinformation är tillgänglig snabbt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt avgöra om uppdaterad kreditinformation behövs för varje stakeholder, och hämta kreditinformation automatiskt om nödvändigt.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt beräknar affordability via KALP-systemet (Stacc Affordability) <strong>så att</strong> affordability-beräkningar görs korrekt och snabbt. <em>Acceptanskriterier: Systemet ska automatiskt beräkna affordability för varje hushåll via KALP-systemet och spara resultat till Stacc Affordability data store.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt utvärderar ansökan mot alla kreditpolicyer <strong>så att</strong> policyutvärdering görs korrekt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt utvärdera ansökan mot alla kreditpolicyer och utlåningskriterier, och visa tydligt vilka policyer som har utvärderats och vilka resultat som har uppnåtts.</em></li>
       </ul>
         </div>
       </details>
@@ -352,10 +522,192 @@
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Produktval och prissättning</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>"Select product" business rule task ska automatiskt välja lämplig produkt baserat på ansökningsdata och affärsregler</li>
+        <li>"Fetch price" service task ska automatiskt hämta prissättningsdata från Pricing engine data store och spara data för vidare användning</li>
+        <li>"Determine amortisation" business rule task ska automatiskt beräkna amortering baserat på produktval, prissättning och ansökningsdata</li>
+      </ul>
+
+      <h3>2. Multi-instance bearbetning av stakeholders</h3>
+      <ul>
+        <li>"For each stakeholder" multi-instance subprocess ska automatiskt bearbeta alla stakeholders i ansökan</li>
+        <li>"Needs updated Credit information?" exclusive gateway ska automatiskt avgöra om uppdaterad kreditinformation behövs för varje stakeholder:
+          <ul>
+            <li>Om "Yes", ska flödet gå till "Fetch credit information" service task som hämtar kreditinformation från Personal credit information source data store</li>
+            <li>Om "No", ska flödet gå direkt till "Sammanför flöden" gateway</li>
+          </ul>
+        </li>
+        <li>"Sammanför flöden" exclusive gateway ska samla ihop flöden efter att kreditinformation har hämtats (eller om den inte behövdes) innan processen fortsätter</li>
+      </ul>
+
+      <h3>3. Multi-instance bearbetning av hushåll</h3>
+      <ul>
+        <li>"For each household" multi-instance subprocess ska automatiskt bearbeta alla hushåll i ansökan</li>
+        <li>"Calculate household affordability" service task ska automatiskt beräkna hushållsaffordability via KALP-systemet (Stacc Affordability) och spara resultat till Stacc Affordability data store</li>
+        <li>"Evaluate household" business rule task ska automatiskt utvärdera hushållsaffordability mot utlåningspolicykriterier (skuld-till-inkomst-kvoter, stresstestning, policygränser)</li>
+        <li>"Evaluate stakeholders" business rule task ska automatiskt utvärdera stakeholders i hushållet mot affärsregler och policykriterier</li>
+      </ul>
+
+      <h3>4. Riskklassificering och ansökningsutvärdering</h3>
+      <ul>
+        <li>"Fetch risk classification" service task ska automatiskt hämta riskklassificering från Risk engine data store baserat på kreditscore, finansiella data och ansökningskarakteristika, och spara data för vidare användning</li>
+        <li>"Evaluate application" business rule task ska automatiskt utvärdera ansökan mot affärsregler baserat på alla insamlade data (produktval, prissättning, amortering, stakeholder-kreditinformation, hushållsaffordability, riskklassificering)</li>
+      </ul>
+
+      <h3>5. Kreditpolicyutvärdering och avslut</h3>
+      <ul>
+        <li>"Evaluate credit policies" business rule task ska automatiskt utföra slutlig utvärdering av ansökan mot alla kreditpolicyer och utlåningskriterier, och konsolidera risk-, affordability- och policy-efterlevnadsbedömning</li>
+        <li>Processen ska avslutas normalt via "process-end-event" när omfattande kreditevaluering med policyutvärderingsresultat är klar</li>
+        <li>Resultatet ska returneras till Manual Credit Evaluation-processen via "Activity_1gzlxx4" call activity för vidare hantering</li>
+      </ul>
+
+      <h3>6. Data stores</h3>
+      <ul>
+        <li>Pricing engine data store ska lagra prissättningsdata som hämtas via "Fetch price" service task</li>
+        <li>Personal credit information source data store ska lagra kreditinformation som hämtas via "Fetch credit information" service task</li>
+        <li>Stacc Affordability data store ska lagra affordability-metrics som beräknas via "Calculate household affordability" service task</li>
+        <li>Risk engine data store ska lagra riskklassificering som hämtas via "Fetch risk classification" service task</li>
+      </ul>
+
+      <h3>7. Multi-instance bearbetning</h3>
+      <ul>
+        <li>"For each stakeholder" multi-instance subprocess ska bearbeta alla stakeholders i ansökan, antingen parallellt eller sekventiellt beroende på konfiguration</li>
+        <li>"For each household" multi-instance subprocess ska bearbeta alla hushåll i ansökan, antingen parallellt eller sekventiellt beroende på konfiguration</li>
+        <li>Varje stakeholder och hushåll ska bearbetas individuellt med egen instans av respektive subprocess</li>
+      </ul>
+
+      <h3>8. Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> Service tasks ("Fetch price", "Fetch credit information", "Calculate household affordability", "Fetch risk classification") ska ha timeout på 30 sekunder per förfrågan. Business rule tasks ska ha timeout på 60 sekunder</li>
+        <li><strong>Retry:</strong> Service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel eller timeout</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: CREDIT_EVAL_SERVICE_ERROR (för service task-fel), CREDIT_EVAL_TIMEOUT (för timeout), CREDIT_EVAL_POLICY_VIOLATION (för policy-överträdelse), CREDIT_EVAL_DATA_MISSING (för saknad data)</li>
+        <li><strong>Logging:</strong> Alla business rule task-resultat och service task-anrop ska loggas med tidsstämplar, input-parametrar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>9. UI/UX-krav</h3>
+      <ul>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen (produktval, prissättning, stakeholder-bearbetning, hushålls-bearbetning, riskklassificering, policyutvärdering) med visuella indikatorer</li>
+        <li><strong>Multi-instance progress:</strong> Systemet ska visa progress för multi-instance bearbetning (t.ex. "Bearbetar stakeholder 2 av 3", "Bearbetar hushåll 1 av 2")</li>
+        <li><strong>Resultatvisning:</strong> Systemet ska visa tydligt resultat från varje utvärderingssteg (produktval, affordability, riskklassificering, policyutvärdering) för handläggaren</li>
+      </ul>
+
+      <h3>10. Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Multi-instance subprocesses ska kunna bearbeta stakeholders och hushåll parallellt för att förbättra prestanda</li>
+        <li><strong>Load balancing:</strong> Service tasks ska kunna hantera minst 50 ansökningar per minut med genomsnittlig svarstid under 10 sekunder per ansökan</li>
+        <li><strong>Caching:</strong> Systemet ska implementera caching för prissättningsdata, kreditinformation och riskklassificering för att minska belastning på externa tjänster</li>
+      </ul>
+
+      <h3>11. Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig kreditinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till kreditdata ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla kreditevalueringar ska innehålla spårbarhet för när utvärderingen genomfördes, vilka data som användes och resultatet, för att uppfylla GDPR-krav</li>
+        <li><strong>Audit trail:</strong> Alla utvärderingsresultat ska loggas med ansöknings-ID, tidsstämplar, utvärderingssteg och resultat för fullständig spårbarhet</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Detaljerad testgenerering för att säkerställa att feature goalet fungerar korrekt.</p>
+      
+      <h3>UI Flow per Scenario</h3>
+      <ul>
+        <li><strong>Scenario 1: Lyckad kreditevaluering (enkelt fall)</strong>
+          <ol>
+            <li>Systemet startar Automatic Credit Evaluation-processen via "Activity_1gzlxx4" call activity</li>
+            <li>"Select product" business rule task väljer produkt baserat på ansökningsdata</li>
+            <li>"Fetch price" service task hämtar prissättning från Pricing engine</li>
+            <li>"Determine amortisation" business rule task beräknar amortering</li>
+            <li>"For each stakeholder" multi-instance subprocess bearbetar stakeholders (1 stakeholder, kreditinformation behövs inte)</li>
+            <li>"For each household" multi-instance subprocess bearbetar hushåll (1 hushåll, affordability beräknas)</li>
+            <li>"Fetch risk classification" service task hämtar riskklassificering</li>
+            <li>"Evaluate application" business rule task utvärderar ansökan</li>
+            <li>"Evaluate credit policies" business rule task utför slutlig policyutvärdering</li>
+            <li>Processen avslutas normalt och returnerar resultat till Manual Credit Evaluation</li>
+          </ol>
+        </li>
+        <li><strong>Scenario 2: Multi-stakeholder och multi-household bearbetning</strong>
+          <ol>
+            <li>Systemet startar Automatic Credit Evaluation-processen</li>
+            <li>Produktval, prissättning och amortering beräknas</li>
+            <li>"For each stakeholder" multi-instance subprocess bearbetar 3 stakeholders parallellt (2 behöver kreditinformation)</li>
+            <li>"For each household" multi-instance subprocess bearbetar 2 hushåll parallellt</li>
+            <li>Riskklassificering och ansökningsutvärdering genomförs</li>
+            <li>Policyutvärdering genomförs</li>
+            <li>Processen avslutas normalt</li>
+          </ol>
+        </li>
+        <li><strong>Scenario 3: Service timeout</strong>
+          <ol>
+            <li>Systemet startar Automatic Credit Evaluation-processen</li>
+            <li>"Fetch price" service task timeout efter 30 sekunder</li>
+            <li>Systemet retryar med exponential backoff (max 3 försök)</li>
+            <li>Om alla försök misslyckas, returnerar systemet error code CREDIT_EVAL_TIMEOUT</li>
+            <li>Processen hanterar felet och signalerar till Manual Credit Evaluation</li>
+          </ol>
+        </li>
+        <li><strong>Scenario 4: Policy-överträdelse</strong>
+          <ol>
+            <li>Systemet startar Automatic Credit Evaluation-processen</li>
+            <li>Alla steg genomförs framgångsrikt</li>
+            <li>"Evaluate credit policies" business rule task identifierar policy-överträdelse</li>
+            <li>Systemet returnerar error code CREDIT_EVAL_POLICY_VIOLATION</li>
+            <li>Processen signalerar policy-överträdelse till Manual Credit Evaluation</li>
+          </ol>
+        </li>
+      </ul>
+
+      <h3>Testdata-referenser</h3>
+      <ul>
+        <li><strong>Enkel ansökan:</strong> 1 stakeholder, 1 hushåll, låg risk, godkänd policy. Förväntat resultat: Lyckad kreditevaluering</li>
+        <li><strong>Komplex ansökan:</strong> 3 stakeholders, 2 hushåll, medel risk, godkänd policy. Förväntat resultat: Lyckad kreditevaluering med multi-instance bearbetning</li>
+        <li><strong>Timeout-scenario:</strong> Extern tjänst svarar inte inom 30 sekunder. Förväntat resultat: Retry med exponential backoff, error code CREDIT_EVAL_TIMEOUT om alla försök misslyckas</li>
+        <li><strong>Policy-överträdelse:</strong> Ansökan överträder kreditpolicy. Förväntat resultat: Error code CREDIT_EVAL_POLICY_VIOLATION</li>
+        <li><strong>Saknad data:</strong> Nödvändig data saknas för utvärdering. Förväntat resultat: Error code CREDIT_EVAL_DATA_MISSING</li>
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <ul>
+        <li><strong>Routes:</strong>
+          <ul>
+            <li><code>/api/credit-evaluation/select-product</code> - "Select product" business rule task</li>
+            <li><code>/api/credit-evaluation/fetch-price</code> - "Fetch price" service task</li>
+            <li><code>/api/credit-evaluation/determine-amortisation</code> - "Determine amortisation" business rule task</li>
+            <li><code>/api/credit-evaluation/fetch-credit-info</code> - "Fetch credit information" service task</li>
+            <li><code>/api/credit-evaluation/calculate-affordability</code> - "Calculate household affordability" service task</li>
+            <li><code>/api/credit-evaluation/fetch-risk-classification</code> - "Fetch risk classification" service task</li>
+            <li><code>/api/credit-evaluation/evaluate-application</code> - "Evaluate application" business rule task</li>
+            <li><code>/api/credit-evaluation/evaluate-policies</code> - "Evaluate credit policies" business rule task</li>
+          </ul>
+        </li>
+        <li><strong>Endpoints:</strong>
+          <ul>
+            <li><code>POST /api/credit-evaluation/select-product</code> - Välj produkt baserat på ansökningsdata, returnerar produktval</li>
+            <li><code>POST /api/credit-evaluation/fetch-price</code> - Hämta prissättning från Pricing engine, returnerar prissättningsdata</li>
+            <li><code>POST /api/credit-evaluation/determine-amortisation</code> - Beräkna amortering, returnerar amorteringsberäkning</li>
+            <li><code>POST /api/credit-evaluation/fetch-credit-info</code> - Hämta kreditinformation för stakeholder, returnerar kreditinformation</li>
+            <li><code>POST /api/credit-evaluation/calculate-affordability</code> - Beräkna affordability för hushåll, returnerar affordability-metrics</li>
+            <li><code>POST /api/credit-evaluation/fetch-risk-classification</code> - Hämta riskklassificering, returnerar riskklassificering</li>
+            <li><code>POST /api/credit-evaluation/evaluate-application</code> - Utvärdera ansökan, returnerar utvärderingsresultat</li>
+            <li><code>POST /api/credit-evaluation/evaluate-policies</code> - Utvärdera kreditpolicyer, returnerar policyutvärderingsresultat</li>
+          </ul>
+        </li>
+        <li><strong>Datastores:</strong>
+          <ul>
+            <li><code>pricing_engine</code> - Lagrar prissättningsdata</li>
+            <li><code>personal_credit_information_source</code> - Lagrar kreditinformation</li>
+            <li><code>stacc_affordability</code> - Lagrar affordability-metrics</li>
+            <li><code>risk_engine</code> - Lagrar riskklassificering</li>
+            <li><code>credit_evaluation_results</code> - Lagrar utvärderingsresultat med ansöknings-ID, tidsstämplar och resultat</li>
+            <li><code>credit_evaluation_audit</code> - Lagrar audit trail för alla utvärderingar</li>
+          </ul>
+        </li>
       </ul>
         </div>
       </details>

@@ -19,25 +19,59 @@
 - ✅ **ALLTID** göra texten lättläst och affärsorienterad
 - ✅ **ALLTID** ta den tid som behövs, även om det är 100 filer
 - ✅ **ALLTID** säkerställa att varje fil är perfekt innan jag går vidare
+- ✅ **ALLTID** identifiera och dokumentera återkommande feature goals (se Steg 0 nedan)
 
 **Kvalitet är absolut nödvändigt. Om det tar längre tid, även om det är 100 filer, måste jag ta den tiden. Inga shortcuts är tillåtna.**
 
 **⚠️ DETTA ÄR DET VIKTIGASTE I HELA PLANEN. JAG FÅR ALDRIG DEFAULTA TILL NÅGOT ANNAT. KVALITET ÄR ALLT. INGA SHORTCUTS. INGA UNDANTAG.**
 
+**⚠️ PERMANENT REGEL - ÅTERKOMMANDE FEATURE GOALS:**
+- **ALDRIG** glöm att identifiera återkommande feature goals innan du börjar förbättra filer
+- **ALLTID** kör `npx tsx scripts/analyze-reused-feature-goals.ts` först
+- **ALLTID** lägg till "Anropningskontexter" sektion för återkommande feature goals
+- **ALLTID** lägg till kontextspecifika input/output-krav
+- **ALLTID** följ strukturen i `REUSED_FEATURE_GOAL_TEMPLATE.md`
+- **Detta är en PERMANENT del av arbetsprocessen och ska ALDRIG hoppas över**
+
+**⚠️ PERMANENT REGEL - VALIDERING:**
+- **ALDRIG** anse dokumentation komplett utan att köra validering
+- **ALLTID** kör `npx tsx scripts/validate-feature-goal-documentation.ts` innan dokumentation anses komplett
+- **ALLTID** lösa alla varningar och saknade dokumentationer innan dokumentation anses komplett
+- **ALLTID** verifiera att matchningar är korrekta (inte bara att de finns)
+- **Detta är en PERMANENT del av arbetsprocessen och ska ALDRIG hoppas över**
+
+**⚠️ PERMANENT REGEL - HIERARKISKA FILNAMN (matchar Jira-namnen):**
+- **ALLTID** använd hierarkiska filnamn för icke-återkommande feature goals (matchar Jira-namnen)
+- **Format:** `{parent_bpmn_file}-{elementId}-v2.html` (t.ex. `mortgage-se-application-internal-data-gathering-v2.html`)
+- **ALDRIG** döp om återkommande feature goals - de behåller legacy-namn (t.ex. `mortgage-se-credit-evaluation-v2.html`)
+- **ALLTID** använd `getFeatureGoalDocFileKey` med `parentBpmnFile` parameter när parent-processen är känd
+- **Detta säkerställer att filnamnen matchar Jira-namnen direkt (t.ex. "Application - Internal data gathering")**
+
 ## 🎯 När användaren frågar om att uppdatera HTML-innehållet
+
+**⚠️ PERMANENT PÅMINNELSE - LÄS DETTA FÖRST:**
+- **ALDRIG glöm återkommande feature goals** - Läs `REMEMBER_REUSED_FEATURE_GOALS.md` VARJE GÅNG
+- **ALLTID kör `analyze-reused-feature-goals.ts` FÖRST** - Detta är en PERMANENT del av processen
+- **ALLTID lägg till "Anropningskontexter" sektion** - För alla återkommande feature goals
+- **ALDRIG glöm lane-analys** - Läs `LANE_ANALYSIS_RULE.md` VARJE GÅNG - Analysera lanes för att klassificera processen korrekt (kundaktivitet/handläggaraktivitet/systemaktivitet)
+- **ALDRIG glöm validering för målgrupper** - Läs `TARGET_AUDIENCE_VALIDATION.md` VARJE GÅNG - Efter att dokumentet skapats/förbättrats, MÅSTE det valideras för alla målgrupper. INGEN fil är klar förrän alla målgrupper har all information de behöver
+- **ALDRIG glöm validering av dokumentation** - Läs `VALIDATION_PROCESS.md` VARJE GÅNG - Efter att dokumentation har skapats/förbättrats, MÅSTE validering köras för att säkerställa att alla feature goals har korrekt dokumentation. INGEN dokumentation är komplett förrän valideringen lyckas utan saknade dokumentationer
+- **Detta är en PERMANENT regel som ALDRIG får glömmas**
 
 ### Steg 1: Kortfattat förklara approach
 
 **Jag ska förklara:**
 1. **Vad jag ska göra:** Förbättra innehållet i alla HTML-filer i `public/local-content/feature-goals/` baserat på BPMN-filer
 2. **Hur jag gör det:**
+   - Identifierar återkommande feature goals (feature goals som anropas från flera ställen)
    - Analyserar BPMN-filer (feature goal-processen, parent-processen, relaterade processer)
    - Extraherar alla aktiviteter, gateways, events, flöde
+   - För återkommande feature goals: Dokumenterar alla anropningskontexter (var, när, varför, vad som är annorlunda)
    - Uppdaterar alla sektioner i HTML-filerna med beskrivande, affärsorienterad text
    - Ersätter alla tekniska ID:n med beskrivande namn
    - Gör texten lättläst och affärsorienterad
 3. **Vilka filer:** Alla filer i `FEATURE_GOAL_STATUS.md` som inte är markerade som förbättrade
-4. **Kvalitet:** Varje fil uppdateras till perfektion enligt riktlinjerna i `MANUAL_HTML_WORKFLOW.md`
+4. **Kvalitet:** Varje fil uppdateras till perfektion enligt riktlinjerna i `MANUAL_HTML_WORKFLOW.md` och `REUSED_FEATURE_GOALS_STRATEGY.md`
 
 ### Steg 2: Fråga om jag ska göra det
 
@@ -49,12 +83,17 @@
 
 **Jag ska automatiskt:**
 
-1. **Köra scripts för att identifiera filer:**
+1. **Köra scripts för att identifiera filer och återkommande feature goals:**
    ```bash
    npx tsx scripts/analyze-feature-goal-sync.ts
-   npx tsx scripts/auto-update-feature-goal-docs.ts
+   npx tsx scripts/analyze-reused-feature-goals.ts  # ⚠️ PERMANENT - ALDRIG HOPPA ÖVER
    npx tsx scripts/generate-feature-goal-status.ts
+   npx tsx scripts/validate-feature-goal-documentation.ts  # ⚠️ PERMANENT - ALDRIG HOPPA ÖVER
    ```
+   
+   **⚠️ VIKTIGT:** 
+   - `analyze-reused-feature-goals.ts` MÅSTE alltid köras först för att identifiera återkommande feature goals. Detta är en PERMANENT del av processen.
+   - `validate-feature-goal-documentation.ts` MÅSTE alltid köras för att säkerställa att alla feature goals har korrekt dokumentation. Detta är en PERMANENT del av processen och MÅSTE köras innan dokumentation anses komplett.
 
 2. **För varje fil i `FEATURE_GOAL_STATUS.md` (som inte är markerad som förbättrad):**
    
@@ -73,7 +112,23 @@
       - **ALLA processer** som kan påverka feature goal (via events, eskaleringar, meddelanden)
       - **INGEN fil ska hoppas över** - Analysera helheten, inte bara den direkta processen
    
-   c. **Analysera ALLA BPMN-filer grundligt (på rätt abstraktionsnivå):**
+   c. **Identifiera återkommande feature goals:**
+      - **Kontrollera om feature goalet anropas från flera ställen:**
+        - Kör `npx tsx scripts/analyze-reused-feature-goals.ts` för att se om feature goalet är återkommande
+        - Eller sök i `bpmn-map.json` efter samma `subprocess_bpmn_file` i flera `call_activities`
+        - Om feature goalet anropas från flera ställen: Detta är ett återkommande feature goal
+      - **För återkommande feature goals:**
+        - **Identifiera alla anropningskontexter:**
+          - Var anropas feature goalet från? (vilken process, vilken call activity)
+          - När anropas det? (vilka förutsättningar, vilka events)
+          - Varför anropas det igen? (vilken ny information har tillkommit, vilket syfte)
+          - Vad är annorlunda? (vilka specifika input-variabler, vilka specifika output-variabler)
+        - **Dokumentera kontexterna:**
+          - Generell funktionalitet (vad processen gör)
+          - Kontextspecifika användningar (hur processen används i varje kontext)
+          - Skillnader mellan kontexter (vad som är annorlunda i varje kontext)
+   
+   d. **Analysera ALLA BPMN-filer grundligt (på rätt abstraktionsnivå):**
       - **För feature goal-processen:**
         - Extrahera ALLA aktiviteter (userTask, serviceTask, businessRuleTask, callActivity)
         - Extrahera ALLA gateways (exclusiveGateway, parallelGateway, inclusiveGateway, namnlösa gateways)
@@ -86,6 +141,13 @@
         - Om nested subprocess är en del av feature goalet: Analysera dess innehåll (aktiviteter, gateways, events) som del av feature goalet
         - Om nested subprocess är en separat feature goal: Analysera hur den anropas och påverkar feature goalet
         - **REKURSIVT:** Gå igenom alla nivåer av nesting (t.ex. Application → Object → Object Control → ...)
+      - **För återkommande feature goals:**
+        - Analysera varje anropningskontext separat:
+          - Vilka förutsättningar finns i varje kontext?
+          - Vilken ny information har tillkommit i varje kontext?
+          - Vilka specifika input-variabler finns i varje kontext?
+          - Vilka specifika output-variabler produceras i varje kontext?
+          - Hur påverkar kontexten processflödet?
       - **För parent-processen:**
         - Analysera hur feature goal anropas (beslutspunkter, villkor, boundary events)
         - Analysera flöde till/från feature goal
@@ -135,21 +197,66 @@
    
    i. **Markera som förbättrad i status-listan** med `[x]`
    
-   j. **Rapportera kortfattat** (t.ex. "✅ Application: Förbättrad beskrivning, lagt till saknade aktiviteter, ersatt alla tekniska ID:n")
+   j. **Validera för alla målgrupper (PERMANENT REGEL - ALDRIG GLÖM):**
+      - **⚠️ KRITISK:** Efter att dokumentet skapats/förbättrats, MÅSTE det valideras för alla målgrupper
+      - **Gå igenom varje målgrupp:** Läs checklistan i `TARGET_AUDIENCE_VALIDATION.md` för varje målgrupp
+      - **Identifiera vad som saknas:** För varje målgrupp, identifiera vad som saknas i dokumentet
+      - **Förbättra dokumentet:** För varje saknad punkt, lägg till eller förbättra informationen
+      - **Iterera:** Upprepa tills alla målgrupper har all information de behöver
+      - **⚠️ VIKTIGT:** Detta är en iterativ process. Fortsätt tills alla checklistor är kompletta
+      - **Se `TARGET_AUDIENCE_VALIDATION.md` för detaljerad guide och checklistor**
+   
+   k. **Rapportera kortfattat** (t.ex. "✅ Application: Förbättrad beskrivning, lagt till saknade aktiviteter, ersatt alla tekniska ID:n, validerat för alla målgrupper")
    
    **⚠️ VIKTIGT:** 
    - Ta den tid som behövs för varje fil
    - Varje fil ska vara perfekt innan jag går vidare
    - Om det tar längre tid, även om det är 100 filer, måste jag ta den tiden
    - **INGA SHORTCUTS ÄR TILLÅTNA**
+   - **Validering för målgrupper är OBLIGATORISK - INGEN fil är klar förrän alla målgrupper har all information de behöver**
 
 3. **Fortsätt tills alla filer är klara** - **INGEN fil ska hoppas över**
+
+## 📋 Detaljerad exekveringsprocess för varje fil
+
+### 0. Identifiera återkommande feature goals (NYTT STEG)
+
+**⚠️ VIKTIGT: Kontrollera alltid om feature goalet anropas från flera ställen**
+
+**För varje fil, innan du börjar analysera:**
+
+1. **Kör analysscript:**
+   ```bash
+   npx tsx scripts/analyze-reused-feature-goals.ts
+   ```
+   Detta genererar `docs/feature-goals/REUSED_FEATURE_GOALS_ANALYSIS.md` med alla återkommande feature goals.
+
+2. **Eller sök manuellt i bpmn-map.json:**
+   - Hitta feature goal-processen i `bpmn-map.json`
+   - Sök efter samma `subprocess_bpmn_file` i alla `call_activities` i alla processer
+   - Om samma `subprocess_bpmn_file` finns i flera `call_activities`: Detta är ett återkommande feature goal
+
+3. **Om feature goalet är återkommande:**
+   - **Identifiera alla anropningskontexter:**
+     - Var anropas det från? (vilken process, vilken call activity)
+     - När anropas det? (vilka förutsättningar, vilka events)
+     - Varför anropas det igen? (vilken ny information har tillkommit)
+     - Vad är annorlunda? (vilka specifika input/output-variabler)
+   - **Dokumentera enligt mallen:** Använd strukturen i `REUSED_FEATURE_GOAL_TEMPLATE.md`
+   - **Följ strategin:** Se `REUSED_FEATURE_GOALS_STRATEGY.md` för detaljerad strategi
+
+**⚠️ INGEN fil ska hoppas över - Kontrollera alltid om feature goalet är återkommande**
 
 ## 📋 Detaljerad exekveringsprocess för varje fil
 
 ### 1. Hitta BPMN-filer (helhetsanalys)
 
 **⚠️ VIKTIGT: Analysera helheten, inte bara den direkta processen**
+
+**⚠️ PERMANENT REGEL - LANE-ANALYS:**
+- **ALDRIG glöm att analysera lanes i BPMN-filen** - Se `LANE_ANALYSIS_RULE.md` för detaljerad guide
+- **ALLTID identifiera vilken lane huvudaktiviteten ligger i** - Detta avgör om processen är kundaktivitet, handläggaraktivitet eller systemaktivitet
+- **ALLTID använd korrekt terminologi i beskrivningen** - Matcha beskrivningen med BPMN-filens lanes
 
 **Från `bpmn-map.json` och `FEATURE_GOAL_STATUS.md`:**
 
@@ -193,9 +300,24 @@
 
 **Använd regex-baserad parsing (som i `scripts/analyze-feature-goal-sync.ts`):**
 
+**⚠️ PERMANENT REGEL - LANE-ANALYS (ALDRIG GLÖM):**
+1. **Sök efter lanes:** Hitta alla `<bpmn:lane` element i BPMN-filen
+2. **Identifiera huvudaktiviteten:** Vilken är huvudaktiviteten (t.ex. user task, service task)?
+3. **Identifiera lane för huvudaktiviteten:** I vilken lane ligger huvudaktiviteten?
+4. **Klassificera processen:**
+   - **Kundaktivitet:** Om huvudaktiviteten ligger i "Stakeholder", "Customer", "Primary stakeholder" lane
+   - **Handläggaraktivitet:** Om huvudaktiviteten ligger i "Caseworker", "Handläggare", "Compliance" lane
+   - **Systemaktivitet:** Om huvudaktiviteten ligger i "System" lane eller är service task/business rule task
+5. **Använd korrekt terminologi:** Matcha beskrivningen med BPMN-filens lanes
+   - Se `LANE_ANALYSIS_RULE.md` för detaljerad guide och exempel
+
 **Extrahera från feature goal-processen:**
+- **Lanes (⚠️ PERMANENT REGEL - ALDRIG GLÖM):**
+  - Identifiera alla lanes i BPMN-filen (`<bpmn:lane name="...">`)
+  - Identifiera vilken lane huvudaktiviteten ligger i
+  - Klassificera processen korrekt baserat på lane (kundaktivitet/handläggaraktivitet/systemaktivitet)
 - **Aktiviteter:**
-  - `userTask` → Kunduppgifter (t.ex. "Registrera hushållsekonomi", "Bekräfta ansökan")
+  - `userTask` → **Kontrollera lane:** Om i "Stakeholder"/"Customer" lane = Kunduppgift, om i "Caseworker"/"Compliance" lane = Handläggaruppgift
   - `serviceTask` → Systemuppgifter (t.ex. "Hämta kreditinformation", "Beräkna KALP")
   - `businessRuleTask` → Affärsregler (t.ex. "Screen KALP", "Pre-screen Party")
   - `callActivity` → Anrop till andra processer (t.ex. "Household", "Stakeholder")
@@ -266,9 +388,15 @@
   - Nämn vem som utför aktiviteten (kund, handläggare, system)
   - Fokusera på VAD processen gör, inte teknik
   - Affärsorienterat språk
-- **Exempel:**
+  - **För återkommande feature goals:**
+    - **Generell beskrivning först:** Beskriv vad processen gör generellt
+    - **Anropningskontexter sedan:** Lägg till en sektion "Anropningskontexter" som listar alla ställen där feature goalet anropas
+    - **För varje kontext:** Förklara var det anropas från, när det anropas, varför det anropas igen (vilken ny information), och vad som är annorlunda
+- **Exempel (generell):**
   - ✅ "Application är en omfattande kundaktivitet där kunden samlar in och validerar all nödvändig information för en bolåneansökan."
   - ❌ "Application anropas inuti stakeholders subprocess som är multi-instance via Gateway_1v59ktc..."
+- **Exempel (återkommande feature goal):**
+  - ✅ "Credit Decision är en manuell beslutsprocess där ansökningar bedöms och godkänns eller avvisas baserat på kreditkriterier.\n\n**Anropningskontexter:**\nDenna process anropas från flera ställen i Mortgage-processen:\n- **Huvudprocessen (mortgage.bpmn):** Efter KYC-processen, för initialt kreditbeslut när ansökan är komplett\n- **Offer-processen (mortgage-se-offer.bpmn):** Efter 'Perform advanced underwriting' när kunden begärt ändringar i erbjudandet\n- **Offer-processen - Sales Contract (mortgage-se-offer.bpmn):** Efter 'sales-contract-advanced-underwriting' när kunden begärt ändringar via köpekontrakt"
 
 #### Processteg - Input
 - **Krav:**
@@ -276,9 +404,15 @@
   - Beskriv entry point: Hur anropas processen?
   - Lista input-data: Vilka data är tillgängliga vid start?
   - Beskriv förutsättningar: Vilka villkor måste vara uppfyllda?
-- **Exempel:**
+  - **För återkommande feature goals:**
+    - **Generella krav först:** Lista vad som alltid krävs för att processen ska starta
+    - **Kontextspecifika krav sedan:** Lägg till en sektion "Kontextspecifika input-krav" som beskriver vad som är specifikt för varje anropningskontext
+    - **För varje kontext:** Förklara vilken ny information som har tillkommit, vilka specifika input-variabler som finns, och vilka specifika förutsättningar som måste vara uppfyllda
+- **Exempel (generell):**
   - ✅ "Application-processen startar när en kund initierar en bolåneansökan i Mortgage huvudprocessen. Följande information är tillgänglig vid start: Ansöknings-ID, kund-ID, ansökningstyp..."
   - ❌ "Processen startar när data finns"
+- **Exempel (återkommande feature goal):**
+  - ✅ "Credit Decision-processen startar när:\n- **Generella krav:** All nödvändig information för kreditbeslut är samlad (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer)\n\n**Kontextspecifika input-krav:**\n- **Huvudprocessen:** KYC-processen är slutförd och ansökan är komplett\n- **Offer-processen - Ändringar:** 'Perform advanced underwriting' är slutförd för de nya förutsättningarna\n- **Offer-processen - Sales Contract:** 'sales-contract-advanced-underwriting' är slutförd och köpekontrakt-ändringar är tillgängliga"
 
 #### Processteg - Output
 - **Krav:**
@@ -287,9 +421,15 @@
   - Lista output-data: Vilka data produceras?
   - Beskriv error events: Vilka error events kan triggas?
   - Beskriv felmeddelanden: Vad ska användaren se vid fel?
-- **Exempel:**
+  - **För återkommande feature goals:**
+    - **Generella resultat först:** Lista vad som alltid produceras när processen är slutförd
+    - **Kontextspecifika resultat sedan:** Lägg till en sektion "Kontextspecifika output-resultat" som beskriver vad som är specifikt för varje anropningskontext
+    - **För varje kontext:** Förklara vilka specifika output-variabler som produceras, hur resultatet används i den specifika kontexten, och vilka specifika error events som kan triggas
+- **Exempel (generell):**
   - ✅ "När Application-processen är slutförd har följande resultat uppnåtts: Komplett ansökningsdata, KALP-beräkning, Ansökan bekräftad..."
   - ❌ "Processen avslutas när den är klar"
+- **Exempel (återkommande feature goal):**
+  - ✅ "När Credit Decision-processen är slutförd har följande resultat uppnåtts:\n- **Generella resultat:** Slutgiltigt kreditbeslut (godkänt eller avvisat), beslutsnivå (Board/Committee/Four eyes/Straight through)\n\n**Kontextspecifika output-resultat:**\n- **Huvudprocessen:** Beslut om ansökan ska godkännas eller avvisas, fortsätter till Offer-processen om godkänt\n- **Offer-processen - Ändringar:** Beslut om ändringar kan godkännas, uppdaterat erbjudande kan skapas\n- **Offer-processen - Sales Contract:** Beslut om köpekontrakt-ändringar kan godkännas, uppdaterat erbjudande baserat på köpekontrakt kan skapas"
 
 #### Omfattning
 - **Krav:**
@@ -315,6 +455,10 @@
   - Beskriv gateways: Vilka beslutspunkter finns? Vad avgör de?
   - Beskriv error events: Vilka error events finns? När triggas de?
   - Beskriv multi-instance och parallellitet: Om processen har multi-instance eller parallella flöden
+  - **För återkommande feature goals:**
+    - **Generellt processflöde först:** Beskriv hur processen fungerar generellt
+    - **Anropningsställen sedan:** Lägg till en sektion "Anropningsställen" som listar alla ställen där processen anropas
+    - **För varje anropningsställe:** Förklara hur processen anropas från det stället, vilka specifika flöden som används, och hur resultatet returneras
 
 #### Effekt
 - **Krav:**
@@ -427,6 +571,12 @@ html = html.replace(sectionRegex, (match, content) => {
 **⚠️ KRITISK: Denna checklista MÅSTE genomföras för varje fil innan jag går vidare till nästa fil.**
 
 **För varje fil, kontrollera:**
+- [ ] **⚠️ LANE-ANALYS - PERMANENT REGEL (ALDRIG GLÖM):**
+  - [ ] Har jag analyserat lanes i BPMN-filen?
+  - [ ] Har jag identifierat vilken lane huvudaktiviteten ligger i?
+  - [ ] Har jag klassificerat processen korrekt (kundaktivitet/handläggaraktivitet/systemaktivitet)?
+  - [ ] Använder jag korrekt terminologi i beskrivningen (matchar med BPMN-filens lanes)?
+  - [ ] Se `LANE_ANALYSIS_RULE.md` för detaljerad guide
 - [ ] **ALLA tekniska ID:n är ersatta** - Inget tekniskt ID (Gateway_xxx, Event_xxx, Activity_xxx) får lämnas kvar
 - [ ] **ALLA sektioner är uppdaterade** - Beskrivning av FGoal, Input, Output, Omfattning, Avgränsning, Beroenden, BPMN - Process, Effekt, User stories, Acceptanskriterier
 - [ ] **Text är lättläst och affärsorienterad** - Inga långa, komplexa meningar, använd affärstermer
@@ -441,6 +591,24 @@ html = html.replace(sectionRegex, (match, content) => {
 - [ ] **Abstraktionsnivå är korrekt** - Analysera på rätt nivå (del av feature goal vs separat feature goal)
 - [ ] **Relaterade processer är analyserade** - Call activities, nästa processer, event-driven dependencies
 - [ ] **Helhetsanalys är genomförd** - Alla BPMN-filer som kan påverka feature goalet är analyserade
+- [ ] **⚠️ ÅTERKOMMANDE FEATURE GOALS - PERMANENT REGEL (ALDRIG GLÖM):**
+  - [ ] Har jag kört `npx tsx scripts/analyze-reused-feature-goals.ts` för att identifiera återkommande feature goals?
+  - [ ] Om feature goalet anropas från flera ställen (kontrollera i `REUSED_FEATURE_GOALS_ANALYSIS.md`), har jag lagt till "Anropningskontexter" sektion i Beskrivning?
+  - [ ] Har jag lagt till kontextspecifika input/output-krav?
+  - [ ] Följer jag strukturen i `REUSED_FEATURE_GOAL_TEMPLATE.md`?
+  - [ ] **OM FEATURE GOALET ÄR ÅTERKOMMANDE OCH INTE HAR "ANROPNINGSKONTEXTER" SEKTION - FIXA DET INNAN DU GÅR VIDARE. DETTA ÄR EN PERMANENT REGEL.**
+- [ ] **⚠️ VALIDERING FÖR MÅLGRUPPER - PERMANENT REGEL (ALDRIG GLÖM):**
+  - [ ] Har jag validerat dokumentet för alla målgrupper enligt `TARGET_AUDIENCE_VALIDATION.md`?
+  - [ ] Har jag gått igenom checklistan för varje målgrupp (Produktägare, Testare, Utvecklare, Designer, Handläggare, Tvärfunktionellt team, Arkitekt, Business Analyst)?
+  - [ ] Har jag identifierat och fixat all saknad information för varje målgrupp?
+  - [ ] Har jag itererat tills alla checklistor är kompletta?
+  - [ ] **OM NÅGON MÅLGRUPP SAKNAR INFORMATION - FIXA DET INNAN DU GÅR VIDARE. DETTA ÄR EN PERMANENT REGEL. INGEN FIL ÄR KLAR FÖRRÄN ALLA MÅLGRUPPER HAR ALL INFORMATION DE BEHÖVER.**
+- [ ] **⚠️ FILNAMN - HIERARKISKA FILNAMN (matchar Jira-namnen):**
+  - [ ] Om jag skapar en ny fil, har jag använt hierarkiskt filnamn för icke-återkommande feature goals?
+  - [ ] Format: `{parent_bpmn_file}-{elementId}-v2.html` (t.ex. `mortgage-se-application-internal-data-gathering-v2.html`)
+  - [ ] Har jag använt `getFeatureGoalDocFileKey` med `parentBpmnFile` parameter när parent-processen är känd?
+  - [ ] För återkommande feature goals: Har jag behållit legacy-namn (t.ex. `mortgage-se-credit-evaluation-v2.html`)?
+  - [ ] Matchar filnamnet Jira-namnet? (t.ex. "Application - Internal data gathering" → `mortgage-se-application-internal-data-gathering-v2.html`)
 - [ ] **Filen är markerad som förbättrad** i status-listan med `[x]`
 
 **⚠️ OM NÅGOT PÅ LISTAN INTE ÄR KLART - FIXA DET INNAN DU GÅR VIDARE TILL NÄSTA FIL. INGA UNDANTAG.**

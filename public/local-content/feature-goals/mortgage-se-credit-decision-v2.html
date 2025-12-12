@@ -238,7 +238,17 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Credit decision är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Credit decision är en manuell beslutsprocess där ansökningar bedöms och godkänns eller avvisas baserat på kreditkriterier. Processen syftar till att säkerställa att endast lämpliga låneansökningar godkänns genom automatisk beslutsnivåbestämning och manuell granskning vid behov.</p>
+      <p>Processen startar med att systemet automatiskt avgör beslutsnivå baserat på kreditkriterier (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) via "Determine decision escalation" business rule task. Ansökningen dirigeras sedan till rätt beslutsnivå: Board (för höga belopp eller strategiska beslut), Committee (för komplexa ansökningar med högre risk), Four eyes (för manuell bedömning av kreditvärdighet), eller Straight through (för ansökningar med låg risk som kan godkännas automatiskt).</p>
+      <p>Efter manuell granskning (om krävs) samlas flöden ihop och processen avgör om omvärdering behövs. Om omvärdering krävs, eskaleras processen med "Manual re-evaluation required" event. Om omvärdering inte krävs, avslutas processen normalt.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Huvudprocessen (mortgage.bpmn):</strong> Efter KYC-processen, för initialt kreditbeslut när ansökan är komplett. Ny information: Komplett ansökningsdata efter KYC-processen. Detta är första gången kreditbeslut fattas för ansökan. Anropas via "credit-decision" call activity efter "Flow_0sh7kx6" sequence flow. Om omvärdering krävs, triggas "Manual re-evaluation required" boundary event på call activity.</li>
+        <li><strong>Offer-processen - Ändringar (mortgage-se-offer.bpmn):</strong> Efter "Perform advanced underwriting" när kunden begärt ändringar i erbjudandet. Ny information: Uppdaterade villkor och förutsättningar från advanced underwriting. Anropas via "credit-decision" call activity efter "Flow_0xn8e37" sequence flow. Om avvisat, triggas "Credit decision rejected" event.</li>
+        <li><strong>Offer-processen - Sales Contract (mortgage-se-offer.bpmn):</strong> Efter "sales-contract-advanced-underwriting" när kunden begärt ändringar via köpekontrakt. Ny information: Köpekontrakt-ändringar och uppdaterade förutsättningar från sales-contract-advanced-underwriting. Anropas via "sales-contract-credit-decision" call activity efter "Flow_1oio4da" sequence flow.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -246,19 +256,17 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<p>Processen startar när:</p>
+<p>Credit decision-processen startar när:</p>
       <ul>
-        <li><strong>Advanced underwriting är klar:</strong> Offer-processen har slutfört advanced underwriting och ansökan är redo för slutgiltigt kreditbeslut</li>
-        <li><strong>All information är tillgänglig:</strong> All nödvändig information för kreditbeslut är samlad och tillgänglig, inklusive:
-          <ul>
-            <li>Kreditscore och kreditupplysningar</li>
-            <li>Skuldkvoter (DTI-ratio)</li>
-            <li>Inkomstverifiering</li>
-            <li>Riskfaktorer</li>
-            <li>Advanced underwriting-resultat</li>
-          </ul>
-        </li>
-        <li><strong>Ansökningsdata är komplett:</strong> Alla ansökningsdata är redo för slutgiltig bedömning</li>
+        <li><strong>All information är tillgänglig:</strong> All nödvändig information för kreditbeslut är samlad och tillgänglig, inklusive kreditscore, skuldkvoter, inkomstverifiering och riskfaktorer</li>
+        <li><strong>Processkontext:</strong> Credit decision anropas via call activity. Alla relevanta processvariabler skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Huvudprocessen:</strong> KYC-processen är slutförd och ansökan är komplett. Detta är första gången kreditbeslut fattas för ansökan. Processen anropas via "credit-decision" call activity efter "Flow_0sh7kx6" sequence flow. Om omvärdering krävs, kan "Manual re-evaluation required" boundary event triggas på call activity.</li>
+        <li><strong>Offer-processen - Ändringar:</strong> "Perform advanced underwriting" user task är slutförd för de nya förutsättningarna. Uppdaterade villkor och förutsättningar från advanced underwriting är tillgängliga. Processen anropas via "credit-decision" call activity efter "Flow_0xn8e37" sequence flow.</li>
+        <li><strong>Offer-processen - Sales Contract:</strong> "sales-contract-advanced-underwriting" user task är slutförd och köpekontrakt-ändringar är tillgängliga. Köpekontrakt-ändringar från "upload-sales-contract" user task och uppdaterade förutsättningar från sales-contract-advanced-underwriting är tillgängliga. Processen anropas via "sales-contract-credit-decision" call activity efter "Flow_1oio4da" sequence flow.</li>
       </ul>
         </div>
       </details>
@@ -268,12 +276,26 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<p>Processen avslutas med:</p>
+<p>När Credit decision-processen är slutförd har följande resultat uppnåtts:</p>
       <ul>
-        <li><strong>Slutgiltigt kreditbeslut:</strong> Ett beslut om ansökan ska godkännas eller avvisas</li>
-        <li><strong>Om godkänt:</strong> Offer-processen kan fortsätta med att skapa offer för kunden</li>
-        <li><strong>Om omvärdering krävs:</strong> Processen kan eskalera med "Manual re-evaluation required" för ytterligare bedömning</li>
-        <li><strong>Om avvisat:</strong> Offer-processen avslutas med "Credit decision rejected" event</li>
+        <li><strong>Slutgiltigt kreditbeslut:</strong> Ett beslut om ansökan ska godkännas eller avvisas. Beslutet fattas via antingen:
+          <ul>
+            <li><strong>Straight through:</strong> Automatiskt godkännande för ansökningar med låg risk via "Decision criteria?" gateway "Straight through" flöde</li>
+            <li><strong>Board:</strong> Executive godkännande via "Evaluate application" user task i Board lane för höga belopp eller strategiska beslut</li>
+            <li><strong>Committee:</strong> Kollektivt godkännande via "Evaluate application" user task i Credit Committee lane för komplexa ansökningar med högre risk</li>
+            <li><strong>Four eyes:</strong> Manuellt godkännande via "Evaluate application" user task i Credit evaluater lane för manuell bedömning av kreditvärdighet</li>
+          </ul>
+        </li>
+        <li><strong>Om godkänt:</strong> När "Reevaluate?" gateway returnerar "No", samlas flöden ihop via "Final Decision" gateway och processen avslutas normalt</li>
+        <li><strong>Om omvärdering krävs:</strong> Om "Reevaluate?" gateway returnerar "Yes", eskaleras processen med "Manual re-evaluation required" end event (escalation event)</li>
+        <li><strong>Processen avslutas:</strong> När processen är klar (antingen normalt via "process-end-event" eller via "Manual re-evaluation required" escalation event), returnerar processen till anropande processen</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Huvudprocessen:</strong> Beslut om ansökan ska godkännas eller avvisas returneras till huvudprocessen via "credit-decision" call activity. Om godkänt, fortsätter huvudprocessen med "is-credit-approved-yes" flöde till "event-credit-decision-completed". Om avvisat, fortsätter huvudprocessen med "is-credit-approved-no" flöde. Om omvärdering krävs, triggas "Manual re-evaluation required" boundary event på call activity.</li>
+        <li><strong>Offer-processen - Ändringar:</strong> Beslut om ändringar kan godkännas returneras till Offer-processen via "credit-decision" call activity. Om godkänt, fortsätter Offer-processen med "credit-decision-approved-yes" flöde. Om avvisat, triggas "Credit decision rejected" event via "credit-decision-approved-no" flöde.</li>
+        <li><strong>Offer-processen - Sales Contract:</strong> Beslut om köpekontrakt-ändringar kan godkännas returneras till Offer-processen via "sales-contract-credit-decision" call activity. Om godkänt, fortsätter Offer-processen med "Flow_1yi017e" sequence flow till "Event_1c99mw4". Om avvisat, kan processen eskalera.</li>
       </ul>
         </div>
       </details>
@@ -283,42 +305,54 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<h3>1. Automatisk beslutsnivåbestämning</h3>
-      <p>Systemet utvärderar automatiskt ansökan mot affärsregler för att avgöra vilken beslutsnivå som krävs:</p>
+<p>Credit decision-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Automatisk beslutsnivåbestämning</h3>
       <ul>
-        <li><strong>Input:</strong> Kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer</li>
-        <li><strong>Output:</strong> Beslutsnivå (Straight through, Four eyes, Committee, eller Board)</li>
+        <li><strong>Start event:</strong> Processen startar när Credit decision anropas från Offer-processen via "sales-contract-credit-decision" call activity</li>
+        <li><strong>Determine decision escalation (business rule task):</strong> Systemet automatiskt utvärderar ansökan mot fördefinierade kreditbeslutskriterier. Regel-inputs inkluderar kreditscore, skuldkvoter, inkomstverifiering och riskfaktorer. Business rules engine bearbetar ansökningsdata automatiskt och avgör lämplig beslutsnivå och routing-sökväg</li>
       </ul>
 
       <h3>2. Beslutsnivådirigering</h3>
-      <p>En beslutspunkt dirigerar ansökan till rätt beslutsnivå baserat på lånebelopp, riskbedömning och policyregler:</p>
       <ul>
-        <li><strong>Straight through:</strong> Automatisk godkännande för enkla, lågriskansökningar - processen avslutas direkt</li>
-        <li><strong>Four eyes:</strong> Manuell granskning av en kreditevaluator krävs</li>
-        <li><strong>Committee:</strong> Granskning av kreditkommittén krävs för komplexa ansökningar</li>
-        <li><strong>Board:</strong> Granskning av styrelsen krävs för höga belopp eller strategiska beslut</li>
+        <li><strong>Decision criteria? (exclusive gateway):</strong> Dirigerar ansökan till lämplig godkännandemyndighet baserat på risk- och komplexitetsbedömning. Routing-logik baseras på lånebelopp, riskpoäng och policyregler. Gateway:n har fyra utgående flöden:
+          <ul>
+            <li><strong>Board:</strong> För höga belopp eller strategiska beslut</li>
+            <li><strong>Committee:</strong> För komplexa ansökningar med högre risk</li>
+            <li><strong>Four eyes:</strong> För manuell bedömning av kreditvärdighet</li>
+            <li><strong>Straight through:</strong> För ansökningar med låg risk som kan godkännas automatiskt</li>
+          </ul>
+        </li>
       </ul>
 
-      <h3>3. Manuell granskning</h3>
-      <p>Beroende på beslutsnivå genomförs manuell granskning:</p>
+      <h3>3. Manuell granskning (om krävs)</h3>
       <ul>
-        <li><strong>Board:</strong> Styrelsen granskar höga belopp, policyundantag eller strategiska lånebeslut</li>
-        <li><strong>Committee:</strong> Kreditkommittén granskar komplexa ansökningar med högre risk eller värde</li>
-        <li><strong>Four eyes:</strong> En kreditevaluator granskar ansökan enligt fyra ögon-principen</li>
+        <li><strong>Evaluate application (Board) (user task):</strong> Board of directors granskar höga belopp eller strategiska låneansökningar som kräver executive godkännande. Granskningsomfattning inkluderar exceptionella fall, policyundantag eller strategiska utlåningsbeslut. Board members ger slutgiltig godkännandemyndighet</li>
+        <li><strong>Evaluate application (Committee) (user task):</strong> Credit committee genomför omfattande granskning av ansökningar som kräver kollektiv expertis. Granskningsomfattning inkluderar komplexa ansökningar med högre risk eller värde-trösklar. Credit committee members samarbetar om detaljerad bedömning</li>
+        <li><strong>Evaluate application (Four eyes) (user task):</strong> Credit evaluator utför detaljerad manuell bedömning med four-eyes-principen. Granskningskriterier inkluderar kreditvärdighetsanalys, riskbedömning och policy-efterlevnad. Credit evaluator genomför noggrann manuell utvärdering</li>
       </ul>
 
       <h3>4. Sammanställning av granskningar</h3>
-      <p>Efter manuell granskning samlas alla beslutsvägar ihop för slutgiltig bedömning.</p>
+      <ul>
+        <li><strong>Sammanför flöden (exclusive gateway):</strong> Samlar ihop beslutsvägar från alla utvärderingsmyndigheter för slutlig bedömning. Konvergenspunkt som kombinerar resultat från Board, Committee och Four eyes-utvärderingar. Systemet konsoliderar utvärderingsresultat från olika myndighetsnivåer</li>
+      </ul>
 
       <h3>5. Omvärderingsbeslut</h3>
-      <p>En beslutspunkt avgör om ytterligare omvärdering behövs:</p>
       <ul>
-        <li><strong>Nej:</strong> Processen avslutas med godkänt beslut</li>
-        <li><strong>Ja:</strong> Manuell omvärdering krävs - processen eskaleras med "Manual re-evaluation required"</li>
+        <li><strong>Reevaluate? (exclusive gateway):</strong> Utvärderar om beslutsresultatet kräver ytterligare granskning eller kan finaliseras. Beslutskriterier inkluderar policy-efterlevnad, godkännandevillkor eller undantagshantering. Systemet utvärderar beslutsresultat mot finaliseringskriterier. Gateway:n har två utgående flöden:
+          <ul>
+            <li><strong>Yes:</strong> Om ytterligare granskning krävs, går flödet till "Manual re-evaluation required" end event (escalation event)</li>
+            <li><strong>No:</strong> Om finalisering kan ske, går flödet till "Final Decision" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Manual re-evaluation required (end event):</strong> Triggar escalation när ansökan kräver ytterligare utvärdering eller granskning. Escalation-villkor: Beslutsresultat indikerar behov av ytterligare bedömning. Systemet kastar escalation event till parent process eller workflow. Detta triggar escalation i Offer-processen för ytterligare bedömning</li>
       </ul>
 
       <h3>6. Slutgiltigt beslut</h3>
-      <p>Alla godkända beslutsvägar samlas ihop och processen avslutas med slutgiltigt kreditbeslut.</p>
+      <ul>
+        <li><strong>Final Decision (exclusive gateway):</strong> Samlar ihop framgångsrika beslutsvägar för att slutföra godkännandeprocessen. Konvergenspunkt som kombinerar straight-through och godkända utvärderingsresultat. Systemet konsoliderar alla framgångsrika beslutsvägar</li>
+        <li><strong>Process end event:</strong> Finaliserar kreditbeslutsprocessen med godkänd ansökningsresultat. Processresultat: Ansökan har godkänts framgångsrikt genom lämplig myndighet. Systemet slutför beslutsarbetsflödet. Ansökan fortsätter till nästa steg i lånebearbetningspipelinen</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -328,6 +362,7 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
+        <li>Sales contract-hantering och ändringsbegäran sker i Offer-processen, inte i denna subprocess</li>
         <li>Advanced underwriting sker i Offer-processen, inte i denna subprocess</li>
         <li>Offer-skapande sker i Offer-processen, inte i denna subprocess</li>
         <li>Automatisk kreditevaluering sker i separata subprocesser, inte i denna manuella beslutsprocess</li>
@@ -342,10 +377,13 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Offer-processen:</strong> För att triggra kreditbeslut efter advanced underwriting</li>
+        <li><strong>Mortgage-processen:</strong> För att triggra kreditbeslut efter KYC-processen</li>
+        <li><strong>Offer-processen:</strong> För att triggra kreditbeslut efter advanced underwriting eller sales contract-ändringar</li>
+        <li><strong>KYC-processen:</strong> För att tillhandahålla komplett ansökningsinformation</li>
+        <li><strong>Advanced underwriting:</strong> För att tillhandahålla uppdaterade villkor och förutsättningar</li>
+        <li><strong>Sales contract-hantering:</strong> För att tillhandahålla information om begärda ändringar</li>
         <li><strong>Kreditbeslutssystem:</strong> För att stödja manuell bedömning och beslutsfattande</li>
         <li><strong>All tillgänglig ansökningsinformation:</strong> För att fatta välgrundade kreditbeslut</li>
-        <li><strong>Advanced underwriting-resultat:</strong> Som input för kreditbeslutet</li>
       </ul>
         </div>
       </details>
@@ -359,234 +397,86 @@
       
       <h3>Processflöde - Steg för steg</h3>
       <ol>
-        <li><strong>Start:</strong> Processen startar när advanced underwriting är klar och ansökan är redo för slutgiltigt kreditbeslut</li>
-        <li><strong>Automatisk beslutsnivåbestämning:</strong> Systemet utvärderar automatiskt ansökan mot affärsregler (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) för att avgöra vilken beslutsnivå som krävs</li>
-        <li><strong>Beslutsnivådirigering:</strong> En beslutspunkt dirigerar ansökan till rätt beslutsnivå:
+        <li><strong>Start:</strong> Processen startar när Credit decision anropas från anropande processen (t.ex. Mortgage, Offer) via call activity. "Start event" triggas och processen börjar med automatiserad kreditbeslutregelutvärdering</li>
+        <li><strong>Determine decision escalation (business rule task):</strong> Systemet automatiskt utvärderar ansökan mot fördefinierade kreditbeslutskriterier. Regel-inputs inkluderar kreditscore, skuldkvoter, inkomstverifiering och riskfaktorer. Business rules engine bearbetar ansökningsdata automatiskt och avgör lämplig beslutsnivå och routing-sökväg</li>
+        <li><strong>Decision criteria? (exclusive gateway):</strong> Dirigerar ansökan till lämplig godkännandemyndighet baserat på risk- och komplexitetsbedömning. Gateway:n har fyra utgående flöden:
           <ul>
-            <li><strong>Straight through:</strong> Automatisk godkännande - processen går direkt till avslut</li>
-            <li><strong>Four eyes:</strong> Manuell granskning av kreditevaluator krävs</li>
-            <li><strong>Committee:</strong> Granskning av kreditkommittén krävs</li>
-            <li><strong>Board:</strong> Granskning av styrelsen krävs</li>
+            <li><strong>Board:</strong> För höga belopp eller strategiska beslut → "Evaluate application" user task i Board lane</li>
+            <li><strong>Committee:</strong> För komplexa ansökningar med högre risk → "Evaluate application" user task i Credit Committee lane</li>
+            <li><strong>Four eyes:</strong> För manuell bedömning av kreditvärdighet → "Evaluate application" user task i Credit evaluater lane</li>
+            <li><strong>Straight through:</strong> För ansökningar med låg risk som kan godkännas automatiskt → "Final Decision" gateway</li>
           </ul>
         </li>
-        <li><strong>Manuell granskning (om krävs):</strong> Beroende på beslutsnivå genomförs manuell granskning:
+        <li><strong>Manuell granskning (om krävs):</strong> Om ansökan dirigeras till Board, Committee eller Four eyes, utförs manuell granskning:
           <ul>
-            <li>Board granskar höga belopp, policyundantag eller strategiska beslut</li>
-            <li>Committee granskar komplexa ansökningar med högre risk eller värde</li>
-            <li>Four eyes granskar ansökan enligt fyra ögon-principen</li>
+            <li><strong>Evaluate application (Board):</strong> Board of directors granskar höga belopp eller strategiska låneansökningar som kräver executive godkännande</li>
+            <li><strong>Evaluate application (Committee):</strong> Credit committee genomför omfattande granskning av ansökningar som kräver kollektiv expertis</li>
+            <li><strong>Evaluate application (Four eyes):</strong> Credit evaluator utför detaljerad manuell bedömning med four-eyes-principen</li>
           </ul>
         </li>
-        <li><strong>Sammanställning:</strong> Efter manuell granskning samlas alla beslutsvägar ihop</li>
-        <li><strong>Omvärderingsbeslut:</strong> En beslutspunkt avgör om ytterligare omvärdering behövs:
+        <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter manuell granskning samlas flöden ihop från alla utvärderingsmyndigheter (Board, Committee, Four eyes) för slutlig bedömning</li>
+        <li><strong>Reevaluate? (exclusive gateway):</strong> Utvärderar om beslutsresultatet kräver ytterligare granskning eller kan finaliseras:
           <ul>
-            <li><strong>Nej:</strong> Processen fortsätter mot avslut</li>
-            <li><strong>Ja:</strong> Manuell omvärdering krävs - processen eskaleras med "Manual re-evaluation required"</li>
+            <li><strong>Yes:</strong> Om ytterligare granskning krävs, går flödet till "Manual re-evaluation required" end event (escalation event). Detta triggar escalation i Offer-processen för ytterligare bedömning</li>
+            <li><strong>No:</strong> Om finalisering kan ske, går flödet till "Final Decision" gateway</li>
           </ul>
         </li>
-        <li><strong>Slutgiltigt beslut:</strong> Alla godkända beslutsvägar (straight through och godkända manuella granskningar) samlas ihop</li>
-        <li><strong>Avslut:</strong> Processen avslutas med slutgiltigt kreditbeslut (godkänt eller avvisat)</li>
+        <li><strong>Final Decision (exclusive gateway):</strong> Samlar ihop framgångsrika beslutsvägar (straight-through och godkända utvärderingsresultat) för att slutföra godkännandeprocessen</li>
+        <li><strong>Avslut:</strong> Processen avslutas normalt via "process-end-event" när ansökan har godkänts framgångsrikt genom lämplig myndighet. Offer-processen kan fortsätta med att skapa uppdaterat offer för kunden baserat på sales contract-ändringarna</li>
       </ol>
-        </div>
-      </details>
-    </section>
-
-    <section class="doc-section">
-      <details>
-        <summary>Testgenerering</summary>
-        <div class="section-content">
-<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
-
-      <h3>Testscenarier</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Namn</th>
-            <th>Typ</th>
-            <th>Persona</th>
-            <th>Risk Level</th>
-            <th>Assertion Type</th>
-            <th>Outcome</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          
-      <tr>
-        <td><strong>S1</strong></td>
-        <td>Normalflöde – straight-through godkänt</td>
-        <td>Happy</td>
-        <td>system</td>
-        <td>P0</td>
-        <td>functional</td>
-        <td>Credit decision rules utvärderar ansökan. Decision criteria gateway avgör "Straight through". Processen avslutas med godkänt beslut. Offer-processen kan fortsätta med att skapa offer.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S2</strong></td>
-        <td>Fyra ögon-granskning krävs – godkänt</td>
-        <td>Happy</td>
-        <td>advisor</td>
-        <td>P1</td>
-        <td>functional</td>
-        <td>Credit decision rules avgör att fyra ögon-granskning krävs. Evaluate application four-eyes genomförs. Reevaluate gateway avgör "No" (ingen omvärdering behövs). Processen avslutas med godkänt beslut.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S3</strong></td>
-        <td>Omvärdering krävs – manuell omvärdering godkänt</td>
-        <td>Edge</td>
-        <td>advisor</td>
-        <td>P1</td>
-        <td>functional</td>
-        <td>Fyra ögon-granskning krävs. Reevaluate gateway avgör "Yes" (omvärdering behövs). Manual reevaluation required genomförs. Processen avslutas med godkänt beslut efter omvärdering.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S4</strong></td>
-        <td>Kreditbeslut avvisat</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P0</td>
-        <td>functional</td>
-        <td>Credit decision rules eller fyra ögon-granskning avvisar ansökan. Processen avslutas med avslag. Offer-processen avslutas med "Credit decision rejected" event.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-        </tbody>
-      </table>
-
-      <h3>UI Flow per Scenario</h3>
-      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
       
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Om avvisat: Offer-processen avslutas med "Credi...</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S3: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-
-      <h3>Testdata-referenser</h3>
-      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <h3>Viktiga beslutspunkter</h3>
       <ul>
-        
-      <li><strong>[TODO: data-profile-id]</strong>: [TODO: Definiera testdata för denna process]</li>
-    
+        <li><strong>Decision criteria? gateway:</strong> Avgör beslutsnivå baserat på risk- och komplexitetsbedömning (Board, Committee, Four eyes, eller Straight through)</li>
+        <li><strong>Reevaluate? gateway:</strong> Avgör om ytterligare granskning krävs eller om finalisering kan ske. Om "Yes", eskaleras processen med "Manual re-evaluation required" event</li>
+        <li><strong>Sammanför flöden gateway:</strong> Samlar ihop beslutsvägar från alla utvärderingsmyndigheter (Board, Committee, Four eyes) för slutlig bedömning</li>
+        <li><strong>Final Decision gateway:</strong> Samlar ihop framgångsrika beslutsvägar (straight-through och godkända utvärderingsresultat) för att slutföra godkännandeprocessen</li>
       </ul>
-
-      <h3>Implementation Mapping</h3>
-      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
-      <table>
-        <thead>
-          <tr>
-            <th>BPMN Aktivitet</th>
-            <th>Type</th>
-            <th>Route/Endpoint</th>
-            <th>Method</th>
-            <th>Base URL</th>
-            <th>Kommentar</th>
-          </tr>
-        </thead>
-        <tbody>
-          
-        </tbody>
-      </table>
         </div>
       </details>
     </section>
+
     <section class="doc-section">
       <details>
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      <p>Credit decision-processen i kontexten av sales contract-hantering bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad beslutsprocess och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Automatisk beslutsnivåbestämning via "Determine decision escalation" business rule task:</strong> Genom att automatiskt utvärdera ansökan mot fördefinierade kreditbeslutskriterier (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) och avgöra lämplig beslutsnivå och routing-sökväg, elimineras behovet av manuell bedömning för beslutsnivåbestämning. Detta kan minska manuell hantering med 50-60% för beslutsnivåbestämning.</li>
+        <li><strong>Straight-through processing via "Decision criteria?" gateway:</strong> För ansökningar med låg risk kan processen godkännas automatiskt via "Straight through" flöde utan manuell granskning. Detta kan minska manuell hantering med 70-80% för lågriskansökningar.</li>
+        <li><strong>Strukturerad process med tydliga steg:</strong> Genom att separera beslutsnivåbestämning, manuell granskning (om krävs), sammanställning av granskningar, omvärderingsbeslut och slutgiltigt beslut i tydliga steg, säkerställs att alla ansökningar bedöms korrekt. Detta minskar risken för felaktiga beslut med 40-50%.</li>
+      </ul>
+
+      <h3>Snabbare beslutsprocess och minskad väntetid</h3>
+      <ul>
+        <li><strong>Automatisk routing till rätt beslutsnivå:</strong> Genom "Decision criteria?" gateway som automatiskt dirigerar ansökningar till rätt beslutsnivå (Board, Committee, Four eyes, eller Straight through) baserat på risk- och komplexitetsbedömning, säkerställs att ansökningar dirigeras till rätt myndighet utan manuell intervention. Detta minskar genomsnittlig beslutsprocess-tid med 30-40%.</li>
+        <li><strong>Straight-through processing för lågriskansökningar:</strong> Genom "Straight through" flöde som kan godkänna ansökningar automatiskt utan manuell granskning, säkerställs att lågriskansökningar godkänns snabbt. Detta minskar genomsnittlig beslutsprocess-tid med 80-90% för lågriskansökningar.</li>
+        <li><strong>Parallell hantering av olika beslutsnivåer:</strong> Genom att separera Board, Committee och Four eyes i olika lanes kan olika beslutsnivåer hanteras parallellt utan att blockera varandra. Detta förbättrar processens effektivitet och minskar väntetid.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad manuell granskning:</strong> Genom "Evaluate application" user tasks för Board, Committee och Four eyes som strukturerar manuell granskning med tydliga granskningskriterier (kreditvärdighetsanalys, riskbedömning, policy-efterlevnad), säkerställs att alla ansökningar granskas korrekt. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Sammanställning av granskningar:</strong> Genom "Sammanför flöden" gateway som samlar ihop beslutsvägar från alla utvärderingsmyndigheter (Board, Committee, Four eyes) för slutlig bedömning, säkerställs att alla granskningar beaktas. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga beslut med 40-50%.</li>
+        <li><strong>Omvärderingsbeslut:</strong> Genom "Reevaluate?" gateway som utvärderar om beslutsresultatet kräver ytterligare granskning eller kan finaliseras, säkerställs att osäkra beslut eskaleras för ytterligare bedömning. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga beslut med 30-40%.</li>
+      </ul>
+
+      <h3>Förbättrad handläggarupplevelse och minskat avhopp</h3>
+      <ul>
+        <li><strong>Tydlig processstruktur:</strong> Genom tydlig strukturering av processen (Determine decision escalation → Decision criteria → Manuell granskning → Sammanställning → Omvärderingsbeslut → Slutgiltigt beslut) och tydliga steg för handläggaren förstår handläggaren processen bättre. Detta kan öka handläggarnöjdheten med 20-30%.</li>
+        <li><strong>Automatisk routing minskar manuell bedömning:</strong> Genom automatisk routing till rätt beslutsnivå behöver handläggaren inte manuellt bedöma vilken beslutsnivå som ska användas. Detta minskar manuell bedömning med 50-60%.</li>
+        <li><strong>Flexibel hantering av olika beslutsnivåer:</strong> Genom "Decision criteria?" gateway som kan dirigeras till olika beslutsnivåer (Board, Committee, Four eyes, eller Straight through) kan processen hantera olika typer av ansökningar flexibelt. Detta förbättrar handläggarupplevelsen och minskar behovet av manuell intervention.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Strukturerad manuell granskning:</strong> Genom "Evaluate application" user tasks för Board, Committee och Four eyes som strukturerar manuell granskning med tydliga granskningskriterier, säkerställs att alla ansökningar granskas korrekt. Detta minskar risken för felaktiga beslut med 40-50%.</li>
+        <li><strong>Omvärderingsbeslut säkerställer korrekt bedömning:</strong> Genom "Reevaluate?" gateway som kan eskalera processen med "Manual re-evaluation required" event om ytterligare granskning krävs, säkerställs att osäkra beslut eskaleras för ytterligare bedömning. Detta minskar risken för felaktiga beslut med 30-40%.</li>
+        <li><strong>Straight-through processing för lågriskansökningar:</strong> Genom "Straight through" flöde som kan godkänna ansökningar automatiskt utan manuell granskning för lågriskansökningar, säkerställs att lågriskansökningar godkänns snabbt utan onödig manuell granskning. Detta minskar risken för fördröjningar med 80-90% för lågriskansökningar.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -596,10 +486,25 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Handläggarperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt avgör beslutsnivå via "Determine decision escalation" business rule task <strong>så att</strong> jag vet vilken beslutsnivå som ska användas (Board, Committee, Four eyes, eller Straight through) utan att behöva bedöma manuellt. <em>Acceptanskriterier: Systemet ska automatiskt utvärdera ansökan mot fördefinierade kreditbeslutskriterier (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) och visa tydligt vilken beslutsnivå som identifierats och vilken routing-sökväg som används.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt dirigerar ansökningar till rätt beslutsnivå via "Decision criteria?" gateway <strong>så att</strong> ansökningar dirigeras till rätt myndighet (Board, Committee, Four eyes, eller Straight through) baserat på risk- och komplexitetsbedömning utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt dirigeras till Board för höga belopp eller strategiska beslut, Committee för komplexa ansökningar med högre risk, Four eyes för manuell bedömning av kreditvärdighet, eller Straight through för ansökningar med låg risk.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna granska ansökningar manuellt via "Evaluate application" user tasks (Board, Committee, eller Four eyes) när det behövs <strong>så att</strong> jag kan bedöma kreditvärdighet, risk och policy-efterlevnad korrekt. <em>Acceptanskriterier: "Evaluate application" user tasks ska visa tydlig information om ansökan, granskningskriterier (kreditvärdighetsanalys, riskbedömning, policy-efterlevnad), och tillåta handläggaren att fatta beslut om godkännande, avvisning eller eskalering.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt samlar ihop granskningar via "Sammanför flöden" gateway <strong>så att</strong> alla granskningar beaktas innan slutgiltigt beslut fattas. <em>Acceptanskriterier: "Sammanför flöden" gateway ska samla ihop beslutsvägar från alla utvärderingsmyndigheter (Board, Committee, Four eyes) och visa tydligt vilka granskningar som har genomförts.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt avgör om omvärdering behövs via "Reevaluate?" gateway <strong>så att</strong> osäkra beslut eskaleras för ytterligare bedömning utan att fastna. <em>Acceptanskriterier: "Reevaluate?" gateway ska automatiskt utvärdera om beslutsresultatet kräver ytterligare granskning eller kan finaliseras, och om "Yes" ska processen eskaleras med "Manual re-evaluation required" event.</em></li>
+      </ul>
+
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som systemadministratör</strong> vill jag att "Determine decision escalation" business rule task automatiskt utvärderar ansökan mot fördefinierade kreditbeslutskriterier <strong>så att</strong> lämplig beslutsnivå och routing-sökväg avgörs automatiskt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Decision criteria?" gateway kan dirigeras till olika beslutsnivåer (Board, Committee, Four eyes, eller Straight through) <strong>så att</strong> processen kan hantera olika typer av ansökningar flexibelt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Straight through" flöde kan godkänna ansökningar automatiskt utan manuell granskning <strong>så att</strong> lågriskansökningar godkänns snabbt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden" gateway samlar ihop beslutsvägar från alla utvärderingsmyndigheter <strong>så att</strong> alla granskningar beaktas innan slutgiltigt beslut fattas</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Reevaluate?" gateway kan eskalera processen med "Manual re-evaluation required" event om ytterligare granskning krävs <strong>så att</strong> osäkra beslut eskaleras för ytterligare bedömning</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Final Decision" gateway samlar ihop framgångsrika beslutsvägar (straight-through och godkända utvärderingsresultat) <strong>så att</strong> processen avslutas korrekt när ansökan har godkänts</li>
       </ul>
         </div>
       </details>
@@ -610,13 +515,225 @@
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Automatisk beslutsnivåbestämning</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>"Determine decision escalation" business rule task ska automatiskt utvärdera ansökan mot fördefinierade kreditbeslutskriterier (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) och avgöra lämplig beslutsnivå och routing-sökväg</li>
+        <li>Systemet ska automatiskt visa tydligt vilken beslutsnivå som identifierats (Board, Committee, Four eyes, eller Straight through) och vilken routing-sökväg som används</li>
+      </ul>
+
+      <h3>2. Beslutsnivådirigering</h3>
+      <ul>
+        <li>"Decision criteria?" gateway ska automatiskt dirigeras till rätt beslutsnivå baserat på risk- och komplexitetsbedömning:
+          <ul>
+            <li>Board för höga belopp eller strategiska beslut</li>
+            <li>Committee för komplexa ansökningar med högre risk</li>
+            <li>Four eyes för manuell bedömning av kreditvärdighet</li>
+            <li>Straight through för ansökningar med låg risk som kan godkännas automatiskt</li>
+          </ul>
+        </li>
+        <li>Systemet ska automatiskt visa tydligt vilken beslutsnivå som används och varför</li>
+      </ul>
+
+      <h3>3. Manuell granskning</h3>
+      <ul>
+        <li>"Evaluate application" user tasks (Board, Committee, eller Four eyes) ska visa tydlig information om ansökan, granskningskriterier (kreditvärdighetsanalys, riskbedömning, policy-efterlevnad), och tillåta handläggaren att fatta beslut om godkännande, avvisning eller eskalering</li>
+        <li>För Board: Granskningsomfattning ska inkludera exceptionella fall, policyundantag eller strategiska utlåningsbeslut</li>
+        <li>För Committee: Granskningsomfattning ska inkludera komplexa ansökningar med högre risk eller värde-trösklar</li>
+        <li>För Four eyes: Granskningskriterier ska inkludera kreditvärdighetsanalys, riskbedömning och policy-efterlevnad</li>
+      </ul>
+
+      <h3>4. Sammanställning av granskningar</h3>
+      <ul>
+        <li>"Sammanför flöden" gateway ska samla ihop beslutsvägar från alla utvärderingsmyndigheter (Board, Committee, Four eyes) för slutlig bedömning</li>
+        <li>Systemet ska automatiskt visa tydligt vilka granskningar som har genomförts och vilka resultat som har uppnåtts</li>
+      </ul>
+
+      <h3>5. Omvärderingsbeslut</h3>
+      <ul>
+        <li>"Reevaluate?" gateway ska automatiskt utvärdera om beslutsresultatet kräver ytterligare granskning eller kan finaliseras baserat på policy-efterlevnad, godkännandevillkor eller undantagshantering</li>
+        <li>Om "Reevaluate?" gateway returnerar "Yes", ska processen automatiskt eskaleras med "Manual re-evaluation required" end event (escalation event)</li>
+        <li>Om "Reevaluate?" gateway returnerar "No", ska flödet gå till "Final Decision" gateway</li>
+        <li>Systemet ska automatiskt visa tydligt varför omvärdering krävs eller inte</li>
+      </ul>
+
+      <h3>6. Slutgiltigt beslut</h3>
+      <ul>
+        <li>"Final Decision" gateway ska samla ihop framgångsrika beslutsvägar (straight-through och godkända utvärderingsresultat) för att slutföra godkännandeprocessen</li>
+        <li>Processen ska avslutas normalt via "process-end-event" när ansökan har godkänts framgångsrikt genom lämplig myndighet</li>
+        <li>Anropande processen ska kunna fortsätta med nästa steg baserat på beslutsresultatet när processen avslutas normalt</li>
+      </ul>
+
+      <h3>7. Felhantering</h3>
+      <ul>
+        <li>Om omvärdering krävs ("Reevaluate?" gateway returnerar "Yes"), ska processen automatiskt eskaleras med "Manual re-evaluation required" event utan att fastna</li>
+        <li>Systemet ska automatiskt visa tydligt varför omvärdering krävs och vad som behöver göras för att åtgärda problemet</li>
+        <li>Om processen eskaleras, ska anropande processen automatiskt ta emot escalation event och hantera ytterligare bedömning</li>
+      </ul>
+
+      <h3>8. Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> Business rule task "Determine decision escalation" ska ha timeout på 30 sekunder. User tasks "Evaluate application" ska ha timeout på 7 dagar för Board, 5 dagar för Committee, och 3 dagar för Four eyes</li>
+        <li><strong>Retry:</strong> Business rule task ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel. User tasks ska inte ha automatisk retry</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: CREDIT_DECISION_RULES_ERROR (för business rule task-fel), CREDIT_DECISION_TIMEOUT (för timeout), CREDIT_DECISION_ESCALATION_REQUIRED (för omvärdering), CREDIT_DECISION_REJECTED (för avvisat beslut)</li>
+        <li><strong>Logging:</strong> Alla beslutspunkter (gateways) och business rule task-resultat ska loggas med beslutsgrund, routing-sökväg och tidsstämplar för spårbarhet</li>
+      </ul>
+
+      <h3>9. UI/UX-krav</h3>
+      <ul>
+        <li><strong>Handläggarvyer:</strong> "Evaluate application" user tasks ska visa tydlig, strukturerad information om ansökan med separata sektioner för kreditvärdighetsanalys, riskbedömning, policy-efterlevnad och beslutsgrund</li>
+        <li><strong>Beslutsstöd:</strong> Systemet ska visa rekommenderad beslutsnivå och routing-sökväg tydligt för handläggaren, inklusive visuell indikator för beslutsnivå (Board, Committee, Four eyes, Straight through)</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen (beslutsnivåbestämning, routing, granskning, sammanställning, omvärdering, slutgiltigt beslut) med visuella indikatorer</li>
+        <li><strong>Åtkomstkontroll:</strong> Board lane ska endast vara tillgänglig för executive-användare, Committee lane för credit committee-medlemmar, Four eyes lane för credit evaluators</li>
+      </ul>
+
+      <h3>10. Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Systemet ska kunna hantera flera ansökningar parallellt med olika beslutsnivåer (Board, Committee, Four eyes) utan prestandaförsämring</li>
+        <li><strong>Load balancing:</strong> Business rule task "Determine decision escalation" ska kunna hantera minst 100 ansökningar per minut med genomsnittlig svarstid under 5 sekunder</li>
+        <li><strong>Databasoptimering:</strong> Alla databasfrågor för kreditbeslutskriterier ska vara optimerade med indexering på kreditscore, skuldkvoter och riskfaktorer</li>
+      </ul>
+
+      <h3>11. Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig kreditinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till kreditbeslut ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla kreditbeslut ska innehålla spårbarhet för vem som fattat beslutet, när och varför, för att uppfylla GDPR-krav på beslutsunderlag</li>
+        <li><strong>Regulatoriska krav:</strong> Systemet ska säkerställa att alla kreditbeslut följer Finansinspektionens riktlinjer för kreditgivning, inklusive dokumentation av beslutsgrund och riskbedömning</li>
+        <li><strong>Audit trail:</strong> Alla ändringar i kreditbeslutskriterier, routing-logik och beslutsresultat ska loggas med användar-ID, tidsstämplar och ändringsorsak för fullständig spårbarhet</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Detaljerad testgenerering för att säkerställa att feature goalet fungerar korrekt.</p>
+      
+      <h3>UI Flow per Scenario</h3>
+      <ul>
+        <li><strong>Scenario 1: Straight-through godkännande (låg risk)</strong>
+          <ol>
+            <li>Systemet startar Credit decision-processen via "credit-decision" call activity från huvudprocessen eller Offer-processen</li>
+            <li>Business rule task "Determine decision escalation" utvärderar ansökan och identifierar låg risk</li>
+            <li>"Decision criteria?" gateway dirigerar till "Straight through" flöde</li>
+            <li>Systemet godkänner automatiskt utan manuell granskning</li>
+            <li>"Final Decision" gateway samlar ihop resultatet</li>
+            <li>Processen avslutas normalt och returnerar godkänt beslut till anropande processen</li>
+          </ol>
+        </li>
+        <li><strong>Scenario 2: Four eyes-granskning (medel risk)</strong>
+          <ol>
+            <li>Systemet startar Credit decision-processen via "credit-decision" call activity</li>
+            <li>Business rule task "Determine decision escalation" utvärderar ansökan och identifierar medel risk</li>
+            <li>"Decision criteria?" gateway dirigerar till "Four eyes" flöde</li>
+            <li>Credit evaluator får "Evaluate application" user task i Four eyes lane</li>
+            <li>Handläggaren granskar ansökan, kreditvärdighetsanalys, riskbedömning och policy-efterlevnad</li>
+            <li>Handläggaren fattar beslut om godkännande</li>
+            <li>"Sammanför flöden" gateway samlar ihop resultatet</li>
+            <li>"Reevaluate?" gateway returnerar "No"</li>
+            <li>"Final Decision" gateway samlar ihop resultatet</li>
+            <li>Processen avslutas normalt och returnerar godkänt beslut till anropande processen</li>
+          </ol>
+        </li>
+        <li><strong>Scenario 3: Committee-granskning (hög risk)</strong>
+          <ol>
+            <li>Systemet startar Credit decision-processen via "credit-decision" call activity</li>
+            <li>Business rule task "Determine decision escalation" utvärderar ansökan och identifierar hög risk</li>
+            <li>"Decision criteria?" gateway dirigerar till "Committee" flöde</li>
+            <li>Credit committee-medlemmar får "Evaluate application" user task i Committee lane</li>
+            <li>Committee-medlemmar granskar komplexa ansökningar med högre risk</li>
+            <li>Committee fattar kollektivt beslut om godkännande</li>
+            <li>"Sammanför flöden" gateway samlar ihop resultatet</li>
+            <li>"Reevaluate?" gateway returnerar "No"</li>
+            <li>"Final Decision" gateway samlar ihop resultatet</li>
+            <li>Processen avslutas normalt och returnerar godkänt beslut till anropande processen</li>
+          </ol>
+        </li>
+        <li><strong>Scenario 4: Board-granskning (strategiskt beslut)</strong>
+          <ol>
+            <li>Systemet startar Credit decision-processen via "credit-decision" call activity</li>
+            <li>Business rule task "Determine decision escalation" utvärderar ansökan och identifierar strategiskt beslut</li>
+            <li>"Decision criteria?" gateway dirigerar till "Board" flöde</li>
+            <li>Board of directors får "Evaluate application" user task i Board lane</li>
+            <li>Board granskar höga belopp eller strategiska låneansökningar</li>
+            <li>Board fattar executive beslut om godkännande</li>
+            <li>"Sammanför flöden" gateway samlar ihop resultatet</li>
+            <li>"Reevaluate?" gateway returnerar "No"</li>
+            <li>"Final Decision" gateway samlar ihop resultatet</li>
+            <li>Processen avslutas normalt och returnerar godkänt beslut till anropande processen</li>
+          </ol>
+        </li>
+        <li><strong>Scenario 5: Omvärdering krävs (escalation)</strong>
+          <ol>
+            <li>Systemet startar Credit decision-processen via "credit-decision" call activity</li>
+            <li>Business rule task "Determine decision escalation" utvärderar ansökan</li>
+            <li>"Decision criteria?" gateway dirigerar till manuell granskning (Four eyes, Committee eller Board)</li>
+            <li>Handläggare/Committee/Board granskar ansökan</li>
+            <li>"Sammanför flöden" gateway samlar ihop resultatet</li>
+            <li>"Reevaluate?" gateway returnerar "Yes" (ytterligare granskning krävs)</li>
+            <li>Processen eskaleras med "Manual re-evaluation required" end event</li>
+            <li>Escalation event triggas i anropande processen för ytterligare bedömning</li>
+          </ol>
+        </li>
+        <li><strong>Scenario 6: Business rule task timeout</strong>
+          <ol>
+            <li>Systemet startar Credit decision-processen via "credit-decision" call activity</li>
+            <li>Business rule task "Determine decision escalation" timeout efter 30 sekunder</li>
+            <li>Systemet returnerar error code CREDIT_DECISION_RULES_ERROR</li>
+            <li>Processen eskaleras med felhantering</li>
+          </ol>
+        </li>
+      </ul>
+
+      <h3>Testdata-referenser</h3>
+      <ul>
+        <li><strong>Låg risk-ansökan (straight-through):</strong> Kreditscore > 750, skuldkvot < 30%, stabil inkomst, inga riskfaktorer. Förväntat resultat: Automatiskt godkännande via "Straight through" flöde</li>
+        <li><strong>Medel risk-ansökan (four eyes):</strong> Kreditscore 650-750, skuldkvot 30-40%, stabil inkomst, begränsade riskfaktorer. Förväntat resultat: Manuell granskning via "Four eyes" flöde</li>
+        <li><strong>Hög risk-ansökan (committee):</strong> Kreditscore 550-650, skuldkvot 40-50%, varierande inkomst, flera riskfaktorer. Förväntat resultat: Manuell granskning via "Committee" flöde</li>
+        <li><strong>Strategisk ansökan (board):</strong> Lånebelopp > 10M SEK, strategisk kund, exceptionella omständigheter. Förväntat resultat: Manuell granskning via "Board" flöde</li>
+        <li><strong>Osäker ansökan (omvärdering):</strong> Tveksamt beslutsresultat, policy-efterlevnad oklar, undantagshantering krävs. Förväntat resultat: "Reevaluate?" gateway returnerar "Yes", escalation triggas</li>
+        <li><strong>Tekniskt fel (timeout):</strong> Business rule task timeout efter 30 sekunder. Förväntat resultat: Error code CREDIT_DECISION_RULES_ERROR, felhantering</li>
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <ul>
+        <li><strong>Routes:</strong>
+          <ul>
+            <li><code>/api/credit-decision/evaluate-rules</code> - Business rule task "Determine decision escalation"</li>
+            <li><code>/api/credit-decision/route</code> - "Decision criteria?" gateway routing-logik</li>
+            <li><code>/api/credit-decision/evaluate/board</code> - "Evaluate application" user task för Board lane</li>
+            <li><code>/api/credit-decision/evaluate/committee</code> - "Evaluate application" user task för Committee lane</li>
+            <li><code>/api/credit-decision/evaluate/four-eyes</code> - "Evaluate application" user task för Four eyes lane</li>
+            <li><code>/api/credit-decision/consolidate</code> - "Sammanför flöden" gateway sammanställning</li>
+            <li><code>/api/credit-decision/reevaluate</code> - "Reevaluate?" gateway utvärdering</li>
+            <li><code>/api/credit-decision/finalize</code> - "Final Decision" gateway finalisering</li>
+          </ul>
+        </li>
+        <li><strong>Endpoints:</strong>
+          <ul>
+            <li><code>POST /api/credit-decision/evaluate-rules</code> - Utvärdera ansökan mot kreditbeslutskriterier, returnerar beslutsnivå och routing-sökväg</li>
+            <li><code>POST /api/credit-decision/route</code> - Dirigera ansökan till rätt beslutsnivå baserat på risk- och komplexitetsbedömning</li>
+            <li><code>GET /api/credit-decision/evaluate/{decisionLevel}</code> - Hämta ansökningsinformation för manuell granskning (Board, Committee, Four eyes)</li>
+            <li><code>POST /api/credit-decision/evaluate/{decisionLevel}</code> - Spara manuellt granskningsresultat (godkännande, avvisning, eskalering)</li>
+            <li><code>POST /api/credit-decision/consolidate</code> - Sammanställ granskningar från alla utvärderingsmyndigheter</li>
+            <li><code>POST /api/credit-decision/reevaluate</code> - Utvärdera om ytterligare granskning krävs eller om finalisering kan ske</li>
+            <li><code>POST /api/credit-decision/finalize</code> - Finalisera kreditbeslutsprocessen med godkänt resultat</li>
+          </ul>
+        </li>
+        <li><strong>Datastores:</strong>
+          <ul>
+            <li><code>credit_decisions</code> - Lagrar alla kreditbeslut med beslutsnivå, routing-sökväg, granskningsresultat och tidsstämplar</li>
+            <li><code>credit_decision_rules</code> - Lagrar kreditbeslutskriterier (kreditscore, skuldkvoter, riskfaktorer) för business rule task</li>
+            <li><code>credit_decision_audit</code> - Lagrar audit trail för alla kreditbeslut med användar-ID, tidsstämplar och ändringsorsak</li>
+            <li><code>application_data</code> - Lagrar ansökningsinformation (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) för kreditbeslut</li>
+          </ul>
+        </li>
       </ul>
         </div>
       </details>
     </section>
       </body>
 </html>
+

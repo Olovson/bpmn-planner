@@ -238,7 +238,15 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Per digital document package är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Signing är en process där låneavtal och relaterade dokument signeras av kunder och eventuella medsökande. Processen syftar till att säkerställa att alla nödvändiga dokument är signerade innan utbetalning kan ske.</p>
+      <p>Processen hanterar både digital och manuell signering, med stöd för flera signeringsmetoder och signees. För digital signering skapas signeringsordrar per dokumentpaket och signees signerar individuellt. För manuell signering hanteras signering via fysiska dokument.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig signering (mortgage.bpmn):</strong> Efter att dokument har genererats i huvudflödet när offer är accepterad. Ny information: Genererade dokument från "document-generation" call activity. Processen anropas via "signing" call activity efter "Flow_13h9ucs" sequence flow. Om signering avvisas, triggas "signing-rejected" boundary event på call activity.</li>
+        <li><strong>Huvudprocessen - Förskottssignering (mortgage.bpmn):</strong> Efter att dokument har genererats för förskott när kunden begärt förskott. Ny information: Genererade dokument för förskott från "document-generation-advance" call activity. Processen anropas via "signing-advance" call activity efter "Flow_0be9cnv" sequence flow med calledElement="signing".</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -247,9 +255,14 @@
         <summary>Processteg - Input</summary>
         <div class="section-content">
 <ul>
-        <li>Digital signeringsmetod har valts i Signing-processen (signing-methods = Digital)</li>
-        <li>Digitala dokumentpaket är redo för signering</li>
-        <li>Dokumentpaket är i PADES-format (för Sverige)</li>
+        <li><strong>Dokument är genererade:</strong> Dokument har genererats och är redo för signering</li>
+        <li><strong>Processkontext:</strong> Signing anropas via call activity. Alla relevanta processvariabler skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig signering:</strong> Dokument har genererats via "document-generation" call activity när offer är accepterad. Genererade dokument är tillgängliga. Processen anropas via "signing" call activity efter "Flow_13h9ucs" sequence flow. Om signering avvisas, kan "signing-rejected" boundary event triggas på call activity.</li>
+        <li><strong>Huvudprocessen - Förskottssignering:</strong> Dokument har genererats för förskott via "document-generation-advance" call activity när kunden begärt förskott. Genererade dokument för förskott är tillgängliga. Processen anropas via "signing-advance" call activity efter "Flow_0be9cnv" sequence flow med calledElement="signing".</li>
       </ul>
         </div>
       </details>
@@ -260,9 +273,14 @@
         <summary>Processteg - Output</summary>
         <div class="section-content">
 <ul>
-        <li>Signeringsordrar skapade för varje dokumentpaket</li>
-        <li>Dokumentpaket redo för signee-hantering</li>
-        <li>Resultat flödar till per-signee subprocess för individuell signee-hantering</li>
+        <li><strong>Signerade dokument:</strong> Alla nödvändiga dokument är signerade av kunder och eventuella medsökande</li>
+        <li><strong>Processen avslutas:</strong> När signering är klar, avslutas processen normalt och anropande processen fortsätter med nästa steg</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Huvudprocessen - Vanlig signering:</strong> Signerade dokument returneras till huvudprocessen via "signing" call activity. Om signering är klar, fortsätter huvudprocessen med "Flow_0grhoob" sequence flow till "event-signing-completed". Om signering avvisas, triggas "signing-rejected" boundary event på call activity. Om ändringar behövs, triggas "Changes needed" boundary event på call activity.</li>
+        <li><strong>Huvudprocessen - Förskottssignering:</strong> Signerade dokument för förskott returneras till huvudprocessen via "signing-advance" call activity. Om signering är klar, fortsätter huvudprocessen med "Flow_0d7j912" sequence flow till "disbursement-advance" call activity.</li>
       </ul>
         </div>
       </details>

@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Per stakeholder</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+    
+      
+
+
+    
+    <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+      <p>Stakeholder handling är en process som hanterar individuell stakeholder-information för varje stakeholder i en låneansökan. Processen anropas från Application-processen som en multi-instance subprocess, vilket innebär att den körs en gång per stakeholder (t.ex. huvudansökande, medsökande). Processen syftar till att samla in, validera och bedöma stakeholder-information, inklusive personlig information, kreditupplysning och personlig ekonomi.</p>
+      <p>Processen börjar med att systemet kontrollerar om stakeholdern redan har samtyckt till kreditupplysning. Om inte, måste stakeholdern ge samtycke via "Consent to credit check" user task. Om stakeholdern inte ger samtycke, avslutas processen med error event. Om stakeholdern ger samtycke, anropas "Internal data gathering" call activity för att samla in intern data. Därefter hämtar systemet personlig information från externa källor och screenar denna information mot affärsregler. Om personlig information avvisas, avslutas processen med error event. Om personlig information godkänns, kan stakeholdern registrera personlig ekonomi-information (inkomster, utgifter) via "Register personal economy information" user task, eller hoppa över detta steg. Processen avslutas normalt när all information är samlad och godkänd.</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+      <p>Stakeholder handling-processen startar när:</p>
+      <ul>
+        <li><strong>Application-processen har identifierat stakeholders:</strong> Application-processen har slutfört "Internal data gathering" och "Object" call activities, och har identifierat alla stakeholders som behöver hanteras</li>
+        <li><strong>Processkontext:</strong> Stakeholder handling anropas från Application-processen via "Per household" subprocess (stakeholders) som en multi-instance subprocess. Denna subprocess körs för varje household, och inuti den körs "Stakeholder" call activity som en multi-instance call activity för varje stakeholder. Alla relevanta processvariabler skickas med för att säkerställa fullständig kontext</li>
+        <li><strong>Stakeholder är identifierad:</strong> Varje stakeholder (huvudansökande, medsökande) är identifierad och redo att hanteras</li>
+        <li><strong>Object-information är tillgänglig:</strong> Object-information för ansökan är tillgänglig, eftersom "Object" call activity körs innan "Per household" subprocess</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+      <p>När Stakeholder handling-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Stakeholder-information är samlad och godkänd:</strong> All nödvändig stakeholder-information, inklusive personlig information, kreditupplysning och personlig ekonomi, är samlad och godkänd för varje stakeholder</li>
+        <li><strong>Samtycke till kreditupplysning är givet:</strong> Varje stakeholder har gett samtycke till kreditupplysning via "Consent to credit check" user task, eller redan hade samtycke</li>
+        <li><strong>Intern data är samlad:</strong> "Internal data gathering" call activity har samlat in intern data för varje stakeholder</li>
+        <li><strong>Personlig information är hämtad och screenad:</strong> Personlig information har hämtats från "Personal information source" datastore via "Fetch personal information" service task och screenats mot affärsregler via "Screen personal information" business rule task</li>
+        <li><strong>Personlig ekonomi-information är registrerad (om tillämpligt):</strong> Om stakeholdern inte hoppar över steget, har personlig ekonomi-information (inkomster, utgifter) registrerats via "Register personal economy information" user task</li>
+        <li><strong>Processen avslutas normalt:</strong> När all information är samlad och godkänd, avslutas processen normalt. När alla stakeholders har slutförts, fortsätter Application-processen med nästa steg (t.ex. "Screen KALP" och "Confirm application")</li>
+        <li><strong>Felhantering vid avvisning:</strong> Om stakeholdern inte ger samtycke till kreditupplysning, avslutas processen med "Rejected credit check" end event (Event_0lfck06) med error code "did-not-consent-to-credit-check". Om personlig information avvisas, avslutas processen med "Rejected personal information" end event (Event_1fexz3u) med error code "rejected-personal-information". Om "Internal data gathering" call activity avbryts, avslutas processen med "Application aborted" end event (Event_0qqc0uo) med error code "application-aborted". Alla dessa error events signalerar till Application-processen att stakeholder har avvisats, vilket avbryter hela ansökningsprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+      <p>Stakeholder handling-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Samtycke till kreditupplysning</h3>
+      <ul>
+        <li><strong>Has consented to credit check? (gateway):</strong> En beslutspunkt avgör om stakeholdern redan har samtyckt till kreditupplysning:
+          <ul>
+            <li><strong>Yes:</strong> Processen hoppar över samtyckessteg och går direkt till intern datainsamling</li>
+            <li><strong>No:</strong> Processen går till "Consent to credit check" user task</li>
+          </ul>
+        </li>
+        <li><strong>Consent to credit check (user task):</strong> Stakeholder ger samtycke till kreditupplysning</li>
+        <li><strong>Did consent? (gateway):</strong> En beslutspunkt avgör om stakeholdern gav samtycke:
+          <ul>
+            <li><strong>Yes:</strong> Processen fortsätter till intern datainsamling</li>
+            <li><strong>No:</strong> Processen avslutas med "Rejected credit check" end event</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>2. Intern datainsamling</h3>
+      <ul>
+        <li><strong>Internal data gathering (call activity):</strong> Systemet samlar in intern data för stakeholdern via "Internal data gathering" call activity. På denna call activity kan "Application aborted" boundary event (Event_0e92ljp) triggas om datainsamling avbryts, vilket avslutar processen med "Application aborted" end event</li>
+      </ul>
+
+      <h3>3. Hämtning och screening av personlig information</h3>
+      <ul>
+        <li><strong>Fetch personal information (service task):</strong> Systemet hämtar personlig information från "Personal information source" datastore (t.ex. UC Micro/Spar/Party). Information sparas i datastoren för vidare användning</li>
+        <li><strong>Screen personal information (business rule task):</strong> Systemet screenar personlig information mot affärsregler för att bedöma om informationen är acceptabel (t.ex. person status, ålder, medlantaker-status)</li>
+        <li><strong>Personal information rejected? (gateway):</strong> En beslutspunkt avgör om personlig information avvisas:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas med "Rejected personal information" end event</li>
+            <li><strong>No:</strong> Processen fortsätter till personlig ekonomi-registrering</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Registrering av personlig ekonomi</h3>
+      <ul>
+        <li><strong>Skip step? (gateway):</strong> En beslutspunkt avgör om stakeholdern ska hoppa över registrering av personlig ekonomi:
+          <ul>
+            <li><strong>Yes:</strong> Processen hoppar över registrering och avslutas direkt</li>
+            <li><strong>No:</strong> Processen går till "Register personal economy information" user task</li>
+          </ul>
+        </li>
+        <li><strong>Register personal economy information (user task):</strong> Stakeholder registrerar personlig ekonomi-information (inkomster, utgifter)</li>
+        <li><strong>Gateway_01phbhw (gateway):</strong> Båda flödena (skip och register) sammanstrålar i denna gateway innan processen avslutas</li>
+      </ul>
+
+      <h3>5. Avslut</h3>
+      <ul>
+        <li><strong>Processen avslutas normalt:</strong> När all information är samlad och godkänd, avslutas processen normalt (Event_13fkti6). När alla stakeholders har slutförts, fortsätter Application-processen med nästa steg</li>
+      </ul>
+
+      <h3>6. Felhantering</h3>
+      <ul>
+        <li><strong>Rejected credit check (end event):</strong> Om stakeholdern inte ger samtycke till kreditupplysning, avslutas processen med "Rejected credit check" end event (Event_0lfck06) med error code "did-not-consent-to-credit-check"</li>
+        <li><strong>Rejected personal information (end event):</strong> Om personlig information avvisas, avslutas processen med "Rejected personal information" end event (Event_1fexz3u) med error code "rejected-personal-information"</li>
+        <li><strong>Application aborted (end event):</strong> Om "Internal data gathering" call activity avbryts, avslutas processen med "Application aborted" end event (Event_0qqc0uo) med error code "application-aborted"</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Internal Data Gathering ingår inte - den sker tidigare i Application-processen</li>
+        <li>Household-processen ingår inte - den körs parallellt med Stakeholders</li>
+        <li>Confirm Application ingår inte - den sker efter Household och Stakeholders</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Application huvudprocess:</strong> Stakeholders anropas från mortgage-se-application.bpmn i Application-processen via parallel gateway efter Internal Data Gathering</li>
+        <li><strong>Internal Data Gathering:</strong> Internal Data Gathering måste vara slutförd innan Stakeholders startar</li>
+        <li><strong>Stakeholders:</strong> Stakeholders måste vara identifierade innan Stakeholders startar</li>
+        <li><strong>Stakeholder (subprocess):</strong> Hanterar stakeholder-information per stakeholder</li>
+        <li><strong>Object (subprocess):</strong> Hanterar object-information per stakeholder</li>
+        <li><strong>Household:</strong> Stakeholders körs parallellt med Household via parallel gateway</li>
+        <li><strong>Confirm Application:</strong> Efter Household och Stakeholders går processen vidare till Confirm Application via parallel gateway</li>
+        <li><strong>Felhantering:</strong> Om stakeholder eller object avvisas, triggas error events</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+      <p><a href="#/bpmn/mortgage-se-stakeholder.bpmn">Visa BPMN-processen för Stakeholder handling</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Stakeholder handling anropas från Application-processen via "Per household" subprocess (stakeholders) som en multi-instance subprocess. Inuti denna subprocess körs "Stakeholder" call activity som en multi-instance call activity för varje stakeholder</li>
+        <li><strong>Has consented to credit check? (gateway):</strong> En beslutspunkt avgör om stakeholdern redan har samtyckt till kreditupplysning:
+          <ul>
+            <li><strong>Yes:</strong> Processen hoppar över samtyckessteg och går direkt till intern datainsamling via Gateway_1wz6vo3</li>
+            <li><strong>No:</strong> Processen går till "Consent to credit check" user task</li>
+          </ul>
+        </li>
+        <li><strong>Consent to credit check (user task, om samtycke saknas):</strong> Stakeholder ger samtycke till kreditupplysning</li>
+        <li><strong>Did consent? (gateway, om samtycke saknades):</strong> En beslutspunkt avgör om stakeholdern gav samtycke. Om "No", avslutas processen med error event. Om "Yes", fortsätter processen till intern datainsamling</li>
+        <li><strong>Internal data gathering (call activity):</strong> Systemet samlar in intern data för stakeholdern. På denna call activity kan "Application aborted" boundary event triggas om datainsamling avbryts</li>
+        <li><strong>Fetch personal information (service task):</strong> Systemet hämtar personlig information från "Personal information source" datastore</li>
+        <li><strong>Screen personal information (business rule task):</strong> Systemet screenar personlig information mot affärsregler</li>
+        <li><strong>Personal information rejected? (gateway):</strong> En beslutspunkt avgör om personlig information avvisas. Om "Yes", avslutas processen med error event. Om "No", fortsätter processen till personlig ekonomi-registrering</li>
+        <li><strong>Skip step? (gateway):</strong> En beslutspunkt avgör om stakeholdern ska hoppa över registrering av personlig ekonomi. Om "No", aktiveras "Register personal economy information" user task</li>
+        <li><strong>Register personal economy information (user task, om inte hoppat över):</strong> Stakeholder registrerar personlig ekonomi-information</li>
+        <li><strong>Avslut:</strong> När all information är samlad och godkänd, avslutas processen normalt. När alla stakeholders har slutförts, fortsätter Application-processen med nästa steg</li>
+      </ol>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>Has consented to credit check? (gateway):</strong> Avgör om stakeholdern redan har samtyckt till kreditupplysning. Om "No", krävs samtycke</li>
+        <li><strong>Did consent? (gateway):</strong> Avgör om stakeholdern gav samtycke. Om "No", avslutas processen med error event</li>
+        <li><strong>Personal information rejected? (gateway):</strong> Avgör om personlig information avvisas. Om "Yes", avslutas processen med error event</li>
+        <li><strong>Skip step? (gateway):</strong> Avgör om stakeholdern ska hoppa över registrering av personlig ekonomi. Om "No", aktiveras registrering</li>
+      </ul>
+      
+      <h3>Multi-instance exekvering</h3>
+      <ul>
+        <li><strong>Per household subprocess:</strong> "Per household" subprocess (stakeholders) körs som multi-instance subprocess för varje household i ansökan</li>
+        <li><strong>Stakeholder call activity:</strong> "Stakeholder" call activity körs som multi-instance call activity för varje stakeholder inom varje household</li>
+        <li><strong>Parallell exekvering:</strong> "Per household" subprocess körs parallellt med "Household" call activity via parallel gateway i Application-processen</li>
+      </ul>
+      
+      <h3>Felhantering</h3>
+      <ul>
+        <li><strong>Rejected credit check:</strong> Om stakeholdern inte ger samtycke, avslutas processen med "Rejected credit check" end event</li>
+        <li><strong>Rejected personal information:</strong> Om personlig information avvisas, avslutas processen med "Rejected personal information" end event</li>
+        <li><strong>Application aborted:</strong> Om "Internal data gathering" call activity avbryts, avslutas processen med "Application aborted" end event</li>
+        <li><strong>Error propagation:</strong> Alla error events signalerar till Application-processen att stakeholder har avvisats, vilket avbryter hela ansökningsprocessen via boundary events på "Per household" subprocess</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – stakeholder och objekt godkända</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Processen körs som multi-instance per stakeholder. För varje stakeholder: Stakeholder call activity registrerar personlig information, samtycke till kreditupplysning, hämtar och utvärderar personlig information, Assess Stakeholder DMN godkänner. Sedan: Object call activity hanterar fastighetsinformation, Evaluate Fastighet/Bostadsrätt DMN godkänner. Processen avslutas och går vidare till Confirm application.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Stakeholder avvisad</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Stakeholder call activity registrerar personlig information, men Assess Stakeholder DMN avvisar (t.ex. dålig kreditvärdighet, hög skuldsättning). "Stakeholder rejected" boundary event triggas. Processen avslutas med "Stakeholder rejected" end event.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Object avvisad</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Stakeholder godkänns, men Object call activity hanterar fastighetsinformation som Evaluate Fastighet/Bostadsrätt DMN avvisar (t.ex. för hög LTV, dålig belägenhet, hög föreningsskuld). "Object rejected" boundary event triggas. Processen avslutas med "Object rejected" end event.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Multi-instance – flera stakeholders</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Processen körs för flera stakeholders (huvudansökande + medsökande). Varje stakeholder genomgår Stakeholder och Object call activities. Alla stakeholders och objekt godkänns. Processen avslutas när alla är godkända.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Om stakeholder avvisas: "Stakeholder rejected" ...</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: Om object avvisas: "Object rejected" boundary e...</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+      <li><strong>stakeholder-primary</strong>: Primär sökande med fullständig information: personnummer, inkomst (~500k SEK/år), god kreditvärdighet, samtycker till kreditupplysning, personlig ekonomi (inkomster: lön, utgifter: boende, transport).</li>
+      <li><strong>stakeholder-co-applicant</strong>: Medsökande med fullständig information: personnummer, inkomst (~300k SEK/år), god kreditvärdighet, samtycker till kreditupplysning, personlig ekonomi (inkomster: lön, utgifter: boende).</li>
+      <li><strong>stakeholder-rejected-credit-check</strong>: Stakeholder som inte ger samtycke till kreditupplysning, vilket avbryter processen.</li>
+      <li><strong>stakeholder-rejected-personal-info</strong>: Stakeholder med personlig information som avvisas vid screening (t.ex. ogiltigt personnummer, saknad information).</li>
+      <li><strong>stakeholder-skip-economy</strong>: Stakeholder där registrering av personlig ekonomi hoppas över (information redan finns i systemet).</li>
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+      <tr>
+        <td>start-event (Start event)</td>
+        <td>Event</td>
+        <td>/api/process/stakeholder/start</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Startar Stakeholder-processen när anropas från Application-processen</td>
+      </tr>
+      <tr>
+        <td>has-consented-to-credit-check (Gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/stakeholder/check-consent</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Kontrollerar om stakeholdern redan har samtyckt till kreditupplysning</td>
+      </tr>
+      <tr>
+        <td>consent-to-credit-check (User Task)</td>
+        <td>User Task</td>
+        <td>/application/stakeholder/consent</td>
+        <td>GET/POST</td>
+        <td>${BASE_URL}</td>
+        <td>UI-sida för samtycke till kreditupplysning. POST sparar samtycke till /api/stakeholder/consent</td>
+      </tr>
+      <tr>
+        <td>/api/stakeholder/consent</td>
+        <td>API</td>
+        <td>/api/stakeholder/consent</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>API-endpoint för att spara samtycke till kreditupplysning</td>
+      </tr>
+      <tr>
+        <td>did-consent-to-credit-check (Gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/stakeholder/verify-consent</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Verifierar om stakeholdern gav samtycke. Om "No", triggas error event</td>
+      </tr>
+      <tr>
+        <td>internal-data-gathering (Call Activity)</td>
+        <td>Call Activity</td>
+        <td>/application/stakeholder/internal-data</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>Call activity som samlar intern data. Boundary event Event_0e92ljp kan triggas vid avbrott</td>
+      </tr>
+      <tr>
+        <td>fetch-personal-information (Service Task)</td>
+        <td>Service Task</td>
+        <td>/api/stakeholder/personal-information</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>Hämtar personlig information från "Personal information source" datastore. Timeout: 30 sekunder</td>
+      </tr>
+      <tr>
+        <td>screen-personal-information (Business Rule Task)</td>
+        <td>Business Rule Task</td>
+        <td>/api/dmn/screen-personal-information</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Screenar personlig information mot affärsregler via DMN. Timeout: 10 sekunder</td>
+      </tr>
+      <tr>
+        <td>is-personal-information-rejected (Gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/stakeholder/check-personal-info</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Kontrollerar om personlig information avvisas. Om "Yes", triggas error event</td>
+      </tr>
+      <tr>
+        <td>skip-register-personal-economy-information (Gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/stakeholder/skip-economy-evaluation</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Evaluarar om registrering av personlig ekonomi ska hoppas över</td>
+      </tr>
+      <tr>
+        <td>register-personal-economy-information (User Task)</td>
+        <td>User Task</td>
+        <td>/application/stakeholder/personal-economy</td>
+        <td>GET/POST</td>
+        <td>${BASE_URL}</td>
+        <td>UI-sida för registrering av personlig ekonomi. POST sparar till /api/stakeholder/personal-economy</td>
+      </tr>
+      <tr>
+        <td>/api/stakeholder/personal-economy</td>
+        <td>API</td>
+        <td>/api/stakeholder/personal-economy</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>API-endpoint för att spara personlig ekonomi-information (inkomster, utgifter)</td>
+      </tr>
+      <tr>
+        <td>Gateway_01phbhw (Sammanför flöden)</td>
+        <td>Gateway</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Intern gateway som samlar ihop flöden från registrering och skip-sökvägar</td>
+      </tr>
+      <tr>
+        <td>Event_13fkti6 (End event)</td>
+        <td>Event</td>
+        <td>/api/process/stakeholder/complete</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Avslutar Stakeholder-processen normalt</td>
+      </tr>
+      <tr>
+        <td>Event_0lfck06 (Rejected credit check)</td>
+        <td>Error Event</td>
+        <td>/api/process/stakeholder/reject-consent</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Error event när samtycke saknas. Error code: "did-not-consent-to-credit-check"</td>
+      </tr>
+      <tr>
+        <td>Event_1fexz3u (Rejected personal information)</td>
+        <td>Error Event</td>
+        <td>/api/process/stakeholder/reject-personal-info</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Error event när personlig information avvisas. Error code: "rejected-personal-information"</td>
+      </tr>
+      <tr>
+        <td>Event_0qqc0uo (Application aborted)</td>
+        <td>Error Event</td>
+        <td>/api/process/stakeholder/abort</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Error event när Internal data gathering avbryts. Error code: "application-aborted"</td>
+      </tr>
+      <tr>
+        <td>Stakeholder (call activity i Application)</td>
+        <td>Call Activity</td>
+        <td>/application/stakeholder</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>UI-entry point för Stakeholder-processen. Multi-instance: körs en gång per stakeholder</td>
+      </tr>
+        </tbody>
+      </table>
+      
+      <h4>Datastores</h4>
+      <ul>
+        <li><strong>personal_information_source</strong>: Databas-tabell eller extern datakälla som lagrar personlig information (t.ex. UC Micro/Spar/Party, person status)</li>
+        <li><strong>stakeholder_data</strong>: Databas-tabell som lagrar stakeholder-information (samtycke, personlig ekonomi, screening-resultat)</li>
+        <li><strong>application_stakeholders</strong>: Databas-tabell som länkar stakeholders till ansökningar och hanterar multi-instance status</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      
+      <h3>Automatiserad stakeholder-hantering</h3>
+      <p>Genom automatisk hämtning och screening av personlig information via "Fetch personal information" service task och "Screen personal information" business rule task kan systemet snabbt bedöma om stakeholder-information uppfyller krav. Detta kan minska handläggningstid med upp till 50-60% för stakeholder-hantering jämfört med manuell process, särskilt för stakeholders där information redan finns i externa system.</p>
+      
+      <h3>Strukturerad samtyckeshantering</h3>
+      <p>Genom tydlig strukturering av samtyckeshantering via "Has consented to credit check?" gateway och "Consent to credit check" user task kan systemet säkerställa att endast stakeholders som har gett samtycke till kreditupplysning fortsätter i processen. Detta kan minska antalet felaktiga kreditupplysningar med upp till 90-95% och förbättra regelefterlevnaden.</p>
+      
+      <h3>Flexibel personlig ekonomi-registrering</h3>
+      <p>Genom "Skip step?" gateway kan stakeholders hoppa över registrering av personlig ekonomi om denna information redan finns tillgänglig eller inte behövs. Detta kan minska antalet onödiga steg med upp till 30-40% och förbättra kundupplevelsen.</p>
+      
+      <h3>Multi-instance parallell exekvering</h3>
+      <p>Genom multi-instance exekvering kan processen hantera flera stakeholders parallellt, vilket kan minska total handläggningstid med upp till 40-50% för ansökningar med flera stakeholders jämfört med sekventiell exekvering.</p>
+      
+      <h3>Proaktiv felhantering</h3>
+      <p>Genom tydlig felhantering via error events kan systemet snabbt identifiera och hantera problem (t.ex. saknat samtycke, avvisad personlig information, avbruten datainsamling), vilket kan minska antalet "zombie"-processer med upp till 80-90% och förbättra systemets övergripande kvalitet.</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      
+      <h3>Kundperspektiv</h3>
+      <ul>
+        <li><strong>Som stakeholder</strong> vill jag kunna ge samtycke till kreditupplysning via "Consent to credit check" user task <strong>så att</strong> processen kan fortsätta. <em>Acceptanskriterier: "Has consented to credit check?" gateway ska korrekt identifiera om samtycke redan finns, och "Consent to credit check" user task ska aktiveras när samtycke saknas.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag kunna hoppa över registrering av personlig ekonomi via "Skip step?" gateway om informationen redan finns <strong>så att</strong> jag slipper fylla i samma information igen. <em>Acceptanskriterier: "Skip step?" gateway ska korrekt identifiera om registrering kan hoppas över, och processen ska fortsätta korrekt oavsett val.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag att systemet automatiskt hämtar och screenar min personliga information <strong>så att</strong> jag slipper manuellt ladda upp information som redan finns i systemet. <em>Acceptanskriterier: "Fetch personal information" service task ska automatiskt hämta information från "Personal information source" datastore, och "Screen personal information" business rule task ska automatiskt screena information mot affärsregler.</em></li>
+      </ul>
+      
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som system</strong> vill jag automatiskt avvisa stakeholders som inte ger samtycke till kreditupplysning via "Did consent?" gateway "No" <strong>så att</strong> endast stakeholders med samtycke fortsätter i processen. <em>Acceptanskriterier: "Rejected credit check" end event ska triggas automatiskt när samtycke saknas, och error code "did-not-consent-to-credit-check" ska signalera till Application-processen.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt avvisa stakeholders med avvisad personlig information via "Personal information rejected?" gateway "Yes" <strong>så att</strong> endast stakeholders med godkänd information fortsätter i processen. <em>Acceptanskriterier: "Rejected personal information" end event ska triggas automatiskt när personlig information avvisas, och error code "rejected-personal-information" ska signalera till Application-processen.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt avbryta processen om "Internal data gathering" call activity avbryts via "Application aborted" boundary event <strong>så att</strong> inaktiva processer inte blockerar systemresurser. <em>Acceptanskriterier: "Application aborted" end event ska triggas automatiskt när datainsamling avbryts, och error code "application-aborted" ska signalera till Application-processen.</em></li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>Samtycke till kreditupplysning</h3>
+      <ul>
+        <li>"Has consented to credit check?" gateway ska korrekt identifiera om stakeholdern redan har samtyckt till kreditupplysning. Om "Yes", ska processen hoppa över samtyckessteg och gå direkt till intern datainsamling via Gateway_1wz6vo3</li>
+        <li>"Consent to credit check" user task ska aktiveras för stakeholder när samtycke saknas</li>
+        <li>"Did consent?" gateway ska korrekt avgöra om stakeholdern gav samtycke. Om "No", ska "Rejected credit check" end event (Event_0lfck06) triggas med error code "did-not-consent-to-credit-check"</li>
+        <li>Om stakeholdern ger samtycke via "Did consent?" gateway "Yes", ska processen fortsätta till "Internal data gathering" call activity</li>
+      </ul>
+      
+      <h3>Intern datainsamling</h3>
+      <ul>
+        <li>"Internal data gathering" call activity ska automatiskt samla in intern data för stakeholdern</li>
+        <li>"Application aborted" boundary event (Event_0e92ljp) ska kunna triggas på "Internal data gathering" call activity om datainsamling avbryts, vilket avslutar processen med "Application aborted" end event (Event_0qqc0uo) med error code "application-aborted"</li>
+      </ul>
+      
+      <h3>Hämtning och screening av personlig information</h3>
+      <ul>
+        <li>"Fetch personal information" service task ska automatiskt hämta personlig information från "Personal information source" datastore (t.ex. UC Micro/Spar/Party). Information ska sparas i datastoren för vidare användning</li>
+        <li>"Screen personal information" business rule task ska automatiskt screena personlig information mot affärsregler för att bedöma om informationen är acceptabel (t.ex. person status, ålder, medlantaker-status)</li>
+        <li>"Personal information rejected?" gateway ska korrekt avgöra om personlig information avvisas. Om "Yes", ska "Rejected personal information" end event (Event_1fexz3u) triggas med error code "rejected-personal-information"</li>
+        <li>Om personlig information godkänns via "Personal information rejected?" gateway "No", ska processen fortsätta till personlig ekonomi-registrering</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för "Fetch personal information": 30 sekunder</li>
+            <li>Timeout för "Screen personal information" (DMN): 10 sekunder</li>
+            <li>Retry-logik: 2 försök med exponential backoff (5s, 10s) för service tasks</li>
+            <li>Error codes: 400 (Ogiltig data), 500 (Serverfel), 503 (Extern tjänst otillgänglig)</li>
+          </ul>
+        </li>
+      </ul>
+      
+      <h3>Registrering av personlig ekonomi</h3>
+      <ul>
+        <li>"Skip step?" gateway ska korrekt avgöra om stakeholdern ska hoppa över registrering av personlig ekonomi. Om "No", ska "Register personal economy information" user task aktiveras för stakeholder</li>
+        <li>"Register personal economy information" user task ska aktiveras för stakeholder när registrering inte hoppas över</li>
+        <li>Gateway_01phbhw ska korrekt sammanstråla båda flödena (skip och register) innan processen avslutas</li>
+        <li><strong>UI/UX-krav:</strong>
+          <ul>
+            <li>Tydliga rubriker och sektioner för inkomster och utgifter</li>
+            <li>Möjlighet att gå tillbaka och redigera information</li>
+            <li>Validering i realtid med tydliga felmeddelanden</li>
+            <li>Progress-indikator som visar vilken stakeholder som bearbetas (vid multi-instance)</li>
+            <li>Autospar-funktionalitet för att undvika dataförlust</li>
+            <li>Tydlig information om när registrering kan hoppas över</li>
+          </ul>
+        </li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för API-anrop: 30 sekunder</li>
+            <li>Retry-logik: 3 försök med exponential backoff (1s, 2s, 4s)</li>
+            <li>Error codes: 400 (Valideringsfel), 500 (Serverfel), 503 (Service unavailable)</li>
+            <li>Valideringsregler: Alla numeriska fält måste vara >= 0, validering sker både på klient och server</li>
+          </ul>
+        </li>
+      </ul>
+      
+      <h3>Processflöde och avslut</h3>
+      <ul>
+        <li>När all information är samlad och godkänd, ska processen avslutas normalt (Event_13fkti6)</li>
+        <li>När alla stakeholders har slutförts, ska Application-processen fortsätta med nästa steg (t.ex. "Screen KALP" och "Confirm application")</li>
+      </ul>
+      
+      <h3>Multi-instance exekvering</h3>
+      <ul>
+        <li>"Per household" subprocess (stakeholders) ska köras som multi-instance subprocess för varje household i ansökan</li>
+        <li>"Stakeholder" call activity ska köras som multi-instance call activity för varje stakeholder inom varje household</li>
+        <li>"Per household" subprocess ska köras parallellt med "Household" call activity via parallel gateway i Application-processen</li>
+      </ul>
+      
+      <h3>Felhantering</h3>
+      <ul>
+        <li>Om stakeholdern inte ger samtycke, ska "Rejected credit check" end event (Event_0lfck06) triggas med error code "did-not-consent-to-credit-check", vilket signalerar till Application-processen att stakeholder har avvisats</li>
+        <li>Om personlig information avvisas, ska "Rejected personal information" end event (Event_1fexz3u) triggas med error code "rejected-personal-information", vilket signalerar till Application-processen att stakeholder har avvisats</li>
+        <li>Om "Internal data gathering" call activity avbryts, ska "Application aborted" end event (Event_0qqc0uo) triggas med error code "application-aborted", vilket signalerar till Application-processen att stakeholder har avvisats</li>
+        <li>Alla error events ska korrekt trigga motsvarande boundary events i Application-processen för att säkerställa att hela ansökningsprocessen avbryts när stakeholder avvisas</li>
+      </ul>
+      
+      <h3>Processvariabler och data</h3>
+      <ul>
+        <li>Alla processvariabler ska skickas med när Stakeholder handling anropas från Application-processen för att säkerställa fullständig kontext</li>
+        <li>Personlig information som hämtas från "Personal information source" datastore ska korrekt sparas i datastoren</li>
+        <li>Resultat från "Screen personal information" business rule task ska korrekt sparas och användas i "Personal information rejected?" gateway</li>
+        <li>Personlig ekonomi-information som registreras via "Register personal economy information" user task ska korrekt sparas och vara tillgänglig för Application-processen</li>
+      </ul>
+      
+      <h3>Integration med Application-processen</h3>
+      <ul>
+        <li>Stakeholder-processen ska anropas från Application-processen inuti "Per household" subprocess via "stakeholder" call activity efter "Flow_09zs5qk" sequence flow (efter Household)</li>
+        <li>När Stakeholder-processen avslutas normalt, ska flödet gå till "object" call activity via "Flow_0kl056u" sequence flow inom samma stakeholders subprocess-instans</li>
+        <li>Om Stakeholder-processen avslutas med error event, ska motsvarande boundary event triggas på "stakeholders" subprocess i Application-processen, vilket avbryter hela ansökningsprocessen</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Skalbarhet: Processen ska kunna hantera minst 10 parallella stakeholder-instanser</li>
+            <li>Prestanda: Genomsnittlig bearbetningstid per stakeholder: < 3 minuter (inklusive användarinteraktion)</li>
+            <li>Säkerhet: Alla API-anrop måste autentiseras och auktoriseras</li>
+            <li>Compliance: Alla data måste följa GDPR-krav (dataminimering, rätt att radera, samtycke-hantering)</li>
+            <li>Error handling: Om datainsamling misslyckas, logga fel och försök igen (max 2 försök) innan processen avbryts</li>
+          </ul>
+        </li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
+</html>

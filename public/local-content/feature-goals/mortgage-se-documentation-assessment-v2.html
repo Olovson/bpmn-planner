@@ -238,7 +238,17 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Documentation assessment är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Documentation assessment är en handläggaraktivitet där uppladdad dokumentation bedöms och valideras för att säkerställa kompletthet och korrekthet. Processen syftar till att automatiskt analysera och manuellt bedöma dokumentation för att identifiera kompletthet, korrekthet och eventuella ändringar.</p>
+      <p>Processen startar med att systemet automatiskt analyserar dokumentationen via "Analyse documentation" service task. Handläggaren bedömer sedan dokumentationen via "Assess documentation" user task och kontrollerar om stakeholder-granskning behövs. Om dokumentationen innehåller ändringar (t.ex. dokumenterad inkomst skiljer sig från ansökningsinkomst), kan stakeholder granska ändringarna via "Review changes" user task och acceptera eller avvisa dem.</p>
+      <p>Efter bedömning avgör processen om dokumentationen är ofullständig. Om dokumentationen är komplett men innehåller ändringar som kräver ny utvärdering, avslutas processen med "Credit reevaluation required" event som kan trigga Automatic Credit Evaluation. Om dokumentationen är ofullständig, avslutas processen med "Documentation incomplete" escalation event som returneras till parent processen för vidare hantering.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Manual Credit Evaluation (mortgage-se-manual-credit-evaluation.bpmn):</strong> När dokumentation har laddats upp via "Upload documentation" user task och behöver bedömas. Ny information: Uppladdad dokumentation från kund eller stakeholder. Anropas via "documentation-assessment" call activity efter "Flow_1653cf4" sequence flow.</li>
+        <li><strong>Mortgage Commitment (mortgage-se-mortgage-commitment.bpmn):</strong> När dokumentation behöver bedömas i mortgage commitment-processen. Ny information: Dokumentation relaterad till mortgage commitment. Anropas via "documentation-assessment" call activity.</li>
+        <li><strong>Offer-processen (mortgage-se-offer.bpmn):</strong> När köpekontrakt-dokumentation behöver bedömas i Offer-processen. Ny information: Köpekontrakt-dokumentation från "upload-sales-contract" user task. Anropas via "documentation-assessment" call activity efter "Flow_02v11os" sequence flow. Om dokumentationen är ofullständig, triggas "documentation-incomplete" boundary event på call activity.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -246,15 +256,19 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Bedömning och validering av uppladdad dokumentation i Mortgage Commitment-kontexten</li>
-        <li>Kontroll av dokumentationskompletthet och korrekthet</li>
-        <li>Möjlighet att triggra kreditomvärdering via boundary event "Credit reevaluation required" om dokumentationen kräver ny automatisk utvärdering</li>
-        <li>Integration med Mortgage Commitment-processen för vidare beslut om villkor och bidding round</li>
+<p>Documentation assessment-processen startar när:</p>
+      <ul>
+        <li><strong>Dokumentation är tillgänglig:</strong> Alla uppladdade dokument är tillgängliga för bedömning och validering</li>
+        <li><strong>Ansökningsdata är tillgänglig:</strong> Ansökningsdata (inklusive tidigare dokumentation och ändringar) är tillgängliga för jämförelse</li>
+        <li><strong>Processkontext:</strong> Documentation assessment anropas via call activity. Alla relevanta processvariabler skickas med för att säkerställa fullständig kontext</li>
+      </ul>
       
-    <li><strong>Review changes</strong> (userTask)</li>
-    <li><strong>Changes accepted?</strong> (exclusiveGateway)</li>
-  </ul>
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> Dokumentation har laddats upp via "Upload documentation" user task. Uppladdad dokumentation från kund eller stakeholder är tillgänglig. Processen anropas via "documentation-assessment" call activity efter "Flow_1653cf4" sequence flow.</li>
+        <li><strong>Mortgage Commitment:</strong> Dokumentation relaterad till mortgage commitment är tillgänglig. Processen anropas via "documentation-assessment" call activity i Mortgage Commitment-processen.</li>
+        <li><strong>Offer-processen:</strong> Köpekontrakt-dokumentation har laddats upp via "upload-sales-contract" user task. Köpekontrakt-dokumentation är tillgänglig. Processen anropas via "documentation-assessment" call activity efter "Flow_02v11os" sequence flow. Om dokumentationen är ofullständig, kan "documentation-incomplete" boundary event triggas på call activity.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -263,10 +277,23 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Bedömd och validerad dokumentation</li>
-        <li>Eventuell triggring av kreditomvärdering om uppdaterad dokumentation kräver ny utvärdering (via boundary event)</li>
-        <li>Resultat flödar tillbaka till Mortgage Commitment-processen för vidare beslut</li>
+<p>När Documentation assessment-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Bedömd och validerad dokumentation:</strong> Dokumentationen har analyserats automatiskt via "Analyse documentation" service task och bedömts manuellt via "Assess documentation" user task. Om ändringar har identifierats och stakeholder-granskning krävdes, har ändringarna granskats via "Review changes" user task och accepterats eller avvisats via "Changes accepted?" gateway</li>
+        <li><strong>Dokumentationskompletthet avgjord:</strong> "Any documentation incomplete?" gateway har avgjort om dokumentationen är komplett eller ofullständig:
+          <ul>
+            <li><strong>Om komplett men ändringar kräver omvärdering:</strong> Om dokumentationen är komplett men innehåller ändringar som kräver ny utvärdering (t.ex. dokumenterad inkomst skiljer sig från ansökningsinkomst), avslutas processen med "Credit reevaluation required" end event. Detta kan trigga Automatic Credit Evaluation via boundary event i parent processen</li>
+            <li><strong>Om ofullständig:</strong> Om dokumentationen är ofullständig, avslutas processen med "Documentation incomplete" end event (escalation event). Detta triggar escalation i parent processen för vidare hantering</li>
+          </ul>
+        </li>
+        <li><strong>Processen avslutas:</strong> När processen är klar (antingen via "Credit reevaluation required" end event eller via "Documentation incomplete" escalation event), returnerar processen till anropande processen via "documentation-assessment" call activity</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> Bedömd dokumentation returneras till Manual Credit Evaluation-processen via "documentation-assessment" call activity. Om omvärdering krävs, kan Automatic Credit Evaluation triggas. Om dokumentation är ofullständig, eskaleras processen för vidare hantering.</li>
+        <li><strong>Mortgage Commitment:</strong> Bedömd dokumentation returneras till Mortgage Commitment-processen via "documentation-assessment" call activity. Resultatet används för att fortsätta med mortgage commitment-processen.</li>
+        <li><strong>Offer-processen:</strong> Bedömd köpekontrakt-dokumentation returneras till Offer-processen via "documentation-assessment" call activity. Om dokumentationen är ofullständig, triggas "documentation-incomplete" boundary event på call activity som dirigerar flödet till "Flow_0tne2j0" sequence flow. Om dokumentationen är komplett, fortsätter Offer-processen med "Flow_0j86lza" sequence flow.</li>
       </ul>
         </div>
       </details>
@@ -276,11 +303,55 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li>Bedömning och validering av uppladdad dokumentation i Mortgage Commitment-kontexten</li>
-        <li>Kontroll av dokumentationskompletthet och korrekthet</li>
-        <li>Möjlighet att triggra kreditomvärdering via boundary event "Credit reevaluation required" om dokumentationen kräver ny automatisk utvärdering</li>
-        <li>Integration med Mortgage Commitment-processen för vidare beslut om villkor och bidding round</li>
+<p>Documentation assessment-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Automatisk dokumentationsanalys</h3>
+      <ul>
+        <li><strong>Start event:</strong> Processen startar när Documentation assessment anropas från Manual Credit Evaluation-processen eller Mortgage Commitment-processen via "documentation-assessment" call activity</li>
+        <li><strong>Analyse documentation (service task):</strong> Systemet automatiskt analyserar uppladdade dokument för att identifiera dokumentationskompletthet, korrekthet och eventuella ändringar. Analysen kontrollerar per uppladdat dokument om dokumentationen är ofullständig eller om det finns ändringar jämfört med tidigare information</li>
+      </ul>
+
+      <h3>2. Manuell dokumentationsbedömning</h3>
+      <ul>
+        <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter automatisk analys samlas flöden ihop. Gateway:n kan ta emot flöden från "Analyse documentation" service task eller från "Changes accepted?" gateway "No" (om ändringar avvisas och processen loopar tillbaka)</li>
+        <li><strong>Assess documentation (user task):</strong> Handläggare (Caseworker) bedömer dokumentationen manuellt. Bedömningen inkluderar:
+          <ul>
+            <li>Kontroll av dokumentationskompletthet per uppladdat dokument</li>
+            <li>Kontroll av korrekthet och validering mot ansökningsdata</li>
+            <li>Identifiering av eventuella ändringar (t.ex. dokumenterad inkomst skiljer sig från ansökningsinkomst)</li>
+            <li>Bedömning av om stakeholder-granskning behövs för ändringar</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>3. Stakeholder-granskning av ändringar (om krävs)</h3>
+      <ul>
+        <li><strong>Stakeholder review? (exclusive gateway):</strong> Efter manuell bedömning avgörs om stakeholder-granskning behövs för identifierade ändringar:
+          <ul>
+            <li><strong>Yes:</strong> Om stakeholder-granskning behövs, går flödet till "Review changes" user task</li>
+            <li><strong>No:</strong> Om stakeholder-granskning inte behövs, går flödet direkt till "Sammanför flöden" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Review changes (user task):</strong> Om stakeholder-granskning behövs, granskar stakeholder (t.ex. kund eller garant) identifierade ändringar. Stakeholder kan se vilka ändringar som har identifierats (t.ex. dokumenterad inkomst skiljer sig från ansökningsinkomst) och bedöma om ändringarna är korrekta</li>
+        <li><strong>Changes accepted? (exclusive gateway):</strong> Efter stakeholder-granskning avgörs om ändringarna accepteras:
+          <ul>
+            <li><strong>Yes:</strong> Om ändringarna accepteras, går flödet till "Sammanför flöden" gateway och processen fortsätter</li>
+            <li><strong>No:</strong> Om ändringarna avvisas, loopar processen tillbaka till "Sammanför flöden" gateway för ny bedömning</li>
+          </ul>
+        </li>
+        <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter stakeholder-granskning (eller om den inte behövdes) samlas flöden ihop. Gateway:n kan ta emot flöden från "Changes accepted?" gateway "Yes" eller från "Stakeholder review?" gateway "No"</li>
+      </ul>
+
+      <h3>4. Dokumentationskompletthetsbeslut</h3>
+      <ul>
+        <li><strong>Any documentation incomplete? (exclusive gateway):</strong> Efter bedömning avgörs om dokumentationen är ofullständig:
+          <ul>
+            <li><strong>No:</strong> Om dokumentationen är komplett men innehåller ändringar som kräver ny utvärdering (t.ex. dokumenterad inkomst skiljer sig från ansökningsinkomst), går flödet till "Credit reevaluation required" end event</li>
+            <li><strong>Yes:</strong> Om dokumentationen är ofullständig, går flödet till "Documentation incomplete" end event (escalation event)</li>
+          </ul>
+        </li>
+        <li><strong>Credit reevaluation required (end event):</strong> Om dokumentationen är komplett men ändringar kräver ny utvärdering, avslutas processen med detta event. Detta kan trigga Automatic Credit Evaluation via boundary event i parent processen för omvärdering med uppdaterade data</li>
+        <li><strong>Documentation incomplete (end event):</strong> Om dokumentationen är ofullständig, avslutas processen med detta escalation event. Detta triggar escalation i parent processen för vidare hantering (t.ex. begära kompletterande dokumentation)</li>
       </ul>
         </div>
       </details>
@@ -319,6 +390,43 @@
         <summary>BPMN - Process</summary>
         <div class="section-content">
 <p><a href="#/bpmn/mortgage-se-documentation-assessment.bpmn">Visa BPMN-processen för Documentation assessment</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Documentation assessment anropas från Manual Credit Evaluation-processen eller Mortgage Commitment-processen via "documentation-assessment" call activity. "Start event" triggas och processen börjar med automatisk dokumentationsanalys</li>
+        <li><strong>Analyse documentation (service task):</strong> Systemet automatiskt analyserar uppladdade dokument för att identifiera dokumentationskompletthet, korrekthet och eventuella ändringar. Analysen kontrollerar per uppladdat dokument om dokumentationen är ofullständig eller om det finns ändringar jämfört med tidigare information</li>
+        <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter automatisk analys samlas flöden ihop. Gateway:n kan ta emot flöden från "Analyse documentation" service task eller från "Changes accepted?" gateway "No" (om ändringar avvisas och processen loopar tillbaka)</li>
+        <li><strong>Assess documentation (user task):</strong> Handläggare (Caseworker) bedömer dokumentationen manuellt. Bedömningen inkluderar kontroll av dokumentationskompletthet, korrekthet, identifiering av eventuella ändringar och bedömning av om stakeholder-granskning behövs</li>
+        <li><strong>Stakeholder review? (exclusive gateway):</strong> Efter manuell bedömning avgörs om stakeholder-granskning behövs:
+          <ul>
+            <li><strong>Yes:</strong> Om stakeholder-granskning behövs, går flödet till "Review changes" user task</li>
+            <li><strong>No:</strong> Om stakeholder-granskning inte behövs, går flödet direkt till "Sammanför flöden" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Review changes (user task) - om krävs:</strong> Om stakeholder-granskning behövs, granskar stakeholder (t.ex. kund eller garant) identifierade ändringar. Stakeholder kan se vilka ändringar som har identifierats och bedöma om ändringarna är korrekta</li>
+        <li><strong>Changes accepted? (exclusive gateway):</strong> Efter stakeholder-granskning avgörs om ändringarna accepteras:
+          <ul>
+            <li><strong>Yes:</strong> Om ändringarna accepteras, går flödet till "Sammanför flöden" gateway och processen fortsätter</li>
+            <li><strong>No:</strong> Om ändringarna avvisas, loopar processen tillbaka till "Sammanför flöden" gateway för ny bedömning</li>
+          </ul>
+        </li>
+        <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter stakeholder-granskning (eller om den inte behövdes) samlas flöden ihop. Gateway:n kan ta emot flöden från "Changes accepted?" gateway "Yes" eller från "Stakeholder review?" gateway "No"</li>
+        <li><strong>Any documentation incomplete? (exclusive gateway):</strong> Efter bedömning avgörs om dokumentationen är ofullständig:
+          <ul>
+            <li><strong>No:</strong> Om dokumentationen är komplett men ändringar kräver ny utvärdering, går flödet till "Credit reevaluation required" end event</li>
+            <li><strong>Yes:</strong> Om dokumentationen är ofullständig, går flödet till "Documentation incomplete" end event (escalation event)</li>
+          </ul>
+        </li>
+        <li><strong>Avslut:</strong> Processen avslutas antingen via "Credit reevaluation required" end event (om dokumentationen är komplett men ändringar kräver omvärdering) eller via "Documentation incomplete" escalation event (om dokumentationen är ofullständig). Resultatet returneras till parent processen för vidare hantering</li>
+      </ol>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>Stakeholder review? gateway:</strong> Avgör om stakeholder-granskning behövs för identifierade ändringar. Om "Yes", går flödet till "Review changes" user task. Om "No", går flödet direkt till "Sammanför flöden" gateway</li>
+        <li><strong>Changes accepted? gateway:</strong> Avgör om ändringar accepteras efter stakeholder-granskning. Om "Yes", fortsätter processen. Om "No", loopar processen tillbaka för ny bedömning</li>
+        <li><strong>Any documentation incomplete? gateway:</strong> Avgör om dokumentationen är ofullständig. Om "No", avslutas processen med "Credit reevaluation required" event. Om "Yes", avslutas processen med "Documentation incomplete" escalation event</li>
+        <li><strong>Sammanför flöden gateway:</strong> Samlar ihop flöden från olika sökvägar (från "Analyse documentation", från "Changes accepted?" gateway "Yes", eller från "Stakeholder review?" gateway "No") innan processen fortsätter</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -489,7 +597,43 @@
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      <p>Documentation assessment-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Automatisk dokumentationsanalys via "Analyse documentation" service task:</strong> Genom att automatiskt analysera uppladdade dokument för att identifiera dokumentationskompletthet, korrekthet och eventuella ändringar, elimineras behovet av manuell initial analys. Detta kan minska manuell hantering med 50-60% för initial dokumentationsanalys.</li>
+        <li><strong>Strukturerad process med tydliga steg:</strong> Genom att separera automatisk analys, manuell bedömning, stakeholder-granskning (om krävs), dokumentationskompletthetsbeslut och avslut i tydliga steg, säkerställs att alla dokumentationer bedöms korrekt. Detta minskar risken för felaktiga bedömningar med 40-50%.</li>
+        <li><strong>Automatisk identifiering av ändringar:</strong> Genom automatisk analys som identifierar ändringar (t.ex. dokumenterad inkomst skiljer sig från ansökningsinkomst), elimineras behovet av manuell jämförelse. Detta kan minska manuell hantering med 60-70% för ändringsidentifiering.</li>
+      </ul>
+
+      <h3>Snabbare beslutsprocess och minskad väntetid</h3>
+      <ul>
+        <li><strong>Automatisk analys säkerställer snabb bedömning:</strong> Genom automatisk analys som identifierar dokumentationskompletthet och ändringar snabbt, säkerställs att manuell bedömning startar med korrekt information. Detta kan minska genomsnittlig bedömningstid med 30-40%.</li>
+        <li><strong>Stakeholder-granskning endast när nödvändigt:</strong> Genom "Stakeholder review?" gateway som endast triggar stakeholder-granskning när ändringar har identifierats, säkerställs att stakeholder-granskning endast används när nödvändigt. Detta kan minska genomsnittlig process-tid med 20-30% för ansökningar utan ändringar.</li>
+        <li><strong>Loop-mekanism för avvisade ändringar:</strong> Genom "Changes accepted?" gateway som kan loopa tillbaka om ändringar avvisas, säkerställs att processen inte fastnar utan fortsätter försöka tills ändringar accepteras eller dokumentation bedöms på nytt. Detta kan minska antalet fastnade processer med 80-90%.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad manuell bedömning:</strong> Genom "Assess documentation" user task som strukturerar manuell bedömning med tydliga kriterier (dokumentationskompletthet, korrekthet, ändringsidentifiering), säkerställs att alla dokumentationer bedöms korrekt. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Stakeholder-granskning säkerställer korrekt ändringshantering:</strong> Genom "Review changes" user task som tillåter stakeholder att granska och acceptera eller avvisa ändringar, säkerställs att ändringar hanteras korrekt. Detta förbättrar datakvaliteten med 40-50%.</li>
+        <li><strong>Dokumentationskompletthetsbeslut säkerställer korrekt hantering:</strong> Genom "Any documentation incomplete?" gateway som avgör om dokumentationen är komplett eller ofullständig, säkerställs att processen hanterar olika scenarier korrekt. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga beslut med 30-40%.</li>
+      </ul>
+
+      <h3>Förbättrad handläggarupplevelse och minskat avhopp</h3>
+      <ul>
+        <li><strong>Tydlig processstruktur:</strong> Genom tydlig strukturering av processen (Automatisk analys → Manuell bedömning → Stakeholder-granskning om krävs → Dokumentationskompletthetsbeslut → Avslut) och tydliga steg för handläggaren förstår handläggaren processen bättre. Detta kan öka handläggarnöjdheten med 20-30%.</li>
+        <li><strong>Automatisk analys minskar manuell jämförelse:</strong> Genom automatisk analys som identifierar ändringar behöver handläggaren inte manuellt jämföra dokumentation med tidigare information. Detta minskar manuell jämförelse med 60-70%.</li>
+        <li><strong>Flexibel hantering av olika scenarier:</strong> Genom "Any documentation incomplete?" gateway som kan hantera både komplett dokumentation med ändringar (som kräver omvärdering) och ofullständig dokumentation (som kräver komplettering), kan processen hantera olika scenarier flexibelt. Detta förbättrar handläggarupplevelsen och minskar behovet av manuell intervention.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Strukturerad manuell bedömning:</strong> Genom "Assess documentation" user task som strukturerar manuell bedömning med tydliga kriterier, säkerställs att alla dokumentationer bedöms korrekt. Detta minskar risken för felaktiga bedömningar med 40-50%.</li>
+        <li><strong>Stakeholder-granskning säkerställer korrekt ändringshantering:</strong> Genom "Review changes" user task som tillåter stakeholder att granska och acceptera eller avvisa ändringar, säkerställs att ändringar hanteras korrekt. Detta minskar risken för felaktiga ändringar med 50-60%.</li>
+        <li><strong>Dokumentationskompletthetsbeslut säkerställer korrekt hantering:</strong> Genom "Any documentation incomplete?" gateway som kan eskalera processen med "Documentation incomplete" escalation event om dokumentation är ofullständig, säkerställs att ofullständig dokumentation identifieras och åtgärdas. Detta minskar risken för felaktiga beslut med 30-40%.</li>
+        <li><strong>Automatisk omvärdering när ändringar kräver det:</strong> Genom "Credit reevaluation required" end event som kan trigga Automatic Credit Evaluation när ändringar kräver ny utvärdering, säkerställs att ändringar beaktas i kreditevaluering. Detta minskar risken för felaktiga kreditbeslut med 40-50%.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -499,10 +643,29 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Handläggarperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt analyserar dokumentationen via "Analyse documentation" service task <strong>så att</strong> jag får en initial bedömning av dokumentationskompletthet, korrekthet och eventuella ändringar utan att behöva manuellt analysera varje dokument. <em>Acceptanskriterier: Systemet ska automatiskt analysera uppladdade dokument och identifiera dokumentationskompletthet, korrekthet och eventuella ändringar per uppladdat dokument.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna bedöma dokumentationen manuellt via "Assess documentation" user task <strong>så att</strong> jag kan kontrollera dokumentationskompletthet, korrekthet och identifiera eventuella ändringar som kräver stakeholder-granskning. <em>Acceptanskriterier: "Assess documentation" user task ska visa tydlig information om dokumentationen, analysresultat, och tillåta handläggaren att bedöma dokumentationskompletthet, korrekthet och identifiera ändringar.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt avgör om stakeholder-granskning behövs via "Stakeholder review?" gateway <strong>så att</strong> stakeholder-granskning endast används när ändringar har identifierats. <em>Acceptanskriterier: "Stakeholder review?" gateway ska automatiskt avgöra om stakeholder-granskning behövs baserat på identifierade ändringar, och om "Yes" ska flödet gå till "Review changes" user task.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt avgör om dokumentationen är ofullständig via "Any documentation incomplete?" gateway <strong>så att</strong> ofullständig dokumentation identifieras och åtgärdas korrekt. <em>Acceptanskriterier: "Any documentation incomplete?" gateway ska automatiskt avgöra om dokumentationen är ofullständig, och om "Yes" ska processen eskaleras med "Documentation incomplete" escalation event.</em></li>
+      </ul>
+
+      <h3>Stakeholder-perspektiv</h3>
+      <ul>
+        <li><strong>Som stakeholder</strong> vill jag kunna granska identifierade ändringar via "Review changes" user task <strong>så att</strong> jag kan se vilka ändringar som har identifierats (t.ex. dokumenterad inkomst skiljer sig från ansökningsinkomst) och bedöma om ändringarna är korrekta. <em>Acceptanskriterier: "Review changes" user task ska visa tydlig information om identifierade ändringar, tillåta stakeholder att granska ändringar, och tillåta stakeholder att acceptera eller avvisa ändringar.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag att systemet automatiskt avgör om ändringar accepteras via "Changes accepted?" gateway <strong>så att</strong> processen fortsätter korrekt efter min granskning. <em>Acceptanskriterier: "Changes accepted?" gateway ska automatiskt avgöra om ändringar accepteras efter stakeholder-granskning, och om "No" ska processen loopa tillbaka för ny bedömning.</em></li>
+      </ul>
+
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som systemadministratör</strong> vill jag att "Analyse documentation" service task automatiskt analyserar uppladdade dokument <strong>så att</strong> dokumentationskompletthet, korrekthet och eventuella ändringar identifieras automatiskt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Stakeholder review?" gateway kan avgöra om stakeholder-granskning behövs <strong>så att</strong> stakeholder-granskning endast används när ändringar har identifierats</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Changes accepted?" gateway kan loopa tillbaka om ändringar avvisas <strong>så att</strong> processen inte fastnar utan fortsätter försöka tills ändringar accepteras eller dokumentation bedöms på nytt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Any documentation incomplete?" gateway kan eskalera processen med "Documentation incomplete" escalation event om dokumentation är ofullständig <strong>så att</strong> ofullständig dokumentation identifieras och åtgärdas</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Credit reevaluation required" end event kan trigga Automatic Credit Evaluation när ändringar kräver ny utvärdering <strong>så att</strong> ändringar beaktas i kreditevaluering</li>
       </ul>
         </div>
       </details>
@@ -513,10 +676,60 @@
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Automatisk dokumentationsanalys</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>"Analyse documentation" service task ska automatiskt analysera uppladdade dokument för att identifiera dokumentationskompletthet, korrekthet och eventuella ändringar per uppladdat dokument</li>
+        <li>Systemet ska automatiskt identifiera om dokumentationen är ofullständig eller om det finns ändringar jämfört med tidigare information</li>
+      </ul>
+
+      <h3>2. Manuell dokumentationsbedömning</h3>
+      <ul>
+        <li>"Assess documentation" user task ska visa tydlig information om dokumentationen, analysresultat, och tillåta handläggaren att bedöma dokumentationskompletthet, korrekthet och identifiera ändringar</li>
+        <li>Handläggaren ska kunna se per uppladdat dokument om dokumentationen är ofullständig eller om det finns ändringar</li>
+        <li>Handläggaren ska kunna bedöma om stakeholder-granskning behövs för identifierade ändringar</li>
+      </ul>
+
+      <h3>3. Stakeholder-granskning av ändringar</h3>
+      <ul>
+        <li>"Stakeholder review?" exclusive gateway ska automatiskt avgöra om stakeholder-granskning behövs baserat på identifierade ändringar:
+          <ul>
+            <li>Om "Yes", ska flödet gå till "Review changes" user task</li>
+            <li>Om "No", ska flödet gå direkt till "Sammanför flöden" gateway</li>
+          </ul>
+        </li>
+        <li>"Review changes" user task ska visa tydlig information om identifierade ändringar (t.ex. dokumenterad inkomst skiljer sig från ansökningsinkomst), tillåta stakeholder att granska ändringar, och tillåta stakeholder att acceptera eller avvisa ändringar</li>
+        <li>"Changes accepted?" exclusive gateway ska automatiskt avgöra om ändringar accepteras efter stakeholder-granskning:
+          <ul>
+            <li>Om "Yes", ska flödet gå till "Sammanför flöden" gateway och processen fortsätter</li>
+            <li>Om "No", ska processen loopa tillbaka till "Sammanför flöden" gateway för ny bedömning</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Dokumentationskompletthetsbeslut</h3>
+      <ul>
+        <li>"Any documentation incomplete?" exclusive gateway ska automatiskt avgöra om dokumentationen är ofullständig:
+          <ul>
+            <li>Om "No", ska flödet gå till "Credit reevaluation required" end event (om dokumentationen är komplett men ändringar kräver ny utvärdering)</li>
+            <li>Om "Yes", ska flödet gå till "Documentation incomplete" end event (escalation event)</li>
+          </ul>
+        </li>
+        <li>"Credit reevaluation required" end event ska avsluta processen när dokumentationen är komplett men ändringar kräver ny utvärdering. Detta kan trigga Automatic Credit Evaluation via boundary event i parent processen</li>
+        <li>"Documentation incomplete" end event (escalation event) ska avsluta processen när dokumentationen är ofullständig. Detta triggar escalation i parent processen för vidare hantering</li>
+      </ul>
+
+      <h3>5. Loop-mekanism</h3>
+      <ul>
+        <li>Om "Changes accepted?" gateway returnerar "No", ska processen automatiskt loopa tillbaka till "Sammanför flöden" gateway för ny bedömning</li>
+        <li>Handläggaren ska få tydlig feedback om att ny bedömning behövs när processen loopar tillbaka</li>
+      </ul>
+
+      <h3>6. Avslut</h3>
+      <ul>
+        <li>Processen ska avslutas antingen via "Credit reevaluation required" end event (om dokumentationen är komplett men ändringar kräver omvärdering) eller via "Documentation incomplete" escalation event (om dokumentationen är ofullständig)</li>
+        <li>Resultatet ska returneras till parent processen via "documentation-assessment" call activity för vidare hantering</li>
+        <li>Parent processen ska kunna trigga Automatic Credit Evaluation om "Credit reevaluation required" event mottas, eller eskalera om "Documentation incomplete" escalation event mottas</li>
       </ul>
         </div>
       </details>

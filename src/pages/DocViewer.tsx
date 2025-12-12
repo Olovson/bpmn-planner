@@ -13,6 +13,7 @@ import { renderFeatureGoalDoc } from '@/lib/documentationTemplates';
 import { useDynamicBpmnFiles } from '@/hooks/useDynamicBpmnFiles';
 import type { FeatureGoalTemplateVersion } from '@/lib/documentationTemplates';
 import { matchCallActivityUsingMap, loadBpmnMap } from '@/lib/bpmn/bpmnMapLoader';
+import { getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
 import bpmnMapData from '../../bpmn-map.json';
 
 const DocViewer = () => {
@@ -200,10 +201,23 @@ const DocViewer = () => {
             console.warn('[DocViewer] Could not resolve subprocessFile, using baseName:', error);
           }
           
-          // Build Feature Goal path with version: feature-goals/bpmnFile-elementId-v1.html
-          // Use subprocessFile if available, otherwise use baseName
-          const featureGoalPathWithVersion = `feature-goals/${featureGoalBpmnFile}-${elementSegment}-${versionToUse}.html`;
-          const featureGoalPathNoVersion = `feature-goals/${featureGoalBpmnFile}-${elementSegment}.html`;
+          // Build Feature Goal path using getFeatureGoalDocFileKey with hierarchical naming
+          // Use hierarchical naming (parent-elementId) to match Jira names
+          // baseName is the parent BPMN file (where call activity is defined)
+          const hierarchicalPath = getFeatureGoalDocFileKey(
+            featureGoalBpmnFile, // subprocess BPMN file
+            elementSegment, // elementId
+            versionToUse as 'v1' | 'v2',
+            baseName + '.bpmn' // parent BPMN file for hierarchical naming
+          );
+          
+          // Also try with legacy naming (subprocess-elementId) for backward compatibility
+          const legacyPath = getFeatureGoalDocFileKey(
+            featureGoalBpmnFile, // subprocess BPMN file
+            elementSegment, // elementId
+            versionToUse as 'v1' | 'v2'
+            // No parent = legacy naming
+          );
           
           // Also try with original baseName for backward compatibility
           const featureGoalPathWithVersionOriginal = `feature-goals/${baseName}-${elementSegment}-${versionToUse}.html`;
@@ -211,12 +225,19 @@ const DocViewer = () => {
           
           // For v2 Feature Goals, try local content first (from public/local-content/feature-goals/)
           if (versionToUse === 'v2') {
-            const localContentFilename = featureGoalPathWithVersion.replace('feature-goals/', '');
-            const localContentPath = `/local-content/feature-goals/${localContentFilename}`;
-            console.log('[DocViewer] 📁 Adding local content path (with subprocessFile):', localContentPath);
-            tryPaths.push(localContentPath);
+            // Try hierarchical naming first (matches Jira names)
+            const hierarchicalFilename = hierarchicalPath.replace('feature-goals/', '');
+            const hierarchicalLocalPath = `/local-content/feature-goals/${hierarchicalFilename}`;
+            console.log('[DocViewer] 📁 Adding local content path (hierarchical):', hierarchicalLocalPath);
+            tryPaths.push(hierarchicalLocalPath);
             
-            // Also try with original baseName
+            // Also try legacy naming for backward compatibility
+            const legacyFilename = legacyPath.replace('feature-goals/', '');
+            const legacyLocalPath = `/local-content/feature-goals/${legacyFilename}`;
+            console.log('[DocViewer] 📁 Adding local content path (legacy):', legacyLocalPath);
+            tryPaths.push(legacyLocalPath);
+            
+            // Also try with original baseName for backward compatibility
             const localContentFilenameOriginal = featureGoalPathWithVersionOriginal.replace('feature-goals/', '');
             const localContentPathOriginal = `/local-content/feature-goals/${localContentFilenameOriginal}`;
             console.log('[DocViewer] 📁 Adding local content path (with baseName):', localContentPathOriginal);
@@ -226,23 +247,23 @@ const DocViewer = () => {
           console.log('[DocViewer] All tryPaths for Feature Goal:', tryPaths);
           
           if (modeFolder) {
-            // Try version-specific path first (with subprocessFile)
-            tryPaths.push(`docs/${modeFolder}/${featureGoalPathWithVersion}`);
-            // Then try without version for backward compatibility
-            tryPaths.push(`docs/${modeFolder}/${featureGoalPathNoVersion}`);
-            // Also try with original baseName
+            // Try hierarchical naming first (matches Jira names)
+            tryPaths.push(`docs/${modeFolder}/${hierarchicalPath}`);
+            // Then try legacy naming
+            tryPaths.push(`docs/${modeFolder}/${legacyPath}`);
+            // Also try with original baseName for backward compatibility
             tryPaths.push(`docs/${modeFolder}/${featureGoalPathWithVersionOriginal}`);
             tryPaths.push(`docs/${modeFolder}/${featureGoalPathNoVersionOriginal}`);
             if (modeFolder.startsWith('slow/')) {
-              tryPaths.push(`docs/slow/${featureGoalPathWithVersion}`);
-              tryPaths.push(`docs/slow/${featureGoalPathNoVersion}`);
+              tryPaths.push(`docs/slow/${hierarchicalPath}`);
+              tryPaths.push(`docs/slow/${legacyPath}`);
               tryPaths.push(`docs/slow/${featureGoalPathWithVersionOriginal}`);
               tryPaths.push(`docs/slow/${featureGoalPathNoVersionOriginal}`);
             }
           }
-          // Also try legacy paths (with subprocessFile first, then original)
-          tryPaths.push(`docs/${featureGoalPathWithVersion}`);
-          tryPaths.push(`docs/${featureGoalPathNoVersion}`);
+          // Also try legacy paths
+          tryPaths.push(`docs/${hierarchicalPath}`);
+          tryPaths.push(`docs/${legacyPath}`);
           tryPaths.push(`docs/${featureGoalPathWithVersionOriginal}`);
           tryPaths.push(`docs/${featureGoalPathNoVersionOriginal}`);
         }

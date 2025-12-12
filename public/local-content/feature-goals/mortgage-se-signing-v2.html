@@ -151,37 +151,6 @@
       font-size: 0.9rem;
       font-weight: 500;
     }
-    .llm-fallback-banner {
-      padding: 8px 12px;
-      margin-bottom: 16px;
-      border-radius: 6px;
-      background-color: #fefce8;
-      color: #854d0e;
-      border: 1px solid #fef9c3;
-      font-size: 0.85rem;
-    }
-    .llm-fallback-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      margin-bottom: 12px;
-      border-radius: 4px;
-      background-color: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffeeba;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .llm-fallback-details {
-      font-size: 0.8rem;
-      color: #4b5563;
-      margin-bottom: 16px;
-      white-space: pre-wrap;
-    }
-    .llm-fallback-local-note {
-      font-size: 0.8rem;
-      color: #2563eb;
-      margin-bottom: 16px;
-    }
     details {
       margin: 16px 0;
     }
@@ -209,13 +178,6 @@
       border-radius: 0 0 6px 6px;
       margin-top: 0;
     }
-    img {
-      max-width: 100%;
-      height: auto;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      margin: 12px 0;
-    }
     a {
       color: var(--primary);
       text-decoration: none;
@@ -229,16 +191,19 @@
       📄 Lokal version – Förbättrat innehåll
     </div>
   
-    
-      
-
-
-    
     <section class="doc-section">
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Signing är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Signing är en handläggaraktivitet där handläggare och kunder signerar dokument för låneansökningar. Processen syftar till att säkerställa att alla nödvändiga dokument signeras korrekt, antingen digitalt eller manuellt, innan lånet kan utbetalas.</p>
+      <p>Processen börjar med att systemet avgör signeringsmetod via "Signing methods?" gateway. Om digital signering väljs, bearbetas varje digitalt dokumentpaket via "Per digital document package" subprocess (multi-instance loop). För varje dokumentpaket laddas dokument upp till "Signing provider" datastore via "Upload document" service task och skapar sedan signeringsorder via "Create sign order" service task. För varje signee bearbetas signeringar via "Per signee" subprocess (multi-instance loop). För varje signee skickas notifiering via "Notify sign" intermediate throw event och för varje sign order bearbetas signeringar via "Per sign order" subprocess (multi-instance loop). Signeringsorder kan slutföras, avvisas eller eskaleras. Om manuell signering väljs, distribuerar handläggare dokument via "Distribute documents" user task. Handläggare laddar sedan upp signerade dokument via "Upload document" user task (multi-instance loop). Systemet väntar på verifiering via "Documents verified" eller "Documents Not verified" message events. Om dokument inte är verifierade, kan processen loopa tillbaka. När alla signeringar är slutförda, lagras signerade dokument via "Store signed documents" service task (multi-instance loop, sequential) innan processen avslutas.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Mortgage - Normal signering (mortgage.bpmn):</strong> När dokument behöver signeras för låneansökan. Ny information: Dokument som behöver signeras för lånet. Anropas via "signing" call activity med called_element "signing".</li>
+        <li><strong>Mortgage - Advance signering (mortgage.bpmn):</strong> När dokument behöver signeras i förväg (advance). Ny information: Dokument som behöver signeras i förväg för lånet. Anropas via "signing-advance" call activity.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -246,10 +211,18 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Document Generation är klar (Documents generated event - Event_1u29t2f)</li>
-        <li>Dokument är genererade och redo för signering</li>
-        <li>Processen startar när Signing call activity anropas från mortgage.bpmn i huvudflödet (entry-18 branch) efter Event_1u29t2f</li>
+      <p>Signing-processen startar när:</p>
+      <ul>
+        <li><strong>Dokument är redo för signering:</strong> Alla dokument som behöver signeras är tillgängliga och redo för signering</li>
+        <li><strong>Signeringsmetod är vald eller kan väljas:</strong> Systemet måste kunna avgöra om signering ska ske digitalt eller manuellt via "Signing methods?" gateway</li>
+        <li><strong>Externa tjänster är tillgängliga (för digital signering):</strong> "Signing provider" datastore måste vara tillgänglig för att hantera digital signering</li>
+        <li><strong>Processkontext:</strong> Signing anropas via call activity. Alla relevanta processvariabler, inklusive dokumentdata och signeringsinformation, skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Mortgage - Normal signering:</strong> Dokument som behöver signeras för låneansökan är tillgängliga. Processen anropas via "signing" call activity med called_element "signing".</li>
+        <li><strong>Mortgage - Advance signering:</strong> Dokument som behöver signeras i förväg (advance) är tillgängliga. Processen anropas via "signing-advance" call activity.</li>
       </ul>
         </div>
       </details>
@@ -259,12 +232,21 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Dokument är signerade (digitalt eller manuellt)</li>
-        <li>Signerade dokument är lagrade</li>
-        <li>Processen avslutas och huvudprocessen fortsätter med "event-signing-completed" → Disbursement</li>
-        <li>Om signering avvisas: "signing-rejected" boundary event triggas som avslutar processen med "Signing rejected" end event</li>
-        <li>Message event "event-signing-completed" triggas (topic: event-signing-completed) när signeringen är klar</li>
+      <p>När Signing-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Alla dokument är signerade:</strong> Alla nödvändiga dokument har signerats korrekt, antingen digitalt eller manuellt</li>
+        <li><strong>Signerade dokument är lagrade:</strong> Signerade dokument har lagrats via "Store signed documents" service task och är tillgängliga för vidare bearbetning</li>
+        <li><strong>Signeringsorder är skapade (för digital signering):</strong> För varje digitalt dokumentpaket har systemet skapat signeringsorder i "Signing provider" datastore via "Create sign order" service task</li>
+        <li><strong>Signees är notifierade (för digital signering):</strong> För varje signee har systemet skickat notifiering via "Notify sign" intermediate throw event</li>
+        <li><strong>Dokument är distribuerade (för manuell signering):</strong> Handläggare har distribuerat dokument via "Distribute documents" user task</li>
+        <li><strong>Dokument är verifierade (för manuell signering):</strong> Systemet har mottagit "Documents verified" message event och bekräftat att dokument är korrekt signerade</li>
+        <li><strong>Processen avslutas normalt:</strong> När alla dokument är signerade och lagrade, avslutas processen normalt och anropande processen fortsätter med nästa steg</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Mortgage - Normal signering:</strong> Signerade dokument returneras till Mortgage-processen via "signing" call activity. Resultatet används för att fortsätta med nästa steg i låneprocessen (t.ex. disbursement).</li>
+        <li><strong>Mortgage - Advance signering:</strong> Signerade dokument returneras till Mortgage-processen via "signing-advance" call activity. Resultatet används för att fortsätta med nästa steg i låneprocessen med advance-signerade dokument.</li>
       </ul>
         </div>
       </details>
@@ -274,25 +256,63 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li><strong>Signing methods gateway:</strong> Avgör om signering sker digitalt eller manuellt (inclusive gateway - båda kan vara aktiva)</li>
-        <li><strong>Digital signering:</strong>
+      <p>Signing-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Signeringsmetodval</h3>
+      <ul>
+        <li><strong>Signing methods? (inclusive gateway):</strong> Systemet avgör om signering ska ske digitalt eller manuellt. Gateway:n har två utgående flöden:
           <ul>
-            <li><strong>Per digital document package (subprocess):</strong> Multi-instance subprocess för varje dokumentpaket - laddar upp dokument, skapar signeringsorder</li>
-            <li><strong>Per signee (subprocess):</strong> Multi-instance subprocess för varje signee - hanterar signering per signee</li>
-            <li><strong>Per sign order (subprocess):</strong> Multi-instance subprocess för varje sign order - hanterar signering per sign order</li>
-            <li><strong>Store signed documents:</strong> Service task (System lane) som lagrar signerade dokument (multi-instance sequential)</li>
+            <li><strong>Digital:</strong> För digital signering via "Per digital document package" subprocess</li>
+            <li><strong>Manual:</strong> För manuell signering via "Distribute documents" user task</li>
           </ul>
         </li>
-        <li><strong>Manuell signering:</strong>
+      </ul>
+
+      <h3>2. Digital signering (om vald)</h3>
+      <ul>
+        <li><strong>Per digital document package (subprocess - multi-instance loop):</strong> För varje digitalt dokumentpaket:
           <ul>
-            <li><strong>Distribute documents:</strong> User task (Caseworker lane) som distribuerar dokument manuellt</li>
-            <li><strong>Upload document:</strong> User task (Caseworker lane) som laddar upp manuellt signerade dokument (multi-instance)</li>
-            <li><strong>Documents verified/Not verified:</strong> Event-based gateway som avgör om dokument är verifierade</li>
-            <li><strong>Send reminder:</strong> Intermediate throw event som kan skicka påminnelser</li>
+            <li><strong>Upload document (service task - multi-instance loop):</strong> Systemet laddar upp dokument till "Signing provider" datastore. Information sparas i datastoren för vidare användning</li>
+            <li><strong>Create sign order (service task):</strong> Systemet skapar signeringsorder i "Signing provider" datastore. Information sparas i datastoren för vidare användning</li>
           </ul>
         </li>
-        <li><strong>Felhantering:</strong> "signing-rejected" boundary event på signing call activity i huvudprocessen kan avbryta processen</li>
+        <li><strong>Per signee (subprocess - multi-instance loop):</strong> För varje signee:
+          <ul>
+            <li><strong>Notify sign (intermediate throw event):</strong> Systemet skickar notifiering till signee om att signering behövs</li>
+            <li><strong>Per sign order (subprocess - multi-instance loop):</strong> För varje sign order:
+              <ul>
+                <li><strong>Event-based gateway:</strong> Väntar på antingen "Task completed" message event, "signing task expired" timer event (10 dagar), eller "Manually verify" message event</li>
+                <li><strong>Sign order status (exclusive gateway):</strong> Avgör status för signeringsorder:
+                  <ul>
+                    <li><strong>Completed:</strong> Signeringsorder är slutförd</li>
+                    <li><strong>Not completed:</strong> Signeringsorder är inte slutförd, processen loopar tillbaka</li>
+                    <li><strong>Rejected:</strong> Signeringsorder är avvisad, eskaleras</li>
+                    <li><strong>Other:</strong> Annan status, eskaleras</li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+            <li><strong>Send signing reminder (send task):</strong> Systemet skickar påminnelse till signee om väntande signeringar. Påminnelse kan triggas automatiskt (efter 1 timme) eller manuellt</li>
+            <li><strong>Signing expired (end event):</strong> Om hela signeringsprocessen för signee tar för lång tid (5 dagar), eskaleras processen</li>
+          </ul>
+        </li>
+        <li><strong>Store signed documents (service task - multi-instance loop, sequential):</strong> Systemet lagrar signerade dokument från "Signing provider" datastore. Dokument sparas sekventiellt för varje signee</li>
+        <li><strong>Change to manual (boundary event):</strong> Om digital signering behöver ändras till manuell signering, kan processen eskaleras via "Change to manual" message event</li>
+      </ul>
+
+      <h3>3. Manuell signering (om vald)</h3>
+      <ul>
+        <li><strong>Distribute documents (user task):</strong> Handläggare distribuerar dokument till kunder för manuell signering</li>
+        <li><strong>Upload document (user task - multi-instance loop):</strong> Handläggare laddar upp signerade dokument. Processen kan loopa flera gånger för flera dokument</li>
+        <li><strong>Documents verified / Documents Not verified (event-based gateway):</strong> Systemet väntar på antingen "Documents verified" eller "Documents Not verified" message events</li>
+        <li><strong>Om dokument inte är verifierade:</strong> Processen loopar tillbaka till "Distribute documents" user task</li>
+        <li><strong>Om dokument är verifierade:</strong> Processen avslutas normalt</li>
+        <li><strong>Send reminder (boundary events):</strong> Handläggare kan skicka påminnelse via "Manual reminder" eller "Send reminder" message events</li>
+      </ul>
+
+      <h3>4. Avslut</h3>
+      <ul>
+        <li><strong>Processen avslutas normalt:</strong> När alla dokument är signerade och lagrade, avslutas processen normalt och anropande processen fortsätter med nästa steg (t.ex. disbursement)</li>
       </ul>
         </div>
       </details>
@@ -303,11 +323,11 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
-        <li>Document Generation ingår inte - den sker tidigare i huvudprocessen</li>
-        <li>Disbursement ingår inte - den sker efter Signing</li>
-        <li>Offer-processen ingår inte - den sker tidigare i huvudprocessen</li>
-        <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
-        <li>KYC-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Dokumentgenerering sker i "Document generation"-processen, inte i denna subprocess</li>
+        <li>Utbetalning sker i "Disbursement"-processen, inte i denna subprocess</li>
+        <li>Denna subprocess fokuserar enbart på signering av dokument, inte på dokumentgenerering eller utbetalning</li>
+        <li>Kreditbeslut sker i "Credit Decision"-processen, inte i denna subprocess</li>
+        <li>Offer-skapande sker i "Offer"-processen, inte i denna subprocess</li>
       </ul>
         </div>
       </details>
@@ -318,13 +338,11 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>Mortgage huvudprocess:</strong> Signing anropas från mortgage.bpmn i huvudflödet (entry-18 branch) när Event_1u29t2f (Documents generated) triggas</li>
-        <li><strong>Document Generation:</strong> Document Generation måste vara slutförd innan Signing startar</li>
-        <li><strong>Signing provider:</strong> Externa system för digital signering (PADES i SE - behöver verifieras)</li>
-        <li><strong>Caseworker:</strong> Distribuerar och laddar upp manuellt signerade dokument, verifierar dokument</li>
-        <li><strong>Signees:</strong> Signerar dokument digitalt eller manuellt</li>
-        <li><strong>Disbursement:</strong> Efter signering går processen vidare till Disbursement via event-signing-completed</li>
-        <li><strong>Felhantering:</strong> Om signering avvisas, triggas "signing-rejected" escalation</li>
+        <li><strong>Signing provider (datastore):</strong> För att hantera digital signering via "Upload document" och "Create sign order" service tasks</li>
+        <li><strong>Mortgage-processen:</strong> För att triggra signering när dokument är redo för signering</li>
+        <li><strong>Document generation-processen:</strong> För att tillhandahålla dokument som behöver signeras</li>
+        <li><strong>Handläggare (Caseworker lane):</strong> För att distribuera dokument och ladda upp signerade dokument vid manuell signering</li>
+        <li><strong>Kunder (signees):</strong> För att signera dokument digitalt eller manuellt</li>
       </ul>
         </div>
       </details>
@@ -334,8 +352,63 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-signing.bpmn">Visa BPMN-processen för Signing</a></p>
-      <p class="muted">Processen stöder både digital och manuell signering. För digital signering: dokumentpaket skapas, signeringsorder skapas per dokumentpaket, signering sker per signee och per sign order, och signerade dokument lagras. För manuell signering: dokument distribueras, dokument laddas upp, dokument verifieras, och påminnelser kan skickas. Processen använder multi-instance subprocesses för att hantera flera dokumentpaket, signees, och sign orders.</p>
+      <p><a href="#/bpmn/mortgage-se-signing.bpmn">Visa BPMN-processen för Signing</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Signing anropas från Mortgage-processen via call activity ("signing" eller "signing-advance")</li>
+        <li><strong>Signing methods? (inclusive gateway):</strong> Systemet avgör om signering ska ske digitalt eller manuellt:
+          <ul>
+            <li><strong>Digital:</strong> Processen går till "Per digital document package" subprocess</li>
+            <li><strong>Manual:</strong> Processen går till "Distribute documents" user task</li>
+          </ul>
+        </li>
+        <li><strong>Digital signering (om vald):</strong>
+          <ul>
+            <li><strong>Per digital document package (subprocess - multi-instance loop):</strong> För varje digitalt dokumentpaket:
+              <ul>
+                <li><strong>Upload document (service task - multi-instance loop):</strong> Systemet laddar upp dokument till "Signing provider" datastore</li>
+                <li><strong>Create sign order (service task):</strong> Systemet skapar signeringsorder i "Signing provider" datastore</li>
+              </ul>
+            </li>
+            <li><strong>Per signee (subprocess - multi-instance loop):</strong> För varje signee:
+              <ul>
+                <li><strong>Notify sign (intermediate throw event):</strong> Systemet skickar notifiering till signee</li>
+                <li><strong>Per sign order (subprocess - multi-instance loop):</strong> För varje sign order:
+                  <ul>
+                    <li><strong>Event-based gateway:</strong> Väntar på "Task completed", "signing task expired" (10 dagar), eller "Manually verify"</li>
+                    <li><strong>Sign order status (exclusive gateway):</strong> Avgör status: Completed, Not completed (loopar tillbaka), Rejected (eskaleras), eller Other (eskaleras)</li>
+                  </ul>
+                </li>
+                <li><strong>Send signing reminder (send task):</strong> Systemet kan skicka påminnelse automatiskt (efter 1 timme) eller manuellt</li>
+                <li><strong>Signing expired (end event):</strong> Om hela processen tar för lång tid (5 dagar), eskaleras processen</li>
+              </ul>
+            </li>
+            <li><strong>Store signed documents (service task - multi-instance loop, sequential):</strong> Systemet lagrar signerade dokument sekventiellt för varje signee</li>
+          </ul>
+        </li>
+        <li><strong>Manuell signering (om vald):</strong>
+          <ul>
+            <li><strong>Distribute documents (user task):</strong> Handläggare distribuerar dokument till kunder</li>
+            <li><strong>Upload document (user task - multi-instance loop):</strong> Handläggare laddar upp signerade dokument</li>
+            <li><strong>Documents verified / Documents Not verified (event-based gateway):</strong> Systemet väntar på verifiering:
+              <ul>
+                <li><strong>Documents verified:</strong> Processen avslutas normalt</li>
+                <li><strong>Documents Not verified:</strong> Processen loopar tillbaka till "Distribute documents"</li>
+              </ul>
+            </li>
+            <li><strong>Send reminder (boundary events):</strong> Handläggare kan skicka påminnelse via "Manual reminder" eller "Send reminder" message events</li>
+          </ul>
+        </li>
+        <li><strong>Avslut:</strong> När alla dokument är signerade och lagrade, avslutas processen normalt och Mortgage-processen fortsätter med nästa steg</li>
+      </ol>
+      
+      <h3>Anropningsställen</h3>
+      <p>Denna process anropas från följande ställen:</p>
+      <ul>
+        <li><strong>Mortgage - Normal signering:</strong> Anropas från "mortgage.bpmn" via "signing" call activity med called_element "signing". När dokument behöver signeras för låneansökan.</li>
+        <li><strong>Mortgage - Advance signering:</strong> Anropas från "mortgage.bpmn" via "signing-advance" call activity. När dokument behöver signeras i förväg (advance).</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -364,155 +437,72 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – digital signering</td>
+        <td>Normalflöde – digital signering slutförd</td>
         <td>Happy</td>
-        <td>customer</td>
+        <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Dokumentpaket skapas, signeringsorder skapas per dokumentpaket, signering sker per signee och per sign order, signerade dokument lagras. Processen avslutas och går vidare till Disbursement via event-signing-completed.</td>
+        <td>Systemet hanterar digital signering korrekt: dokument laddas upp, signeringsorder skapas, signees notifieras, signeringar slutförs, och signerade dokument lagras. Processen avslutas normalt och anropande processen fortsätter med nästa steg.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Normalflöde – manuell signering</td>
+        <td>Normalflöde – manuell signering slutförd</td>
         <td>Happy</td>
-        <td>customer</td>
-        <td>P1</td>
+        <td>caseworker</td>
+        <td>P0</td>
         <td>functional</td>
-        <td>Dokument distribueras manuellt, dokument laddas upp, dokument verifieras. Processen avslutas och går vidare till Disbursement via event-signing-completed.</td>
+        <td>Handläggare distribuerar dokument, kunder signerar manuellt, handläggare laddar upp signerade dokument, systemet verifierar dokument, och processen avslutas normalt. Processen avslutas normalt och anropande processen fortsätter med nästa steg.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Signering avvisad – signee avvisar</td>
-        <td>Error</td>
-        <td>customer</td>
-        <td>P0</td>
+        <td>Signeringsorder avvisad eller timeout – eskalering</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Signee avvisar signering (t.ex. ogiltig signering, eller signee vägrar). "signing-rejected" boundary event triggas. Processen avslutas med "Signing rejected" end event.</td>
+        <td>Om en signeringsorder avvisas ("Rejected") eller tar för lång tid ("signing task expired" efter 10 dagar), eskaleras processen korrekt. Om hela signeringsprocessen för en signee tar för lång tid (5 dagar), eskaleras processen med "Signing expired" event.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
-        <td>Multi-instance – flera dokumentpaket och signees</td>
-        <td>Happy</td>
-        <td>customer</td>
+        <td>Flera dokumentpaket, signees och sign orders – multi-instance loops</td>
+        <td>Edge</td>
+        <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Flera dokumentpaket (multi-instance), flera signees (multi-instance), flera sign orders (multi-instance). Alla signerar korrekt. Processen avslutas när alla är signerade.</td>
+        <td>För signeringar med flera dokumentpaket, signees och sign orders, bearbetar systemet varje nivå korrekt via multi-instance loops. Alla dokumentpaket bearbetas, alla signees notifieras, alla sign orders hanteras, och alla signerade dokument lagras sekventiellt innan processen avslutas.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S5</strong></td>
-        <td>Manuell signering – påminnelse krävs</td>
+        <td>Manuell signering – dokument inte verifierade, loopar tillbaka</td>
         <td>Edge</td>
-        <td>customer</td>
-        <td>P2</td>
+        <td>caseworker</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Dokument distribueras, men signee svarar inte. Dokument verifieras som "Not verified". Påminnelse skickas. Efter påminnelse signeras dokument. Processen avslutas.</td>
+        <td>Om dokument inte är verifierade ("Documents Not verified" message event), loopar processen tillbaka till "Distribute documents" user task. Handläggare kan skicka påminnelse via "Manual reminder" eller "Send reminder" boundary events.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Ändring från digital till manuell signering</td>
+        <td>Edge</td>
+        <td>caseworker</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Om digital signering behöver ändras till manuell signering, kan processen eskaleras via "Change to manual" boundary event på "Per signee" subprocess. Processen fortsätter sedan med manuell signering.</td>
         <td>✅ Planerad</td>
       </tr>
     
         </tbody>
       </table>
-
-      <h3>UI Flow per Scenario</h3>
-      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
-      
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Om signering avvisas: "signing-rejected" bounda...</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S3: Dokument är signerade (digitalt eller manuellt)</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
-          <td>navigate</td>
-          <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
 
       <h3>Testdata-referenser</h3>
       <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
@@ -537,51 +527,6 @@
         </thead>
         <tbody>
           
-      <tr>
-        <td>Signing methods gateway</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /signing-methods-gateway]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Avgör om signering sker digitalt eller manuellt (inclusive gateway - båda kan...</td>
-      </tr>
-    
-      <tr>
-        <td>Per digital document package (subprocess)</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /per-digital-document-package-(subprocess)]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Multi-instance subprocess för varje dokumentpaket - laddar upp dokument, skap...</td>
-      </tr>
-    
-      <tr>
-        <td>Per signee (subprocess)</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /per-signee-(subprocess)]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Multi-instance subprocess för varje signee - hanterar signering per signee</td>
-      </tr>
-    
-      <tr>
-        <td>Per sign order (subprocess)</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /per-sign-order-(subprocess)]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Multi-instance subprocess för varje sign order - hanterar signering per sign ...</td>
-      </tr>
-    
-      <tr>
-        <td>Store signed documents</td>
-        <td>API</td>
-        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/store-signed-documents]</td>
-        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Service task (System lane) som lagrar signerade dokument (multi-instance sequ...</td>
-      </tr>
-    
         </tbody>
       </table>
         </div>
@@ -592,7 +537,15 @@
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      
+      <h3>Flexibel signeringsprocess</h3>
+      <p>Genom att stödja både digital och manuell signering kan processen anpassas efter kundens behov och preferenser. Digital signering kan minska signeringstid med upp till 80-90% jämfört med manuell signering, medan manuell signering ger flexibilitet för kunder som föredrar traditionell signering. Genom "Signing methods?" gateway kan systemet automatiskt välja rätt signeringsmetod baserat på dokumenttyp och kundpreferenser.</p>
+      
+      <h3>Automatiserad hantering av signeringar</h3>
+      <p>Genom automatisk hantering av signeringsorder, notifieringar, påminnelser och lagring av signerade dokument kan systemet hantera signeringar effektivt utan manuell intervention. För digital signering kan systemet automatiskt skapa signeringsorder, notifiera signees, skicka påminnelser (automatiskt efter 1 timme eller manuellt), och lagra signerade dokument. Detta kan minska manuell hantering med upp till 70-80% för digital signering.</p>
+      
+      <h3>Återanvändbar process</h3>
+      <p>Genom att Signing är en återanvändbar call activity som kan anropas från flera ställen (t.ex. Mortgage normal signering, Mortgage advance signering) elimineras duplicerad logik och säkerställs konsistent signeringsprocess. Detta kan minska underhållskostnader med upp till 30-40% och förbättra systemets övergripande kvalitet.</p>
         </div>
       </details>
     </section>
@@ -602,10 +555,23 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som system</strong> vill jag automatiskt hantera digital signering via "Signing provider" datastore <strong>så att</strong> dokument kan signeras digitalt utan manuell intervention, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt ladda upp dokument, skapa signeringsorder, notifiera signees, hantera signeringsstatus, skicka påminnelser, och lagra signerade dokument för digital signering.</em></li>
+        <li><strong>Som system</strong> vill jag stödja både digital och manuell signering via "Signing methods?" gateway <strong>så att</strong> processen kan anpassas efter kundens behov och preferenser. <em>Acceptanskriterier: Systemet ska automatiskt avgöra om signering ska ske digitalt eller manuellt, och processen ska hantera båda metoderna korrekt.</em></li>
+      </ul>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag kunna distribuera dokument och ladda upp signerade dokument vid manuell signering <strong>så att</strong> kunder kan signera dokument manuellt när det behövs. <em>Acceptanskriterier: "Distribute documents" och "Upload document" user tasks ska vara tillgängliga för handläggare, och systemet ska vänta på verifiering via "Documents verified" eller "Documents Not verified" message events.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna skicka påminnelser till kunder om väntande signeringar <strong>så att</strong> kunder påminns om att signera dokument. <em>Acceptanskriterier: Handläggare ska kunna skicka påminnelser via "Manual reminder" eller "Send reminder" boundary events på "Upload document" user task.</em></li>
+      </ul>
+      
+      <h3>Kundperspektiv</h3>
+      <ul>
+        <li><strong>Som kund</strong> vill jag kunna signera dokument digitalt <strong>så att</strong> jag kan signera dokument snabbt och enkelt utan att behöva träffa handläggare. <em>Acceptanskriterier: Systemet ska automatiskt skicka notifiering till kund om att signering behövs, och kund ska kunna signera dokument digitalt via "Signing provider".</em></li>
+        <li><strong>Som kund</strong> vill jag kunna signera dokument manuellt <strong>så att</strong> jag kan signera dokument på traditionellt sätt om jag föredrar det. <em>Acceptanskriterier: Handläggare ska kunna distribuera dokument till kund, och kund ska kunna signera dokument manuellt och returnera dem till handläggare.</em></li>
       </ul>
         </div>
       </details>
@@ -616,13 +582,55 @@
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>Signeringsmetodval</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>"Signing methods?" gateway ska korrekt avgöra om signering ska ske digitalt eller manuellt baserat på dokumenttyp och kundpreferenser</li>
+        <li>Gateway:n ska ha två utgående flöden: "Digital" för digital signering och "Manual" för manuell signering</li>
+      </ul>
+      
+      <h3>Digital signering</h3>
+      <ul>
+        <li>"Per digital document package" subprocess ska korrekt bearbeta varje digitalt dokumentpaket via multi-instance loop</li>
+        <li>"Upload document" service task ska automatiskt ladda upp dokument till "Signing provider" datastore. Information ska sparas i datastoren för vidare användning</li>
+        <li>"Create sign order" service task ska automatiskt skapa signeringsorder i "Signing provider" datastore. Information ska sparas i datastoren för vidare användning</li>
+        <li>"Per signee" subprocess ska korrekt bearbeta varje signee via multi-instance loop</li>
+        <li>"Notify sign" intermediate throw event ska automatiskt skicka notifiering till signee om att signering behövs</li>
+        <li>"Per sign order" subprocess ska korrekt bearbeta varje sign order via multi-instance loop</li>
+        <li>"Event-based gateway" ska korrekt vänta på "Task completed" message event, "signing task expired" timer event (10 dagar), eller "Manually verify" message event</li>
+        <li>"Sign order status" gateway ska korrekt avgöra status: Completed (avslutas), Not completed (loopar tillbaka), Rejected (eskaleras), eller Other (eskaleras)</li>
+        <li>"Send signing reminder" send task ska automatiskt skicka påminnelse efter 1 timme eller manuellt när det behövs</li>
+        <li>"Store signed documents" service task ska automatiskt lagra signerade dokument sekventiellt för varje signee via multi-instance loop (sequential)</li>
+        <li>"Change to manual" boundary event ska korrekt eskalera processen om digital signering behöver ändras till manuell signering</li>
+      </ul>
+      
+      <h3>Manuell signering</h3>
+      <ul>
+        <li>"Distribute documents" user task ska vara tillgänglig för handläggare att distribuera dokument till kunder</li>
+        <li>"Upload document" user task ska vara tillgänglig för handläggare att ladda upp signerade dokument via multi-instance loop</li>
+        <li>"Documents verified" / "Documents Not verified" event-based gateway ska korrekt vänta på verifiering via message events</li>
+        <li>Om dokument inte är verifierade, ska processen loopa tillbaka till "Distribute documents" user task</li>
+        <li>Om dokument är verifierade, ska processen avslutas normalt</li>
+        <li>"Manual reminder" och "Send reminder" boundary events ska vara tillgängliga för handläggare att skicka påminnelser</li>
+      </ul>
+      
+      <h3>Processflöde och avslut</h3>
+      <ul>
+        <li>När alla dokument är signerade och lagrade, ska processen avslutas normalt och anropande processen fortsätta med nästa steg</li>
+        <li>Alla processvariabler ska skickas med när Signing anropas från anropande processen för att säkerställa fullständig kontext</li>
+        <li>Signerade dokument ska korrekt sparas och vara tillgängliga för anropande processen</li>
+      </ul>
+      
+      <h3>Felhantering och eskalering</h3>
+      <ul>
+        <li>Om signeringsorder avvisas ("Rejected") eller tar för lång tid ("signing task expired" efter 10 dagar), ska processen eskaleras korrekt</li>
+        <li>Om hela signeringsprocessen för en signee tar för lång tid (5 dagar), ska processen eskaleras med "Signing expired" event</li>
+        <li>Om "Signing provider" datastore inte är tillgänglig, ska processen hantera felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalera till anropande processen</li>
+        <li>Om signering misslyckas, ska processen hantera felet på ett tydligt sätt och signalera till anropande processen</li>
       </ul>
         </div>
       </details>
     </section>
       </body>
 </html>
+

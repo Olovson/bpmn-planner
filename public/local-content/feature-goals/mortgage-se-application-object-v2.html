@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Object</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+    
+      
+<h1>Object</h1>
+  
+  <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+      <p>Object är en kundaktivitet där primary stakeholder (t.ex. kund eller huvudansökande) registrerar objektinformation och lånedetaljer för fastigheten som ansökan gäller. Processen anropas från Application-processen efter "Internal data gathering" call activity, vilket innebär att Object-processen startar när intern data för alla parter är insamlad.</p>
+      <p>Processen börjar med att systemet avgör ansökningssyfte via "Purposes?" inclusive gateway. Beroende på syfte (köp, flytt, omlåning) följer olika flöden. För köp kan registrering av källa till eget kapital hoppas över om det inte behövs, medan för flytt/omlåning registreras lånedetaljer. Efter registrering samlar systemet objektinformation via "Object information" call activity (multi-instance) och validerar sedan om objektet är godkänt. Om objektet inte är godkänt, avvisas ansökan. Om objektet är godkänt, avgörs om värdering behövs. Om värdering krävs, värderas fastigheten automatiskt innan processen avslutas.</p>
+      <p>Detta är primärt en kundaktivitet där primary stakeholder interagerar med systemet via kundportalen för att fylla i objektinformation och lånedetaljer. Systemet stödjer processen genom automatisk insamling av objektinformation, validering av objekt, och värdering av fastighet när det behövs.</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+      <p>Object-processen startar när:</p>
+      <ul>
+        <li><strong>Internal data gathering är slutförd:</strong> Application-processen har slutfört "Internal data gathering" call activity (multi-instance, en gång per party) och "Flow_1gmipm5" sequence flow har triggats</li>
+        <li><strong>Processkontext:</strong> Object anropas från Application-processen via "object" call activity efter "Flow_1gmipm5" sequence flow. Alla relevanta processvariabler, inklusive identifierade parties och grundläggande ansökningsdata, skickas med för att säkerställa fullständig kontext</li>
+        <li><strong>Ansökningsdata är tillgänglig:</strong> Grundläggande ansökningsdata, inklusive ansökningstyp (köp, flytt, omlåning), önskat belopp, löptid, och fastighetstyp, är tillgänglig för att påbörja objektregistrering</li>
+        <li><strong>Parties är identifierade:</strong> Alla parties (huvudansökande och eventuella medsökande) är identifierade från Internal data gathering-processen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+      <p>När Object-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Objektinformation är samlad och validerad:</strong> Primary stakeholder har registrerat objektinformation (källa till eget kapital om tillämpligt, lånedetaljer) och systemet har samlat objektinformation via "Object information" call activity (multi-instance). Objektet har validerats via "Objects accepted?" gateway och är godkänt</li>
+        <li><strong>Objektvärdering är slutförd (om nödvändig):</strong> Om objektvärdering krävdes, har objektets värde fastställts via "Valuate bostad" service task och lagrats i "Valuation service" datastore</li>
+        <li><strong>Processen avslutas normalt:</strong> Om objektet är godkänt och värdering (om nödvändig) är slutförd, avslutas processen normalt via "Event_1ymfh8p" end event och Application-processen fortsätter med "stakeholders" subprocess via "Flow_02jau0k" sequence flow</li>
+        <li><strong>Felhantering vid avvisning:</strong> Om objektet avvisas via "Objects accepted?" gateway "None", avslutas processen med "Object rejected" error event (Event_1pf0qfv) med error code "object-rejected". Detta signalerar till Application-processen att objektet inte uppfyller kraven, vilket triggar "Object rejected" boundary event på "object" call activity och avbryter hela ansökningsprocessen</li>
+        <li><strong>Loop-mekanismer:</strong> Om vissa objekt avvisas men andra godkänns via "Objects accepted?" gateway "Some", loopar processen tillbaka till "Gateway_19knsnl" för att hantera avvisade objekt igen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+      <p>Object-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Start och syfte-beslut</h3>
+      <ul>
+        <li><strong>Start event:</strong> Processen startar när Object anropas från Application-processen via "object" call activity efter "Flow_1gmipm5" sequence flow. "start-event" start event triggas och processen börjar</li>
+        <li><strong>Purposes? (inclusive gateway):</strong> En beslutspunkt avgör ansökningssyfte:
+          <ul>
+            <li><strong>Purchase (Mortgage commitment):</strong> Om ansökan gäller köp, går flödet till "Skip step?" gateway för att avgöra om registrering av källa till eget kapital ska hoppas över</li>
+            <li><strong>Refinancing / Move loan:</strong> Om ansökan gäller flytt eller omlåning, går flödet till "Gateway_19knsnl" för att registrera lånedetaljer</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>2. Registrering av källa till eget kapital (för köp)</h3>
+      <ul>
+        <li><strong>Skip step? (exclusive gateway):</strong> En beslutspunkt avgör om registrering av källa till eget kapital ska hoppas över:
+          <ul>
+            <li><strong>No:</strong> Om registrering inte ska hoppas över, går flödet till "Register source of equity" user task</li>
+            <li><strong>Yes:</strong> Om registrering ska hoppas över, går flödet direkt till "Gateway_0box6jw"</li>
+          </ul>
+        </li>
+        <li><strong>Register source of equity (user task):</strong> Om registrering inte hoppades över, fyller primary stakeholder i källa till eget kapital. Om källan är försäljning av befintlig fastighet, måste fastighetsinformation tillhandahållas</li>
+        <li><strong>Gateway_0box6jw (exclusive gateway):</strong> Samlar ihop flöden från både "Register source of equity" user task och "Skip step?" gateway "Yes" innan processen fortsätter</li>
+      </ul>
+
+      <h3>3. Registrering av lånedetaljer (för flytt/omlåning eller om vissa objekt avvisades)</h3>
+      <ul>
+        <li><strong>Gateway_19knsnl (exclusive gateway):</strong> En beslutspunkt som kan ta emot flöden från "Purposes?" gateway "Refinancing / Move loan" eller från "Objects accepted?" gateway "Some" (om vissa objekt avvisades). Gateway:n dirigerar flödet till "Register loan details" user task</li>
+        <li><strong>Register loan details (user task):</strong> Primary stakeholder registrerar lånedetaljer för flytt eller omlåning. Detta inkluderar information om befintliga lån som ska flyttas eller omlånas</li>
+      </ul>
+
+      <h3>4. Insamling och validering av objektinformation</h3>
+      <ul>
+        <li><strong>Object information (call activity, multi-instance):</strong> Efter att lånedetaljer har registrerats, samlar systemet objektinformation via "Object information" call activity. Processen körs som multi-instance, vilket innebär att om ansökan gäller flera objekt, genomförs insamling för varje objekt separat</li>
+        <li><strong>Objects accepted? (exclusive gateway):</strong> En beslutspunkt avgör om objektet är godkänt:
+          <ul>
+            <li><strong>All:</strong> Om alla objekt är godkända, går flödet till "Gateway_1uyee92" för att avgöra om värdering behövs</li>
+            <li><strong>Some:</strong> Om vissa objekt är godkända men andra avvisade, loopar processen tillbaka till "Gateway_19knsnl" för att hantera avvisade objekt igen</li>
+            <li><strong>None:</strong> Om inga objekt är godkända, avslutas processen med "Object rejected" error event</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>5. Objektvärdering (om nödvändig)</h3>
+      <ul>
+        <li><strong>Gateway_1uyee92 (exclusive gateway):</strong> En beslutspunkt som kan ta emot flöden från "Objects accepted?" gateway "All" eller från "Gateway_0box6jw" (efter registrering av källa till eget kapital). Gateway:n dirigerar flödet till "Needs valuation?" gateway</li>
+        <li><strong>Needs valuation? (exclusive gateway):</strong> En beslutspunkt avgör om objektvärdering behövs:
+          <ul>
+            <li><strong>Yes:</strong> Om värdering krävs (t.ex. vid köp när källa till eget kapital är försäljning av befintlig fastighet, eller vid andra syften alltid), går flödet till "Valuate bostad" service task</li>
+            <li><strong>No:</strong> Om värdering inte krävs, går flödet direkt till "Gateway_0u4o84x" för avslut</li>
+          </ul>
+        </li>
+        <li><strong>Valuate bostad (service task):</strong> Om värdering krävs, värderas fastigheten automatiskt av en värderare. Värderingsresultatet lagras i "Valuation service" datastore</li>
+        <li><strong>Gateway_0u4o84x (exclusive gateway):</strong> Samlar ihop flöden från både "Needs valuation?" gateway "No" och "Valuate bostad" service task innan processen avslutas</li>
+      </ul>
+
+      <h3>6. Avslut</h3>
+      <ul>
+        <li><strong>End event:</strong> Processen avslutas normalt via "Event_1ymfh8p" end event när objektinformation är samlad, validerad, och värderad (om nödvändig). Processen returnerar till Application-processen via "object" call activity</li>
+        <li><strong>Object rejected (error event):</strong> Om objektet avvisas via "Objects accepted?" gateway "None", avslutas processen med "Object rejected" error event (Event_1pf0qfv) med error code "object-rejected". Detta signalerar till Application-processen att objektet inte uppfyller kraven</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Internal Data Gathering ingår inte - den sker tidigare i Application-processen</li>
+        <li>stakeholders subprocess ingår inte - den sker efter Object-processen</li>
+        <li>Household call activity ingår inte - den sker inuti stakeholders subprocess</li>
+        <li>Stakeholder call activity ingår inte - den sker inuti stakeholders subprocess</li>
+        <li>skip-confirm-application gateway ingår inte - den sker efter stakeholders subprocess</li>
+        <li>Confirm Application ingår inte - den sker efter stakeholders subprocess och skip-confirm-application</li>
+        <li>KALP-beräkning ingår inte - den sker efter Confirm Application</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Application huvudprocess (mortgage-se-application.bpmn):</strong>
+          <ul>
+            <li>Object anropas från Application-processen via "object" call activity efter "Flow_1gmipm5" sequence flow (efter Internal data gathering)</li>
+            <li>Flöde: Internal data gathering → Object → stakeholders subprocess → skip-confirm-application → KALP/Confirm application</li>
+            <li>Om Object-processen avslutas med "Object rejected" error event, triggas "Object rejected" boundary event (Event_152muhg) på "object" call activity, vilket dirigerar flödet till "Object rejected" end event (Event_07jlrhu) och avbryter hela ansökningsprocessen</li>
+          </ul>
+        </li>
+        <li><strong>Object Information-processen (mortgage-se-object-information.bpmn):</strong>
+          <ul>
+            <li>Object Information anropas från Object-processen via "object-information" call activity (multi-instance) efter "Register loan details" user task</li>
+            <li>Object Information samlar objektinformation baserat på objekttyp (småhus eller bostadsrätt) och screenar objektet mot affärsregler</li>
+            <li>Resultatet används i "Objects accepted?" gateway för att avgöra om objektet är godkänt</li>
+          </ul>
+        </li>
+        <li><strong>Valuation service (datastore):</strong>
+          <ul>
+            <li>Värderingsresultat från "Valuate bostad" service task lagras i "Valuation service" datastore</li>
+            <li>Värderingsresultatet används senare i kreditevaluering för att bedöma objektets värde</li>
+          </ul>
+        </li>
+        <li><strong>Error Events:</strong>
+          <ul>
+            <li>Object-processen har "Object rejected" error event (Event_1pf0qfv) med error code "object-rejected" som signalerar till Application-processen att objektet inte uppfyller kraven</li>
+            <li>Application-processen har "Object rejected" boundary event (Event_152muhg) på "object" call activity som triggas när Object-processen avslutas med "Object rejected" error event</li>
+          </ul>
+        </li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage-se-object.bpmn">Visa BPMN-processen för Object</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Object anropas från Application-processen via "object" call activity efter "Flow_1gmipm5" sequence flow. "start-event" start event triggas och processen börjar</li>
+        <li><strong>Purposes? (inclusive gateway):</strong> Systemet avgör ansökningssyfte:
+          <ul>
+            <li><strong>Purchase (Mortgage commitment):</strong> Om ansökan gäller köp, går flödet till "Skip step?" gateway</li>
+            <li><strong>Refinancing / Move loan:</strong> Om ansökan gäller flytt eller omlåning, går flödet till "Gateway_19knsnl"</li>
+          </ul>
+        </li>
+        <li><strong>För köp - Skip step? (exclusive gateway):</strong> Systemet avgör om registrering av källa till eget kapital ska hoppas över:
+          <ul>
+            <li><strong>No:</strong> Om registrering inte ska hoppas över, går flödet till "Register source of equity" user task</li>
+            <li><strong>Yes:</strong> Om registrering ska hoppas över, går flödet direkt till "Gateway_0box6jw"</li>
+          </ul>
+        </li>
+        <li><strong>Register source of equity (user task) - om inte hoppad över:</strong> Om registrering inte hoppades över, fyller primary stakeholder i källa till eget kapital. Om källan är försäljning av befintlig fastighet, måste fastighetsinformation tillhandahållas</li>
+        <li><strong>Gateway_0box6jw (exclusive gateway):</strong> Samlar ihop flöden från både "Register source of equity" user task och "Skip step?" gateway "Yes" innan processen fortsätter till "Gateway_1uyee92"</li>
+        <li><strong>För flytt/omlåning eller om vissa objekt avvisades - Gateway_19knsnl (exclusive gateway):</strong> En beslutspunkt som kan ta emot flöden från "Purposes?" gateway "Refinancing / Move loan" eller från "Objects accepted?" gateway "Some". Gateway:n dirigerar flödet till "Register loan details" user task</li>
+        <li><strong>Register loan details (user task):</strong> Primary stakeholder registrerar lånedetaljer för flytt eller omlåning</li>
+        <li><strong>Object information (call activity, multi-instance):</strong> Efter att lånedetaljer har registrerats, samlar systemet objektinformation via "Object information" call activity. Processen körs som multi-instance för varje objekt i ansökan</li>
+        <li><strong>Objects accepted? (exclusive gateway):</strong> Systemet avgör om objektet är godkänt:
+          <ul>
+            <li><strong>All:</strong> Om alla objekt är godkända, går flödet till "Gateway_1uyee92"</li>
+            <li><strong>Some:</strong> Om vissa objekt är godkända men andra avvisade, loopar processen tillbaka till "Gateway_19knsnl"</li>
+            <li><strong>None:</strong> Om inga objekt är godkända, avslutas processen med "Object rejected" error event</li>
+          </ul>
+        </li>
+        <li><strong>Gateway_1uyee92 (exclusive gateway):</strong> En beslutspunkt som kan ta emot flöden från "Objects accepted?" gateway "All" eller från "Gateway_0box6jw". Gateway:n dirigerar flödet till "Needs valuation?" gateway</li>
+        <li><strong>Needs valuation? (exclusive gateway):</strong> Systemet avgör om objektvärdering behövs:
+          <ul>
+            <li><strong>Yes:</strong> Om värdering krävs, går flödet till "Valuate bostad" service task</li>
+            <li><strong>No:</strong> Om värdering inte krävs, går flödet direkt till "Gateway_0u4o84x"</li>
+          </ul>
+        </li>
+        <li><strong>Valuate bostad (service task) - om nödvändig:</strong> Om värdering krävs, värderas fastigheten automatiskt av en värderare. Värderingsresultatet lagras i "Valuation service" datastore</li>
+        <li><strong>Gateway_0u4o84x (exclusive gateway):</strong> Samlar ihop flöden från både "Needs valuation?" gateway "No" och "Valuate bostad" service task innan processen avslutas</li>
+        <li><strong>Avslut:</strong> Processen avslutas normalt via "Event_1ymfh8p" end event när objektinformation är samlad, validerad, och värderad (om nödvändig). Processen returnerar till Application-processen via "object" call activity</li>
+      </ol>
+      
+      <h3>Flöde i Application-processen</h3>
+      <ul>
+        <li><strong>Sekventiellt flöde:</strong> Object-processen körs sekventiellt efter Internal data gathering och före stakeholders subprocess. Flödet är: Internal data gathering → Object → stakeholders subprocess → skip-confirm-application → KALP/Confirm application</li>
+        <li><strong>Error handling:</strong> Om Object-processen avslutas med "Object rejected" error event, triggas "Object rejected" boundary event (Event_152muhg) på "object" call activity i Application-processen, vilket dirigerar flödet till "Object rejected" end event (Event_07jlrhu) och avbryter hela ansökningsprocessen</li>
+      </ul>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>Purposes? gateway:</strong> Avgör ansökningssyfte (köp, flytt, omlåning) och dirigerar flödet till rätt registreringssteg</li>
+        <li><strong>Skip step? gateway:</strong> Avgör om registrering av källa till eget kapital ska hoppas över för köp</li>
+        <li><strong>Objects accepted? gateway:</strong> Avgör om objektet är godkänt (All, Some, None) och hanterar loop-mekanismer för avvisade objekt</li>
+        <li><strong>Needs valuation? gateway:</strong> Avgör om objektvärdering behövs baserat på ansökningssyfte och källa till eget kapital</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – köp med källa till eget kapital</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Primary stakeholder väljer köp som syfte, registrerar källa till eget kapital, systemet samlar objektinformation, objektet godkänns, värdering genomförs om nödvändig, och processen avslutas. Går vidare till stakeholders subprocess.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Normalflöde – flytt/omlåning</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Primary stakeholder väljer flytt eller omlåning som syfte, registrerar lånedetaljer, systemet samlar objektinformation, objektet godkänns, värdering genomförs om nödvändig, och processen avslutas. Går vidare till stakeholders subprocess.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Objekt avvisat – inga objekt godkända</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Systemet samlar objektinformation, men inga objekt godkänns via "Objects accepted?" gateway "None". Processen avslutas med "Object rejected" error event, vilket triggar "Object rejected" boundary event i Application-processen och avbryter hela ansökningsprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Vissa objekt avvisade – loop-mekanism</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td>Systemet samlar objektinformation, men vissa objekt avvisas via "Objects accepted?" gateway "Some". Processen loopar tillbaka till "Gateway_19knsnl" för att hantera avvisade objekt igen. Efter korrigering godkänns alla objekt och processen fortsätter.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – köp med källa till eget kapital</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Normalflöde – flytt/omlåning</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+      <li><strong>customer-standard-object-purchase</strong>: Standard objekt vid köp: småhus (villa), köpeskilling 3.5M SEK, källa till eget kapital från försäljning av befintlig fastighet (1.5M SEK), resterande finansiering via bolån (2.0M SEK).</li>
+      <li><strong>customer-standard-object-refinance</strong>: Standard objekt vid flytt/omlåning: befintlig fastighet (villa), värdering 3.0M SEK, befintligt lån 1.8M SEK, nytt lån 2.0M SEK för flytt till ny fastighet.</li>
+      <li><strong>customer-object-rejected</strong>: Objekt som avvisas vid validering (t.ex. fastighet som inte uppfyller kreditkriterier eller saknar nödvändig dokumentation).</li>
+      <li><strong>customer-object-valuation-required</strong>: Objekt som kräver värdering (t.ex. fastighet över 5M SEK eller när källa till eget kapital är oklar).</li>
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+      <tr>
+        <td>Object (call activity)</td>
+        <td>Call Activity</td>
+        <td>/application/object</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>UI-entry point för Object-processen</td>
+      </tr>
+      <tr>
+        <td>Purposes? (inclusive gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/object/purpose-evaluation</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Evaluarar ansökningssyfte (köp, flytt, omlåning)</td>
+      </tr>
+      <tr>
+        <td>Register source of equity (user task)</td>
+        <td>User Task</td>
+        <td>/application/object/source-of-equity</td>
+        <td>GET/POST</td>
+        <td>${BASE_URL}</td>
+        <td>UI-sida för registrering av källa till eget kapital. POST sparar till /api/object/source-of-equity</td>
+      </tr>
+      <tr>
+        <td>/api/object/source-of-equity</td>
+        <td>API</td>
+        <td>/api/object/source-of-equity</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>API-endpoint för att spara källa till eget kapital</td>
+      </tr>
+      <tr>
+        <td>Register loan details (user task)</td>
+        <td>User Task</td>
+        <td>/application/object/loan-details</td>
+        <td>GET/POST</td>
+        <td>${BASE_URL}</td>
+        <td>UI-sida för registrering av lånedetaljer. POST sparar till /api/object/loan-details</td>
+      </tr>
+      <tr>
+        <td>/api/object/loan-details</td>
+        <td>API</td>
+        <td>/api/object/loan-details</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>API-endpoint för att spara lånedetaljer</td>
+      </tr>
+      <tr>
+        <td>Object information (call activity)</td>
+        <td>Call Activity</td>
+        <td>/application/object/information</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>Multi-instance call activity som samlar objektinformation för varje objekt</td>
+      </tr>
+      <tr>
+        <td>Objects accepted? (exclusive gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/object/validation</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Validerar objekt mot affärsregler och returnerar All/Some/None</td>
+      </tr>
+      <tr>
+        <td>Needs valuation? (exclusive gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/object/valuation-required</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Evaluarar om värdering behövs baserat på ansökningssyfte och objektdata</td>
+      </tr>
+      <tr>
+        <td>Valuate bostad (service task)</td>
+        <td>Service Task</td>
+        <td>/api/valuation/property</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Service task som värderar fastigheten automatiskt. Timeout: 60 sekunder. Retry: 2 försök.</td>
+      </tr>
+      <tr>
+        <td>Object rejected (error event)</td>
+        <td>Error Event</td>
+        <td>/api/process/object/reject</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Triggas när inga objekt är godkända. Avbryter ansökningsprocessen.</td>
+      </tr>
+        </tbody>
+      </table>
+      
+      <h4>Datastores</h4>
+      <ul>
+        <li><strong>object_data</strong>: Databas-tabell som lagrar objektinformation (fastighetstyp, köpeskilling, källa till eget kapital, lånedetaljer)</li>
+        <li><strong>valuation_service</strong>: Databas-tabell som lagrar värderingsresultat från "Valuate bostad" service task</li>
+        <li><strong>application_objects</strong>: Databas-tabell som länkar objekt till ansökningar och hanterar multi-instance status</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>Object-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Flexibel skip-mekanism via "Skip step?" gateway:</strong> Genom att tillåta att registrering av källa till eget kapital kan hoppas över när det inte behövs, elimineras onödig manuell hantering för köp som inte kräver registrering. Detta kan minska manuell hantering med 20-30%.</li>
+        <li><strong>Strukturerad process med tydliga steg:</strong> Genom att separera syfte-beslut, registrering (källa till eget kapital eller lånedetaljer), objektinsamling, validering och värdering i tydliga steg, säkerställs att alla objekt bearbetas korrekt. Detta minskar risken för felaktig bearbetning med 40-50%.</li>
+        <li><strong>Multi-instance bearbetning säkerställer korrekt hantering:</strong> Genom att Object Information-processen körs som multi-instance för varje objekt, säkerställs att alla objekt bearbetas individuellt. Detta minskar risken för felaktig bearbetning med 50-60%.</li>
+      </ul>
+
+      <h3>Snabbare beslutsprocess och minskad väntetid</h3>
+      <ul>
+        <li><strong>Skip-mekanism säkerställer snabb bearbetning:</strong> Genom "Skip step?" gateway som kan hoppa över registrering när det inte behövs, säkerställs att processen kan slutföras snabbt för köp som inte kräver registrering. Detta kan minska genomsnittlig process-tid med 30-40% för köp som hoppar över registrering.</li>
+        <li><strong>Automatisk objektinsamling och validering:</strong> Genom automatisk insamling av objektinformation via Object Information-processen och automatisk validering via "Objects accepted?" gateway, säkerställs att objektinformation samlas in och valideras snabbt. Detta kan minska genomsnittlig bearbetningstid med 40-50%.</li>
+        <li><strong>Automatisk värdering när nödvändig:</strong> Genom automatisk värdering via "Valuate bostad" service task när det behövs, säkerställs att värdering genomförs snabbt utan manuell intervention. Detta kan minska genomsnittlig värderingstid med 50-60%.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad registrering:</strong> Genom "Register source of equity" och "Register loan details" user tasks som strukturerar registrering med tydliga fält, säkerställs att all relevant information samlas in. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Objektinformation för kreditevaluering:</strong> Genom att samla in objektinformation som används senare för kreditevaluering, säkerställs att kreditevaluering baseras på korrekt information. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga kreditbeslut med 40-50%.</li>
+        <li><strong>Värderingsresultat för kreditevaluering:</strong> Genom att lagra värderingsresultat i "Valuation service" datastore, säkerställs att värderingsresultatet är tillgängligt för kreditevaluering. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga kreditbeslut med 40-50%.</li>
+      </ul>
+
+      <h3>Förbättrad kundupplevelse och minskat avhopp</h3>
+      <ul>
+        <li><strong>Tydlig processstruktur:</strong> Genom tydlig strukturering av processen (syfte-beslut → registrering → objektinsamling → validering → värdering → avslut) och tydliga steg för primary stakeholder förstår primary stakeholder processen bättre. Detta kan öka kundnöjdheten med 20-30%.</li>
+        <li><strong>Flexibel skip-mekanism minskar onödig hantering:</strong> Genom skip-mekanism som kan hoppa över registrering när det inte behövs, minskas onödig hantering för primary stakeholder. Detta förbättrar kundupplevelsen och minskar behovet av manuell intervention.</li>
+        <li><strong>Strukturerad registrering minskar fel:</strong> Genom strukturerad registrering med tydliga fält minskas risken för felaktig information. Detta förbättrar kundupplevelsen och minskar behovet av manuell korrigering.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Strukturerad registrering säkerställer korrekt information:</strong> Genom "Register source of equity" och "Register loan details" user tasks som strukturerar registrering med tydliga fält, säkerställs att all relevant information samlas in korrekt. Detta minskar risken för felaktig information med 40-50%.</li>
+        <li><strong>Objektvalidering säkerställer korrekt bedömning:</strong> Genom "Objects accepted?" gateway som validerar objekt mot affärsregler, säkerställs att endast godkända objekt fortsätter i processen. Detta minskar risken för felaktiga kreditbeslut med 40-50%.</li>
+        <li><strong>Värderingsresultat för korrekt bedömning:</strong> Genom automatisk värdering och lagring av värderingsresultat, säkerställs att objektets värde är korrekt bedömt. Detta minskar risken för felaktiga kreditbeslut med 40-50%.</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Primary stakeholder-perspektiv</h3>
+      <ul>
+        <li><strong>Som primary stakeholder</strong> vill jag kunna registrera källa till eget kapital via "Register source of equity" user task <strong>så att</strong> jag kan ange källa till eget kapital för köp. <em>Acceptanskriterier: "Register source of equity" user task ska visa tydliga fält för källa till eget kapital, tillåta primary stakeholder att fylla i information, och validera att information är korrekt.</em></li>
+        <li><strong>Som primary stakeholder</strong> vill jag kunna registrera lånedetaljer via "Register loan details" user task <strong>så att</strong> jag kan ange lånedetaljer för flytt eller omlåning. <em>Acceptanskriterier: "Register loan details" user task ska visa tydliga fält för lånedetaljer, tillåta primary stakeholder att fylla i information, och validera att information är korrekt.</em></li>
+        <li><strong>Som primary stakeholder</strong> vill jag att systemet automatiskt avgör om registrering kan hoppas över via "Skip step?" gateway <strong>så att</strong> jag inte behöver registrera källa till eget kapital om det inte behövs. <em>Acceptanskriterier: "Skip step?" gateway ska automatiskt avgöra om registrering kan hoppas över, och om "Yes" ska flödet gå direkt till "Gateway_0box6jw" utan att visa "Register source of equity" user task.</em></li>
+      </ul>
+
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som systemadministratör</strong> vill jag att "Purposes?" gateway kan avgöra ansökningssyfte <strong>så att</strong> processen kan dirigeras till rätt registreringssteg</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Objects accepted?" gateway kan validera objekt mot affärsregler <strong>så att</strong> endast godkända objekt fortsätter i processen</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Needs valuation?" gateway kan avgöra om värdering behövs <strong>så att</strong> värdering bara genomförs när det behövs</li>
+        <li><strong>Som systemadministratör</strong> vill jag att Object Information-processen körs som multi-instance <strong>så att</strong> alla objekt bearbetas individuellt</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Syfte-beslut och registrering</h3>
+      <ul>
+        <li>"Purposes?" inclusive gateway ska automatiskt avgöra ansökningssyfte (köp, flytt, omlåning) och dirigerar flödet till rätt registreringssteg</li>
+        <li>"Skip step?" exclusive gateway ska automatiskt avgöra om registrering av källa till eget kapital ska hoppas över:
+          <ul>
+            <li>Om "No", ska flödet gå till "Register source of equity" user task</li>
+            <li>Om "Yes", ska flödet gå direkt till "Gateway_0box6jw"</li>
+          </ul>
+        </li>
+        <li>"Register source of equity" user task ska visa tydliga fält för källa till eget kapital, tillåta primary stakeholder att fylla i information, och validera att information är korrekt</li>
+        <li>"Register loan details" user task ska visa tydliga fält för lånedetaljer, tillåta primary stakeholder att fylla i information, och validera att information är korrekt</li>
+        <li><strong>UI/UX-krav:</strong>
+          <ul>
+            <li>Tydliga rubriker och sektioner för källa till eget kapital respektive lånedetaljer</li>
+            <li>Möjlighet att gå tillbaka och redigera information</li>
+            <li>Validering i realtid med tydliga felmeddelanden</li>
+            <li>Progress-indikator som visar vilket steg i processen som bearbetas</li>
+            <li>Autospar-funktionalitet för att undvika dataförlust</li>
+            <li>Tydlig information om när fastighetsinformation krävs (vid försäljning som källa)</li>
+          </ul>
+        </li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för API-anrop: 30 sekunder</li>
+            <li>Retry-logik: 3 försök med exponential backoff (1s, 2s, 4s)</li>
+            <li>Error codes: 400 (Valideringsfel), 500 (Serverfel), 503 (Service unavailable)</li>
+            <li>Valideringsregler: Alla numeriska fält måste vara >= 0, validering sker både på klient och server</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>2. Objektinsamling och validering</h3>
+      <ul>
+        <li>"Object information" call activity ska köras som multi-instance för varje objekt i ansökan</li>
+        <li>"Objects accepted?" exclusive gateway ska validera objekt mot affärsregler:
+          <ul>
+            <li>Om "All", ska flödet gå till "Gateway_1uyee92"</li>
+            <li>Om "Some", ska flödet loopa tillbaka till "Gateway_19knsnl" för att hantera avvisade objekt igen</li>
+            <li>Om "None", ska processen avslutas med "Object rejected" error event</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>3. Objektvärdering</h3>
+      <ul>
+        <li>"Needs valuation?" exclusive gateway ska automatiskt avgöra om objektvärdering behövs:
+          <ul>
+            <li>Om "Yes", ska flödet gå till "Valuate bostad" service task</li>
+            <li>Om "No", ska flödet gå direkt till "Gateway_0u4o84x"</li>
+          </ul>
+        </li>
+        <li>"Valuate bostad" service task ska värdera fastigheten automatiskt och lagra resultatet i "Valuation service" datastore</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för värderings-API: 60 sekunder</li>
+            <li>Retry-logik: 2 försök med exponential backoff (5s, 10s)</li>
+            <li>Error codes: 400 (Ogiltig fastighetsdata), 500 (Värderingsfel), 503 (Värderingstjänst otillgänglig)</li>
+            <li>Värderingsresultat måste sparas i datastore innan processen fortsätter</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Error handling</h3>
+      <ul>
+        <li>Om objektet avvisas via "Objects accepted?" gateway "None", ska processen avslutas med "Object rejected" error event (Event_1pf0qfv) med error code "object-rejected"</li>
+        <li>"Object rejected" error event ska signalera till Application-processen att objektet inte uppfyller kraven, vilket triggar "Object rejected" boundary event (Event_152muhg) på "object" call activity och avbryter hela ansökningsprocessen</li>
+      </ul>
+
+      <h3>5. Integration med Application-processen</h3>
+      <ul>
+        <li>Object-processen ska anropas från Application-processen via "object" call activity efter "Flow_1gmipm5" sequence flow (efter Internal data gathering)</li>
+        <li>När Object-processen avslutas normalt, ska flödet gå till "stakeholders" subprocess via "Flow_02jau0k" sequence flow</li>
+        <li>Om Object-processen avslutas med "Object rejected" error event, ska "Object rejected" boundary event (Event_152muhg) triggas på "object" call activity i Application-processen, vilket dirigerar flödet till "Object rejected" end event (Event_07jlrhu) och avbryter hela ansökningsprocessen</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Skalbarhet: Processen ska kunna hantera minst 5 parallella objekt-instanser</li>
+            <li>Prestanda: Genomsnittlig bearbetningstid per objekt: < 5 minuter (inklusive användarinteraktion och värdering)</li>
+            <li>Säkerhet: Alla API-anrop måste autentiseras och auktoriseras</li>
+            <li>Compliance: Alla data måste följa GDPR-krav (dataminimering, rätt att radera)</li>
+            <li>Error handling: Om värdering misslyckas, logga fel och försök igen (max 2 försök) innan processen avbryts</li>
+          </ul>
+        </li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
+</html>
+

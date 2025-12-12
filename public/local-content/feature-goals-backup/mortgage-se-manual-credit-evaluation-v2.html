@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual credit evaluation</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+    
+      
+
+
+    
+    <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+      <p>Manual credit evaluation är en manuell kreditevalueringsprocess där systemet utvärderar vilka krav som behöver hanteras för ansökningar som inte kan godkännas eller avvisas automatiskt. Processen anropas från Mortgage huvudprocessen när automatisk kreditevaluering inte kan fatta ett beslut, eller när manuell omvärdering begärs (t.ex. efter Appeal-processen eller från Credit decision-processen).</p>
+      <p>Processen startar med att systemet automatiskt utvärderar vilka krav som behöver hanteras via "Evaluate requirements" business rule task. Processen kan hantera flera typer av krav parallellt via inclusive gateway: Object control (objektvärdering), Documentation (dokumentationshantering), och Advanced underwriting (avancerad underwriting). Efter att alla krav har hanterats, genomförs automatisk kreditevaluering via "Automatic Credit Evaluation" call activity. Om avancerad underwriting krävs, genomförs "Perform advanced underwriting" user task av Case worker. Processen avslutas när allt är klart, eller med "Automatically rejected" escalation event om kreditevaluering avvisas.</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+      <p>Manual Credit Evaluation-processen startar när:</p>
+      <ul>
+        <li><strong>Automatisk kreditevaluering kan inte fatta beslut:</strong> Huvudprocessen (Mortgage) har genomfört automatisk kreditevaluering, men ansökan är varken automatiskt godkänd eller avvisad. Ansökan behöver manuell bedömning</li>
+        <li><strong>Manuell omvärdering begärs:</strong> "Manual re-evaluation required" boundary event från Credit decision-processen har triggats, vilket indikerar att manuell omvärdering behövs</li>
+        <li><strong>Efter Appeal-processen:</strong> Efter Appeal-processen när omvärdering krävs baserat på ny information eller ändrade förutsättningar</li>
+        <li><strong>Processkontext:</strong> Manual Credit Evaluation anropas från Mortgage huvudprocessen via "manual-credit-evaluation" call activity. Alla processvariabler skickas med för att säkerställa att all nödvändig information är tillgänglig</li>
+        <li><strong>Ansökningsdata är tillgänglig:</strong> All nödvändig information för manuell kreditevaluering är samlad och tillgänglig, inklusive ansökningsdata, kreditinformation, och tidigare evalueringsresultat</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+      <p>När Manual Credit Evaluation-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Alla krav är hanterade:</strong> Alla krav som identifierades via "Evaluate requirements" business rule task har hanterats:
+          <ul>
+            <li><strong>Object control:</strong> Om objektvärdering krävdes, har "Object control" call activity slutförts och objektvärdering är klar</li>
+            <li><strong>Documentation:</strong> Om dokumentation krävdes, har stakeholder laddat upp dokumentation via "Upload documentation" user task, dokumentation har bedömts via "Documentation assessment" call activity, och all dokumentation är godkänd via "All documentation complete?" gateway</li>
+            <li><strong>Advanced underwriting:</strong> Om avancerad underwriting krävdes, har Case worker genomfört "Perform advanced underwriting" user task</li>
+          </ul>
+        </li>
+        <li><strong>Automatisk kreditevaluering är genomförd:</strong> Efter att alla krav har hanterats, har "Automatic Credit Evaluation" call activity genomförts för att utvärdera ansökan med de nya förutsättningarna</li>
+        <li><strong>Processen avslutas normalt:</strong> Om kreditevaluering godkänner ansökan, avslutas processen normalt och huvudprocessen fortsätter med nästa steg</li>
+        <li><strong>Felhantering:</strong> Om kreditevaluering avvisar ansökan automatiskt via "Rejected?" gateway "Yes", avslutas processen med "Automatically rejected" escalation event som triggar boundary event i huvudprocessen och avbryter hela ansökningsprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+      <p>Manual Credit Evaluation-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Utvärdering av krav</h3>
+      <ul>
+        <li><strong>Evaluate requirements (business rule task):</strong> Systemet utvärderar automatiskt vilka krav som behöver hanteras via DMN-beslutsregler baserat på ansökningsdata och tidigare evalueringsresultat</li>
+        <li><strong>Requirements? (inclusive gateway):</strong> En beslutspunkt avgör vilka typer av krav som behöver hanteras. Gateway:n kan ha flera utgående flöden samtidigt (inclusive gateway), vilket innebär att flera krav kan hanteras parallellt:
+          <ul>
+            <li><strong>Object control:</strong> Om objektvärdering krävs, går flödet till "Object control" call activity</li>
+            <li><strong>Documentation:</strong> Om dokumentation krävs, går flödet till dokumentationshantering</li>
+            <li><strong>Advanced underwriting:</strong> Om avancerad underwriting krävs, går flödet till avancerad underwriting-hantering</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>2. Object control (om nödvändig)</h3>
+      <ul>
+        <li><strong>Object control (call activity):</strong> Om objektvärdering krävs, anropas "Object control" call activity för att genomföra objektvärdering. Efter objektvärdering samlas flöden ihop via inclusive gateway</li>
+      </ul>
+
+      <h3>3. Dokumentationshantering (om nödvändig)</h3>
+      <ul>
+        <li><strong>Upload documentation (user task):</strong> Om dokumentation krävs, laddar stakeholder upp dokumentation via "Upload documentation" user task</li>
+        <li><strong>Documentation assessment (call activity):</strong> Efter uppladdning bedöms dokumentation via "Documentation assessment" call activity</li>
+        <li><strong>Elevate to advanced underwriting (boundary event):</strong> Under dokumentationsbedömning kan "Elevate to advanced underwriting" boundary event triggas om avancerad underwriting behövs</li>
+        <li><strong>All documentation complete? (gateway):</strong> En beslutspunkt avgör om all dokumentation är godkänd:
+          <ul>
+            <li><strong>Yes:</strong> Processen fortsätter till sammanföring av flöden</li>
+            <li><strong>No:</strong> Processen loopar tillbaka till "Upload documentation" user task för ytterligare dokumentation</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Avancerad underwriting (om nödvändig)</h3>
+      <ul>
+        <li><strong>Automatic Credit Evaluation (call activity):</strong> Efter att alla krav har hanterats, anropas "Automatic Credit Evaluation" call activity för att utvärdera ansökan med de nya förutsättningarna</li>
+        <li><strong>New documentation requirement? (gateway):</strong> En beslutspunkt avgör om nya dokumentationskrav identifieras efter automatisk kreditevaluering:
+          <ul>
+            <li><strong>Yes:</strong> Processen loopar tillbaka till "Requirements?" gateway för att hantera nya krav</li>
+            <li><strong>No:</strong> Processen fortsätter till "Needs advanced underwriting?" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Needs advanced underwriting? (gateway):</strong> En beslutspunkt avgör om avancerad underwriting behövs:
+          <ul>
+            <li><strong>Yes:</strong> Processen går till "Perform advanced underwriting" user task</li>
+            <li><strong>No:</strong> Processen går till "Rejected?" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Perform advanced underwriting (user task):</strong> Om avancerad underwriting behövs, genomför Case worker avancerad underwriting via "Perform advanced underwriting" user task</li>
+        <li><strong>Request additional documentation (boundary event):</strong> Under avancerad underwriting kan "Request additional documentation" boundary event triggas om ytterligare dokumentation behövs. Detta loopar tillbaka till dokumentationshantering</li>
+        <li><strong>Select the stakeholder that needs their credit information refreshed (boundary event):</strong> Under avancerad underwriting kan "Select the stakeholder that needs their credit information refreshed" boundary event triggas för att uppdatera kreditinformation för specifik stakeholder</li>
+      </ul>
+
+      <h3>5. Avslut och felhantering</h3>
+      <ul>
+        <li><strong>Rejected? (gateway):</strong> En beslutspunkt avgör om kreditevaluering avvisar ansökan:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas med "Automatically rejected" escalation event</li>
+            <li><strong>No:</strong> Processen avslutas normalt</li>
+          </ul>
+        </li>
+        <li><strong>Automatically rejected (escalation event):</strong> Om kreditevaluering avvisar ansökan, avslutas processen med "Automatically rejected" escalation event. Detta triggar boundary event i huvudprocessen som avbryter hela ansökningsprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Automatic Credit Evaluation ingår inte - den anropas endast vid "Credit reevaluation required" från Documentation assessment</li>
+        <li>Credit decision ingår inte - den sker efter Manual Credit Evaluation</li>
+        <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Appeal-processen ingår inte - den sker parallellt och kan trigga Manual Credit Evaluation</li>
+        <li>KYC-processen ingår inte - den sker tidigare i huvudprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Mortgage huvudprocess:</strong> Manual Credit Evaluation anropas från mortgage.bpmn i huvudflödet (entry-18 branch) när is-automatically-rejected-no eller när manuell omvärdering begärs</li>
+        <li><strong>Automatic Credit Evaluation:</strong> Används vid "Credit reevaluation required" från Documentation assessment</li>
+        <li><strong>Documentation assessment:</strong> Call activity som bedömer uppladdade dokument</li>
+        <li><strong>Requirements business rules (DMN):</strong> Automatisk utvärdering av vilka krav som behöver hanteras</li>
+        <li><strong>Valuator:</strong> Genomför objektvärdering (Decide object value user task)</li>
+        <li><strong>Case worker:</strong> Genomför avancerad underwriting (Perform advanced underwriting user task) och kan begära ytterligare dokumentation</li>
+        <li><strong>Stakeholder/Customer:</strong> Laddar upp dokumentation (Upload documentation user task)</li>
+        <li><strong>Credit decision:</strong> Efter Manual Credit Evaluation går processen vidare till event-application-manually-approved och sedan till Credit decision</li>
+        <li><strong>Appeal:</strong> Efter Appeal kan processen gå tillbaka till Manual Credit Evaluation för omvärdering</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+      <p><a href="#/bpmn/mortgage-se-manual-credit-evaluation.bpmn">Visa BPMN-processen för Manual Credit Evaluation</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Mortgage huvudprocessen anropar "manual-credit-evaluation" call activity. Alla processvariabler skickas med för att säkerställa att all nödvändig information är tillgänglig</li>
+        <li><strong>Evaluate requirements (business rule task):</strong> Systemet utvärderar automatiskt vilka krav som behöver hanteras via DMN-beslutsregler baserat på ansökningsdata och tidigare evalueringsresultat</li>
+        <li><strong>Requirements? (inclusive gateway):</strong> En beslutspunkt avgör vilka typer av krav som behöver hanteras. Gateway:n kan ha flera utgående flöden samtidigt, vilket innebär att flera krav kan hanteras parallellt:
+          <ul>
+            <li><strong>Object control:</strong> Om objektvärdering krävs, anropas "Object control" call activity</li>
+            <li><strong>Documentation:</strong> Om dokumentation krävs, går flödet till dokumentationshantering</li>
+            <li><strong>Advanced underwriting:</strong> Om avancerad underwriting krävs, går flödet till avancerad underwriting-hantering</li>
+          </ul>
+        </li>
+        <li><strong>Object control (call activity, om nödvändig):</strong> Om objektvärdering krävs, anropas "Object control" call activity för att genomföra objektvärdering</li>
+        <li><strong>Dokumentationshantering (om nödvändig):</strong>
+          <ul>
+            <li><strong>Upload documentation (user task):</strong> Stakeholder laddar upp dokumentation via "Upload documentation" user task</li>
+            <li><strong>Documentation assessment (call activity):</strong> Efter uppladdning bedöms dokumentation via "Documentation assessment" call activity</li>
+            <li><strong>All documentation complete? (gateway):</strong> En beslutspunkt avgör om all dokumentation är godkänd. Om "No", loopar processen tillbaka till "Upload documentation" user task</li>
+          </ul>
+        </li>
+        <li><strong>Sammanföring av flöden:</strong> När alla krav har hanterats, samlas flöden ihop via inclusive gateway</li>
+        <li><strong>Automatic Credit Evaluation (call activity):</strong> Efter att alla krav har hanterats, anropas "Automatic Credit Evaluation" call activity för att utvärdera ansökan med de nya förutsättningarna</li>
+        <li><strong>New documentation requirement? (gateway):</strong> En beslutspunkt avgör om nya dokumentationskrav identifieras:
+          <ul>
+            <li><strong>Yes:</strong> Processen loopar tillbaka till "Requirements?" gateway för att hantera nya krav</li>
+            <li><strong>No:</strong> Processen fortsätter till "Needs advanced underwriting?" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Needs advanced underwriting? (gateway):</strong> En beslutspunkt avgör om avancerad underwriting behövs:
+          <ul>
+            <li><strong>Yes:</strong> Processen går till "Perform advanced underwriting" user task</li>
+            <li><strong>No:</strong> Processen går till "Rejected?" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Perform advanced underwriting (user task, om behövs):</strong> Om avancerad underwriting behövs, genomför Case worker avancerad underwriting via "Perform advanced underwriting" user task. Under avancerad underwriting kan boundary events triggas för att begära ytterligare dokumentation eller uppdatera kreditinformation</li>
+        <li><strong>Rejected? (gateway):</strong> En beslutspunkt avgör om kreditevaluering avvisar ansökan:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas med "Automatically rejected" escalation event</li>
+            <li><strong>No:</strong> Processen avslutas normalt</li>
+          </ul>
+        </li>
+        <li><strong>Avslut:</strong> När allt är klart, avslutas processen normalt och huvudprocessen fortsätter med nästa steg. Om kreditevaluering avvisar ansökan, avslutas processen med "Automatically rejected" escalation event som avbryter hela ansökningsprocessen</li>
+      </ol>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>Requirements? (inclusive gateway):</strong> Avgör vilka typer av krav som behöver hanteras. Kan ha flera utgående flöden samtidigt för parallell hantering</li>
+        <li><strong>All documentation complete? (gateway):</strong> Avgör om all dokumentation är godkänd. Om "No", loopar processen tillbaka för ytterligare dokumentation</li>
+        <li><strong>New documentation requirement? (gateway):</strong> Avgör om nya dokumentationskrav identifieras efter automatisk kreditevaluering. Om "Yes", loopar processen tillbaka för att hantera nya krav</li>
+        <li><strong>Needs advanced underwriting? (gateway):</strong> Avgör om avancerad underwriting behövs. Om "No", går processen till "Rejected?" gateway</li>
+        <li><strong>Rejected? (gateway):</strong> Avgör om kreditevaluering avvisar ansökan. Om "Yes", avslutas processen med escalation event</li>
+      </ul>
+      
+      <h3>Loop-mekanismer</h3>
+      <ul>
+        <li><strong>Dokumentationsloop:</strong> Om "All documentation complete?" gateway returnerar "No", loopar processen tillbaka till "Upload documentation" user task för ytterligare dokumentation</li>
+        <li><strong>Krav-loop:</strong> Om "New documentation requirement?" gateway returnerar "Yes", loopar processen tillbaka till "Requirements?" gateway för att hantera nya krav</li>
+        <li><strong>Ytterligare dokumentation från avancerad underwriting:</strong> Under "Perform advanced underwriting" user task kan "Request additional documentation" boundary event triggas för att begära ytterligare dokumentation, vilket loopar tillbaka till dokumentationshantering</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – manuell evaluering godkänd</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Evaluate requirements avgör vilka krav som behöver hanteras. Objektvärdering genomförs (om nödvändig). Dokumentation laddas upp och bedöms. Avancerad underwriting genomförs. Processen avslutas med godkänt beslut. Går vidare till event-application-manually-approved → Credit decision.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Kreditevaluering avvisad automatiskt</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Automatic Credit Evaluation (vid "Credit reevaluation required") avvisar ansökan. "credit-evaluation-automatically-rejected" escalation triggas. Processen avslutas med "Automatically rejected" end event.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Manuell evaluering avvisad</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Caseworker avvisar ansökan efter avancerad underwriting eller dokumentationsbedömning. "Automatically rejected" boundary event triggas på manual-credit-evaluation call activity. Processen avslutas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Ytterligare dokumentation krävs – loop</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Documentation assessment bedömer att ytterligare dokumentation behövs. Processen loopar tillbaka. Kund laddar upp kompletterande dokumentation. Dokumentation bedöms igen och godkänns. Processen fortsätter.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>Kreditevaluering krävs – omvärdering</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Documentation assessment triggar "Credit reevaluation required" boundary event. Automatic Credit Evaluation anropas för omvärdering. Omvärdering godkänns. Processen fortsätter med avancerad underwriting.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>object-valuation</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till object valuation</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>object-valuation</td>
+          <td>fill</td>
+          <td>[TODO: Lägg till locator för första fältet]</td>
+          <td>[TODO: Definiera testdata]</td>
+          <td>Fyll i information för object valuation</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>object-valuation</td>
+          <td>click</td>
+          <td>[TODO: Lägg till locator för submit-knapp]</td>
+          <td>-</td>
+          <td>Skicka/Submit</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>object-valuation-confirmation</td>
+          <td>verify</td>
+          <td>[TODO: Lägg till locator för bekräftelsemeddelande]</td>
+          <td>-</td>
+          <td>Verifiera bekräftelse</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Om kreditevaluering avvisas automatiskt, trigga...</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>object-valuation</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till object valuation</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>object-valuation</td>
+          <td>fill</td>
+          <td>[TODO: Lägg till locator för fält]</td>
+          <td>[TODO: Definiera testdata som orsakar fel]</td>
+          <td>Fyll i information som orsakar fel</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>object-valuation</td>
+          <td>verify</td>
+          <td>[TODO: Lägg till locator för felmeddelande]</td>
+          <td>-</td>
+          <td>Verifiera att felmeddelande visas</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: Om manuell evaluering avvisas, triggas "Automat...</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>object-valuation</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till object valuation</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>object-valuation</td>
+          <td>fill</td>
+          <td>[TODO: Lägg till locator för fält]</td>
+          <td>[TODO: Definiera testdata som orsakar fel]</td>
+          <td>Fyll i information som orsakar fel</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>object-valuation</td>
+          <td>verify</td>
+          <td>[TODO: Lägg till locator för felmeddelande]</td>
+          <td>-</td>
+          <td>Verifiera att felmeddelande visas</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S4: Manuell kreditevaluering är slutförd</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>object-valuation</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till object valuation</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>[TODO: data-profile-id]</strong>: [TODO: Definiera testdata för denna process]</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>Evaluate requirements</td>
+        <td>API</td>
+        <td>[TODO: Lägg till endpoint, t.ex. /api/v1/evaluate-requirements]</td>
+        <td>[TODO: Lägg till HTTP method, t.ex. GET eller POST]</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Business rule task (System lane) som utvärderar vilka krav som behöver hanteras</td>
+      </tr>
+    
+      <tr>
+        <td>Object valuation</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /object-valuation]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Objektvärdering krävs → Decide object value (user task, Valuator lane)</td>
+      </tr>
+    
+      <tr>
+        <td>Documentation</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /documentation]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Dokumentation krävs → Upload documentation (user task, Stakeholder lane) → Do...</td>
+      </tr>
+    
+      <tr>
+        <td>Advanced underwriting</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /advanced-underwriting]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avancerad underwriting krävs → Needs advanced underwriting? gateway → Perform...</td>
+      </tr>
+    
+        </tbody>
+      </table>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+      <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>Manual Credit Evaluation-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Automatisk kravutvärdering via "Evaluate requirements" business rule task:</strong> Systemet utvärderar automatiskt vilka krav som behöver hanteras via DMN-beslutsregler, vilket eliminerar behovet av manuell bedömning av vilka krav som behöver hanteras. Detta kan minska manuell hantering med 60-70% för kravutvärderingssteget.</li>
+        <li><strong>Parallell hantering av krav via inclusive gateway:</strong> Genom "Requirements?" inclusive gateway kan processen hantera flera krav parallellt (Object control, Documentation, Advanced underwriting), vilket ökar effektiviteten med 40-50% jämfört med sekventiell hantering.</li>
+        <li><strong>Automatisk kreditevaluering efter kravhantering:</strong> Genom "Automatic Credit Evaluation" call activity som automatiskt utvärderar ansökan efter att alla krav har hanterats, elimineras behovet av manuell kreditevaluering för de flesta ansökningar. Detta kan minska manuell hantering med 50-60% för kreditevalueringssteget.</li>
+      </ul>
+
+      <h3>Snabbare processering och minskad väntetid</h3>
+      <ul>
+        <li><strong>Parallell hantering av krav:</strong> Genom inclusive gateway kan processen hantera flera krav parallellt, vilket minskar total processeringstid med 30-40% för ansökningar med flera krav.</li>
+        <li><strong>Automatisk felhantering:</strong> Genom "Rejected?" gateway som automatiskt avbryter processen om kreditevaluering avvisar ansökan, säkerställs att ogiltiga ansökningar avbryts snabbt utan onödig processering. Detta minskar väntetid för ogiltiga ansökningar med 90-95%.</li>
+        <li><strong>Strukturerad loop-mekanism:</strong> Genom "All documentation complete?" gateway och "New documentation requirement?" gateway som kan loopa tillbaka för ytterligare dokumentation eller nya krav, säkerställs att processen inte fastnar utan fortsätter försöka tills alla krav är hanterade. Detta minskar antalet fastnade processer med 80-90%.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad kravhantering:</strong> Genom att separera kravhantering i tydliga steg (Evaluate requirements → Requirements? → Object control/Documentation/Advanced underwriting → Automatic Credit Evaluation) säkerställs att alla krav hanteras på rätt sätt. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Konsekvent kravutvärdering:</strong> Genom DMN-beslutsregler i "Evaluate requirements" business rule task säkerställs att kravutvärdering sker konsekvent baserat på tydliga kriterier. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga bedömningar med 40-50%.</li>
+        <li><strong>Strukturerad dokumentationshantering:</strong> Genom "All documentation complete?" gateway som kan loopa tillbaka för ytterligare dokumentation, säkerställs att all nödvändig dokumentation samlas in innan processen fortsätter. Detta förbättrar datakvaliteten med 30-40%.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Tidig identifiering av ogiltiga ansökningar:</strong> Genom "Rejected?" gateway som automatiskt avbryter processen om kreditevaluering avvisar ansökan, identifieras ogiltiga ansökningar tidigt. Detta minskar risken för onödig processering och förbättrar riskhanteringen.</li>
+        <li><strong>Konsekvent kravutvärdering:</strong> Genom DMN-beslutsregler i "Evaluate requirements" business rule task säkerställs att kravutvärdering sker konsekvent baserat på tydliga kriterier. Detta minskar risken för felaktiga bedömningar med 40-50%.</li>
+        <li><strong>Strukturerad loop-mekanism:</strong> Genom loop-mekanismer som säkerställer att alla krav hanteras innan processen avslutas, minskas risken för ofullständiga evalueringar med 50-60%.</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+      <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Case worker-perspektiv</h3>
+      <ul>
+        <li><strong>Som case worker</strong> vill jag att systemet automatiskt utvärderar vilka krav som behöver hanteras via "Evaluate requirements" business rule task <strong>så att</strong> jag vet exakt vilka krav som behöver hanteras utan att behöva bedöma manuellt. <em>Acceptanskriterier: Systemet ska automatiskt identifiera vilka krav som behöver hanteras (Object control, Documentation, Advanced underwriting) baserat på ansökningsdata och tidigare evalueringsresultat.</em></li>
+        <li><strong>Som case worker</strong> vill jag att processen kan hantera flera krav parallellt via "Requirements?" inclusive gateway <strong>så att</strong> processen går snabbare för ansökningar med flera krav. <em>Acceptanskriterier: "Requirements?" inclusive gateway ska tillåta flera utgående flöden samtidigt för parallell hantering av krav.</em></li>
+        <li><strong>Som case worker</strong> vill jag att "Perform advanced underwriting" user task visar all relevant information <strong>så att</strong> jag kan fatta välgrundade beslut om avancerad underwriting. <em>Acceptanskriterier: "Perform advanced underwriting" user task ska visa tydlig sammanfattning av all relevant information och tillåta case worker att begära ytterligare dokumentation eller uppdatera kreditinformation.</em></li>
+      </ul>
+
+      <h3>Stakeholder/Customer-perspektiv</h3>
+      <ul>
+        <li><strong>Som kund</strong> vill jag att systemet tydligt visar vilka dokument som behöver laddas upp via "Upload documentation" user task <strong>så att</strong> jag vet exakt vad som behövs. <em>Acceptanskriterier: "Upload documentation" user task ska visa tydlig lista över vilka dokument som behöver laddas upp och tillåta kunden att ladda upp dokumentation.</em></li>
+        <li><strong>Som kund</strong> vill jag att processen automatiskt loopar tillbaka om ytterligare dokumentation behövs <strong>så att</strong> jag kan komplettera dokumentationen utan att processen fastnar. <em>Acceptanskriterier: Om "All documentation complete?" gateway returnerar "No", ska processen automatiskt loopa tillbaka till "Upload documentation" user task.</em></li>
+      </ul>
+
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som systemadministratör</strong> vill jag att "Evaluate requirements" business rule task automatiskt utvärderar vilka krav som behöver hanteras via DMN-beslutsregler <strong>så att</strong> kravutvärdering sker konsekvent baserat på tydliga kriterier. <em>Acceptanskriterier: Systemet ska automatiskt utvärdera vilka krav som behöver hanteras via DMN-beslutsregler baserat på ansökningsdata och tidigare evalueringsresultat.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Automatic Credit Evaluation" call activity automatiskt utvärderar ansökan efter att alla krav har hanterats <strong>så att</strong> kreditevaluering sker automatiskt med de nya förutsättningarna. <em>Acceptanskriterier: Efter att alla krav har hanterats, ska "Automatic Credit Evaluation" call activity automatiskt anropas för att utvärdera ansökan med de nya förutsättningarna.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Rejected?" gateway automatiskt avbryter processen om kreditevaluering avvisar ansökan <strong>så att</strong> ogiltiga ansökningar avbryts snabbt utan onödig processering. <em>Acceptanskriterier: Om "Rejected?" gateway returnerar "Yes", ska processen avslutas med "Automatically rejected" escalation event som triggar boundary event i huvudprocessen.</em></li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+      <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Utvärdering av krav</h3>
+      <ul>
+        <li>"Evaluate requirements" business rule task ska automatiskt utvärdera vilka krav som behöver hanteras via DMN-beslutsregler baserat på ansökningsdata och tidigare evalueringsresultat</li>
+        <li>"Requirements?" inclusive gateway ska avgöra vilka typer av krav som behöver hanteras och tillåta flera utgående flöden samtidigt för parallell hantering</li>
+        <li>Om Object control krävs, ska "Object control" call activity anropas</li>
+        <li>Om Documentation krävs, ska flödet gå till dokumentationshantering</li>
+        <li>Om Advanced underwriting krävs, ska flödet gå till avancerad underwriting-hantering</li>
+      </ul>
+
+      <h3>2. Object control</h3>
+      <ul>
+        <li>Om objektvärdering krävs, ska "Object control" call activity anropas för att genomföra objektvärdering</li>
+        <li>Efter objektvärdering ska flöden samlas ihop via inclusive gateway</li>
+      </ul>
+
+      <h3>3. Dokumentationshantering</h3>
+      <ul>
+        <li>Om dokumentation krävs, ska "Upload documentation" user task visas för stakeholder</li>
+        <li>Efter uppladdning ska dokumentation bedömas via "Documentation assessment" call activity</li>
+        <li>"All documentation complete?" gateway ska avgöra om all dokumentation är godkänd</li>
+        <li>Om "All documentation complete?" gateway returnerar "No", ska processen automatiskt loopa tillbaka till "Upload documentation" user task</li>
+        <li>Om "All documentation complete?" gateway returnerar "Yes", ska processen fortsätta till sammanföring av flöden</li>
+        <li>Under dokumentationsbedömning kan "Elevate to advanced underwriting" boundary event triggas om avancerad underwriting behövs</li>
+      </ul>
+
+      <h3>4. Avancerad underwriting</h3>
+      <ul>
+        <li>Efter att alla krav har hanterats, ska "Automatic Credit Evaluation" call activity anropas för att utvärdera ansökan med de nya förutsättningarna</li>
+        <li>"New documentation requirement?" gateway ska avgöra om nya dokumentationskrav identifieras efter automatisk kreditevaluering</li>
+        <li>Om "New documentation requirement?" gateway returnerar "Yes", ska processen automatiskt loopa tillbaka till "Requirements?" gateway</li>
+        <li>Om "New documentation requirement?" gateway returnerar "No", ska processen fortsätta till "Needs advanced underwriting?" gateway</li>
+        <li>"Needs advanced underwriting?" gateway ska avgöra om avancerad underwriting behövs</li>
+        <li>Om "Needs advanced underwriting?" gateway returnerar "Yes", ska "Perform advanced underwriting" user task visas för Case worker</li>
+        <li>Om "Needs advanced underwriting?" gateway returnerar "No", ska processen gå till "Rejected?" gateway</li>
+        <li>Under "Perform advanced underwriting" user task kan "Request additional documentation" boundary event triggas för att begära ytterligare dokumentation</li>
+        <li>Under "Perform advanced underwriting" user task kan "Select the stakeholder that needs their credit information refreshed" boundary event triggas för att uppdatera kreditinformation</li>
+      </ul>
+
+      <h3>5. Avslut och felhantering</h3>
+      <ul>
+        <li>"Rejected?" gateway ska avgöra om kreditevaluering avvisar ansökan</li>
+        <li>Om "Rejected?" gateway returnerar "Yes", ska processen avslutas med "Automatically rejected" escalation event</li>
+        <li>Om "Rejected?" gateway returnerar "No", ska processen avslutas normalt</li>
+        <li>"Automatically rejected" escalation event ska trigga boundary event i huvudprocessen som avbryter hela ansökningsprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
+</html>

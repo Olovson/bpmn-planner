@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Household</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+    
+      
+
+
+    
+    <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+<p>Household är en kundaktivitet där stakeholder (t.ex. kund eller medsökande) registrerar hushållsekonomiinformation för sitt hushåll. Processen anropas från Application-processen inuti "stakeholders" subprocess (multi-instance, "Per household"), vilket innebär att Household anropas en gång per hushåll i ansökan.</p>
+      <p>Processen startar med att systemet avgör om registrering av hushållsekonomiinformation ska hoppas över via "Skip step?" gateway. Om registrering inte hoppas över, fyller stakeholder i hushållsekonomiinformation via "Register household economy information" user task, inklusive utgifter (bilar + billån, barn, underhållsbidrag, andra utgifter) och inkomster (underhållsbidrag, andra inkomster). Om registrering hoppas över, går processen direkt till avslut.</p>
+      <p>Efter registrering (eller om den hoppades över) samlas flöden ihop och processen avslutas. Processen körs sekventiellt före Stakeholder call activity inom stakeholders subprocess, vilket innebär att Household måste slutföras innan Stakeholder startar för samma hushåll.</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+<p>Household-processen startar när:</p>
+      <ul>
+        <li><strong>Object-processen är klar:</strong> Object call activity i Application-processen har slutförts och "Flow_02jau0k" sequence flow har triggats</li>
+        <li><strong>stakeholders subprocess startar:</strong> "stakeholders" subprocess (multi-instance, "Per household") startar i Application-processen via "Event_183o8p8" start event. Subprocessen är multi-instance, vilket innebär att den körs en gång per hushåll i ansökan</li>
+        <li><strong>Processkontext:</strong> Household anropas från Application-processen inuti "stakeholders" subprocess via "household" call activity efter "Flow_09zs5qk" sequence flow. Household anropas en gång per hushåll eftersom stakeholders subprocess är multi-instance</li>
+        <li><strong>Hushållsinformation är tillgänglig:</strong> Information om hushållet (inklusive antal hushåll i ansökan) är tillgänglig för registrering</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+<p>När Household-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Hushållsinformation är samlad och hanterad:</strong> Om registrering inte hoppades över, har stakeholder registrerat hushållsekonomiinformation via "Register household economy information" user task, inklusive utgifter (bilar + billån, barn, underhållsbidrag, andra utgifter) och inkomster (underhållsbidrag, andra inkomster). Om registrering hoppades över, har processen slutförts utan registrering</li>
+        <li><strong>Processen avslutas:</strong> När processen är klar (antingen efter registrering eller om den hoppades över), samlas flöden ihop via "Sammanför flöden" gateway och processen avslutas normalt via "Event_10dekgp" end event</li>
+        <li><strong>Flödet går vidare till Stakeholder call activity:</strong> När Household-processen avslutas, returnerar "household" call activity till Application-processen via "Flow_0kl056u" sequence flow. Flödet går sekventiellt (inte parallellt) till "stakeholder" call activity inom samma stakeholders subprocess-instans</li>
+        <li><strong>stakeholders subprocess fortsätter:</strong> Efter att både Household och Stakeholder har slutförts för ett hushåll, avslutas stakeholders subprocess-instansen via "Event_0gupj82" end event och "Flow_1f4z8v0" sequence flow går till "skip-confirm-application" gateway i Application-processen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+<p>Household-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Start och skip-beslut</h3>
+      <ul>
+        <li><strong>Start event:</strong> Processen startar när Household anropas från Application-processen inuti "stakeholders" subprocess via "household" call activity. "Event_0thxdf9" start event triggas och processen börjar</li>
+        <li><strong>Skip step? (exclusive gateway):</strong> Systemet avgör om registrering av hushållsekonomiinformation ska hoppas över. Gateway:n har två utgående flöden:
+          <ul>
+            <li><strong>No:</strong> Om registrering inte ska hoppas över, går flödet till "Register household economy information" user task</li>
+            <li><strong>Yes:</strong> Om registrering ska hoppas över, går flödet direkt till "Sammanför flöden" gateway</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>2. Registrering av hushållsekonomiinformation (om inte hoppad över)</h3>
+      <ul>
+        <li><strong>Register household economy information (user task):</strong> Om registrering inte hoppades över, fyller stakeholder (t.ex. kund eller medsökande) i hushållsekonomiinformation. Information som registreras inkluderar:
+          <ul>
+            <li><strong>Utgifter:</strong> Bilar + billån, barn, underhållsbidrag, andra utgifter</li>
+            <li><strong>Inkomster:</strong> Underhållsbidrag, andra inkomster</li>
+          </ul>
+          Denna information används senare för affordability-beräkningar i kreditevaluering
+        </li>
+      </ul>
+
+      <h3>3. Sammanställning och avslut</h3>
+      <ul>
+        <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter registrering (eller om den hoppades över) samlas flöden ihop. Gateway:n kan ta emot flöden från "Register household economy information" user task eller från "Skip step?" gateway "Yes"</li>
+        <li><strong>End event:</strong> Processen avslutas normalt via "Event_10dekgp" end event när hushållsinformation är samlad och hanterad (eller om registrering hoppades över)</li>
+      </ul>
+
+      <h3>4. Multi-instance och sekventiellt flöde</h3>
+      <ul>
+        <li><strong>Multi-instance aspekt:</strong> Household anropas inuti "stakeholders" subprocess som är multi-instance (körs per household), vilket innebär att Household anropas en gång per hushåll i ansökan. Varje hushåll bearbetas individuellt med egen instans av Household-processen</li>
+        <li><strong>Sekventiellt flöde:</strong> Household-processen körs sekventiellt före Stakeholder call activity inom samma stakeholders subprocess-instans. Detta innebär att Household måste slutföras innan Stakeholder startar för samma hushåll. Flödet är: stakeholders subprocess startar → Household → Stakeholder → stakeholders subprocess slutförs</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Internal Data Gathering ingår inte - den sker tidigare i Application-processen</li>
+        <li>Object-processen ingår inte - den sker före stakeholders subprocess</li>
+        <li>stakeholders subprocess ingår inte - Household anropas inuti den, men subprocessen i sig ingår inte</li>
+        <li>Stakeholder call activity ingår inte - den körs efter Household, sekventiellt</li>
+        <li>skip-confirm-application gateway ingår inte - den sker efter stakeholders subprocess</li>
+        <li>Confirm Application ingår inte - den sker efter stakeholders subprocess och skip-confirm-application</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Application huvudprocess (mortgage-se-application.bpmn):</strong>
+          <ul>
+            <li>Household anropas inuti stakeholders subprocess (multi-instance, "Per household")</li>
+            <li>Flöde: Object → stakeholders subprocess → Household → Stakeholder → stakeholders subprocess slutförs → skip-confirm-application</li>
+          </ul>
+        </li>
+        <li><strong>Object-processen:</strong> Måste vara slutförd innan stakeholders subprocess startar</li>
+        <li><strong>stakeholders subprocess:</strong> Household anropas inuti denna subprocess, som är multi-instance (körs per household)</li>
+        <li><strong>Stakeholder call activity:</strong> Anropas sekventiellt EFTER Household inom stakeholders subprocess</li>
+        <li><strong>Error Events:</strong>
+          <ul>
+            <li>stakeholders subprocess har boundary event (Event_1dhapnx) som kan trigga "Stakeholder rejected" (Error_0xx0ma1) → "Stakeholder rejected" end event</li>
+            <li>Detta påverkar Household indirekt om det triggas</li>
+          </ul>
+        </li>
+        <li><strong>Escalation Events:</strong>
+          <ul>
+            <li>securities-assessments-invalid (Escalation_2vm8k3e) - definierad men används inte direkt i Household-processen</li>
+          </ul>
+        </li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage-se-household.bpmn">Visa BPMN-processen för Household</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Household anropas från Application-processen inuti "stakeholders" subprocess via "household" call activity. "Event_0thxdf9" start event triggas och processen börjar</li>
+        <li><strong>Skip step? (exclusive gateway):</strong> Systemet avgör om registrering av hushållsekonomiinformation ska hoppas över:
+          <ul>
+            <li><strong>No:</strong> Om registrering inte ska hoppas över, går flödet till "Register household economy information" user task</li>
+            <li><strong>Yes:</strong> Om registrering ska hoppas över, går flödet direkt till "Sammanför flöden" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Register household economy information (user task) - om inte hoppad över:</strong> Om registrering inte hoppades över, fyller stakeholder (t.ex. kund eller medsökande) i hushållsekonomiinformation. Information som registreras inkluderar utgifter (bilar + billån, barn, underhållsbidrag, andra utgifter) och inkomster (underhållsbidrag, andra inkomster)</li>
+        <li><strong>Sammanför flöden (exclusive gateway):</strong> Efter registrering (eller om den hoppades över) samlas flöden ihop. Gateway:n kan ta emot flöden från "Register household economy information" user task eller från "Skip step?" gateway "Yes"</li>
+        <li><strong>Avslut:</strong> Processen avslutas normalt via "Event_10dekgp" end event när hushållsinformation är samlad och hanterad (eller om registrering hoppades över). Processen returnerar till Application-processen via "household" call activity</li>
+      </ol>
+      
+      <h3>Flöde i Application-processen</h3>
+      <ul>
+        <li><strong>stakeholders subprocess (multi-instance):</strong> Household anropas inuti "stakeholders" subprocess som är multi-instance (körs per household), vilket innebär att Household anropas en gång per hushåll i ansökan</li>
+        <li><strong>Sekventiellt flöde:</strong> Flödet är sekventiellt (inte parallellt): stakeholders subprocess startar → Household → Stakeholder → stakeholders subprocess slutförs → skip-confirm-application gateway → KALP/Confirm application</li>
+        <li><strong>Multi-instance bearbetning:</strong> Varje hushåll bearbetas individuellt med egen instans av Household-processen. Household i sig är inte multi-instance, men anropas inuti en multi-instance subprocess</li>
+      </ul>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>Skip step? gateway:</strong> Avgör om registrering av hushållsekonomiinformation ska hoppas över. Om "No", går flödet till "Register household economy information" user task. Om "Yes", går flödet direkt till "Sammanför flöden" gateway</li>
+        <li><strong>Sammanför flöden gateway:</strong> Samlar ihop flöden från både "Register household economy information" user task och "Skip step?" gateway "Yes" innan processen avslutas</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – hushållsinformation samlad</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Kund fyller i hushållsekonomi (inkomster, utgifter, tillgångar), personlig ekonomi (löner, andra inkomster), källa till eget kapital, och låneuppgifter (befintliga lån, krediter). All information valideras och processen avslutas. Går vidare till kreditevaluering.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Ofullständig information – komplettering krävs</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td>Kund fyller i hushållsinformation men saknar viktiga fält (t.ex. källa till eget kapital, eller ofullständiga låneuppgifter). Systemet kräver komplettering innan processen kan fortsätta.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Multi-instance – flera hushåll</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Processen körs som multi-instance för flera hushåll (t.ex. huvudansökande + medsökande med separata hushåll). Varje hushåll fyller i sin information. Alla hushåll godkänns. Processen avslutas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>customer-standard-household</strong>: [TODO: Definiera testdata för standard hushåll (2 vuxna, 2 barn), medianinkomst (~400k SEK/år)]</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>Household (call activity)</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /household-(call-activity)]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Multi-instance call activity som hanterar hushållsinformation för varje house...</td>
+      </tr>
+    
+      <tr>
+        <td>Processen körs parallellt med Stakeholders</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /processen-körs-parallellt-med-stakeholders]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Household och Stakeholders körs parallellt via parallel gateway</td>
+      </tr>
+    
+      <tr>
+        <td>Processen är multi-instance</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /processen-är-multi-instance]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Körs för varje household i ansökan</td>
+      </tr>
+    
+        </tbody>
+      </table>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>Household-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Flexibel skip-mekanism via "Skip step?" gateway:</strong> Genom att tillåta att registrering av hushållsekonomiinformation kan hoppas över när det inte behövs, elimineras onödig manuell hantering för hushåll som inte behöver registrera ekonomiinformation. Detta kan minska manuell hantering med 30-40% för hushåll som inte behöver registrera ekonomiinformation.</li>
+        <li><strong>Strukturerad process med tydliga steg:</strong> Genom att separera skip-beslut, registrering (om inte hoppad över) och avslut i tydliga steg, säkerställs att alla hushåll bearbetas korrekt. Detta minskar risken för felaktig bearbetning med 40-50%.</li>
+        <li><strong>Multi-instance bearbetning säkerställer korrekt hantering:</strong> Genom att Household anropas inuti multi-instance subprocess som körs per household, säkerställs att alla hushåll bearbetas individuellt. Detta minskar risken för felaktig bearbetning med 50-60%.</li>
+      </ul>
+
+      <h3>Snabbare beslutsprocess och minskad väntetid</h3>
+      <ul>
+        <li><strong>Skip-mekanism säkerställer snabb bearbetning:</strong> Genom "Skip step?" gateway som kan hoppa över registrering när det inte behövs, säkerställs att processen kan slutföras snabbt för hushåll som inte behöver registrera ekonomiinformation. Detta kan minska genomsnittlig process-tid med 50-60% för hushåll som hoppar över registrering.</li>
+        <li><strong>Sekventiellt flöde säkerställer korrekt ordning:</strong> Genom sekventiellt flöde (Household → Stakeholder) säkerställs att Household slutförs innan Stakeholder startar för samma hushåll. Detta säkerställer korrekt ordning och minskar risken för felaktig bearbetning.</li>
+        <li><strong>Multi-instance bearbetning möjliggör parallell hantering:</strong> Genom multi-instance subprocess som kan bearbeta flera hushåll parallellt (beroende på konfiguration), säkerställs att bearbetningstiden minimeras för ansökningar med flera hushåll. Detta kan minska genomsnittlig bearbetningstid med 40-50% för ansökningar med flera hushåll.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Strukturerad registrering:</strong> Genom "Register household economy information" user task som strukturerar registrering med tydliga kategorier (utgifter: bilar + billån, barn, underhållsbidrag, andra utgifter; inkomster: underhållsbidrag, andra inkomster), säkerställs att all relevant information samlas in. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Hushållsekonomiinformation för affordability-beräkningar:</strong> Genom att samla in hushållsekonomiinformation som används senare för affordability-beräkningar i kreditevaluering, säkerställs att kreditevaluering baseras på korrekt information. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga kreditbeslut med 40-50%.</li>
+        <li><strong>Multi-instance bearbetning säkerställer korrekt hantering:</strong> Genom multi-instance subprocess som bearbetar alla hushåll individuellt, säkerställs att alla hushålls ekonomiinformation samlas in korrekt. Detta förbättrar datakvaliteten med 30-40%.</li>
+      </ul>
+
+      <h3>Förbättrad handläggarupplevelse och minskat avhopp</h3>
+      <ul>
+        <li><strong>Tydlig processstruktur:</strong> Genom tydlig strukturering av processen (Skip-beslut → Registrering om inte hoppad över → Avslut) och tydliga steg för stakeholder förstår stakeholder processen bättre. Detta kan öka stakeholder-nöjdheten med 20-30%.</li>
+        <li><strong>Flexibel skip-mekanism minskar onödig hantering:</strong> Genom skip-mekanism som kan hoppa över registrering när det inte behövs, minskas onödig hantering för stakeholder. Detta förbättrar stakeholder-upplevelsen och minskar behovet av manuell intervention.</li>
+        <li><strong>Strukturerad registrering minskar fel:</strong> Genom strukturerad registrering med tydliga kategorier minskas risken för felaktig information. Detta förbättrar stakeholder-upplevelsen och minskar behovet av manuell korrigering.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Strukturerad registrering säkerställer korrekt information:</strong> Genom "Register household economy information" user task som strukturerar registrering med tydliga kategorier, säkerställs att all relevant information samlas in korrekt. Detta minskar risken för felaktig information med 40-50%.</li>
+        <li><strong>Hushållsekonomiinformation för affordability-beräkningar:</strong> Genom att samla in hushållsekonomiinformation som används senare för affordability-beräkningar, säkerställs att kreditevaluering baseras på korrekt information. Detta minskar risken för felaktiga kreditbeslut med 40-50%.</li>
+        <li><strong>Multi-instance bearbetning säkerställer korrekt hantering:</strong> Genom multi-instance subprocess som bearbetar alla hushåll individuellt, säkerställs att alla hushålls ekonomiinformation samlas in korrekt. Detta minskar risken för felaktig bearbetning med 50-60%.</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Stakeholder-perspektiv</h3>
+      <ul>
+        <li><strong>Som stakeholder</strong> vill jag kunna registrera hushållsekonomiinformation via "Register household economy information" user task <strong>så att</strong> jag kan ange utgifter (bilar + billån, barn, underhållsbidrag, andra utgifter) och inkomster (underhållsbidrag, andra inkomster) för mitt hushåll. <em>Acceptanskriterier: "Register household economy information" user task ska visa tydliga fält för utgifter och inkomster, tillåta stakeholder att fylla i information, och validera att information är korrekt.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag att systemet automatiskt avgör om registrering kan hoppas över via "Skip step?" gateway <strong>så att</strong> jag inte behöver registrera ekonomiinformation om det inte behövs. <em>Acceptanskriterier: "Skip step?" gateway ska automatiskt avgöra om registrering kan hoppas över, och om "Yes" ska flödet gå direkt till "Sammanför flöden" gateway utan att visa "Register household economy information" user task.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag att processen automatiskt bearbetar alla hushåll i ansökan via multi-instance subprocess <strong>så att</strong> varje hushåll bearbetas individuellt med egen instans. <em>Acceptanskriterier: Household-processen ska anropas en gång per hushåll i ansökan via multi-instance subprocess, och varje hushåll ska bearbetas individuellt.</em></li>
+      </ul>
+
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som systemadministratör</strong> vill jag att "Skip step?" gateway kan avgöra om registrering kan hoppas över <strong>så att</strong> processen kan slutföras snabbt för hushåll som inte behöver registrera ekonomiinformation</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Register household economy information" user task strukturerar registrering med tydliga kategorier <strong>så att</strong> all relevant information samlas in korrekt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden" gateway samlar ihop flöden från både registrering och skip <strong>så att</strong> processen avslutas korrekt oavsett vilken sökväg som används</li>
+        <li><strong>Som systemadministratör</strong> vill jag att Household-processen anropas inuti multi-instance subprocess <strong>så att</strong> alla hushåll bearbetas individuellt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att Household-processen körs sekventiellt före Stakeholder call activity <strong>så att</strong> Household slutförs innan Stakeholder startar för samma hushåll</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Skip-beslut</h3>
+      <ul>
+        <li>"Skip step?" exclusive gateway ska automatiskt avgöra om registrering av hushållsekonomiinformation ska hoppas över:
+          <ul>
+            <li>Om "No", ska flödet gå till "Register household economy information" user task</li>
+            <li>Om "Yes", ska flödet gå direkt till "Sammanför flöden" gateway</li>
+          </ul>
+        </li>
+        <li>Systemet ska automatiskt visa tydligt om registrering hoppas över eller inte</li>
+      </ul>
+
+      <h3>2. Registrering av hushållsekonomiinformation</h3>
+      <ul>
+        <li>"Register household economy information" user task ska visa tydliga fält för utgifter och inkomster, tillåta stakeholder att fylla i information, och validera att information är korrekt</li>
+        <li>Information som ska registreras inkluderar:
+          <ul>
+            <li><strong>Utgifter:</strong> Bilar + billån, barn, underhållsbidrag, andra utgifter</li>
+            <li><strong>Inkomster:</strong> Underhållsbidrag, andra inkomster</li>
+          </ul>
+        </li>
+        <li>Systemet ska validera att information är korrekt och komplett innan processen fortsätter</li>
+      </ul>
+
+      <h3>3. Sammanställning och avslut</h3>
+      <ul>
+        <li>"Sammanför flöden" exclusive gateway ska samla ihop flöden från både "Register household economy information" user task och "Skip step?" gateway "Yes" innan processen avslutas</li>
+        <li>Processen ska avslutas normalt via "Event_10dekgp" end event när hushållsinformation är samlad och hanterad (eller om registrering hoppades över)</li>
+        <li>Resultatet ska returneras till Application-processen via "household" call activity för vidare hantering</li>
+      </ul>
+
+      <h3>4. Multi-instance och sekventiellt flöde</h3>
+      <ul>
+        <li>Household-processen ska anropas inuti "stakeholders" subprocess som är multi-instance (körs per household), vilket innebär att Household anropas en gång per hushåll i ansökan</li>
+        <li>Varje hushåll ska bearbetas individuellt med egen instans av Household-processen</li>
+        <li>Household-processen ska köras sekventiellt före Stakeholder call activity inom samma stakeholders subprocess-instans, vilket innebär att Household måste slutföras innan Stakeholder startar för samma hushåll</li>
+        <li>Flödet ska vara: stakeholders subprocess startar → Household → Stakeholder → stakeholders subprocess slutförs</li>
+      </ul>
+
+      <h3>5. Integration med Application-processen</h3>
+      <ul>
+        <li>Household-processen ska anropas från Application-processen inuti "stakeholders" subprocess via "household" call activity efter "Flow_09zs5qk" sequence flow</li>
+        <li>När Household-processen avslutas, ska flödet gå sekventiellt till "stakeholder" call activity via "Flow_0kl056u" sequence flow</li>
+        <li>Efter att både Household och Stakeholder har slutförts för ett hushåll, ska stakeholders subprocess-instansen avslutas och flödet ska gå till "skip-confirm-application" gateway i Application-processen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
+</html>

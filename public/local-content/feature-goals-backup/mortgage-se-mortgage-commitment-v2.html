@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mortgage commitment</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+    
+      
+
+
+    
+    <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+      <p>Mortgage commitment är en process där systemet hanterar köp-engagemang (proof-of-finance) för kunder som vill köpa fastighet. Processen anropas från Mortgage huvudprocessen när det är köp (is-purchase-yes) och ansökningsutvärdering är klar. Processen skapar ett engagemang som kunden kan använda för att visa att de har finansiering i ordning vid budgivning.</p>
+      <p>Processen startar med initial automatisk kreditevaluering via "Automatic Credit Evaluation" call activity. Om engagemanget godkänns, signaliserar systemet att engagemanget är redo via "Mortgage commitment ready" message event. Kunden fattar sedan beslut om engagemang via "Decide on mortgage commitment" user task och kan välja att lägga till lånevillkor eller fortsätta. Om objekt inte är utvärderat, samlas objektinformation via "Object information" call activity. Om lånevillkor ändras, genomförs omvärdering via "Automatic Credit Evaluation" call activity. Processen loopar tills kunden vinner budgivning eller engagemanget löper ut.</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+      <p>Mortgage Commitment-processen startar när:</p>
+      <ul>
+        <li><strong>Ansökningsutvärdering är klar:</strong> Huvudprocessen (Mortgage) har slutfört ansökningsutvärdering och är redo för köp-engagemang</li>
+        <li><strong>Det är köp:</strong> "Is purchase?" gateway i huvudprocessen avgör att det är köp (is-purchase-yes), vilket indikerar att kunden vill köpa fastighet och behöver proof-of-finance</li>
+        <li><strong>Processkontext:</strong> Mortgage Commitment anropas från Mortgage huvudprocessen via "mortgage-commitment" call activity när is-purchase-yes. Alla processvariabler skickas med för att säkerställa att all nödvändig information är tillgänglig</li>
+        <li><strong>Ansökningsdata är tillgänglig:</strong> All nödvändig information för köp-engagemang är samlad och tillgänglig, inklusive ansökningsdata, kreditinformation, och objektinformation</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+      <p>När Mortgage Commitment-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Engagemanget är skapat:</strong> Ett köp-engagemang (proof-of-finance) har skapats som kunden kan använda för att visa att de har finansiering i ordning vid budgivning</li>
+        <li><strong>Kreditevaluering är slutförd:</strong> Initial kreditevaluering har genomförts via "Automatic Credit Evaluation" call activity. Om lånevillkor ändras, har omvärdering genomförts via "Automatic Credit Evaluation" call activity</li>
+        <li><strong>Objektinformation är samlad och godkänd:</strong> Om objekt inte är utvärderat, har objektinformation samlats via "Object information" call activity och objektet är godkänt via "Object rejected?" gateway</li>
+        <li><strong>Lånevillkor är fastställda:</strong> Om kunden lägger till lånevillkor, har villkoren utvärderats och godkänts via "Is terms approved?" gateway</li>
+        <li><strong>Processen avslutas normalt:</strong> Om kunden vinner budgivning via "Won bidding round?" gateway "Yes", avslutas processen normalt och huvudprocessen fortsätter med nästa steg</li>
+        <li><strong>Felhantering:</strong> Om engagemanget avvisas initialt via "Is mortgage commitment approved?" gateway "No", avslutas processen med "Automatically rejected" error event som triggar boundary event i huvudprocessen. Om engagemanget löper ut via timer event, avslutas processen med "Mortgage commitment expired" error event</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+      <p>Mortgage Commitment-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Initial kreditevaluering</h3>
+      <ul>
+        <li><strong>Automatic Credit Evaluation (call activity):</strong> Systemet genomför initial automatisk kreditevaluering för köp-engagemang via "Automatic Credit Evaluation" call activity</li>
+        <li><strong>Is mortgage commitment approved? (gateway):</strong> En beslutspunkt avgör om engagemanget är godkänt baserat på resultatet från initial kreditevaluering:
+          <ul>
+            <li><strong>Yes:</strong> Processen fortsätter till "Mortgage commitment ready" message event</li>
+            <li><strong>No:</strong> Processen avslutas med "Automatically rejected" error event</li>
+          </ul>
+        </li>
+        <li><strong>Mortgage commitment ready (message event):</strong> När engagemanget är godkänt, signaliserar systemet att engagemanget är redo för beslutsfattande via "Mortgage commitment ready" message event</li>
+      </ul>
+
+      <h3>2. Beslutsfattande om engagemang</h3>
+      <ul>
+        <li><strong>Decide on mortgage commitment (user task):</strong> Kunden fattar beslut om engagemang via "Decide on mortgage commitment" user task. Kunden kan välja att acceptera engagemanget eller lägga till lånevillkor</li>
+        <li><strong>Upload documentation (boundary event):</strong> Under "Decide on mortgage commitment" user task kan "Upload documentation" boundary event triggas för att begära dokumentation. Detta triggar "Documentation assessment" call activity</li>
+        <li><strong>Documentation assessment (call activity):</strong> Om dokumentation begärs, bedöms uppladdade dokument via "Documentation assessment" call activity</li>
+        <li><strong>Credit re-evaluation required (boundary event):</strong> Under "Documentation assessment" call activity kan "Credit re-evaluation required" boundary event triggas för att begära omvärdering. Detta loopar tillbaka till initial kreditevaluering</li>
+        <li><strong>Mortgage commitment decision? (gateway):</strong> En beslutspunkt avgör om kunden vill lägga till lånevillkor eller fortsätta:
+          <ul>
+            <li><strong>Add loan terms:</strong> Processen loopar tillbaka till initial kreditevaluering för att hantera nya villkor</li>
+            <li><strong>Won bidding round / Interested in object:</strong> Processen fortsätter till objektutvärdering</li>
+          </ul>
+        </li>
+        <li><strong>Timer event:</strong> På "Decide on mortgage commitment" user task kan timer event triggas om engagemanget löper ut. Detta avslutar processen med "Mortgage commitment expired" error event</li>
+      </ul>
+
+      <h3>3. Objektutvärdering</h3>
+      <ul>
+        <li><strong>Is object evaluated? (gateway):</strong> En beslutspunkt avgör om objekt är utvärderat:
+          <ul>
+            <li><strong>Yes:</strong> Processen hoppar över objektinformation och går direkt till "Object rejected?" gateway</li>
+            <li><strong>No:</strong> Processen går till "Object information" call activity för att samla objektinformation</li>
+          </ul>
+        </li>
+        <li><strong>Object information (call activity):</strong> Om objekt inte är utvärderat, samlas objektinformation via "Object information" call activity. Information som samlas inkluderar storlek, typ, plats, max lånebelopp, energiklass, etc.</li>
+        <li><strong>Object rejected? (gateway):</strong> En beslutspunkt avgör om objekt är godkänt:
+          <ul>
+            <li><strong>Yes:</strong> Processen loopar tillbaka till beslutsfattande om engagemang</li>
+            <li><strong>No:</strong> Processen fortsätter till "Has terms changed?" gateway</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Ändringar av lånevillkor och omvärdering</h3>
+      <ul>
+        <li><strong>Has terms changed? (gateway):</strong> En beslutspunkt avgör om lånevillkor har ändrats:
+          <ul>
+            <li><strong>Yes:</strong> Processen går till "Automatic Credit Evaluation" call activity för omvärdering</li>
+            <li><strong>No:</strong> Processen hoppar över omvärdering och går direkt till "Is terms approved?" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Automatic Credit Evaluation (call activity, omvärdering):</strong> Om lånevillkor har ändrats, genomförs omvärdering via "Automatic Credit Evaluation" call activity</li>
+        <li><strong>Is terms approved? (gateway):</strong> En beslutspunkt avgör om ändrade villkor är godkända:
+          <ul>
+            <li><strong>Yes:</strong> Processen fortsätter till "Won bidding round?" gateway</li>
+            <li><strong>No:</strong> Processen loopar tillbaka till beslutsfattande om engagemang</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>5. Budgivning och avslut</h3>
+      <ul>
+        <li><strong>Won bidding round? (gateway):</strong> En beslutspunkt avgör om kunden vunnit budgivning:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas normalt och huvudprocessen fortsätter med nästa steg</li>
+            <li><strong>No:</strong> Processen loopar tillbaka till beslutsfattande om engagemang för att hantera nya objekt eller ändringar</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>6. Loop-mekanismer</h3>
+      <ul>
+        <li><strong>Lägg till lånevillkor:</strong> Om kunden väljer att lägga till lånevillkor via "Mortgage commitment decision?" gateway "Add loan terms", loopar processen tillbaka till initial kreditevaluering för att hantera nya villkor</li>
+        <li><strong>Objekt avvisat:</strong> Om "Object rejected?" gateway returnerar "Yes", loopar processen tillbaka till beslutsfattande om engagemang</li>
+        <li><strong>Villkor inte godkända:</strong> Om "Is terms approved?" gateway returnerar "No", loopar processen tillbaka till beslutsfattande om engagemang</li>
+        <li><strong>Kund förlorar budgivning:</strong> Om "Won bidding round?" gateway returnerar "No", loopar processen tillbaka till beslutsfattande om engagemang för att hantera nya objekt eller ändringar</li>
+        <li><strong>Omvärdering krävs:</strong> Om "Credit re-evaluation required" boundary event triggas, loopar processen tillbaka till initial kreditevaluering</li>
+      </ul>
+
+      <h3>7. Felhantering</h3>
+      <ul>
+        <li><strong>Automatically rejected (error event):</strong> Om "Is mortgage commitment approved?" gateway returnerar "No", avslutas processen med "Automatically rejected" error event. Detta triggar boundary event i huvudprocessen som avbryter hela ansökningsprocessen</li>
+        <li><strong>Mortgage commitment expired (error event):</strong> Om timer event triggas på "Decide on mortgage commitment" user task, avslutas processen med "Mortgage commitment expired" error event. Detta triggar boundary event i huvudprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Refinansiering eller andra typer av lån ingår inte - processen hanterar endast köp</li>
+        <li>"Direct to purchase" hoppas över - processen används inte för direktköp</li>
+        <li>Ändringar av ekonomiinformation (inkomst etc.) stöds inte - kräver ny ansökan</li>
+        <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Credit evaluation (huvudprocess) ingår inte - den sker efter Mortgage Commitment</li>
+        <li>KYC-processen ingår inte - den sker senare i huvudprocessen</li>
+        <li>Offer-processen ingår inte - den sker senare i huvudprocessen</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Mortgage huvudprocess:</strong> Mortgage Commitment anropas från mortgage.bpmn i huvudflödet (entry-18 branch) när is-purchase-yes</li>
+        <li><strong>Application evaluation:</strong> Application evaluation måste vara slutförd innan Mortgage Commitment startar</li>
+        <li><strong>Is purchase gateway:</strong> Avgör om det är köp - endast köp triggar Mortgage Commitment</li>
+        <li><strong>Credit evaluation (subprocess):</strong> Automatisk kreditevaluering för köp-engagemang (anropas två gånger: initial och vid ändrade villkor)</li>
+        <li><strong>Documentation assessment (subprocess):</strong> Bedömning av dokumentation för köp-engagemang</li>
+        <li><strong>Object information (subprocess):</strong> Samling av objektinformation (storlek, typ, plats, max lånebelopp, energiklass)</li>
+        <li><strong>Stakeholder/Customer:</strong> Fattar beslut om engagemang, laddar upp dokumentation, bekräftar objekt, och bekräftar vinst i budgivning</li>
+        <li><strong>Credit evaluation (huvudprocess):</strong> Efter Mortgage Commitment går processen vidare till Credit evaluation i huvudprocessen</li>
+        <li><strong>Felhantering:</strong> Om engagemanget avvisas eller löper ut, triggas error events</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+      <p><a href="#/bpmn/mortgage-se-mortgage-commitment.bpmn">Visa BPMN-processen för Mortgage Commitment</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Mortgage huvudprocessen anropar "mortgage-commitment" call activity när det är köp (is-purchase-yes). Alla processvariabler skickas med</li>
+        <li><strong>Automatic Credit Evaluation (call activity):</strong> Systemet genomför initial automatisk kreditevaluering för köp-engagemang via "Automatic Credit Evaluation" call activity</li>
+        <li><strong>Is mortgage commitment approved? (gateway):</strong> En beslutspunkt avgör om engagemanget är godkänt:
+          <ul>
+            <li><strong>Yes:</strong> Processen fortsätter till "Mortgage commitment ready" message event</li>
+            <li><strong>No:</strong> Processen avslutas med "Automatically rejected" error event</li>
+          </ul>
+        </li>
+        <li><strong>Mortgage commitment ready (message event):</strong> När engagemanget är godkänt, signaliserar systemet att engagemanget är redo för beslutsfattande</li>
+        <li><strong>Decide on mortgage commitment (user task):</strong> Kunden fattar beslut om engagemang. Under denna task kan "Upload documentation" boundary event triggas för att begära dokumentation, vilket triggar "Documentation assessment" call activity. Timer event kan också triggas om engagemanget löper ut</li>
+        <li><strong>Mortgage commitment decision? (gateway):</strong> En beslutspunkt avgör om kunden vill lägga till lånevillkor eller fortsätta:
+          <ul>
+            <li><strong>Add loan terms:</strong> Processen loopar tillbaka till initial kreditevaluering för att hantera nya villkor</li>
+            <li><strong>Won bidding round / Interested in object:</strong> Processen fortsätter till objektutvärdering</li>
+          </ul>
+        </li>
+        <li><strong>Is object evaluated? (gateway):</strong> En beslutspunkt avgör om objekt är utvärderat:
+          <ul>
+            <li><strong>Yes:</strong> Processen hoppar över objektinformation</li>
+            <li><strong>No:</strong> Processen går till "Object information" call activity</li>
+          </ul>
+        </li>
+        <li><strong>Object information (call activity, om nödvändig):</strong> Om objekt inte är utvärderat, samlas objektinformation (storlek, typ, plats, max lånebelopp, energiklass, etc.)</li>
+        <li><strong>Object rejected? (gateway):</strong> En beslutspunkt avgör om objekt är godkänt:
+          <ul>
+            <li><strong>Yes:</strong> Processen loopar tillbaka till beslutsfattande om engagemang</li>
+            <li><strong>No:</strong> Processen fortsätter till "Has terms changed?" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Has terms changed? (gateway):</strong> En beslutspunkt avgör om lånevillkor har ändrats:
+          <ul>
+            <li><strong>Yes:</strong> Processen går till "Automatic Credit Evaluation" call activity för omvärdering</li>
+            <li><strong>No:</strong> Processen hoppar över omvärdering</li>
+          </ul>
+        </li>
+        <li><strong>Automatic Credit Evaluation (call activity, omvärdering, om behövs):</strong> Om lånevillkor har ändrats, genomförs omvärdering</li>
+        <li><strong>Is terms approved? (gateway):</strong> En beslutspunkt avgör om ändrade villkor är godkända:
+          <ul>
+            <li><strong>Yes:</strong> Processen fortsätter till "Won bidding round?" gateway</li>
+            <li><strong>No:</strong> Processen loopar tillbaka till beslutsfattande om engagemang</li>
+          </ul>
+        </li>
+        <li><strong>Won bidding round? (gateway):</strong> En beslutspunkt avgör om kunden vunnit budgivning:
+          <ul>
+            <li><strong>Yes:</strong> Processen avslutas normalt</li>
+            <li><strong>No:</strong> Processen loopar tillbaka till beslutsfattande om engagemang</li>
+          </ul>
+        </li>
+        <li><strong>Avslut:</strong> När kunden vinner budgivning, avslutas processen normalt och huvudprocessen fortsätter med nästa steg</li>
+      </ol>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>Is mortgage commitment approved? (gateway):</strong> Avgör om engagemanget är godkänt baserat på initial kreditevaluering. Om "No", avslutas processen med error event</li>
+        <li><strong>Mortgage commitment decision? (gateway):</strong> Avgör om kunden vill lägga till lånevillkor eller fortsätta. Om "Add loan terms", loopar processen tillbaka</li>
+        <li><strong>Is object evaluated? (gateway):</strong> Avgör om objekt är utvärderat. Om "No", samlas objektinformation</li>
+        <li><strong>Object rejected? (gateway):</strong> Avgör om objekt är godkänt. Om "Yes", loopar processen tillbaka</li>
+        <li><strong>Has terms changed? (gateway):</strong> Avgör om lånevillkor har ändrats. Om "Yes", krävs omvärdering</li>
+        <li><strong>Is terms approved? (gateway):</strong> Avgör om ändrade villkor är godkända. Om "No", loopar processen tillbaka</li>
+        <li><strong>Won bidding round? (gateway):</strong> Avgör om kunden vunnit budgivning. Om "No", loopar processen tillbaka</li>
+      </ul>
+      
+      <h3>Loop-mekanismer</h3>
+      <ul>
+        <li><strong>Lägg till lånevillkor:</strong> Om kunden väljer att lägga till lånevillkor, loopar processen tillbaka till initial kreditevaluering</li>
+        <li><strong>Objekt avvisat:</strong> Om objekt avvisas, loopar processen tillbaka till beslutsfattande om engagemang</li>
+        <li><strong>Villkor inte godkända:</strong> Om ändrade villkor inte godkänns, loopar processen tillbaka till beslutsfattande om engagemang</li>
+        <li><strong>Kund förlorar budgivning:</strong> Om kunden förlorar budgivning, loopar processen tillbaka till beslutsfattande om engagemang</li>
+        <li><strong>Omvärdering krävs:</strong> Om omvärdering krävs via boundary event, loopar processen tillbaka till initial kreditevaluering</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – engagemang godkänt, kund vinner budgivning</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Initial kreditevaluering godkänns. Kund fattar beslut om engagemang (accepterar). Objektvärdering genomförs. Dokumentation laddas upp och bedöms. Avancerad underwriting genomförs. Kund bekräftar objekt och vinst i budgivning. Proof-of-finance skapas. Processen avslutas och går vidare till Credit evaluation i huvudprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Ändringar av lånevillkor – omvärdering krävs</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Kund begär ändringar av lånevillkor (t.ex. högre lånebelopp, annan löptid). Ytterligare kreditevaluering anropas. Omvärdering godkänns. Processen fortsätter med uppdaterade villkor.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Engagemang avvisat initialt</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Initial kreditevaluering avvisar engagemanget. "mortgage-commitment-rejected" error triggas. Processen avslutas med "Automatically rejected" end event.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Engagemang löper ut – timeout</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Engagemanget skapas men kund svarar inte inom timeout-period. "mortgage-commitment-timeout" error triggas. Processen avslutas med "Mortgage commitment expired" end event.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>Kund förlorar budgivning – engagemang avvisat</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Engagemanget är godkänt, men kund förlorar budgivning. Kund avvisar engagemanget. Processen avslutas med "Engagement declined" end event.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till decide on mortgage commitment</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>fill</td>
+          <td>[TODO: Lägg till locator för första fältet]</td>
+          <td>[TODO: Definiera testdata]</td>
+          <td>Fyll i information för decide on mortgage commitment</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>click</td>
+          <td>[TODO: Lägg till locator för submit-knapp]</td>
+          <td>-</td>
+          <td>Skicka/Submit</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>decide-on-mortgage-commitment-confirmation</td>
+          <td>verify</td>
+          <td>[TODO: Lägg till locator för bekräftelsemeddelande]</td>
+          <td>-</td>
+          <td>Verifiera bekräftelse</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Om engagemanget avvisas initialt, triggas "mort...</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till decide on mortgage commitment</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>fill</td>
+          <td>[TODO: Lägg till locator för fält]</td>
+          <td>[TODO: Definiera testdata som orsakar fel]</td>
+          <td>Fyll i information som orsakar fel</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>verify</td>
+          <td>[TODO: Lägg till locator för felmeddelande]</td>
+          <td>-</td>
+          <td>Verifiera att felmeddelande visas</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: Om engagemanget löper ut, triggas "mortgage-com...</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till decide on mortgage commitment</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>fill</td>
+          <td>[TODO: Lägg till locator för fält]</td>
+          <td>[TODO: Definiera testdata som orsakar fel]</td>
+          <td>Fyll i information som orsakar fel</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>decide-on-mortgage-commitment</td>
+          <td>verify</td>
+          <td>[TODO: Lägg till locator för felmeddelande]</td>
+          <td>-</td>
+          <td>Verifiera att felmeddelande visas</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>[TODO: data-profile-id]</strong>: [TODO: Definiera testdata för denna process]</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>Credit evaluation 1 (call activity)</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /credit-evaluation-1-(call-activity)]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Initial automatisk kreditevaluering för köp-engagemang</td>
+      </tr>
+    
+      <tr>
+        <td>Is mortgage commitment approved gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /is-mortgage-commitment-approved-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om engagemanget är godkänt - om nej, avvisas automatiskt</td>
+      </tr>
+    
+      <tr>
+        <td>Mortgage commitment ready</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /mortgage-commitment-ready]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Signaliserar att engagemanget är redo för beslutsfattande</td>
+      </tr>
+    
+      <tr>
+        <td>Decide on mortgage commitment</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /decide-on-mortgage-commitment]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>User task (Stakeholder lane) där kunden fattar beslut om engagemang</td>
+      </tr>
+    
+      <tr>
+        <td>Mortgage commitment decision gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /mortgage-commitment-decision-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om kunden vill lägga till lånevillkor eller fortsätta</td>
+      </tr>
+    
+      <tr>
+        <td>Upload documentation boundary event</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /upload-documentation-boundary-event]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>På Decide on mortgage commitment, kan begära dokumentation och trigga Documen...</td>
+      </tr>
+    
+      <tr>
+        <td>Documentation assessment (call activity)</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /documentation-assessment-(call-activity)]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Bedömning av uppladdade dokument</td>
+      </tr>
+    
+      <tr>
+        <td>Credit reevaluation required boundary event</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /credit-reevaluation-required-boundary-event]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>På Documentation assessment, kan trigga omvärdering och loopa tillbaka</td>
+      </tr>
+    
+      <tr>
+        <td>Is object evaluated gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /is-object-evaluated-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om objekt är utvärderat - om nej, samlas objektinformation</td>
+      </tr>
+    
+      <tr>
+        <td>Object information (call activity)</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /object-information-(call-activity)]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Samling av objektinformation (storlek, typ, plats, max lånebelopp, energiklass)</td>
+      </tr>
+    
+      <tr>
+        <td>Is object approved gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /is-object-approved-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om objekt är godkänt</td>
+      </tr>
+    
+      <tr>
+        <td>Has terms changed gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /has-terms-changed-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om lånevillkor har ändrats - om ja, krävs omvärdering</td>
+      </tr>
+    
+      <tr>
+        <td>Credit evaluation 2 (call activity)</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /credit-evaluation-2-(call-activity)]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Omvärdering vid ändrade villkor</td>
+      </tr>
+    
+      <tr>
+        <td>Is terms approved gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /is-terms-approved-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om ändrade villkor är godkända</td>
+      </tr>
+    
+      <tr>
+        <td>Won bidding round gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /won-bidding-round-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om kunden vunnit budgivning - om ja, avslutas processen, om nej, loopar...</td>
+      </tr>
+    
+      <tr>
+        <td>Timer event</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /timer-event]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>På Decide on mortgage commitment, kan trigga timeout om engagemanget löper ut</td>
+      </tr>
+    
+        </tbody>
+      </table>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      
+      <h3>Snabbare proof-of-finance för köpkunder</h3>
+      <p>Genom automatisk kreditevaluering via "Automatic Credit Evaluation" call activity kan systemet snabbt bedöma om en kund är kvalificerad för ett köp-engagemang. För kunder med god kreditprofil kan engagemanget skapas och signaleras via "Mortgage commitment ready" message event inom minuter istället för dagar, vilket ger kunden möjlighet att delta i budgivning direkt. Detta kan minska tiden från ansökan till proof-of-finance med upp till 70-80% för kvalificerade kunder jämfört med manuell process.</p>
+      
+      <h3>Flexibel hantering av objekt och villkor</h3>
+      <p>Processens loop-mekanismer möjliggör att kunder kan hantera flera objekt och ändra lånevillkor utan att behöva starta en ny ansökan. När kunden väljer "Add loan terms" via "Mortgage commitment decision?" gateway, loopar processen tillbaka för omvärdering via "Automatic Credit Evaluation" call activity. Om objekt avvisas via "Object rejected?" gateway, kan kunden enkelt fortsätta med ett annat objekt. Denna flexibilitet kan öka kundnöjdheten med upp till 30-40% och minska antalet avbrutna ansökningar med upp till 25-35%.</p>
+      
+      <h3>Automatiserad dokumentationshantering</h3>
+      <p>När kunden laddar upp dokumentation via "Upload documentation" boundary event på "Decide on mortgage commitment" user task, bedöms dokumenten automatiskt via "Documentation assessment" call activity. Om omvärdering krävs, triggas "Credit re-evaluation required" boundary event automatiskt. Detta eliminerar behovet av manuell dokumenthantering och kan minska handläggningstid med upp till 50-60% för ansökningar som kräver dokumentation.</p>
+      
+      <h3>Proaktiv timeout-hantering</h3>
+      <p>Timer event på "Decide on mortgage commitment" user task säkerställer att engagemang som inte används automatiskt avslutas via "Mortgage commitment expired" error event. Detta förhindrar att inaktiva engagemang blockerar systemresurser och kan minska antalet "zombie"-engagemang med upp till 90-95%.</p>
+      
+      <h3>Förbättrad kundupplevelse vid budgivning</h3>
+      <p>Genom att kunder kan få proof-of-finance snabbt och enkelt uppdatera villkor och objekt via "Won bidding round?" gateway, kan de delta mer aktivt i budgivning. När kunden vinner budgivning via "Won bidding round?" gateway "Yes", avslutas processen normalt och huvudprocessen fortsätter direkt. Detta kan öka antalet framgångsrika budgivningar med upp till 20-30% och förbättra kundens chans att vinna önskat objekt.</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      
+      <h3>Kundperspektiv</h3>
+      <ul>
+        <li><strong>Som köpare</strong> vill jag få proof-of-finance snabbt via automatisk kreditevaluering ("Automatic Credit Evaluation" call activity) <strong>så att</strong> jag kan delta i budgivning direkt utan att vänta dagar på manuell granskning. <em>Acceptanskriterier: Systemet ska kunna skapa engagemang inom minuter för kvalificerade kunder, och "Mortgage commitment ready" message event ska triggas automatiskt när engagemanget är redo.</em></li>
+        <li><strong>Som köpare</strong> vill jag kunna lägga till lånevillkor via "Mortgage commitment decision?" gateway "Add loan terms" <strong>så att</strong> jag kan justera mitt engagemang när jag hittar ett objekt som kräver högre lånebelopp eller annan löptid. <em>Acceptanskriterier: Systemet ska automatiskt loopa tillbaka till kreditevaluering när villkor ändras, och "Has terms changed?" gateway ska korrekt identifiera ändringar.</em></li>
+        <li><strong>Som köpare</strong> vill jag kunna hantera flera objekt via "Object rejected?" gateway och "Won bidding round?" gateway <strong>så att</strong> jag kan fortsätta söka om ett objekt avvisas eller om jag förlorar budgivning. <em>Acceptanskriterier: Processen ska loopa tillbaka till "Decide on mortgage commitment" user task när objekt avvisas eller budgivning förloras, utan att kunden behöver starta en ny ansökan.</em></li>
+        <li><strong>Som köpare</strong> vill jag kunna ladda upp dokumentation via "Upload documentation" boundary event på "Decide on mortgage commitment" user task <strong>så att</strong> jag kan komplettera min ansökan utan att avbryta processen. <em>Acceptanskriterier: Boundary event ska triggas när dokumentation begärs, och "Documentation assessment" call activity ska automatiskt bedöma uppladdade dokument.</em></li>
+      </ul>
+      
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som system</strong> vill jag automatiskt avvisa engagemang som inte uppfyller kreditkrav via "Is mortgage commitment approved?" gateway "No" <strong>så att</strong> endast kvalificerade kunder får proof-of-finance och resurser inte slösas på hopplösa ansökningar. <em>Acceptanskriterier: "Automatically rejected" error event ska triggas automatiskt när kreditevaluering avvisar engagemanget, och boundary event i huvudprocessen ska korrekt hantera avvisningen.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt avsluta engagemang som löper ut via timer event på "Decide on mortgage commitment" user task <strong>så att</strong> inaktiva engagemang inte blockerar systemresurser. <em>Acceptanskriterier: Timer event ska triggas när timeout-perioden har passerat, och "Mortgage commitment expired" error event ska korrekt signalera till huvudprocessen.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt samla objektinformation via "Object information" call activity när objekt inte är utvärderat <strong>så att</strong> objektet kan bedömas korrekt innan engagemanget bekräftas. <em>Acceptanskriterier: "Is object evaluated?" gateway ska korrekt identifiera om objektinformation behövs, och "Object information" call activity ska samla all nödvändig information (storlek, typ, plats, max lånebelopp, energiklass).</em></li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>Initial kreditevaluering och godkännande</h3>
+      <ul>
+        <li>Systemet ska automatiskt genomföra initial kreditevaluering via "Automatic Credit Evaluation" call activity (credit-evaluation-1) när Mortgage Commitment-processen startar</li>
+        <li>"Is mortgage commitment approved?" gateway ska korrekt avgöra om engagemanget är godkänt baserat på resultatet från initial kreditevaluering</li>
+        <li>Om engagemanget godkänns via "Is mortgage commitment approved?" gateway "Yes", ska "Mortgage commitment ready" message event triggas automatiskt</li>
+        <li>Om engagemanget avvisas via "Is mortgage commitment approved?" gateway "No", ska "Automatically rejected" error event (Event_0tae8fa) triggas, vilket signalerar till huvudprocessen att engagemanget har avvisats</li>
+      </ul>
+      
+      <h3>Beslutsfattande om engagemang</h3>
+      <ul>
+        <li>Kunden ska kunna fatta beslut om engagemang via "Decide on mortgage commitment" user task i subprocessen (Activity_1xrvxr3)</li>
+        <li>"Mortgage commitment decision?" gateway ska korrekt avgöra om kunden vill lägga till lånevillkor ("Add loan terms") eller fortsätta ("Won bidding round / Interested in object")</li>
+        <li>Om kunden väljer "Add loan terms", ska processen automatiskt loopa tillbaka till initial kreditevaluering via Gateway_17kvnul och Gateway_1hxgyw1</li>
+        <li>"Upload documentation" boundary event (Event_0o7mt0k) ska kunna triggas på "Decide on mortgage commitment" user task för att begära dokumentation, vilket triggar "Documentation assessment" call activity</li>
+        <li>Om "Credit re-evaluation required" boundary event (Event_1t9r73x) triggas på subprocessen, ska processen automatiskt loopa tillbaka till initial kreditevaluering</li>
+        <li>Timer event (Event_0z4ifsl) på subprocessen ska triggas om engagemanget löper ut, vilket avslutar processen med "Mortgage commitment expired" error event (Event_0rkod04)</li>
+      </ul>
+      
+      <h3>Objektutvärdering</h3>
+      <ul>
+        <li>"Is object evaluated?" gateway ska korrekt avgöra om objekt är utvärderat. Om "Yes", ska processen hoppa över objektinformation och gå direkt till "Object rejected?" gateway via Gateway_14ve2uc</li>
+        <li>Om objekt inte är utvärderat ("Is object evaluated?" gateway "No"), ska "Object information" call activity automatiskt samla objektinformation (storlek, typ, plats, max lånebelopp, energiklass, etc.)</li>
+        <li>"Object rejected?" gateway ska korrekt avgöra om objekt är godkänt. Om "Yes", ska processen loopa tillbaka till beslutsfattande om engagemang via Gateway_0p2vba1 och Gateway_0upjuan</li>
+        <li>Om objekt är godkänt ("Object rejected?" gateway "No"), ska processen fortsätta till "Has terms changed?" gateway</li>
+      </ul>
+      
+      <h3>Ändringar av lånevillkor och omvärdering</h3>
+      <ul>
+        <li>"Has terms changed?" gateway ska korrekt identifiera om lånevillkor har ändrats. Om "Yes", ska "Automatic Credit Evaluation" call activity (credit-evaluation-2) automatiskt genomföra omvärdering</li>
+        <li>Om lånevillkor inte har ändrats ("Has terms changed?" gateway "No"), ska processen hoppa över omvärdering och gå direkt till "Is terms approved?" gateway via Gateway_0bsnrjk</li>
+        <li>"Is terms approved?" gateway ska korrekt avgöra om ändrade villkor är godkända. Om "Yes", ska processen fortsätta till "Won bidding round?" gateway</li>
+        <li>Om ändrade villkor inte godkänns ("Is terms approved?" gateway "No"), ska processen automatiskt loopa tillbaka till beslutsfattande om engagemang via Gateway_11954vc och Gateway_0p2vba1</li>
+      </ul>
+      
+      <h3>Budgivning och avslut</h3>
+      <ul>
+        <li>"Won bidding round?" gateway ska korrekt avgöra om kunden vunnit budgivning. Om "Yes", ska processen avslutas normalt via Event_0az10av och huvudprocessen fortsätter med nästa steg</li>
+        <li>Om kunden förlorar budgivning ("Won bidding round?" gateway "No"), ska processen automatiskt loopa tillbaka till beslutsfattande om engagemang via Gateway_11954vc och Gateway_0p2vba1</li>
+      </ul>
+      
+      <h3>Felhantering</h3>
+      <ul>
+        <li>Om engagemanget avvisas initialt via "Is mortgage commitment approved?" gateway "No", ska "Automatically rejected" error event (Event_0tae8fa) triggas med error code "mortgage-commitment-rejected", vilket signalerar till huvudprocessen att engagemanget har avvisats</li>
+        <li>Om engagemanget löper ut via timer event (Event_0z4ifsl), ska "Mortgage commitment expired" error event (Event_0rkod04) triggas med error code "mortgage-commitment-timeout", vilket signalerar till huvudprocessen att engagemanget har löpt ut</li>
+        <li>Alla error events ska korrekt trigga motsvarande boundary events i huvudprocessen (Mortgage) för att säkerställa att hela ansökningsprocessen avbryts när engagemanget avvisas eller löper ut</li>
+      </ul>
+      
+      <h3>Processvariabler och data</h3>
+      <ul>
+        <li>Alla processvariabler ska skickas med när Mortgage Commitment anropas från huvudprocessen (camunda:in variables="all") för att säkerställa fullständig kontext</li>
+        <li>Resultat från "Automatic Credit Evaluation" call activities (både credit-evaluation-1 och credit-evaluation-2) ska korrekt sparas och användas i efterföljande gateways</li>
+        <li>Objektinformation som samlas via "Object information" call activity ska korrekt sparas och användas i "Object rejected?" gateway</li>
+        <li>Kundens beslut från "Decide on mortgage commitment" user task ska korrekt sparas och användas i "Mortgage commitment decision?" gateway</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
+</html>

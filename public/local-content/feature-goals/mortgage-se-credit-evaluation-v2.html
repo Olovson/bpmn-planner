@@ -151,37 +151,6 @@
       font-size: 0.9rem;
       font-weight: 500;
     }
-    .llm-fallback-banner {
-      padding: 8px 12px;
-      margin-bottom: 16px;
-      border-radius: 6px;
-      background-color: #fefce8;
-      color: #854d0e;
-      border: 1px solid #fef9c3;
-      font-size: 0.85rem;
-    }
-    .llm-fallback-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      margin-bottom: 12px;
-      border-radius: 4px;
-      background-color: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffeeba;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .llm-fallback-details {
-      font-size: 0.8rem;
-      color: #4b5563;
-      margin-bottom: 16px;
-      white-space: pre-wrap;
-    }
-    .llm-fallback-local-note {
-      font-size: 0.8rem;
-      color: #2563eb;
-      margin-bottom: 16px;
-    }
     details {
       margin: 16px 0;
     }
@@ -209,13 +178,6 @@
       border-radius: 0 0 6px 6px;
       margin-top: 0;
     }
-    img {
-      max-width: 100%;
-      height: auto;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      margin: 12px 0;
-    }
     a {
       color: var(--primary);
       text-decoration: none;
@@ -229,16 +191,22 @@
       📄 Lokal version – Förbättrat innehåll
     </div>
   
-    
-      
-
-
-    
     <section class="doc-section">
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Automatic Credit Evaluation är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+<p>Automatic Credit Evaluation är en systemaktivitet där systemet automatiskt bedömer kreditvärdighet och affärsmöjlighet för låneansökningar. Processen syftar till att automatiskt utvärdera ansökningar baserat på riskklassificering, prisinformation, amorteringsberäkningar, hushållsaffordabilitet och kreditpolicyer för att avgöra om ansökan kan godkännas automatiskt eller kräver manuell granskning.</p>
+      <p>Processen börjar med att systemet väljer produkt via "Select product" business rule task. Därefter hämtas prisinformation från "Pricing engine" datastore via "Fetch price" service task. Systemet beräknar sedan amortering via "Determine amortisation" business rule task. För varje stakeholder i ansökan kontrollerar systemet om uppdaterad kreditinformation behövs via "Needs updated Credit information" gateway. Om uppdaterad information behövs, hämtas den från "Personal credit information source" datastore via "Fetch credit information" service task. För varje hushåll beräknar systemet hushållsaffordabilitet via "Calculate household affordabilty" service task (med data från "Stacc Affordability" datastore) och bedömer sedan hushållet via "Evaluate household" business rule task. Systemet bedömer även stakeholders via "Evaluate stakeholders" business rule task. Efter att alla hushåll och stakeholders är bearbetade, hämtas riskklassificering från "Risk engine" datastore via "Fetch risk classification" service task. Systemet bedömer sedan ansökan via "Evaluate application" business rule task och slutligen bedömer kreditpolicyer via "Evaluate credit policies" business rule task innan processen avslutas.</p>
+      
+      <h3>Anropningskontexter</h3>
+      <p>Denna process anropas från flera ställen i Mortgage-processen:</p>
+      <ul>
+        <li><strong>Manual Credit Evaluation (mortgage-se-manual-credit-evaluation.bpmn):</strong> Efter manuell kreditevaluering när automatisk kreditevaluering behövs som del av den manuella processen. Ny information: Resultat från manuell kreditevaluering och eventuella kompletteringar. Anropas via "Activity_1gzlxx4" call activity med called_element "credit-evaluation".</li>
+        <li><strong>Mortgage Commitment - Första utvärdering (mortgage-se-mortgage-commitment.bpmn):</strong> När automatisk kreditevaluering behövs för första gången i mortgage commitment-processen. Ny information: Komplett ansökningsinformation inklusive objekt, hushåll och stakeholders. Anropas via "credit-evaluation-1" call activity.</li>
+        <li><strong>Mortgage Commitment - Andra utvärdering (mortgage-se-mortgage-commitment.bpmn):</strong> När automatisk kreditevaluering behövs igen efter att objektinformation har uppdaterats. Ny information: Uppdaterad objektinformation från "Object information" call activity. Anropas via "credit-evaluation-2" call activity.</li>
+        <li><strong>Object Control (mortgage-se-object-control.bpmn):</strong> När automatisk kreditevaluering behövs efter att objektkontroll har genomförts och objektinformation har uppdaterats. Ny information: Uppdaterad objektinformation från "Object information" call activity efter objektkontroll. Anropas via "credit-evaluation-2" call activity med called_element "credit-evaluation".</li>
+        <li><strong>Mortgage - Huvudprocessen (mortgage.bpmn):</strong> När automatisk kreditevaluering behövs för första gången i huvudprocessen efter att Application-processen är slutförd. Ny information: Komplett ansökningsinformation från Application-processen. Anropas via "credit-evaluation" call activity.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -246,10 +214,20 @@
       <details>
         <summary>Processteg - Input</summary>
         <div class="section-content">
-<ul>
-        <li>Kreditomvärdering har triggrats via boundary event "Credit reevaluation required" från Documentation assessment</li>
-        <li>Uppdaterad dokumentation är tillgänglig</li>
-        <li>Ansökningsdata är redo för ny automatisk utvärdering</li>
+      <p>Automatic Credit Evaluation-processen startar när:</p>
+      <ul>
+        <li><strong>Ansökningsinformation är tillgänglig:</strong> All nödvändig information för kreditevaluering är samlad, inklusive produktval, objektinformation, hushållsinformation, stakeholder-information och ekonomiska data</li>
+        <li><strong>Externa tjänster är tillgängliga:</strong> "Pricing engine", "Risk engine", "Personal credit information source" och "Stacc Affordability" datastores måste vara tillgängliga för att hämta information</li>
+        <li><strong>Processkontext:</strong> Automatic Credit Evaluation anropas via call activity. Alla relevanta processvariabler, inklusive ansökningsdata, objektdata, hushållsdata och stakeholder-data, skickas med för att säkerställa fullständig kontext</li>
+      </ul>
+      
+      <h3>Kontextspecifika input-krav</h3>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> Manuell kreditevaluering är slutförd och resultat från manuell process är tillgängliga. Eventuella kompletteringar från manuell process är tillgängliga. Processen anropas via "Activity_1gzlxx4" call activity med called_element "credit-evaluation".</li>
+        <li><strong>Mortgage Commitment - Första utvärdering:</strong> Komplett ansökningsinformation inklusive objekt, hushåll och stakeholders är tillgänglig. Detta är första gången automatisk kreditevaluering görs i mortgage commitment-processen. Processen anropas via "credit-evaluation-1" call activity.</li>
+        <li><strong>Mortgage Commitment - Andra utvärdering:</strong> "Object information" call activity har slutförts och uppdaterad objektinformation är tillgänglig. Ny information: Uppdaterad objektinformation från "Object information" call activity. Processen anropas via "credit-evaluation-2" call activity.</li>
+        <li><strong>Object Control:</strong> "Object information" call activity har slutförts efter objektkontroll och uppdaterad objektinformation är tillgänglig. Ny information: Uppdaterad objektinformation från "Object information" call activity efter objektkontroll. Processen anropas via "credit-evaluation-2" call activity med called_element "credit-evaluation".</li>
+        <li><strong>Mortgage - Huvudprocessen:</strong> Application-processen är slutförd och komplett ansökningsinformation är tillgänglig. Detta är första gången automatisk kreditevaluering görs i huvudprocessen. Processen anropas via "credit-evaluation" call activity.</li>
       </ul>
         </div>
       </details>
@@ -259,10 +237,23 @@
       <details>
         <summary>Processteg - Output</summary>
         <div class="section-content">
-<ul>
-        <li>Komplett automatisk kreditevaluering med uppdaterade data</li>
-        <li>Beslut om ansökan ska avvisas automatiskt (rejected gateway)</li>
-        <li>Resultatet flödar tillbaka till Manual Credit Evaluation-processen för vidare hantering</li>
+      <p>När Automatic Credit Evaluation-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Kreditevaluering är slutförd:</strong> Systemet har automatiskt bedömt kreditvärdighet och affärsmöjlighet baserat på riskklassificering, prisinformation, amorteringsberäkningar, hushållsaffordabilitet och kreditpolicyer</li>
+        <li><strong>Riskklassificering är tillgänglig:</strong> Riskklassificering har hämtats från "Risk engine" datastore via "Fetch risk classification" service task och är tillgänglig för vidare bearbetning</li>
+        <li><strong>Hushållsaffordabilitet är beräknad:</strong> För varje hushåll har systemet beräknat hushållsaffordabilitet via "Calculate household affordabilty" service task (med data från "Stacc Affordability" datastore) och bedömt hushållet via "Evaluate household" business rule task</li>
+        <li><strong>Stakeholder-bedömning är slutförd:</strong> För varje stakeholder har systemet bedömt stakeholder via "Evaluate stakeholders" business rule task, inklusive eventuell uppdaterad kreditinformation från "Personal credit information source" datastore</li>
+        <li><strong>Kreditpolicybedömning är slutförd:</strong> Systemet har bedömt ansökan mot kreditpolicyer via "Evaluate application" och "Evaluate credit policies" business rule tasks</li>
+        <li><strong>Processen avslutas normalt:</strong> När kreditevaluering är slutförd, avslutas processen normalt och anropande processen fortsätter med nästa steg baserat på evalueringsresultatet</li>
+      </ul>
+      
+      <h3>Kontextspecifika output-resultat</h3>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> Kreditevaluering returneras till Manual Credit Evaluation-processen via "Activity_1gzlxx4" call activity. Resultatet används för att komplettera manuell kreditevaluering och kan påverka slutgiltigt beslut i manuell process.</li>
+        <li><strong>Mortgage Commitment - Första utvärdering:</strong> Kreditevaluering returneras till Mortgage Commitment-processen via "credit-evaluation-1" call activity. Resultatet används för att avgöra om mortgage commitment kan godkännas eller om ytterligare utvärdering behövs.</li>
+        <li><strong>Mortgage Commitment - Andra utvärdering:</strong> Uppdaterad kreditevaluering returneras till Mortgage Commitment-processen via "credit-evaluation-2" call activity. Resultatet används för att avgöra om mortgage commitment kan godkännas baserat på uppdaterad objektinformation.</li>
+        <li><strong>Object Control:</strong> Uppdaterad kreditevaluering returneras till Object Control-processen via "credit-evaluation-2" call activity. Resultatet används för att avgöra om ändringar kräver omvärdering eller om processen kan fortsätta.</li>
+        <li><strong>Mortgage - Huvudprocessen:</strong> Kreditevaluering returneras till Mortgage-processen via "credit-evaluation" call activity. Resultatet används för att avgöra om ansökan kan godkännas automatiskt eller om manuell kreditevaluering krävs via "Manual credit evaluation" call activity.</li>
       </ul>
         </div>
       </details>
@@ -272,13 +263,51 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
-<ul>
-        <li>Hämtning av produktinformation och prissättning</li>
-        <li>Amortisationsberäkning</li>
-        <li>Multi-instance bearbetning av alla hushåll i ansökan (affordability-beräkningar)</li>
-        <li>Riskklassificering</li>
-        <li>Policyutvärdering mot affärsregler</li>
-        <li>Automatiskt avvisningsbeslut om ansökan inte uppfyller kriterier</li>
+      <p>Automatic Credit Evaluation-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Produktval och prissättning</h3>
+      <ul>
+        <li><strong>Select product (business rule task):</strong> Systemet väljer produkt baserat på ansökningsdata via affärsregler</li>
+        <li><strong>Fetch price (service task):</strong> Systemet hämtar prisinformation från "Pricing engine" datastore. Information sparas i datastoren för vidare användning</li>
+        <li><strong>Determine amortisation (business rule task):</strong> Systemet beräknar amortering baserat på produktval, prisinformation och ansökningsdata via affärsregler</li>
+      </ul>
+
+      <h3>2. Stakeholder-bearbetning (multi-instance loop)</h3>
+      <ul>
+        <li><strong>For each stakeholder (subprocess):</strong> Systemet bearbetar varje stakeholder i ansökan:
+          <ul>
+            <li><strong>Needs updated Credit information (gateway):</strong> En beslutspunkt avgör om uppdaterad kreditinformation behövs för stakeholder:
+              <ul>
+                <li><strong>Yes:</strong> Processen går till "Fetch credit information" service task</li>
+                <li><strong>No:</strong> Processen fortsätter direkt till nästa steg</li>
+              </ul>
+            </li>
+            <li><strong>Fetch credit information (service task):</strong> Om uppdaterad information behövs, hämtar systemet kreditinformation från "Personal credit information source" datastore. Information sparas i datastoren för vidare användning</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>3. Hushållsbearbetning (multi-instance loop)</h3>
+      <ul>
+        <li><strong>For each household (subprocess):</strong> Systemet bearbetar varje hushåll i ansökan:
+          <ul>
+            <li><strong>Calculate household affordabilty (service task):</strong> Systemet beräknar hushållsaffordabilitet baserat på inkomst, utgifter, befintliga skulder och ekonomiska förpliktelser. Data hämtas från "Stacc Affordability" datastore och sparas i datastoren för vidare användning</li>
+            <li><strong>Evaluate household (business rule task):</strong> Systemet bedömer hushållsaffordabilitet mot låne- och policykriterier via affärsregler för att avgöra om hushållet uppfyller krav</li>
+            <li><strong>Evaluate stakeholders (business rule task):</strong> Systemet bedömer stakeholders i hushållet via affärsregler</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Riskklassificering och bedömning</h3>
+      <ul>
+        <li><strong>Fetch risk classification (service task):</strong> Systemet hämtar riskklassificering från "Risk engine" datastore. Riskklassificering baseras på kreditscore, ekonomiska data och ansökningskaraktäristika. Information sparas i datastoren för vidare användning</li>
+        <li><strong>Evaluate application (business rule task):</strong> Systemet bedömer ansökan baserat på riskklassificering, hushållsaffordabilitet och stakeholder-bedömningar via affärsregler</li>
+        <li><strong>Evaluate credit policies (business rule task):</strong> Systemet bedömer ansökan mot alla kreditpolicyer och lånekriterier via affärsregler för att avgöra om ansökan kan godkännas automatiskt eller kräver manuell granskning</li>
+      </ul>
+
+      <h3>5. Avslut</h3>
+      <ul>
+        <li><strong>Processen avslutas normalt:</strong> När kreditevaluering är slutförd, avslutas processen normalt och anropande processen fortsätter med nästa steg baserat på evalueringsresultatet</li>
       </ul>
         </div>
       </details>
@@ -289,10 +318,11 @@
         <summary>Avgränsning</summary>
         <div class="section-content">
 <ul>
-        <li>Manuell granskning och advanced underwriting sker i Manual Credit Evaluation-processen, inte här</li>
-        <li>Objektvärdering hanteras separat i Manual Credit Evaluation</li>
-        <li>Dokumentationshantering sker i Documentation assessment, inte i denna subprocess</li>
-        <li>Denna subprocess fokuserar enbart på automatisk utvärdering, inte på manuella åtgärder</li>
+        <li>Manuell kreditevaluering sker i "Manual Credit Evaluation"-processen, inte i denna subprocess</li>
+        <li>Kreditbeslut (godkännande/avslag) sker i "Credit Decision"-processen, inte i denna subprocess</li>
+        <li>Denna subprocess fokuserar enbart på automatisk kreditevaluering, inte på manuell granskning eller slutgiltiga beslut</li>
+        <li>Objektinformation hämtas i "Object Information"-processen, inte i denna subprocess</li>
+        <li>Dokumentationshantering sker i andra subprocesser, inte i denna subprocess</li>
       </ul>
         </div>
       </details>
@@ -303,11 +333,13 @@
         <summary>Beroenden</summary>
         <div class="section-content">
 <ul>
-        <li><strong>KALP-system:</strong> Beräknar hushållsaffordability</li>
-        <li><strong>Pricing engine:</strong> Hämtar produkt- och prissättningsdata</li>
-        <li><strong>Affärsregelmotor (DMN):</strong> Utvärderar mot policykriterier och affärsregler</li>
-        <li><strong>Riskklassificeringssystem:</strong> Klassificerar risknivå baserat på utvärderingsresultat</li>
-        <li><strong>Kunddata och engagemangsdata:</strong> För hushållsbehandling och affordability-beräkningar</li>
+        <li><strong>Pricing engine (datastore):</strong> För att hämta prisinformation via "Fetch price" service task</li>
+        <li><strong>Risk engine (datastore):</strong> För att hämta riskklassificering via "Fetch risk classification" service task</li>
+        <li><strong>Personal credit information source (datastore):</strong> För att hämta uppdaterad kreditinformation för stakeholders via "Fetch credit information" service task</li>
+        <li><strong>Stacc Affordability (datastore):</strong> För att beräkna hushållsaffordabilitet via "Calculate household affordabilty" service task</li>
+        <li><strong>Affärsregelmotor (DMN):</strong> För att bedöma produktval, amortering, hushållsaffordabilitet, stakeholder-bedömning, ansökan och kreditpolicyer via business rule tasks</li>
+        <li><strong>Application-processen:</strong> För att tillhandahålla komplett ansökningsinformation inklusive objekt, hushåll och stakeholders</li>
+        <li><strong>Object Information-processen:</strong> För att tillhandahålla uppdaterad objektinformation när processen anropas från Mortgage Commitment eller Object Control</li>
       </ul>
         </div>
       </details>
@@ -317,7 +349,46 @@
       <details>
         <summary>BPMN - Process</summary>
         <div class="section-content">
-<p><a href="#/bpmn/mortgage-se-credit-evaluation.bpmn">Visa BPMN-processen för Automatic Credit Evaluation</a></p>
+      <p><a href="#/bpmn/mortgage-se-credit-evaluation.bpmn">Visa BPMN-processen för Automatic Credit Evaluation</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när Automatic Credit Evaluation anropas från anropande processen (t.ex. Mortgage, Mortgage Commitment, Object Control, Manual Credit Evaluation) via call activity</li>
+        <li><strong>Select product (business rule task):</strong> Systemet väljer produkt baserat på ansökningsdata via affärsregler</li>
+        <li><strong>Fetch price (service task):</strong> Systemet hämtar prisinformation från "Pricing engine" datastore</li>
+        <li><strong>Determine amortisation (business rule task):</strong> Systemet beräknar amortering baserat på produktval, prisinformation och ansökningsdata via affärsregler</li>
+        <li><strong>For each stakeholder (subprocess - multi-instance loop):</strong> Systemet bearbetar varje stakeholder:
+          <ul>
+            <li><strong>Needs updated Credit information (gateway):</strong> Avgör om uppdaterad kreditinformation behövs:
+              <ul>
+                <li><strong>Yes:</strong> Processen går till "Fetch credit information" service task som hämtar information från "Personal credit information source" datastore</li>
+                <li><strong>No:</strong> Processen fortsätter direkt till nästa steg</li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li><strong>For each household (subprocess - multi-instance loop):</strong> Systemet bearbetar varje hushåll:
+          <ul>
+            <li><strong>Calculate household affordabilty (service task):</strong> Systemet beräknar hushållsaffordabilitet baserat på inkomst, utgifter, befintliga skulder och ekonomiska förpliktelser. Data hämtas från "Stacc Affordability" datastore</li>
+            <li><strong>Evaluate household (business rule task):</strong> Systemet bedömer hushållsaffordabilitet mot låne- och policykriterier via affärsregler</li>
+            <li><strong>Evaluate stakeholders (business rule task):</strong> Systemet bedömer stakeholders i hushållet via affärsregler</li>
+          </ul>
+        </li>
+        <li><strong>Fetch risk classification (service task):</strong> Systemet hämtar riskklassificering från "Risk engine" datastore</li>
+        <li><strong>Evaluate application (business rule task):</strong> Systemet bedömer ansökan baserat på riskklassificering, hushållsaffordabilitet och stakeholder-bedömningar via affärsregler</li>
+        <li><strong>Evaluate credit policies (business rule task):</strong> Systemet bedömer ansökan mot alla kreditpolicyer och lånekriterier via affärsregler</li>
+        <li><strong>Avslut:</strong> När kreditevaluering är slutförd, avslutas processen normalt och anropande processen fortsätter med nästa steg baserat på evalueringsresultatet</li>
+      </ol>
+      
+      <h3>Anropningsställen</h3>
+      <p>Denna process anropas från följande ställen:</p>
+      <ul>
+        <li><strong>Manual Credit Evaluation:</strong> Anropas från "mortgage-se-manual-credit-evaluation.bpmn" via "Activity_1gzlxx4" call activity med called_element "credit-evaluation". Efter manuell kreditevaluering när automatisk kreditevaluering behövs som del av den manuella processen.</li>
+        <li><strong>Mortgage Commitment - Första utvärdering:</strong> Anropas från "mortgage-se-mortgage-commitment.bpmn" via "credit-evaluation-1" call activity. När automatisk kreditevaluering behövs för första gången i mortgage commitment-processen.</li>
+        <li><strong>Mortgage Commitment - Andra utvärdering:</strong> Anropas från "mortgage-se-mortgage-commitment.bpmn" via "credit-evaluation-2" call activity. När automatisk kreditevaluering behövs igen efter att objektinformation har uppdaterats.</li>
+        <li><strong>Object Control:</strong> Anropas från "mortgage-se-object-control.bpmn" via "credit-evaluation-2" call activity med called_element "credit-evaluation". När automatisk kreditevaluering behövs efter att objektkontroll har genomförts och objektinformation har uppdaterats.</li>
+        <li><strong>Mortgage - Huvudprocessen:</strong> Anropas från "mortgage.bpmn" via "credit-evaluation" call activity. När automatisk kreditevaluering behövs för första gången i huvudprocessen efter att Application-processen är slutförd.</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -346,570 +417,58 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – ansökan godkänd automatiskt</td>
+        <td>Normalflöde – automatisk kreditevaluering slutförd</td>
         <td>Happy</td>
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Komplett automatisk kreditevaluering: produkt och pris hämtade, amortisation beräknad, hushållsaffordability OK, riskklassificering låg, ansökan och kreditpolicyer godkända. Processen avslutas och resultatet flödar tillbaka till Manual Credit Evaluation.</td>
+        <td>Systemet automatiskt bedömer kreditvärdighet och affärsmöjlighet baserat på riskklassificering, prisinformation, amorteringsberäkningar, hushållsaffordabilitet och kreditpolicyer. Processen avslutas normalt och anropande processen fortsätter med nästa steg baserat på evalueringsresultatet.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Ansökan avvisad – hushållsaffordability otillräcklig</td>
-        <td>Error</td>
+        <td>Externa tjänster otillgängliga – felhantering</td>
+        <td>Edge</td>
         <td>system</td>
-        <td>P0</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Hushållsaffordability är otillräcklig (hög skuldsättning, låg inkomst). Evaluate household avvisar. Rejected gateway triggas och processen avslutas med avslag. Resultatet flödar tillbaka till Manual Credit Evaluation.</td>
+        <td>Om externa tjänster ("Pricing engine", "Risk engine", "Personal credit information source" eller "Stacc Affordability") inte är tillgängliga, hanterar systemet felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalerar till anropande processen.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Ansökan avvisad – kreditpolicyer inte uppfyllda</td>
-        <td>Error</td>
+        <td>Uppdaterad kreditinformation behövs för stakeholder</td>
+        <td>Edge</td>
         <td>system</td>
-        <td>P0</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Hushållsaffordability OK, men Evaluate credit policies avvisar (t.ex. för hög LTV, otillräcklig säkerhet, eller policyöverträdelse). Rejected gateway triggas och processen avslutas med avslag.</td>
+        <td>För en stakeholder där "Needs updated Credit information" gateway identifierar att uppdaterad kreditinformation behövs, hämtar systemet information från "Personal credit information source" datastore via "Fetch credit information" service task. Processen fortsätter med uppdaterad information.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
-        <td>Multi-instance – flera hushåll i ansökan</td>
-        <td>Happy</td>
-        <td>system</td>
-        <td>P1</td>
-        <td>functional</td>
-        <td>Ansökan innehåller flera hushåll (multi-instance loop). Varje hushåll genomgår Calculate household affordability och Evaluate household. Alla hushåll godkänns. Processen fortsätter med riskklassificering och policyutvärdering. Ansökan godkänns.</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S5</strong></td>
-        <td>Hög riskklassificering – ansökan godkänd ändå</td>
+        <td>Flera hushåll och stakeholders – multi-instance loops</td>
         <td>Edge</td>
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Riskklassificering är hög, men hushållsaffordability och kreditpolicyer är ändå OK. Evaluate application och Evaluate credit policies godkänner trots hög risk. Processen avslutas med godkännande (kan kräva manuell granskning i Manual Credit Evaluation).</td>
-        <td>✅ Planerad</td>
-      </tr>
-    
-      <tr>
-        <td><strong>S6</strong></td>
-        <td>Pris- eller produktdata saknas – felhantering</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P1</td>
-        <td>functional</td>
-        <td>Fetch product eller Fetch price misslyckas (t.ex. produkt inte tillgänglig, eller prissättning saknas). Systemet hanterar felet gracefully och processen kan antingen avvisas eller kräva manuell hantering.</td>
+        <td>För ansökningar med flera hushåll och stakeholders, bearbetar systemet varje hushåll och stakeholder korrekt via multi-instance loops. Alla hushållsaffordabiliteter beräknas och bedöms, och alla stakeholders bedöms innan processen fortsätter till riskklassificering och slutgiltig bedömning.</td>
         <td>✅ Planerad</td>
       </tr>
     
         </tbody>
       </table>
 
-      <h3>UI Flow per Scenario</h3>
-      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
-      
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S1: Normalflöde – ansökan godkänd automatiskt</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>credit-evaluation-start</td>
-          <td>verify</td>
-          <td>process-started</td>
-          <td>application-approved</td>
-          <td>Processen startar automatiskt när anropas från Manual Credit Evaluation (eller från huvudprocessen). Verifiera att processen är initierad.</td>
-        </tr>
-      
-        <tr>
-          <td>2</td>
-          <td>fetch-product</td>
-          <td>verify</td>
-          <td>api-product-fetched</td>
-          <td>application-approved</td>
-          <td>Fetch product business rule task körs automatiskt. Verifiera att produktinformation hämtas (t.ex. bolåneprodukt, räntetyp, villkor).</td>
-        </tr>
-      
-        <tr>
-          <td>3</td>
-          <td>fetch-price</td>
-          <td>verify</td>
-          <td>api-price-fetched</td>
-          <td>application-approved</td>
-          <td>Fetch price service task körs automatiskt från Pricing engine. Verifiera att prissättning hämtas (ränta, avgifter).</td>
-        </tr>
-      
-        <tr>
-          <td>4</td>
-          <td>evaluate-amortisation</td>
-          <td>verify</td>
-          <td>dmn-amortisation-calculated</td>
-          <td>application-approved</td>
-          <td>Amortisation business rule task beräknar amorteringsplan. Verifiera att amortering beräknas korrekt baserat på produkt, pris och lånebelopp.</td>
-        </tr>
-      
-        <tr>
-          <td>5</td>
-          <td>loop-household</td>
-          <td>verify</td>
-          <td>multi-instance-household-started</td>
-          <td>application-approved</td>
-          <td>For each household subprocess startar (multi-instance loop). Verifiera att loop startar för varje hushåll i ansökan.</td>
-        </tr>
-      
-        <tr>
-          <td>6</td>
-          <td>calculate-household-affordability</td>
-          <td>verify</td>
-          <td>api-kalp-affordability-calculated</td>
-          <td>application-approved</td>
-          <td>Calculate household affordability service task körs per hushåll via KALP-system. Verifiera att affordability beräknas (inkomster, utgifter, skuldsättning, tillgångar).</td>
-        </tr>
-      
-        <tr>
-          <td>7</td>
-          <td>evaluate-household</td>
-          <td>verify</td>
-          <td>dmn-household-approved</td>
-          <td>application-approved</td>
-          <td>Evaluate household business rule task utvärderar affordability mot policykriterier. Verifiera att hushåll godkänns (tillräcklig affordability, OK skuldsättning).</td>
-        </tr>
-      
-        <tr>
-          <td>8</td>
-          <td>evaluate-stakeholders</td>
-          <td>verify</td>
-          <td>dmn-stakeholders-approved</td>
-          <td>application-approved</td>
-          <td>Evaluate stakeholders business rule task utvärderar stakeholders per hushåll. Verifiera att stakeholders godkänns.</td>
-        </tr>
-      
-        <tr>
-          <td>9</td>
-          <td>loop-household</td>
-          <td>verify</td>
-          <td>multi-instance-household-completed</td>
-          <td>application-approved</td>
-          <td>Verifiera att alla hushåll i multi-instance loop är bearbetade och godkända.</td>
-        </tr>
-      
-        <tr>
-          <td>10</td>
-          <td>fetch-risk-classification</td>
-          <td>verify</td>
-          <td>api-risk-classification-fetched</td>
-          <td>application-approved</td>
-          <td>Fetch risk classification service task hämtar riskklassificering från risk engine. Verifiera att riskklassificering är låg eller medel.</td>
-        </tr>
-      
-        <tr>
-          <td>11</td>
-          <td>evaluate-application</td>
-          <td>verify</td>
-          <td>dmn-application-approved</td>
-          <td>application-approved</td>
-          <td>Evaluate application business rule task utvärderar hela ansökan. Verifiera att ansökan godkänns baserat på riskklassificering, affordability och stakeholders.</td>
-        </tr>
-      
-        <tr>
-          <td>12</td>
-          <td>evaluate-credit-policies</td>
-          <td>verify</td>
-          <td>dmn-credit-policies-approved</td>
-          <td>application-approved</td>
-          <td>Evaluate credit policies business rule task utvärderar mot alla kreditpolicyer och affärsregler. Verifiera att alla policyer uppfylls (LTV, säkerhet, lånevillkor).</td>
-        </tr>
-      
-        <tr>
-          <td>13</td>
-          <td>credit-evaluation-completed</td>
-          <td>verify</td>
-          <td>process-end-approved</td>
-          <td>application-approved</td>
-          <td>Verifiera att processen avslutas med godkännande. Resultatet flödar tillbaka till Manual Credit Evaluation (eller huvudprocessen) för vidare hantering.</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Ansökan avvisad – hushållsaffordability otillräcklig</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1-4</td>
-          <td>credit-evaluation-start till evaluate-amortisation</td>
-          <td>verify</td>
-          <td>process-started, api-product-fetched, api-price-fetched, dmn-amortisation-calculated</td>
-          <td>application-rejected-affordability</td>
-          <td>Samma som S1 steg 1-4: Processen startar, produkt och pris hämtas, amortering beräknas</td>
-        </tr>
-      
-        <tr>
-          <td>5-6</td>
-          <td>loop-household, calculate-household-affordability</td>
-          <td>verify</td>
-          <td>multi-instance-household-started, api-kalp-affordability-calculated</td>
-          <td>application-rejected-affordability</td>
-          <td>Household loop startar, affordability beräknas (med otillräcklig inkomst eller för hög skuldsättning)</td>
-        </tr>
-      
-        <tr>
-          <td>7</td>
-          <td>evaluate-household</td>
-          <td>verify</td>
-          <td>dmn-household-rejected</td>
-          <td>application-rejected-affordability</td>
-          <td>Evaluate household business rule task avvisar hushållet (otillräcklig affordability, för hög skuldsättning, eller policyöverträdelse).</td>
-        </tr>
-      
-        <tr>
-          <td>8</td>
-          <td>rejected-gateway</td>
-          <td>verify</td>
-          <td>gateway-rejected-triggered</td>
-          <td>application-rejected-affordability</td>
-          <td>Rejected gateway triggas när hushåll avvisas. Processen avslutas med avslag.</td>
-        </tr>
-      
-        <tr>
-          <td>9</td>
-          <td>credit-evaluation-rejected</td>
-          <td>verify</td>
-          <td>process-end-rejected</td>
-          <td>application-rejected-affordability</td>
-          <td>Verifiera att processen avslutas med avslag. Resultatet flödar tillbaka till Manual Credit Evaluation med avslagsorsak.</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S3: Ansökan avvisad – kreditpolicyer inte uppfyllda</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1-11</td>
-          <td>credit-evaluation-start till evaluate-application</td>
-          <td>verify</td>
-          <td>process-started, api-product-fetched, api-price-fetched, dmn-amortisation-calculated, api-kalp-affordability-calculated, dmn-household-approved, api-risk-classification-fetched, dmn-application-approved</td>
-          <td>application-rejected-policy</td>
-          <td>Samma som S1 steg 1-11: Processen startar, produkt/pris/amortering OK, hushållsaffordability OK, riskklassificering OK, ansökan godkänd</td>
-        </tr>
-      
-        <tr>
-          <td>12</td>
-          <td>evaluate-credit-policies</td>
-          <td>verify</td>
-          <td>dmn-credit-policies-rejected</td>
-          <td>application-rejected-policy</td>
-          <td>Evaluate credit policies business rule task avvisar (t.ex. för hög LTV &gt;85%, otillräcklig säkerhet, eller policyöverträdelse).</td>
-        </tr>
-      
-        <tr>
-          <td>13</td>
-          <td>rejected-gateway</td>
-          <td>verify</td>
-          <td>gateway-rejected-triggered</td>
-          <td>application-rejected-policy</td>
-          <td>Rejected gateway triggas när kreditpolicyer inte uppfylls. Processen avslutas med avslag.</td>
-        </tr>
-      
-        <tr>
-          <td>14</td>
-          <td>credit-evaluation-rejected</td>
-          <td>verify</td>
-          <td>process-end-rejected</td>
-          <td>application-rejected-policy</td>
-          <td>Verifiera att processen avslutas med avslag. Resultatet flödar tillbaka med avslagsorsak (policyöverträdelse).</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S4: Multi-instance – flera hushåll i ansökan</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1-4</td>
-          <td>credit-evaluation-start till evaluate-amortisation</td>
-          <td>verify</td>
-          <td>process-started, api-product-fetched, api-price-fetched, dmn-amortisation-calculated</td>
-          <td>application-multi-household</td>
-          <td>Samma som S1 steg 1-4: Processen startar, produkt/pris/amortering OK</td>
-        </tr>
-      
-        <tr>
-          <td>5</td>
-          <td>loop-household</td>
-          <td>verify</td>
-          <td>multi-instance-household-started</td>
-          <td>application-multi-household</td>
-          <td>For each household subprocess startar för flera hushåll (multi-instance loop)</td>
-        </tr>
-      
-        <tr>
-          <td>6-8</td>
-          <td>calculate-household-affordability till evaluate-stakeholders</td>
-          <td>verify</td>
-          <td>api-kalp-affordability-calculated, dmn-household-approved, dmn-stakeholders-approved</td>
-          <td>application-multi-household</td>
-          <td>Första hushållet: affordability beräknas, hushåll och stakeholders godkänns</td>
-        </tr>
-      
-        <tr>
-          <td>9</td>
-          <td>loop-household</td>
-          <td>verify</td>
-          <td>multi-instance-continue</td>
-          <td>application-multi-household</td>
-          <td>Multi-instance loop fortsätter till nästa hushåll</td>
-        </tr>
-      
-        <tr>
-          <td>10-12</td>
-          <td>calculate-household-affordability till evaluate-stakeholders</td>
-          <td>verify</td>
-          <td>api-kalp-affordability-calculated, dmn-household-approved, dmn-stakeholders-approved</td>
-          <td>application-multi-household</td>
-          <td>Andra hushållet: affordability beräknas, hushåll och stakeholders godkänns</td>
-        </tr>
-      
-        <tr>
-          <td>13</td>
-          <td>loop-household</td>
-          <td>verify</td>
-          <td>multi-instance-all-completed</td>
-          <td>application-multi-household</td>
-          <td>Verifiera att alla hushåll i multi-instance loop är bearbetade och godkända</td>
-        </tr>
-      
-        <tr>
-          <td>14-17</td>
-          <td>fetch-risk-classification till credit-evaluation-completed</td>
-          <td>verify</td>
-          <td>api-risk-classification-fetched, dmn-application-approved, dmn-credit-policies-approved, process-end-approved</td>
-          <td>application-multi-household</td>
-          <td>Fortsätt med riskklassificering, ansökan och kreditpolicyer (samma som S1 steg 10-13)</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S5: Hög riskklassificering – ansökan godkänd ändå</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1-9</td>
-          <td>credit-evaluation-start till loop-household</td>
-          <td>verify</td>
-          <td>process-started, api-product-fetched, api-price-fetched, dmn-amortisation-calculated, api-kalp-affordability-calculated, dmn-household-approved</td>
-          <td>application-high-risk-approved</td>
-          <td>Samma som S1 steg 1-9: Processen startar, produkt/pris/amortering OK, hushållsaffordability OK</td>
-        </tr>
-      
-        <tr>
-          <td>10</td>
-          <td>fetch-risk-classification</td>
-          <td>verify</td>
-          <td>api-risk-classification-fetched-high</td>
-          <td>application-high-risk-approved</td>
-          <td>Fetch risk classification returnerar hög riskklassificering (t.ex. medelhög kreditvärdighet, eller komplex ansökan)</td>
-        </tr>
-      
-        <tr>
-          <td>11</td>
-          <td>evaluate-application</td>
-          <td>verify</td>
-          <td>dmn-application-approved</td>
-          <td>application-high-risk-approved</td>
-          <td>Evaluate application godkänner ändå trots hög risk (t.ex. tillräcklig affordability och säkerhet kompenserar för risk).</td>
-        </tr>
-      
-        <tr>
-          <td>12</td>
-          <td>evaluate-credit-policies</td>
-          <td>verify</td>
-          <td>dmn-credit-policies-approved</td>
-          <td>application-high-risk-approved</td>
-          <td>Evaluate credit policies godkänner (alla policyer uppfyllda trots hög risk).</td>
-        </tr>
-      
-        <tr>
-          <td>13</td>
-          <td>credit-evaluation-completed</td>
-          <td>verify</td>
-          <td>process-end-approved</td>
-          <td>application-high-risk-approved</td>
-          <td>Processen avslutas med godkännande trots hög risk. Resultatet flödar tillbaka (kan kräva manuell granskning i Manual Credit Evaluation).</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S6: Pris- eller produktdata saknas – felhantering</strong> (Klicka för att expandera)
-        </summary>
-        <table style="margin-top: 12px;">
-          <thead>
-            <tr>
-              <th>Steg</th>
-              <th>Page ID</th>
-              <th>Action</th>
-              <th>Locator ID</th>
-              <th>Data Profile</th>
-              <th>Kommentar</th>
-            </tr>
-          </thead>
-          <tbody>
-            
-        <tr>
-          <td>1</td>
-          <td>credit-evaluation-start</td>
-          <td>verify</td>
-          <td>process-started</td>
-          <td>application-missing-data</td>
-          <td>Processen startar automatiskt</td>
-        </tr>
-      
-        <tr>
-          <td>2</td>
-          <td>fetch-product</td>
-          <td>verify</td>
-          <td>api-product-fetched</td>
-          <td>application-missing-data</td>
-          <td>Fetch product körs. Verifiera att produktinformation hämtas OK.</td>
-        </tr>
-      
-        <tr>
-          <td>3</td>
-          <td>fetch-price</td>
-          <td>verify</td>
-          <td>api-price-fetch-failed</td>
-          <td>application-missing-data</td>
-          <td>Fetch price misslyckas (t.ex. produkt inte tillgänglig för denna kundtyp, eller prissättning saknas för denna kombination).</td>
-        </tr>
-      
-        <tr>
-          <td>4</td>
-          <td>error-handling</td>
-          <td>verify</td>
-          <td>error-price-missing</td>
-          <td>application-missing-data</td>
-          <td>Systemet hanterar felet gracefully. Processen kan antingen: 1) Avvisas automatiskt, 2) Kräva manuell hantering, eller 3) Använda fallback-prissättning.</td>
-        </tr>
-      
-        <tr>
-          <td>5</td>
-          <td>credit-evaluation-error</td>
-          <td>verify</td>
-          <td>process-end-error</td>
-          <td>application-missing-data</td>
-          <td>Verifiera att processen hanterar felet korrekt och resultatet flödar tillbaka med felinformation för vidare hantering.</td>
-        </tr>
-      
-          </tbody>
-        </table>
-      </details>
-    
-
       <h3>Testdata-referenser</h3>
       <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
       <ul>
-        
-      <li><strong>application-approved</strong>: Ansökan som godkänns automatiskt - tillräcklig hushållsaffordability, låg riskklassificering, alla kreditpolicyer uppfyllda (LTV &lt;80%, tillräcklig säkerhet, god kreditvärdighet)</li>
-    
-      <li><strong>application-rejected-affordability</strong>: Ansökan som avvisas på grund av otillräcklig hushållsaffordability - hög skuldsättning (&gt;40% DTI), låg inkomst, eller otillräckliga tillgångar</li>
-    
-      <li><strong>application-rejected-policy</strong>: Ansökan som avvisas på grund av policyöverträdelse - för hög LTV (&gt;85%), otillräcklig säkerhet, eller lånebelopp överskrider policygränser</li>
-    
-      <li><strong>application-multi-household</strong>: Ansökan med flera hushåll (t.ex. huvudansökande + medsökande med separata hushåll) - alla hushåll har tillräcklig affordability, alla godkänns</li>
-    
-      <li><strong>application-high-risk-approved</strong>: Ansökan med hög riskklassificering men ändå godkänd - medelhög kreditvärdighet, men tillräcklig affordability och säkerhet kompenserar för risk</li>
-    
-      <li><strong>application-missing-data</strong>: Ansökan där produkt- eller prissättningsdata saknas - produkt inte tillgänglig för kundtyp, eller prissättning saknas för specifik kombination</li>
-    
+      <li><strong>application-standard-credit-evaluation</strong>: Standard ansökan med god kreditvärdighet: riskklassificering låg, hushållsaffordabilitet god, stakeholders godkända, kreditpolicyer uppfyllda. Förväntat resultat: godkänd.</li>
+      <li><strong>application-high-risk-credit-evaluation</strong>: Ansökan med hög risk: riskklassificering hög, hushållsaffordabilitet låg, stakeholders med dålig kreditvärdighet. Förväntat resultat: avvisad eller kräver manuell bedömning.</li>
+      <li><strong>application-missing-credit-info</strong>: Ansökan där uppdaterad kreditinformation behövs för en stakeholder. Systemet hämtar information från "Personal credit information source" datastore.</li>
+      <li><strong>application-multiple-households</strong>: Ansökan med flera hushåll och stakeholders. Varje hushåll och stakeholder bedöms individuellt via multi-instance loops.</li>
       </ul>
 
       <h3>Implementation Mapping</h3>
@@ -926,108 +485,144 @@
           </tr>
         </thead>
         <tbody>
-          
       <tr>
-        <td>Credit Evaluation (start)</td>
-        <td>System</td>
-        <td>Internal process trigger</td>
+        <td>start-event (Start event)</td>
+        <td>Event</td>
+        <td>/api/process/credit-evaluation/start</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Startar Credit Evaluation-processen när anropas från Mortgage commitment eller Offer-processen</td>
+      </tr>
+      <tr>
+        <td>select-product (Business Rule Task)</td>
+        <td>Business Rule Task</td>
+        <td>/api/dmn/select-product</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Väljer produkt baserat på ansökningsdata via DMN. Timeout: 10 sekunder</td>
+      </tr>
+      <tr>
+        <td>fetch-price (Service Task)</td>
+        <td>Service Task</td>
+        <td>/api/pricing/price</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Hämtar pris från "Pricing engine" datastore. Timeout: 30 sekunder. Retry: 2 försök</td>
+      </tr>
+      <tr>
+        <td>determine-amortisation (Business Rule Task)</td>
+        <td>Business Rule Task</td>
+        <td>/api/dmn/determine-amortisation</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Bestämmer amortering via DMN. Timeout: 10 sekunder</td>
+      </tr>
+      <tr>
+        <td>loop-household (Subprocess - Multi-instance)</td>
+        <td>Subprocess</td>
         <td>-</td>
         <td>-</td>
-        <td>Processen startar automatiskt när anropas från Manual Credit Evaluation (eller från huvudprocessen). Ingen direkt API-endpoint, triggas via BPMN engine.</td>
+        <td>-</td>
+        <td>Multi-instance subprocess som körs för varje hushåll. Innehåller: Calculate household affordability, Evaluate household</td>
       </tr>
-    
       <tr>
-        <td>Fetch product</td>
-        <td>API</td>
-        <td>/api/credit-evaluation/product</td>
+        <td>calculate-household-affordability (Service Task)</td>
+        <td>Service Task</td>
+        <td>/api/stacc/affordability</td>
         <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Business rule task som hämtar produktinformation (bolåneprodukt, räntetyp, villkor) baserat på ansökningsdata. Input: Application ID, Customer Type, Loan Amount. Output: Product Details.</td>
+        <td>${BASE_URL}</td>
+        <td>Beräknar hushållsaffordabilitet via Stacc Affordability API. Timeout: 60 sekunder. Retry: 2 försök</td>
       </tr>
-    
       <tr>
-        <td>Fetch price</td>
-        <td>API</td>
-        <td>/api/pricing/calculate</td>
-        <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Service task som hämtar prissättning från Pricing engine. Input: Product ID, Loan Amount, Loan Term, Customer Risk Profile. Output: Interest Rate, Fees, Total Cost.</td>
-      </tr>
-    
-      <tr>
-        <td>Evaluate amortisation</td>
-        <td>API</td>
-        <td>/api/dmn/evaluate-amortisation</td>
-        <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Business rule task som beräknar amorteringsplan baserat på produkt, pris och lånebelopp. Input: Product, Price, Loan Amount, Loan Term. Output: Amortisation Schedule.</td>
-      </tr>
-    
-      <tr>
-        <td>Calculate household affordability</td>
-        <td>API</td>
-        <td>/api/kalp/calculate-affordability</td>
-        <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Service task som beräknar hushållsaffordability via KALP-system. Input: Household Income, Expenses, Existing Debts, Assets. Output: Affordability Metrics (DTI Ratio, Stress Test Results, Available Capacity).</td>
-      </tr>
-    
-      <tr>
-        <td>Evaluate household</td>
-        <td>API</td>
+        <td>evaluate-household (Business Rule Task)</td>
+        <td>Business Rule Task</td>
         <td>/api/dmn/evaluate-household</td>
         <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Business rule task som utvärderar hushållsaffordability mot policykriterier. Input: Affordability Metrics, Loan Amount, Amortisation. Output: APPROVED / REJECTED + Reason.</td>
+        <td>${BASE_URL}</td>
+        <td>Utvärderar hushåll mot affärsregler via DMN. Timeout: 10 sekunder</td>
       </tr>
-    
       <tr>
-        <td>Evaluate stakeholders</td>
-        <td>API</td>
+        <td>loop-stakeholder (Subprocess - Multi-instance)</td>
+        <td>Subprocess</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Multi-instance subprocess som körs för varje stakeholder. Innehåller: Needs updated Credit information?, Fetch credit information, Evaluate stakeholders</td>
+      </tr>
+      <tr>
+        <td>needs-updated-credit-information (Gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/credit-evaluation/check-credit-info</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Kontrollerar om uppdaterad kreditinformation behövs för stakeholder</td>
+      </tr>
+      <tr>
+        <td>fetch-credit-information (Service Task)</td>
+        <td>Service Task</td>
+        <td>/api/credit/personal-information</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>Hämtar kreditinformation från "Personal credit information source" datastore. Timeout: 30 sekunder</td>
+      </tr>
+      <tr>
+        <td>evaluate-stakeholders (Business Rule Task)</td>
+        <td>Business Rule Task</td>
         <td>/api/dmn/evaluate-stakeholders</td>
         <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Business rule task som utvärderar stakeholders per hushåll. Input: Stakeholder Data, Household Context. Output: APPROVED / REJECTED + Reason.</td>
+        <td>${BASE_URL}</td>
+        <td>Utvärderar stakeholders mot affärsregler via DMN. Timeout: 10 sekunder</td>
       </tr>
-    
       <tr>
-        <td>Fetch risk classification</td>
-        <td>API</td>
-        <td>/api/risk/classify</td>
+        <td>fetch-risk-classification (Service Task)</td>
+        <td>Service Task</td>
+        <td>/api/risk/classification</td>
         <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Service task som hämtar riskklassificering från risk engine. Input: Application Data, Credit Scores, Financial Data. Output: Risk Classification (Low / Medium / High), Risk Score, Risk Factors.</td>
+        <td>${BASE_URL}</td>
+        <td>Hämtar riskklassificering från "Risk engine" datastore. Timeout: 30 sekunder. Retry: 2 försök</td>
       </tr>
-    
       <tr>
-        <td>Evaluate application</td>
-        <td>API</td>
+        <td>evaluate-application (Business Rule Task)</td>
+        <td>Business Rule Task</td>
         <td>/api/dmn/evaluate-application</td>
         <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Business rule task som utvärderar hela ansökan. Input: Risk Classification, Household Results, Stakeholder Results. Output: APPROVED / REJECTED / REVIEW_NEEDED + Reason.</td>
+        <td>${BASE_URL}</td>
+        <td>Utvärderar ansökan mot affärsregler via DMN. Timeout: 10 sekunder</td>
       </tr>
-    
       <tr>
-        <td>Evaluate credit policies</td>
-        <td>API</td>
+        <td>evaluate-credit-policies (Business Rule Task)</td>
+        <td>Business Rule Task</td>
         <td>/api/dmn/evaluate-credit-policies</td>
         <td>POST</td>
-        <td>https://api.sbab.se</td>
-        <td>Business rule task som utvärderar mot alla kreditpolicyer och affärsregler. Input: Application Data, LTV, Security, Loan Terms. Output: APPROVED / REJECTED + Policy Violations.</td>
+        <td>${BASE_URL}</td>
+        <td>Utvärderar ansökan mot kreditpolicyer via DMN. Timeout: 10 sekunder</td>
       </tr>
-    
       <tr>
-        <td>Rejected gateway</td>
-        <td>System</td>
-        <td>Internal gateway logic</td>
-        <td>-</td>
-        <td>-</td>
-        <td>Exclusive gateway som triggas när någon utvärdering avvisar (Evaluate household, Evaluate application, eller Evaluate credit policies). Processen avslutas med avslag.</td>
+        <td>process-end-event (End event)</td>
+        <td>Event</td>
+        <td>/api/process/credit-evaluation/complete</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Avslutar Credit Evaluation-processen normalt med evalueringsresultat</td>
       </tr>
-    
+      <tr>
+        <td>Credit Evaluation (call activity)</td>
+        <td>Call Activity</td>
+        <td>/application/credit-evaluation</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>UI-entry point för Credit Evaluation-processen. Anropas från Mortgage commitment eller Offer-processen</td>
+      </tr>
         </tbody>
       </table>
+      
+      <h4>Datastores</h4>
+      <ul>
+        <li><strong>pricing_engine</strong>: Databas-tabell eller extern datakälla som lagrar prisinformation från Pricing engine</li>
+        <li><strong>risk_engine</strong>: Databas-tabell eller extern datakälla som lagrar riskklassificering från Risk engine</li>
+        <li><strong>personal_credit_information_source</strong>: Databas-tabell eller extern datakälla som lagrar kreditinformation för stakeholders</li>
+        <li><strong>credit_evaluation_results</strong>: Databas-tabell som lagrar evalueringsresultat (riskklassificering, affordability, policy-evaluering)</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -1036,7 +631,15 @@
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      
+      <h3>Automatiserad kreditevaluering</h3>
+      <p>Genom automatisk kreditevaluering baserat på riskklassificering, prisinformation, amorteringsberäkningar, hushållsaffordabilitet och kreditpolicyer kan systemet snabbt bedöma om ansökan kan godkännas automatiskt eller kräver manuell granskning. För ansökningar som automatiskt godkänns kan processen fortsätta direkt, vilket kan minska handläggningstid med upp till 60-70% jämfört med manuell process. Endast ansökningar som kräver manuell bedömning dirigeras till handläggare.</p>
+      
+      <h3>Konsistent evalueringsprocess</h3>
+      <p>Genom att använda samma automatiska kreditevaluering för alla ansökningar (oavsett var processen anropas från) säkerställs konsistent evalueringsprocess. Detta kan minska risken för inkonsistenta bedömningar med upp till 40-50% och förbättra kvaliteten på beslutsunderlaget.</p>
+      
+      <h3>Återanvändbar process</h3>
+      <p>Genom att Automatic Credit Evaluation är en återanvändbar call activity som kan anropas från flera ställen (t.ex. Mortgage, Mortgage Commitment, Object Control, Manual Credit Evaluation) elimineras duplicerad logik och säkerställs konsistent evalueringsprocess. Detta kan minska underhållskostnader med upp till 30-40% och förbättra systemets övergripande kvalitet.</p>
         </div>
       </details>
     </section>
@@ -1046,10 +649,16 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som system</strong> vill jag automatiskt bedöma kreditvärdighet och affärsmöjlighet baserat på riskklassificering, prisinformation, amorteringsberäkningar, hushållsaffordabilitet och kreditpolicyer <strong>så att</strong> ansökningar kan godkännas automatiskt när möjligt, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt bedöma ansökan via alla steg i processen (produktval, prissättning, amortering, stakeholder-bearbetning, hushållsbearbetning, riskklassificering, ansökningsbedömning och kreditpolicybedömning) och avgöra om ansökan kan godkännas automatiskt eller kräver manuell granskning.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt hämta information från externa tjänster ("Pricing engine", "Risk engine", "Personal credit information source", "Stacc Affordability") <strong>så att</strong> information är tillgänglig utan manuell datainmatning. <em>Acceptanskriterier: Systemet ska automatiskt hämta information från alla externa tjänster när det behövs, och information ska sparas i datastores för vidare användning.</em></li>
+      </ul>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt bedömer kreditvärdighet och affärsmöjlighet <strong>så att</strong> jag endast behöver granska ansökningar som kräver manuell bedömning, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt bedöma ansökan via alla steg i processen, och endast ansökningar som kräver manuell bedömning ska dirigeras till handläggare.</em></li>
       </ul>
         </div>
       </details>
@@ -1060,13 +669,92 @@
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>Produktval och prissättning</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>"Select product" business rule task ska korrekt välja produkt baserat på ansökningsdata via affärsregler</li>
+        <li>"Fetch price" service task ska automatiskt hämta prisinformation från "Pricing engine" datastore. Information ska sparas i datastoren för vidare användning</li>
+        <li>"Determine amortisation" business rule task ska korrekt beräkna amortering baserat på produktval, prisinformation och ansökningsdata via affärsregler</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för "Select product" (DMN): 10 sekunder</li>
+            <li>Timeout för "Fetch price": 30 sekunder, Retry: 2 försök med exponential backoff (5s, 10s)</li>
+            <li>Timeout för "Determine amortisation" (DMN): 10 sekunder</li>
+            <li>Error codes: 400 (Ogiltig input-data), 500 (Serverfel), 503 (Pricing engine otillgängligt)</li>
+          </ul>
+        </li>
+      </ul>
+      
+      <h3>Stakeholder-bearbetning</h3>
+      <ul>
+        <li>"For each stakeholder" subprocess ska korrekt bearbeta varje stakeholder i ansökan via multi-instance loop</li>
+        <li>"Needs updated Credit information" gateway ska korrekt avgöra om uppdaterad kreditinformation behövs för stakeholder. Om "Yes", ska processen gå till "Fetch credit information" service task. Om "No", ska processen fortsätta direkt till nästa steg</li>
+        <li>"Fetch credit information" service task ska automatiskt hämta kreditinformation från "Personal credit information source" datastore när det behövs. Information ska sparas i datastoren för vidare användning</li>
+      </ul>
+      
+      <h3>Hushållsbearbetning</h3>
+      <ul>
+        <li>"For each household" subprocess ska korrekt bearbeta varje hushåll i ansökan via multi-instance loop</li>
+        <li>"Calculate household affordabilty" service task ska automatiskt beräkna hushållsaffordabilitet baserat på inkomst, utgifter, befintliga skulder och ekonomiska förpliktelser. Data ska hämtas från "Stacc Affordability" datastore och sparas i datastoren för vidare användning</li>
+        <li>"Evaluate household" business rule task ska korrekt bedöma hushållsaffordabilitet mot låne- och policykriterier via affärsregler</li>
+        <li>"Evaluate stakeholders" business rule task ska korrekt bedöma stakeholders i hushållet via affärsregler</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för "Calculate household affordability" (Stacc API): 60 sekunder, Retry: 2 försök med exponential backoff (10s, 20s)</li>
+            <li>Timeout för "Evaluate household" (DMN): 10 sekunder</li>
+            <li>Timeout för "Evaluate stakeholders" (DMN): 10 sekunder</li>
+            <li>Error codes: 400 (Ogiltig hushållsdata), 500 (Serverfel), 503 (Stacc Affordability otillgängligt)</li>
+          </ul>
+        </li>
+      </ul>
+      
+      <h3>Riskklassificering och bedömning</h3>
+      <ul>
+        <li>"Fetch risk classification" service task ska automatiskt hämta riskklassificering från "Risk engine" datastore. Riskklassificering ska baseras på kreditscore, ekonomiska data och ansökningskaraktäristika. Information ska sparas i datastoren för vidare användning</li>
+        <li>"Evaluate application" business rule task ska korrekt bedöma ansökan baserat på riskklassificering, hushållsaffordabilitet och stakeholder-bedömningar via affärsregler</li>
+        <li>"Evaluate credit policies" business rule task ska korrekt bedöma ansökan mot alla kreditpolicyer och lånekriterier via affärsregler för att avgöra om ansökan kan godkännas automatiskt eller kräver manuell granskning</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för "Fetch risk classification": 30 sekunder, Retry: 2 försök med exponential backoff (5s, 10s)</li>
+            <li>Timeout för "Evaluate application" (DMN): 10 sekunder</li>
+            <li>Timeout för "Evaluate credit policies" (DMN): 10 sekunder</li>
+            <li>Error codes: 400 (Ogiltig ansökningsdata), 500 (Serverfel), 503 (Risk engine otillgängligt)</li>
+            <li>Alla evalueringsresultat måste sparas i datastore innan processen avslutas</li>
+          </ul>
+        </li>
+      </ul>
+      
+      <h3>Integration med anropande processer</h3>
+      <ul>
+        <li>Credit Evaluation-processen ska kunna anropas från flera ställen (Mortgage, Mortgage Commitment, Object Control, Manual Credit Evaluation) via call activities</li>
+        <li>När Credit Evaluation-processen avslutas normalt, ska evalueringsresultat returneras till anropande processen för vidare bearbetning</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Skalbarhet: Processen ska kunna hantera minst 20 parallella evalueringsinstanser</li>
+            <li>Prestanda: Genomsnittlig bearbetningstid per evaluering: < 2 minuter (exklusive användarinteraktion, endast systemtasks)</li>
+            <li>Säkerhet: Alla API-anrop måste autentiseras och auktoriseras</li>
+            <li>Compliance: Alla data måste följa GDPR-krav (dataminimering, rätt att radera)</li>
+            <li>Error handling: Om externa tjänster misslyckas, logga fel och försök igen (max 2 försök) innan processen avbryts eller fortsätter med partiell data</li>
+          </ul>
+        </li>
+      </ul>
+      </ul>
+      
+      <h3>Processflöde och avslut</h3>
+      <ul>
+        <li>När kreditevaluering är slutförd, ska processen avslutas normalt och anropande processen fortsätta med nästa steg baserat på evalueringsresultatet</li>
+        <li>Alla processvariabler ska skickas med när Automatic Credit Evaluation anropas från anropande processen för att säkerställa fullständig kontext</li>
+        <li>Evalueringsresultatet ska korrekt sparas och vara tillgängligt för anropande processen</li>
+      </ul>
+      
+      <h3>Felhantering</h3>
+      <ul>
+        <li>Om externa tjänster ("Pricing engine", "Risk engine", "Personal credit information source" eller "Stacc Affordability") inte är tillgängliga, ska processen hantera felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalera till anropande processen</li>
+        <li>Om evalueringen misslyckas, ska processen hantera felet på ett tydligt sätt och signalera till anropande processen</li>
       </ul>
         </div>
       </details>
     </section>
       </body>
 </html>
+

@@ -1601,10 +1601,14 @@ export async function generateAllFromBpmnWithGraph(
               const bpmnFileForFeatureGoal = node.type === 'callActivity' && node.subprocessFile
                 ? node.subprocessFile
                 : node.bpmnFile;
+              // Use hierarchical naming: parent BPMN file (where call activity is defined) + elementId
+              // This matches Jira naming (e.g., "Application - Internal data gathering")
+              const parentBpmnFile = node.type === 'callActivity' ? node.bpmnFile : undefined;
               const featureDocPath = getFeatureGoalDocFileKey(
                 bpmnFileForFeatureGoal,
                 node.bpmnElementId,
                 featureGoalTemplateVersion,
+                parentBpmnFile, // Include parent for hierarchical naming
               );
               result.docs.set(
                 featureDocPath,

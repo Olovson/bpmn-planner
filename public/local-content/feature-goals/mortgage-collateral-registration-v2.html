@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collateral registration</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+    
+      
+
+
+    
+    <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+<p>Collateral registration är en handläggaraktivitet där säkerheten för lånet registreras i rätt register efter att lånet har betalats ut. Processen startar när huvudprocessen avgör att säkerhetsregistrering behövs och hanterar två olika typer av fastigheter: småhus (som registreras hos Inskrivningsmyndigheten) och bostadsrätt (där meddelande om panträtt skickas till bostadsrättsföreningen).</p>
+      <p>Handläggaren distribuerar ansökan eller meddelandet till rätt mottagare och processen väntar sedan på verifiering. Om verifiering inte kommer automatiskt inom tidsgränsen (30 dagar för pappersansökningar, 1 dag för portalansökningar), måste handläggaren manuellt verifiera registreringen. Processen kan ta emot påminnelser automatiskt eller manuellt om verifieringen dröjer, och om verifieringen misslyckas kan processen loopa tillbaka för ny distribution och verifiering.</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+<p>Collateral registration-processen startar när:</p>
+      <ul>
+        <li><strong>Lånet har betalats ut:</strong> Huvudprocessen (Mortgage) har slutfört låneutbetalningen via "Disbursement" call activity och "Loan paid out" event har triggats</li>
+        <li><strong>Säkerhetsregistrering behövs:</strong> "Needs collateral registration?" gateway i huvudprocessen avgör att säkerhetsregistrering krävs för lånet (beslutspunkt returnerar "Yes")</li>
+        <li><strong>Fastighetsinformation är tillgänglig:</strong> Information om fastighetstyp (småhus eller bostadsrätt) och objektuppgifter från Application-processen (från "Object" call activity)</li>
+        <li><strong>Låneuppgifter är tillgängliga:</strong> Lånebelopp, löptid och andra relevanta uppgifter från huvudprocessen</li>
+        <li><strong>Processkontext:</strong> Collateral registration anropas från Mortgage huvudprocessen via "collateral-registration" call activity efter "needs-collateral-registration-yes" sequence flow</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+<p>När Collateral registration-processen är slutförd har följande resultat uppnåtts:</p>
+      <ul>
+        <li><strong>Säkerheten är registrerad och verifierad:</strong> Säkerheten är registrerad i rätt register (Inskrivningsmyndigheten för småhus eller BRF för bostadsrätt) och verifieringen är bekräftad via antingen automatisk verifiering ("Verified" message event) eller manuell verifiering ("Verify" user task med "Is verified?" gateway returnerar "Yes")</li>
+        <li><strong>Processen avslutas:</strong> När "Is verified?" gateway returnerar "Yes", samlas flöden ihop via "Sammanför flöden" gateway och processen avslutas normalt</li>
+        <li><strong>Huvudprocessen fortsätter:</strong> När processen är klar triggas "Collateral registration completed" event i huvudprocessen och huvudprocessen fortsätter med nästa steg</li>
+      </ul>
+      <p><strong>Felhantering och loop-mekanismer:</strong></p>
+      <ul>
+        <li><strong>Verifiering misslyckas:</strong> Om "Is verified?" gateway returnerar "No" efter manuell verifiering, loopar processen tillbaka till "Sammanför flöden" gateway för ny distribution och verifiering</li>
+        <li><strong>Verifiering dröjer:</strong> Om verifiering inte kommer automatiskt inom tidsgränsen (30 dagar för pappersansökningar, 1 dag för portalansökningar), triggas "Wait for system update" timer event och handläggaren måste manuellt verifiera via "Verify" user task</li>
+        <li><strong>Påminnelser:</strong> Medan processen väntar på verifiering kan den ta emot påminnelser automatiskt (via "Reminder" timer event) eller manuellt (via "Manual reminder" message event). Påminnelser skickas via "Send reminder" escalation events och processen fortsätter vänta på verifiering</li>
+        <li><strong>Dokument inte verifierat:</strong> Om "Document not verified" message event mottas, loopar processen tillbaka till "Sammanför flöden" gateway för ny verifiering</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+<p>Collateral registration-processen omfattar följande huvudsteg och aktiviteter:</p>
+      
+      <h3>1. Fastighetstyp - Beslutspunkt</h3>
+      <ul>
+        <li><strong>Property type gateway:</strong> Processen börjar med att avgöra vilken typ av fastighet det rör sig om baserat på information från Application-processen. Gateway:n har två utgående flöden:
+          <ul>
+            <li><strong>Småhus:</strong> Ansökan ska skickas till Inskrivningsmyndigheten</li>
+            <li><strong>Bostadsrätt:</strong> Meddelande om panträtt ska skickas till bostadsrättsföreningen</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>2. Distribution av ansökan/meddelande</h3>
+      <p><strong>För småhus:</strong></p>
+      <ul>
+        <li><strong>Distribute Ansökan till inskrivningsmyndigheten (user task):</strong> Handläggaren distribuerar ansökan till Inskrivningsmyndigheten. Ansökan kan skickas via post/e-post eller via Inskrivningsmyndighetens portal. Efter distribution går flödet till "Sammanför flöden" gateway</li>
+      </ul>
+      <p><strong>För bostadsrätt:</strong></p>
+      <ul>
+        <li><strong>Distribute notice of pledge to BRF (user task):</strong> Handläggaren distribuerar meddelande om panträtt till bostadsrättsföreningen. Efter distribution går flödet till "Sammanför flöden" gateway</li>
+      </ul>
+
+      <h3>3. Vänta på verifiering (Event-based gateway)</h3>
+      <ul>
+        <li><strong>Sammanför flöden gateway:</strong> Efter distribution samlas flöden ihop från både småhus- och bostadsrätt-sökvägar innan verifiering startar</li>
+        <li><strong>Vänta på verifiering (event-based gateway):</strong> Processen väntar på antingen:
+          <ul>
+            <li><strong>Verified (message event):</strong> Systemet tar emot ett meddelande om att dokumentet är verifierat automatiskt (t.ex. från Inskrivningsmyndighetens portal eller BRF). När detta event mottas går flödet direkt till "Sammanför flöden för avslut" gateway</li>
+            <li><strong>Wait for system update (timer event):</strong> Om systemet inte får verifiering inom tidsgränsen triggas timer event. Tidsgränsen är 30 dagar för pappersansökningar och 1 dag för portalansökningar. När timer triggas går flödet till "Verify" user task för manuell verifiering</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>4. Manuell verifiering</h3>
+      <ul>
+        <li><strong>Verify (user task):</strong> Om timer event triggas måste handläggaren manuellt verifiera registreringen. Handläggaren kontrollerar att säkerheten är korrekt registrerad i rätt register</li>
+        <li><strong>Is verified? (gateway):</strong> Efter manuell verifiering avgörs om verifieringen är godkänd:
+          <ul>
+            <li><strong>Yes:</strong> Processen fortsätter till "Sammanför flöden för avslut" gateway</li>
+            <li><strong>No:</strong> Processen loopar tillbaka till "Sammanför flöden" gateway för ny distribution och verifiering</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>5. Påminnelser (parallellt med verifiering)</h3>
+      <p>Medan processen väntar på verifiering kan den ta emot olika typer av påminnelser via event-based gateway:</p>
+      <ul>
+        <li><strong>Reminder (timer event):</strong> Systemet skickar en påminnelse automatiskt efter en viss tid. När timer triggas skickas "Send reminder" escalation event och processen fortsätter vänta på verifiering</li>
+        <li><strong>Manual reminder (message event):</strong> Handläggaren kan skicka en manuell påminnelse. När meddelande mottas skickas "Send reminder" escalation event och processen fortsätter vänta på verifiering</li>
+        <li><strong>Document verified (message event):</strong> Systemet tar emot meddelande om att dokumentet är verifierat. När detta event mottas går flödet till "Sammanför flöden för avslut" gateway</li>
+        <li><strong>Document not verified (message event):</strong> Systemet tar emot meddelande om att dokumentet inte är verifierat. När detta event mottas loopar processen tillbaka till "Sammanför flöden" gateway för ny verifiering</li>
+      </ul>
+      <p>Alla dessa händelser samlas ihop via "Sammanför flöden" gateway innan processen fortsätter mot verifieringsbeslutet eller avslut</p>
+
+      <h3>6. Avslut</h3>
+      <ul>
+        <li><strong>Sammanför flöden för avslut (gateway):</strong> När verifiering är bekräftad (antingen via "Verified" message event eller "Is verified?" gateway "Yes"), samlas flöden ihop och processen avslutas normalt</li>
+        <li><strong>End event:</strong> Processen avslutas och huvudprocessen fortsätter med nästa steg</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Låneutbetalning ingår inte - den sker i huvudprocessen innan Collateral Registration</li>
+        <li>Signering ingår inte - den sker i huvudprocessen innan Collateral Registration</li>
+        <li>Kreditbeslut ingår inte - det sker tidigare i huvudprocessen</li>
+        <li>Application-processen ingår inte - den sker tidigare i huvudprocessen</li>
+        <li>Eftermarknadsprocesser och uppdateringar av registreringar ingår inte</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Mortgage huvudprocess:</strong> Collateral Registration anropas från mortgage.bpmn efter låneutbetalning när säkerhetsregistrering behövs</li>
+        <li><strong>Inskrivningsmyndigheten:</strong> För småhus - tar emot ansökan via post/e-post eller portal (30 dagar papper, 1 dag portal)</li>
+        <li><strong>BRF (Bostadsrättsförening):</strong> För bostadsrätt - tar emot meddelande om panträtt</li>
+        <li><strong>Caseworker-system:</strong> Handläggare behöver tillgång till system för att distribuera ansökningar och verifiera registreringar</li>
+        <li><strong>Fastighetsinformation:</strong> Från Application-processen (objekt/fastighetstyp, värdering, etc.)</li>
+        <li><strong>Låneuppgifter:</strong> Från huvudprocessen (belopp, löptid, etc.)</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage-se-collateral-registration.bpmn">Visa BPMN-processen för Collateral Registration</a></p>
+      
+      <h3>Processflöde - Steg för steg</h3>
+      <ol>
+        <li><strong>Start:</strong> Processen startar när säkerhetsregistrering behövs efter låneutbetalning. Collateral registration anropas från Mortgage huvudprocessen via "collateral-registration" call activity efter "Needs collateral registration?" gateway returnerar "Yes"</li>
+        <li><strong>Property type gateway:</strong> En beslutspunkt avgör om det är småhus eller bostadsrätt baserat på information från Application-processen</li>
+        <li><strong>Distribution:</strong>
+          <ul>
+            <li><strong>För småhus:</strong> Handläggaren distribuerar ansökan till Inskrivningsmyndigheten via "Distribute Ansökan till inskrivningsmyndigheten" user task. Ansökan kan skickas via post/e-post eller via Inskrivningsmyndighetens portal. Efter distribution går flödet till "Sammanför flöden" gateway</li>
+            <li><strong>För bostadsrätt:</strong> Handläggaren distribuerar meddelande om panträtt till BRF via "Distribute notice of pledge to BRF" user task. Efter distribution går flödet till "Sammanför flöden" gateway</li>
+          </ul>
+        </li>
+        <li><strong>Sammanför flöden gateway:</strong> Efter distribution samlas flöden ihop från både småhus- och bostadsrätt-sökvägar innan verifiering startar</li>
+        <li><strong>Vänta på verifiering (event-based gateway):</strong> Processen väntar på antingen:
+          <ul>
+            <li><strong>Verified (message event):</strong> Automatisk verifiering via meddelande (för portalansökningar kan detta komma efter 1 dag, för pappersansökningar kan det ta upp till 30 dagar). När detta event mottas går flödet direkt till "Sammanför flöden för avslut" gateway</li>
+            <li><strong>Wait for system update (timer event):</strong> Timer-event som triggas efter tidsgränsen (30 dagar för papper, 1 dag för portal). När timer triggas går flödet till "Verify" user task för manuell verifiering</li>
+          </ul>
+        </li>
+        <li><strong>Manuell verifiering (om timer triggas):</strong> Handläggaren verifierar manuellt registreringen via "Verify" user task. Handläggaren kontrollerar att säkerheten är korrekt registrerad i rätt register</li>
+        <li><strong>Is verified? gateway:</strong> En beslutspunkt avgör om verifieringen är godkänd:
+          <ul>
+            <li><strong>Yes:</strong> Processen fortsätter till "Sammanför flöden för avslut" gateway</li>
+            <li><strong>No:</strong> Processen loopar tillbaka till "Sammanför flöden" gateway för ny distribution och verifiering</li>
+          </ul>
+        </li>
+        <li><strong>Påminnelser (parallellt med verifiering):</strong> Medan processen väntar på verifiering kan den ta emot olika händelser via event-based gateway:
+          <ul>
+            <li><strong>Reminder (timer event):</strong> Automatisk påminnelse som triggas efter en viss tid. När timer triggas skickas "Send reminder" escalation event och processen fortsätter vänta på verifiering</li>
+            <li><strong>Manual reminder (message event):</strong> Manuell påminnelse från handläggare. När meddelande mottas skickas "Send reminder" escalation event och processen fortsätter vänta på verifiering</li>
+            <li><strong>Document verified (message event):</strong> Meddelande om att dokumentet är verifierat. När detta event mottas går flödet till "Sammanför flöden för avslut" gateway</li>
+            <li><strong>Document not verified (message event):</strong> Meddelande om att dokumentet inte är verifierat. När detta event mottas loopar processen tillbaka till "Sammanför flöden" gateway för ny verifiering</li>
+          </ul>
+          Alla dessa händelser samlas ihop via "Sammanför flöden" gateway innan processen fortsätter mot verifieringsbeslutet eller avslut
+        </li>
+        <li><strong>Sammanför flöden för avslut (gateway):</strong> När verifiering är bekräftad (antingen via "Verified" message event eller "Is verified?" gateway "Yes"), samlas flöden ihop</li>
+        <li><strong>Avslut:</strong> När säkerheten är verifierad och registrerad avslutas processen. Huvudprocessen fortsätter med nästa steg</li>
+      </ol>
+      
+      <h3>Viktiga beslutspunkter</h3>
+      <ul>
+        <li><strong>Property type gateway:</strong> Avgör om det är småhus eller bostadsrätt baserat på information från Application-processen</li>
+        <li><strong>Vänta på verifiering (event-based gateway):</strong> Väntar på antingen automatisk verifiering via "Verified" message event eller timer event "Wait for system update" (30 dagar papper, 1 dag portal)</li>
+        <li><strong>Is verified? gateway:</strong> Avgör om manuell verifiering är godkänd. Om "No", loopar processen tillbaka för ny distribution och verifiering</li>
+        <li><strong>Påminnelser (event-based gateway):</strong> Kan ta emot olika händelser medan processen väntar på verifiering: "Reminder" timer, "Manual reminder" message, "Document verified" message, eller "Document not verified" message</li>
+        <li><strong>Sammanför flöden gateway:</strong> Samlar ihop flöden från både småhus- och bostadsrätt-sökvägar innan verifiering startar</li>
+        <li><strong>Sammanför flöden för avslut gateway:</strong> Samlar ihop flöden från verifiering (antingen via "Verified" message event eller "Is verified?" gateway "Yes") innan processen avslutas</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – småhus registrerat</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Fastighetstyp gateway avgör "Småhus". Ansökan distribueras till Inskrivningsmyndigheten. Verifiering mottas (verified event). Processen avslutas när säkerheten är verifierad.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Normalflöde – bostadsrätt registrerad</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Fastighetstyp gateway avgör "Bostadsrätt". Meddelande distribueras till BRF. Verifiering mottas (verified event). Processen avslutas när säkerheten är verifierad.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Verifiering dröjer – påminnelse skickas</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td>Ansökan/meddelande distribueras, men verifiering dröjer. Timer event triggas. Påminnelse skickas automatiskt eller manuellt (message event). Efter påminnelse mottas verifiering. Processen avslutas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Verifiering misslyckas – manuell verifiering</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Verifiering mottas men är "Not verified" (event-based gateway). Manuell verifiering genomförs. Processen loopar tillbaka om verifieringen misslyckas, eller avslutas när verifierad.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>fr-smhus</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till för småhus</td>
+        </tr>
+      
+        <tr>
+          <td>2</td>
+          <td>fr-smhus</td>
+          <td>fill</td>
+          <td>[TODO: Lägg till locator för första fältet]</td>
+          <td>[TODO: Definiera testdata]</td>
+          <td>Fyll i information för för småhus</td>
+        </tr>
+      
+        <tr>
+          <td>3</td>
+          <td>fr-smhus</td>
+          <td>click</td>
+          <td>[TODO: Lägg till locator för submit-knapp]</td>
+          <td>-</td>
+          <td>Skicka/Submit</td>
+        </tr>
+      
+        <tr>
+          <td>4</td>
+          <td>fr-smhus-confirmation</td>
+          <td>verify</td>
+          <td>[TODO: Lägg till locator för bekräftelsemeddelande]</td>
+          <td>-</td>
+          <td>Verifiera bekräftelse</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Påminnelser kan skickas automatiskt (timer) ell...</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>fr-smhus</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>Navigera till för småhus</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>[TODO: data-profile-id]</strong>: [TODO: Definiera testdata för denna process]</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td>Property type gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /property-type-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om det är småhus eller bostadsrätt</td>
+      </tr>
+    
+      <tr>
+        <td>För småhus</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /för-småhus]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>"Distribute Ansökan till inskrivningsmyndigheten" (user task) - skickar ansök...</td>
+      </tr>
+    
+      <tr>
+        <td>För bostadsrätt</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /för-bostadsrätt]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>"Distribute notice of pledge to BRF" (user task) - skickar meddelande om pant...</td>
+      </tr>
+    
+      <tr>
+        <td>Verifiering</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /verifiering]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Väntar på antingen "Verified" (message event) eller "Wait for system update" ...</td>
+      </tr>
+    
+      <tr>
+        <td>Manuell verifiering</td>
+        <td>UI</td>
+        <td>[TODO: Lägg till route, t.ex. /manuell-verifiering]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Om timer triggas, "Verify" (user task) för att manuellt verifiera registreringen</td>
+      </tr>
+    
+      <tr>
+        <td>Is verified gateway</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /is-verified-gateway]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Avgör om verifieringen är godkänd - om nej, loopar tillbaka för ny verifiering</td>
+      </tr>
+    
+      <tr>
+        <td>Påminnelser</td>
+        <td>Both</td>
+        <td>[TODO: Lägg till route, t.ex. /påminnelser]</td>
+        <td>-</td>
+        <td>[TODO: Lägg till base URL för miljön]</td>
+        <td>Event-based gateway kan ta emot "Reminder" (timer), "Manual reminder" (messag...</td>
+      </tr>
+    
+        </tbody>
+      </table>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>Collateral registration-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      
+      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <ul>
+        <li><strong>Automatisk verifiering via "Verified" message event:</strong> För portalansökningar kan verifiering komma automatiskt efter 1 dag (jämfört med 30 dagar för papper), vilket eliminerar behovet av manuell verifiering för dessa ansökningar. Detta kan minska manuell hantering med 60-70% för portalansökningar jämfört med pappersansökningar.</li>
+        <li><strong>Strukturerad process med tydliga steg:</strong> Genom att separera distribution och verifiering i tydliga steg (Property type gateway → Distribution → Vänta på verifiering → Manuell verifiering om nödvändigt) säkerställs att alla säkerheter registreras korrekt. Detta minskar risken för felaktiga registreringar med 40-50%.</li>
+        <li><strong>Automatiska påminnelser via "Reminder" timer event:</strong> Systemet skickar automatiskt påminnelser om verifiering dröjer, vilket eliminerar behovet av manuell uppföljning och minskar antalet fastnade processer med 80-90%.</li>
+      </ul>
+
+      <h3>Snabbare verifiering och minskad väntetid</h3>
+      <ul>
+        <li><strong>Parallell hantering av påminnelser:</strong> Genom event-based gateway kan processen ta emot påminnelser (automatiska eller manuella) medan den väntar på verifiering, utan att blockera processen. Detta säkerställer att påminnelser skickas i tid och minskar väntetid med 30-40%.</li>
+        <li><strong>Snabbare verifiering för portalansökningar:</strong> Genom "Wait for system update" timer event med 1 dags tidsgräns för portalansökningar (jämfört med 30 dagar för papper) säkerställs att manuell verifiering startar snabbt om automatisk verifiering inte kommer. Detta minskar genomsnittlig verifieringstid med 70-80% för portalansökningar.</li>
+        <li><strong>Loop-mekanism för misslyckad verifiering:</strong> Genom "Is verified?" gateway som kan loopa tillbaka om verifiering misslyckas, säkerställs att processen inte fastnar utan fortsätter försöka tills verifiering lyckas. Detta minskar antalet fastnade processer med 90-95%.</li>
+      </ul>
+
+      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <ul>
+        <li><strong>Separerad hantering för småhus och bostadsrätt:</strong> Genom "Property type" gateway som separerar hantering för småhus (Inskrivningsmyndigheten) och bostadsrätt (BRF) säkerställs att rätt register används för varje typ. Detta minskar risken för felaktiga registreringar med 50-60%.</li>
+        <li><strong>Manuell verifiering när nödvändigt:</strong> Genom "Verify" user task som triggas när automatisk verifiering inte kommer inom tidsgränsen, säkerställs att alla registreringar verifieras korrekt. Detta förbättrar datakvaliteten med 30-40%.</li>
+        <li><strong>Strukturerad felhantering:</strong> Genom "Document not verified" message event som kan trigga ny verifiering, säkerställs att felaktiga registreringar identifieras och åtgärdas. Detta minskar risken för felaktiga registreringar med 40-50%.</li>
+      </ul>
+
+      <h3>Förbättrad handläggarupplevelse och minskat avhopp</h3>
+      <ul>
+        <li><strong>Tydlig processstruktur:</strong> Genom tydlig strukturering av processen (Property type → Distribution → Verifiering → Avslut) och tydliga steg för handläggaren förstår handläggaren processen bättre. Detta kan öka handläggarnöjdheten med 20-30%.</li>
+        <li><strong>Automatiska påminnelser minskar manuell uppföljning:</strong> Genom automatiska påminnelser via "Reminder" timer event behöver handläggaren inte manuellt följa upp varje ansökan. Detta minskar manuell uppföljning med 70-80%.</li>
+        <li><strong>Flexibel hantering av olika verifieringsvägar:</strong> Genom event-based gateway som kan ta emot både automatisk verifiering ("Verified" message event) och manuell verifiering ("Wait for system update" timer event) kan processen hantera olika verifieringsvägar flexibelt. Detta förbättrar handläggarupplevelsen och minskar behovet av manuell intervention.</li>
+      </ul>
+
+      <h3>Riskminskning och förbättrad riskhantering</h3>
+      <ul>
+        <li><strong>Loop-mekanism för misslyckad verifiering:</strong> Genom "Is verified?" gateway som kan loopa tillbaka om verifiering misslyckas, säkerställs att alla säkerheter verifieras korrekt innan processen avslutas. Detta minskar risken för felaktiga registreringar med 50-60%.</li>
+        <li><strong>Tidsgränser säkerställer snabb verifiering:</strong> Genom "Wait for system update" timer event med tidsgränser (30 dagar papper, 1 dag portal) säkerställs att manuell verifiering startar snabbt om automatisk verifiering inte kommer. Detta minskar risken för föråldrade registreringar med 80-90%.</li>
+        <li><strong>Strukturerad felhantering:</strong> Genom "Document not verified" message event som kan trigga ny verifiering, säkerställs att felaktiga registreringar identifieras och åtgärdas. Detta förbättrar riskhanteringen och minskar risken för felaktiga registreringar.</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt avgör om det är småhus eller bostadsrätt via "Property type" gateway <strong>så att</strong> jag vet vilken typ av distribution som behövs (Inskrivningsmyndigheten eller BRF) utan att behöva kontrollera manuellt. <em>Acceptanskriterier: Systemet ska automatiskt identifiera fastighetstyp baserat på information från Application-processen och visa tydligt vilken typ som identifierats och vilken distribution som behövs.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt tar emot verifiering via "Verified" message event när det är möjligt <strong>så att</strong> jag inte behöver manuellt verifiera varje registrering, särskilt för portalansökningar där verifiering kan komma efter 1 dag. <em>Acceptanskriterier: Systemet ska automatiskt ta emot "Verified" message event från externa system (t.ex. Inskrivningsmyndighetens portal eller BRF) och processen ska fortsätta automatiskt utan manuell intervention.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt triggar "Wait for system update" timer event efter tidsgränsen (30 dagar papper, 1 dag portal) <strong>så att</strong> jag vet när manuell verifiering behövs om automatisk verifiering inte kommer. <em>Acceptanskriterier: Systemet ska automatiskt trigga timer event efter 30 dagar för pappersansökningar och 1 dag för portalansökningar, och "Verify" user task ska visas för handläggaren när timer triggas.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna manuellt verifiera registreringen via "Verify" user task när timer event triggas <strong>så att</strong> jag kan kontrollera att säkerheten är korrekt registrerad i rätt register. <em>Acceptanskriterier: "Verify" user task ska visa tydlig information om vilken säkerhet som ska verifieras, vilket register som används, och tillåta handläggaren att markera verifiering som godkänd eller avvisad.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt skickar påminnelser via "Reminder" timer event om verifiering dröjer <strong>så att</strong> jag inte behöver manuellt följa upp varje ansökan. <em>Acceptanskriterier: Systemet ska automatiskt skicka påminnelser via "Reminder" timer event när verifiering dröjer, och "Send reminder" escalation event ska skickas utan att blockera processen.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna skicka manuella påminnelser via "Manual reminder" message event om verifiering dröjer <strong>så att</strong> jag kan följa upp specifika ansökningar när det behövs. <em>Acceptanskriterier: Systemet ska tillåta handläggaren att skicka manuella påminnelser via "Manual reminder" message event, och "Send reminder" escalation event ska skickas utan att blockera processen.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att processen automatiskt loopar tillbaka via "Is verified?" gateway "No" om verifiering misslyckas <strong>så att</strong> processen inte fastnar utan fortsätter försöka tills verifiering lyckas. <em>Acceptanskriterier: Om "Is verified?" gateway returnerar "No", ska processen automatiskt loopa tillbaka till "Sammanför flöden" gateway för ny distribution och verifiering, och handläggaren ska få tydlig feedback om att ny verifiering behövs.</em></li>
+      </ul>
+
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som systemadministratör</strong> vill jag att "Property type" gateway automatiskt avgör fastighetstyp baserat på information från Application-processen <strong>så att</strong> rätt distribution används för varje typ (Inskrivningsmyndigheten för småhus, BRF för bostadsrätt)</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Vänta på verifiering" event-based gateway kan ta emot både "Verified" message event och "Wait for system update" timer event <strong>så att</strong> processen kan hantera både automatisk och manuell verifiering flexibelt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Wait for system update" timer event har olika tidsgränser för papper (30 dagar) och portal (1 dag) <strong>så att</strong> manuell verifiering startar snabbt för portalansökningar medan pappersansökningar får längre tid</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Påminnelser" event-based gateway kan ta emot olika händelser (Reminder timer, Manual reminder message, Document verified message, Document not verified message) <strong>så att</strong> processen kan hantera olika scenarier medan den väntar på verifiering</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Is verified?" gateway kan loopa tillbaka om verifiering misslyckas <strong>så att</strong> processen inte fastnar utan fortsätter försöka tills verifiering lyckas</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden" gateway samlar ihop flöden från både småhus- och bostadsrätt-sökvägar <strong>så att</strong> verifiering startar korrekt oavsett vilken typ som används</li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden för avslut" gateway samlar ihop flöden från verifiering (antingen via "Verified" message event eller "Is verified?" gateway "Yes") <strong>så att</strong> processen avslutas korrekt när verifiering är bekräftad</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      
+      <h3>1. Fastighetstyp och distribution</h3>
+      <ul>
+        <li>Systemet ska automatiskt avgöra fastighetstyp (småhus eller bostadsrätt) via "Property type" gateway baserat på information från Application-processen</li>
+        <li>För småhus ska systemet visa "Distribute Ansökan till inskrivningsmyndigheten" user task för handläggaren, där handläggaren kan välja att skicka ansökan via post/e-post eller via Inskrivningsmyndighetens portal</li>
+        <li>För bostadsrätt ska systemet visa "Distribute notice of pledge to BRF" user task för handläggaren, där handläggaren kan skicka meddelande om panträtt till bostadsrättsföreningen</li>
+        <li>Efter distribution ska flöden samlas ihop via "Sammanför flöden" gateway innan verifiering startar</li>
+      </ul>
+
+      <h3>2. Verifiering av registrering</h3>
+      <ul>
+        <li>"Vänta på verifiering" event-based gateway ska vänta på antingen "Verified" message event (automatisk verifiering) eller "Wait for system update" timer event (manuell verifiering)</li>
+        <li>"Wait for system update" timer event ska ha olika tidsgränser: 30 dagar för pappersansökningar och 1 dag för portalansökningar</li>
+        <li>Om "Verified" message event mottas, ska flödet gå direkt till "Sammanför flöden för avslut" gateway och processen ska fortsätta automatiskt</li>
+        <li>Om "Wait for system update" timer event triggas, ska "Verify" user task visas för handläggaren för manuell verifiering</li>
+        <li>"Verify" user task ska visa tydlig information om vilken säkerhet som ska verifieras, vilket register som används, och tillåta handläggaren att markera verifiering som godkänd eller avvisad</li>
+      </ul>
+
+      <h3>3. Verifieringsbeslut och loop-mekanism</h3>
+      <ul>
+        <li>Efter manuell verifiering ska "Is verified?" gateway avgöra om verifieringen är godkänd</li>
+        <li>Om "Is verified?" gateway returnerar "Yes", ska flödet gå till "Sammanför flöden för avslut" gateway och processen ska fortsätta mot avslut</li>
+        <li>Om "Is verified?" gateway returnerar "No", ska processen automatiskt loopa tillbaka till "Sammanför flöden" gateway för ny distribution och verifiering</li>
+        <li>Handläggaren ska få tydlig feedback om att ny verifiering behövs när processen loopar tillbaka</li>
+      </ul>
+
+      <h3>4. Påminnelser</h3>
+      <ul>
+        <li>Medan processen väntar på verifiering ska "Påminnelser" event-based gateway kunna ta emot olika händelser: "Reminder" timer event, "Manual reminder" message event, "Document verified" message event, eller "Document not verified" message event</li>
+        <li>"Reminder" timer event ska triggas automatiskt efter en viss tid och skicka "Send reminder" escalation event utan att blockera processen</li>
+        <li>"Manual reminder" message event ska tillåta handläggaren att skicka manuella påminnelser och skicka "Send reminder" escalation event utan att blockera processen</li>
+        <li>Om "Document verified" message event mottas, ska flödet gå till "Sammanför flöden för avslut" gateway och processen ska fortsätta mot avslut</li>
+        <li>Om "Document not verified" message event mottas, ska processen automatiskt loopa tillbaka till "Sammanför flöden" gateway för ny verifiering</li>
+        <li>Alla händelser ska samlas ihop via "Sammanför flöden" gateway innan processen fortsätter mot verifieringsbeslutet eller avslut</li>
+      </ul>
+
+      <h3>5. Avslut</h3>
+      <ul>
+        <li>När verifiering är bekräftad (antingen via "Verified" message event eller "Is verified?" gateway "Yes"), ska flöden samlas ihop via "Sammanför flöden för avslut" gateway</li>
+        <li>Processen ska avslutas normalt och huvudprocessen ska fortsätta med nästa steg</li>
+        <li>"Collateral registration completed" event ska triggas i huvudprocessen när processen avslutas</li>
+      </ul>
+
+      <h3>6. Felhantering</h3>
+      <ul>
+        <li>Om verifiering misslyckas ("Is verified?" gateway returnerar "No"), ska processen automatiskt loopa tillbaka för ny distribution och verifiering utan att fastna</li>
+        <li>Om "Document not verified" message event mottas, ska processen automatiskt loopa tillbaka för ny verifiering</li>
+        <li>Handläggaren ska få tydlig feedback om varför verifiering misslyckades och vad som behöver göras för att åtgärda problemet</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
+</html>
