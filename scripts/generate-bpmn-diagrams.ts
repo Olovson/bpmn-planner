@@ -169,9 +169,9 @@ function createBpmnRendererHtml(bpmnXml: string): string {
 }
 
 /**
- * Renderar BPMN-diagram och returnerar base64-encoded PNG
+ * Renderar BPMN-diagram och returnerar PNG som Buffer
  */
-async function renderBpmnToImage(bpmnXml: string): Promise<string> {
+async function renderBpmnToImage(bpmnXml: string): Promise<Buffer> {
   // Skapa temporär HTML-fil
   const tempHtmlPath = path.join(TEMP_HTML_DIR, `render-${Date.now()}.html`);
   const htmlContent = createBpmnRendererHtml(bpmnXml);
@@ -233,10 +233,8 @@ async function renderBpmnToImage(bpmnXml: string): Promise<string> {
       },
     });
 
-    // Konvertera till base64
-    const base64 = screenshot.toString('base64');
-
-    return base64;
+    // Returnera screenshot som Buffer (inte base64)
+    return screenshot;
   } catch (error) {
     console.error('Error rendering BPMN:', error);
     throw error;
@@ -288,7 +286,7 @@ function createProcessDiagramSection(base64Image: string): string {
         </div>
       </details>
     </section>
-`;
+  `;
 }
 
 /**
@@ -347,9 +345,12 @@ async function main() {
 
       // Rendera BPMN till bild
       console.log(`  🎨 Renderar diagram...`);
-      const base64Image = await renderBpmnToImage(bpmnXml);
+      const screenshotBuffer = await renderBpmnToImage(bpmnXml);
 
-      // Lägg till diagram i HTML
+      // Konvertera till base64 för embedding
+      const base64Image = screenshotBuffer.toString('base64');
+
+      // Lägg till diagram-sektion i HTML med embedded bild
       const updatedHtml = addProcessDiagramSection(htmlContent, base64Image);
 
       // Spara uppdaterad HTML
