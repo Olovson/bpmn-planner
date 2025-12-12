@@ -91,6 +91,12 @@
    npx tsx scripts/validate-feature-goal-documentation.ts  # ⚠️ PERMANENT - ALDRIG HOPPA ÖVER
    ```
    
+   **⚠️ PERMANENT REGEL - BPMN-DIAGRAMGENERERING:**
+   - **ALDRIG** anse dokumentation komplett utan att generera BPMN-diagram
+   - **ALLTID** kör `npm run generate:bpmn-diagrams` efter att alla filer är förbättrade
+   - **ALLTID** verifiera att diagram är embeddat i alla HTML-filer
+   - **Detta är en PERMANENT del av arbetsprocessen och ska ALDRIG hoppas över**
+   
    **⚠️ VIKTIGT:** 
    - `analyze-reused-feature-goals.ts` MÅSTE alltid köras först för att identifiera återkommande feature goals. Detta är en PERMANENT del av processen.
    - `validate-feature-goal-documentation.ts` MÅSTE alltid köras för att säkerställa att alla feature goals har korrekt dokumentation. Detta är en PERMANENT del av processen och MÅSTE köras innan dokumentation anses komplett.
@@ -197,7 +203,25 @@
    
    i. **Markera som förbättrad i status-listan** med `[x]`
    
-   j. **Validera för alla målgrupper (PERMANENT REGEL - ALDRIG GLÖM):**
+   j. **Generera BPMN-diagram (PERMANENT REGEL - ALDRIG GLÖM):**
+      - **⚠️ KRITISK:** Efter att dokumentet skapats/förbättrats, MÅSTE BPMN-diagram genereras och embeddas i HTML-filen
+      - **Kör diagramgenereringsscript:**
+        ```bash
+        npm run generate:bpmn-diagrams
+        ```
+      - **Detta script:**
+        - Läser alla HTML-filer i `public/local-content/feature-goals/`
+        - För varje fil, hittar motsvarande BPMN-fil
+        - Använder Playwright för att rendera bpmn-js i headless browser
+        - Tar screenshot och konverterar till base64
+        - Embeddar bilden i HTML-filen
+        - Lägger till "Process Diagram" kapitel i slutet
+      - **Resultat:** Varje HTML-fil får ett nytt kapitel "Process Diagram" med en statisk bild av BPMN-processdiagrammet
+      - **⚠️ VIKTIGT:** Detta gör HTML-filerna helt fristående och delningsbara utan appen eller externa servrar
+      - **Se `docs/scripts/GENERATE_BPMN_DIAGRAMS.md` för detaljerad dokumentation**
+      - **⚠️ PERMANENT REGEL:** Detta steg ska ALDRIG hoppas över. INGEN fil är komplett förrän BPMN-diagram är genererat och embeddat.
+   
+   k. **Validera för alla målgrupper (PERMANENT REGEL - ALDRIG GLÖM):**
       - **⚠️ KRITISK:** Efter att dokumentet skapats/förbättrats, MÅSTE det valideras för alla målgrupper
       - **Gå igenom varje målgrupp:** Läs checklistan i `TARGET_AUDIENCE_VALIDATION.md` för varje målgrupp
       - **Identifiera vad som saknas:** För varje målgrupp, identifiera vad som saknas i dokumentet
@@ -206,16 +230,29 @@
       - **⚠️ VIKTIGT:** Detta är en iterativ process. Fortsätt tills alla checklistor är kompletta
       - **Se `TARGET_AUDIENCE_VALIDATION.md` för detaljerad guide och checklistor**
    
-   k. **Rapportera kortfattat** (t.ex. "✅ Application: Förbättrad beskrivning, lagt till saknade aktiviteter, ersatt alla tekniska ID:n, validerat för alla målgrupper")
+   l. **Rapportera kortfattat** (t.ex. "✅ Application: Förbättrad beskrivning, lagt till saknade aktiviteter, ersatt alla tekniska ID:n, genererat BPMN-diagram, validerat för alla målgrupper")
    
    **⚠️ VIKTIGT:** 
    - Ta den tid som behövs för varje fil
    - Varje fil ska vara perfekt innan jag går vidare
    - Om det tar längre tid, även om det är 100 filer, måste jag ta den tiden
    - **INGA SHORTCUTS ÄR TILLÅTNA**
+   - **BPMN-diagramgenerering är OBLIGATORISK - INGEN fil är klar förrän BPMN-diagram är genererat och embeddat**
    - **Validering för målgrupper är OBLIGATORISK - INGEN fil är klar förrän alla målgrupper har all information de behöver**
 
-3. **Fortsätt tills alla filer är klara** - **INGEN fil ska hoppas över**
+3. **Generera BPMN-diagram för alla filer:**
+   ```bash
+   npm run generate:bpmn-diagrams
+   ```
+   **⚠️ PERMANENT REGEL:** Detta steg MÅSTE köras efter att alla filer är förbättrade. Scriptet kommer att:
+   - Processa alla HTML-filer i `public/local-content/feature-goals/`
+   - För varje fil, hitta motsvarande BPMN-fil
+   - Rendera BPMN-diagram med Playwright + bpmn-js
+   - Embedda bilden som base64 i HTML-filen
+   - Lägga till "Process Diagram" kapitel i slutet
+   - **Se `docs/scripts/GENERATE_BPMN_DIAGRAMS.md` för detaljerad dokumentation**
+
+4. **Fortsätt tills alla filer är klara** - **INGEN fil ska hoppas över**
 
 ## 📋 Detaljerad exekveringsprocess för varje fil
 
@@ -620,6 +657,11 @@ html = html.replace(sectionRegex, (match, content) => {
   - [ ] Har jag lagt till kontextspecifika input/output-krav?
   - [ ] Följer jag strukturen i `REUSED_FEATURE_GOAL_TEMPLATE.md`?
   - [ ] **OM FEATURE GOALET ÄR ÅTERKOMMANDE OCH INTE HAR "ANROPNINGSKONTEXTER" SEKTION - FIXA DET INNAN DU GÅR VIDARE. DETTA ÄR EN PERMANENT REGEL.**
+- [ ] **⚠️ BPMN-DIAGRAMGENERERING - PERMANENT REGEL (ALDRIG GLÖM):**
+  - [ ] Har jag kört `npm run generate:bpmn-diagrams` för att generera BPMN-diagram?
+  - [ ] Har jag verifierat att "Process Diagram" kapitel finns i HTML-filen?
+  - [ ] Har jag verifierat att diagrammet är embeddat som base64 (fristående, inga externa filer)?
+  - [ ] **OM BPMN-DIAGRAM SAKNAS - KÖR SCRIPTET INNAN DU GÅR VIDARE. DETTA ÄR EN PERMANENT REGEL. INGEN FIL ÄR KLAR FÖRRÄN BPMN-DIAGRAM ÄR GENERERAT OCH EMBEDDAT.**
 - [ ] **⚠️ VALIDERING FÖR MÅLGRUPPER - PERMANENT REGEL (ALDRIG GLÖM):**
   - [ ] Har jag validerat dokumentet för alla målgrupper enligt `TARGET_AUDIENCE_VALIDATION.md`?
   - [ ] Har jag gått igenom checklistan för varje målgrupp (Produktägare, Testare, Utvecklare, Designer, Handläggare, Tvärfunktionellt team, Arkitekt, Business Analyst)?

@@ -54,7 +54,8 @@
     "improve:feature-goals:test": "vitest run tests/integration/improve-feature-goals-batch.test.ts -- v2 --file",
     "analyze:bpmn-map": "tsx scripts/analyze-bpmn-map-updates.ts",
     "check:missing-feature-goals": "tsx scripts/check-missing-feature-goals.ts",
-    "archive:bpmn": "tsx scripts/archive-bpmn-files.ts"
+    "archive:bpmn": "tsx scripts/archive-bpmn-files.ts",
+    "generate:bpmn-diagrams": "tsx scripts/generate-bpmn-diagrams.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
