@@ -511,100 +511,100 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Lyckad köpansökan – en person, allt godkänt</td>
+        <td>Normalflöde – komplett ansökan med en person</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En person ansöker om bolån för att köpa en bostad för 3 000 000 SEK. Personen är 35 år, har fast anställning, årsinkomst 500 000 SEK och kreditscore 750. Fastigheten är en villa värd 4 000 000 SEK (LTV 75%). <strong>Förväntat flöde:</strong> Systemet hämtar automatiskt kunddata från interna system och gör pre-screening (godkänd). Fastighetsinformation samlas in och bedöms (godkänd). Kunden fyller i hushållsekonomi och personlig information. Systemet beräknar att kunden kan låna maximalt 3 500 000 SEK (KALP), vilket är mer än ansökt belopp, så ansökan godkänns. Kunden bekräftar ansökan. Systemet hämtar kreditinformation från UC3. <strong>Resultat:</strong> Ansökan är klar för kreditevaluering. <strong>Tekniska detaljer:</strong> Gateway skip-confirm-application = No, Gateway_0fhav15 (KALP OK) = Yes, Gateway_1nszp2i samlar flöden, Event_0j4buhs avslutar processen.</td>
+        <td>En person ansöker om bolån för köp. Alla grundläggande krav uppfylls: personen är godkänd vid pre-screening, fastigheten bedöms som godkänd, hushållsekonomi och personlig information samlas in. Systemet beräknar maximalt lånebelopp (KALP) som är högre än ansökt belopp, så ansökan godkänns. Kunden bekräftar ansökan. Systemet hämtar kreditinformation från externa källor. Ansökan är klar för kreditevaluering. <strong>Tekniska detaljer:</strong> Gateway skip-confirm-application = No, Gateway_0fhav15 (KALP OK) = Yes, Gateway_1nszp2i samlar flöden, Event_0j4buhs avslutar processen.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Lyckad köpansökan – sambo med två hushåll</td>
+        <td>Normalflöde – ansökan med flera personer och hushåll</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> Två personer (sambo) ansöker tillsammans om bolån. De har två separata hushåll (t.ex. en person har barn från tidigare relation). Båda personerna är godkända vid pre-screening. <strong>Förväntat flöde:</strong> Systemet hämtar data för båda personerna parallellt. Två parallella flöden startar: (1) Hushållsekonomi samlas in för båda hushållen samtidigt, (2) För varje hushåll samlas information in sekventiellt: först hushållsekonomi för den personen, sedan personlig information och bedömning för båda personerna i hushållet, sedan fastighetsinformation. Båda flödena måste slutföras innan processen fortsätter. <strong>Resultat:</strong> Alla hushåll och personer är bearbetade, ansökan kan fortsätta. <strong>Tekniska detaljer:</strong> Multi-instance loops körs parallellt och sekventiellt, Gateway skip-confirm-application väntar på båda flöden.</td>
+        <td>Flera personer ansöker tillsammans om bolån med separata hushåll. Båda personerna är godkända vid pre-screening. Systemet hämtar data för alla personer parallellt. Två parallella flöden startar: hushållsekonomi samlas in för alla hushåll samtidigt, och för varje hushåll samlas information in sekventiellt (hushållsekonomi → personlig information och bedömning → fastighetsinformation). Båda flödena måste slutföras innan processen fortsätter. Alla hushåll och personer är bearbetade, ansökan kan fortsätta. <strong>Tekniska detaljer:</strong> Multi-instance loops körs parallellt och sekventiellt, Gateway skip-confirm-application väntar på båda flöden.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Ansökan avvisad – kund uppfyller inte grundläggande krav</td>
+        <td>Pre-screen avvisad – kund uppfyller inte grundläggande krav</td>
         <td>Error</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En person på 17 år med kreditscore 400 ansöker om bolån. Personen är för ung enligt bankens regler (minimum 18 år) och har för låg kreditscore (minimum 500). <strong>Förväntat flöde:</strong> När systemet hämtar kunddata och gör pre-screening, avvisas personen automatiskt. Affärsregeln (DMN) kontrollerar ålder och kreditscore och returnerar "REJECTED". <strong>Resultat:</strong> Ansökan avslutas omedelbart med tydligt felmeddelande som förklarar vilket krav som inte uppfylldes (t.ex. "Du måste vara minst 18 år för att ansöka om bolån" eller "Din kreditscore (400) är under minimumkravet (500)"). <strong>Tekniska detaljer:</strong> Boundary event Event_03349px triggas, Error_1vtortg (pre-screen-rejected) signaleras, Event_1uj7wwd avslutar processen.</td>
+        <td>En person ansöker om bolån men uppfyller inte grundläggande krav (t.ex. för ung, för låg kreditscore, eller saknar anställning). När systemet hämtar kunddata och gör pre-screening via affärsregeln (DMN), avvisas personen automatiskt. Ansökan avslutas omedelbart med tydligt felmeddelande som förklarar vilket krav som inte uppfylldes. <strong>Tekniska detaljer:</strong> Boundary event Event_03349px triggas på internal-data-gathering, Error_1vtortg (pre-screen-rejected) signaleras, Event_1uj7wwd avslutar processen.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
-        <td>Ansökan avvisad – medlåntagare har för hög skuldsättning</td>
+        <td>Stakeholder avvisad – medlåntagare uppfyller inte krav</td>
         <td>Error</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> Två personer ansöker tillsammans om bolån. Huvudsökande har god ekonomi (DTI-ratio 30%), men medlåntagaren har mycket höga skulder (DTI-ratio 60%, över gränsen på 50%). <strong>Förväntat flöde:</strong> När systemet bedömer medlåntagarens ekonomi via affärsregeln (DMN), avvisas personen automatiskt eftersom skuldsättningen är för hög. <strong>Resultat:</strong> Ansökan avslutas med tydligt felmeddelande som förklarar att medlåntagaren inte uppfyller kraven (t.ex. "Medlåntagarens skuldsättning (60%) överstiger vårt maximum (50%)"). Huvudsökande kan inte fortsätta ensam eftersom ansökan är gemensam. <strong>Tekniska detaljer:</strong> Boundary event Event_1dhapnx triggas i "Per household" subprocess, Error_0xx0ma1 (stakeholder-rejected) signaleras, Event_1uk9ycv avslutar processen.</td>
+        <td>Flera personer ansöker tillsammans om bolån. När systemet bedömer en medlåntagares ekonomi via affärsregeln (DMN), avvisas personen automatiskt eftersom personen inte uppfyller kraven (t.ex. för hög skuldsättning, för låg inkomst). Ansökan avslutas med tydligt felmeddelande som förklarar vilket krav som inte uppfylldes. Huvudsökande kan inte fortsätta ensam eftersom ansökan är gemensam. <strong>Tekniska detaljer:</strong> Boundary event Event_1dhapnx triggas i "Per household" subprocess, Error_0xx0ma1 (stakeholder-rejected) signaleras, Event_1uk9ycv avslutar processen.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S5</strong></td>
-        <td>Ansökan avvisad – fastigheten har för hög belåningsgrad</td>
+        <td>Object avvisad – fastighet uppfyller inte krav</td>
         <td>Error</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En person ansöker om bolån för att köpa en fastighet för 3 000 000 SEK, men vill låna 2 850 000 SEK (LTV 95%). Bankens regel säger att max LTV är 85% för denna typ av fastighet. <strong>Förväntat flöde:</strong> När systemet bedömer fastigheten via affärsregeln (DMN), avvisas fastigheten automatiskt eftersom belåningsgraden är för hög. <strong>Resultat:</strong> Ansökan avslutas med tydligt felmeddelande som förklarar problemet (t.ex. "Belåningsgraden (95%) överstiger vårt maximum (85%) för denna fastighetstyp"). <strong>Tekniska detaljer:</strong> Boundary event Event_152muhg triggas på "object" call activity, Error_1pe398g (object-rejected) signaleras, Event_07jlrhu avslutar processen.</td>
+        <td>En person ansöker om bolån för en fastighet som inte uppfyller bankens krav (t.ex. för hög belåningsgrad, dålig belägenhet, eller fastigheten är i dåligt skick). När systemet bedömer fastigheten via affärsregeln (DMN), avvisas fastigheten automatiskt. Ansökan avslutas med tydligt felmeddelande som förklarar problemet. <strong>Tekniska detaljer:</strong> Boundary event Event_152muhg triggas på "object" call activity, Error_1pe398g (object-rejected) signaleras, Event_07jlrhu avslutar processen.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S6</strong></td>
-        <td>Återkommande kund – bekräftelse hoppas över automatiskt</td>
+        <td>Bekräftelse hoppas över – direkt till kreditupplysning</td>
         <td>Happy</td>
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En återkommande kund (t.ex. kund som har lånat tidigare och har god kredithistorik) ansöker om nytt bolån. Enligt bankens affärsregler kan bekräftelsesteget hoppas över för denna typ av kund. <strong>Förväntat flöde:</strong> När all information är insamlad, avgör systemet automatiskt att bekräftelse kan hoppas över. Systemet beräknar KALP (maximalt lånebelopp) och screenar resultatet. Om allt är godkänt, går processen direkt vidare till kreditupplysning utan att kunden behöver bekräfta manuellt. <strong>Resultat:</strong> Ansökan går snabbare framåt, kunden behöver inte bekräfta, processen fortsätter direkt till kreditupplysning. <strong>Tekniska detaljer:</strong> Gateway skip-confirm-application = Yes, Gateway_1nszp2i samlar flöden, KALP och Screen KALP körs, Confirm application hoppas över.</td>
+        <td>Enligt bankens affärsregler kan bekräftelsesteget hoppas över för vissa typer av kunder (t.ex. återkommande kunder med god kredithistorik). När all information är insamlad, avgör systemet automatiskt att bekräftelse kan hoppas över. Systemet beräknar KALP (maximalt lånebelopp) och screenar resultatet mot affärsregler. Om allt är godkänt, går processen direkt vidare till kreditupplysning utan att kunden behöver bekräfta manuellt. <strong>Tekniska detaljer:</strong> Gateway skip-confirm-application = Yes, Gateway_1nszp2i samlar flöden, KALP och Screen KALP körs, Confirm application hoppas över.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S7</strong></td>
-        <td>KALP-beräkning godkänd – kunden kan låna mer än ansökt belopp</td>
+        <td>KALP-beräkning godkänd – maximalt belopp över ansökt belopp</td>
         <td>Happy</td>
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En kund ansöker om 3 000 000 SEK för att köpa en bostad. Kunden har god ekonomi: årsinkomst 600 000 SEK, låga utgifter, inga befintliga lån. <strong>Förväntat flöde:</strong> När bekräftelse inte hoppas över, beräknar systemet automatiskt maximalt lånebelopp (KALP) baserat på kundens ekonomi. Beräkningen visar att kunden kan låna 3 500 000 SEK, vilket är mer än ansökt belopp. Affärsregeln (Screen KALP) godkänner detta eftersom maximalt belopp är över ansökt belopp (ingen justering behövs). <strong>Resultat:</strong> Kunden får bekräfta ansökan, allt är godkänt, processen fortsätter. <strong>Tekniska detaljer:</strong> Activity_0p3rqyp (KALP) beräknar 3.5M SEK, Activity_1mezc6h (Screen KALP) returnerar APPROVED, Gateway_0fhav15 (KALP OK) = Yes.</td>
+        <td>När bekräftelse inte hoppas över, beräknar systemet automatiskt maximalt lånebelopp (KALP) baserat på kundens ekonomi. Beräkningen visar att kunden kan låna mer än ansökt belopp. Affärsregeln (Screen KALP) godkänner detta eftersom maximalt belopp är över ansökt belopp (ingen justering behövs). Kunden får bekräfta ansökan, allt är godkänt, processen fortsätter. <strong>Tekniska detaljer:</strong> Activity_0p3rqyp (KALP) beräknar maximalt belopp, Activity_1mezc6h (Screen KALP) returnerar APPROVED, Gateway_0fhav15 (KALP OK) = Yes.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S8</strong></td>
-        <td>Ansökan avvisad – flytt/omlåning, kunden kan inte låna tillräckligt</td>
+        <td>Application avvisad – flytt/omlåning, maximalt belopp under ansökt belopp</td>
         <td>Error</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En kund ansöker om flytt/omlåning för 2 500 000 SEK. Kunden har sämre ekonomi än förväntat: årsinkomst 400 000 SEK, höga utgifter, befintliga lån. <strong>Förväntat flöde:</strong> Systemet beräknar maximalt lånebelopp (KALP) till 2 000 000 SEK baserat på kundens ekonomi. För flytt/omlåning gäller strikt regel: om kunden inte kan låna det ansökta beloppet, avvisas ansökan automatiskt (till skillnad från köp där beloppet kan justeras). <strong>Resultat:</strong> Ansökan avslutas med tydligt felmeddelande: "Maximalt lånebelopp (2 000 000 SEK) är under ansökt belopp (2 500 000 SEK). För flytt/omlåning måste du kunna låna det ansökta beloppet." <strong>Tekniska detaljer:</strong> Gateway_0fhav15 (KALP OK) = No, Error_08o6vkh (application-rejected) signaleras.</td>
+        <td>En kund ansöker om flytt/omlåning. Systemet beräknar maximalt lånebelopp (KALP) baserat på kundens ekonomi. För flytt/omlåning gäller strikt regel: om kunden inte kan låna det ansökta beloppet, avvisas ansökan automatiskt (till skillnad från köp där beloppet kan justeras). Ansökan avslutas med tydligt felmeddelande som förklarar att maximalt lånebelopp är under ansökt belopp och att för flytt/omlåning måste kunden kunna låna det ansökta beloppet. <strong>Tekniska detaljer:</strong> Gateway_0fhav15 (KALP OK) = No, Error_08o6vkh (application-rejected) signaleras.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S9</strong></td>
-        <td>Ansökan avvisad – köp, lånet är för litet</td>
+        <td>Application avvisad – köp, maximalt belopp under tröskelvärde</td>
         <td>Error</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En kund ansöker om bolån för att köpa en bostad för 1 000 000 SEK. Kunden har låg inkomst och kan bara låna 500 000 SEK enligt KALP-beräkningen. Banken har en tröskel på 1 000 000 SEK för köpansökningar (under detta belopp är det inte lönsamt att bevilja lån). <strong>Förväntat flöde:</strong> Systemet beräknar maximalt lånebelopp till 500 000 SEK. Affärsregeln (Screen KALP) kontrollerar att beloppet är över tröskelvärdet för köp. Eftersom 500 000 SEK är under 1 000 000 SEK, avvisas ansökan automatiskt. <strong>Resultat:</strong> Ansökan avslutas med tydligt felmeddelande: "Maximalt lånebelopp (500 000 SEK) är under vårt minimumbelopp (1 000 000 SEK) för köpansökningar." <strong>Tekniska detaljer:</strong> Gateway_0fhav15 (KALP OK) = No, Error_08o6vkh (application-rejected) signaleras.</td>
+        <td>En kund ansöker om bolån för köp. Systemet beräknar maximalt lånebelopp (KALP) baserat på kundens ekonomi. Affärsregeln (Screen KALP) kontrollerar att beloppet är över tröskelvärdet för köpansökningar. Om maximalt belopp är under tröskelvärdet, avvisas ansökan automatiskt. Ansökan avslutas med tydligt felmeddelande som förklarar att maximalt lånebelopp är under minimumbeloppet för köpansökningar. <strong>Tekniska detaljer:</strong> Gateway_0fhav15 (KALP OK) = No, Error_08o6vkh (application-rejected) signaleras.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -615,18 +615,18 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En kund ansöker om 3 000 000 SEK för att köpa en bostad. Kunden har god ekonomi men kan enligt KALP-beräkningen bara låna 2 500 000 SEK. För köpansökningar kan banken justera ansökt belopp nedåt till maximalt belopp (till skillnad från flytt/omlåning där ansökan avvisas). <strong>Förväntat flöde:</strong> Systemet beräknar maximalt lånebelopp till 2 500 000 SEK. Affärsregeln (Screen KALP) godkänner ansökan men justerar ansökt belopp från 3 000 000 SEK till 2 500 000 SEK. <strong>Resultat:</strong> Ansökan godkänns med justerat belopp. Kunden informeras tydligt om justeringen (t.ex. "Vi kan bevilja 2 500 000 SEK istället för 3 000 000 SEK baserat på din ekonomi"). Processen fortsätter. <strong>Tekniska detaljer:</strong> Screen KALP returnerar APPROVED med justering, Gateway_0fhav15 (KALP OK) = Yes.</td>
+        <td>En kund ansöker om bolån för köp. Systemet beräknar maximalt lånebelopp (KALP) baserat på kundens ekonomi. Om maximalt belopp är lägre än ansökt belopp, kan banken för köpansökningar justera ansökt belopp nedåt till maximalt belopp (till skillnad från flytt/omlåning där ansökan avvisas). Affärsregeln (Screen KALP) godkänner ansökan men justerar ansökt belopp. Ansökan godkänns med justerat belopp. Kunden informeras tydligt om justeringen. Processen fortsätter. <strong>Tekniska detaljer:</strong> Screen KALP returnerar APPROVED med justering, Gateway_0fhav15 (KALP OK) = Yes.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S11</strong></td>
-        <td>Ansökan avslutad – kunden bekräftar inte i tid</td>
+        <td>Timeout – kunden bekräftar inte ansökan i tid</td>
         <td>Error</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En kund har fyllt i all information för ansökan och systemet väntar på bekräftelse. Kunden glömmer bort att bekräfta eller är bortrest. Efter 30 dagar har kunden fortfarande inte bekräftat. <strong>Förväntat flöde:</strong> När tidsgränsen (30 dagar) passerar utan att kunden bekräftat, avslutas ansökan automatiskt. <strong>Resultat:</strong> Ansökan avslutas med tydligt meddelande: "Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar). Vänligen starta en ny ansökan om du vill fortsätta." Kunden kan inte fortsätta med samma ansökan men kan starta en ny. <strong>Tekniska detaljer:</strong> Boundary event Event_0ao6cvb (timer) triggas, Error_1bicfvu (application-timeout) signaleras, Event_111g1im avslutar processen.</td>
+        <td>En kund har fyllt i all information för ansökan och systemet väntar på bekräftelse. Kunden bekräftar inte ansökan inom tidsgränsen. När tidsgränsen passerar utan att kunden bekräftat, avslutas ansökan automatiskt. Ansökan avslutas med tydligt meddelande som förklarar att ansökan avslutats på grund av timeout och att kunden kan starta en ny ansökan om önskat. <strong>Tekniska detaljer:</strong> Boundary event Event_0ao6cvb (timer) triggas på confirm-application user task, Error_1bicfvu (application-timeout) signaleras, Event_111g1im avslutar processen.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -637,18 +637,18 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En ansökan med två personer (huvudsökande och medlåntagare) har bekräftats eller hoppats över. Systemet behöver hämta kreditinformation från externa källor (t.ex. UC3) för båda personerna innan ansökan kan gå vidare till kreditevaluering. <strong>Förväntat flöde:</strong> Efter bekräftelse (eller om bekräftelse hoppats över), hämtar systemet automatiskt kreditinformation för varje person i ansökan. För huvudsökande och medlåntagare hämtas information separat och parallellt. <strong>Resultat:</strong> Kreditinformation är hämtad och sparad för alla personer. Ansökan är klar för kreditevaluering i nästa steg. <strong>Tekniska detaljer:</strong> Multi-instance loop körs per stakeholder, Gateway_1nszp2i samlar flöden, Event_0j4buhs avslutar processen normalt.</td>
+        <td>En ansökan med flera personer har bekräftats eller bekräftelse har hoppats över. Systemet behöver hämta kreditinformation från externa källor (t.ex. UC3) för alla personer i ansökan innan ansökan kan gå vidare till kreditevaluering. Efter bekräftelse (eller om bekräftelse hoppats över), hämtar systemet automatiskt kreditinformation för varje person. För flera personer hämtas information separat och parallellt. Kreditinformation är hämtad och sparad för alla personer. Ansökan är klar för kreditevaluering i nästa steg. <strong>Tekniska detaljer:</strong> Multi-instance loop körs per stakeholder, Gateway_1nszp2i samlar flöden, Event_0j4buhs avslutar processen normalt.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S13</strong></td>
-        <td>Ansökan avvisad – en av flera personer uppfyller inte krav</td>
+        <td>Pre-screen avvisad – en av flera personer uppfyller inte krav</td>
         <td>Error</td>
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> Två personer ansöker tillsammans om bolån. Huvudsökande är 35 år och godkänd. Medlåntagaren är 17 år (under minimumåldern 18 år). <strong>Förväntat flöde:</strong> Systemet hämtar data och gör pre-screening för båda personerna parallellt. Huvudsökande godkänns, men medlåntagaren avvisas automatiskt eftersom personen är för ung. <strong>Resultat:</strong> Ansökan avslutas omedelbart när medlåntagaren avvisas, även om huvudsökande är godkänd. Tydligt felmeddelande visas: "Medlåntagaren uppfyller inte grundläggande krav (ålder < 18 år)". <strong>Tekniska detaljer:</strong> Multi-instance körs parallellt, Boundary event Event_03349px triggas när första part avvisas, Error_1vtortg (pre-screen-rejected) signaleras.</td>
+        <td>Flera personer ansöker tillsammans om bolån. Systemet hämtar data och gör pre-screening för alla personer parallellt. En person godkänns, men en annan person avvisas automatiskt eftersom personen inte uppfyller grundläggande krav (t.ex. för ung, för låg kreditscore). Ansökan avslutas omedelbart när första personen avvisas, även om andra personer är godkända. Tydligt felmeddelande visas som förklarar vilket krav som inte uppfylldes. <strong>Tekniska detaljer:</strong> Multi-instance körs parallellt, Boundary event Event_03349px triggas när första part avvisas, Error_1vtortg (pre-screen-rejected) signaleras.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -659,7 +659,7 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> Två personer ansöker tillsammans om bolån och har två separata hushåll (t.ex. en person har barn från tidigare relation). Varje hushåll har sin egen ekonomi och fastighet. <strong>Förväntat flöde:</strong> För varje hushåll samlas information in i en specifik ordning: först hushållsekonomi för den personen, sedan personlig information och bedömning för alla personer i hushållet, sedan fastighetsinformation för hushållet. Varje hushåll bearbetas individuellt och sekventiellt. <strong>Resultat:</strong> Alla hushåll är bearbetade i rätt ordning. Processen fortsätter när alla hushåll är klara. <strong>Tekniska detaljer:</strong> Multi-instance loop för hushåll, sekventiell körning: Household → Stakeholder (multi-instance) → Object per hushåll.</td>
+        <td>Flera personer ansöker tillsammans om bolån och har separata hushåll. Varje hushåll har sin egen ekonomi och fastighet. För varje hushåll samlas information in i en specifik ordning: först hushållsekonomi för den personen, sedan personlig information och bedömning för alla personer i hushållet, sedan fastighetsinformation för hushållet. Varje hushåll bearbetas individuellt och sekventiellt. Alla hushåll är bearbetade i rätt ordning. Processen fortsätter när alla hushåll är klara. <strong>Tekniska detaljer:</strong> Multi-instance loop för hushåll, sekventiell körning: Household → Stakeholder (multi-instance) → Object per hushåll.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -670,7 +670,7 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Affärsscenario:</strong> En ansökan med två personer har bekräftats. Systemet försöker hämta kreditinformation från UC3 (extern kreditupplysningstjänst). UC3 är nere eller svarar inte inom rimlig tid (t.ex. 30 sekunder). <strong>Förväntat flöde:</strong> Systemet försöker hämta kreditinformation för båda personerna. För en person lyckas det, men för den andra svarar UC3 inte. Systemet hanterar detta genom att antingen försöka igen (retry) eller avsluta med fel. <strong>Resultat:</strong> Systemet hanterar felet korrekt: antingen försöker det igen automatiskt, eller så avslutas processen med tydligt felmeddelande om att kreditupplysningen inte kunde hämtas. Om en person lyckas, kan partiell information sparas. <strong>Tekniska detaljer:</strong> Multi-instance loop hanterar timeout, retry-mekanism eller error handling aktiveras.</td>
+        <td>En ansökan har bekräftats. Systemet försöker hämta kreditinformation från externa källor (t.ex. UC3). Den externa tjänsten är otillgänglig eller svarar inte inom rimlig tid. Systemet försöker hämta kreditinformation för alla personer i ansökan. För vissa personer lyckas det, men för andra svarar tjänsten inte. Systemet hanterar detta genom att antingen försöka igen (retry) eller avsluta med fel. Systemet hanterar felet korrekt: antingen försöker det igen automatiskt, eller så avslutas processen med tydligt felmeddelande om att kreditupplysningen inte kunde hämtas. Om vissa personer lyckas, kan partiell information sparas. <strong>Tekniska detaljer:</strong> Multi-instance loop hanterar timeout, retry-mekanism eller error handling aktiveras.</td>
         <td>✅ Planerad</td>
       </tr>
     
