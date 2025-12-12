@@ -238,7 +238,7 @@
       <details open>
         <summary>Beskrivning av FGoal</summary>
         <div class="section-content">
-<p>Update party är en process som [TODO: Lägg till beskrivning baserat på BPMN-filen].</p>
+      <p>Update party är en event-triggered subprocess som hanterar asynkrona uppdateringar av partinformation (kund, stakeholder, eller annan part) under pågående ansökningsprocess. Processen triggas via meddelandehändelse ("Update party" message event) och avslutas direkt efter att ha tagit emot meddelandet, vilket möjliggör asynkron uppdatering av partdata utan att avbryta huvudprocessen.</p>
         </div>
       </details>
     </section>
@@ -484,10 +484,15 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som system</strong> vill jag ta emot "Update party" meddelandehändelse asynkront <strong>så att</strong> partinformation kan uppdateras utan att avbryta huvudprocessen. <em>Acceptanskriterier: Systemet ska ta emot "Update party" message event och hantera det asynkront via event-triggered subprocess, och processen ska avslutas direkt efter att ha tagit emot meddelandet.</em></li>
+        <li><strong>Som system</strong> vill jag att event-triggered subprocess inte avbryter huvudprocessen <strong>så att</strong> huvudprocessen kan fortsätta medan partinformation uppdateras. <em>Acceptanskriterier: Event-triggered subprocess ska ha isInterrupting="false" så att huvudprocessen inte avbryts när meddelandet tas emot.</em></li>
+      </ul>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag kunna uppdatera partinformation asynkront <strong>så att</strong> ansökningsprocessen kan fortsätta medan uppdateringar görs, vilket förbättrar processhastigheten. <em>Acceptanskriterier: Systemet ska tillåta asynkrona uppdateringar av partinformation via "Update party" message event utan att avbryta huvudprocessen.</em></li>
       </ul>
         </div>
       </details>

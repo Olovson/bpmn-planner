@@ -522,10 +522,16 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som system</strong> vill jag automatiskt välja vilka dokument som ska genereras för förskottsutbetalning via "Select documents" business rule task <strong>så att</strong> rätt dokument genereras baserat på affärsregler. <em>Acceptanskriterier: Systemet ska automatiskt välja dokument för förskottsutbetalning baserat på affärsregler och ansökningsdata, och visa tydligt vilka dokument som valts.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt generera dokument för förskottsutbetalning via "Generate Document" service task (multi-instance loop) <strong>så att</strong> alla nödvändiga dokument genereras och lagras korrekt. <em>Acceptanskriterier: Systemet ska automatiskt generera alla valda dokument via Document generation service, och dokument ska sparas korrekt i Document generation service datastore.</em></li>
+        <li><strong>Som system</strong> vill jag hantera flera dokument parallellt via multi-instance loop <strong>så att</strong> dokumentgenerering är effektiv och snabb. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta alla dokument via multi-instance loop, och varje dokument ska genereras individuellt och parallellt.</em></li>
+      </ul>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt genererar dokument för förskottsutbetalning <strong>så att</strong> jag inte behöver manuellt skapa dokument, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt välja och generera alla nödvändiga dokument för förskottsutbetalning, och handläggaren ska endast behöva ingripa om det finns problem.</em></li>
       </ul>
         </div>
       </details>

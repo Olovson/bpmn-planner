@@ -502,10 +502,16 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
-        <li><strong>Som [roll]</strong> vill jag [mål] <strong>så att</strong> [värde]</li>
+        <li><strong>Som system</strong> vill jag automatiskt ladda upp digitala dokument till Signing provider via "Upload document" service task (multi-instance loop) <strong>så att</strong> alla dokument i dokumentpaketet är tillgängliga för signering. <em>Acceptanskriterier: Systemet ska automatiskt ladda upp alla dokument i dokumentpaketet till "Signing provider" datastore via multi-instance loop, och dokument ska sparas korrekt i PADES-format.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt skapa signeringsorder för varje dokumentpaket via "Create sign order" service task <strong>så att</strong> signeringsorder är redo för signees. <em>Acceptanskriterier: Systemet ska automatiskt skapa signeringsorder i "Signing provider" datastore för varje dokumentpaket, och signeringsorder ska vara korrekt konfigurerad med dokument och signees.</em></li>
+        <li><strong>Som system</strong> vill jag bearbeta alla digitala dokumentpaket via multi-instance subprocess <strong>så att</strong> varje dokumentpaket bearbetas individuellt och parallellt. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta alla digitala dokumentpaket via multi-instance loop, och varje dokumentpaket ska bearbetas individuellt med egen instans av subprocessen.</em></li>
+      </ul>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hanterar digitala dokumentpaket <strong>så att</strong> jag inte behöver manuellt hantera varje dokumentpaket, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt ladda upp dokument och skapa signeringsorder för varje dokumentpaket, och handläggaren ska endast behöva ingripa om det finns problem.</em></li>
       </ul>
         </div>
       </details>

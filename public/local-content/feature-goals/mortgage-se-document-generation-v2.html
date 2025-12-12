@@ -395,34 +395,111 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – alla dokument genererade</td>
+        <td>Normalflöde – köp med standarddokument</td>
         <td>Happy</td>
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Systemet förbereder lånet, väljer dokumenttyper, genererar alla dokument via multi-instance loop, och lagrar genererade dokument. Processen avslutas normalt och anropande processen fortsätter med nästa steg (t.ex. signering).</td>
+        <td><strong>Givet:</strong> Låneansökan för köp (purpose=purchase), lånebelopp 3M SEK, standardprodukt, offer accepterad. <strong>När:</strong> Document generation anropas via "document-generation" call activity. <strong>Då:</strong> "Prepare loan" förbereder lånet med loan parts, loan numbers, party- och objektinformation. "Select documents" (DMN) väljer dokumenttyper: Låneavtal, Säkerhetsavtal, Kreditavtal. "Generate Document" genererar alla 3 dokument via multi-instance loop och lagrar i Document generation service. <strong>Assert:</strong> Alla 3 dokument genererade, processen avslutas normalt, dokument tillgängliga för signering.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Document generation service otillgängligt – felhantering</td>
-        <td>Edge</td>
+        <td>Omlåning med flera dokumenttyper</td>
+        <td>Happy</td>
         <td>system</td>
-        <td>P1</td>
+        <td>P0</td>
         <td>functional</td>
-        <td>Om "Document generation service" datastore inte är tillgänglig, hanterar systemet felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalerar till anropande processen.</td>
+        <td><strong>Givet:</strong> Låneansökan för omlåning (purpose=refinance), lånebelopp 2M SEK, befintligt lån från annan bank. <strong>När:</strong> Document generation anropas. <strong>Då:</strong> "Select documents" (DMN) väljer dokumenttyper: Låneavtal, Säkerhetsavtal, Kreditavtal, Uppsägningsavtal (för befintligt lån). "Generate Document" genererar alla 4 dokument via multi-instance loop. <strong>Assert:</strong> Alla 4 dokument genererade korrekt, Uppsägningsavtal innehåller referens till befintligt lån, processen avslutas normalt.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Flera dokumenttyper – multi-instance loop</td>
+        <td>Advance dokumentgenerering för förskott</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Givet:</strong> Låneansökan för köp, kunden begärt förskott, event-advance-ready triggat. <strong>När:</strong> Document generation anropas via "document-generation-advance" call activity. <strong>Då:</strong> "Select documents" (DMN) väljer dokumenttyper för förskott: Förskottsavtal, Säkerhetsavtal (tillfällig). "Generate Document" genererar dokument för förskott. <strong>Assert:</strong> Förskottsdokument genererade, dokument märkta som "advance", processen avslutas normalt, dokument tillgängliga för signing-advance.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Högt lånebelopp – extra dokument krävs</td>
         <td>Edge</td>
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>För låneansökningar med flera dokumenttyper, bearbetar systemet varje dokumenttyp korrekt via multi-instance loop. Alla dokument genereras och lagras innan processen avslutas.</td>
+        <td><strong>Givet:</strong> Låneansökan för köp, lånebelopp 8M SEK (över tröskel för extra dokument). <strong>När:</strong> Document generation anropas. <strong>Då:</strong> "Select documents" (DMN) väljer dokumenttyper: Låneavtal, Säkerhetsavtal, Kreditavtal, Extra säkerhetsdokument (pga högt belopp). "Generate Document" genererar alla 4 dokument. <strong>Assert:</strong> Extra säkerhetsdokument inkluderat, alla dokument genererade, processen avslutas normalt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>Prepare loan misslyckas – felhantering</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Givet:</strong> Låneansökan med saknad party-information eller ogiltiga loan parts. <strong>När:</strong> "Prepare loan" service task körs. <strong>Då:</strong> "Prepare loan" misslyckas (t.ex. timeout eller valideringsfel). Systemet hanterar felet (error event eller retry). <strong>Assert:</strong> Fel loggas tydligt, processen avbryts eller retry-mekanism aktiveras, anropande processen får felmeddelande, processen avslutas med error event.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Select documents (DMN) returnerar tom lista</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Givet:</strong> Låneansökan med ogiltig kombination av parametrar (t.ex. låntyp som inte matchar någon regel). <strong>När:</strong> "Select documents" business rule task (DMN) körs. <strong>Då:</strong> DMN returnerar tom lista eller null. <strong>Assert:</strong> Systemet hanterar tom lista korrekt (t.ex. eskalering eller default-dokument), processen avslutas med tydligt felmeddelande eller eskalering, anropande processen får information om problemet.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>Partiell generering – några dokument misslyckas</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Givet:</strong> Låneansökan som kräver 3 dokument: Låneavtal, Säkerhetsavtal, Kreditavtal. <strong>När:</strong> "Generate Document" service task körs via multi-instance loop. <strong>Då:</strong> Låneavtal och Säkerhetsavtal genereras korrekt, men Kreditavtal misslyckas (t.ex. template-fel eller timeout). <strong>Assert:</strong> Systemet hanterar partiell generering korrekt (t.ex. retry för misslyckade dokument, eller eskalering), processen avslutas med tydligt status (partiell success eller error), anropande processen får information om vilka dokument som genererades och vilka som misslyckades.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>Document generation service timeout</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Givet:</strong> Låneansökan som kräver dokumentgenerering. <strong>När:</strong> "Generate Document" service task anropar Document generation service. <strong>Då:</strong> Document generation service svarar inte inom timeout (t.ex. 30 sekunder). <strong>Assert:</strong> Systemet hanterar timeout korrekt (retry eller error event), processen avslutas med tydligt felmeddelande, anropande processen får information om timeout, retry-mekanism aktiveras om konfigurerad.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>Multi-instance loop med många dokument</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P2</td>
+        <td>performance</td>
+        <td><strong>Givet:</strong> Låneansökan som kräver 10+ dokumenttyper (t.ex. komplex affär med flera säkerheter). <strong>När:</strong> "Generate Document" service task körs via multi-instance loop. <strong>Då:</strong> Systemet bearbetar alla 10+ dokument sekventiellt eller parallellt. <strong>Assert:</strong> Alla dokument genereras korrekt, processen avslutas normalt, prestanda är acceptabel (t.ex. < 5 minuter för 10 dokument), dokument genereras i korrekt ordning om sekventiellt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S10</strong></td>
+        <td>Validering av genererade dokument</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Givet:</strong> Låneansökan som kräver dokumentgenerering. <strong>När:</strong> Dokument genereras och lagras i Document generation service. <strong>Då:</strong> Systemet validerar genererade dokument (t.ex. PDF-format, innehåll, signaturer). <strong>Assert:</strong> Alla dokument är valida (korrekt format, innehåll matchar låneinformation, signaturer korrekta), ogiltiga dokument identifieras och loggas, processen avslutas med tydlig status (success eller valideringsfel).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -483,13 +560,14 @@
       
       <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som system</strong> vill jag automatiskt generera dokument via "Document generation service" datastore <strong>så att</strong> dokument genereras korrekt utan manuell intervention, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt förbereda lånet, välja dokumenttyper, generera alla dokument via multi-instance loop, och lagra genererade dokument i "Document generation service" datastore.</em></li>
-        <li><strong>Som system</strong> vill jag automatiskt välja dokumenttyper baserat på låneinformation via affärsregler <strong>så att</strong> rätt dokument genereras för varje låneansökan. <em>Acceptanskriterier: "Select documents" business rule task ska korrekt välja dokumenttyper baserat på låneinformation och dokumenttyper via affärsregler.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt förbereda lånet via "Prepare loan" service task <strong>så att</strong> all nödvändig information är tillgänglig för dokumentgenerering. <em>Acceptanskriterier: Systemet ska automatiskt förbereda lånet med all nödvändig information (t.ex. loan parts, loan numbers, party- och objektinformation) som behövs för dokumentgenerering.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt välja dokumenttyper baserat på låneinformation via "Select documents" business rule task <strong>så att</strong> rätt dokument genereras för varje låneansökan. <em>Acceptanskriterier: "Select documents" business rule task ska korrekt välja dokumenttyper baserat på låneinformation och dokumenttyper via affärsregler.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt generera alla dokument via "Generate Document" service task (multi-instance loop) <strong>så att</strong> alla nödvändiga dokument genereras och lagras korrekt. <em>Acceptanskriterier: Systemet ska automatiskt generera alla valda dokument via "Document generation service" datastore via multi-instance loop, och genererade dokument ska sparas korrekt i datastoren.</em></li>
       </ul>
       
       <h3>Handläggarperspektiv</h3>
       <ul>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt genererar dokument <strong>så att</strong> jag endast behöver granska genererade dokument när det behövs, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt generera alla nödvändiga dokument, och genererade dokument ska vara tillgängliga för granskning och signering.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt genererar dokument <strong>så att</strong> jag endast behöver granska genererade dokument när det behövs, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt förbereda lånet, välja dokumenttyper och generera alla nödvändiga dokument, och genererade dokument ska vara tillgängliga för granskning och signering.</em></li>
       </ul>
         </div>
       </details>

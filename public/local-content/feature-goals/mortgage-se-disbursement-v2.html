@@ -452,8 +452,10 @@
       
       <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som system</strong> vill jag automatiskt hantera utbetalning via "Core system" datastore <strong>så att</strong> utbetalning sker korrekt utan manuell intervention, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt hantera utbetalning via "Handle disbursement" service task, spara utbetalningsinformation i "Core system" datastore, och vänta på "Disbursement completed" eller "Disbursement cancelled" message events.</em></li>
-        <li><strong>Som system</strong> vill jag automatiskt arkivera dokument efter slutförd utbetalning <strong>så att</strong> dokument är korrekt arkiverade för långsiktig lagring och compliance. <em>Acceptanskriterier: Systemet ska automatiskt arkivera dokument via "Archive documents" service task när "Disbursement completed" message event mottas.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt hantera utbetalning via "Handle disbursement" service task <strong>så att</strong> utbetalning sker korrekt utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt hantera utbetalning via "Handle disbursement" service task, spara utbetalningsinformation i "Core system" datastore, och initiera utbetalningsprocessen.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt vänta på utbetalningsstatus via event-based gateway <strong>så att</strong> processen kan reagera på både slutförda och avbrutna utbetalningar. <em>Acceptanskriterier: Systemet ska automatiskt vänta på antingen "Disbursement completed" eller "Disbursement cancelled" message events via event-based gateway, och dirigeras till rätt flöde baserat på event.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt arkivera dokument efter slutförd utbetalning via "Archive documents" service task <strong>så att</strong> dokument är korrekt arkiverade för långsiktig lagring och compliance. <em>Acceptanskriterier: Systemet ska automatiskt arkivera dokument via "Archive documents" service task när "Disbursement completed" message event mottas.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt eskalera avbrutna utbetalningar via "Disbursement cancelled-escalate" end event <strong>så att</strong> avbrutna utbetalningar hanteras manuellt. <em>Acceptanskriterier: Systemet ska automatiskt eskalera processen med "Disbursement cancelled-escalate" escalation event när "Disbursement cancelled" message event mottas.</em></li>
       </ul>
       
       <h3>Handläggarperspektiv</h3>

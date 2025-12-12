@@ -383,12 +383,14 @@
       
       <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som system</strong> vill jag automatiskt hämta objektvärdering från externa tjänster ("Fastighet valuation service" för småhus, "Bostadsrätt valuation service" för bostadsrätter) via "Fetch fastighets-valuation" och "Fetch bostadsrätts-valuation" service tasks <strong>så att</strong> värdering är tillgänglig utan manuell datainmatning. <em>Acceptanskriterier: Systemet ska automatiskt identifiera objekttyp via "Object type" gateway och hämta värdering från rätt extern tjänst baserat på objekttyp.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt identifiera objekttyp via "Object type" gateway <strong>så att</strong> rätt flöde kan väljas för att hämta värdering. <em>Acceptanskriterier: "Object type" gateway ska korrekt identifiera om objektet är ett småhus eller en bostadsrätt baserat på objektdata, och dirigerar till rätt flöde.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt hämta objektvärdering från externa tjänster ("Fastighet valuation service" för småhus, "Bostadsrätt valuation service" för bostadsrätter) via "Fetch fastighets-valuation" och "Fetch bostadsrätts-valuation" service tasks <strong>så att</strong> värdering är tillgänglig utan manuell datainmatning. <em>Acceptanskriterier: Systemet ska automatiskt hämta värdering från rätt extern tjänst baserat på objekttyp, och värdering ska sparas i datastoren.</em></li>
+        <li><strong>Som system</strong> vill jag sammanstråla båda flödena (småhus och bostadsrätt) via "Gateway_0f8c0ne" gateway <strong>så att</strong> processen kan avslutas korrekt oavsett vilket flöde som användes. <em>Acceptanskriterier: Gateway_0f8c0ne ska sammanstråla flöden från både småhus- och bostadsrätt-flöden innan processen avslutas.</em></li>
       </ul>
       
       <h3>Handläggarperspektiv</h3>
       <ul>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hämtar objektvärdering <strong>så att</strong> jag får värdering direkt utan att behöva manuellt söka i externa system, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt hämta objektvärdering från externa tjänster baserat på objekttyp, och värderingen ska vara tillgänglig för vidare bearbetning.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hämtar objektvärdering <strong>så att</strong> jag får värdering direkt utan att behöva manuellt söka i externa system, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt identifiera objekttyp och hämta värdering från rätt extern tjänst baserat på objekttyp, och värderingen ska vara tillgänglig för vidare bearbetning.</em></li>
       </ul>
         </div>
       </details>
