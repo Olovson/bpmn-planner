@@ -453,69 +453,105 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – erbjudande accepterat direkt</td>
+        <td>Normalflöde – köpekontrakt redan bedömt, erbjudande accepterat</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Erbjudandet presenteras till kunden. Kunden accepterar erbjudandet direkt (validerar lånebelopp, kontonummer, datum). Processen avslutas och går vidare till Document Generation via event-loan-ready.</td>
+        <td><strong>Given:</strong> Köpekontrakt är redan bedömt. Erbjudande är redo. Testdata: offer-contract-assessed-happy. <strong>When:</strong> "Sales contract assessed?" gateway (sales-contract-assessed) = Yes. Processen hoppar över kontraktuppladdning. "Decide on offer" user task (decide-offer) aktiveras. Kunden accepterar erbjudandet (validerar lånebelopp, kontonummer, datum). <strong>Then:</strong> "Decision" gateway (offer-decision) = "Accept offer". Processen avslutas normalt (process-end-event). Går vidare till Document Generation.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Kund begär ändringar – erbjudande accepterat efter underwriting</td>
+        <td>Köpekontrakt behöver laddas upp och bedömas</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Kunden begär ändringar i erbjudandet. Caseworker utför avancerad underwriting. Ytterligare kreditbeslut godkänns. Nytt erbjudande presenteras. Kunden accepterar. Processen avslutas.</td>
+        <td><strong>Given:</strong> Köpekontrakt är inte bedömt. Testdata: offer-upload-contract. <strong>When:</strong> "Sales contract assessed?" gateway (sales-contract-assessed) = No. "Sales contract uploaded?" gateway (sales-contract-uploaded) = No. "Upload sales contract" user task (upload-sales-contract) aktiveras. Kund laddar upp kontrakt. "Sales contract uploaded?" = Yes. Documentation assessment (documentation-assessment) bedömer kontrakt. <strong>Then:</strong> Processen fortsätter till "Decide on offer" user task.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Erbjudande avvisat av kund</td>
-        <td>Error</td>
+        <td>Dokumentation ofullständig – loop tillbaka</td>
+        <td>Edge</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Kunden avvisar erbjudandet. "event-offer-rejected" end event triggas. Processen avslutas med "Offer declined".</td>
+        <td><strong>Given:</strong> Köpekontrakt laddas upp men är ofullständigt. Testdata: offer-documentation-incomplete. <strong>When:</strong> Documentation assessment (documentation-assessment) bedömer kontrakt. "Documentation incomplete" boundary event (documentation-incomplete) triggas. <strong>Then:</strong> Processen loopar tillbaka till kontraktuppladdning (Gateway_18jx4nb → sales-contract-uploaded). Kund kan ladda upp kompletterande dokumentation.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
-        <td>Kreditbeslut avvisas efter ändringar</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P0</td>
+        <td>"Request changes" boundary event på upload-sales-contract</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Kunden begär ändringar. Caseworker utför avancerad underwriting. Ytterligare kreditbeslut avvisas. "Credit decision rejected" end event triggas. Processen avslutas.</td>
+        <td><strong>Given:</strong> Köpekontrakt laddas upp. Caseworker begär ändringar. Testdata: offer-sales-contract-request-changes. <strong>When:</strong> "Request changes" boundary event (sales-contract-request-changes) triggas på upload-sales-contract user task. <strong>Then:</strong> "Perform advanced underwriting" user task (sales-contract-advanced-underwriting) aktiveras. "Credit decision" call activity (sales-contract-credit-decision) genomförs. Processen avslutas (Event_1c99mw4).</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S5</strong></td>
-        <td>Timeout – erbjudandet löper ut</td>
-        <td>Error</td>
-        <td>system</td>
+        <td>Kund begär ändringar – erbjudande accepterat efter underwriting</td>
+        <td>Happy</td>
+        <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Erbjudandet presenteras till kunden, men kunden svarar inte inom timeout-period. Timer event triggas. Processen avslutas (kan trigga finansieringsbevis-terminate-end).</td>
+        <td><strong>Given:</strong> Erbjudande presenteras. Kund begär ändringar. Testdata: offer-request-changes-approved. <strong>When:</strong> "Decision" gateway (offer-decision) = "Request changes". "Perform advanced underwriting" user task (advanced-underwriting) aktiveras. "Credit decision" call activity (credit-decision) genomförs. "Approved?" gateway (credit-decision-approved) = Yes. <strong>Then:</strong> Processen loopar tillbaka till "Decide on offer" (Gateway_0hrcun3 → decide-offer). Kunden accepterar nytt erbjudande. Processen avslutas normalt.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S6</strong></td>
-        <td>Ofullständig acceptans – validering misslyckas</td>
+        <td>Kreditbeslut avvisas efter ändringar</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Kund begär ändringar. Kreditbeslut avvisas. Testdata: offer-credit-decision-rejected. <strong>When:</strong> "Decision" gateway = "Request changes". Advanced underwriting och credit decision genomförs. "Approved?" gateway (credit-decision-approved) = No. <strong>Then:</strong> "credit-decision-rejected" escalation event (Event_0h20g8l) triggas. Processen avslutas med "Credit decision rejected" end event. Huvudprocessen avbryts.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>Erbjudande avvisat av kund</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Erbjudande presenteras. Kund avvisar. Testdata: offer-declined. <strong>When:</strong> "Decision" gateway (offer-decision) = "Decline offer". <strong>Then:</strong> "event-offer-rejected" escalation event (event-offer-rejected) triggas. Processen avslutas med "Offer declined" end event. Huvudprocessen avbryts.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>Timeout – erbjudandet löper ut</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Erbjudande presenteras. Kund svarar inte inom timeout-period. Testdata: offer-timeout. <strong>When:</strong> Timer event (Event_017jq28) triggas på decide-offer user task. <strong>Then:</strong> "finansieringsbevis-terminate-end" escalation event (finansieringsbevis-terminate-end) triggas. Processen avslutas med "Offer expired" end event. Huvudprocessen avbryts.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>Validering misslyckas vid acceptans</td>
         <td>Edge</td>
         <td>customer</td>
         <td>P2</td>
         <td>functional</td>
-        <td>Kunden försöker acceptera erbjudandet men validering misslyckas (t.ex. ogiltigt kontonummer, felaktigt lånebelopp, eller ogiltigt datum). Systemet kräver korrigering.</td>
+        <td><strong>Given:</strong> Kund försöker acceptera erbjudandet. Validering misslyckas. Testdata: offer-validation-failed. <strong>When:</strong> Kunden accepterar erbjudandet men validering misslyckas (ogiltigt kontonummer, felaktigt lånebelopp, eller ogiltigt datum). <strong>Then:</strong> Systemet visar felmeddelande. Kunden kan korrigera informationen. Processen fortsätter på decide-offer user task tills validering lyckas.</td>
         <td>✅ Planerad</td>
       </tr>
+    
+        </tbody>
+      </table>
     
         </tbody>
       </table>
@@ -809,23 +845,28 @@
       
       <h3>Kundperspektiv</h3>
       <ul>
-        <li><strong>Som kund</strong> vill jag kunna acceptera, avvisa eller begära ändringar i erbjudandet via "Decision" gateway på "Decide on offer" user task <strong>så att</strong> jag har full kontroll över mitt låneerbjudande. <em>Acceptanskriterier: "Decision" gateway ska ha tre utgångar (Accept offer, Decline offer, Request changes), och kunden ska kunna välja mellan dessa alternativ tydligt.</em></li>
-        <li><strong>Som kund</strong> vill jag att systemet validerar lånebelopp, kontonummer och datum när jag accepterar erbjudandet <strong>så att</strong> endast korrekta erbjudanden accepteras. <em>Acceptanskriterier: Systemet ska validera lånebelopp, kontonummer och datum vid acceptans, och visa tydliga felmeddelanden om validering misslyckas.</em></li>
-        <li><strong>Som kund</strong> vill jag kunna begära ändringar i erbjudandet via "Decision" gateway "Request changes" <strong>så att</strong> jag kan justera villkor utan att behöva starta en ny ansökan. <em>Acceptanskriterier: När kunden begär ändringar, ska processen automatiskt loopa tillbaka till "Perform advanced underwriting" user task för att hantera ändringar.</em></li>
-        <li><strong>Som kund</strong> vill jag kunna ladda upp köpekontrakt via "Upload sales contract" user task <strong>så att</strong> processen kan fortsätta när kontraktet behövs. <em>Acceptanskriterier: "Sales contract uploaded?" gateway ska korrekt identifiera om kontrakt är uppladdat, och "Upload sales contract" user task ska aktiveras när kontrakt saknas.</em></li>
+        <li><strong>Som kund</strong> vill jag kunna fatta beslut om erbjudandet via "Decide on offer" user task (decide-offer) <strong>så att</strong> jag kan acceptera, avvisa eller begära ändringar i mitt låneerbjudande. <em>Acceptanskriterier: Efter start event (start-event), ska flöden samlas ihop via "Sammanför flöden" gateway (Gateway_0hrcun3) och "Decide on offer" user task (decide-offer) ska aktiveras för kund. Task ska visa tydlig information om erbjudandet (lånebelopp, ränta, löptid, villkor) och tillåta kund att fatta beslut. Efter beslut, ska flödet gå till "Decision" gateway (offer-decision).</em></li>
+        <li><strong>Som kund</strong> vill jag kunna acceptera erbjudandet via "Decision" gateway (offer-decision) "Accept offer" <strong>så att</strong> processen kan fortsätta till Document Generation. <em>Acceptanskriterier: När kund väljer "Accept offer" via "Decision" gateway (offer-decision), ska systemet validera lånebelopp, kontonummer och datum. Om validering lyckas, ska flödet gå till "Accept offer" flöde (offer-decision-accept) och processen avslutas normalt via end event (process-end-event). Om validering misslyckas, ska kunden informeras och kunna korrigera informationen på "Decide on offer" user task.</em></li>
+        <li><strong>Som kund</strong> vill jag kunna avvisa erbjudandet via "Decision" gateway (offer-decision) "Decline offer" <strong>så att</strong> processen avslutas korrekt när jag inte vill acceptera erbjudandet. <em>Acceptanskriterier: När kund väljer "Decline offer" via "Decision" gateway (offer-decision), ska flödet gå till "Decline offer" flöde (offer-decision-decline) och "Offer declined" end event (event-offer-rejected) ska triggas med escalation code "event-offer-rejected" (Escalation_335oqci). End event ska signalera till huvudprocessen att erbjudandet har avvisats.</em></li>
+        <li><strong>Som kund</strong> vill jag kunna begära ändringar i erbjudandet via "Decision" gateway (offer-decision) "Request changes" <strong>så att</strong> jag kan justera villkor utan att behöva starta en ny ansökan. <em>Acceptanskriterier: När kund väljer "Request changes" via "Decision" gateway (offer-decision), ska flödet gå till "Request changes" flöde (offer-decision-request-changes) och "Perform advanced underwriting" user task (advanced-underwriting) ska aktiveras för caseworker. Efter underwriting, ska "Credit decision" call activity (credit-decision) genomföras och "Approved?" gateway (credit-decision-approved) avgöra om ändringar kan godkännas. Om godkänt, ska processen loopa tillbaka till "Sammanför flöden" gateway (Gateway_0hrcun3) via "Yes" flöde (credit-decision-approved-yes) och sedan till "Decide on offer" user task med uppdaterat erbjudande.</em></li>
       </ul>
       
-      <h3>Handläggarperspektiv</h3>
+      <h3>Caseworker-perspektiv</h3>
       <ul>
-        <li><strong>Som handläggare</strong> vill jag kunna begära ändringar direkt vid kontraktuppladdning via "Request changes" boundary event på "Upload sales contract" user task <strong>så att</strong> jag kan hantera problem direkt utan att avbryta processen. <em>Acceptanskriterier: Boundary event ska triggas när ändringar begärs, och köpekontrakt-specifik underwriting och kreditbeslut ska aktiveras automatiskt.</em></li>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt bedömer köpekontrakt via "Documentation assessment" call activity <strong>så att</strong> jag endast behöver granska kontrakt som kräver manuell bedömning. <em>Acceptanskriterier: Systemet ska automatiskt bedöma köpekontrakt, och endast kontrakt som kräver manuell bedömning ska dirigeras till handläggare.</em></li>
+        <li><strong>Som caseworker</strong> vill jag kunna utföra avancerad underwriting via "Perform advanced underwriting" user task (advanced-underwriting) när kund begär ändringar <strong>så att</strong> jag kan bedöma om ändringar kan godkännas. <em>Acceptanskriterier: När kund väljer "Request changes" via "Decision" gateway (offer-decision), ska "Perform advanced underwriting" user task (advanced-underwriting) aktiveras för caseworker. Task ska visa tydlig information om begärda ändringar och tillåta caseworker att bedöma om ändringar kan godkännas. Efter underwriting, ska flödet gå till "Credit decision" call activity (credit-decision).</em></li>
+        <li><strong>Som caseworker</strong> vill jag att "Credit decision" call activity (credit-decision) automatiskt genomförs efter avancerad underwriting <strong>så att</strong> systemet kan bedöma om ändringar kan godkännas. <em>Acceptanskriterier: Efter "Perform advanced underwriting" user task (advanced-underwriting), ska "Credit decision" call activity (credit-decision) automatiskt anropas för att bedöma om ändringar kan godkännas. Efter kreditbeslut, ska flödet gå till "Approved?" gateway (credit-decision-approved).</em></li>
+        <li><strong>Som caseworker</strong> vill jag att "Approved?" gateway (credit-decision-approved) avgör om ändringar kan godkännas <strong>så att</strong> processen kan fortsätta med uppdaterat erbjudande eller avvisas. <em>Acceptanskriterier: Efter "Credit decision" call activity (credit-decision) har genomfört kreditbeslut, ska "Approved?" gateway (credit-decision-approved) avgöra om ändringar kan godkännas. Om gateway returnerar "Yes", ska flödet gå till "Sammanför flöden" gateway (Gateway_0hrcun3) via "Yes" flöde (credit-decision-approved-yes) och sedan till "Decide on offer" user task med uppdaterat erbjudande. Om gateway returnerar "No", ska "Credit decision rejected" end event (Event_0h20g8l) triggas med escalation code "credit-decision-rejected" (Escalation_1o4rs8b).</em></li>
       </ul>
       
       <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som system</strong> vill jag automatiskt avsluta erbjudanden som löper ut via timer event (Event_017jq28) på "Decide on offer" user task <strong>så att</strong> inaktiva erbjudanden inte blockerar systemresurser. <em>Acceptanskriterier: Timer event ska triggas när timeout-perioden har passerat, och "Offer expired" end event ska korrekt signalera till huvudprocessen.</em></li>
-        <li><strong>Som system</strong> vill jag automatiskt avvisa erbjudanden som avvisas av kunden via "Decision" gateway "Decline offer" <strong>så att</strong> processen kan avslutas korrekt. <em>Acceptanskriterier: "Offer declined" end event ska triggas automatiskt när kunden avvisar erbjudandet, och escalation code "event-offer-rejected" ska signalera till huvudprocessen.</em></li>
-        <li><strong>Som system</strong> vill jag automatiskt avvisa erbjudanden när ytterligare kreditbeslut avvisas via "Approved?" gateway "No" <strong>så att</strong> endast godkända erbjudanden fortsätter i processen. <em>Acceptanskriterier: "Credit decision rejected" end event ska triggas automatiskt när kreditbeslut avvisas, och escalation code "credit-decision-rejected" ska signalera till huvudprocessen.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen startar via start event (start-event) <strong>så att</strong> Offer-processen kan initieras när huvudprocessen anropar "offer" call activity. <em>Acceptanskriterier: Start event (start-event) ska triggas när huvudprocessen anropar "offer" call activity när kreditbeslut är godkänt. Efter start event, ska flödet gå till "Sammanför flöden" gateway (Gateway_0hrcun3) via Flow_0lzkd3s.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden" gateway (Gateway_0hrcun3) samlar ihop flöden från både start och loop <strong>så att</strong> processen kan hantera både initial erbjudandepresentation och uppdaterat erbjudande efter ändringar. <em>Acceptanskriterier: "Sammanför flöden" gateway (Gateway_0hrcun3) ska samla ihop flöden från antingen start event (start-event) via Flow_0lzkd3s eller loop från "Approved?" gateway (credit-decision-approved) "Yes" via credit-decision-approved-yes. När flöden samlas ihop, ska "Decide on offer" user task (decide-offer) aktiveras via Flow_0g7258d.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Decision" gateway (offer-decision) kan hantera tre olika beslut <strong>så att</strong> processen kan acceptera, avvisa eller begära ändringar. <em>Acceptanskriterier: Efter "Decide on offer" user task (decide-offer), ska "Decision" gateway (offer-decision) avgöra kundens beslut. Gateway ska ha tre utgångar: "Accept offer" (offer-decision-accept), "Decline offer" (offer-decision-decline), och "Request changes" (offer-decision-request-changes). Om "Accept offer", ska flödet gå till end event (process-end-event). Om "Decline offer", ska flödet gå till "Offer declined" end event (event-offer-rejected). Om "Request changes", ska flödet gå till "Perform advanced underwriting" user task (advanced-underwriting).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att timer event (Event_017jq28) automatiskt avslutar erbjudanden som löper ut <strong>så att</strong> inaktiva erbjudanden inte blockerar systemresurser. <em>Acceptanskriterier: På "Decide on offer" user task (decide-offer), ska timer event (Event_017jq28) triggas när timeout-perioden har passerat. När timer event triggas, ska flödet gå till "Offer expired" end event (finansieringsbevis-terminate-end) via Flow_1jo2wb1. End event ska trigga escalation event "finansieringsbevis-terminate-end" (Escalation_016l7ta) som signalerar till huvudprocessen att erbjudandet har löpt ut.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen avslutas normalt via end event (process-end-event) när kund accepterar erbjudandet <strong>så att</strong> huvudprocessen kan fortsätta med Document Generation. <em>Acceptanskriterier: När kund väljer "Accept offer" via "Decision" gateway (offer-decision) och validering lyckas, ska flödet gå till "Accept offer" flöde (offer-decision-accept) och processen ska avslutas normalt via end event (process-end-event). Huvudprocessen ska fortsätta med Document Generation när processen avslutas.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Offer declined" end event (event-offer-rejected) signaliserar att erbjudandet har avvisats <strong>så att</strong> huvudprocessen kan hantera avvisningen korrekt. <em>Acceptanskriterier: När kund väljer "Decline offer" via "Decision" gateway (offer-decision), ska flödet gå till "Decline offer" flöde (offer-decision-decline) och "Offer declined" end event (event-offer-rejected) ska triggas med escalation code "event-offer-rejected" (Escalation_335oqci). End event ska signalera till huvudprocessen att erbjudandet har avvisats.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Credit decision rejected" end event (Event_0h20g8l) signaliserar att kreditbeslut har avvisats <strong>så att</strong> huvudprocessen kan hantera avvisningen korrekt. <em>Acceptanskriterier: När "Approved?" gateway (credit-decision-approved) returnerar "No", ska flödet gå till "No" flöde (credit-decision-approved-no) och "Credit decision rejected" end event (Event_0h20g8l) ska triggas med escalation code "credit-decision-rejected" (Escalation_1o4rs8b). End event ska signalera till huvudprocessen att kreditbeslut har avvisats.</em></li>
       </ul>
         </div>
       </details>

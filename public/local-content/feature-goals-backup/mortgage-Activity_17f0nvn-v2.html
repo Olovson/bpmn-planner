@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta name="x-generation-source" content="local-fallback" />
+  <meta name="x-feature-goal-template-version" content="v2" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Update party</title>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #e0e7ff;
+      --bg-light: #f8f9fa;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 32px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 32px 0 12px;
+      font-size: 1.2rem;
+    }
+    p { margin: 0 0 12px; }
+    ul {
+      padding-left: 24px;
+      margin: 0 0 16px;
+    }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table th,
+    table td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+    }
+    table th {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    table tr:last-child td {
+      border-bottom: none;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card {
+      background: var(--bg-light);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--primary);
+    }
+    .doc-section {
+      margin-bottom: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .doc-section details {
+      margin: 0;
+    }
+    .doc-section details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 16px 20px;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      font-size: 1.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section details summary::-webkit-details-marker {
+      display: none;
+    }
+    .doc-section details summary::before {
+      content: '▶';
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .doc-section details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .doc-section details summary:hover {
+      background: var(--accent);
+    }
+    .doc-section details .section-content {
+      padding: 20px;
+    }
+    .doc-section details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .local-version-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .llm-fallback-banner {
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef9c3;
+      font-size: 0.85rem;
+    }
+    .llm-fallback-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .llm-fallback-details {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .llm-fallback-local-note {
+      font-size: 0.8rem;
+      color: #2563eb;
+      margin-bottom: 16px;
+    }
+    details {
+      margin: 16px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 12px;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      user-select: none;
+    }
+    details summary:hover {
+      background: var(--accent);
+    }
+    details[open] summary {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    details .collapsible-content {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      margin-top: 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="local-version-badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 16px; margin: 16px; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.9rem; font-weight: 500;">
+      📄 Lokal version – Förbättrat innehåll
+    </div>
+  
+    
+      
+
+
+    
+    <section class="doc-section">
+      <details open>
+        <summary>Beskrivning av FGoal</summary>
+        <div class="section-content">
+      <p>Update party är en event-triggered subprocess som hanterar asynkrona uppdateringar av partinformation (kund, stakeholder, eller annan part) under pågående ansökningsprocess. Processen triggas via meddelandehändelse ("Update party" message event) och avslutas direkt efter att ha tagit emot meddelandet, vilket möjliggör asynkron uppdatering av partdata utan att avbryta huvudprocessen.</p>
+        </div>
+      </details>
+    </section>
+<section class="doc-section">
+      <details>
+        <summary>Processteg - Input</summary>
+        <div class="section-content">
+<ul>
+        <li>Event har triggrats som indikerar att partinformation behöver uppdateras</li>
+        <li>Uppdaterad partinformation är tillgänglig</li>
+        <li>Ansökningsprocessen är pågående</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Processteg - Output</summary>
+        <div class="section-content">
+<ul>
+        <li>Partinformation är uppdaterad i systemet</li>
+        <li>Uppdaterad partdata är tillgänglig för vidare bearbetning i Mortgage-processen</li>
+        <li>Eventuellt: Ytterligare bearbetning triggras baserat på uppdaterad information</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Omfattning</summary>
+        <div class="section-content">
+<ul>
+        <li>Asynkron hantering av partinformation-uppdateringar via event-triggered subprocess</li>
+        <li>Validering och uppdatering av partdata (kund, stakeholder, eller annan part)</li>
+        <li>Säkerställande att uppdaterad information är korrekt och komplett</li>
+        <li>Integration med Mortgage-processen för vidare bearbetning med uppdaterad information</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Avgränsning</summary>
+        <div class="section-content">
+<ul>
+        <li>Initial partinformation-hämtning sker i Application subprocess, inte i denna subprocess</li>
+        <li>Kreditevaluering sker i separata subprocesser, inte i denna subprocess</li>
+        <li>Dokumentationshantering sker i andra subprocesser, inte i denna subprocess</li>
+        <li>Denna subprocess fokuserar enbart på uppdateringar av partinformation, inte på initial hämtning eller andra processer</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Beroenden</summary>
+        <div class="section-content">
+<ul>
+        <li><strong>Partinformationssystem:</strong> För att hantera och uppdatera partdata</li>
+        <li><strong>Event-system:</strong> För att triggra subprocessen när partinformation behöver uppdateras</li>
+        <li><strong>Mortgage-processen:</strong> För att integrera uppdaterad partinformation i pågående ansökningsprocess</li>
+        <li><strong>Valideringsregler:</strong> För att säkerställa att uppdaterad partinformation är korrekt och komplett</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>BPMN - Process</summary>
+        <div class="section-content">
+<p><a href="#/bpmn/mortgage.bpmn">Visa BPMN-processen för Update party</a></p>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Information för att generera automatiserade tester. Delar kan auto-genereras från processbeskrivningen, men kompletteras manuellt med implementation-specifik information (routes, locators, testdata).</p>
+
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Normalflöde – partinformation uppdaterad</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td>Event "update-party" triggas asynkront när partinformation behöver uppdateras. Subprocessen validerar och uppdaterar partdata (kund, stakeholder, eller annan part). Uppdaterad information sparas i partinformationssystemet. Processen avslutas och uppdaterad information är tillgänglig för vidare bearbetning i Mortgage-processen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Ofullständig information – validering misslyckas</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Event triggas, men uppdaterad partinformation saknar viktiga fält eller validering misslyckas. Systemet kräver komplettering eller korrigering innan uppdateringen kan sparas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Asynkron hantering – flera uppdateringar</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td>Flera "update-party" events triggas asynkront för olika parts. Varje event hanteras oberoende. Alla uppdateringar sparas korrekt. Processen hanterar samtidiga uppdateringar korrekt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+      
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>1</td>
+          <td>[TODO: Lägg till page ID]</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>-</td>
+          <td>[TODO: Lägg till navigationssteg]</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </details>
+    
+
+      <h3>Testdata-referenser</h3>
+      <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
+      <ul>
+        
+      <li><strong>stakeholder-primary</strong>: [TODO: Definiera testdata för primär sökande med fullständig information]</li>
+    
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <p class="muted">Mappning mellan BPMN-aktiviteter och faktisk implementation (routes, endpoints, locators).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>BPMN Aktivitet</th>
+            <th>Type</th>
+            <th>Route/Endpoint</th>
+            <th>Method</th>
+            <th>Base URL</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+        </tbody>
+      </table>
+        </div>
+      </details>
+    </section>
+    <section class="doc-section">
+      <details>
+        <summary>Effekt</summary>
+        <div class="section-content">
+<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
+      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>User stories</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <h3>Systemperspektiv</h3>
+      <ul>
+        <li><strong>Som system</strong> vill jag ta emot "Update party" meddelandehändelse asynkront <strong>så att</strong> partinformation kan uppdateras utan att avbryta huvudprocessen. <em>Acceptanskriterier: Systemet ska ta emot "Update party" message event och hantera det asynkront via event-triggered subprocess, och processen ska avslutas direkt efter att ha tagit emot meddelandet.</em></li>
+        <li><strong>Som system</strong> vill jag att event-triggered subprocess inte avbryter huvudprocessen <strong>så att</strong> huvudprocessen kan fortsätta medan partinformation uppdateras. <em>Acceptanskriterier: Event-triggered subprocess ska ha isInterrupting="false" så att huvudprocessen inte avbryts när meddelandet tas emot.</em></li>
+      </ul>
+      
+      <h3>Handläggarperspektiv</h3>
+      <ul>
+        <li><strong>Som handläggare</strong> vill jag kunna uppdatera partinformation asynkront <strong>så att</strong> ansökningsprocessen kan fortsätta medan uppdateringar görs, vilket förbättrar processhastigheten. <em>Acceptanskriterier: Systemet ska tillåta asynkrona uppdateringar av partinformation via "Update party" message event utan att avbryta huvudprocessen.</em></li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Acceptanskriterier</summary>
+        <div class="section-content">
+<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      <h3>1. Processkrav</h3>
+      <ul>
+        <li>Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå</li>
+        <li>Ansökningar med låg risk ska dirigeras till straight-through processing</li>
+        <li>Ansökningar med hög risk ska dirigeras till rätt beslutsnivå</li>
+      </ul>
+
+      <h3>2. Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> Service tasks och business rule tasks ska ha timeout på 60 sekunder</li>
+        <li><strong>Retry:</strong> Service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: ACTIVITY_SERVICE_ERROR, ACTIVITY_TIMEOUT, ACTIVITY_PROCESSING_ERROR</li>
+        <li><strong>Logging:</strong> Alla processsteg ska loggas med process-ID, tidsstämplar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>3. UI/UX-krav</h3>
+      <ul>
+        <li>Systemet ska visa tydlig status för varje steg i processen med visuella indikatorer</li>
+      </ul>
+
+      <h3>4. Skalbarhet och prestanda</h3>
+      <ul>
+        <li>Systemet ska kunna hantera flera processer parallellt</li>
+        <li>Service tasks ska kunna hantera minst 50 processer per minut</li>
+      </ul>
+
+      <h3>5. Säkerhet och compliance</h3>
+      <ul>
+        <li>All känslig processinformation ska krypteras i vila och under överföring (TLS 1.3)</li>
+        <li>Alla processer ska loggas för audit trail</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+      </body>
+</html>

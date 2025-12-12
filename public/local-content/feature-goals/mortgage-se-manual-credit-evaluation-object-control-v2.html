@@ -493,26 +493,44 @@
       
       <h3>Handläggarperspektiv</h3>
       <ul>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt screenar BRF-information via "BRF screening result" gateway <strong>så att</strong> jag endast behöver granska BRF:er som kräver manuell bedömning, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt screena BRF-information mot affärsregler, och endast BRF:er som kräver granskning ska dirigeras till "Review BRF" user task.</em></li>
-        <li><strong>Som handläggare</strong> vill jag kunna begära lägenhetsutdrag direkt från stakeholder via "Request lägenhetsutdrag" boundary event på "Control lägenhets-utdrag" user task <strong>så att</strong> jag kan få dokumentation utan att avbryta processen. <em>Acceptanskriterier: Boundary event ska triggas när dokumentation begärs, och stakeholder ska kunna ladda upp dokumentation via "Upload documentation" user task.</em></li>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt omvärderar kredit när BRF-information ändras via "Changes requires rescoring?" gateway och "Automatic Credit Evaluation" call activity <strong>så att</strong> kreditevalueringen alltid är uppdaterad. <em>Acceptanskriterier: Systemet ska identifiera när ändringar kräver omvärdering och automatiskt anropa kreditevaluering.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att processen startar via start event (start-event) <strong>så att</strong> Object Control-processen kan initieras när den anropas från Manual Credit Evaluation-processen via "object-control" call activity. <em>Acceptanskriterier: Start event (start-event) ska triggas när Object Control-processen anropas från Manual Credit Evaluation-processen via "object-control" call activity. Efter start event, ska flödet gå till Gateway_0e24xxh via Flow_1nc4bwi, och sedan till "Is bostadsrätt?" gateway (is-bostadsratt) via Flow_07176fz.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt avgör om objektet är en bostadsrätt via "Is bostadsrätt?" gateway (is-bostadsratt) <strong>så att</strong> BRF-kontroll endast genomförs när det behövs. <em>Acceptanskriterier: "Is bostadsrätt?" gateway (is-bostadsratt) ska automatiskt avgöra om objektet är en bostadsrätt. Om "Yes", ska flödet gå till Gateway_14f9my2 via is-bostadsratt-yes. Om "No", ska flödet gå direkt till Gateway_0qigv85 via is-bostadsratt-no för att hoppa över BRF-kontroll.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna registrera BRF-information via "Register BRF information" user task (register-brf-information) när information saknas <strong>så att</strong> BRF-kontroll kan genomföras. <em>Acceptanskriterier: "Register BRF information" user task (register-brf-information) ska aktiveras när "Has updated BRF information?" gateway (has-brf-information) avgör "No" via has-brf-information-no. Information ska sparas till BRF information database (DataStoreReference_09sc1vy) via DataOutputAssociation_1wr6nyv. Efter registrering, ska flödet gå till "Object information" call activity (object-information) via Flow_0vgcod9.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt screenar BRF-information via "BRF screening result" gateway (brf-screening-result) <strong>så att</strong> jag endast behöver granska BRF:er som kräver manuell bedömning, vilket sparar tid. <em>Acceptanskriterier: "BRF screening result" gateway (brf-screening-result) ska automatiskt screena BRF-information mot affärsregler. Om "Rejected", ska flödet gå till "BRF rejected" error event (Event_1pqluun) via brf-screening-result-rejected. Om "Accepted", ska flödet gå till Gateway_0wgmopw via brf-screening-result-accepted. Om "Review", ska flödet gå till "Review BRF" user task (review-brf) via brf-screening-result-review. Om "BRF information missing", ska processen loopa tillbaka till Gateway_14f9my2 via brf-screening-result-missing-info.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna granska BRF-information manuellt via "Review BRF" user task (review-brf) när screeningen kräver det <strong>så att</strong> jag kan bedöma BRF:er som kräver manuell granskning. <em>Acceptanskriterier: "Review BRF" user task (review-brf) ska aktiveras när "BRF screening result" gateway avgör "Review" via brf-screening-result-review. Efter granskning, ska flödet gå till "BRF approved?" gateway (brf-approved) via Flow_0g8xk4m. Om "Yes", ska flödet gå till Gateway_0wgmopw via brf-approved-yes. Om "No", ska "BRF rejected" error event (Event_0i6cize) triggas via brf-approved-no.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna kontrollera lägenhetsutdrag via "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) <strong>så att</strong> jag kan verifiera att dokumentationen är korrekt. <em>Acceptanskriterier: "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) ska aktiveras när BRF är godkänd via Flow_15o3nji från Gateway_0wgmopw. Efter kontroll, ska flödet gå till "Object approved?" gateway (object-approved) via Flow_1t65kyb.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna begära lägenhetsutdrag direkt från stakeholder via "Request lägenhetsutdrag" boundary event (request-lagenhetsutdrag) på "Control lägenhets-utdrag" user task <strong>så att</strong> jag kan få dokumentation utan att avbryta processen. <em>Acceptanskriterier: "Request lägenhetsutdrag" boundary event (request-lagenhetsutdrag) ska kunna triggas på "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) som message event. När boundary event triggas, ska flödet gå till "Upload documentation" user task (upload-documentation) via Flow_16bcbti. Efter uppladdning, ska flödet gå till Event_0xm12vg via Flow_0167gxa.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt omvärderar kredit när BRF-information ändras via "Changes requires rescoring?" gateway (changes-requires-rescoring) och "Automatic Credit Evaluation" call activity (credit-evaluation-2) <strong>så att</strong> kreditevalueringen alltid är uppdaterad. <em>Acceptanskriterier: "Changes requires rescoring?" gateway (changes-requires-rescoring) ska automatiskt avgöra om ändringar kräver omvärdering. Om "Yes", ska flödet gå till "Automatic Credit Evaluation" call activity (credit-evaluation-2) via changes-requires-rescoring-yes. Efter omvärdering, ska flödet gå till Gateway_00hf2o8 via Flow_10wy0va, och sedan till Gateway_04ut3n0 via Flow_0daa5p5. Om "No", ska flödet gå direkt till Gateway_00hf2o8 via Flow_1vhjojl.</em></li>
       </ul>
-      
+
       <h3>Värderarperspektiv</h3>
       <ul>
-        <li><strong>Som värderare</strong> vill jag kunna begära mäklarvärdering direkt från stakeholder via "Request mäklarvärdering" boundary event på "Determine object value" user task <strong>så att</strong> jag kan få kompletterande information för värderingen. <em>Acceptanskriterier: Boundary event ska triggas när mäklarvärdering begärs, och stakeholder ska kunna ladda upp dokumentation via "Upload object valuation documentation" user task.</em></li>
+        <li><strong>Som värderare</strong> vill jag att systemet automatiskt avgör om objektvärdering behövs via "Needs valuation?" gateway (needs-valuation) <strong>så att</strong> värdering endast genomförs när det behövs. <em>Acceptanskriterier: "Needs valuation?" gateway (needs-valuation) ska automatiskt avgöra om objektvärdering behövs. Om "Yes", ska flödet gå till "Determine object value" user task (determine-object-value) via needs-valuation-yes. Om "No", ska flödet gå direkt till Gateway_0df2uib via needs-valuation-no.</em></li>
+        <li><strong>Som värderare</strong> vill jag kunna fastställa objektets värde via "Determine object value" user task (determine-object-value) <strong>så att</strong> objektet kan värderas korrekt. <em>Acceptanskriterier: "Determine object value" user task (determine-object-value) ska aktiveras när "Needs valuation?" gateway avgör "Yes" via needs-valuation-yes. Efter värdering, ska flödet gå till Gateway_0df2uib via Flow_00qg51q.</em></li>
+        <li><strong>Som värderare</strong> vill jag kunna begära mäklarvärdering direkt från stakeholder via "Request mäklarvärdering" boundary event (request-maklarvardering) på "Determine object value" user task <strong>så att</strong> jag kan få kompletterande information för värderingen. <em>Acceptanskriterier: "Request mäklarvärdering" boundary event (request-maklarvardering) ska kunna triggas på "Determine object value" user task (determine-object-value) som message event. När boundary event triggas, ska flödet gå till "Upload object valuation documentation" user task (upload-object-valuation-document) via Flow_0hr7m91. Efter uppladdning, ska flödet gå till Event_0co53lt via Flow_0cguw1v.</em></li>
       </ul>
-      
+
       <h3>Stakeholder-perspektiv</h3>
       <ul>
-        <li><strong>Som stakeholder</strong> vill jag kunna granska ändringar som gjorts under processen via "Review changes" user task <strong>så att</strong> jag kan bekräfta att all information är korrekt innan processen avslutas. <em>Acceptanskriterier: "Stakeholder review?" gateway ska korrekt identifiera när granskning behövs, och stakeholder ska kunna acceptera eller avvisa ändringar via "Changes accepted?" gateway.</em></li>
-        <li><strong>Som stakeholder</strong> vill jag kunna ladda upp begärd dokumentation (lägenhetsutdrag, mäklarvärdering) via "Upload documentation" och "Upload object valuation documentation" user tasks <strong>så att</strong> processen kan fortsätta utan avbrott. <em>Acceptanskriterier: Boundary events ska korrekt trigga upload-tasks, och stakeholder ska kunna ladda upp dokumentation som sparas i systemet.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag kunna ladda upp begärd dokumentation (lägenhetsutdrag) via "Upload documentation" user task (upload-documentation) <strong>så att</strong> processen kan fortsätta utan avbrott. <em>Acceptanskriterier: "Upload documentation" user task (upload-documentation) ska aktiveras när "Request lägenhetsutdrag" boundary event (request-lagenhetsutdrag) triggas via Flow_16bcbti. Efter uppladdning, ska flödet gå till Event_0xm12vg via Flow_0167gxa.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag kunna ladda upp mäklarvärderingsdokumentation via "Upload object valuation documentation" user task (upload-object-valuation-document) <strong>så att</strong> värderaren kan få kompletterande information. <em>Acceptanskriterier: "Upload object valuation documentation" user task (upload-object-valuation-document) ska aktiveras när "Request mäklarvärdering" boundary event (request-maklarvardering) triggas via Flow_0hr7m91. Efter uppladdning, ska flödet gå till Event_0co53lt via Flow_0cguw1v.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag kunna granska ändringar som gjorts under processen via "Review changes" user task (review-changes) <strong>så att</strong> jag kan bekräfta att all information är korrekt innan processen avslutas. <em>Acceptanskriterier: "Review changes" user task (review-changes) ska aktiveras när "Stakeholder review?" gateway (stakeholder-review) avgör "Yes" via Flow_02a9j2n. Efter granskning, ska flödet gå till "Changes accepted?" gateway (changes-accepted) via Flow_15yi7l9.</em></li>
+        <li><strong>Som stakeholder</strong> vill jag att systemet automatiskt avgör om ändringar accepteras via "Changes accepted?" gateway (changes-accepted) <strong>så att</strong> processen fortsätter korrekt efter min granskning. <em>Acceptanskriterier: "Changes accepted?" gateway (changes-accepted) ska automatiskt avgöra om ändringar accepteras efter stakeholder-granskning. Om "Yes", ska flödet gå till Gateway_165hz99 via changes-accepted-yes. Om "No", ska processen loopa tillbaka till Gateway_0e24xxh via Flow_0idwco8 för att hantera nya ändringar.</em></li>
       </ul>
-      
+
       <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som system</strong> vill jag automatiskt avvisa BRF:er som inte uppfyller krav via "BRF screening result" gateway "Rejected" eller "BRF approved" gateway "No" <strong>så att</strong> endast kvalificerade objekt fortsätter i processen. <em>Acceptanskriterier: "BRF rejected" error event ska triggas automatiskt när BRF avvisas, och error code "brf-rejected" ska signalera till Manual Credit Evaluation-processen.</em></li>
-        <li><strong>Som system</strong> vill jag automatiskt avvisa objekt som inte godkänns via "Object approved?" gateway "No" <strong>så att</strong> endast godkända objekt fortsätter i processen. <em>Acceptanskriterier: "Object rejected" error event ska triggas automatiskt när objekt avvisas, och error code "object-rejected" ska signalera till Manual Credit Evaluation-processen.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen startar via start event (start-event) <strong>så att</strong> Object Control-processen kan initieras när den anropas från Manual Credit Evaluation-processen. <em>Acceptanskriterier: Start event (start-event) ska triggas när Object Control-processen anropas från Manual Credit Evaluation-processen via "object-control" call activity. Efter start event, ska flödet gå till Gateway_0e24xxh via Flow_1nc4bwi.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att Gateway_0e24xxh kan samla flöden från olika sökvägar <strong>så att</strong> processen kan hantera både initial start och loopar från avvisade ändringar. <em>Acceptanskriterier: Gateway_0e24xxh ska ta emot flöden från start event via Flow_1nc4bwi eller från "Changes accepted?" gateway "No" via Flow_0idwco8. Efter gateway, ska flödet gå till "Is bostadsrätt?" gateway (is-bostadsratt) via Flow_07176fz.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att Gateway_14f9my2 kan samla flöden från olika sökvägar <strong>så att</strong> processen kan hantera både initial BRF-kontroll och loopar från saknad BRF-information. <em>Acceptanskriterier: Gateway_14f9my2 ska ta emot flöden från "Is bostadsrätt?" gateway "Yes" via is-bostadsratt-yes eller från "BRF screening result" gateway "BRF information missing" via brf-screening-result-missing-info. Efter gateway, ska flödet gå till "Has updated BRF information?" gateway (has-brf-information) via Flow_0p4x73i.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Object information" call activity (object-information) automatiskt samlar objektinformation <strong>så att</strong> objektdata är tillgänglig för kontroll. <em>Acceptanskriterier: "Object information" call activity (object-information) ska anropas när BRF-information registreras via Flow_0vgcod9. Efter samling, ska flödet gå till "Changes requires rescoring?" gateway (changes-requires-rescoring) via Flow_0f9er8h.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att Gateway_0qigv85 kan samla flöden från olika sökvägar <strong>så att</strong> processen kan hantera både bostadsrätter och småhus. <em>Acceptanskriterier: Gateway_0qigv85 ska ta emot flöden från "Is bostadsrätt?" gateway "No" via is-bostadsratt-no eller från "Object approved?" gateway "Yes" via object-approved-yes. Efter gateway, ska flödet gå till "Needs valuation?" gateway (needs-valuation) via Flow_1dfs1w2.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att Gateway_0df2uib kan samla flöden från olika sökvägar <strong>så att</strong> processen kan hantera både scenarier med och utan värdering. <em>Acceptanskriterier: Gateway_0df2uib ska ta emot flöden från "Determine object value" user task via Flow_00qg51q eller från "Needs valuation?" gateway "No" via needs-valuation-no. Efter gateway, ska flödet gå till "Stakeholder review?" gateway (stakeholder-review) via Flow_1omyh9m.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Stakeholder review?" gateway (stakeholder-review) kan avgöra om stakeholder-granskning behövs <strong>så att</strong> stakeholder-granskning endast används när det behövs. <em>Acceptanskriterier: "Stakeholder review?" gateway (stakeholder-review) ska automatiskt avgöra om stakeholder-granskning behövs. Om "Yes", ska flödet gå till "Review changes" user task (review-changes) via Flow_02a9j2n. Om "No", ska flödet gå direkt till Gateway_165hz99 via Flow_1pqu87h.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att Gateway_165hz99 kan samla flöden från olika sökvägar <strong>så att</strong> processen kan hantera både scenarier med och utan stakeholder-granskning. <em>Acceptanskriterier: Gateway_165hz99 ska ta emot flöden från "Changes accepted?" gateway "Yes" via changes-accepted-yes eller från "Stakeholder review?" gateway "No" via Flow_1pqu87h. Efter gateway, ska flödet gå till process end event (process-end-event) via Flow_1u0wig6.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen avslutas normalt via process end event (process-end-event) när alla kontroller är godkända <strong>så att</strong> Manual Credit Evaluation-processen kan fortsätta. <em>Acceptanskriterier: Process end event (process-end-event) ska triggas när Gateway_165hz99 har samlat flöden via Flow_1u0wig6. Processen ska returnera till Manual Credit Evaluation-processen via "object-control" call activity.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "BRF rejected" error events (Event_1pqluun, Event_0i6cize) automatiskt triggas när BRF avvisas <strong>så att</strong> endast kvalificerade objekt fortsätter i processen. <em>Acceptanskriterier: "BRF rejected" error event (Event_1pqluun) ska triggas när "BRF screening result" gateway avgör "Rejected" via brf-screening-result-rejected med error code "brf-rejected" (Error_1t95jmk). "BRF rejected" error event (Event_0i6cize) ska triggas när "BRF approved?" gateway avgör "No" via brf-approved-no med error code "brf-rejected" (Error_1t95jmk). Error events ska signalera till Manual Credit Evaluation-processen via boundary events.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Object rejected" error event (Event_1yyhlmr) automatiskt triggas när objekt avvisas <strong>så att</strong> endast godkända objekt fortsätter i processen. <em>Acceptanskriterier: "Object rejected" error event (Event_1yyhlmr) ska triggas när "Object approved?" gateway (object-approved) avgör "No" via object-approved-no med error code "object-rejected" (Error_0nouvlm). Error event ska signalera till Manual Credit Evaluation-processen via boundary event.</em></li>
       </ul>
         </div>
       </details>
@@ -619,107 +637,192 @@
         <div class="section-content">
 <p class="muted">Detaljerad testgenerering för att säkerställa att feature goalet fungerar korrekt.</p>
       
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Småhus – ingen BRF-kontroll, värdering krävs</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är småhus. Testdata: object-control-house. <strong>When:</strong> "Is bostadsrätt?" gateway (is-bostadsratt) avgör "No". "Needs valuation?" gateway (needs-valuation) avgör "Yes". "Determine object value" user task (determine-object-value) fastställer värde. "Stakeholder review?" gateway (stakeholder-review) avgör "No". <strong>Then:</strong> Processen avslutas normalt (process-end-event).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Bostadsrätt – BRF godkänd, värdering krävs</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF-information finns. Testdata: object-control-brf-approved. <strong>When:</strong> "Is bostadsrätt?" gateway (is-bostadsratt) avgör "Yes". "Has updated BRF information?" gateway (has-brf-information) avgör "Yes". "BRF screening result" gateway (brf-screening-result) avgör "Accepted". "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) kontrollerar. "Object approved?" gateway (object-approved) avgör "Yes". "Needs valuation?" gateway (needs-valuation) avgör "Yes". "Determine object value" user task (determine-object-value) fastställer värde. <strong>Then:</strong> Processen avslutas normalt (process-end-event).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Bostadsrätt – BRF-information saknas, registreras</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF-information saknas. Testdata: object-control-brf-missing. <strong>When:</strong> "Is bostadsrätt?" gateway (is-bostadsratt) avgör "Yes". "Has updated BRF information?" gateway (has-brf-information) avgör "No". "Register BRF information" user task (register-brf-information) registrerar BRF. "Object information" call activity (object-information) samlar objektinformation. "Changes requires rescoring?" gateway (changes-requires-rescoring) avgör "No". "BRF screening result" gateway (brf-screening-result) avgör "Accepted". <strong>Then:</strong> Processen fortsätter till lägenhetsutdrag-kontroll.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>BRF avvisad – screening rejected</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF-information finns. BRF uppfyller inte krav. Testdata: object-control-brf-rejected. <strong>When:</strong> "Is bostadsrätt?" gateway (is-bostadsratt) avgör "Yes". "BRF screening result" gateway (brf-screening-result) avgör "Rejected". <strong>Then:</strong> "BRF rejected" error event (Event_1pqluun, error code: brf-rejected) triggas. Boundary event triggas i Manual Credit Evaluation-processen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>BRF avvisad – manuell granskning</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF kräver manuell granskning. Testdata: object-control-brf-review-rejected. <strong>When:</strong> "BRF screening result" gateway (brf-screening-result) avgör "Review". "Review BRF" user task (review-brf) granskar BRF. "BRF approved?" gateway (brf-approved) avgör "No". <strong>Then:</strong> "BRF rejected" error event (Event_0i6cize, error code: brf-rejected) triggas. Boundary event triggas i Manual Credit Evaluation-processen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Objekt avvisat – lägenhetsutdrag ofullständig</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF är godkänd. Lägenhetsutdrag är ofullständig. Testdata: object-control-object-rejected. <strong>When:</strong> "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) kontrollerar. "Object approved?" gateway (object-approved) avgör "No". <strong>Then:</strong> "Object rejected" error event (Event_1yyhlmr, error code: object-rejected) triggas. Boundary event triggas i Manual Credit Evaluation-processen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>Request lägenhetsutdrag boundary event</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF är godkänd. Lägenhetsutdrag saknas. Testdata: object-control-request-documentation. <strong>When:</strong> "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) aktiveras. "Request lägenhetsutdrag" boundary event (request-lagenhetsutdrag) triggas. "Upload documentation" user task (upload-documentation) aktiveras för stakeholder. Stakeholder laddar upp dokumentation. <strong>Then:</strong> Dokumentation sparas. Processen fortsätter till "Object approved?" gateway (object-approved).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>Request mäklarvärdering boundary event</td>
+        <td>Happy</td>
+        <td>valuator</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektvärdering krävs. Mäklarvärdering saknas. Testdata: object-control-request-valuation. <strong>When:</strong> "Needs valuation?" gateway (needs-valuation) avgör "Yes". "Determine object value" user task (determine-object-value) aktiveras. "Request mäklarvärdering" boundary event (request-maklarvardering) triggas. "Upload object valuation documentation" user task (upload-object-valuation-document) aktiveras för stakeholder. Stakeholder laddar upp mäklarvärdering. <strong>Then:</strong> Mäklarvärdering sparas. Värderare fortsätter värderingen. Processen fortsätter normalt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>Ändringar kräver omvärdering – Automatic Credit Evaluation</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF-information registreras. Ändringar kräver omvärdering. Testdata: object-control-rescoring. <strong>When:</strong> "Register BRF information" user task (register-brf-information) registrerar BRF. "Object information" call activity (object-information) samlar objektinformation. "Changes requires rescoring?" gateway (changes-requires-rescoring) avgör "Yes". "Automatic Credit Evaluation" call activity (credit-evaluation-2) anropas. <strong>Then:</strong> Automatic Credit Evaluation-processen genomförs. Resultatet returneras. Processen fortsätter till "BRF screening result" gateway (brf-screening-result).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S10</strong></td>
+        <td>BRF information missing – loop</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF-screening indikerar saknad information. Testdata: object-control-brf-missing-loop. <strong>When:</strong> "BRF screening result" gateway (brf-screening-result) avgör "BRF information missing". Processen loopar tillbaka till "Has updated BRF information?" gateway (has-brf-information) via Gateway_14f9my2. "Register BRF information" user task (register-brf-information) registrerar kompletterande information. <strong>Then:</strong> Processen fortsätter med ny BRF-screening. Handläggaren får tydlig feedback om loopen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S11</strong></td>
+        <td>Stakeholder avvisar ändringar – loop</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Alla kontroller är godkända. Ändringar har gjorts. Testdata: object-control-changes-rejected. <strong>When:</strong> "Stakeholder review?" gateway (stakeholder-review) avgör "Yes". "Review changes" user task (review-changes) granskar ändringar. "Changes accepted?" gateway (changes-accepted) avgör "No". Processen loopar tillbaka till Gateway_0e24xxh. <strong>Then:</strong> Processen startar om med nya ändringar. Handläggaren får tydlig feedback om varför loopen skedde.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S12</strong></td>
+        <td>Bostadsrätt – BRF kräver manuell granskning, godkänns</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF kräver manuell granskning. Testdata: object-control-brf-review-approved. <strong>When:</strong> "BRF screening result" gateway (brf-screening-result) avgör "Review". "Review BRF" user task (review-brf) granskar BRF. "BRF approved?" gateway (brf-approved) avgör "Yes". <strong>Then:</strong> Processen fortsätter till "Control lägenhets-utdrag" user task (control-lagenhetsutdrag).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S13</strong></td>
+        <td>Ingen värdering behövs</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är godkänt. Värdering behövs inte. Testdata: object-control-no-valuation. <strong>When:</strong> "Needs valuation?" gateway (needs-valuation) avgör "No". "Stakeholder review?" gateway (stakeholder-review) avgör "No". <strong>Then:</strong> Processen avslutas normalt (process-end-event).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S14</strong></td>
+        <td>Object information timeout – retry lyckas</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF-information registreras. Object information service svarar långsamt. Testdata: object-control-object-info-timeout. <strong>When:</strong> "Object information" call activity (object-information) timeout (60 sekunder). Retry-logik aktiveras (max 3 försök, exponential backoff). <strong>Then:</strong> Efter retry lyckas samling. Processen fortsätter till "Changes requires rescoring?" gateway (changes-requires-rescoring).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S15</strong></td>
+        <td>Automatic Credit Evaluation timeout – retry lyckas</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Ändringar kräver omvärdering. Credit evaluation service svarar långsamt. Testdata: object-control-credit-eval-timeout. <strong>When:</strong> "Automatic Credit Evaluation" call activity (credit-evaluation-2) timeout (60 sekunder). Retry-logik aktiveras (max 3 försök, exponential backoff). <strong>Then:</strong> Efter retry lyckas omvärdering. Processen fortsätter till "BRF screening result" gateway (brf-screening-result).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
       <h3>UI Flow per Scenario</h3>
-      <ul>
-        <li><strong>Scenario 1: Småhus (ingen BRF-kontroll) - lyckad</strong>
-          <ol>
-            <li>Systemet startar Object Control-processen via "Object control" call activity</li>
-            <li>"Is bostadsrätt?" gateway identifierar objektet som småhus (No)</li>
-            <li>Processen hoppar över BRF-kontroll och går direkt till "Needs valuation?" gateway</li>
-            <li>"Needs valuation?" gateway returnerar "Yes"</li>
-            <li>Värderare får "Determine object value" user task</li>
-            <li>Värderare fastställer objektets värde</li>
-            <li>"Stakeholder review?" gateway returnerar "No"</li>
-            <li>Processen avslutas normalt</li>
-          </ol>
-        </li>
-        <li><strong>Scenario 2: Bostadsrätt med BRF-kontroll - lyckad</strong>
-          <ol>
-            <li>Systemet startar Object Control-processen</li>
-            <li>"Is bostadsrätt?" gateway identifierar objektet som bostadsrätt (Yes)</li>
-            <li>"Has updated BRF information?" gateway returnerar "No"</li>
-            <li>Handläggare får "Register BRF information" user task</li>
-            <li>Handläggare registrerar BRF-information</li>
-            <li>"BRF screening result" gateway returnerar "Accepted"</li>
-            <li>"Control lägenhets-utdrag" user task aktiveras</li>
-            <li>Handläggare kontrollerar lägenhetsutdrag</li>
-            <li>"Object approved?" gateway returnerar "Yes"</li>
-            <li>"Needs valuation?" gateway returnerar "Yes"</li>
-            <li>Värderare fastställer objektets värde</li>
-            <li>"Stakeholder review?" gateway returnerar "Yes"</li>
-            <li>Stakeholder granskar ändringar och accepterar</li>
-            <li>Processen avslutas normalt</li>
-          </ol>
-        </li>
-        <li><strong>Scenario 3: BRF avvisad</strong>
-          <ol>
-            <li>Systemet startar Object Control-processen</li>
-            <li>"Is bostadsrätt?" gateway identifierar objektet som bostadsrätt</li>
-            <li>"BRF screening result" gateway returnerar "Rejected"</li>
-            <li>"BRF rejected" error event (Event_1pqluun) triggas med error code "brf-rejected"</li>
-            <li>Error event signalerar till Manual Credit Evaluation-processen</li>
-            <li>Processen avbryts</li>
-          </ol>
-        </li>
-        <li><strong>Scenario 4: Objekt avvisat</strong>
-          <ol>
-            <li>Systemet startar Object Control-processen</li>
-            <li>BRF-kontroll genomförs och godkänns</li>
-            <li>"Control lägenhets-utdrag" user task aktiveras</li>
-            <li>Handläggare kontrollerar lägenhetsutdrag</li>
-            <li>"Object approved?" gateway returnerar "No"</li>
-            <li>"Object rejected" error event (Event_1yyhlmr) triggas med error code "object-rejected"</li>
-            <li>Error event signalerar till Manual Credit Evaluation-processen</li>
-            <li>Processen avbryts</li>
-          </ol>
-        </li>
-        <li><strong>Scenario 5: Begäran om lägenhetsutdrag (boundary event)</strong>
-          <ol>
-            <li>Systemet startar Object Control-processen</li>
-            <li>BRF-kontroll genomförs och godkänns</li>
-            <li>"Control lägenhets-utdrag" user task aktiveras</li>
-            <li>Handläggare triggar "Request lägenhetsutdrag" boundary event</li>
-            <li>"Upload documentation" user task aktiveras för stakeholder</li>
-            <li>Stakeholder laddar upp lägenhetsutdrag</li>
-            <li>Handläggare fortsätter kontrollen</li>
-            <li>Processen fortsätter normalt</li>
-          </ol>
-        </li>
-        <li><strong>Scenario 6: Begäran om mäklarvärdering (boundary event)</strong>
-          <ol>
-            <li>Systemet startar Object Control-processen</li>
-            <li>"Needs valuation?" gateway returnerar "Yes"</li>
-            <li>"Determine object value" user task aktiveras för värderare</li>
-            <li>Värderare triggar "Request mäklarvärdering" boundary event</li>
-            <li>"Upload object valuation documentation" user task aktiveras för stakeholder</li>
-            <li>Stakeholder laddar upp mäklarvärdering</li>
-            <li>Värderare fortsätter värderingen</li>
-            <li>Processen fortsätter normalt</li>
-          </ol>
-        </li>
-        <li><strong>Scenario 7: Ändringar kräver omvärdering</strong>
-          <ol>
-            <li>Systemet startar Object Control-processen</li>
-            <li>"Changes requires rescoring?" gateway returnerar "Yes"</li>
-            <li>"Automatic Credit Evaluation" call activity anropas</li>
-            <li>Automatic Credit Evaluation-processen genomförs</li>
-            <li>Resultatet returneras till Object Control</li>
-            <li>Processen fortsätter normalt</li>
-          </ol>
-        </li>
-        <li><strong>Scenario 8: Stakeholder avvisar ändringar (loop)</strong>
-          <ol>
-            <li>Systemet startar Object Control-processen</li>
-            <li>Alla kontroller genomförs framgångsrikt</li>
-            <li>"Stakeholder review?" gateway returnerar "Yes"</li>
-            <li>"Review changes" user task aktiveras för stakeholder</li>
-            <li>Stakeholder granskar ändringar</li>
-            <li>"Changes accepted?" gateway returnerar "No"</li>
-            <li>Processen loopar tillbaka till början via Gateway_0e24xxh</li>
-            <li>Processen startar om med nya ändringar</li>
-          </ol>
-        </li>
-      </ul>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
 
       <h3>Testdata-referenser</h3>
       <ul>

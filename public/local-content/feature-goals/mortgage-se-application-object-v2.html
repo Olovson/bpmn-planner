@@ -487,7 +487,7 @@
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Primary stakeholder väljer köp som syfte, registrerar källa till eget kapital, systemet samlar objektinformation, objektet godkänns, värdering genomförs om nödvändig, och processen avslutas. Går vidare till stakeholders subprocess.</td>
+        <td><strong>Given:</strong> Object-processen startar. Ansökningssyfte är köp. Testdata: object-purchase-with-equity. <strong>When:</strong> "Purposes?" gateway (purposes) = Purchase. "Skip step?" gateway (skip-register-source-of-equity) = No. "Register source of equity" user task (register-source-of-equity) aktiveras. Primary stakeholder registrerar källa till eget kapital. "Object information" call activity (object-information, multi-instance) samlar objektinformation. "Objects accepted?" gateway (objects-valid) = All. "Needs valuation?" gateway (needs-valuation) evaluerar. <strong>Then:</strong> Om värdering krävs, "Valuate bostad" service task (valuate-property) körs. Processen avslutas normalt (Event_1ymfh8p). Går vidare till stakeholders subprocess.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -498,31 +498,89 @@
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Primary stakeholder väljer flytt eller omlåning som syfte, registrerar lånedetaljer, systemet samlar objektinformation, objektet godkänns, värdering genomförs om nödvändig, och processen avslutas. Går vidare till stakeholders subprocess.</td>
+        <td><strong>Given:</strong> Object-processen startar. Ansökningssyfte är flytt eller omlåning. Testdata: object-refinance. <strong>When:</strong> "Purposes?" gateway (purposes) = Refinancing/Move loan. Gateway_19knsnl dirigerar till "Register loan details" user task (register-loan-details). Primary stakeholder registrerar lånedetaljer. "Object information" call activity (object-information, multi-instance) samlar objektinformation. "Objects accepted?" gateway (objects-valid) = All. "Needs valuation?" gateway (needs-valuation) evaluerar. <strong>Then:</strong> Om värdering krävs, "Valuate bostad" service task körs. Processen avslutas normalt (Event_1ymfh8p). Går vidare till stakeholders subprocess.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Objekt avvisat – inga objekt godkända</td>
-        <td>Error</td>
+        <td>Köp utan källa till eget kapital – skip</td>
+        <td>Happy</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Systemet samlar objektinformation, men inga objekt godkänns via "Objects accepted?" gateway "None". Processen avslutas med "Object rejected" error event, vilket triggar "Object rejected" boundary event i Application-processen och avbryter hela ansökningsprocessen.</td>
+        <td><strong>Given:</strong> Object-processen startar. Ansökningssyfte är köp. Registrering kan hoppas över. Testdata: object-purchase-skip-equity. <strong>When:</strong> "Purposes?" gateway (purposes) = Purchase. "Skip step?" gateway (skip-register-source-of-equity) = Yes. <strong>Then:</strong> "Register source of equity" user task hoppas över. Flödet går direkt till Gateway_0box6jw → Gateway_1uyee92. "Needs valuation?" gateway evaluerar. Processen fortsätter och avslutas normalt.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
+        <td>Objekt avvisat – inga objekt godkända</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> "Object information" call activity har samlat objektinformation. Inga objekt uppfyller kriterier. Testdata: object-all-rejected. <strong>When:</strong> "Objects accepted?" gateway (objects-valid) = None. <strong>Then:</strong> Processen avslutas med "Object rejected" error event (Event_1pf0qfv, error code "object-rejected"). Detta triggar "Object rejected" boundary event i Application-processen och avbryter hela ansökningsprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
         <td>Vissa objekt avvisade – loop-mekanism</td>
         <td>Edge</td>
         <td>customer</td>
         <td>P2</td>
         <td>functional</td>
-        <td>Systemet samlar objektinformation, men vissa objekt avvisas via "Objects accepted?" gateway "Some". Processen loopar tillbaka till "Gateway_19knsnl" för att hantera avvisade objekt igen. Efter korrigering godkänns alla objekt och processen fortsätter.</td>
+        <td><strong>Given:</strong> "Object information" call activity har samlat objektinformation. Vissa objekt avvisas. Testdata: object-some-rejected. <strong>When:</strong> "Objects accepted?" gateway (objects-valid) = Some. <strong>Then:</strong> Processen loopar tillbaka till Gateway_19knsnl. Primary stakeholder kan korrigera lånedetaljer. Efter korrigering samlas objektinformation igen. När alla objekt godkänns (All), processen fortsätter och avslutas normalt.</td>
         <td>✅ Planerad</td>
       </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Värdering krävs – köp med försäljning</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Objekt är godkänt. Källa till eget kapital är försäljning av befintlig fastighet (köp) eller ansökningssyfte är flytt/omlåning. Testdata: object-valuation-required. <strong>When:</strong> "Needs valuation?" gateway (needs-valuation) = Yes. <strong>Then:</strong> "Valuate bostad" service task (valuate-property) körs. Värderingsresultat lagras i "Valuation service" datastore (DataStoreReference_0qo0cez). Gateway_0u4o84x sammanför flöden. Processen avslutas normalt (Event_1ymfh8p).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>Ingen värdering behövs</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Objekt är godkänt. Källa till eget kapital är inte försäljning (köp) eller ansökningssyfte är köp utan försäljning. Testdata: object-no-valuation. <strong>When:</strong> "Needs valuation?" gateway (needs-valuation) = No. <strong>Then:</strong> "Valuate bostad" service task hoppas över. Flödet går direkt till Gateway_0u4o84x. Processen avslutas normalt (Event_1ymfh8p).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>Multi-instance – flera objekt</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Ansökan gäller flera objekt. Testdata: object-multiple. <strong>When:</strong> "Object information" call activity (object-information) körs som multi-instance. Varje objekt bearbetas individuellt. <strong>Then:</strong> Efter att alla objekt har samlats, "Objects accepted?" gateway evaluerar alla objekt. Om alla godkänns (All), processen fortsätter. Om vissa avvisas (Some), loop-mekanism aktiveras. Processen avslutas normalt när alla objekt är godkända.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>Värdering timeout – retry lyckas</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Värdering krävs. Värderingstjänst svarar långsamt. Testdata: object-valuation-timeout. <strong>When:</strong> "Needs valuation?" gateway = Yes. "Valuate bostad" service task (valuate-property) timeout (60 sekunder). Retry-logik aktiveras (2 försök). <strong>Then:</strong> Efter retry lyckas värdering. Värderingsresultat lagras i datastore. Processen fortsätter och avslutas normalt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
     
         </tbody>
       </table>
@@ -768,17 +826,25 @@
       
       <h3>Primary stakeholder-perspektiv</h3>
       <ul>
-        <li><strong>Som primary stakeholder</strong> vill jag kunna registrera källa till eget kapital via "Register source of equity" user task <strong>så att</strong> jag kan ange källa till eget kapital för köp. <em>Acceptanskriterier: "Register source of equity" user task ska visa tydliga fält för källa till eget kapital, tillåta primary stakeholder att fylla i information, och validera att information är korrekt.</em></li>
-        <li><strong>Som primary stakeholder</strong> vill jag kunna registrera lånedetaljer via "Register loan details" user task <strong>så att</strong> jag kan ange lånedetaljer för flytt eller omlåning. <em>Acceptanskriterier: "Register loan details" user task ska visa tydliga fält för lånedetaljer, tillåta primary stakeholder att fylla i information, och validera att information är korrekt.</em></li>
-        <li><strong>Som primary stakeholder</strong> vill jag att systemet automatiskt avgör om registrering kan hoppas över via "Skip step?" gateway <strong>så att</strong> jag inte behöver registrera källa till eget kapital om det inte behövs. <em>Acceptanskriterier: "Skip step?" gateway ska automatiskt avgöra om registrering kan hoppas över, och om "Yes" ska flödet gå direkt till "Gateway_0box6jw" utan att visa "Register source of equity" user task.</em></li>
+        <li><strong>Som primary stakeholder</strong> vill jag att processen startar via start event (start-event) <strong>så att</strong> Object-processen kan initieras när Application-processen anropar "object" call activity. <em>Acceptanskriterier: Start event (start-event) ska triggas när Application-processen anropar "object" call activity efter Internal data gathering. Efter start event, ska flödet gå till "Purposes?" gateway (purposes) via Flow_0x1k268.</em></li>
+        <li><strong>Som primary stakeholder</strong> vill jag att "Purposes?" gateway (purposes) avgör ansökningssyfte <strong>så att</strong> processen kan dirigeras till rätt registreringssteg. <em>Acceptanskriterier: "Purposes?" inclusive gateway (purposes) ska avgöra ansökningssyfte. Om "Purchase (Mortgage commitment)", ska flödet gå till "Skip step?" gateway (skip-register-source-of-equity) via purposes-includes-purchase. Om "Refinancing / Move loan", ska flödet gå till Gateway_19knsnl via purposes-includes-other.</em></li>
+        <li><strong>Som primary stakeholder</strong> vill jag att "Skip step?" gateway (skip-register-source-of-equity) avgör om registrering kan hoppas över <strong>så att</strong> jag inte behöver registrera källa till eget kapital om det inte behövs. <em>Acceptanskriterier: "Skip step?" exclusive gateway (skip-register-source-of-equity) ska avgöra om registrering kan hoppas över. Om "No", ska flödet gå till "Register source of equity" user task (register-source-of-equity) via skip-register-source-of-equity-no. Om "Yes", ska flödet gå direkt till Gateway_0box6jw via skip-register-source-of-equity-yes.</em></li>
+        <li><strong>Som primary stakeholder</strong> vill jag kunna registrera källa till eget kapital via "Register source of equity" user task (register-source-of-equity) <strong>så att</strong> jag kan ange källa till eget kapital för köp. <em>Acceptanskriterier: "Register source of equity" user task (register-source-of-equity) ska aktiveras när "Skip step?" gateway returnerar "No". Task ska visa tydliga fält för källa till eget kapital, tillåta primary stakeholder att fylla i information, och validera att information är korrekt. Om källan är försäljning av befintlig fastighet, måste fastighetsinformation tillhandahållas. Efter registrering, ska flödet gå till Gateway_0box6jw via Flow_12dttn4.</em></li>
+        <li><strong>Som primary stakeholder</strong> vill jag att Gateway_0box6jw samlar ihop flöden från både registrering och skip <strong>så att</strong> processen kan fortsätta korrekt oavsett vilken sökväg som används. <em>Acceptanskriterier: Gateway_0box6jw ska samla ihop flöden från både "Register source of equity" user task via Flow_12dttn4 och "Skip step?" gateway "Yes" via skip-register-source-of-equity-yes. När flöden samlas ihop, ska flödet gå till Gateway_1uyee92 via Flow_0tljfm9.</em></li>
+        <li><strong>Som primary stakeholder</strong> vill jag kunna registrera lånedetaljer via "Register loan details" user task (register-loan-details) <strong>så att</strong> jag kan ange lånedetaljer för flytt eller omlåning. <em>Acceptanskriterier: "Register loan details" user task (register-loan-details) ska aktiveras när Gateway_19knsnl dirigerar flödet via Flow_1688whx. Task ska visa tydliga fält för lånedetaljer, tillåta primary stakeholder att fylla i information, och validera att information är korrekt. Efter registrering, ska flödet gå till "Object information" call activity (object-information) via Flow_0biqewt.</em></li>
       </ul>
 
       <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som systemadministratör</strong> vill jag att "Purposes?" gateway kan avgöra ansökningssyfte <strong>så att</strong> processen kan dirigeras till rätt registreringssteg</li>
-        <li><strong>Som systemadministratör</strong> vill jag att "Objects accepted?" gateway kan validera objekt mot affärsregler <strong>så att</strong> endast godkända objekt fortsätter i processen</li>
-        <li><strong>Som systemadministratör</strong> vill jag att "Needs valuation?" gateway kan avgöra om värdering behövs <strong>så att</strong> värdering bara genomförs när det behövs</li>
-        <li><strong>Som systemadministratör</strong> vill jag att Object Information-processen körs som multi-instance <strong>så att</strong> alla objekt bearbetas individuellt</li>
+        <li><strong>Som systemadministratör</strong> vill jag att Gateway_19knsnl kan ta emot flöden från både "Purposes?" gateway "Refinancing / Move loan" och "Objects accepted?" gateway "Some" <strong>så att</strong> processen kan hantera både initial registrering och loop-mekanismer för avvisade objekt. <em>Acceptanskriterier: Gateway_19knsnl ska ta emot flöden från antingen "Purposes?" gateway "Refinancing / Move loan" via purposes-includes-other eller loop från "Objects accepted?" gateway "Some" via objects-valid-some. När flöden samlas ihop, ska flödet gå till "Register loan details" user task via Flow_1688whx.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Object information" call activity (object-information) körs som multi-instance <strong>så att</strong> alla objekt bearbetas individuellt. <em>Acceptanskriterier: "Object information" call activity (object-information) ska köras som multi-instance för varje objekt i ansökan. Efter att alla objekt har samlats, ska flödet gå till "Objects accepted?" gateway (objects-valid) via Flow_0rjoryz.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Objects accepted?" gateway (objects-valid) kan validera objekt mot affärsregler <strong>så att</strong> endast godkända objekt fortsätter i processen. <em>Acceptanskriterier: "Objects accepted?" exclusive gateway (objects-valid) ska validera objekt mot affärsregler. Om "All", ska flödet gå till Gateway_1uyee92 via objects-valid-all. Om "Some", ska flödet loopa tillbaka till Gateway_19knsnl via objects-valid-some för att hantera avvisade objekt igen. Om "None", ska processen avslutas med "Object rejected" error event (Event_1pf0qfv) via objects-valid-none.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att Gateway_1uyee92 samlar ihop flöden från både "Objects accepted?" gateway "All" och Gateway_0box6jw <strong>så att</strong> processen kan fortsätta korrekt oavsett vilken sökväg som används. <em>Acceptanskriterier: Gateway_1uyee92 ska samla ihop flöden från antingen "Objects accepted?" gateway "All" via objects-valid-all eller Gateway_0box6jw via Flow_0tljfm9. När flöden samlas ihop, ska flödet gå till "Needs valuation?" gateway (needs-valuation) via Flow_1r7f5ly.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Needs valuation?" gateway (needs-valuation) kan avgöra om värdering behövs <strong>så att</strong> värdering bara genomförs när det behövs. <em>Acceptanskriterier: "Needs valuation?" exclusive gateway (needs-valuation) ska avgöra om objektvärdering behövs. Om "Yes", ska flödet gå till "Valuate bostad" service task (valuate-property) via needs-valuation-yes. Om "No", ska flödet gå direkt till Gateway_0u4o84x via needs-valuation-no.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Valuate bostad" service task (valuate-property) värderar fastigheten automatiskt <strong>så att</strong> objektets värde fastställs och lagras. <em>Acceptanskriterier: "Valuate bostad" service task (valuate-property) ska värdera fastigheten automatiskt när "Needs valuation?" gateway returnerar "Yes". Värderingsresultatet ska lagras i "Valuation service" datastore (DataStoreReference_0qo0cez) via DataOutputAssociation_0hqfsbk. Efter värdering, ska flödet gå till Gateway_0u4o84x via Flow_1tns5pg.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att Gateway_0u4o84x samlar ihop flöden från både "Needs valuation?" gateway "No" och "Valuate bostad" service task <strong>så att</strong> processen avslutas korrekt oavsett vilken sökväg som används. <em>Acceptanskriterier: Gateway_0u4o84x ska samla ihop flöden från antingen "Needs valuation?" gateway "No" via needs-valuation-no eller "Valuate bostad" service task via Flow_1tns5pg. När flöden samlas ihop, ska flödet gå till end event (Event_1ymfh8p) via Flow_0y14qmx.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen avslutas normalt via end event (Event_1ymfh8p) när objektinformation är samlad, validerad, och värderad (om nödvändig) <strong>så att</strong> Application-processen kan fortsätta med stakeholders subprocess. <em>Acceptanskriterier: End event (Event_1ymfh8p) ska triggas när Gateway_0u4o84x samlar ihop flöden via Flow_0y14qmx. Processen ska returnera till Application-processen via "object" call activity och flödet ska gå till stakeholders subprocess.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Object rejected" error event (Event_1pf0qfv) signaliserar att objektet har avvisats <strong>så att</strong> Application-processen kan hantera avvisningen korrekt. <em>Acceptanskriterier: "Object rejected" error event (Event_1pf0qfv) ska triggas när "Objects accepted?" gateway returnerar "None" via objects-valid-none. Error event ska ha error code "object-rejected" (Error_08xwxkn) och signalera till Application-processen att objektet inte uppfyller kraven, vilket triggar "Object rejected" boundary event på "object" call activity och avbryter hela ansökningsprocessen.</em></li>
       </ul>
         </div>
       </details>

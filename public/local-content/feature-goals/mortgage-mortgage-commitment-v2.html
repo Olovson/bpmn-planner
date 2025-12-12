@@ -512,56 +512,122 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – engagemang godkänt, kund vinner budgivning</td>
+        <td>Normalflöde – kund vinner budgivning</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Initial kreditevaluering godkänns. Kund fattar beslut om engagemang (accepterar). Objektvärdering genomförs. Dokumentation laddas upp och bedöms. Avancerad underwriting genomförs. Kund bekräftar objekt och vinst i budgivning. Proof-of-finance skapas. Processen avslutas och går vidare till Credit evaluation i huvudprocessen.</td>
+        <td><strong>Given:</strong> Ansökan är klar för köp-engagemang. Objekt är inte utvärderat. Testdata: application-commitment-happy. <strong>When:</strong> Automatic Credit Evaluation (credit-evaluation-1) godkänner. "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved) = Yes. "Mortgage commitment ready" message event triggas. Kund fattar beslut (decide-mortgage-commitment). "Mortgage commitment decision?" gateway (mortgage-commitment-decision) = "Won bidding round / Interested in object". "Is object evaluated?" gateway (is-object-evaluated) = No. Object information samlas (object-information). "Object rejected?" gateway (is-object-approved) = No. "Has terms changed?" gateway (has-terms-changed) = No. "Is terms approved?" gateway (is-terms-approved) = Yes. "Won bidding round?" gateway (won-bidding-round) = Yes. <strong>Then:</strong> Processen avslutas normalt (Event_0az10av). Går vidare till Credit evaluation.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Ändringar av lånevillkor – omvärdering krävs</td>
-        <td>Edge</td>
+        <td>Objekt redan utvärderat</td>
+        <td>Happy</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Kund begär ändringar av lånevillkor (t.ex. högre lånebelopp, annan löptid). Ytterligare kreditevaluering anropas. Omvärdering godkänns. Processen fortsätter med uppdaterade villkor.</td>
+        <td><strong>Given:</strong> Objekt är redan utvärderat. Testdata: application-object-evaluated. <strong>When:</strong> Initial kreditevaluering godkänner. Kund fattar beslut. "Is object evaluated?" gateway (is-object-evaluated) = Yes. <strong>Then:</strong> Object information hoppas över. Flödet går direkt till "Object rejected?" gateway (Gateway_14ve2uc → is-object-approved). Processen fortsätter normalt.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Engagemang avvisat initialt</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P0</td>
+        <td>Objekt avvisat – loop tillbaka</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Initial kreditevaluering avvisar engagemanget. "mortgage-commitment-rejected" error triggas. Processen avslutas med "Automatically rejected" end event.</td>
+        <td><strong>Given:</strong> Objekt samlas in men avvisas. Testdata: application-object-rejected. <strong>When:</strong> Object information samlas (object-information). "Object rejected?" gateway (is-object-approved) = Yes. <strong>Then:</strong> Processen loopar tillbaka till "Decide on mortgage commitment" subprocess (Gateway_0p2vba1 → Gateway_0upjuan → Activity_1xrvxr3). Kund kan välja nytt objekt.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
-        <td>Engagemang löper ut – timeout</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P0</td>
+        <td>Ändringar av lånevillkor – omvärdering godkänns</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Engagemanget skapas men kund svarar inte inom timeout-period. "mortgage-commitment-timeout" error triggas. Processen avslutas med "Mortgage commitment expired" end event.</td>
+        <td><strong>Given:</strong> Kund begär ändringar av lånevillkor. Testdata: application-terms-changed. <strong>When:</strong> "Has terms changed?" gateway (has-terms-changed) = Yes. Automatic Credit Evaluation (credit-evaluation-2) genomförs. "Is terms approved?" gateway (is-terms-approved) = Yes. <strong>Then:</strong> Processen fortsätter till "Won bidding round?" gateway. Omvärdering är godkänd.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S5</strong></td>
-        <td>Kund förlorar budgivning – engagemang avvisat</td>
+        <td>Ändrade villkor inte godkända – loop tillbaka</td>
         <td>Edge</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Engagemanget är godkänt, men kund förlorar budgivning. Kund avvisar engagemanget. Processen avslutas med "Engagement declined" end event.</td>
+        <td><strong>Given:</strong> Lånevillkor ändras men godkänns inte. Testdata: application-terms-not-approved. <strong>When:</strong> "Has terms changed?" = Yes. Automatic Credit Evaluation (credit-evaluation-2) genomförs. "Is terms approved?" gateway (is-terms-approved) = No. <strong>Then:</strong> Processen loopar tillbaka till "Decide on mortgage commitment" subprocess (Gateway_11954vc → Gateway_0p2vba1 → Gateway_0upjuan → Activity_1xrvxr3). Kund kan justera villkor.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>"Add loan terms" – loop tillbaka</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Kund väljer att lägga till lånevillkor. Testdata: application-add-terms. <strong>When:</strong> "Mortgage commitment decision?" gateway (mortgage-commitment-decision) = "Add loan terms". <strong>Then:</strong> Processen loopar tillbaka till initial kreditevaluering (Gateway_17kvnul → Gateway_1hxgyw1 → credit-evaluation-1). Nya villkor utvärderas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>"Upload documentation" boundary event</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Kund fattar beslut om engagemang. Ytterligare dokumentation behövs. Testdata: application-upload-doc. <strong>When:</strong> "Upload documentation" boundary event (Event_0o7mt0k) triggas på decide-mortgage-commitment user task. <strong>Then:</strong> Documentation assessment call activity (documentation-assessment) körs. Efter bedömning återgår processen till decide-mortgage-commitment (Event_08klgt4 → Activity_1xrvxr3 fortsätter).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>"Credit re-evaluation required" boundary event</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Dokumentation bedöms. Omvärdering krävs. Testdata: application-credit-reeval. <strong>When:</strong> "Credit re-evaluation required" boundary event (Event_1t9r73x) triggas på Activity_1xrvxr3 subprocess. <strong>Then:</strong> Processen loopar tillbaka till initial kreditevaluering (Gateway_17kvnul → Gateway_1hxgyw1 → credit-evaluation-1). Omvärdering genomförs.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>Kund förlorar budgivning – loop tillbaka</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Alla villkor är godkända. Kund förlorar budgivning. Testdata: application-lost-bidding. <strong>When:</strong> "Won bidding round?" gateway (won-bidding-round) = No. <strong>Then:</strong> Processen loopar tillbaka till "Decide on mortgage commitment" subprocess (Gateway_11954vc → Gateway_0p2vba1 → Gateway_0upjuan → Activity_1xrvxr3). Kund kan fortsätta med nytt objekt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S10</strong></td>
+        <td>Engagemang avvisat initialt</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Initial kreditevaluering avvisar engagemanget. Testdata: application-commitment-rejected. <strong>When:</strong> Automatic Credit Evaluation (credit-evaluation-1) avvisar. "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved) = No. <strong>Then:</strong> "mortgage-commitment-rejected" error event (Event_0tae8fa) triggas. Processen avslutas med "Automatically rejected" end event. Huvudprocessen avbryts.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S11</strong></td>
+        <td>Engagemang löper ut – timeout</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Engagemanget skapas men kund svarar inte inom timeout-period. Testdata: application-commitment-timeout. <strong>When:</strong> Timer event (Event_0z4ifsl) triggas på Activity_1xrvxr3 subprocess. <strong>Then:</strong> "mortgage-commitment-timeout" error event (Event_0rkod04) triggas. Processen avslutas med "Mortgage commitment expired" end event. Huvudprocessen avbryts.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -929,17 +995,30 @@
       
       <h3>Kundperspektiv</h3>
       <ul>
-        <li><strong>Som köpare</strong> vill jag få proof-of-finance snabbt via automatisk kreditevaluering ("Automatic Credit Evaluation" call activity) <strong>så att</strong> jag kan delta i budgivning direkt utan att vänta dagar på manuell granskning. <em>Acceptanskriterier: Systemet ska kunna skapa engagemang inom minuter för kvalificerade kunder, och "Mortgage commitment ready" message event ska triggas automatiskt när engagemanget är redo.</em></li>
-        <li><strong>Som köpare</strong> vill jag kunna lägga till lånevillkor via "Mortgage commitment decision?" gateway "Add loan terms" <strong>så att</strong> jag kan justera mitt engagemang när jag hittar ett objekt som kräver högre lånebelopp eller annan löptid. <em>Acceptanskriterier: Systemet ska automatiskt loopa tillbaka till kreditevaluering när villkor ändras, och "Has terms changed?" gateway ska korrekt identifiera ändringar.</em></li>
-        <li><strong>Som köpare</strong> vill jag kunna hantera flera objekt via "Object rejected?" gateway och "Won bidding round?" gateway <strong>så att</strong> jag kan fortsätta söka om ett objekt avvisas eller om jag förlorar budgivning. <em>Acceptanskriterier: Processen ska loopa tillbaka till "Decide on mortgage commitment" user task när objekt avvisas eller budgivning förloras, utan att kunden behöver starta en ny ansökan.</em></li>
-        <li><strong>Som köpare</strong> vill jag kunna ladda upp dokumentation via "Upload documentation" boundary event på "Decide on mortgage commitment" user task <strong>så att</strong> jag kan komplettera min ansökan utan att avbryta processen. <em>Acceptanskriterier: Boundary event ska triggas när dokumentation begärs, och "Documentation assessment" call activity ska automatiskt bedöma uppladdade dokument.</em></li>
+        <li><strong>Som köpare</strong> vill jag få proof-of-finance snabbt via automatisk kreditevaluering via "Automatic Credit Evaluation" call activity (credit-evaluation-1) <strong>så att</strong> jag kan delta i budgivning direkt utan att vänta dagar på manuell granskning. <em>Acceptanskriterier: Efter start event (start-event), ska "Sammanför flöden" gateway (Gateway_1hxgyw1) samla flöden och "Automatic Credit Evaluation" call activity (credit-evaluation-1) automatiskt genomföra initial kreditevaluering. Om "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved) returnerar "Yes", ska "Mortgage commitment ready" message event (mortgage-commitment-ready) triggas automatiskt. Systemet ska kunna skapa engagemang inom minuter för kvalificerade kunder.</em></li>
+        <li><strong>Som köpare</strong> vill jag kunna fatta beslut om engagemang via "Decide on mortgage commitment" user task (decide-mortgage-commitment) <strong>så att</strong> jag kan acceptera engagemanget eller lägga till lånevillkor. <em>Acceptanskriterier: Efter "Mortgage commitment ready" message event (mortgage-commitment-ready), ska flöden samlas ihop via "Sammanför flöden" gateway (Gateway_0upjuan) och "Decide on mortgage commitment" user task (decide-mortgage-commitment) ska aktiveras för kund. Task ska visa tydlig information om engagemanget och tillåta kund att fatta beslut. Efter beslut, ska flödet gå till "Decision?" gateway (mortgage-commitment-decision).</em></li>
+        <li><strong>Som köpare</strong> vill jag kunna lägga till lånevillkor via "Decision?" gateway (mortgage-commitment-decision) "Add loan terms" <strong>så att</strong> jag kan justera mitt engagemang när jag hittar ett objekt som kräver högre lånebelopp eller annan löptid. <em>Acceptanskriterier: När kund väljer "Add loan terms" via "Decision?" gateway (mortgage-commitment-decision), ska processen automatiskt loopa tillbaka till "Sammanför flöden" gateway (Gateway_17kvnul → Gateway_1hxgyw1) och sedan till "Automatic Credit Evaluation" call activity (credit-evaluation-1) för omvärdering. Nya villkor utvärderas och processen fortsätter.</em></li>
+        <li><strong>Som köpare</strong> vill jag kunna hantera flera objekt via "Object accepted?" gateway (is-object-approved) och "Won bidding round?" gateway (won-bidding-round) <strong>så att</strong> jag kan fortsätta söka om ett objekt avvisas eller om jag förlorar budgivning. <em>Acceptanskriterier: Om "Object accepted?" gateway (is-object-approved) returnerar "No", ska processen automatiskt loopa tillbaka till "Sammanför flöden" gateway (Gateway_0p2vba1 → Gateway_0upjuan) och sedan till "Decide on mortgage commitment" user task (decide-mortgage-commitment). Om "Won bidding round?" gateway (won-bidding-round) returnerar "No", ska processen automatiskt loopa tillbaka via "Sammanför flöden" gateway (Gateway_11954vc → Gateway_0p2vba1 → Gateway_0upjuan) och sedan till "Decide on mortgage commitment" user task. Kunden behöver inte starta en ny ansökan.</em></li>
+        <li><strong>Som köpare</strong> vill jag kunna ladda upp dokumentation via "Upload documentation" boundary event (upload-documentation) på "Decide on mortgage commitment" user task (decide-mortgage-commitment) <strong>så att</strong> jag kan komplettera min ansökan utan att avbryta processen. <em>Acceptanskriterier: Under "Decide on mortgage commitment" user task (decide-mortgage-commitment), ska kund kunna trigga "Upload documentation" boundary event (upload-documentation). När boundary event triggas, ska "Documentation assessment" call activity (documentation-assessment) automatiskt bedöma uppladdade dokument. Efter bedömning, avslutas dokumentationsflödet (Event_1bpe1s7) och processen återgår till "Decide on mortgage commitment" user task.</em></li>
+        <li><strong>Som köpare</strong> vill jag att processen automatiskt samlar objektinformation via "Object information" call activity (object-information) när objekt inte är utvärderat <strong>så att</strong> objektet kan bedömas korrekt innan engagemanget bekräftas. <em>Acceptanskriterier: När "Is object evaluated?" gateway (is-object-evaluated) returnerar "No", ska "Object information" call activity (object-information) automatiskt samla objektinformation (storlek, typ, plats, max lånebelopp, energiklass). Efter samling, ska flöden samlas ihop via "Sammanför flöden" gateway (Gateway_14ve2uc) och "Object accepted?" gateway (is-object-approved) avgöra om objekt är godkänt.</em></li>
       </ul>
       
       <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som system</strong> vill jag automatiskt avvisa engagemang som inte uppfyller kreditkrav via "Is mortgage commitment approved?" gateway "No" <strong>så att</strong> endast kvalificerade kunder får proof-of-finance och resurser inte slösas på hopplösa ansökningar. <em>Acceptanskriterier: "Automatically rejected" error event ska triggas automatiskt när kreditevaluering avvisar engagemanget, och boundary event i huvudprocessen ska korrekt hantera avvisningen.</em></li>
-        <li><strong>Som system</strong> vill jag automatiskt avsluta engagemang som löper ut via timer event på "Decide on mortgage commitment" user task <strong>så att</strong> inaktiva engagemang inte blockerar systemresurser. <em>Acceptanskriterier: Timer event ska triggas när timeout-perioden har passerat, och "Mortgage commitment expired" error event ska korrekt signalera till huvudprocessen.</em></li>
-        <li><strong>Som system</strong> vill jag automatiskt samla objektinformation via "Object information" call activity när objekt inte är utvärderat <strong>så att</strong> objektet kan bedömas korrekt innan engagemanget bekräftas. <em>Acceptanskriterier: "Is object evaluated?" gateway ska korrekt identifiera om objektinformation behövs, och "Object information" call activity ska samla all nödvändig information (storlek, typ, plats, max lånebelopp, energiklass).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen startar via start event (start-event) <strong>så att</strong> Mortgage Commitment-processen kan initieras när huvudprocessen anropar "mortgage-commitment" call activity. <em>Acceptanskriterier: Start event (start-event) ska triggas när huvudprocessen anropar "mortgage-commitment" call activity när det är köp (is-purchase-yes). Efter start event, ska flödet gå till "Sammanför flöden" gateway (Gateway_1hxgyw1).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden" gateway (Gateway_1hxgyw1) samlar ihop flöden från både start och loop <strong>så att</strong> processen kan hantera både initial kreditevaluering och omvärdering. <em>Acceptanskriterier: "Sammanför flöden" gateway (Gateway_1hxgyw1) ska samla ihop flöden från antingen start event (start-event) eller loop från "Add loan terms" (Gateway_17kvnul). När flöden samlas ihop, ska "Automatic Credit Evaluation" call activity (credit-evaluation-1) automatiskt genomföra kreditevaluering.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Automatic Credit Evaluation" call activity (credit-evaluation-1) automatiskt genomför initial kreditevaluering <strong>så att</strong> systemet kan bedöma om kund är kvalificerad för köp-engagemang. <em>Acceptanskriterier: Efter "Sammanför flöden" gateway (Gateway_1hxgyw1) samlar flöden, ska "Automatic Credit Evaluation" call activity (credit-evaluation-1) automatiskt genomföra initial kreditevaluering. Efter kreditevaluering, ska flödet gå till "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved) automatiskt avvisar engagemang som inte uppfyller kreditkrav <strong>så att</strong> endast kvalificerade kunder får proof-of-finance och resurser inte slösas på hopplösa ansökningar. <em>Acceptanskriterier: Efter "Automatic Credit Evaluation" call activity (credit-evaluation-1) har utvärderat ansökan, ska "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved) avgöra om engagemanget är godkänt. Om gateway returnerar "No", ska "Automatically rejected" error event (Event_0tae8fa) triggas med error code "mortgage-commitment-rejected" (Error_1yybxq1). Error event ska trigga boundary event i huvudprocessen som avbryter hela ansökningsprocessen. Om gateway returnerar "Yes", ska flödet gå till "Mortgage commitment ready" message event (mortgage-commitment-ready).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Mortgage commitment ready" message event (mortgage-commitment-ready) signaliserar att engagemanget är redo <strong>så att</strong> kund kan fatta beslut om engagemang. <em>Acceptanskriterier: När "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved) returnerar "Yes", ska "Mortgage commitment ready" message event (mortgage-commitment-ready) triggas automatiskt. Efter message event, ska flödet gå till "Sammanför flöden" gateway (Gateway_0upjuan) och sedan till "Decide on mortgage commitment" user task (decide-mortgage-commitment).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Decision?" gateway (mortgage-commitment-decision) kan hantera både "Add loan terms" och "Won bidding round / Interested in object" <strong>så att</strong> processen kan loopa tillbaka eller fortsätta till objektutvärdering. <em>Acceptanskriterier: Efter "Decide on mortgage commitment" user task (decide-mortgage-commitment), ska "Decision?" gateway (mortgage-commitment-decision) avgöra om kund vill lägga till lånevillkor ("Add loan terms") eller fortsätta ("Won bidding round / Interested in object"). Om "Add loan terms", ska processen loopa tillbaka till "Sammanför flöden" gateway (Gateway_17kvnul). Om "Won bidding round / Interested in object", ska flödet gå till "Is object evaluated?" gateway (is-object-evaluated).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Documentation assessment" call activity (documentation-assessment) kan trigga "Credit reevaluation required" boundary event (credit-reevaluation-required) <strong>så att</strong> omvärdering kan begäras när dokumentation bedöms. <em>Acceptanskriterier: Under "Documentation assessment" call activity (documentation-assessment), kan "Credit reevaluation required" boundary event (credit-reevaluation-required) triggas med escalation event "credit-reevaluation-required" (Escalation_1lt21et). När boundary event triggas, ska processen automatiskt loopa tillbaka till "Sammanför flöden" gateway (Gateway_17kvnul → Gateway_1hxgyw1) och sedan till "Automatic Credit Evaluation" call activity (credit-evaluation-1) för omvärdering.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att timer event (Event_0z4ifsl) automatiskt avslutar engagemang som löper ut <strong>så att</strong> inaktiva engagemang inte blockerar systemresurser. <em>Acceptanskriterier: På "Decide on mortgage commitment" user task (decide-mortgage-commitment), ska timer event (Event_0z4ifsl) triggas när timeout-perioden har passerat. När timer event triggas, ska "Mortgage commitment expired" error event (Event_070mrn1) triggas med error code "mortgage-commitment-timeout" (Error_12j4z7b). Error event ska korrekt signalera till huvudprocessen att engagemanget har löpt ut.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Is object evaluated?" gateway (is-object-evaluated) kan hoppa över objektinformation om objekt redan är utvärderat <strong>så att</strong> processen går snabbare för objekt som redan är kända. <em>Acceptanskriterier: Efter "Decision?" gateway (mortgage-commitment-decision) returnerar "Won bidding round / Interested in object", ska "Is object evaluated?" gateway (is-object-evaluated) avgöra om objekt är utvärderat. Om gateway returnerar "Yes", ska processen hoppa över objektinformation och gå direkt till "Sammanför flöden" gateway (Gateway_14ve2uc) och sedan till "Object accepted?" gateway (is-object-approved). Om gateway returnerar "No", ska "Object information" call activity (object-information) samla objektinformation.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Has terms changed?" gateway (has-terms-changed) kan identifiera om lånevillkor har ändrats <strong>så att</strong> omvärdering kan genomföras när det behövs. <em>Acceptanskriterier: Efter "Object accepted?" gateway (is-object-approved) returnerar "Yes", ska "Has terms changed?" gateway (has-terms-changed) avgöra om lånevillkor har ändrats. Om gateway returnerar "Yes", ska "Automatic Credit Evaluation" call activity (credit-evaluation-2) automatiskt genomföra omvärdering. Om gateway returnerar "No", ska processen hoppa över omvärdering och gå direkt till "Sammanför flöden" gateway (Gateway_0bsnrjk) och sedan till "Is terms approved?" gateway (is-terms-approved).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden" gateway (Gateway_0bsnrjk) samlar ihop flöden från både omvärdering och direktavslut <strong>så att</strong> processen kan fortsätta korrekt oavsett om omvärdering genomfördes. <em>Acceptanskriterier: "Sammanför flöden" gateway (Gateway_0bsnrjk) ska samla ihop flöden från antingen "Has terms changed?" gateway (has-terms-changed) "No" eller "Automatic Credit Evaluation" call activity (credit-evaluation-2). När flöden samlas ihop, ska "Is terms approved?" gateway (is-terms-approved) avgöra om ändrade villkor är godkända.</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Is terms approved?" gateway (is-terms-approved) kan loopa tillbaka om ändrade villkor inte godkänns <strong>så att</strong> kund kan justera villkor och försöka igen. <em>Acceptanskriterier: Efter "Sammanför flöden" gateway (Gateway_0bsnrjk) samlar flöden, ska "Is terms approved?" gateway (is-terms-approved) avgöra om ändrade villkor är godkända. Om gateway returnerar "Yes", ska flödet gå till "Won bidding round?" gateway (won-bidding-round). Om gateway returnerar "No", ska processen automatiskt loopa tillbaka via "Sammanför flöden" gateway (Gateway_11954vc → Gateway_0p2vba1 → Gateway_0upjuan) och sedan till "Decide on mortgage commitment" user task (decide-mortgage-commitment).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att "Won bidding round?" gateway (won-bidding-round) kan loopa tillbaka om kund förlorar budgivning <strong>så att</strong> kund kan fortsätta med nytt objekt. <em>Acceptanskriterier: Efter "Is terms approved?" gateway (is-terms-approved) returnerar "Yes", ska "Won bidding round?" gateway (won-bidding-round) avgöra om kund vunnit budgivning. Om gateway returnerar "Yes", ska processen avslutas normalt via end event (Event_0az10av) och huvudprocessen fortsätter med nästa steg. Om gateway returnerar "No", ska processen automatiskt loopa tillbaka via "Sammanför flöden" gateway (Gateway_11954vc → Gateway_0p2vba1 → Gateway_0upjuan) och sedan till "Decide on mortgage commitment" user task (decide-mortgage-commitment).</em></li>
+        <li><strong>Som systemadministratör</strong> vill jag att processen avslutas normalt via end event (Event_0az10av) när kund vinner budgivning <strong>så att</strong> huvudprocessen kan fortsätta med nästa steg. <em>Acceptanskriterier: När "Won bidding round?" gateway (won-bidding-round) returnerar "Yes", ska processen avslutas normalt via end event (Event_0az10av) med terminate event definition. Huvudprocessen ska fortsätta med nästa steg när processen avslutas.</em></li>
       </ul>
         </div>
       </details>

@@ -341,6 +341,36 @@
         <li><strong>Application rejected:</strong> Om KALP-beräkningen eller screening visar att ansökan ska avvisas, avslutas processen med error event</li>
         <li><strong>Timeout:</strong> Om kunden inte bekräftar ansökan inom tidsgränsen, avslutas processen med timeout-fel</li>
       </ul>
+
+      <h3>Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> User tasks ska ha timeout på 30 dagar för kundaktiviteter. Service tasks och business rule tasks ska ha timeout på 60 sekunder</li>
+        <li><strong>Retry:</strong> Service tasks och business rule tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: APPLICATION_PRE_SCREEN_REJECTED, APPLICATION_STAKEHOLDER_REJECTED, APPLICATION_OBJECT_REJECTED, APPLICATION_REJECTED, APPLICATION_TIMEOUT</li>
+        <li><strong>Logging:</strong> Alla ansökningssteg, multi-instance bearbetningar och fel ska loggas med ansöknings-ID, tidsstämplar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>UI/UX-krav</h3>
+      <ul>
+        <li><strong>Kund-vyer:</strong> User tasks ska visa tydlig, strukturerad information med separata sektioner för varje steg (pre-screen, household, stakeholder, object, confirmation)</li>
+        <li><strong>Multi-instance progress:</strong> Systemet ska visa progress för multi-instance bearbetningar (t.ex. "Bearbetar hushåll 2 av 3", "Bearbetar stakeholder 1 av 2")</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen med visuella indikatorer</li>
+        <li><strong>Parallellisering:</strong> Systemet ska tillåta kunden att fylla i hushållsekonomi och stakeholder-information samtidigt</li>
+      </ul>
+
+      <h3>Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Multi-instance subprocesses ska kunna köras parallellt för att förbättra prestanda</li>
+        <li><strong>Load balancing:</strong> Service tasks och business rule tasks ska kunna hantera minst 50 ansökningar per minut</li>
+        <li><strong>Caching:</strong> Systemet ska implementera caching för pre-screen och screening-resultat</li>
+      </ul>
+
+      <h3>Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig ansökningsinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till ansökningsdata ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla ansökningar ska innehålla spårbarhet för när ansökan skickades, vilka steg som genomfördes och resultatet, för att uppfylla GDPR-krav</li>
+        <li><strong>Audit trail:</strong> Alla ansökningssteg, multi-instance bearbetningar och fel ska loggas med ansöknings-ID, tidsstämplar och resultat för fullständig spårbarhet</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -481,133 +511,166 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – komplett ansökan med en stakeholder</td>
+        <td>Normalflöde – komplett ansökan med en person</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>All data insamlad: intern data (pre-screen godkänd), hushåll, en stakeholder med objekt. Ansökan bekräftad och klar för kreditevaluering.</td>
+        <td><strong>Given:</strong> En person ansöker om bolån för köp. Alla krav uppfylls (pre-screening godkänd, fastighet godkänd). Testdata: customer-standard. <strong>When:</strong> Processen körs genom alla steg: pre-screening → objekt → hushåll/stakeholders → KALP-beräkning → bekräftelse → kreditupplysning. <strong>Then:</strong> Alla DMN-beslut returnerar APPROVED. KALP-beräkning är högre än ansökt belopp. Kunden bekräftar ansökan. Kreditinformation hämtas. Processen avslutas normalt (Event_0j4buhs). Ansökan är klar för kreditevaluering.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Normalflöde – ansökan med flera stakeholders (sambo/medlåntagare)</td>
+        <td>Normalflöde – ansökan med flera personer och hushåll</td>
         <td>Happy</td>
         <td>customer</td>
-        <td>P1</td>
+        <td>P0</td>
         <td>functional</td>
-        <td>All data insamlad med flera stakeholders (huvudsökande + sambo/medlåntagare). Varje stakeholder har eget objekt. Alla pre-screen godkända.</td>
+        <td><strong>Given:</strong> Flera personer ansöker tillsammans med separata hushåll. Alla personer är godkända. Testdata: customer-multi-household. <strong>When:</strong> Två parallella flöden startar: (1) Household för alla hushåll parallellt, (2) Per household subprocess med sekventiell körning (Household → Stakeholder → Object) per hushåll. <strong>Then:</strong> Parallella flöden körs korrekt. Varje hushåll bearbetas i rätt ordning. Alla hushåll och personer är bearbetade. Processen fortsätter när båda flöden är klara.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Pre-screen rejected – kund uppfyller inte grundläggande krav</td>
+        <td>Pre-screen avvisad – kund uppfyller inte grundläggande krav</td>
         <td>Error</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Pre-screen DMN avvisar kunden (t.ex. för låg kreditvärdighet, ålder, anställningsstatus). Processen avslutas med error event "Pre-screening rejected".</td>
+        <td><strong>Given:</strong> Person uppfyller INTE grundläggande krav (t.ex. för ung, låg kreditscore, eller saknar anställning). Testdata: customer-rejected. <strong>When:</strong> Pre-screen Party DMN utvärderas. <strong>Then:</strong> DMN returnerar REJECTED. Boundary event Event_03349px triggas. Error_1vtortg (pre-screen-rejected) signaleras. Processen avslutas (Event_1uj7wwd). Tydligt felmeddelande visas som förklarar vilket krav som inte uppfylldes.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
-        <td>Stakeholder rejected – en stakeholder uppfyller inte krav</td>
+        <td>Stakeholder avvisad – medlåntagare uppfyller inte krav</td>
         <td>Error</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>En stakeholder (t.ex. medlåntagare) avvisas av Assess Stakeholder DMN. Processen avslutas med error event "Stakeholder rejected".</td>
+        <td><strong>Given:</strong> Flera personer ansöker tillsammans. Medlåntagare uppfyller INTE kraven (t.ex. för hög skuldsättning, låg inkomst). Testdata: customer-multi-stakeholder, stakeholder-rejected. <strong>When:</strong> Assess Stakeholder DMN utvärderas för medlåntagaren. <strong>Then:</strong> DMN returnerar REJECTED. Boundary event Event_1dhapnx triggas. Error_0xx0ma1 (stakeholder-rejected) signaleras. Processen avslutas (Event_1uk9ycv). Tydligt felmeddelande visas. Huvudsökande kan inte fortsätta ensam.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S5</strong></td>
-        <td>Object rejected – fastighet/bostadsrätt uppfyller inte krav</td>
+        <td>Object avvisad – fastighet uppfyller inte krav</td>
         <td>Error</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Fastighet/bostadsrätt avvisas av Evaluate Fastighet/Bostadsrätt DMN (t.ex. för hög LTV, dålig belägenhet). Processen avslutas med error event "Object rejected".</td>
+        <td><strong>Given:</strong> Fastighet uppfyller INTE bankens krav (t.ex. för hög belåningsgrad, dålig belägenhet, eller dåligt skick). Testdata: customer-standard, property-rejected. <strong>When:</strong> Evaluate Fastighet/Bostadsrätt DMN utvärderas. <strong>Then:</strong> DMN returnerar REJECTED. Boundary event Event_152muhg triggas. Error_1pe398g (object-rejected) signaleras. Processen avslutas (Event_07jlrhu). Tydligt felmeddelande visas som förklarar problemet.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S6</strong></td>
-        <td>Komplettering behövs – ofullständig hushållsekonomi</td>
-        <td>Edge</td>
-        <td>customer</td>
-        <td>P2</td>
+        <td>Bekräftelse hoppas över – direkt till kreditupplysning</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
         <td>functional</td>
-        <td>Hushållsekonomi saknar viktig information (t.ex. källa till eget kapital). Systemet kräver komplettering innan ansökan kan bekräftas.</td>
+        <td><strong>Given:</strong> Återkommande kund med god kredithistorik. Bekräftelse kan hoppas över enligt affärsregler. Testdata: customer-returning. <strong>When:</strong> Gateway skip-confirm-application = Yes. KALP beräknas och screenas. <strong>Then:</strong> KALP är godkänd. Confirm application hoppas över. Processen går direkt till kreditupplysning utan kundens bekräftelse.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S7</strong></td>
-        <td>KALP-beräkning när bekräftelse hoppas över</td>
+        <td>KALP-beräkning godkänd – maximalt belopp över ansökt belopp</td>
         <td>Happy</td>
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Skip step gateway hoppar över bekräftelse, KALP beräknas automatiskt (maximalt belopp = 2 500 000 SEK), Screen KALP returnerar "APPROVED" för köpansökan, KALP OK gateway godkänner, processen går direkt till Fetch credit information utan kundens bekräftelse</td>
+        <td><strong>Given:</strong> Kunden har god ekonomi. Bekräftelse hoppas INTE över. Testdata: customer-standard. <strong>When:</strong> KALP beräknas. Screen KALP DMN utvärderas. <strong>Then:</strong> Maximalt belopp är högre än ansökt belopp. Screen KALP returnerar APPROVED. Gateway_0fhav15 (KALP OK) = Yes. Kunden kan bekräfta ansökan. Processen fortsätter.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S8</strong></td>
-        <td>Application rejected - KALP under ansökt belopp (flytt/omlåning)</td>
+        <td>Application avvisad – flytt/omlåning, maximalt belopp under ansökt belopp</td>
         <td>Error</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>KALP-beräkning visar maximalt lånebelopp = 2 000 000 SEK, ansökt belopp = 2 500 000 SEK, Screen KALP avvisar för flytt/omlåning (regel: om maximalt belopp är under ansökt belopp → avvisa), "application rejected" error event triggas, tydligt felmeddelande visas: "Ansökan avvisad: Maximalt lånebelopp (2 000 000 SEK) är under ansökt belopp (2 500 000 SEK)"</td>
+        <td><strong>Given:</strong> Flytt/omlåning. Maximalt belopp < ansökt belopp. För flytt/omlåning avvisas ansökan om maximalt < ansökt (till skillnad från köp där beloppet justeras). Testdata: application-move-refinance, kalp-below-applied. <strong>When:</strong> Screen KALP DMN utvärderas för flytt/omlåning. <strong>Then:</strong> Screen KALP returnerar REJECTED. Gateway_0fhav15 (KALP OK) = No. Error_08o6vkh (application-rejected) signaleras. Processen avslutas. Tydligt felmeddelande: "Maximalt lånebelopp är under ansökt belopp. För flytt/omlåning måste du kunna låna det ansökta beloppet."</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S9</strong></td>
-        <td>Application rejected - KALP under tröskelvärde (köp)</td>
+        <td>Application avvisad – köp, maximalt belopp under tröskelvärde</td>
         <td>Error</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>KALP-beräkning visar maximalt lånebelopp = 500 000 SEK (under tröskelvärde), Screen KALP avvisar för köpansökan (regel: om maximalt belopp är under tröskelvärde → avvisa), "application rejected" error event triggas, tydligt felmeddelande visas</td>
+        <td><strong>Given:</strong> Köpansökan. Maximalt belopp < tröskelvärde för köp. Testdata: application-purchase, kalp-below-threshold. <strong>When:</strong> Screen KALP DMN utvärderas för köp. <strong>Then:</strong> Screen KALP returnerar REJECTED (regel: om maximalt < tröskelvärde → avvisa). Gateway_0fhav15 (KALP OK) = No. Error_08o6vkh (application-rejected) signaleras. Processen avslutas. Tydligt felmeddelande: "Maximalt lånebelopp är under vårt minimumbelopp för köpansökningar."</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S10</strong></td>
-        <td>Köpansökan - KALP justerar ansökt belopp till maximalt belopp</td>
+        <td>Köpansökan – ansökt belopp justeras automatiskt nedåt</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>KALP-beräkning visar maximalt lånebelopp = 2 500 000 SEK, ansökt belopp = 2 000 000 SEK, Screen KALP justerar ansökt belopp till maximalt belopp (regel för köp: om maximalt belopp är under ansökt belopp → sätt ansökt belopp till maximalt belopp), KALP OK gateway godkänner, processen fortsätter</td>
+        <td><strong>Given:</strong> Köpansökan. Maximalt belopp < ansökt belopp. För köp kan beloppet justeras nedåt (till skillnad från flytt/omlåning). Testdata: application-purchase, kalp-below-applied. <strong>When:</strong> Screen KALP DMN utvärderas för köp. <strong>Then:</strong> Screen KALP returnerar APPROVED med justering. Ansökt belopp justeras automatiskt till maximalt belopp. Gateway_0fhav15 (KALP OK) = Yes. Kunden informeras om justeringen. Processen fortsätter.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S11</strong></td>
-        <td>Timeout på Confirm application</td>
+        <td>Timeout – kunden bekräftar inte ansökan i tid</td>
         <td>Error</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Kunden bekräftar inte ansökan inom tidsgränsen (30 dagar), timeout boundary event triggas på "Confirm application" user task, "application-timeout" error event triggas, processen avslutas, tydligt felmeddelande visas: "Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar)"</td>
+        <td><strong>Given:</strong> Confirm application user task är aktiv. Timeout = 30 dagar (P30D). Kunden bekräftar INTE ansökan. Testdata: timeout-scenario. <strong>When:</strong> 30 dagar passerar utan bekräftelse. <strong>Then:</strong> Boundary event Event_0ao6cvb (timer) triggas. Error_1bicfvu (application-timeout) signaleras. Processen avslutas (Event_111g1im). Tydligt meddelande: "Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar)." Kunden kan starta ny ansökan.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S12</strong></td>
-        <td>Fetch credit information - multi-instance för flera stakeholders</td>
+        <td>Kreditupplysning – hämtas för alla personer i ansökan</td>
         <td>Happy</td>
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Efter bekräftelse eller skip step, Fetch credit information startar automatiskt som multi-instance - en gång per stakeholder (huvudansökande och medlåntagare), kreditinformation hämtas från externa källor (t.ex. UC3) för varje stakeholder separat, information lagras i datastore "Personal credit information source", processen avslutas normalt</td>
+        <td><strong>Given:</strong> Ansökan med flera personer har bekräftats eller bekräftelse har hoppats över. Testdata: customer-multi-stakeholder. <strong>When:</strong> Fetch credit information körs (multi-instance per stakeholder). <strong>Then:</strong> Kreditinformation hämtas från externa källor (t.ex. UC3) för varje person parallellt. Information sparas i "Personal credit information source" datastore. Processen avslutas normalt (Event_0j4buhs). Ansökan är klar för kreditevaluering.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S13</strong></td>
+        <td>Pre-screen avvisad – en av flera personer uppfyller inte krav</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Flera personer ansöker tillsammans. En person uppfyller INTE grundläggande krav. Testdata: customer-multi-stakeholder, stakeholder-rejected-pre-screen. <strong>When:</strong> Pre-screen Party DMN utvärderas för alla personer parallellt. <strong>Then:</strong> DMN returnerar REJECTED för en person. Boundary event Event_03349px triggas när första part avvisas. Error_1vtortg (pre-screen-rejected) signaleras. Processen avslutas omedelbart (Event_1uj7wwd), även om andra personer är godkända. Tydligt felmeddelande visas.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S14</strong></td>
+        <td>Flera hushåll – information samlas in i rätt ordning</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Flera personer med separata hushåll. Varje hushåll har egen ekonomi och fastighet. Testdata: customer-multi-household. <strong>When:</strong> Per household subprocess körs (multi-instance per hushåll). För varje hushåll körs sekventiellt: Household → Stakeholder → Object. <strong>Then:</strong> Sekvensen är korrekt per hushåll. Varje hushåll bearbetas individuellt. Alla hushåll är bearbetade i rätt ordning. Processen fortsätter när alla hushåll är klara.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S15</strong></td>
+        <td>Kreditupplysning misslyckas – extern tjänst svarar inte</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Ansökan har bekräftats. Extern tjänst (t.ex. UC3) är otillgänglig eller svarar inte inom timeout. Testdata: external-service-unavailable. <strong>When:</strong> Fetch credit information körs (multi-instance per stakeholder). <strong>Then:</strong> För vissa personer lyckas hämtningen, för andra misslyckas den. Systemet hanterar felet: retry-mekanism ELLER tydligt felmeddelande. Partiell information kan sparas om vissa personer lyckas. Tydligt felmeddelande: "Kreditupplysning kunde inte hämtas för [person]. Vänligen försök igen senare."</td>
         <td>✅ Planerad</td>
       </tr>
     

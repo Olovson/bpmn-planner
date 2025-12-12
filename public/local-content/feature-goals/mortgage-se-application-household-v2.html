@@ -423,23 +423,23 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – hushållsinformation samlad</td>
+        <td>Normalflöde – registrering genomförs</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Kund fyller i hushållsekonomi (inkomster, utgifter, tillgångar), personlig ekonomi (löner, andra inkomster), källa till eget kapital, och låneuppgifter (befintliga lån, krediter). All information valideras och processen avslutas. Går vidare till kreditevaluering.</td>
+        <td><strong>Given:</strong> Household-processen startar. Registrering behövs. Testdata: household-register-happy. <strong>When:</strong> "Skip step?" gateway (skip-register-household-economy-information) = No. "Register household economy information" user task (register-household-economy-information) aktiveras. Stakeholder fyller i utgifter (bilar + billån, barn, underhållsbidrag, andra utgifter) och inkomster (underhållsbidrag, andra inkomster). <strong>Then:</strong> Gateway_1v71ek3 sammanför flöden. Processen avslutas normalt (Event_10dekgp). Går vidare till Stakeholder call activity.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Ofullständig information – komplettering krävs</td>
-        <td>Edge</td>
+        <td>Skip registrering – hoppa över</td>
+        <td>Happy</td>
         <td>customer</td>
-        <td>P2</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Kund fyller i hushållsinformation men saknar viktiga fält (t.ex. källa till eget kapital, eller ofullständiga låneuppgifter). Systemet kräver komplettering innan processen kan fortsätta.</td>
+        <td><strong>Given:</strong> Household-processen startar. Registrering kan hoppas över. Testdata: household-skip. <strong>When:</strong> "Skip step?" gateway (skip-register-household-economy-information) = Yes. <strong>Then:</strong> "Register household economy information" user task hoppas över. Flödet går direkt till Gateway_1v71ek3. Processen avslutas normalt (Event_10dekgp). Går vidare till Stakeholder call activity.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -450,9 +450,23 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Processen körs som multi-instance för flera hushåll (t.ex. huvudansökande + medsökande med separata hushåll). Varje hushåll fyller i sin information. Alla hushåll godkänns. Processen avslutas.</td>
+        <td><strong>Given:</strong> Ansökan har flera hushåll. Household anropas inuti multi-instance stakeholders subprocess. Testdata: household-multiple. <strong>When:</strong> Household-processen körs en gång per hushåll. För varje hushåll: "Skip step?" gateway evaluerar. Om No, registrering genomförs. Om Yes, registrering hoppas över. <strong>Then:</strong> Varje hushåll slutförs individuellt. Efter alla hushåll går flödet vidare till Stakeholder call activity för varje hushåll sekventiellt.</td>
         <td>✅ Planerad</td>
       </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Validering misslyckas vid registrering</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Registrering behövs. Stakeholder fyller i ogiltiga värden. Testdata: household-validation-failed. <strong>When:</strong> "Skip step?" gateway = No. "Register household economy information" user task aktiveras. Stakeholder försöker spara med ogiltiga värden (t.ex. negativa belopp, ogiltigt format). <strong>Then:</strong> Systemet visar valideringsfel. Processen fortsätter på user task tills validering lyckas. Efter korrekt registrering avslutas processen normalt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
     
         </tbody>
       </table>

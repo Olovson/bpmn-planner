@@ -453,69 +453,105 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – erbjudande accepterat direkt</td>
+        <td>Normalflöde – köpekontrakt redan bedömt, erbjudande accepterat</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Erbjudandet presenteras till kunden. Kunden accepterar erbjudandet direkt (validerar lånebelopp, kontonummer, datum). Processen avslutas och går vidare till Document Generation via event-loan-ready.</td>
+        <td><strong>Given:</strong> Köpekontrakt är redan bedömt. Erbjudande är redo. Testdata: offer-contract-assessed-happy. <strong>When:</strong> "Sales contract assessed?" gateway (sales-contract-assessed) = Yes. Processen hoppar över kontraktuppladdning. "Decide on offer" user task (decide-offer) aktiveras. Kunden accepterar erbjudandet (validerar lånebelopp, kontonummer, datum). <strong>Then:</strong> "Decision" gateway (offer-decision) = "Accept offer". Processen avslutas normalt (process-end-event). Går vidare till Document Generation.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Kund begär ändringar – erbjudande accepterat efter underwriting</td>
+        <td>Köpekontrakt behöver laddas upp och bedömas</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Kunden begär ändringar i erbjudandet. Caseworker utför avancerad underwriting. Ytterligare kreditbeslut godkänns. Nytt erbjudande presenteras. Kunden accepterar. Processen avslutas.</td>
+        <td><strong>Given:</strong> Köpekontrakt är inte bedömt. Testdata: offer-upload-contract. <strong>When:</strong> "Sales contract assessed?" gateway (sales-contract-assessed) = No. "Sales contract uploaded?" gateway (sales-contract-uploaded) = No. "Upload sales contract" user task (upload-sales-contract) aktiveras. Kund laddar upp kontrakt. "Sales contract uploaded?" = Yes. Documentation assessment (documentation-assessment) bedömer kontrakt. <strong>Then:</strong> Processen fortsätter till "Decide on offer" user task.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Erbjudande avvisat av kund</td>
-        <td>Error</td>
+        <td>Dokumentation ofullständig – loop tillbaka</td>
+        <td>Edge</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Kunden avvisar erbjudandet. "event-offer-rejected" end event triggas. Processen avslutas med "Offer declined".</td>
+        <td><strong>Given:</strong> Köpekontrakt laddas upp men är ofullständigt. Testdata: offer-documentation-incomplete. <strong>When:</strong> Documentation assessment (documentation-assessment) bedömer kontrakt. "Documentation incomplete" boundary event (documentation-incomplete) triggas. <strong>Then:</strong> Processen loopar tillbaka till kontraktuppladdning (Gateway_18jx4nb → sales-contract-uploaded). Kund kan ladda upp kompletterande dokumentation.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
-        <td>Kreditbeslut avvisas efter ändringar</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P0</td>
+        <td>"Request changes" boundary event på upload-sales-contract</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Kunden begär ändringar. Caseworker utför avancerad underwriting. Ytterligare kreditbeslut avvisas. "Credit decision rejected" end event triggas. Processen avslutas.</td>
+        <td><strong>Given:</strong> Köpekontrakt laddas upp. Caseworker begär ändringar. Testdata: offer-sales-contract-request-changes. <strong>When:</strong> "Request changes" boundary event (sales-contract-request-changes) triggas på upload-sales-contract user task. <strong>Then:</strong> "Perform advanced underwriting" user task (sales-contract-advanced-underwriting) aktiveras. "Credit decision" call activity (sales-contract-credit-decision) genomförs. Processen avslutas (Event_1c99mw4).</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S5</strong></td>
-        <td>Timeout – erbjudandet löper ut</td>
-        <td>Error</td>
-        <td>system</td>
+        <td>Kund begär ändringar – erbjudande accepterat efter underwriting</td>
+        <td>Happy</td>
+        <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Erbjudandet presenteras till kunden, men kunden svarar inte inom timeout-period. Timer event triggas. Processen avslutas (kan trigga finansieringsbevis-terminate-end).</td>
+        <td><strong>Given:</strong> Erbjudande presenteras. Kund begär ändringar. Testdata: offer-request-changes-approved. <strong>When:</strong> "Decision" gateway (offer-decision) = "Request changes". "Perform advanced underwriting" user task (advanced-underwriting) aktiveras. "Credit decision" call activity (credit-decision) genomförs. "Approved?" gateway (credit-decision-approved) = Yes. <strong>Then:</strong> Processen loopar tillbaka till "Decide on offer" (Gateway_0hrcun3 → decide-offer). Kunden accepterar nytt erbjudande. Processen avslutas normalt.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S6</strong></td>
-        <td>Ofullständig acceptans – validering misslyckas</td>
+        <td>Kreditbeslut avvisas efter ändringar</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Kund begär ändringar. Kreditbeslut avvisas. Testdata: offer-credit-decision-rejected. <strong>When:</strong> "Decision" gateway = "Request changes". Advanced underwriting och credit decision genomförs. "Approved?" gateway (credit-decision-approved) = No. <strong>Then:</strong> "credit-decision-rejected" escalation event (Event_0h20g8l) triggas. Processen avslutas med "Credit decision rejected" end event. Huvudprocessen avbryts.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>Erbjudande avvisat av kund</td>
+        <td>Error</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Erbjudande presenteras. Kund avvisar. Testdata: offer-declined. <strong>When:</strong> "Decision" gateway (offer-decision) = "Decline offer". <strong>Then:</strong> "event-offer-rejected" escalation event (event-offer-rejected) triggas. Processen avslutas med "Offer declined" end event. Huvudprocessen avbryts.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>Timeout – erbjudandet löper ut</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Erbjudande presenteras. Kund svarar inte inom timeout-period. Testdata: offer-timeout. <strong>When:</strong> Timer event (Event_017jq28) triggas på decide-offer user task. <strong>Then:</strong> "finansieringsbevis-terminate-end" escalation event (finansieringsbevis-terminate-end) triggas. Processen avslutas med "Offer expired" end event. Huvudprocessen avbryts.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>Validering misslyckas vid acceptans</td>
         <td>Edge</td>
         <td>customer</td>
         <td>P2</td>
         <td>functional</td>
-        <td>Kunden försöker acceptera erbjudandet men validering misslyckas (t.ex. ogiltigt kontonummer, felaktigt lånebelopp, eller ogiltigt datum). Systemet kräver korrigering.</td>
+        <td><strong>Given:</strong> Kund försöker acceptera erbjudandet. Validering misslyckas. Testdata: offer-validation-failed. <strong>When:</strong> Kunden accepterar erbjudandet men validering misslyckas (ogiltigt kontonummer, felaktigt lånebelopp, eller ogiltigt datum). <strong>Then:</strong> Systemet visar felmeddelande. Kunden kan korrigera informationen. Processen fortsätter på decide-offer user task tills validering lyckas.</td>
         <td>✅ Planerad</td>
       </tr>
+    
+        </tbody>
+      </table>
     
         </tbody>
       </table>
@@ -892,6 +928,33 @@
         <li>Resultat från "Credit decision" call activities (både för ändringar och för köpekontrakt) ska korrekt sparas och användas i efterföljande gateways</li>
         <li>Kundens beslut från "Decide on offer" user task ska korrekt sparas och användas i "Decision" gateway</li>
         <li>Validerade data (lånebelopp, kontonummer, datum) vid acceptans ska korrekt sparas och vara tillgängliga för huvudprocessen</li>
+      </ul>
+
+      <h3>Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> User tasks ska ha timeout på 30 dagar för kundaktiviteter. Call activities och service tasks ska ha timeout på 60 sekunder. Timer events ska triggas korrekt</li>
+        <li><strong>Retry:</strong> Call activities och service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: OFFER_REJECTED, OFFER_EXPIRED, OFFER_TIMEOUT, OFFER_SERVICE_ERROR</li>
+        <li><strong>Logging:</strong> Alla erbjudanden, beslut, eskaleringar och timeout ska loggas med erbjudande-ID, användar-ID, tidsstämplar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>UI/UX-krav</h3>
+      <ul>
+        <li><strong>Kund-vyer:</strong> "Decide on offer" user task ska visa tydlig, strukturerad information om erbjudandet med separata sektioner för villkor, belopp och acceptans</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen med visuella indikatorer</li>
+      </ul>
+
+      <h3>Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Systemet ska kunna hantera flera erbjudanden parallellt</li>
+        <li><strong>Load balancing:</strong> Service tasks ska kunna hantera minst 30 erbjudanden per minut</li>
+      </ul>
+
+      <h3>Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig erbjudandeinformation ska krypteras i vila och under överföring (TLS 1.3)</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla erbjudanden ska innehålla spårbarhet för när erbjudandet skapades, när beslutet fattades och resultatet</li>
+        <li><strong>Audit trail:</strong> Alla erbjudanden och beslut ska loggas för fullständig spårbarhet</li>
       </ul>
         </div>
       </details>

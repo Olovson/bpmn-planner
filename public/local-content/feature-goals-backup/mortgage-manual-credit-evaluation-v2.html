@@ -476,34 +476,34 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – manuell evaluering godkänd</td>
+        <td>Normalflöde – alla krav hanterade, godkänd</td>
         <td>Happy</td>
         <td>advisor</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Evaluate requirements avgör vilka krav som behöver hanteras. Objektvärdering genomförs (om nödvändig). Dokumentation laddas upp och bedöms. Avancerad underwriting genomförs. Processen avslutas med godkänt beslut. Går vidare till event-application-manually-approved → Credit decision.</td>
+        <td><strong>Given:</strong> Ansökan behöver manuell evaluering. Alla krav (Object control, Documentation, Advanced underwriting) behöver hanteras. Testdata: application-manual-review. <strong>When:</strong> "Requirements?" inclusive gateway (requirements) aktiverar alla flöden parallellt. Object control, dokumentation och advanced underwriting genomförs. Automatic Credit Evaluation (Activity_1gzlxx4) godkänner. <strong>Then:</strong> "New documentation requirement?" gateway (new-documentation-requirement) = No. "Needs advanced underwriting?" gateway (needs-auw) = No. "Rejected?" gateway (rejected) = No. Processen avslutas normalt (process-end-event). Går vidare till Credit decision.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Kreditevaluering avvisad automatiskt</td>
-        <td>Error</td>
-        <td>system</td>
-        <td>P0</td>
+        <td>Endast Object control krävs</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Automatic Credit Evaluation (vid "Credit reevaluation required") avvisar ansökan. "credit-evaluation-automatically-rejected" escalation triggas. Processen avslutas med "Automatically rejected" end event.</td>
+        <td><strong>Given:</strong> Ansökan behöver endast objektvärdering. Testdata: application-object-control-only. <strong>When:</strong> "Requirements?" gateway (requirements) aktiverar endast "Object control" flöde. Object control call activity (object-control) genomförs. Automatic Credit Evaluation godkänner. <strong>Then:</strong> "New documentation requirement?" = No. "Needs advanced underwriting?" = No. "Rejected?" = No. Processen avslutas normalt (process-end-event).</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S3</strong></td>
-        <td>Manuell evaluering avvisad</td>
-        <td>Error</td>
-        <td>advisor</td>
-        <td>P0</td>
+        <td>Endast Documentation krävs</td>
+        <td>Happy</td>
+        <td>customer</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Caseworker avvisar ansökan efter avancerad underwriting eller dokumentationsbedömning. "Automatically rejected" boundary event triggas på manual-credit-evaluation call activity. Processen avslutas.</td>
+        <td><strong>Given:</strong> Ansökan behöver endast dokumentation. Testdata: application-documentation-only. <strong>When:</strong> "Requirements?" gateway (requirements) aktiverar endast "Documentation" flöde. Dokumentation laddas upp (upload-documentation). Documentation assessment godkänner. Automatic Credit Evaluation godkänner. <strong>Then:</strong> "All documentation complete?" gateway (all-documentation-complete) = Yes. "New documentation requirement?" = No. "Needs advanced underwriting?" = No. "Rejected?" = No. Processen avslutas normalt (process-end-event).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -514,18 +514,84 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Documentation assessment bedömer att ytterligare dokumentation behövs. Processen loopar tillbaka. Kund laddar upp kompletterande dokumentation. Dokumentation bedöms igen och godkänns. Processen fortsätter.</td>
+        <td><strong>Given:</strong> Dokumentation laddas upp men är ofullständig. Testdata: application-incomplete-documentation. <strong>When:</strong> Documentation assessment bedömer att ytterligare dokumentation behövs. <strong>Then:</strong> "All documentation complete?" gateway (all-documentation-complete) = No. Processen loopar tillbaka till "Upload documentation" user task (Gateway_06cad2w). Kund laddar upp kompletterande dokumentation. Efter komplettering bedöms dokumentation igen och godkänns. Processen fortsätter.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S5</strong></td>
-        <td>Kreditevaluering krävs – omvärdering</td>
+        <td>"Elevate to advanced underwriting" boundary event</td>
         <td>Edge</td>
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Documentation assessment triggar "Credit reevaluation required" boundary event. Automatic Credit Evaluation anropas för omvärdering. Omvärdering godkänns. Processen fortsätter med avancerad underwriting.</td>
+        <td><strong>Given:</strong> Dokumentation bedöms. Avancerad underwriting behövs. Testdata: application-elevate-to-auw. <strong>When:</strong> "Elevate to advanced underwriting" boundary event (elevate-to-advanced-underwriting) triggas på documentation-assessment call activity. <strong>Then:</strong> Flödet går direkt till "Gateway_1o1bs0l" och sedan till "Gateway_0q79pdz". Automatic Credit Evaluation anropas. Processen fortsätter med advanced underwriting.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Nya dokumentationskrav efter Automatic Credit Evaluation</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Automatic Credit Evaluation identifierar nya dokumentationskrav. Testdata: application-new-doc-requirement. <strong>When:</strong> Automatic Credit Evaluation (Activity_1gzlxx4) genomförs. "New documentation requirement?" gateway (new-documentation-requirement) = Yes. <strong>Then:</strong> Processen loopar tillbaka till "Requirements?" gateway (Gateway_0ibu5sd → requirements) för att hantera nya krav. Dokumentationshantering startar igen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>Advanced underwriting krävs och godkänns</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Automatic Credit Evaluation visar att advanced underwriting behövs. Testdata: application-advanced-underwriting. <strong>When:</strong> "New documentation requirement?" = No. "Needs advanced underwriting?" gateway (needs-auw) = Yes. "Perform advanced underwriting" user task (advanced-underwriting) aktiveras. Case worker genomför advanced underwriting och godkänner. <strong>Then:</strong> "Rejected?" gateway (rejected) = No. Processen avslutas normalt (process-end-event).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>Advanced underwriting avvisar ansökan</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Advanced underwriting krävs. Case worker avvisar ansökan. Testdata: application-rejected-auw. <strong>When:</strong> "Needs advanced underwriting?" = Yes. "Perform advanced underwriting" user task aktiveras. Case worker avvisar ansökan. <strong>Then:</strong> "Rejected?" gateway (rejected) = Yes. "credit-evaluation-automatically-rejected" escalation event (Event_0jtuy5q) triggas. Processen avslutas med "Automatically rejected" end event. Huvudprocessen avbryts.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>"Request additional documentation" boundary event</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Advanced underwriting pågår. Ytterligare dokumentation behövs. Testdata: application-auw-additional-doc. <strong>When:</strong> "Request additional documentation" boundary event (event-request-additional-documentation) triggas på advanced-underwriting user task. <strong>Then:</strong> "Upload documentation" user task (auw-upload-documentation) aktiveras för stakeholder. Efter uppladdning avslutas dokumentationsflödet (Event_1mrw0am). Advanced underwriting fortsätter.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S10</strong></td>
+        <td>"Select stakeholder for credit refresh" boundary event</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Advanced underwriting pågår. Kreditinformation behöver uppdateras för specifik stakeholder. Testdata: application-credit-refresh. <strong>When:</strong> "Select the stakeholder that needs their credit information refreshed" boundary event (Event_06dneqa) triggas på advanced-underwriting user task. <strong>Then:</strong> "Fetch credit information" service task (fetch-credit-information) körs för vald stakeholder. Kreditinformation uppdateras i "Personal credit information source" datastore. Event_1rvhtio avslutas. Advanced underwriting fortsätter.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S11</strong></td>
+        <td>Automatic Credit Evaluation avvisar automatiskt</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Alla krav är hanterade. Automatic Credit Evaluation avvisar ansökan. Testdata: application-auto-rejected. <strong>When:</strong> Automatic Credit Evaluation (Activity_1gzlxx4) genomförs och avvisar. "New documentation requirement?" = No. "Needs advanced underwriting?" = No. "Rejected?" gateway (rejected) = Yes. <strong>Then:</strong> "credit-evaluation-automatically-rejected" escalation event (Event_0jtuy5q) triggas. Processen avslutas med "Automatically rejected" end event. Huvudprocessen avbryts.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -901,6 +967,33 @@
         <li>Om "Rejected?" gateway returnerar "Yes", ska processen avslutas med "Automatically rejected" escalation event</li>
         <li>Om "Rejected?" gateway returnerar "No", ska processen avslutas normalt</li>
         <li>"Automatically rejected" escalation event ska trigga boundary event i huvudprocessen som avbryter hela ansökningsprocessen</li>
+      </ul>
+
+      <h3>6. Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> User tasks ska ha timeout på 7 dagar för handläggare. Call activities och service tasks ska ha timeout på 60 sekunder</li>
+        <li><strong>Retry:</strong> Call activities och service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: MANUAL_CREDIT_EVAL_REJECTED, MANUAL_CREDIT_EVAL_TIMEOUT, MANUAL_CREDIT_EVAL_SERVICE_ERROR</li>
+        <li><strong>Logging:</strong> Alla kreditevalueringar, granskningar och eskaleringar ska loggas med evaluerings-ID, användar-ID, tidsstämplar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>7. UI/UX-krav</h3>
+      <ul>
+        <li><strong>Handläggar-vyer:</strong> User tasks ska visa tydlig, strukturerad information om kreditevaluering med separata sektioner för varje steg</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen med visuella indikatorer</li>
+      </ul>
+
+      <h3>8. Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Systemet ska kunna hantera flera kreditevalueringar parallellt</li>
+        <li><strong>Load balancing:</strong> Service tasks ska kunna hantera minst 30 evalueringar per minut</li>
+      </ul>
+
+      <h3>9. Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig kreditevalueringsinformation ska krypteras i vila och under överföring (TLS 1.3)</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla kreditevalueringar ska innehålla spårbarhet för vem som evaluerade, när och resultatet</li>
+        <li><strong>Audit trail:</strong> Alla evalueringar ska loggas för fullständig spårbarhet</li>
       </ul>
         </div>
       </details>

@@ -383,12 +383,14 @@
       
       <h3>Systemperspektiv</h3>
       <ul>
-        <li><strong>Som system</strong> vill jag automatiskt hämta objektvärdering från externa tjänster ("Fastighet valuation service" för småhus, "Bostadsrätt valuation service" för bostadsrätter) via "Fetch fastighets-valuation" och "Fetch bostadsrätts-valuation" service tasks <strong>så att</strong> värdering är tillgänglig utan manuell datainmatning. <em>Acceptanskriterier: Systemet ska automatiskt identifiera objekttyp via "Object type" gateway och hämta värdering från rätt extern tjänst baserat på objekttyp.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt identifiera objekttyp via "Object type" gateway <strong>så att</strong> rätt flöde kan väljas för att hämta värdering. <em>Acceptanskriterier: "Object type" gateway ska korrekt identifiera om objektet är ett småhus eller en bostadsrätt baserat på objektdata, och dirigerar till rätt flöde.</em></li>
+        <li><strong>Som system</strong> vill jag automatiskt hämta objektvärdering från externa tjänster ("Fastighet valuation service" för småhus, "Bostadsrätt valuation service" för bostadsrätter) via "Fetch fastighets-valuation" och "Fetch bostadsrätts-valuation" service tasks <strong>så att</strong> värdering är tillgänglig utan manuell datainmatning. <em>Acceptanskriterier: Systemet ska automatiskt hämta värdering från rätt extern tjänst baserat på objekttyp, och värdering ska sparas i datastoren.</em></li>
+        <li><strong>Som system</strong> vill jag sammanstråla båda flödena (småhus och bostadsrätt) via "Gateway_0f8c0ne" gateway <strong>så att</strong> processen kan avslutas korrekt oavsett vilket flöde som användes. <em>Acceptanskriterier: Gateway_0f8c0ne ska sammanstråla flöden från både småhus- och bostadsrätt-flöden innan processen avslutas.</em></li>
       </ul>
       
       <h3>Handläggarperspektiv</h3>
       <ul>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hämtar objektvärdering <strong>så att</strong> jag får värdering direkt utan att behöva manuellt söka i externa system, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt hämta objektvärdering från externa tjänster baserat på objekttyp, och värderingen ska vara tillgänglig för vidare bearbetning.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hämtar objektvärdering <strong>så att</strong> jag får värdering direkt utan att behöva manuellt söka i externa system, vilket sparar tid. <em>Acceptanskriterier: Systemet ska automatiskt identifiera objekttyp och hämta värdering från rätt extern tjänst baserat på objekttyp, och värderingen ska vara tillgänglig för vidare bearbetning.</em></li>
       </ul>
         </div>
       </details>
@@ -428,6 +430,176 @@
       <ul>
         <li>Om externa tjänster ("Fastighet valuation service" eller "Bostadsrätt valuation service") inte är tillgängliga, ska processen hantera felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer)</li>
         <li>Om värderingen inte kan hämtas, ska processen hantera felet på ett tydligt sätt och signalera till huvudprocessen</li>
+      </ul>
+
+      <h3>Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> Service tasks "Fetch fastighets-valuation" och "Fetch bostadsrätts-valuation" ska ha timeout på 30 sekunder per förfrågan</li>
+        <li><strong>Retry:</strong> Service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel eller timeout</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: VALUATION_SERVICE_UNAVAILABLE (för otillgänglig extern tjänst), VALUATION_FETCH_TIMEOUT (för timeout), VALUATION_NOT_FOUND (för saknad värdering), VALUATION_INVALID_TYPE (för ogiltig objekttyp)</li>
+        <li><strong>Logging:</strong> Alla värderingshämtningar ska loggas med objekttyp, tjänst, tidsstämplar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>UI/UX-krav</h3>
+      <ul>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för värderingshämtning (pågående, slutförd, fel) med visuella indikatorer</li>
+        <li><strong>Felmeddelanden:</strong> Om värdering inte kan hämtas, ska systemet visa tydligt felmeddelande med förklaring och möjliga åtgärder</li>
+        <li><strong>Objekttyp-visning:</strong> Systemet ska visa tydligt vilken objekttyp som identifierats (småhus eller bostadsrätt) och vilken tjänst som används</li>
+      </ul>
+
+      <h3>Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Systemet ska kunna hantera flera värderingshämtningar parallellt utan prestandaförsämring</li>
+        <li><strong>Load balancing:</strong> Service tasks ska kunna hantera minst 50 värderingshämtningar per minut med genomsnittlig svarstid under 5 sekunder</li>
+        <li><strong>Caching:</strong> Systemet ska implementera caching för värderingar för att minska belastning på externa tjänster och förbättra svarstider</li>
+      </ul>
+
+      <h3>Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig objektinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till värderingar ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla värderingshämtningar ska innehålla spårbarhet för när värderingen hämtades, från vilken tjänst och resultatet, för att uppfylla GDPR-krav</li>
+        <li><strong>Audit trail:</strong> Alla värderingshämtningar ska loggas med objekt-ID, objekttyp, tjänst, tidsstämplar och resultat för fullständig spårbarhet</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Detaljerad testgenerering för att säkerställa att feature goalet fungerar korrekt.</p>
+      
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Småhus-värdering – lyckad hämtning</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Objekt är småhus. Extern tjänst är tillgänglig. Testdata: object-smahus-happy. <strong>When:</strong> "Object type" gateway (object-type) identifierar objektet som småhus. "Fetch fastighets-valuation" service task (fetch-fastighets-valuation) hämtar värdering från "Fastighet valuation service" datastore (DataStoreReference_16ysmlz). <strong>Then:</strong> Värdering sparas i datastoren. Gateway_0f8c0ne sammanstrålar flödet. Processen avslutas normalt (process-end-event). Värdering returneras till huvudprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Bostadsrätt-värdering – lyckad hämtning</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Objekt är bostadsrätt. Extern tjänst är tillgänglig. Testdata: object-bostadsratt-happy. <strong>When:</strong> "Object type" gateway (object-type) identifierar objektet som bostadsrätt. "Fetch bostadsrätts-valuation" service task (fetch-bostadsratts-valuation) hämtar värdering från "Bostadsrätt valuation service" datastore (DataStoreReference_1cdjo60). <strong>Then:</strong> Värdering sparas i datastoren. Gateway_0f8c0ne sammanstrålar flödet. Processen avslutas normalt (process-end-event). Värdering returneras till huvudprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Service timeout – retry misslyckas</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Extern tjänst svarar inte inom 30 sekunder. Testdata: object-timeout. <strong>When:</strong> "Object type" gateway identifierar objekttyp. Service task försöker hämta värdering men timeout efter 30 sekunder. <strong>Then:</strong> Systemet retryar med exponential backoff (max 3 försök). Om alla försök misslyckas, returneras error code VALUATION_FETCH_TIMEOUT. Processen hanterar felet och signalerar till huvudprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Extern tjänst otillgänglig – retry misslyckas</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Extern tjänst är otillgänglig (t.ex. 503 Service Unavailable). Testdata: object-service-unavailable. <strong>When:</strong> "Object type" gateway identifierar objekttyp. Service task försöker hämta värdering men extern tjänst är otillgänglig. <strong>Then:</strong> Systemet retryar med exponential backoff (max 3 försök). Om alla försök misslyckas, returneras error code VALUATION_SERVICE_UNAVAILABLE. Processen hanterar felet och signalerar till huvudprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>Värdering saknas i extern tjänst</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Objekt finns men värdering saknas i extern tjänst. Testdata: object-valuation-not-found. <strong>When:</strong> "Object type" gateway identifierar objekttyp. Service task hämtar värdering men värdering saknas (t.ex. 404 Not Found). <strong>Then:</strong> Systemet returnerar error code VALUATION_NOT_FOUND. Processen hanterar felet och signalerar till huvudprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Ogiltig objekttyp</td>
+        <td>Error</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Objekttyp kan inte identifieras eller är ogiltig. Testdata: object-invalid-type. <strong>When:</strong> "Object type" gateway (object-type) kan inte identifiera objekttyp (varken småhus eller bostadsrätt). <strong>Then:</strong> Systemet returnerar error code VALUATION_INVALID_TYPE. Processen hanterar felet och signalerar till huvudprocessen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>Service timeout – retry lyckas</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Första försöket timeoutar, men retry lyckas. Testdata: object-timeout-retry-success. <strong>When:</strong> Service task timeoutar vid första försöket. <strong>Then:</strong> Systemet retryar med exponential backoff. Andra eller tredje försöket lyckas. Värdering hämtas och sparas. Processen avslutas normalt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+
+      <h3>Testdata-referenser</h3>
+      <ul>
+        <li><strong>Småhus-objekt:</strong> Objekttyp = "småhus", objekt-ID = "OBJ-001", adress = "Testgatan 1, Stockholm". Förväntat resultat: Värdering hämtas från "Fastighet valuation service"</li>
+        <li><strong>Bostadsrätt-objekt:</strong> Objekttyp = "bostadsrätt", objekt-ID = "OBJ-002", adress = "Testgatan 2, Stockholm". Förväntat resultat: Värdering hämtas från "Bostadsrätt valuation service"</li>
+        <li><strong>Timeout-scenario:</strong> Objekttyp = "småhus", extern tjänst svarar inte inom 30 sekunder. Förväntat resultat: Retry med exponential backoff, error code VALUATION_FETCH_TIMEOUT om alla försök misslyckas</li>
+        <li><strong>Service otillgänglig:</strong> Objekttyp = "bostadsrätt", extern tjänst är otillgänglig. Förväntat resultat: Retry med exponential backoff, error code VALUATION_SERVICE_UNAVAILABLE om alla försök misslyckas</li>
+        <li><strong>Värdering saknas:</strong> Objekttyp = "småhus", värdering saknas i extern tjänst. Förväntat resultat: Error code VALUATION_NOT_FOUND</li>
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <ul>
+        <li><strong>Routes:</strong>
+          <ul>
+            <li><code>/api/object-valuation/fetch</code> - Service tasks "Fetch fastighets-valuation" och "Fetch bostadsrätts-valuation"</li>
+            <li><code>/api/object-valuation/identify-type</code> - "Object type" gateway logik</li>
+          </ul>
+        </li>
+        <li><strong>Endpoints:</strong>
+          <ul>
+            <li><code>POST /api/object-valuation/fetch</code> - Hämta objektvärdering från extern tjänst baserat på objekttyp, returnerar värdering eller error code</li>
+            <li><code>GET /api/object-valuation/identify-type</code> - Identifiera objekttyp (småhus eller bostadsrätt) baserat på objektdata</li>
+          </ul>
+        </li>
+        <li><strong>Datastores:</strong>
+          <ul>
+            <li><code>fastighet_valuation_service</code> - Lagrar fastighetsvärderingar för småhus</li>
+            <li><code>bostadsratt_valuation_service</code> - Lagrar bostadsrättsvärderingar för bostadsrätter</li>
+            <li><code>object_valuations</code> - Lagrar hämtade värderingar med objekt-ID, objekttyp, tjänst, tidsstämplar och resultat</li>
+            <li><code>object_valuation_audit</code> - Lagrar audit trail för alla värderingshämtningar med objekt-ID, objekttyp, tjänst, tidsstämplar och resultat</li>
+          </ul>
+        </li>
       </ul>
         </div>
       </details>

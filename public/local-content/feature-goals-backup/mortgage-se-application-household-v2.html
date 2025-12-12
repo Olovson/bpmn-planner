@@ -423,23 +423,23 @@
           
       <tr>
         <td><strong>S1</strong></td>
-        <td>Normalflöde – hushållsinformation samlad</td>
+        <td>Normalflöde – registrering genomförs</td>
         <td>Happy</td>
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td>Kund fyller i hushållsekonomi (inkomster, utgifter, tillgångar), personlig ekonomi (löner, andra inkomster), källa till eget kapital, och låneuppgifter (befintliga lån, krediter). All information valideras och processen avslutas. Går vidare till kreditevaluering.</td>
+        <td><strong>Given:</strong> Household-processen startar. Registrering behövs. Testdata: household-register-happy. <strong>When:</strong> "Skip step?" gateway (skip-register-household-economy-information) = No. "Register household economy information" user task (register-household-economy-information) aktiveras. Stakeholder fyller i utgifter (bilar + billån, barn, underhållsbidrag, andra utgifter) och inkomster (underhållsbidrag, andra inkomster). <strong>Then:</strong> Gateway_1v71ek3 sammanför flöden. Processen avslutas normalt (Event_10dekgp). Går vidare till Stakeholder call activity.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Ofullständig information – komplettering krävs</td>
-        <td>Edge</td>
+        <td>Skip registrering – hoppa över</td>
+        <td>Happy</td>
         <td>customer</td>
-        <td>P2</td>
+        <td>P1</td>
         <td>functional</td>
-        <td>Kund fyller i hushållsinformation men saknar viktiga fält (t.ex. källa till eget kapital, eller ofullständiga låneuppgifter). Systemet kräver komplettering innan processen kan fortsätta.</td>
+        <td><strong>Given:</strong> Household-processen startar. Registrering kan hoppas över. Testdata: household-skip. <strong>When:</strong> "Skip step?" gateway (skip-register-household-economy-information) = Yes. <strong>Then:</strong> "Register household economy information" user task hoppas över. Flödet går direkt till Gateway_1v71ek3. Processen avslutas normalt (Event_10dekgp). Går vidare till Stakeholder call activity.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -450,9 +450,23 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td>Processen körs som multi-instance för flera hushåll (t.ex. huvudansökande + medsökande med separata hushåll). Varje hushåll fyller i sin information. Alla hushåll godkänns. Processen avslutas.</td>
+        <td><strong>Given:</strong> Ansökan har flera hushåll. Household anropas inuti multi-instance stakeholders subprocess. Testdata: household-multiple. <strong>When:</strong> Household-processen körs en gång per hushåll. För varje hushåll: "Skip step?" gateway evaluerar. Om No, registrering genomförs. Om Yes, registrering hoppas över. <strong>Then:</strong> Varje hushåll slutförs individuellt. Efter alla hushåll går flödet vidare till Stakeholder call activity för varje hushåll sekventiellt.</td>
         <td>✅ Planerad</td>
       </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>Validering misslyckas vid registrering</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Registrering behövs. Stakeholder fyller i ogiltiga värden. Testdata: household-validation-failed. <strong>When:</strong> "Skip step?" gateway = No. "Register household economy information" user task aktiveras. Stakeholder försöker spara med ogiltiga värden (t.ex. negativa belopp, ogiltigt format). <strong>Then:</strong> Systemet visar valideringsfel. Processen fortsätter på user task tills validering lyckas. Efter korrekt registrering avslutas processen normalt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
     
         </tbody>
       </table>
@@ -462,7 +476,7 @@
       
       <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
         <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S1: Normalflöde – komplett process</strong> (Klicka för att expandera)
+          <strong>S1: Normalflöde – hushållsinformation samlad</strong> (Klicka för att expandera)
         </summary>
         <table style="margin-top: 12px;">
           <thead>
@@ -476,23 +490,101 @@
             </tr>
           </thead>
           <tbody>
-            
         <tr>
           <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
+          <td>/application/household</td>
           <td>navigate</td>
           <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
+          <td>customer-standard-household</td>
+          <td>Navigera till Household-sidan för hushållet</td>
         </tr>
-      
+        <tr>
+          <td>2</td>
+          <td>/application/household</td>
+          <td>verify</td>
+          <td>skip-step-gateway</td>
+          <td>customer-standard-household</td>
+          <td>Verifiera att "Skip step?" gateway evaluerar till "No" (registrering behövs)</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>/application/household/register</td>
+          <td>verify</td>
+          <td>register-household-economy-form</td>
+          <td>customer-standard-household</td>
+          <td>Verifiera att registreringsformuläret visas med fält för utgifter och inkomster</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>/application/household/register</td>
+          <td>fill</td>
+          <td>expenses-cars-loans</td>
+          <td>customer-standard-household</td>
+          <td>Fyll i utgifter: bilar + billån</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>/application/household/register</td>
+          <td>fill</td>
+          <td>expenses-children</td>
+          <td>customer-standard-household</td>
+          <td>Fyll i utgifter: barn</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>/application/household/register</td>
+          <td>fill</td>
+          <td>expenses-child-support</td>
+          <td>customer-standard-household</td>
+          <td>Fyll i utgifter: underhållsbidrag</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>/application/household/register</td>
+          <td>fill</td>
+          <td>expenses-other</td>
+          <td>customer-standard-household</td>
+          <td>Fyll i utgifter: andra utgifter</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>/application/household/register</td>
+          <td>fill</td>
+          <td>incomes-child-support</td>
+          <td>customer-standard-household</td>
+          <td>Fyll i inkomster: underhållsbidrag</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>/application/household/register</td>
+          <td>fill</td>
+          <td>incomes-other</td>
+          <td>customer-standard-household</td>
+          <td>Fyll i inkomster: andra inkomster</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>/application/household/register</td>
+          <td>click</td>
+          <td>submit-button</td>
+          <td>customer-standard-household</td>
+          <td>Klicka på "Spara" för att slutföra registreringen</td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>/application/household</td>
+          <td>verify</td>
+          <td>success-message</td>
+          <td>customer-standard-household</td>
+          <td>Verifiera att processen avslutas och flödet går vidare till Stakeholder</td>
+        </tr>
           </tbody>
         </table>
       </details>
     
       <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
         <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
-          <strong>S2: Ofullständig information eller komplettering behövs</strong> (Klicka för att expandera)
+          <strong>S2: Skip registrering – hoppa över</strong> (Klicka för att expandera)
         </summary>
         <table style="margin-top: 12px;">
           <thead>
@@ -506,16 +598,98 @@
             </tr>
           </thead>
           <tbody>
-            
         <tr>
           <td>1</td>
-          <td>[TODO: Lägg till page ID]</td>
+          <td>/application/household</td>
           <td>navigate</td>
           <td>-</td>
-          <td>-</td>
-          <td>[TODO: Lägg till navigationssteg]</td>
+          <td>customer-skip-household</td>
+          <td>Navigera till Household-sidan för hushållet</td>
         </tr>
-      
+        <tr>
+          <td>2</td>
+          <td>/application/household</td>
+          <td>verify</td>
+          <td>skip-step-gateway</td>
+          <td>customer-skip-household</td>
+          <td>Verifiera att "Skip step?" gateway evaluerar till "Yes" (registrering hoppas över)</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>/application/household</td>
+          <td>verify</td>
+          <td>skip-message</td>
+          <td>customer-skip-household</td>
+          <td>Verifiera att meddelande visas om att registrering hoppas över</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>/application/household</td>
+          <td>verify</td>
+          <td>success-message</td>
+          <td>customer-skip-household</td>
+          <td>Verifiera att processen avslutas direkt och flödet går vidare till Stakeholder</td>
+        </tr>
+          </tbody>
+        </table>
+      </details>
+    
+      <details style="margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">
+          <strong>S3: Multi-instance – flera hushåll</strong> (Klicka för att expandera)
+        </summary>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Steg</th>
+              <th>Page ID</th>
+              <th>Action</th>
+              <th>Locator ID</th>
+              <th>Data Profile</th>
+              <th>Kommentar</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td>1</td>
+          <td>/application/households</td>
+          <td>navigate</td>
+          <td>-</td>
+          <td>customer-multiple-households</td>
+          <td>Navigera till Household-listan för alla hushåll i ansökan</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>/application/households</td>
+          <td>verify</td>
+          <td>household-list</td>
+          <td>customer-multiple-households</td>
+          <td>Verifiera att alla hushåll visas (t.ex. huvudansökande + medsökande)</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>/application/household/1</td>
+          <td>navigate</td>
+          <td>household-1-link</td>
+          <td>customer-multiple-households</td>
+          <td>Navigera till första hushållet och slutför registrering (enligt S1)</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>/application/household/2</td>
+          <td>navigate</td>
+          <td>household-2-link</td>
+          <td>customer-multiple-households</td>
+          <td>Navigera till andra hushållet och slutför registrering (enligt S1)</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>/application/households</td>
+          <td>verify</td>
+          <td>all-households-complete</td>
+          <td>customer-multiple-households</td>
+          <td>Verifiera att alla hushåll är slutförda och processen går vidare till Stakeholder</td>
+        </tr>
           </tbody>
         </table>
       </details>
@@ -524,9 +698,9 @@
       <h3>Testdata-referenser</h3>
       <p class="muted">Testdata-profilerna som används i scenarion. Definiera faktiska testdata i separat testdata-katalog.</p>
       <ul>
-        
-      <li><strong>customer-standard-household</strong>: [TODO: Definiera testdata för standard hushåll (2 vuxna, 2 barn), medianinkomst (~400k SEK/år)]</li>
-    
+      <li><strong>customer-standard-household</strong>: Standard hushåll med 2 vuxna och 2 barn, medianinkomst (~400k SEK/år). Utgifter: bilar + billån (5000 SEK/mån), barn (3000 SEK/mån), underhållsbidrag utgift (2000 SEK/mån), andra utgifter (5000 SEK/mån). Inkomster: underhållsbidrag inkomst (2000 SEK/mån), andra inkomster (10000 SEK/mån).</li>
+      <li><strong>customer-skip-household</strong>: Hushåll där registrering ska hoppas över (t.ex. när hushållsekonomiinformation redan finns från tidigare ansökan eller när det inte behövs för denna ansökan).</li>
+      <li><strong>customer-multiple-households</strong>: Ansökan med flera hushåll (t.ex. huvudansökande med eget hushåll + medsökande med eget hushåll). Varje hushåll har egen ekonomiinformation som ska registreras individuellt.</li>
       </ul>
 
       <h3>Implementation Mapping</h3>
@@ -543,36 +717,70 @@
           </tr>
         </thead>
         <tbody>
-          
       <tr>
-        <td>Household (call activity)</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /household-(call-activity)]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Multi-instance call activity som hanterar hushållsinformation för varje house...</td>
+        <td>Event_0thxdf9 (Start event)</td>
+        <td>Event</td>
+        <td>/api/process/household/start</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Startar Household-processen när anropas från Application-processen</td>
       </tr>
-    
       <tr>
-        <td>Processen körs parallellt med Stakeholders</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /processen-körs-parallellt-med-stakeholders]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Household och Stakeholders körs parallellt via parallel gateway</td>
+        <td>skip-register-household-economy-information (Gateway)</td>
+        <td>Gateway</td>
+        <td>/api/process/household/skip-evaluation</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Evaluarar om registrering ska hoppas över baserat på affärsregler</td>
       </tr>
-    
       <tr>
-        <td>Processen är multi-instance</td>
-        <td>Both</td>
-        <td>[TODO: Lägg till route, t.ex. /processen-är-multi-instance]</td>
-        <td>-</td>
-        <td>[TODO: Lägg till base URL för miljön]</td>
-        <td>Körs för varje household i ansökan</td>
+        <td>register-household-economy-information (User Task)</td>
+        <td>User Task</td>
+        <td>/application/household/register</td>
+        <td>GET/POST</td>
+        <td>${BASE_URL}</td>
+        <td>UI-sida för registrering av hushållsekonomiinformation. POST sparar data till /api/household/economy</td>
       </tr>
-    
+      <tr>
+        <td>/api/household/economy</td>
+        <td>API</td>
+        <td>/api/household/economy</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>API-endpoint för att spara hushållsekonomiinformation (utgifter och inkomster)</td>
+      </tr>
+      <tr>
+        <td>Gateway_1v71ek3 (Sammanför flöden)</td>
+        <td>Gateway</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Intern gateway som samlar ihop flöden från registrering och skip-sökvägar</td>
+      </tr>
+      <tr>
+        <td>Event_10dekgp (End event)</td>
+        <td>Event</td>
+        <td>/api/process/household/complete</td>
+        <td>POST</td>
+        <td>${BASE_URL}</td>
+        <td>Avslutar Household-processen och returnerar till Application-processen</td>
+      </tr>
+      <tr>
+        <td>Household (call activity i Application)</td>
+        <td>Call Activity</td>
+        <td>/application/household</td>
+        <td>GET</td>
+        <td>${BASE_URL}</td>
+        <td>UI-entry point för Household-processen. Multi-instance: körs en gång per hushåll</td>
+      </tr>
         </tbody>
       </table>
+      
+      <h4>Datastores</h4>
+      <ul>
+        <li><strong>household_economy_data</strong>: Databas-tabell som lagrar hushållsekonomiinformation (utgifter och inkomster) per hushåll och ansökan</li>
+        <li><strong>application_households</strong>: Databas-tabell som länkar hushåll till ansökningar och hanterar multi-instance status</li>
+      </ul>
         </div>
       </details>
     </section>
@@ -674,6 +882,23 @@
           </ul>
         </li>
         <li>Systemet ska validera att information är korrekt och komplett innan processen fortsätter</li>
+        <li><strong>UI/UX-krav:</strong>
+          <ul>
+            <li>Tydliga rubriker och sektioner för utgifter och inkomster</li>
+            <li>Möjlighet att gå tillbaka och redigera information</li>
+            <li>Validering i realtid med tydliga felmeddelanden</li>
+            <li>Progress-indikator som visar vilket hushåll som bearbetas (vid multi-instance)</li>
+            <li>Autospar-funktionalitet för att undvika dataförlust</li>
+          </ul>
+        </li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för API-anrop: 30 sekunder</li>
+            <li>Retry-logik: 3 försök med exponential backoff (1s, 2s, 4s)</li>
+            <li>Error codes: 400 (Valideringsfel), 500 (Serverfel), 503 (Service unavailable)</li>
+            <li>Valideringsregler: Alla numeriska fält måste vara >= 0, validering sker både på klient och server</li>
+          </ul>
+        </li>
       </ul>
 
       <h3>3. Sammanställning och avslut</h3>
@@ -681,6 +906,13 @@
         <li>"Sammanför flöden" exclusive gateway ska samla ihop flöden från både "Register household economy information" user task och "Skip step?" gateway "Yes" innan processen avslutas</li>
         <li>Processen ska avslutas normalt via "Event_10dekgp" end event när hushållsinformation är samlad och hanterad (eller om registrering hoppades över)</li>
         <li>Resultatet ska returneras till Application-processen via "household" call activity för vidare hantering</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Timeout för process-avslut: 10 sekunder</li>
+            <li>Error handling: Om avslut misslyckas, logga fel och försök igen (max 3 försök)</li>
+            <li>Data persistence: Alla data måste vara sparade innan processen avslutas</li>
+          </ul>
+        </li>
       </ul>
 
       <h3>4. Multi-instance och sekventiellt flöde</h3>
@@ -696,6 +928,14 @@
         <li>Household-processen ska anropas från Application-processen inuti "stakeholders" subprocess via "household" call activity efter "Flow_09zs5qk" sequence flow</li>
         <li>När Household-processen avslutas, ska flödet gå sekventiellt till "stakeholder" call activity via "Flow_0kl056u" sequence flow</li>
         <li>Efter att både Household och Stakeholder har slutförts för ett hushåll, ska stakeholders subprocess-instansen avslutas och flödet ska gå till "skip-confirm-application" gateway i Application-processen</li>
+        <li><strong>Tekniska krav:</strong>
+          <ul>
+            <li>Skalbarhet: Processen ska kunna hantera minst 10 parallella hushåll-instanser</li>
+            <li>Prestanda: Genomsnittlig bearbetningstid per hushåll: < 2 minuter (inklusive användarinteraktion)</li>
+            <li>Säkerhet: Alla API-anrop måste autentiseras och auktoriseras</li>
+            <li>Compliance: Alla data måste följa GDPR-krav (dataminimering, rätt att radera)</li>
+          </ul>
+        </li>
       </ul>
         </div>
       </details>

@@ -579,6 +579,281 @@
         <li>Resultat från "Automatic Credit Evaluation" call activity (om anropad) ska korrekt sparas och användas i efterföljande gateways</li>
         <li>Dokumentation som laddas upp via "Upload documentation" och "Upload object valuation documentation" user tasks ska korrekt sparas i systemet</li>
       </ul>
+
+      <h3>Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> User tasks ska ha timeout på 7 dagar för handläggare, 14 dagar för stakeholder, 5 dagar för värderare. Call activities ("Object information", "Automatic Credit Evaluation") ska ha timeout på 60 sekunder</li>
+        <li><strong>Retry:</strong> Call activities ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: BRF_REJECTED (för avvisad BRF), OBJECT_REJECTED (för avvisat objekt), OBJECT_CONTROL_TIMEOUT (för timeout), OBJECT_CONTROL_DATA_MISSING (för saknad data)</li>
+        <li><strong>Logging:</strong> Alla gateways, user tasks och error events ska loggas med tidsstämplar, användar-ID och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>UI/UX-krav</h3>
+      <ul>
+        <li><strong>Handläggarvyer:</strong> User tasks ska visa tydlig, strukturerad information om objekt, BRF, lägenhetsutdrag och värdering med separata sektioner för varje typ av information</li>
+        <li><strong>Boundary events:</strong> Boundary events ("Request lägenhetsutdrag", "Request mäklarvärdering") ska vara tydligt synliga och lättåtkomliga för handläggare och värderare</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen (BRF-kontroll, lägenhetsutdrag, objektvärdering, stakeholder-granskning) med visuella indikatorer</li>
+        <li><strong>Loop-indikatorer:</strong> När processen loopar tillbaka via Gateway_0e24xxh, ska systemet visa tydligt varför loopen skedde och vilka ändringar som gjorts</li>
+      </ul>
+
+      <h3>Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Systemet ska kunna hantera flera Object Control-processer parallellt utan prestandaförsämring</li>
+        <li><strong>Load balancing:</strong> Call activities ska kunna hantera minst 30 anrop per minut med genomsnittlig svarstid under 5 sekunder</li>
+        <li><strong>Databasoptimering:</strong> Alla databasfrågor för BRF-information och objektdata ska vara optimerade med indexering</li>
+      </ul>
+
+      <h3>Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig objektinformation och BRF-data ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till objektdata ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla objektkontroller ska innehålla spårbarhet för vem som genomförde kontrollen, när och resultatet, för att uppfylla GDPR-krav</li>
+        <li><strong>Audit trail:</strong> Alla ändringar i objektstatus, BRF-godkännande och värdering ska loggas med användar-ID, tidsstämplar och ändringsorsak för fullständig spårbarhet</li>
+      </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <details>
+        <summary>Testgenerering</summary>
+        <div class="section-content">
+<p class="muted">Detaljerad testgenerering för att säkerställa att feature goalet fungerar korrekt.</p>
+      
+      <h3>Testscenarier</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Namn</th>
+            <th>Typ</th>
+            <th>Persona</th>
+            <th>Risk Level</th>
+            <th>Assertion Type</th>
+            <th>Outcome</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>S1</strong></td>
+        <td>Småhus – ingen BRF-kontroll, värdering krävs</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är småhus. Testdata: object-control-house. <strong>When:</strong> "Is bostadsrätt?" gateway (is-bostadsratt) avgör "No". "Needs valuation?" gateway (needs-valuation) avgör "Yes". "Determine object value" user task (determine-object-value) fastställer värde. "Stakeholder review?" gateway (stakeholder-review) avgör "No". <strong>Then:</strong> Processen avslutas normalt (process-end-event).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S2</strong></td>
+        <td>Bostadsrätt – BRF godkänd, värdering krävs</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF-information finns. Testdata: object-control-brf-approved. <strong>When:</strong> "Is bostadsrätt?" gateway (is-bostadsratt) avgör "Yes". "Has updated BRF information?" gateway (has-brf-information) avgör "Yes". "BRF screening result" gateway (brf-screening-result) avgör "Accepted". "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) kontrollerar. "Object approved?" gateway (object-approved) avgör "Yes". "Needs valuation?" gateway (needs-valuation) avgör "Yes". "Determine object value" user task (determine-object-value) fastställer värde. <strong>Then:</strong> Processen avslutas normalt (process-end-event).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S3</strong></td>
+        <td>Bostadsrätt – BRF-information saknas, registreras</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF-information saknas. Testdata: object-control-brf-missing. <strong>When:</strong> "Is bostadsrätt?" gateway (is-bostadsratt) avgör "Yes". "Has updated BRF information?" gateway (has-brf-information) avgör "No". "Register BRF information" user task (register-brf-information) registrerar BRF. "Object information" call activity (object-information) samlar objektinformation. "Changes requires rescoring?" gateway (changes-requires-rescoring) avgör "No". "BRF screening result" gateway (brf-screening-result) avgör "Accepted". <strong>Then:</strong> Processen fortsätter till lägenhetsutdrag-kontroll.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S4</strong></td>
+        <td>BRF avvisad – screening rejected</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF-information finns. BRF uppfyller inte krav. Testdata: object-control-brf-rejected. <strong>When:</strong> "Is bostadsrätt?" gateway (is-bostadsratt) avgör "Yes". "BRF screening result" gateway (brf-screening-result) avgör "Rejected". <strong>Then:</strong> "BRF rejected" error event (Event_1pqluun, error code: brf-rejected) triggas. Boundary event triggas i Manual Credit Evaluation-processen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S5</strong></td>
+        <td>BRF avvisad – manuell granskning</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF kräver manuell granskning. Testdata: object-control-brf-review-rejected. <strong>When:</strong> "BRF screening result" gateway (brf-screening-result) avgör "Review". "Review BRF" user task (review-brf) granskar BRF. "BRF approved?" gateway (brf-approved) avgör "No". <strong>Then:</strong> "BRF rejected" error event (Event_0i6cize, error code: brf-rejected) triggas. Boundary event triggas i Manual Credit Evaluation-processen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S6</strong></td>
+        <td>Objekt avvisat – lägenhetsutdrag ofullständig</td>
+        <td>Error</td>
+        <td>advisor</td>
+        <td>P0</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF är godkänd. Lägenhetsutdrag är ofullständig. Testdata: object-control-object-rejected. <strong>When:</strong> "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) kontrollerar. "Object approved?" gateway (object-approved) avgör "No". <strong>Then:</strong> "Object rejected" error event (Event_1yyhlmr, error code: object-rejected) triggas. Boundary event triggas i Manual Credit Evaluation-processen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S7</strong></td>
+        <td>Request lägenhetsutdrag boundary event</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF är godkänd. Lägenhetsutdrag saknas. Testdata: object-control-request-documentation. <strong>When:</strong> "Control lägenhets-utdrag" user task (control-lagenhetsutdrag) aktiveras. "Request lägenhetsutdrag" boundary event (request-lagenhetsutdrag) triggas. "Upload documentation" user task (upload-documentation) aktiveras för stakeholder. Stakeholder laddar upp dokumentation. <strong>Then:</strong> Dokumentation sparas. Processen fortsätter till "Object approved?" gateway (object-approved).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S8</strong></td>
+        <td>Request mäklarvärdering boundary event</td>
+        <td>Happy</td>
+        <td>valuator</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektvärdering krävs. Mäklarvärdering saknas. Testdata: object-control-request-valuation. <strong>When:</strong> "Needs valuation?" gateway (needs-valuation) avgör "Yes". "Determine object value" user task (determine-object-value) aktiveras. "Request mäklarvärdering" boundary event (request-maklarvardering) triggas. "Upload object valuation documentation" user task (upload-object-valuation-document) aktiveras för stakeholder. Stakeholder laddar upp mäklarvärdering. <strong>Then:</strong> Mäklarvärdering sparas. Värderare fortsätter värderingen. Processen fortsätter normalt.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S9</strong></td>
+        <td>Ändringar kräver omvärdering – Automatic Credit Evaluation</td>
+        <td>Happy</td>
+        <td>system</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF-information registreras. Ändringar kräver omvärdering. Testdata: object-control-rescoring. <strong>When:</strong> "Register BRF information" user task (register-brf-information) registrerar BRF. "Object information" call activity (object-information) samlar objektinformation. "Changes requires rescoring?" gateway (changes-requires-rescoring) avgör "Yes". "Automatic Credit Evaluation" call activity (credit-evaluation-2) anropas. <strong>Then:</strong> Automatic Credit Evaluation-processen genomförs. Resultatet returneras. Processen fortsätter till "BRF screening result" gateway (brf-screening-result).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S10</strong></td>
+        <td>BRF information missing – loop</td>
+        <td>Edge</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF-screening indikerar saknad information. Testdata: object-control-brf-missing-loop. <strong>When:</strong> "BRF screening result" gateway (brf-screening-result) avgör "BRF information missing". Processen loopar tillbaka till "Has updated BRF information?" gateway (has-brf-information) via Gateway_14f9my2. "Register BRF information" user task (register-brf-information) registrerar kompletterande information. <strong>Then:</strong> Processen fortsätter med ny BRF-screening. Handläggaren får tydlig feedback om loopen.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S11</strong></td>
+        <td>Stakeholder avvisar ändringar – loop</td>
+        <td>Edge</td>
+        <td>customer</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Alla kontroller är godkända. Ändringar har gjorts. Testdata: object-control-changes-rejected. <strong>When:</strong> "Stakeholder review?" gateway (stakeholder-review) avgör "Yes". "Review changes" user task (review-changes) granskar ändringar. "Changes accepted?" gateway (changes-accepted) avgör "No". Processen loopar tillbaka till Gateway_0e24xxh. <strong>Then:</strong> Processen startar om med nya ändringar. Handläggaren får tydlig feedback om varför loopen skedde.</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S12</strong></td>
+        <td>Bostadsrätt – BRF kräver manuell granskning, godkänns</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är bostadsrätt. BRF kräver manuell granskning. Testdata: object-control-brf-review-approved. <strong>When:</strong> "BRF screening result" gateway (brf-screening-result) avgör "Review". "Review BRF" user task (review-brf) granskar BRF. "BRF approved?" gateway (brf-approved) avgör "Yes". <strong>Then:</strong> Processen fortsätter till "Control lägenhets-utdrag" user task (control-lagenhetsutdrag).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S13</strong></td>
+        <td>Ingen värdering behövs</td>
+        <td>Happy</td>
+        <td>advisor</td>
+        <td>P1</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Objektet är godkänt. Värdering behövs inte. Testdata: object-control-no-valuation. <strong>When:</strong> "Needs valuation?" gateway (needs-valuation) avgör "No". "Stakeholder review?" gateway (stakeholder-review) avgör "No". <strong>Then:</strong> Processen avslutas normalt (process-end-event).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S14</strong></td>
+        <td>Object information timeout – retry lyckas</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. BRF-information registreras. Object information service svarar långsamt. Testdata: object-control-object-info-timeout. <strong>When:</strong> "Object information" call activity (object-information) timeout (60 sekunder). Retry-logik aktiveras (max 3 försök, exponential backoff). <strong>Then:</strong> Efter retry lyckas samling. Processen fortsätter till "Changes requires rescoring?" gateway (changes-requires-rescoring).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+      <tr>
+        <td><strong>S15</strong></td>
+        <td>Automatic Credit Evaluation timeout – retry lyckas</td>
+        <td>Edge</td>
+        <td>system</td>
+        <td>P2</td>
+        <td>functional</td>
+        <td><strong>Given:</strong> Object Control-processen startar. Ändringar kräver omvärdering. Credit evaluation service svarar långsamt. Testdata: object-control-credit-eval-timeout. <strong>When:</strong> "Automatic Credit Evaluation" call activity (credit-evaluation-2) timeout (60 sekunder). Retry-logik aktiveras (max 3 försök, exponential backoff). <strong>Then:</strong> Efter retry lyckas omvärdering. Processen fortsätter till "BRF screening result" gateway (brf-screening-result).</td>
+        <td>✅ Planerad</td>
+      </tr>
+    
+        </tbody>
+      </table>
+
+      <h3>UI Flow per Scenario</h3>
+      <p class="muted">Detaljerade steg för varje scenario. Expandera för att se UI Flow.</p>
+
+      <h3>Testdata-referenser</h3>
+      <ul>
+        <li><strong>Småhus-objekt:</strong> Objekttyp = "småhus", objekt-ID = "OBJ-001". Förväntat resultat: BRF-kontroll hoppas över, värdering genomförs, processen avslutas normalt</li>
+        <li><strong>Bostadsrätt med godkänd BRF:</strong> Objekttyp = "bostadsrätt", BRF-ID = "BRF-001", BRF-status = "godkänd". Förväntat resultat: BRF-kontroll genomförs, lägenhetsutdrag kontrolleras, värdering genomförs, processen avslutas normalt</li>
+        <li><strong>Bostadsrätt med avvisad BRF:</strong> Objekttyp = "bostadsrätt", BRF-ID = "BRF-002", BRF-status = "avvisad". Förväntat resultat: "BRF rejected" error event triggas, processen avbryts</li>
+        <li><strong>Objekt som avvisas:</strong> Objekt-ID = "OBJ-003", lägenhetsutdrag = "ofullständig". Förväntat resultat: "Object rejected" error event triggas, processen avbryts</li>
+        <li><strong>Ändringar kräver omvärdering:</strong> Objekt-ID = "OBJ-004", ändringar = "storlek ändrad". Förväntat resultat: "Automatic Credit Evaluation" call activity anropas</li>
+        <li><strong>Stakeholder avvisar ändringar:</strong> Objekt-ID = "OBJ-005", stakeholder-beslut = "avvisa". Förväntat resultat: Processen loopar tillbaka till början</li>
+      </ul>
+
+      <h3>Implementation Mapping</h3>
+      <ul>
+        <li><strong>Routes:</strong>
+          <ul>
+            <li><code>/api/object-control/check-brf</code> - "Is bostadsrätt?" gateway och BRF-kontroll</li>
+            <li><code>/api/object-control/register-brf</code> - "Register BRF information" user task</li>
+            <li><code>/api/object-control/screen-brf</code> - "BRF screening result" gateway</li>
+            <li><code>/api/object-control/control-apartment-extract</code> - "Control lägenhets-utdrag" user task</li>
+            <li><code>/api/object-control/determine-value</code> - "Determine object value" user task</li>
+            <li><code>/api/object-control/review-changes</code> - "Review changes" user task</li>
+            <li><code>/api/object-control/request-documentation</code> - "Request lägenhetsutdrag" boundary event</li>
+            <li><code>/api/object-control/request-valuation</code> - "Request mäklarvärdering" boundary event</li>
+          </ul>
+        </li>
+        <li><strong>Endpoints:</strong>
+          <ul>
+            <li><code>GET /api/object-control/check-brf</code> - Kontrollera om objekt är bostadsrätt och om BRF-kontroll behövs</li>
+            <li><code>POST /api/object-control/register-brf</code> - Registrera BRF-information, returnerar registrerad information</li>
+            <li><code>POST /api/object-control/screen-brf</code> - Screena BRF-information, returnerar screening-resultat</li>
+            <li><code>GET /api/object-control/control-apartment-extract</code> - Hämta lägenhetsutdrag för kontroll</li>
+            <li><code>POST /api/object-control/control-apartment-extract</code> - Spara kontrollresultat för lägenhetsutdrag</li>
+            <li><code>GET /api/object-control/determine-value</code> - Hämta objektinformation för värdering</li>
+            <li><code>POST /api/object-control/determine-value</code> - Spara värderingsresultat</li>
+            <li><code>GET /api/object-control/review-changes</code> - Hämta ändringar för granskning</li>
+            <li><code>POST /api/object-control/review-changes</code> - Spara granskningsresultat (acceptera/avvisa)</li>
+            <li><code>POST /api/object-control/request-documentation</code> - Begära lägenhetsutdrag från stakeholder</li>
+            <li><code>POST /api/object-control/request-valuation</code> - Begära mäklarvärdering från stakeholder</li>
+          </ul>
+        </li>
+        <li><strong>Datastores:</strong>
+          <ul>
+            <li><code>brf_information_database</code> - Lagrar BRF-information som registreras av handläggaren</li>
+            <li><code>object_control_results</code> - Lagrar objektkontrollresultat med objekt-ID, BRF-status, värdering och tidsstämplar</li>
+            <li><code>object_control_audit</code> - Lagrar audit trail för alla objektkontroller med användar-ID, tidsstämplar och ändringsorsak</li>
+            <li><code>documentation_storage</code> - Lagrar dokumentation (lägenhetsutdrag, mäklarvärdering) som laddas upp av stakeholder</li>
+          </ul>
+        </li>
+      </ul>
         </div>
       </details>
     </section>

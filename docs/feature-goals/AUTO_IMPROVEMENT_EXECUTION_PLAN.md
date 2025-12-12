@@ -472,17 +472,31 @@
   - ❌ "Ökad automatisering"
 
 #### User stories
-- **Krav:**
-  - Använd standardformat: "Som [roll] vill jag [mål] så att [värde]"
-  - Var realistisk: User stories ska vara relevanta och uppnåbara
-  - Fokusera på användarens perspektiv: Beskriv vad användaren vill uppnå
-  - Koppla till feature goalet: User stories ska vara direkt relaterade till feature goalets funktionalitet
-  - Organisera i kategorier: För komplexa feature goals, organisera i kategorier (t.ex. "Kundperspektiv", "Handläggarperspektiv")
-  - Var specifik: Nämn specifika processsteg, call activities, gateways, error events
-  - Inkludera acceptanskriterier: För viktiga user stories, lägg till acceptanskriterier direkt i user story:n (i kursiv stil)
+**⚠️ SYSTEMATISK PROCESS - FÖLJ USER_STORY_IMPROVEMENT_PROMPT.md:**
+
+**Grundläggande krav:**
+- Använd standardformat: "Som [specifik persona] vill jag [konkret mål med BPMN-referens] så att [tydligt värde]"
+- Var realistisk: User stories ska vara relevanta och uppnåbara
+- Fokusera på användarens perspektiv: Beskriv vad användaren vill uppnå
+- Koppla till feature goalet: User stories ska vara direkt relaterade till feature goalets funktionalitet
+- Organisera i kategorier: För komplexa feature goals, organisera i kategorier (t.ex. "Systemperspektiv", "Handläggarperspektiv", "Kundperspektiv")
+- Var specifik: Nämn specifika processsteg, call activities, gateways, error events med BPMN-ID:n
+- Inkludera acceptanskriterier: För alla user stories, lägg till acceptanskriterier direkt i user story:n (i kursiv stil) med BPMN-referenser
+
+**Systematisk förbättringsprocess:**
+1. **Analysera BPMN-processen:** Identifiera alla user tasks, service tasks, gateways, events och personor
+2. **Analysera befintliga user stories:** Validera mot BPMN, identifiera brister
+3. **Identifiera saknade user stories:** Per BPMN-element, per persona, per flöde
+4. **Förbättra befintliga user stories:** Specifika persona, konkret mål, tydligt värde, specifika acceptanskriterier
+5. **Skapa nya user stories:** För saknade BPMN-element/personor
+6. **Ta bort onödiga user stories:** Duplicerade, irrelevanta, för generiska
+7. **Validera slutresultat:** Kompletthet, kvalitet, konsistens
+
+**⚠️ LÄS USER_STORY_IMPROVEMENT_PROMPT.md FÖR DETALJERAD PROCESS OCH USER_STORY_ANALYSIS.md FÖR BEST PRACTICES**
+
 - **Exempel:**
-  - ✅ "Som kund vill jag att systemet automatiskt hämtar min befintliga information via 'Internal data gathering' (part, engagemang, kreditinformation) så att jag inte behöver fylla i information som banken redan har om mig. <em>Acceptanskriterier: Systemet ska visa hämtad information i ett tydligt format, markera fält som är auto-ifyllda, och tillåta mig att ändra information om den är felaktig.</em>"
-  - ❌ "Som kund vill jag att systemet hämtar information så att det fungerar"
+  - ✅ "Som handläggare vill jag kunna skicka påminnelser till kunder om väntande signeringar via 'Manual reminder' boundary event (Event_1kyqkxc) på 'Upload document' user task (upload-manual-document) så att kunder påminns om att signera dokument. <em>Acceptanskriterier: Handläggare ska kunna skicka påminnelser via 'Manual reminder' boundary event (Event_1kyqkxc) på 'Upload document' user task (upload-manual-document), och påminnelse ska skickas via 'Send reminder' intermediate throw event (Event_1esbspy) med escalation code 'send-reminder'.</em>"
+  - ❌ "Som användare vill jag hantera signering så att processen fungerar"
 
 #### Acceptanskriterier
 - **Krav:**
@@ -579,6 +593,15 @@ html = html.replace(sectionRegex, (match, content) => {
   - [ ] Se `LANE_ANALYSIS_RULE.md` för detaljerad guide
 - [ ] **ALLA tekniska ID:n är ersatta** - Inget tekniskt ID (Gateway_xxx, Event_xxx, Activity_xxx) får lämnas kvar
 - [ ] **ALLA sektioner är uppdaterade** - Beskrivning av FGoal, Input, Output, Omfattning, Avgränsning, Beroenden, BPMN - Process, Effekt, User stories, Acceptanskriterier
+- [ ] **⚠️ USER STORIES - SYSTEMATISK PROCESS (ALDRIG GLÖM):**
+  - [ ] Har jag analyserat BPMN-processen för att identifiera alla user tasks, service tasks, gateways, events och personor?
+  - [ ] Har jag analyserat befintliga user stories mot BPMN och identifierat brister?
+  - [ ] Har jag identifierat saknade user stories (per BPMN-element, per persona, per flöde)?
+  - [ ] Har jag förbättrat befintliga user stories (specifika persona, konkret mål, tydligt värde, specifika acceptanskriterier med BPMN-ID:n)?
+  - [ ] Har jag skapat nya user stories för saknade BPMN-element/personor?
+  - [ ] Har jag tagit bort onödiga user stories (duplicerade, irrelevanta, för generiska)?
+  - [ ] Har jag validerat slutresultatet (kompletthet, kvalitet, konsistens)?
+  - [ ] Se `USER_STORY_IMPROVEMENT_PROMPT.md` för detaljerad process
 - [ ] **Text är lättläst och affärsorienterad** - Inga långa, komplexa meningar, använd affärstermer
 - [ ] **ALLA aktiviteter är dokumenterade** - User tasks, service tasks, business rule tasks, call activities
 - [ ] **ALLA gateways är dokumenterade** - Exklusiva, parallella, inklusiva, namnlösa (med beskrivning av vad de gör)
