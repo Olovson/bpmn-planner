@@ -341,6 +341,36 @@
         <li><strong>Application rejected:</strong> Om KALP-beräkningen eller screening visar att ansökan ska avvisas, avslutas processen med error event</li>
         <li><strong>Timeout:</strong> Om kunden inte bekräftar ansökan inom tidsgränsen, avslutas processen med timeout-fel</li>
       </ul>
+
+      <h3>Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> User tasks ska ha timeout på 30 dagar för kundaktiviteter. Service tasks och business rule tasks ska ha timeout på 60 sekunder</li>
+        <li><strong>Retry:</strong> Service tasks och business rule tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: APPLICATION_PRE_SCREEN_REJECTED, APPLICATION_STAKEHOLDER_REJECTED, APPLICATION_OBJECT_REJECTED, APPLICATION_REJECTED, APPLICATION_TIMEOUT</li>
+        <li><strong>Logging:</strong> Alla ansökningssteg, multi-instance bearbetningar och fel ska loggas med ansöknings-ID, tidsstämplar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>UI/UX-krav</h3>
+      <ul>
+        <li><strong>Kund-vyer:</strong> User tasks ska visa tydlig, strukturerad information med separata sektioner för varje steg (pre-screen, household, stakeholder, object, confirmation)</li>
+        <li><strong>Multi-instance progress:</strong> Systemet ska visa progress för multi-instance bearbetningar (t.ex. "Bearbetar hushåll 2 av 3", "Bearbetar stakeholder 1 av 2")</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen med visuella indikatorer</li>
+        <li><strong>Parallellisering:</strong> Systemet ska tillåta kunden att fylla i hushållsekonomi och stakeholder-information samtidigt</li>
+      </ul>
+
+      <h3>Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Multi-instance subprocesses ska kunna köras parallellt för att förbättra prestanda</li>
+        <li><strong>Load balancing:</strong> Service tasks och business rule tasks ska kunna hantera minst 50 ansökningar per minut</li>
+        <li><strong>Caching:</strong> Systemet ska implementera caching för pre-screen och screening-resultat</li>
+      </ul>
+
+      <h3>Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig ansökningsinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till ansökningsdata ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla ansökningar ska innehålla spårbarhet för när ansökan skickades, vilka steg som genomfördes och resultatet, för att uppfylla GDPR-krav</li>
+        <li><strong>Audit trail:</strong> Alla ansökningssteg, multi-instance bearbetningar och fel ska loggas med ansöknings-ID, tidsstämplar och resultat för fullständig spårbarhet</li>
+      </ul>
         </div>
       </details>
     </section>

@@ -902,6 +902,33 @@
         <li>Om "Rejected?" gateway returnerar "No", ska processen avslutas normalt</li>
         <li>"Automatically rejected" escalation event ska trigga boundary event i huvudprocessen som avbryter hela ansökningsprocessen</li>
       </ul>
+
+      <h3>6. Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> User tasks ska ha timeout på 7 dagar för handläggare. Call activities och service tasks ska ha timeout på 60 sekunder</li>
+        <li><strong>Retry:</strong> Call activities och service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: MANUAL_CREDIT_EVAL_REJECTED, MANUAL_CREDIT_EVAL_TIMEOUT, MANUAL_CREDIT_EVAL_SERVICE_ERROR</li>
+        <li><strong>Logging:</strong> Alla kreditevalueringar, granskningar och eskaleringar ska loggas med evaluerings-ID, användar-ID, tidsstämplar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>7. UI/UX-krav</h3>
+      <ul>
+        <li><strong>Handläggar-vyer:</strong> User tasks ska visa tydlig, strukturerad information om kreditevaluering med separata sektioner för varje steg</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen med visuella indikatorer</li>
+      </ul>
+
+      <h3>8. Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Systemet ska kunna hantera flera kreditevalueringar parallellt</li>
+        <li><strong>Load balancing:</strong> Service tasks ska kunna hantera minst 30 evalueringar per minut</li>
+      </ul>
+
+      <h3>9. Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig kreditevalueringsinformation ska krypteras i vila och under överföring (TLS 1.3)</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla kreditevalueringar ska innehålla spårbarhet för vem som evaluerade, när och resultatet</li>
+        <li><strong>Audit trail:</strong> Alla evalueringar ska loggas för fullständig spårbarhet</li>
+      </ul>
         </div>
       </details>
     </section>

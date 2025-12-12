@@ -628,6 +628,37 @@
         <li>Om "Signing provider" datastore inte är tillgänglig, ska processen hantera felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalera till anropande processen</li>
         <li>Om signering misslyckas, ska processen hantera felet på ett tydligt sätt och signalera till anropande processen</li>
       </ul>
+
+      <h3>Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> User tasks ("Sign document") ska ha timeout på 10 dagar per signee. Service tasks ska ha timeout på 60 sekunder. Hela signeringsprocessen ska ha timeout på 5 dagar</li>
+        <li><strong>Retry:</strong> Service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: SIGNING_SERVICE_ERROR (för service task-fel), SIGNING_TIMEOUT (för timeout), SIGNING_REJECTED (för avvisad signering), SIGNING_EXPIRED (för utgången signering)</li>
+        <li><strong>Logging:</strong> Alla signeringar, eskaleringar och timeout ska loggas med signerings-ID, signee-ID, tidsstämplar och status för spårbarhet</li>
+      </ul>
+
+      <h3>UI/UX-krav</h3>
+      <ul>
+        <li><strong>Signee-vyer:</strong> "Sign document" user task ska visa tydlig, strukturerad information om dokumentet med separata sektioner för dokumentinformation, signeringsinstruktioner och bekräftelse</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje signee (väntar på signering, signerad, avvisad, utgången) med visuella indikatorer</li>
+        <li><strong>Multi-instance progress:</strong> Systemet ska visa progress för multi-instance loop (t.ex. "Signee 2 av 3 har signerat")</li>
+        <li><strong>Eskaleringshantering:</strong> När signering är avvisad eller utgången, ska systemet visa tydligt felmeddelande med förklaring och möjliga åtgärder</li>
+      </ul>
+
+      <h3>Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Multi-instance loop ska kunna hantera flera signees parallellt för att förbättra prestanda</li>
+        <li><strong>Load balancing:</strong> Service tasks ska kunna hantera minst 30 signeringar per minut med genomsnittlig svarstid under 10 sekunder</li>
+        <li><strong>Databasoptimering:</strong> Alla databasfrågor för signeringsstatus ska vara optimerade med indexering</li>
+      </ul>
+
+      <h3>Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> Alla signerade dokument ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till signerade dokument ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla signeringar ska innehålla spårbarhet för vem som signerade, när och vilket dokument, för att uppfylla GDPR-krav</li>
+        <li><strong>Juridisk compliance:</strong> Systemet ska säkerställa att alla signeringar följer juridiska krav för elektronisk signering, inklusive autentisering och integritet</li>
+        <li><strong>Audit trail:</strong> Alla signeringar ska loggas med signerings-ID, signee-ID, tidsstämplar, dokument-ID och signeringsstatus för fullständig spårbarhet</li>
+      </ul>
         </div>
       </details>
     </section>

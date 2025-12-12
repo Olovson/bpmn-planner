@@ -536,10 +536,35 @@
         <summary>Acceptanskriterier</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      <h3>1. Dokumentgenerering</h3>
       <ul>
-        <li>[Acceptanskriterium 1: t.ex. "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"]</li>
-        <li>[Acceptanskriterium 2: t.ex. "Ansökningar med låg risk ska dirigeras till straight-through processing"]</li>
-        <li>[Acceptanskriterium 3: t.ex. "Ansökningar med hög risk ska dirigeras till rätt beslutsnivå"]</li>
+        <li>Systemet ska automatiskt generera dokument baserat på låneinformation och dokumenttyper</li>
+        <li>Genererade dokument ska korrekt sparas i "Document generation service" datastore</li>
+      </ul>
+
+      <h3>2. Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> Service tasks ska ha timeout på 60 sekunder per dokument</li>
+        <li><strong>Retry:</strong> Service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: DOC_GEN_ADVANCE_SERVICE_ERROR, DOC_GEN_ADVANCE_TIMEOUT, DOC_GEN_ADVANCE_FAILED</li>
+        <li><strong>Logging:</strong> Alla dokumentgenereringar ska loggas med dokument-ID, tidsstämplar och resultat</li>
+      </ul>
+
+      <h3>3. UI/UX-krav</h3>
+      <ul>
+        <li>Systemet ska visa tydlig status för dokumentgenerering med visuella indikatorer</li>
+      </ul>
+
+      <h3>4. Skalbarhet och prestanda</h3>
+      <ul>
+        <li>Systemet ska kunna hantera flera dokumentgenereringar parallellt</li>
+        <li>Service tasks ska kunna hantera minst 30 dokument per minut</li>
+      </ul>
+
+      <h3>5. Säkerhet och compliance</h3>
+      <ul>
+        <li>Alla genererade dokument ska krypteras i vila och under överföring (TLS 1.3)</li>
+        <li>Alla dokumentgenereringar ska loggas för audit trail</li>
       </ul>
         </div>
       </details>

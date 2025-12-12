@@ -731,6 +731,36 @@
         <li>Resultatet ska returneras till parent processen via "documentation-assessment" call activity för vidare hantering</li>
         <li>Parent processen ska kunna trigga Automatic Credit Evaluation om "Credit reevaluation required" event mottas, eller eskalera om "Documentation incomplete" escalation event mottas</li>
       </ul>
+
+      <h3>7. Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> Service task "Analyse documentation" ska ha timeout på 60 sekunder per dokument. User tasks ("Assess documentation", "Review changes") ska ha timeout på 7 dagar för handläggare, 14 dagar för stakeholder</li>
+        <li><strong>Retry:</strong> Service task "Analyse documentation" ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: DOC_ASSESSMENT_ANALYSIS_ERROR (för analysfel), DOC_ASSESSMENT_TIMEOUT (för timeout), DOC_ASSESSMENT_INCOMPLETE (för ofullständig dokumentation), DOC_ASSESSMENT_REEVAL_REQUIRED (för omvärdering krävs)</li>
+        <li><strong>Logging:</strong> Alla dokumentationsanalyser, bedömningar och granskningar ska loggas med dokument-ID, användar-ID, tidsstämplar och resultat för spårbarhet</li>
+      </ul>
+
+      <h3>8. UI/UX-krav</h3>
+      <ul>
+        <li><strong>Handläggarvyer:</strong> "Assess documentation" user task ska visa tydlig, strukturerad information om dokumentationen med separata sektioner för varje dokument, analysresultat och identifierade ändringar</li>
+        <li><strong>Stakeholder-vyer:</strong> "Review changes" user task ska visa tydlig information om identifierade ändringar med visuell jämförelse mellan tidigare och ny information</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen (analys, bedömning, granskning, kompletthetsbeslut) med visuella indikatorer</li>
+        <li><strong>Loop-indikatorer:</strong> När processen loopar tillbaka, ska systemet visa tydligt varför loopen skedde och vilka ändringar som behöver åtgärdas</li>
+      </ul>
+
+      <h3>9. Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Systemet ska kunna analysera flera dokument parallellt för att förbättra prestanda</li>
+        <li><strong>Load balancing:</strong> Service task "Analyse documentation" ska kunna hantera minst 30 dokument per minut med genomsnittlig svarstid under 10 sekunder per dokument</li>
+        <li><strong>Caching:</strong> Systemet ska implementera caching för analysresultat för att minska belastning på analyssystem</li>
+      </ul>
+
+      <h3>10. Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig dokumentation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till dokumentation ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla dokumentationsbedömningar ska innehålla spårbarhet för vem som bedömde dokumentationen, när och resultatet, för att uppfylla GDPR-krav</li>
+        <li><strong>Audit trail:</strong> Alla ändringar i dokumentationsstatus och bedömningsresultat ska loggas med användar-ID, tidsstämplar och ändringsorsak för fullständig spårbarhet</li>
+      </ul>
         </div>
       </details>
     </section>

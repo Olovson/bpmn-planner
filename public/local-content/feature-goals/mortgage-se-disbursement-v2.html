@@ -501,6 +501,36 @@
         <li>Om utbetalning misslyckas, ska processen hantera felet på ett tydligt sätt och signalera till anropande processen</li>
         <li>Om utbetalning är avbruten, ska processen eskaleras korrekt med "Disbursement cancelled-escalate" event för manuell hantering</li>
       </ul>
+
+      <h3>Tekniska krav</h3>
+      <ul>
+        <li><strong>Timeout:</strong> Service tasks ("Handle disbursement", "Archive documents") ska ha timeout på 60 sekunder. Message events ska ha timeout på 7 dagar för att vänta på utbetalningsstatus</li>
+        <li><strong>Retry:</strong> Service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: DISBURSEMENT_SERVICE_ERROR (för service task-fel), DISBURSEMENT_TIMEOUT (för timeout), DISBURSEMENT_CANCELLED (för avbruten utbetalning), DISBURSEMENT_FAILED (för misslyckad utbetalning)</li>
+        <li><strong>Logging:</strong> Alla utbetalningar, arkiveringar och eskaleringar ska loggas med utbetalnings-ID, tidsstämplar och status för spårbarhet</li>
+      </ul>
+
+      <h3>UI/UX-krav</h3>
+      <ul>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för utbetalning (pågående, slutförd, avbruten, misslyckad) med visuella indikatorer</li>
+        <li><strong>Eskaleringshantering:</strong> När utbetalning är avbruten, ska systemet visa tydligt felmeddelande med förklaring och möjliga åtgärder för handläggaren</li>
+        <li><strong>Arkiveringsbekräftelse:</strong> Systemet ska visa bekräftelse när dokument är arkiverade</li>
+      </ul>
+
+      <h3>Skalbarhet och prestanda</h3>
+      <ul>
+        <li><strong>Parallellisering:</strong> Systemet ska kunna hantera flera utbetalningar parallellt utan prestandaförsämring</li>
+        <li><strong>Load balancing:</strong> Service tasks ska kunna hantera minst 50 utbetalningar per minut med genomsnittlig svarstid under 10 sekunder per utbetalning</li>
+        <li><strong>Databasoptimering:</strong> Alla databasfrågor för utbetalningsstatus ska vara optimerade med indexering</li>
+      </ul>
+
+      <h3>Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig utbetalningsinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till utbetalningsdata ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla utbetalningar ska innehålla spårbarhet för när utbetalningen genomfördes, belopp och status, för att uppfylla GDPR-krav</li>
+        <li><strong>Finansiell compliance:</strong> Systemet ska säkerställa att alla utbetalningar följer finansiella regler och compliance-krav, inklusive dokumentation av utbetalningsbeslut</li>
+        <li><strong>Audit trail:</strong> Alla utbetalningar och arkiveringar ska loggas med utbetalnings-ID, tidsstämplar, belopp och status för fullständig spårbarhet</li>
+      </ul>
         </div>
       </details>
     </section>
