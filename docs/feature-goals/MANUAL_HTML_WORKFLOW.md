@@ -856,30 +856,396 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 
 **Målgrupper som läser detta kapitel:**
 - **Produktägare** - Affärsvärde, förväntade effekter, mätbara resultat
+- **Controller/CFO** - Kostnadsbesparingar, kapacitetsökning, time to value
 - **Handläggare** - Hur påverkas deras arbete, vilka förbättringar får de
 - **Alla** - Varför bygger vi detta? Vilket värde ger det?
+
+**Viktigt:**
+- **BPMN-filerna visar PROCESSEN, inte faktiska avslagsprocent eller effekter.** BPMN-filerna beskriver vilka steg som finns, vilka gateways som avgör beslut, och vilka error events som kan triggas, men de visar INTE hur många ansökningar som faktiskt avvisas eller vilka effekter som realiseras.
+- **Specifika siffror är OK att använda, men måste markeras som spekulativa/uppskattningar när baseline-data saknas.** Använd kortfattat och koncist språk (t.ex. "uppskattat", "förväntat", "baserat på typiska värden").
+- **Baseline-data krävs från bankens nuvarande process för realistiska beräkningar.** Utan denna data är siffrorna uppskattningar baserat på typiska värden för liknande processer.
+
+**Notera:** ROI-beräkningar och riskanalys görs för hela systemet i ett separat dokument, inte per feature goal.
 
 **Viktiga krav:**
 1. **Var specifik:** Beskriv exakt hur detta feature goal bidrar till affärseffekter genom att nämna specifika processsteg, call activities, gateways, error events, och mekanismer från BPMN-processen
 2. **Var mätbar:** Använd konkreta siffror eller procent där det är möjligt (t.ex. "minskar manuellt arbete med 30-40%", "minskar handläggningstid med 25-35%")
-3. **Koppla till feature goalet:** Förklara specifikt hur detta feature goal bidrar till effekten genom att nämna specifika processsteg, inte bara generella effekter
-4. **Fokusera på affärsvärde:** Beskriv effekter som är relevanta för verksamheten (t.ex. automatisering, snabbare processer, bättre kvalitet, minskade kostnader)
-5. **Organisera i kategorier:** För komplexa feature goals, organisera effekter i kategorier med underrubriker (t.ex. "Ökad automatisering", "Förbättrad datakvalitet", "Snabbare beslutsprocess", "Förbättrad kundupplevelse", "Riskminskning")
-6. **Nämn specifika mekanismer:** Koppla effekter till specifika mekanismer i processen (t.ex. multi-instance, parallellitet, error events, gateways, DMN-beslutsregler)
+3. **Var konservativ:** Använd alltid lägre gränser i intervall (t.ex. "30-50%" → fokusera på 30% som konservativ uppskattning) och realistiska värden baserat på typiska processer, inte idealiserade scenarier
+4. **Var realistisk:** Basera uppskattningar på typiska värden för liknande processer, inte på idealiserade scenarier
+5. **Nämn vad som saknas:** Om exakt baseline-data saknas, nämn explicit vilken data som behövs för mer precisa beräkningar
+6. **Koppla till feature goalet:** Förklara specifikt hur detta feature goal bidrar till effekten genom att nämna specifika processsteg, inte bara generella effekter
+7. **Fokusera på affärsvärde:** Beskriv effekter som är relevanta för verksamheten (t.ex. automatisering, snabbare processer, bättre kvalitet, minskade kostnader)
+8. **Organisera i kategorier:** För komplexa feature goals, organisera effekter i kategorier med underrubriker (t.ex. "Ökad automatisering", "Förbättrad datakvalitet", "Snabbare beslutsprocess", "Förbättrad kundupplevelse", "Riskminskning")
+9. **Nämn specifika mekanismer:** Koppla effekter till specifika mekanismer i processen (t.ex. multi-instance, parallellitet, error events, gateways, DMN-beslutsregler)
 
-**Strukturering:**
-- För enkla feature goals: En lista med effekter
-- För komplexa feature goals: Organisera i kategorier med underrubriker (t.ex. `<h3>Ökad automatisering och minskad manuell hantering</h3>`, `<h3>Förbättrad datakvalitet och beslutsunderlag</h3>`)
+**Strukturering - anpassa efter komplexitet:**
+
+**Hur avgöra komplexitet:**
+- **Enkla processer:** Få aktiviteter (1-3), inga eller få call activities, enkla flöden (t.ex. appeal, object information)
+  - **Struktur:** En lista med effekter (100-200 ord)
+  - **Fokus:** 2-3 viktigaste effekterna, kortfattat och affärsmässigt
+  - **Undvik:** Onödiga detaljer, långa förklaringar, många kategorier
+  
+- **Medelkomplexa processer:** Flera aktiviteter (4-8), några call activities, parallella flöden (t.ex. application, credit decision)
+  - **Struktur:** Koncis struktur med 3-4 kategorier (200-400 ord) - **rekommenderat**
+  - **Fokus:** Viktigaste effekterna per kategori, volym-baserade beräkningar där relevant
+  
+- **Komplexa processer:** Många aktiviteter (9+), många call activities, komplexa flöden med många gateways (t.ex. root mortgage process)
+  - **Struktur:** Utökad struktur med 5-7 kategorier (500-800 ord) - endast när nödvändigt
+  - **Fokus:** Detaljerade effekter per kategori, omfattande volym-baserade beräkningar
+
+**Viktigt:** 
+- **Håll det affärsmässigt och relevant** - fokusera på effekter som ger värde, inte tekniska detaljer
+- **Undvik "halv novell"** - för enkla processer, håll det kortfattat (100-200 ord)
+- **Anpassa detaljnivå** - mer komplex process = mer detaljer, enklare process = färre detaljer
+
+**Koncis struktur (rekommenderat):**
+```html
+<h3>Executive Summary</h3>
+[Kortfattad sammanfattning med nyckeltal - max 1-2 paragrafstycken eller kort lista]
+[Fokus på affärsmässiga effekter, inga tekniska detaljer]
+[Lätt att skanna - använd bullet points med konkreta siffror]
+[Organisera i 3-4 kategorier: Kostnadsbesparingar, Kapacitetsökning, Kundupplevelse]
+[Förtydliga relationen mellan olika beräkningar (t.ex. "22 FTE elimineras genom direkt automatisering" vs "37.5% personalbesparing - total kapacitetsökning inklusive parallellisering")]
+
+<h3>1. Automatisering och kostnadsbesparingar</h3>
+[Förklarar hur man kom fram till siffrorna i Executive Summary]
+[Kort textbeskrivning av BPMN-mekanismen (1-2 meningar)]
+[Tabell för beräkningar (OBLIGATORISKT) med kolumner: Aktivitet, Volym, Tid per ansökan, Total tidssparande/år, FTE-värde]
+[Text för processförbättringar och noteringar]
+[Innehåller tekniska detaljer (BPMN-mekanismer, processsteg)]
+[Visar beräkningsmetodik (volym × tid = total tidssparande)]
+
+<h3>2. Snabbare processering och förbättrad kundupplevelse</h3>
+[Förklarar hur man kom fram till siffrorna i Executive Summary]
+[Kort textbeskrivning av BPMN-mekanismen (1-2 meningar)]
+[Tabell för beräkningar (OBLIGATORISKT) med kolumner: Aspekt, Nuvarande, Nytt system, Förbättring]
+[Text för processförbättringar och noteringar]
+[Innehåller tekniska detaljer (BPMN-mekanismer, processsteg)]
+[Visar beräkningsmetodik]
+
+<h3>3. Kapacitetsökning</h3>
+[Förklarar hur man kom fram till siffrorna i Executive Summary]
+[Kort textbeskrivning (1-2 meningar)]
+[Tabell för beräkningar (OBLIGATORISKT) med kolumner: Aspekt, Nuvarande, Nytt system, Förbättring]
+[Förtydliga relationen mellan 22 FTE (direkt automatisering) och 37.5% personalbesparing (total kapacitetsökning)]
+[Text för processförbättringar och noteringar]
+[Innehåller tekniska detaljer (BPMN-mekanismer, processsteg)]
+[Visar beräkningsmetodik]
+
+<h3>Jämförelse med nuvarande process</h3>
+[Kort tabell med viktigaste aspekterna]
+[Inkludera "Ansökningar som når handläggare" om relevant]
+
+<h3>Aggregeringsinformation</h3>
+[OBLIGATORISKT för alla feature goals - används för att aggregera effekter till huvudprocessen]
+[Tabell med kolumner: Effekt, Typ, Volym, Aggregeringsbar, Redan inkluderad i parent]
+[Förtydliga vilka effekter som är direkta (kan aggregeras) vs indirekta (redan inkluderade)]
+```
+
+**Se `EFFEKT_EXECUTIVE_SUMMARY_EXEMPEL.md` för komplett exempel på Executive Summary-struktur.**
+
+**Riktlinjer för Executive Summary:**
+
+**Syfte:** Ge en snabb översikt för beslutsfattare (produktägare, controller, CFO) som vill ha nyckeltal utan tekniska detaljer.
+
+**Struktur:**
+- ✅ **Kortfattad:** Max 1-2 paragrafstycken eller en kort lista med 5-7 nyckeltal
+- ✅ **Fokus på affärsmässiga effekter:** Tidssparande, kostnadsbesparingar, kapacitetsökning, kundupplevelse
+- ✅ **Konkreta siffror:** Använd absoluta tal (timmar, FTE, SEK) och procentuella förbättringar
+- ✅ **Lätt att skanna:** Använd bullet points eller kortfattade meningar
+- ✅ **Inga tekniska detaljer:** Ingen BPMN-terminologi, inga processsteg, inga förklaringar av hur det fungerar
+- ✅ **Kategoriserad:** Organisera i 3-4 kategorier (t.ex. Automatisering, Tidssparande, Kapacitet, Kundupplevelse)
+
+**Exempel på bra Executive Summary (direktörsvänlig):**
+```html
+<h3>Executive Summary</h3>
+<p>Application-processen automatisering och parallellisering ger betydande affärseffekter baserat på 100 000 ansökningar per år och 200 handläggare (konservativa uppskattningar):</p>
+
+<h4>Kostnadsbesparingar</h4>
+<ul>
+  <li><strong>~20 MSEK</strong> kostnadsbesparingar per år (≈22 FTE elimineras genom direkt automatisering)</li>
+  <li><strong>37.5%</strong> personalbesparing möjlig vid samma volym (200 → 125 handläggare) - total kapacitetsökning inklusive parallellisering</li>
+</ul>
+
+<h4>Kapacitetsökning</h4>
+<ul>
+  <li><strong>60%</strong> fler ansökningar per handläggare (500 → 800 per år)</li>
+  <li><strong>60-100%</strong> ökad total kapacitet med samma personal (100 000 → 160 000-200 000 ansökningar/år)</li>
+</ul>
+
+<h4>Kundupplevelse</h4>
+<ul>
+  <li><strong>60%</strong> snabbare svarstider (5-7 dagar → 1-2 dagar)</li>
+  <li><strong>20%</strong> förväntad ökning i kundnöjdhet (konservativ uppskattning)</li>
+</ul>
+
+<p class="muted"><em>Notera: Beräkningarna är konservativa uppskattningar baserat på typiska värden för liknande processer. För mer precisa beräkningar krävs baseline-data från nuvarande process (genomsnittlig handläggningstid, exakt manuell arbetstid per aktivitet, andel återkommande kunder, faktiska löner och overhead-kostnader). Se detaljerade sektioner nedan för beräkningsmetodik och förtydliganden.</em></p>
+```
+
+**Viktiga principer för Executive Summary:**
+- ✅ **Fokusera på affärsvärde:** Kostnader, kapacitet, kundnöjdhet - inte tekniska detaljer
+- ✅ **Tydliga nyckeltal:** Använd absoluta tal (MSEK, FTE, procent) som är lätta att förstå
+- ✅ **Undvik tekniska termer:** Ingen BPMN-terminologi, inga processsteg, inga tekniska detaljer
+- ✅ **Konsekventa siffror:** Se till att siffrorna stämmer (t.ex. 22 FTE × 900 000 SEK/år = ~20 MSEK, inte 1.4 MSEK)
+- ✅ **Förenklad struktur:** 3-4 kategorier (Kostnadsbesparingar, Kapacitetsökning, Kundupplevelse)
+- ✅ **Undvik svårtolkade siffror:** "100 000 dagar" är svårt att tolka - använd istället relativa förbättringar eller konvertera till handläggartimmar
+
+**Exempel på dålig Executive Summary:**
+```html
+<h3>Översikt</h3>
+<p>Application-processen bidrar till betydande affärseffekter genom automatisering, parallellisering och tidig avvisning. Via "Internal data gathering" call activity (multi-instance) hämtas automatiskt befintlig kunddata för alla identifierade parter. Via DMN-beslutsregel utförs automatiskt pre-screening som avvisar uppskattat 5-15% av ansökningar tidigt. Via parallel gateway (Gateway_0n2ekt4) körs "Household" och "Stakeholders" parallellt, vilket minskar total processeringstid...</p>
+```
+❌ **Problem:** För lång, innehåller tekniska detaljer (BPMN-termer, processsteg), svårt att skanna, ingen tydlig struktur med nyckeltal.
+
+**Viktigt:**
+- **Fokusera på viktigaste effekterna** - inte alla möjliga effekter
+- **Undvik repetition** - varje effekt ska nämnas max en gång
+- **Håll det koncist** - läsaren ska snabbt förstå huvudeffekterna
+- **Var konservativ** - använd lägre gränser i intervall och realistiska värden
+- **Inkludera kommentar** om att beräkningarna är konservativa uppskattningar och vilken data som saknas för mer precisa beräkningar
+- **Var konsekvent** - använd samma siffror för samma sak genom hela kapitlet (t.ex. om pre-screening avvisar 5-15%, använd samma siffra överallt)
+- **Förtydliga avslagsprocent** - separera tydligt mellan:
+  - Pre-screening avslag (grundläggande krav: ålder, anställningsstatus, kreditscore) - vanligtvis låg (5-15%)
+  - Totalt avslag (pre-screening + objekt + stakeholder + KALP) - kräver baseline-data
+- **Förtydliga beräkningar** - visa hur totalt tidssparande beräknas (dela upp per aktivitet) så läsaren kan förstå siffrorna
+- **Gör siffror tolkningsbara** - undvik svårtolkade siffror som "100 000 dagar". Använd istället "100 000 ansökningar × 1 dag" eller konvertera till handläggartimmar
+
+**Kritiska riktlinjer för läsbarhet och konsekvens:**
+
+1. **Konsekvent användning av siffror:**
+   - ❌ **Undvik:** Olika siffror för samma sak i olika delar av kapitlet
+   - ✅ **Gör:** Använd samma siffror för samma sak genom hela kapitlet
+   - ✅ **Gör:** Om översikten säger "5-15%", använd samma siffra i detaljsektioner och tabeller
+   - ✅ **Gör:** Om detaljsektionen säger "30 000 ansökningar", använd samma siffra i översikten
+
+2. **Förtydliga beräkningar:**
+   - ❌ **Undvik:** "Total tidssparande: 12 500-36 667 timmar/år" (läsaren förstår inte hur det beräknas)
+   - ✅ **Gör:** Visa uppdelning per aktivitet:
+     - "Datainsamling: 30 000 ansökningar × 15 min = 7 500 timmar/år"
+     - "Pre-screening: 5 000 ansökningar × 10 min = 833 timmar/år"
+     - "Total: 8 333 timmar/år ≈ ~4.6 FTE"
+
+3. **Gör siffror tolkningsbara:**
+   - ❌ **Undvik:** "100 000 dagar processeringstid sparas" (svårt att tolka)
+   - ✅ **Gör:** "100 000 ansökningar × 1 dag = 100 000 dagar processeringstid sparas" eller "≈ 200 000 handläggartimmar"
+   - ✅ **Gör:** Konvertera till handläggartimmar eller relativa förbättringar där det är relevant
+
+4. **Separera olika typer av avslag:**
+   - ❌ **Undvik:** "30-50% avvisas tidigt" utan att förtydliga vad det avser
+   - ✅ **Gör:** Separera tydligt:
+     - "Pre-screening (grundläggande krav): 5-15% avvisas"
+     - "Totalt avslag (pre-screening + objekt + stakeholder + KALP): X% (kräver baseline-data)"
+
+5. **Kortare översikt:**
+   - ❌ **Undvik:** Långa, detaljerade punkter i översikten
+   - ✅ **Gör:** Kortfattad översikt med 3-5 viktigaste effekterna, hänvisa till detaljsektioner för mer information
+   - ✅ **Gör:** Fokusera på nyckeltal och huvudeffekter i översikten
+
+6. **Förtydliga relationen mellan olika beräkningar:**
+   - ❌ **Undvik:** Dubbel räkning som kan verka motstridig (t.ex. "22 FTE" och "37.5% personalbesparing" utan förklaring)
+   - ✅ **Gör:** Förtydliga relationen i Executive Summary:
+     - "≈22 FTE elimineras genom direkt automatisering"
+     - "37.5% personalbesparing möjlig vid samma volym (total kapacitetsökning inklusive parallellisering)"
+   - ✅ **Gör:** I detaljsektion 3, lägg till förtydligande:
+     - "22 FTE (från sektion 1) är direkt tidssparande från automatisering. 37.5% personalbesparing (75 handläggare) är total kapacitetsökning inklusive parallellisering och processförbättringar. Dessa är olika beräkningar baserade på olika mekanismer."
+
+7. **Förtydliga "manuell arbetstid per ansökan":**
+   - ❌ **Undvik:** "25-50 minuter manuellt arbete per ansökan" när det egentligen varierar per ansökningstyp
+   - ✅ **Gör:** Visa genomsnitt eller fördelning:
+     - "Genomsnittligt 25-50 minuter mindre manuellt arbete per ansökan (varierar beroende på ansökningstyp: återkommande kunder sparar 15 min datainsamling, köpansökningar sparar 15 min KALP, etc.)"
+
+8. **Strukturera för läsbarhet:**
+   - ✅ **Gör:** Använd tydliga rubriker och underrubriker
+   - ✅ **Gör:** Använd listor och tabeller för att organisera information
+   - ✅ **Gör:** Separera olika typer av effekter i olika sektioner
+   - ✅ **Gör:** Undvik långa paragrafstycken - dela upp i korta, fokuserade stycken
 
 **Exempel på bra effektbeskrivning (specifik och kopplad till processsteg):**
 - ✅ "Automatisk datainsamling via 'Internal data gathering': Systemet hämtar automatiskt befintlig kunddata (part, engagemang, kreditinformation) från interna system för alla identifierade parter (multi-instance). För återkommande kunder elimineras detta behovet av manuell datainmatning, vilket kan minska handläggningstid med upp till 40% för kända kunder jämfört med manuell process."
-- ✅ "Automatisk pre-screening via DMN-beslutsregel: Systemet utför automatiskt pre-screening för varje part (ålder, anställningsstatus, kreditvärdighet) och avvisar ansökningar där parter inte uppfyller grundläggande krav via 'pre-screen rejected' error event. Detta eliminerar manuell initial validering och minskar antalet ansökningar som når handläggare med 30-50%."
-- ✅ "Tidig avvisning via automatisk screening: Genom automatisk pre-screening, stakeholder-validering, objekt-validering och KALP-screening kan ansökningar som inte uppfyller grundläggande krav avvisas tidigt i processen (innan kreditevaluering). Detta sparar tid och resurser genom att eliminera onödig handläggning av osannolika ansökningar, vilket minskar genomsnittlig handläggningstid med 30-40%."
+- ✅ "Automatisk pre-screening via DMN-beslutsregel: Systemet utför automatiskt pre-screening för varje part (ålder, anställningsstatus, kreditvärdighet) och avvisar ansökningar där parter inte uppfyller grundläggande krav via 'pre-screen rejected' error event. Uppskattat 5-15% av ansökningar avvisas vid pre-screening (konservativ uppskattning: 5%, exakt andel kräver baseline-data)."
+- ✅ "Tidig avvisning via automatisk screening: Genom automatisk pre-screening, stakeholder-validering, objekt-validering och KALP-screening kan ansökningar som inte uppfyller grundläggande krav avvisas tidigt i processen (innan kreditevaluering). Totalt avslag (alla steg kombinerat) kräver baseline-data för exakt beräkning. Detta sparar tid och resurser genom att eliminera onödig handläggning av osannolika ansökningar."
+
+**Viktiga riktlinjer för konsekvens:**
+- **Använd samma siffror för samma sak:** Om pre-screening avvisar 5-15% i översikten, använd samma siffra i detaljsektionen och tabellen
+- **Förtydliga vad siffrorna avser:** 
+  - "Pre-screening avvisar 5-15%" (bara grundläggande krav)
+  - "Totalt avslag (pre-screening + objekt + stakeholder + KALP) = X%" (alla steg, kräver baseline-data)
+- **Förtydliga beräkningar:** Visa hur totalt tidssparande beräknas:
+  - "Datainsamling: 30 000 ansökningar × 15 min = 7 500 timmar/år"
+  - "Pre-screening: 5 000 ansökningar × 10 min = 833 timmar/år"
+  - "Total: 8 333 timmar/år ≈ ~4.6 FTE"
+- **Gör siffror tolkningsbara:** 
+  - ❌ "100 000 dagar processeringstid sparas" (svårt att tolka)
+  - ✅ "100 000 ansökningar × 1 dag = 100 000 dagar processeringstid sparas" eller "≈ 200 000 handläggartimmar" (tydligare)
 
 **Exempel på dålig effektbeskrivning:**
 - ❌ "Ökad automatisering" (för generellt, nämner inte hur feature goalet bidrar eller specifika processsteg)
 - ❌ "Bättre process" (för vagt, ingen konkret effekt, nämner inte processsteg)
 - ❌ "Systemet automatiskt hämtar data så att processen fungerar" (nämner inte affärsvärde eller konkreta siffror)
+
+**Volym-baserade beräkningar (rekommenderat för stora volymer):**
+
+För system med stora volymer (t.ex. 100 000+ ansökningar per år), inkludera volym-baserade beräkningar:
+
+**Baseline-data att använda:**
+- Total volym: 100 000 ansökningar per år
+- Antal handläggare: 200
+- Genomsnittlig handläggningstid (nuvarande): 5-7 dagar
+- Genomsnittlig manuell arbetstid per ansökan: 2-4 timmar
+
+**Beräkningar att inkludera (konservativa uppskattningar):**
+
+1. **Volym-baserade effekter:**
+   - Hur många ansökningar påverkas? (t.ex. "30 000-50 000 ansökningar per år" - använd 30 000 som konservativ uppskattning)
+   - Hur många ansökningar når inte handläggare? (t.ex. "X% avvisas tidigt" - använd faktisk baseline-data)
+     **VIKTIGT:** Pre-screening kontrollerar bara grundläggande krav (ålder ≥ 18, anställningsstatus, kreditscore ≥ 300). 
+     Andelen avvisade är troligen låg (t.ex. 5-15%, INTE 30-50%). Använd faktisk baseline-data från nuvarande process 
+     (andel ansökningar som avvisas p.g.a. grundläggande krav) för realistiska siffror.
+   - Hur många ansökningar godkänns automatiskt? (t.ex. "40 000-50 000 straight-through" - använd faktisk baseline-data)
+   - **Notera:** Om exakt volym-data saknas, nämn vilken data som behövs (t.ex. "exakt andel lågrisk vs högrisk ansökningar", "andel ansökningar som avvisas p.g.a. grundläggande krav i nuvarande process")
+
+2. **Tidssparande i absoluta tal:**
+   - Minuter/timmar per ansökan (t.ex. "15-30 minuter manuellt arbete" - använd 15 minuter som konservativ uppskattning)
+   - Dagar processeringstid (t.ex. "2-3 dagar → 1 dag" - använd 2 dagar som konservativ uppskattning)
+   - Total tidssparande per år (t.ex. "25 000-50 000 timmar/år" - använd 25 000 timmar som konservativ uppskattning)
+   - **Notera:** Om exakt tidsdata saknas, nämn vilken data som behövs (t.ex. "exakt manuell arbetstid per aktivitet")
+
+3. **Kapacitetsökning:**
+   - Ansökningar per handläggare (t.ex. "500 → 800-1000 per år" - använd 800 som konservativ uppskattning)
+   - Total kapacitet (t.ex. "160 000-200 000 ansökningar/år med samma personal" - använd 160 000 som konservativ uppskattning)
+   - Personalbesparing (t.ex. "50-37.5% mindre personal behövs" - använd 37.5% som konservativ uppskattning)
+   - **Notera:** Om exakt kapacitetsdata saknas, nämn vilken data som behövs (t.ex. "genomsnittlig handläggningstid per ansökan")
+
+4. **Kostnadsbesparingar:**
+   - Arbetstid i timmar/dagar (t.ex. "120 000-230 000 timmar/år" - använd 120 000 timmar som konservativ uppskattning)
+   - FTE-värde (t.ex. "60-115 FTE per år" - använd 60 FTE som konservativ uppskattning, baserat på 1 800 arbetstimmar/år per FTE)
+   - **Notera:** Om exakt kostnadsdata saknas, nämn vilken data som behövs (t.ex. "faktiska löner och overhead-kostnader per handläggare")
+   - **Notera:** ROI-beräkningar görs för hela systemet i ett separat dokument, inte per feature goal
+
+5. **Kundupplevelse:**
+   - Svarstider (t.ex. "5-7 dagar → 1-2 dagar" - använd 5 dagar → 2 dagar som konservativ uppskattning)
+   - Väntetider (t.ex. "Dagars väntetid → Minuter" - använd realistiska värden)
+   - Förväntad nöjdhetsökning (t.ex. "20-30%" - använd 20% som konservativ uppskattning)
+   - **Notera:** Om exakt kunddata saknas, nämn vilken data som behövs (t.ex. "nuvarande kundnöjdhet, genomsnittlig svarstid")
+
+6. **Jämförelse med baseline:**
+   - Tabellformat: Nuvarande vs Nytt system
+   - Procentuell förbättring (använd lägre gränser som konservativa uppskattningar)
+   - Absoluta förbättringar (använd lägre gränser som konservativa uppskattningar)
+   - **Notera:** Om exakt baseline-data saknas, nämn vilken data som behövs för exakt jämförelse
+
+**Förbättrad struktur för komplexa feature goals:**
+
+```html
+<h3>Översikt</h3>
+[Kort sammanfattning med volym-baserade siffror]
+
+<h3>1. Automatisering och minskad manuell hantering</h3>
+[Specifika BPMN-mekanismer + volym + tidssparande + kostnadsbesparingar]
+
+<h3>2. Snabbare processering och minskad väntetid</h3>
+[Specifika BPMN-mekanismer + absoluta tider + kundupplevelse]
+
+<h3>3. Kapacitetsökning och skalbarhet</h3>
+[Volym-baserade beräkningar + kapacitetsökning per handläggare]
+
+<h3>4. Förbättrad kundupplevelse</h3>
+[Svarstider + väntetider + nöjdhet]
+
+<h3>5. Kostnadsbesparingar</h3>
+[Arbetstid i timmar/dagar + FTE-värde]
+
+<h3>6. Time to Value (valfritt för komplexa feature goals)</h3>
+[Fas 1 (0-3 månader), Fas 2 (3-6 månader), Fas 3 (6-12 månader)]
+
+<h3>7. Success Metrics och KPI:er (valfritt för komplexa feature goals)</h3>
+[Kvantitativa KPI:er + Kvalitativa KPI:er + Målsättningar]
+
+<h3>8. Kvalitativa effekter - kvantifierat (valfritt för komplexa feature goals)</h3>
+[Riskminskning, compliance-förbättringar, kundnöjdhet - alla kvantifierade]
+
+<h3>9. Jämförelse med nuvarande process</h3>
+[Tabellformat: Nuvarande vs Nytt system]
+```
+
+**Exempel på förbättrad effektbeskrivning med volym-baserade beräkningar:**
+
+✅ **Före:**
+```
+Automatisk datainsamling via "Internal data gathering": Systemet hämtar automatiskt 
+befintlig kunddata för alla identifierade parter (multi-instance). Detta kan minska 
+handläggningstid med upp till 40% för kända kunder.
+```
+
+✅ **Efter:**
+```
+Automatisk datainsamling via "Internal data gathering" call activity (multi-instance):
+Systemet hämtar automatiskt befintlig kunddata (part, engagemang, kreditinformation) 
+från interna system för alla identifierade parter.
+
+Volym-baserad effekt:
+- För återkommande kunder (ca 30-40% av ansökningar = 30 000-40 000 ansökningar): 
+  Eliminerar 15-30 minuters manuell datainmatning per ansökan
+- Total tidssparande: 15-30 min × 30 000-40 000 ansökningar = 7 500-20 000 timmar/år
+- Kostnadsbesparing: ~4-10 FTE per år (baserat på 1 800 arbetstimmar/år per FTE)
+
+Processförbättring:
+- Nuvarande: 15-30 minuter manuell datainmatning per ansökan
+- Med nytt system: 0 minuter (automatiskt)
+- Minskning: 100% av manuellt arbete för datainsamling
+
+Kundupplevelse:
+- Snabbare processstart: Omedelbar datainsamling vs 15-30 minuters väntetid
+- Förbättrad noggrannhet: Automatisk datainsamling eliminerar manuella fel
+```
+
+**Aggregeringsinformation (OBLIGATORISKT för ALLA feature goals):**
+
+Lägg till en sektion i slutet av Effekt-kapitlet med aggregeringsinformation:
+
+```html
+<h3>Aggregeringsinformation</h3>
+<p class="muted">Denna information används för att aggregera effekter från subprocesser till huvudprocessen.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Effekt</th>
+      <th>Typ</th>
+      <th>Volym</th>
+      <th>Aggregeringsbar</th>
+      <th>Redan inkluderad i parent</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>[Beskrivning av effekten, t.ex. "Automatisering (datainsamling + pre-screening)"]</td>
+      <td>[Direkt eller Indirekt]</td>
+      <td>[Exakt volym, t.ex. "30 000 ansökningar (återkommande kunder)"]</td>
+      <td>[Ja eller Nej]</td>
+      <td>[Ja eller Nej, med förklaring om Ja]</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+**Riktlinjer för aggregeringsinformation:**
+- **Typ:** "Direkt" = effekt från denna process, "Indirekt" = effekt från subprocesser eller parallellisering
+- **Volym:** Ange exakt volym (t.ex. "30 000 ansökningar (återkommande kunder)") - detta är kritiskt för aggregering
+- **Aggregeringsbar:** "Ja" om effekten kan aggregeras numeriskt (t.ex. timmar, FTE, MSEK), "Nej" om den är kvalitativ (t.ex. kundnöjdhet)
+- **Redan inkluderad i parent:** "Ja" om effekten redan är räknad i huvudprocessen (t.ex. parallellisering), "Nej" om den är unik för denna process
+- **För huvudprocesser:** Markera effekter som kommer från subprocesser som "Indirekt" och "Redan inkluderad i parent: Ja"
+
+**VIKTIGT: Strukturen ovan gäller för ALLA feature goals:**
+- ✅ Huvudprocesser (t.ex. `mortgage-application-v2.html`)
+- ✅ Subprocesser (t.ex. `mortgage-se-internal-data-gathering-v2.html`)
+- ✅ Alla feature goals måste ha samma struktur för att aggregering ska fungera
+
+**Se även:**
+- `EFFEKT_ANALYSIS_AND_IMPROVEMENTS.md` - Detaljerad analys och förbättringsförslag
+- `EFFEKT_EXEMPEL_APPLICATION.md` - Komplett exempel på förbättrad Effekt-sektion
+- `EFFEKT_AGGREGATION_ANALYSIS.md` - Analys av hur effekter kan aggregeras från subprocesser
 
 #### Riktlinjer för "User stories"
 

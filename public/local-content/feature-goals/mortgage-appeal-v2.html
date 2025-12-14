@@ -946,18 +946,202 @@
       <details>
         <summary>Effekt</summary>
         <div class="section-content">
-<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <h3>Förbättrad kundupplevelse</h3>
-      <p>Appeal-processen ger kunder möjlighet att överklaga automatiskt avvisade ansökningar, vilket förbättrar kundupplevelsen genom att ge kunder en andra chans. Kunder kan skicka in motivering och kompletterande dokumentation, vilket kan leda till att ansökningar som initialt avvisades automatiskt ändå kan godkännas efter manuell granskning.</p>
+      <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
       
-      <h3>Minskad risk för felaktiga avvisningar</h3>
-      <p>Genom att låta kunder överklaga automatiskt avvisade ansökningar minskar risken för att legitima ansökningar avvisas felaktigt. Handläggare kan granska överklaganden och acceptera ansökningar som borde ha godkänts från början, vilket kan öka antalet godkända ansökningar med upp till 5-10%.</p>
+      <h3>Executive Summary</h3>
+      <p>Appeal-processen ger kunder möjlighet att överklaga automatiskt avvisade ansökningar, vilket förbättrar kundupplevelsen och minskar risken för felaktiga avvisningar. Baserat på <strong>100 000 ansökningar per år</strong> och uppskattat <strong>5-15% automatiskt avvisade ansökningar</strong> (konservativa uppskattningar):</p>
+
+      <h4>Kundupplevelse</h4>
+      <ul>
+        <li><strong>5-10%</strong> fler ansökningar kan godkännas efter överklagan (uppskattat 50-1 500 ansökningar per år)</li>
+        <li><strong>20-30%</strong> minskning av kundservice-kontakter relaterade till avvisningar (konservativ uppskattning: 20%)</li>
+        <li><strong>Förbättrad</strong> kundnöjdhet genom möjlighet att överklaga och få en andra chans</li>
+      </ul>
+
+      <h4>Processeffektivitet</h4>
+      <ul>
+        <li><strong>Automatiserad</strong> timeout-hantering (30 dagar) eliminerar manuell uppföljning</li>
+        <li><strong>Automatiserad</strong> loop-mekanism för flera överklagansförsök minskar manuellt arbete</li>
+      </ul>
+
+      <p class="muted"><em>Notera: Beräkningarna är konservativa uppskattningar baserat på typiska värden för liknande processer. För mer precisa beräkningar krävs baseline-data från nuvarande process (exakt andel automatiskt avvisade ansökningar, andel överklaganden, andel accepterade överklaganden, genomsnittlig handläggningstid för överklaganden). Se detaljerade sektioner nedan för beräkningsmetodik och förtydliganden.</em></p>
+
+      <h3>1. Förbättrad kundupplevelse och minskad risk för felaktiga avvisningar</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 5-10% fler godkända ansökningar och 20% minskning av kundservice-kontakter i Executive Summary:</p>
       
-      <h3>Förbättrad processkvalitet</h3>
-      <p>Loop-mekanismen som möjliggör flera överklagansförsök säkerställer att kunder har möjlighet att komplettera sin överklagan om den första avvisas. Detta kan öka kvaliteten på överklaganden och minska behovet av kundservice-kontakter med upp till 20-30%.</p>
+      <h4>Överklagansprocess och acceptans</h4>
+      <p>Via "Submit appeal" user task kan kunder överklaga automatiskt avvisade ansökningar med motivering och kompletterande dokumentation. Via "Screen appeal" user task granskar handläggare överklaganden och kan acceptera ansökningar som borde ha godkänts från början.</p>
       
-      <h3>Automatiserad timeout-hantering</h3>
-      <p>Timeout-mekanismen (30 dagar) säkerställer att processen inte hänger kvar i onödan. Om kunden inte skickar in överklagan inom tidsgränsen avvisas ansökan automatiskt, vilket minskar handläggningstid och förbättrar processhastigheten.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Automatiskt avvisade ansökningar</strong></td>
+            <td>Uppskattat 5 000-15 000 ansökningar/år<br><small>(5-15% av 100 000, konservativ uppskattning: 5 000)</small></td>
+            <td>Uppskattat 5 000-15 000 ansökningar/år<br><small>(samma volym, men nu med möjlighet att överklaga)</small></td>
+            <td>Kunder kan nu överklaga automatiskt avvisade ansökningar</td>
+          </tr>
+          <tr>
+            <td><strong>Överklaganden som skickas in</strong></td>
+            <td>0 (ingen möjlighet att överklaga)</td>
+            <td>Uppskattat 1 000-6 000 överklaganden/år<br><small>(20-40% av avvisade, konservativ uppskattning: 1 000)</small></td>
+            <td>Uppskattat 1 000 överklaganden/år (konservativ uppskattning)</td>
+          </tr>
+          <tr>
+            <td><strong>Accepterade överklaganden</strong></td>
+            <td>0</td>
+            <td>Uppskattat 50-600 ansökningar/år<br><small>(5-10% av överklaganden, konservativ uppskattning: 50)</small></td>
+            <td>Uppskattat 50 ansökningar/år kan godkännas efter överklagan (konservativ uppskattning)</td>
+          </tr>
+          <tr>
+            <td><strong>Kundservice-kontakter</strong></td>
+            <td>Baseline (alla avvisade ansökningar kan kontakta kundservice)</td>
+            <td>Uppskattat 20-30% minskning</td>
+            <td>Konservativ uppskattning: 20% minskning (kunder kan överklaga istället för att kontakta kundservice)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> För exakt beräkning behövs: exakt andel automatiskt avvisade ansökningar, exakt andel överklaganden, exakt andel accepterade överklaganden, exakt antal kundservice-kontakter relaterade till avvisningar.</p>
+
+      <h3>2. Processeffektivitet och automatisering</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till automatiserad timeout-hantering och loop-mekanism i Executive Summary:</p>
+      
+      <h4>Automatiserad timeout-hantering och loop-mekanism</h4>
+      <p>Via boundary event "event-appeal-timeout" (Timer: P30D) på "Submit appeal" user task hanteras timeout automatiskt. Via loop-mekanism (Gateway_1v59ktc) kan kunder skicka in flera överklaganden (max antal gånger enligt policy).</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Timeout-hantering</strong></td>
+            <td>Manuell uppföljning krävs</td>
+            <td>Automatiserad timeout (30 dagar)</td>
+            <td>100% minskning av manuellt arbete för timeout-hantering</td>
+          </tr>
+          <tr>
+            <td><strong>Loop-mekanism</strong></td>
+            <td>Manuell hantering krävs</td>
+            <td>Automatiserad loop-mekanism för flera försök</td>
+            <td>100% minskning av manuellt arbete för loop-hantering</td>
+          </tr>
+          <tr>
+            <td><strong>Processhastighet</strong></td>
+            <td>Processer kan hänga kvar i onödan</td>
+            <td>Automatisk avvisning efter 30 dagar</td>
+            <td>Förbättrad processhastighet genom automatisk timeout</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> För exakt beräkning behövs: exakt manuell arbetstid för timeout-hantering och loop-hantering i nuvarande process.</p>
+
+      <h3>Jämförelse med nuvarande process</h3>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Möjlighet att överklaga</strong></td>
+            <td>Nej</td>
+            <td>Ja (via Submit appeal user task)</td>
+            <td>Kunder kan nu överklaga automatiskt avvisade ansökningar</td>
+          </tr>
+          <tr>
+            <td><strong>Timeout-hantering</strong></td>
+            <td>Manuell uppföljning</td>
+            <td>Automatiserad (30 dagar)</td>
+            <td>100% minskning av manuellt arbete</td>
+          </tr>
+          <tr>
+            <td><strong>Loop-mekanism</strong></td>
+            <td>Manuell hantering</td>
+            <td>Automatiserad (max antal försök enligt policy)</td>
+            <td>100% minskning av manuellt arbete</td>
+          </tr>
+          <tr>
+            <td><strong>Kundservice-kontakter</strong></td>
+            <td>Baseline</td>
+            <td>Uppskattat 20-30% minskning</td>
+            <td>Konservativ uppskattning: 20% minskning</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Aggregeringsinformation</h3>
+      <p class="muted">Denna information används för att aggregera effekter från subprocesser till huvudprocessen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Effekt</th>
+            <th>Typ</th>
+            <th>Volym</th>
+            <th>Aggregeringsbar</th>
+            <th>Redan inkluderad i parent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Förbättrad kundupplevelse (möjlighet att överklaga)</td>
+            <td>Indirekt</td>
+            <td>5 000-15 000 automatiskt avvisade ansökningar/år (konservativ uppskattning: 5 000)</td>
+            <td>Nej</td>
+            <td>Nej (kvalitativ effekt, kan inte aggregeras numeriskt)</td>
+          </tr>
+          <tr>
+            <td>Fler godkända ansökningar (via accepterade överklaganden)</td>
+            <td>Direkt</td>
+            <td>Uppskattat 50-600 ansökningar/år (konservativ uppskattning: 50)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Minskad kundservice-kontakter</td>
+            <td>Indirekt</td>
+            <td>5 000-15 000 automatiskt avvisade ansökningar/år (konservativ uppskattning: 5 000)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Automatiserad timeout-hantering</td>
+            <td>Direkt</td>
+            <td>1 000-6 000 överklaganden/år (konservativ uppskattning: 1 000)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Automatiserad loop-mekanism</td>
+            <td>Direkt</td>
+            <td>1 000-6 000 överklaganden/år (konservativ uppskattning: 1 000)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> Direkta effekter (automatisering, fler godkända ansökningar) kan aggregeras till huvudprocessen. Indirekta effekter (kundupplevelse) är kvalitativa och kan inte aggregeras numeriskt.</p>
         </div>
       </details>
     </section>
@@ -970,18 +1154,18 @@
       
       <h3>Kundperspektiv</h3>
       <ul>
-        <li><strong>Som kund</strong> vill jag kunna överklaga en automatiskt avvisad bolåneansökan med motivering och kompletterande dokumentation <strong>så att</strong> jag kan få en andra chans att få min ansökan godkänd när jag har ytterligare information som kan påverka beslutet. <em>Acceptanskriterier: Systemet ska tillåta kunder att skicka in överklagan via "Submit appeal" user task (submit-appeal) i Stakeholder lane, och överklagan ska kräva motivering och kompletterande dokumentation innan den kan skickas in. UI ska visa tydlig struktur med separata sektioner för motivering och dokumentation, validering i realtid, och tydlig feedback om vad som saknas.</em></li>
+        <li><strong>Som kund</strong> vill jag kunna överklaga en automatiskt avvisad bolåneansökan med motivering och kompletterande dokumentation <strong>så att</strong> jag kan få en andra chans att få min ansökan godkänd när jag har ytterligare information som kan påverka beslutet. <em>Acceptanskriterier: Systemet ska tillåta kunder att skicka in överklagan, och överklagan ska kräva motivering och kompletterande dokumentation innan den kan skickas in. UI ska visa tydlig struktur med separata sektioner för motivering och dokumentation, validering i realtid, och tydlig feedback om vad som saknas med visuella indikatorer (t.ex. röd för obligatoriska fält som saknas). Systemet ska tillåta kunder att skicka in överklagan via "Submit appeal" user task (submit-appeal) i Stakeholder lane.</em></li>
         <li><strong>Som kund</strong> vill jag kunna skicka in motivering och dokumentation för min överklagan med tydlig validering <strong>så att</strong> handläggaren kan få en fullständig bild av min situation och jag vet att allt är korrekt ifyllt innan jag skickar in. <em>Acceptanskriterier: "Submit appeal" user task (submit-appeal) ska kräva att kunder fyller i motivering och laddar upp kompletterande dokumentation, och systemet ska validera att överklagan är komplett innan den kan skickas in. UI ska visa tydlig validering i realtid, tydliga felmeddelanden om något saknas, och en tydlig "Skicka in"-knapp som bara är aktiverad när allt är korrekt ifyllt.</em></li>
         <li><strong>Som kund</strong> vill jag få möjlighet att skicka in en ny överklagan om min första överklagan avvisas <strong>så att</strong> jag kan komplettera med ytterligare information och förbättra min överklagan baserat på feedback. <em>Acceptanskriterier: Om överklagan avvisas, ska processen automatiskt loopa tillbaka så att kunden kan skicka in en ny överklagan (max antal gånger enligt policy). UI ska visa tydlig information om hur många försök som återstår med visuell indikator (t.ex. "Försök 1 av 3") och tydlig feedback om varför den tidigare överklagan avvisades med strukturerad information med bullet points. När "Screening accepted?" gateway (screening-accepted) avgör No, ska processen loopa tillbaka via Gateway_1v59ktc till "Submit appeal" user task (submit-appeal).</em></li>
         <li><strong>Som kund</strong> vill jag få tydlig feedback om varför min överklagan avvisades <strong>så att</strong> jag kan förbättra min nästa överklagan och förstå vad som behöver förbättras. <em>Acceptanskriterier: När överklagan avvisas, ska systemet visa tydlig feedback om varför överklagan avvisades, inklusive avvisningsmotivering från handläggaren. UI ska visa tydligt meddelande på svenska, affärsorienterat (inte tekniskt), med konkreta steg för att förbättra nästa överklagan, strukturerad information med bullet points, och visuella indikatorer (t.ex. röd varning). När handläggare avvisar överklagan via "Screen appeal" user task (screen-appeal), ska feedback visas.</em></li>
-        <li><strong>Som kund</strong> vill jag få en tydlig tidsgräns och påminnelser för när jag måste skicka in min överklagan <strong>så att</strong> jag vet hur lång tid jag har på mig och får påminnelser innan tidsgränsen går ut. <em>Acceptanskriterier: "Submit appeal" user task (submit-appeal) ska ha boundary event "event-appeal-timeout" (Timer: P30D) som triggar end event "appeal-timeout" med escalation "appeal-timeout" (Escalation_34epnhh) om överklagan inte skickas in inom 30 dagar. UI ska visa tydlig tidsgräns (30 dagar), räknare som visar återstående tid, och påminnelser (t.ex. 7 dagar innan tidsgränsen går ut). När timeout inträffar, ska kunden få tydligt meddelande om att överklagan har avvisats automatiskt.</em></li>
+        <li><strong>Som kund</strong> vill jag få en tydlig tidsgräns och påminnelser för när jag måste skicka in min överklagan <strong>så att</strong> jag vet hur lång tid jag har på mig och får påminnelser innan tidsgränsen går ut. <em>Acceptanskriterier: Systemet ska visa tydlig tidsgräns (30 dagar), räknare som visar återstående tid med visuell indikator (t.ex. progress bar), och påminnelser (t.ex. 7 dagar innan tidsgränsen går ut) via e-post eller SMS. När timeout inträffar, ska kunden få tydligt meddelande om att överklagan har avvisats automatiskt med tydligt meddelande på svenska och visuella indikatorer (t.ex. röd varning). "Submit appeal" user task (submit-appeal) ska ha boundary event "event-appeal-timeout" (Timer: P30D) som triggar end event "appeal-timeout" med escalation "appeal-timeout" (Escalation_34epnhh) om överklagan inte skickas in inom 30 dagar.</em></li>
       </ul>
       
       <h3>Handläggarperspektiv</h3>
       <ul>
         <li><strong>Som handläggare</strong> vill jag kunna granska överklaganden från kunder med all relevant information samlad <strong>så att</strong> jag kan acceptera ansökningar som borde ha godkänts från början och fatta välgrundade beslut. <em>Acceptanskriterier: Systemet ska tilldela "Screen appeal" user task (screen-appeal) till handläggare i Caseworker lane, och handläggare ska kunna se kundens motivering och kompletterande dokumentation för att fatta ett välgrundat beslut. UI ska visa tydlig struktur med separata sektioner för motivering, dokumentation, och information om varför ansökan initialt avvisades.</em></li>
         <li><strong>Som handläggare</strong> vill jag se kundens motivering och kompletterande dokumentation tillsammans med information om varför ansökan initialt avvisades <strong>så att</strong> jag kan bedöma om överklagan är relevant och fatta ett välgrundat beslut. <em>Acceptanskriterier: "Screen appeal" user task (screen-appeal) ska visa handläggaren kundens motivering och kompletterande dokumentation, samt information om varför ansökan initialt avvisades, så handläggaren kan bedöma om överklagan är relevant. UI ska visa tydlig sammanfattning med färgkodning (t.ex. röd för avvisningsorsaker, grön för kompletterande information), och tillåta handläggaren att ladda ner dokumentation.</em></li>
-        <li><strong>Som handläggare</strong> vill jag kunna acceptera eller avvisa överklaganden med möjlighet att lägga till motivering <strong>så att</strong> processen kan fortsätta på rätt sätt och kunden får tydlig feedback om beslutet. <em>Acceptanskriterier: Handläggare ska kunna acceptera eller avvisa överklagan via "Screen appeal" user task (screen-appeal), och "Screening accepted?" gateway (screening-accepted) ska avgöra om överklagan accepteras (Yes → Event_1pzbohb, går vidare till manuell kreditevaluering) eller avvisas (No → Gateway_1v59ktc, loopar tillbaka). UI ska visa tydliga knappar för "Acceptera" och "Avvisa", och kräva motivering om överklagan avvisas. Handläggaren ska kunna lägga till kommentarer och motivering för beslutet.</em></li>
+        <li><strong>Som handläggare</strong> vill jag kunna acceptera eller avvisa överklaganden med möjlighet att lägga till motivering <strong>så att</strong> processen kan fortsätta på rätt sätt och kunden får tydlig feedback om beslutet. <em>Acceptanskriterier: Handläggare ska kunna acceptera eller avvisa överklagan med tydliga knappar för "Acceptera" och "Avvisa" i UI. Om överklagan accepteras, ska processen automatiskt fortsätta till manuell kreditevaluering. Om överklagan avvisas, ska systemet kräva motivering och processen ska automatiskt loopa tillbaka så att kunden kan skicka in en ny överklagan. Handläggaren ska kunna lägga till kommentarer och motivering för beslutet med strukturerade fält. Handläggare ska kunna acceptera eller avvisa överklagan via "Screen appeal" user task (screen-appeal), och "Screening accepted?" gateway (screening-accepted) ska avgöra om överklagan accepteras (Yes → Event_1pzbohb, går vidare till manuell kreditevaluering) eller avvisas (No → Gateway_1v59ktc, loopar tillbaka).</em></li>
         <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hanterar timeout för överklaganden <strong>så att</strong> processen inte hänger kvar i onödan och jag kan fokusera på aktiva överklaganden. <em>Acceptanskriterier: Systemet ska automatiskt hantera timeout för överklaganden som inte skickas in inom 30 dagar, och ansökan ska avvisas automatiskt. Handläggaren ska kunna se status för överklaganden i sitt gränssnitt med tydlig information om vilka överklaganden som har timeout och vilka som väntar på screening, med visuella indikatorer (t.ex. röd för timeout, gul för väntar på screening). Boundary event "event-appeal-timeout" (Timer: P30D) på "Submit appeal" user task (submit-appeal) ska trigga end event "appeal-timeout" med escalation "appeal-timeout" (Escalation_34epnhh) om överklagan inte skickas in inom 30 dagar.</em></li>
         <li><strong>Som handläggare</strong> vill jag att systemet automatiskt hanterar loop-mekanismen när överklaganden avvisas <strong>så att</strong> kunder kan skicka in nya överklaganden (max antal gånger enligt policy) utan att jag behöver manuellt hantera detta. <em>Acceptanskriterier: När överklaganden avvisas, ska processen automatiskt loopa tillbaka så att kunder kan skicka in nya överklaganden (max antal gånger enligt policy), och systemet ska begränsa antalet loop-iterationer enligt policy. Handläggaren ska kunna se antalet försök i sitt gränssnitt med tydlig information om hur många försök som har gjorts och hur många som återstår, och få notifikation när max antal försök har nåtts med tydligt meddelande. När "Screening accepted?" gateway (screening-accepted) avgör No, ska processen loopa tillbaka via Gateway_1v59ktc till "Submit appeal" user task (submit-appeal).</em></li>
       </ul>

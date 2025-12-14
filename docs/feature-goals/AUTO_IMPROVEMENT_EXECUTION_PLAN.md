@@ -498,12 +498,22 @@
     - **För varje anropningsställe:** Förklara hur processen anropas från det stället, vilka specifika flöden som används, och hur resultatet returneras
 
 #### Effekt
-- **Krav:**
+- **Struktur:**
+  - **Executive Summary (i början):** Direktörsvänlig, kortfattad, max 1-2 paragrafstycken eller kort lista med 5-7 nyckeltal
+  - **Organisera i 3-4 kategorier:** Kostnadsbesparingar, Kapacitetsökning, Kundupplevelse
+  - **Fokus på affärsmässiga effekter:** Inga tekniska detaljer (ingen BPMN-terminologi, inga processsteg)
+  - **Detaljerade sektioner (efter Executive Summary):** Förklarar hur man kom fram till siffrorna i Executive Summary, innehåller tekniska detaljer (BPMN-mekanismer, processsteg), visar beräkningsmetodik
+- **Kritiska riktlinjer:**
+  - **Förtydliga relationen mellan olika beräkningar:** Om både "22 FTE" och "37.5% personalbesparing" nämns, förtydliga att 22 FTE är direkt automatisering medan 37.5% är total kapacitetsökning inklusive parallellisering
+  - **Hybrid-approach för beräkningar (OBLIGATORISKT för ALLA detaljerade sektioner):** Använd ALLTID tabeller för beräkningar i ALLA detaljerade sektioner (kapitel 1, 2, 3). Struktur: Kort textbeskrivning → Tabell för beräkningar → Text för processförbättringar och noteringar. Tabellkolumner: Sektion 1 (Automatisering): Aktivitet, Volym, Tid per ansökan, Total tidssparande/år, FTE-värde. Sektion 2 (Snabbare processering) och 3 (Kapacitetsökning): Aspekt, Nuvarande, Nytt system, Förbättring (se `EFFEKT_TABELL_ANALYSIS.md`)
+  - **Jämförelsetabell:** Inkludera "Ansökningar som når handläggare" om relevant
+  - **Aggregeringsinformation (OBLIGATORISKT):** Lägg till "Aggregeringsinformation"-sektion i slutet av Effekt-kapitlet med tabell: Effekt, Typ (Direkt/Indirekt), Volym, Aggregeringsbar (Ja/Nej), Redan inkluderad i parent (Ja/Nej). Detta är kritiskt för att kunna aggregera effekter från subprocesser till huvudprocessen (se `EFFEKT_AGGREGATION_ANALYSIS.md`)
   - Var specifik: Beskriv exakt hur detta feature goal bidrar till affärseffekter genom att nämna specifika processsteg
   - Var mätbar: Använd konkreta siffror eller procent (t.ex. "30-40%", "25-35%")
   - Koppla till feature goalet: Förklara specifikt hur detta feature goal bidrar till effekten
   - Fokusera på affärsvärde: Automatisering, snabbare processer, bättre kvalitet, minskade kostnader
   - Organisera i kategorier: För komplexa feature goals, organisera i kategorier med underrubriker
+- **Se:** `MANUAL_HTML_WORKFLOW.md` för detaljerade riktlinjer och `EFFEKT_EXECUTIVE_SUMMARY_EXEMPEL.md` för exempel
 - **Exempel:**
   - ✅ "Automatisk datainsamling via 'Internal data gathering': Systemet hämtar automatiskt befintlig kunddata från interna system för alla identifierade parter (multi-instance). För återkommande kunder elimineras detta behovet av manuell datainmatning, vilket kan minska handläggningstid med upp till 40% för kända kunder jämfört med manuell process."
   - ❌ "Ökad automatisering"

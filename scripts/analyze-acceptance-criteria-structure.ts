@@ -10,10 +10,12 @@ import { join } from 'path';
 const FEATURE_GOALS_DIR = 'public/local-content/feature-goals';
 
 // Patterns that indicate acceptance criteria starting with BPMN references
+// Only flag when "Efter/När/Om" is followed by BPMN-specific terms (gateway, call activity, etc.)
+// or when it's followed by quotes (indicating a BPMN element name)
 const BPMN_START_PATTERNS = [
-  /^Efter ['"]/i,
-  /^När ['"]/i,
-  /^Om ['"]/i,
+  /^Efter ['"]/i,  // "Efter 'X' gateway"
+  /^När ['"]/i,    // "När 'Y' call activity"
+  /^Om ['"]/i,     // "Om 'Z' boundary event"
   /^Efter .* gateway/i,
   /^När .* gateway/i,
   /^Om .* gateway/i,
@@ -41,6 +43,18 @@ const BPMN_START_PATTERNS = [
   /^Efter .* business rule task/i,
   /^När .* business rule task/i,
   /^Om .* business rule task/i,
+  /^Efter .* timer event/i,
+  /^När .* timer event/i,
+  /^Om .* timer event/i,
+  /^Efter .* message event/i,
+  /^När .* message event/i,
+  /^Om .* message event/i,
+  /^Efter .* error event/i,
+  /^När .* error event/i,
+  /^Om .* error event/i,
+  /^Efter .* escalation event/i,
+  /^När .* escalation event/i,
+  /^Om .* escalation event/i,
 ];
 
 interface FileAnalysis {
