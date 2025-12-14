@@ -838,18 +838,7 @@
       
       <h3>Stakeholder-perspektiv</h3>
       <ul>
-        <li><strong>Som stakeholder</strong> vill jag kunna registrera hushållsekonomiinformation via "Register household economy information" user task <strong>så att</strong> jag kan ange utgifter (bilar + billån, barn, underhållsbidrag, andra utgifter) och inkomster (underhållsbidrag, andra inkomster) för mitt hushåll. <em>Acceptanskriterier: "Register household economy information" user task ska visa tydliga fält för utgifter och inkomster, tillåta stakeholder att fylla i information, och validera att information är korrekt.</em></li>
-        <li><strong>Som stakeholder</strong> vill jag att systemet automatiskt avgör om registrering kan hoppas över via "Skip step?" gateway <strong>så att</strong> jag inte behöver registrera ekonomiinformation om det inte behövs. <em>Acceptanskriterier: "Skip step?" gateway ska automatiskt avgöra om registrering kan hoppas över, och om "Yes" ska flödet gå direkt till "Sammanför flöden" gateway utan att visa "Register household economy information" user task.</em></li>
-        <li><strong>Som stakeholder</strong> vill jag att processen automatiskt bearbetar alla hushåll i ansökan via multi-instance subprocess <strong>så att</strong> varje hushåll bearbetas individuellt med egen instans. <em>Acceptanskriterier: Household-processen ska anropas en gång per hushåll i ansökan via multi-instance subprocess, och varje hushåll ska bearbetas individuellt.</em></li>
-      </ul>
-
-      <h3>Systemperspektiv</h3>
-      <ul>
-        <li><strong>Som systemadministratör</strong> vill jag att "Skip step?" gateway kan avgöra om registrering kan hoppas över <strong>så att</strong> processen kan slutföras snabbt för hushåll som inte behöver registrera ekonomiinformation</li>
-        <li><strong>Som systemadministratör</strong> vill jag att "Register household economy information" user task strukturerar registrering med tydliga kategorier <strong>så att</strong> all relevant information samlas in korrekt</li>
-        <li><strong>Som systemadministratör</strong> vill jag att "Sammanför flöden" gateway samlar ihop flöden från både registrering och skip <strong>så att</strong> processen avslutas korrekt oavsett vilken sökväg som används</li>
-        <li><strong>Som systemadministratör</strong> vill jag att Household-processen anropas inuti multi-instance subprocess <strong>så att</strong> alla hushåll bearbetas individuellt</li>
-        <li><strong>Som systemadministratör</strong> vill jag att Household-processen körs sekventiellt före Stakeholder call activity <strong>så att</strong> Household slutförs innan Stakeholder startar för samma hushåll</li>
+        <li><strong>Som stakeholder</strong> vill jag kunna registrera hushållsekonomiinformation <strong>så att</strong> banken kan bedöma min hushållsekonomiska situation och låneförmåga korrekt. <em>Acceptanskriterier: Systemet ska automatiskt kontrollera om registrering av hushållsekonomiinformation behövs via "Skip step?" gateway (skip-register-household-economy-information). Om registrering behövs, ska systemet visa en tydlig "Register household economy information" user task (register-household-economy-information) med strukturerade fält för utgifter (bilar + billån, barn, underhållsbidrag, andra utgifter) och inkomster (underhållsbidrag, andra inkomster). Systemet ska validera att all obligatorisk information är ifylld och att siffrorna är rimliga. Jag ska kunna spara och fortsätta senare om jag inte har all information tillgänglig. Efter registrering, ska systemet bekräfta att informationen har sparats. Om registrering inte behövs, ska systemet automatiskt hoppa över steget och fortsätta.</em></li>
       </ul>
         </div>
       </details>
