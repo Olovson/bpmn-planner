@@ -430,15 +430,24 @@ Uppdatera innehållet baserat på analysen från Steg 1. V2-templaten har följa
 - **Testgenerering** - Testscenarier, UI Flow, testdata-referenser, implementation mapping (se riktlinjer nedan)
 - **Effekt** - Förväntad affärseffekt som uppnås med feature goalet (längst ned)
 - **User stories** - Relevanta och realistiska user stories som kan kopplas till feature goalet (längst ned)
-- **Acceptanskriterier** - Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet (längst ned)
+- **Tekniska krav** - Tekniska krav för implementation (timeout, retry, error codes, logging, skalbarhet, säkerhet) (längst ned)
 
 **⚠️ VIKTIGT - Kvalitetschecklista för alla sektioner:**
 - ✅ **Var specifik:** Nämn specifika processsteg, call activities, gateways, error events, datastores, och mekanismer från BPMN-processen
 - ✅ **Undvik generiska beskrivningar:** Istället för "systemet hämtar data", skriv "systemet hämtar data via 'Internal data gathering' call activity"
 - ✅ **Använd konkreta siffror:** I "Effekt"-sektionen, använd konkreta siffror eller procent (t.ex. "30-40%", "25-35%")
 - ✅ **Koppla till processen:** Alla beskrivningar ska vara kopplade till faktiska BPMN-element, inte generiska beskrivningar
-- ✅ **Organisera i kategorier:** För komplexa feature goals, organisera "User stories", "Effekt" och "Acceptanskriterier" i kategorier med underrubriker
-- ✅ **Inkludera acceptanskriterier i user stories:** För viktiga user stories, lägg till acceptanskriterier direkt i user story:n (i kursiv stil) för att göra dem implementeringsklara
+- ✅ **Organisera i kategorier:** För komplexa feature goals, organisera "User stories", "Effekt" och "Tekniska krav" i kategorier med underrubriker
+- ✅ **Var koncis:** Håll varje sektion koncis och lättläst - undvik onödiga repetitioner och långa förklaringar
+- ✅ **Separera affärs- och tekniska detaljer:** Affärsorienterat innehåll i Omfattning, tekniska detaljer i Tekniska krav
+
+**⚠️ KRITISK REGEL - KONCIS OCH LÄTTLÄST:**
+Dokumentationen ska vara **koncis och lättläst** för alla målgrupper. Följ dessa principer:
+- **Undvik repetitioner:** Om samma information finns i flera sektioner, referera istället för att upprepa
+- **Var koncis:** Håll varje sektion kortfattat - läsaren ska snabbt förstå huvudsaken
+- **Separera detaljer:** Affärsorienterat innehåll i Omfattning, tekniska detaljer i Tekniska krav
+- **Tydlig separation:** Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) i User stories, tekniska krav (timeout, retry, error codes) i Tekniska krav
+- **Fokusera på viktigaste informationen:** Alla detaljer behövs inte i varje sektion - fokusera på vad som är viktigast för varje målgrupp
 
 ## 🎯 Målgrupper och vad de behöver från dokumentet
 
@@ -458,7 +467,7 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 | **Testgenerering** | Test lead, Testare | Testscenarier, UI Flow, testdata, implementation mapping |
 | **Effekt** | Produktägare, Handläggare, Business Analyst | Affärsvärde, förväntade effekter, mätbara resultat |
 | **User stories** | Produktägare, Designer, Utvecklare, Business Analyst | Användarbehov, funktionalitet, acceptanskriterier |
-| **Acceptanskriterier** | Utvecklare, Test lead, Arkitekt, DevOps, Compliance | Konkreta krav, testbara kriterier, implementation details |
+| **Tekniska krav** | Utvecklare, Arkitekt, DevOps, Compliance | Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) |
 
 ### 👥 Detaljerad guide per målgrupp
 
@@ -491,14 +500,14 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 - Vilka testdata behövs? (Testdata-referenser)
 - Hur mappas BPMN till faktisk implementation? (Implementation Mapping)
 - Vilka error events finns? (Processteg - Output, Omfattning)
-- Vilka är acceptanskriterierna? (Acceptanskriterier)
+- Vilka är de tekniska kraven? (Tekniska krav)
 
 **Kapitel att fokusera på:**
 1. **Testgenerering** - Komplett med alla scenarier, UI Flow, testdata, implementation mapping
 2. **Processteg - Output** - Alla möjliga utfall, inklusive error events
 3. **Omfattning** - Alla aktiviteter och steg som behöver testas
 4. **Beroenden** - Externa system och integrationer som behöver mockas/testas
-5. **Acceptanskriterier** - Testbara krav med konkreta värden
+5. **Tekniska krav** - Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet)
 
 **Riktlinjer för innehåll:**
 - Täck alla processsteg (varje aktivitet, gateway, error event)
@@ -511,9 +520,9 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 #### 💻 Utvecklare
 
 **Vad de behöver förstå:**
-- Hur ska lösningen byggas? (Acceptanskriterier, Implementation Mapping)
+- Hur ska lösningen byggas? (Tekniska krav, Implementation Mapping)
 - Vilka API:er och integrationer behövs? (Beroenden, Implementation Mapping)
-- Vilka är tekniska kraven? (Acceptanskriterier)
+- Vilka är tekniska kraven? (Tekniska krav)
 - Hur fungerar processflödet? (BPMN - Process, Omfattning)
 - Vilka error events ska hanteras? (Processteg - Output, Omfattning)
 
@@ -539,15 +548,15 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 - Vilka användare påverkas? (Beskrivning av FGoal, User stories)
 - Vilka användaruppgifter finns? (Omfattning, User stories)
 - Hur ser användarresan ut? (Omfattning, BPMN - Process)
-- Vilka UI-komponenter behövs? (User stories, Acceptanskriterier)
-- Vilka felmeddelanden behövs? (Processteg - Output, Acceptanskriterier)
+- Vilka UI-komponenter behövs? (User stories - funktionella acceptanskriterier)
+- Vilka felmeddelanden behövs? (Processteg - Output, User stories - funktionella acceptanskriterier)
 
 **Kapitel att fokusera på:**
 1. **Beskrivning av FGoal** - Vem som utför aktiviteten (kund, handläggare), vad de gör
 2. **User stories** - Användarbehov, funktionalitet, UI/UX-krav
 3. **Omfattning** - Alla user tasks och kundaktiviteter
 4. **Processteg - Output** - Felmeddelanden, feedback till användare
-5. **Acceptanskriterier** - UI/UX-krav (t.ex. "tydliga rubriker", "möjlighet att gå tillbaka")
+5. **User stories** - Funktionella acceptanskriterier med UI/UX-krav (t.ex. "tydliga rubriker", "möjlighet att gå tillbaka")
 
 **Riktlinjer för innehåll:**
 - Fokusera på användarens perspektiv (kund, handläggare)
@@ -583,14 +592,14 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 - Översikt av feature goalet (Beskrivning av FGoal)
 - Vad ingår och vad ingår inte? (Omfattning, Avgränsning)
 - Vilket värde ger det? (Effekt)
-- Vilka är kraven? (Acceptanskriterier, User stories)
+- Vilka är kraven? (User stories - funktionella acceptanskriterier, Tekniska krav)
 
 **Kapitel att fokusera på:**
 1. **Beskrivning av FGoal** - Översikt av vad feature goalet gör
 2. **Omfattning** - Vad som ingår i processen
 3. **Effekt** - Affärsvärde och förväntade effekter
 4. **User stories** - Användarbehov och funktionalitet
-5. **Acceptanskriterier** - Konkreta krav och förväntningar
+5. **User stories** - Funktionella acceptanskriterier med konkreta krav och förväntningar
 
 **Riktlinjer för innehåll:**
 - Använd tydligt språk som alla kan förstå
@@ -602,14 +611,14 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 
 **Vad de behöver förstå:**
 - Systemarkitektur och integrationer (Beroenden, BPMN - Process)
-- Tekniska beslut och trade-offs (Acceptanskriterier, Beroenden)
+- Tekniska beslut och trade-offs (Tekniska krav, Beroenden)
 - Processflöde och sekvens (BPMN - Process, Omfattning)
 - Externa system och API:er (Beroenden, Implementation Mapping)
 
 **Kapitel att fokusera på:**
 1. **Beroenden** - Externa system, API:er, integrationer, tekniska beroenden
 2. **BPMN - Process** - Processflöde, sekvens, gateways, error events
-3. **Acceptanskriterier** - Tekniska krav, timeout-värden, valideringsregler
+3. **Tekniska krav** - Tekniska krav, timeout-värden, valideringsregler
 4. **Implementation Mapping** - Routes, endpoints, API:er, datastores
 5. **Omfattning** - Alla aktiviteter och steg som påverkar arkitekturen
 
@@ -645,14 +654,14 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 #### 🔧 DevOps/Infrastructure
 
 **Vad de behöver förstå:**
-- Deployment och infrastructure requirements (Beroenden, Acceptanskriterier)
+- Deployment och infrastructure requirements (Beroenden, Tekniska krav)
 - Monitoring och observability (Beroenden, Processteg - Output)
-- Skalbarhet och prestanda (Acceptanskriterier, Beroenden)
+- Skalbarhet och prestanda (Tekniska krav, Beroenden)
 - Error handling och resilience (Processteg - Output, Omfattning)
 
 **Kapitel att fokusera på:**
 1. **Beroenden** - Externa system, API:er, infrastructure requirements
-2. **Acceptanskriterier** - Prestanda, skalbarhet, monitoring-krav
+2. **Tekniska krav** - Prestanda, skalbarhet, monitoring-krav
 3. **Processteg - Output** - Error events, timeout-värden, retry-logik
 4. **Omfattning** - Multi-instance, parallellitet, load patterns
 
@@ -666,13 +675,13 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 #### ⚖️ Compliance/Legal
 
 **Vad de behöver förstå:**
-- Compliance-krav och regler (Acceptanskriterier, Omfattning)
+- Compliance-krav och regler (Tekniska krav, Omfattning)
 - Datahantering och integritet (Omfattning, Beroenden)
-- Felhantering och audit trails (Processteg - Output, Acceptanskriterier)
+- Felhantering och audit trails (Processteg - Output, Tekniska krav)
 - Affärsregler och legal requirements (Omfattning, BPMN - Process)
 
 **Kapitel att fokusera på:**
-1. **Acceptanskriterier** - Compliance-krav, datahantering, audit trails
+1. **Tekniska krav** - Compliance-krav, datahantering, audit trails
 2. **Omfattning** - Datahantering, regler, compliance-aktiviteter
 3. **Processteg - Output** - Felhantering, audit trails, data retention
 4. **Beroenden** - Externa system som påverkar compliance
@@ -688,7 +697,7 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 
 **Vad de behöver förstå:**
 - Scope och dependencies (Omfattning, Avgränsning, Beroenden)
-- Estimering och planering (Omfattning, Acceptanskriterier)
+- Estimering och planering (Omfattning, Tekniska krav)
 - Risk och blockers (Beroenden, Processteg - Output)
 - Team coordination (Omfattning, Beroenden)
 
@@ -696,7 +705,7 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 1. **Omfattning** - Scope, aktiviteter, komplexitet
 2. **Avgränsning** - Vad ingår INTE, scope boundaries
 3. **Beroenden** - Externa dependencies, blockers, risk
-4. **Acceptanskriterier** - Definition of Done, testbara krav
+4. **Tekniska krav** - Tekniska krav för Definition of Done
 
 **Riktlinjer för innehåll:**
 - Beskriv scope tydligt för estimering
@@ -794,12 +803,14 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 
 #### Riktlinjer för "Omfattning"
 
+**⚠️ KRITISK REGEL - FOKUS PÅ AFFÄRSORIENTERAT INNEHÅLL:**
+Omfattning-sektionen ska fokusera på **affärsorienterat innehåll** - vad processen gör, vilka steg som ingår, och hur processen flödar. **Tekniska krav, skalbarhet och säkerhet ska flyttas till Tekniska krav-sektionen. Funktionella acceptanskriterier (UI/UX-krav) ska finnas i User stories-sektionen.**
+
 **Målgrupper som läser detta kapitel:**
 - **Alla** - Vad som ingår i processen, alla aktiviteter och steg
-- **Utvecklare** - Alla aktiviteter som behöver implementeras
-- **Test lead** - Alla aktiviteter som behöver testas
-- **Designer** - Alla user tasks och kundaktiviteter
+- **Produktägare** - Översikt av processen och huvudsteg
 - **Handläggare** - Alla handläggaraktiviteter och uppgifter
+- **Designer** - Alla user tasks och kundaktiviteter
 
 **Viktiga krav:**
 1. **Var specifik:** Nämn specifika processsteg, call activities, gateways, error events, datastores, och mekanismer från BPMN-processen
@@ -808,12 +819,23 @@ Feature Goal-dokumentationen ska vara användbar för alla i ett tvärfunktionel
 4. **Beskriv multi-instance:** Om processen har multi-instance-mekanismer, förklara hur de fungerar
 5. **Beskriv gateways:** Vilka beslutspunkter finns? Vad avgör de?
 6. **Beskriv error handling:** Vilka error events finns? När triggas de?
+7. **Fokusera på affärsorienterat innehåll:** Beskriv vad processen gör, inte hur den implementeras tekniskt
+8. **Undvik tekniska detaljer:** Tekniska krav (timeout, retry, error codes, logging) ska flyttas till Tekniska krav
+9. **Undvik skalbarhets- och säkerhetsdetaljer:** Skalbarhet och säkerhet ska flyttas till Tekniska krav
+10. **UI/UX-krav:** Funktionella acceptanskriterier (UI/UX-krav, vad användaren ser/gör) ska finnas i User stories-sektionen
+
+**Strukturering:**
+- **Huvudsteg:** Lista huvudsteg i processen (t.ex. "1. Intern datainsamling", "2. Objektinformation", "3. Parallell datainsamling")
+- **Felhantering:** Kort beskrivning av vilka error events som finns och när de triggas
+- **Undvik:** Tekniska krav, skalbarhet, säkerhet (flytta dessa till Tekniska krav)
 
 **Exempel på bra omfattning-beskrivning:**
 - ✅ "Application-processen omfattar följande huvudsteg: 1. Intern datainsamling (Internal data gathering - multi-instance per part, pre-screening via DMN), 2. Objektinformation (Object call activity), 3. Parallell datainsamling (Household och Stakeholders körs parallellt), 4. KALP-beräkning och bekräftelse (Skip step gateway, KALP service task, Screen KALP DMN, KALP OK gateway, Confirm application user task), 5. Kreditupplysning (Sammanför flöden gateway, Fetch credit information - multi-instance per stakeholder)"
 
 **Exempel på dålig omfattning-beskrivning:**
 - ❌ "Processen innehåller olika steg" (för vagt, nämner inte specifika aktiviteter eller sekvens)
+- ❌ "User tasks ska ha timeout på 30 dagar" (tekniskt krav, ska flyttas till Tekniska krav)
+- ❌ "UI ska visa tydlig progress-indikator" (funktionellt acceptanskriterium, ska finnas i User stories)
 
 #### Riktlinjer för "Avgränsning"
 
@@ -1249,6 +1271,9 @@ Lägg till en sektion i slutet av Effekt-kapitlet med aggregeringsinformation:
 
 #### Riktlinjer för "User stories"
 
+**⚠️ KRITISK REGEL - TYDLIG SEPARATION MELLAN FUNKTIONELLA OCH TEKNISKA KRAV:**
+User stories ska innehålla **funktionella acceptanskriterier** (vad användaren ser/gör, UI/UX, användarupplevelse). Acceptanskriterier-sektionen ska innehålla **tekniska krav** (timeout, retry, error codes, logging, skalbarhet, säkerhet). Detta ger tydlig separation mellan användarfunktionalitet och tekniska detaljer.
+
 **Viktiga krav:**
 1. **Använd standardformat:** "Som [roll] vill jag [mål] så att [värde]"
 2. **Var realistisk:** User stories ska vara relevanta och uppnåbara för feature goalet
@@ -1257,17 +1282,22 @@ Lägg till en sektion i slutet av Effekt-kapitlet med aggregeringsinformation:
 5. **Organisera i kategorier:** För komplexa feature goals, organisera user stories i kategorier (t.ex. "Kundperspektiv", "Handläggarperspektiv", "Systemperspektiv", "Ytterligare kundscenarier")
 6. **Inkludera flera user stories:** För komplexa feature goals kan det vara relevant att inkludera 10-30+ user stories för att täcka olika roller, scenarier och ansökningstyper
 7. **Var specifik:** Nämn specifika processsteg, call activities, gateways, error events, och mekanismer från BPMN-processen
-8. **Inkludera acceptanskriterier:** För viktiga user stories, lägg till acceptanskriterier direkt i user story:n (i kursiv stil) för att göra dem implementeringsklara
+8. **Inkludera funktionella acceptanskriterier:** För viktiga user stories, lägg till funktionella acceptanskriterier (vad användaren ser/gör, UI/UX, användarupplevelse) direkt i user story:n (i kursiv stil) för att göra dem implementeringsklara
+9. **Fokusera på användarupplevelse:** Acceptanskriterier i User stories ska fokusera på vad användaren ser, hur användaren interagerar, UI/UX-krav, och användarupplevelse - INTE tekniska detaljer (timeout, retry, error codes)
+10. **Var koncis:** Håll user stories och deras acceptanskriterier koncisa - fokusera på viktigaste funktionella kraven
 
 **Strukturering:**
 - För enkla feature goals: En lista med user stories
 - För komplexa feature goals: Organisera i kategorier med underrubriker (t.ex. `<h3>Kundperspektiv</h3>`, `<h3>Handläggarperspektiv</h3>`)
 
-**Exempel på bra user story (specifik och kopplad till processsteg):**
-- ✅ "Som kund vill jag att systemet automatiskt hämtar min befintliga information via 'Internal data gathering' (part, engagemang, kreditinformation) så att jag inte behöver fylla i information som banken redan har om mig, särskilt viktigt för återkommande kunder. <em>Acceptanskriterier: Systemet ska visa hämtad information i ett tydligt format, markera fält som är auto-ifyllda, och tillåta mig att ändra information om den är felaktig.</em>"
-- ✅ "Som kund vill jag att systemet automatiskt gör pre-screening för mig och mina medlåntagare via DMN-beslutsregel så att jag får tidig feedback om någon av oss inte uppfyller grundläggande krav (ålder, anställningsstatus, kreditvärdighet). <em>Acceptanskriterier: Om pre-screening avvisar en part, ska jag få ett tydligt meddelande som förklarar vilket krav som inte uppfylldes (t.ex. 'Ålder under 18 år' eller 'Kreditscore under 300'), vilken part som avvisades, och att ansökan inte kan fortsätta.</em>"
-- ✅ "Som handläggare vill jag att systemet automatiskt gör pre-screening via DMN-beslutsregel i 'Internal data gathering' för alla parter så att ansökningar där parter inte uppfyller grundläggande krav (ålder, anställningsstatus, kreditvärdighet) avvisas automatiskt innan de når mig"
-- ✅ "Som systemadministratör vill jag att 'Internal data gathering' körs som multi-instance för varje identifierad part så att datainsamling och pre-screening sker separat för huvudansökande och medlåntagare, och att varje part kan avvisas individuellt via 'pre-screen rejected' error event"
+**Exempel på bra user story (koncis och lättläst):**
+- ✅ "Som kund vill jag att systemet automatiskt hämtar min befintliga information (part, engagemang, kreditinformation) så att jag inte behöver fylla i information som banken redan har om mig, särskilt viktigt för återkommande kunder."
+- ✅ "Som kund vill jag att systemet automatiskt gör pre-screening för mig och mina medlåntagare så att jag får tidig feedback om någon av oss inte uppfyller grundläggande krav (ålder, anställningsstatus, kreditvärdighet)."
+- ✅ "Som handläggare vill jag att systemet automatiskt gör pre-screening för alla parter så att ansökningar där parter inte uppfyller grundläggande krav avvisas automatiskt innan de når mig."
+- ✅ "Som kund vill jag kunna fylla i information om hushållsekonomi och stakeholders-information parallellt så att jag kan slutföra ansökan snabbare än om jag måste göra det sekventiellt."
+
+**Exempel på dålig user story (för lång, innehåller tekniska krav):**
+- ❌ "Som kund vill jag att systemet automatiskt hämtar min befintliga information via 'Internal data gathering' (part, engagemang, kreditinformation) så att jag inte behöver fylla i information som banken redan har om mig, särskilt viktigt för återkommande kunder. <em>Acceptanskriterier: Systemet ska visa hämtad information i ett tydligt format, markera fält som är auto-ifyllda, och tillåta mig att ändra information om den är felaktig. UI ska visa tydlig progress-indikator för datainsamling och tydligt visa vilka parter som har hämtats med statusindikatorer. Timeout: 30 dagar. Retry: 3 försök. [BPMN-referens: 'Internal data gathering' call activity körs som multi-instance för varje identifierad part]</em>" (för lång, innehåller tekniska krav som ska finnas i Tekniska krav-sektionen)
 
 **Exempel på dålig user story:**
 - ❌ "Som kund vill jag att systemet hämtar information så att det fungerar" (för vagt, nämner inte specifika processsteg)
@@ -1294,52 +1324,48 @@ Lägg till en sektion i slutet av Effekt-kapitlet med aggregeringsinformation:
 </section>
 ```
 
-#### Riktlinjer för "Acceptanskriterier"
+#### Riktlinjer för "Tekniska krav"
 
-**⚠️ KRITISK REGEL - SAMMA PRINCIP SOM USER STORIES:**
-Acceptanskriterier ska följa samma princip som user stories: **Börja med funktionalitet, lägg BPMN-referenser som teknisk kontext i slutet.**
+**⚠️ KRITISK REGEL - FOKUS PÅ TEKNISKA KRAV:**
+Tekniska krav-sektionen ska innehålla **endast tekniska krav** (timeout, retry, error codes, logging, skalbarhet, säkerhet). **Funktionella acceptanskriterier** (vad användaren ser/gör, UI/UX, användarupplevelse) ska finnas i User stories-sektionen. Detta ger tydlig separation mellan användarfunktionalitet och tekniska detaljer.
 
 **Viktiga krav:**
-1. **Börja med funktionalitet:** Beskriv vad systemet gör, vad användaren ser, hur användaren interagerar - INTE BPMN-mekanik
-2. **Fokusera på användarupplevelse:** Beskriv UI/UX, visuella indikatorer, feedback, felmeddelanden
-3. **Lägg till funktionella detaljer:** Validering, feedback, felmeddelanden, progress-indikatorer, statusindikatorer
-4. **Lägg BPMN-referenser i slutet:** BPMN-ID:n, call activities, gateways, events ska vara teknisk kontext, inte huvudfokus
-5. **Var specifik och testbar:** Acceptanskriterier ska vara konkreta och möjliga att verifiera
-6. **Använd "ska"-formuleringar:** Formulera som krav (t.ex. "Systemet ska...")
-7. **Koppla till feature goalet:** Acceptanskriterier ska vara direkt relaterade till feature goalets funktionalitet
-8. **Inkludera konkreta krav:** Specificera timeout-värden, valideringsregler, felmeddelanden, UI/UX-krav, och dataformat där relevant
-9. **Organisera i kategorier:** För komplexa feature goals, organisera acceptanskriterier i kategorier baserat på processsteg (t.ex. "1. Intern datainsamling", "2. Objektinformation", "3. Parallell datainsamling")
-10. **Beskriv felhantering:** Specificera hur error events ska hanteras, vilka felmeddelanden som ska visas, och hur processen ska avslutas vid fel
-
-**Kritiska regler för att undvika BPMN-syntax:**
-- ❌ **Undvik att börja med BPMN-referenser:** "Systemet ska [funktionalitet] via 'X' call activity"
-- ✅ **Börja med funktionalitet:** "Systemet ska [funktionalitet med funktionella detaljer]. [UI/UX-krav]. [Validering och feedback]. [BPMN-referens som teknisk kontext i slutet]"
-- ❌ **Undvik BPMN-syntax i början:** "'X' gateway ska...", "'Y' call activity körs...", "Efter 'Z' boundary event..."
-- ✅ **Fokusera på funktionalitet:** "Kunden ska kunna...", "Systemet ska automatiskt...", "UI ska visa..."
+1. **Fokusera på tekniska krav:** Tekniska krav-sektionen ska innehålla endast tekniska krav:
+   - **Timeout-värden:** User tasks, service tasks, business rule tasks
+   - **Retry-logik:** Automatisk retry med exponential backoff
+   - **Error codes:** Specifika error codes för olika feltyper
+   - **Logging:** Vad som ska loggas, när, och hur
+   - **Skalbarhet och prestanda:** Parallellisering, load balancing, caching
+   - **Säkerhet och compliance:** Dataskydd, GDPR-efterlevnad, audit trails
+2. **Undvik funktionella detaljer:** Funktionella acceptanskriterier (vad användaren ser, UI/UX, användarupplevelse) ska finnas i User stories-sektionen, inte här
+3. **Var specifik och testbar:** Tekniska krav ska vara konkreta och möjliga att verifiera
+4. **Använd "ska"-formuleringar:** Formulera som krav (t.ex. "Systemet ska...")
+5. **Organisera i kategorier:** Organisera tekniska krav i kategorier (t.ex. "Tekniska krav", "Skalbarhet och prestanda", "Säkerhet och compliance")
+6. **Var koncis:** Gör varje punkt mer koncis - fokusera på viktigaste tekniska kraven
 
 **Strukturering:**
-- För enkla feature goals: En lista med acceptanskriterier
-- För komplexa feature goals: Organisera i kategorier med underrubriker baserat på processsteg (t.ex. `<h3>1. Intern datainsamling och pre-screening</h3>`, `<h3>2. Objektinformation och validering</h3>`)
-- **Dela upp långa punkter:** Om en punkt innehåller flera acceptanskriterier, dela upp den i flera separata punkter för bättre läsbarhet. Varje punkt ska fokusera på ett specifikt acceptanskriterium.
+- För enkla feature goals: En lista med tekniska krav
+- För komplexa feature goals: Organisera i kategorier med underrubriker (t.ex. `<h3>Tekniska krav</h3>`, `<h3>Skalbarhet och prestanda</h3>`, `<h3>Säkerhet och compliance</h3>`)
 
-**Exempel på bra acceptanskriterium (börjar med funktionalitet, BPMN-referens i slutet):**
-- ✅ "Systemet ska automatiskt hämta och visa befintlig kunddata (part, engagemang, kreditinformation) för alla identifierade parter. Kunden ska se hämtad information i ett tydligt format med visuell markering av auto-ifyllda fält (t.ex. grön bockmarkering eller ikon), och kunna ändra information om den är felaktig via tydlig 'Redigera'-knapp per fält. UI ska visa tydlig progress-indikator för datainsamling (t.ex. progress bar eller spinner) och tydligt visa vilka parter som har hämtats med statusindikatorer (t.ex. 'Hämtad', 'Pågår', 'Fel'). Om datainsamling misslyckas för en part, ska systemet visa tydligt felmeddelande och tillåta kunden att manuellt fylla i informationen. [BPMN-referens: 'Internal data gathering' call activity (internal-data-gathering) körs som multi-instance för varje identifierad part]"
-- ✅ "Kunden ska kunna öppna både Household- och Stakeholders-formulären samtidigt i separata flikar/fönster, spara progress i varje formulär oberoende av varandra, och systemet ska validera varje formulär separat och visa tydligt vilka formulär som är kompletta med progress-indikatorer. UI ska visa tydlig information om vilka steg som kan göras parallellt med visuella indikatorer. [BPMN-referens: 'Household' call activity (household) och 'Per stakeholder' subprocess (stakeholders) körs parallellt via parallel gateway (Gateway_0n2ekt4)]"
-- ✅ "Om en eller flera parter avvisas vid pre-screening, ska kunden se ett tydligt felmeddelande som förklarar vilket krav som inte uppfylldes (t.ex. 'Ålder under 18 år' eller 'Kreditscore under 300'), vilken part som avvisades, och att ansökan inte kan fortsätta. Meddelandet ska visas i en tydlig varningsruta med ikon, tydlig rubrik ('Ansökan avvisad'), och strukturerad information med bullet points. Processen ska avslutas och kunden ska kunna starta ny ansökan. [BPMN-referens: 'pre-screen rejected' error event via boundary event på 'Internal data gathering' call activity (Event_03349px), Error_1vtortg signaleras, processen avslutas (Event_1uj7wwd)]"
-- ✅ "Kunden ska kunna se en sammanfattning av all insamlad information (intern data, hushåll, stakeholders, objekt) i ett strukturerat format med tydliga rubriker (Intern data, Hushållsekonomi, Stakeholders, Objekt), tillåta att gå tillbaka och ändra information via tydliga länkar (t.ex. 'Redigera' knappar per sektion), och visa en tydlig 'Bekräfta'-knapp. Om någon information saknas, ska systemet visa en varning med tydlig lista över vad som saknas och inte tillåta bekräftelse. UI ska visa tydlig progress-indikator och tydligt visa vilka steg som är klara med visuella indikatorer. [BPMN-referens: 'Confirm application' user task (confirm-application) aktiveras när båda flödena är klara via parallel gateway (Gateway_1960pk9)]"
-- ✅ "Om kunden inte bekräftar ansökan inom tidsgränsen (30 dagar), ska kunden se ett tydligt meddelande: 'Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar).' Kunden ska kunna starta ny ansökan. [BPMN-referens: timeout boundary event på 'Confirm application' user task (Event_0ao6cvb, P30D), 'application-timeout' error event (Error_1bicfvu) signaleras, processen avslutas (Event_111g1im)]"
+**Exempel på bra tekniskt krav:**
+- ✅ "User tasks ska ha timeout på 30 dagar för kundaktiviteter. Service tasks och business rule tasks ska ha timeout på 60 sekunder"
+- ✅ "Service tasks och business rule tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel"
+- ✅ "Systemet ska returnera specifika error codes: APPLICATION_PRE_SCREEN_REJECTED, APPLICATION_STAKEHOLDER_REJECTED, APPLICATION_OBJECT_REJECTED, APPLICATION_REJECTED, APPLICATION_TIMEOUT"
+- ✅ "Alla ansökningssteg, multi-instance bearbetningar och fel ska loggas med ansöknings-ID, tidsstämplar och resultat för spårbarhet"
+- ✅ "Multi-instance subprocesses ska kunna köras parallellt för att förbättra prestanda"
+- ✅ "All känslig ansökningsinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till ansökningsdata ska loggas för audit trail"
 
 **Målgrupper som läser detta kapitel:**
-- **Utvecklare** - Konkreta tekniska krav, timeout-värden, valideringsregler, error handling, UI/UX-krav
-- **Test lead** - Testbara krav, förväntade resultat, assertions, UI/UX-verifieringar
-- **Produktägare** - Konkreta krav och förväntningar, användarupplevelse
+- **Utvecklare** - Konkreta tekniska krav, timeout-värden, retry-logik, error codes, logging
+- **Arkitekt** - Tekniska beslut, skalbarhet, säkerhet
+- **DevOps** - Infrastructure requirements, monitoring, deployment
+- **Compliance** - Säkerhet, GDPR-efterlevnad, audit trails
 
-**Exempel på dåligt acceptanskriterium:**
-- ❌ "Systemet ska automatiskt hämta befintlig kunddata från interna system via 'Internal data gathering' call activity" (börjar med BPMN-referens, saknar användarupplevelse)
-- ❌ "'Internal data gathering' ska köras som multi-instance för varje identifierad part" (börjar med BPMN-syntax, saknar funktionalitet)
-- ❌ "Systemet ska fungera bra" (för vagt, inte testbart, nämner inte processsteg)
-- ❌ "Användaren ska vara nöjd" (för subjektivt, svårt att testa, nämner inte processsteg)
-- ❌ "Systemet ska hämta data" (för vagt, nämner inte specifika processsteg eller krav)
+**Exempel på dåligt tekniskt krav:**
+- ❌ "Systemet ska fungera bra" (för vagt, inte testbart)
+- ❌ "Systemet ska vara säkert" (för vagt, saknar konkreta krav)
+- ❌ "UI ska visa tydlig progress-indikator" (funktionellt acceptanskriterium, ska finnas i User stories)
+- ❌ "Kunden ska kunna se hämtad information" (funktionellt acceptanskriterium, ska finnas i User stories)
 
 ### Steg 6: Verifiera i appen (valfritt - automatiskt)
 
