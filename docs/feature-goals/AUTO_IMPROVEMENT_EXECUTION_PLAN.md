@@ -512,22 +512,39 @@
 **⚠️ SYSTEMATISK PROCESS - FÖLJ USER_STORY_IMPROVEMENT_PROMPT.md:**
 
 **Grundläggande krav:**
-- Använd standardformat: "Som [specifik persona] vill jag [konkret mål med BPMN-referens] så att [tydligt värde]"
+- Använd standardformat: "Som [specifik persona] vill jag [konkret mål UTAN BPMN-referens] så att [tydligt värde]"
 - Var realistisk: User stories ska vara relevanta och uppnåbara
-- Fokusera på användarens perspektiv: Beskriv vad användaren vill uppnå
+- Fokusera på användarens perspektiv: Beskriv vad användaren vill uppnå, inte hur BPMN-processen fungerar
 - Koppla till feature goalet: User stories ska vara direkt relaterade till feature goalets funktionalitet
 - Organisera i kategorier: För komplexa feature goals, organisera i kategorier (t.ex. "Systemperspektiv", "Handläggarperspektiv", "Kundperspektiv")
-- Var specifik: Nämn specifika processsteg, call activities, gateways, error events med BPMN-ID:n
-- Inkludera acceptanskriterier: För alla user stories, lägg till acceptanskriterier direkt i user story:n (i kursiv stil) med BPMN-referenser
+- Var specifik: Beskriv funktionalitet, inte BPMN-syntax. BPMN-ID:n ska endast finnas i acceptanskriterierna som teknisk referens
+- Inkludera acceptanskriterier: För alla user stories, lägg till acceptanskriterier direkt i user story:n (i kursiv stil) med funktionella krav. BPMN-referenser kan inkluderas här som teknisk referens
+
+**⚠️ KRITISKA REGLER FÖR ATT UNDVIKA BPMN-SYNTAX:**
+- ❌ **Undvik**: "processen startar via start event" → ✅ **Använd**: "processen kan initieras när X händer"
+- ❌ **Undvik**: "service task automatiskt genomför utbetalning" → ✅ **Använd**: "systemet automatiskt genomför utbetalning" (BPMN-referens i acceptanskriterierna)
+- ❌ **Undvik**: "via 'Handle disbursement' service task (handle-disbursement)" i mål-specifikationen → ✅ **Använd**: "att systemet automatiskt genomför utbetalning" (BPMN-referens i acceptanskriterierna)
+- ❌ **Undvik**: "gateway väntar på event" → ✅ **Använd**: "systemet väntar på utbetalningsstatus och hanterar både lyckad och avbruten utbetalning"
+- ❌ **Undvik**: "sequence flow går till" → ✅ **Använd**: "efter X ska Y hända"
+- ❌ **Undvik**: "Som system vill jag..." när det kan formuleras från användarperspektiv → ✅ **Använd**: "Som handläggare vill jag att systemet..." (formulera från användarens perspektiv)
+- ❌ **Undvik**: Acceptanskriterier som bara beskriver BPMN-flöde → ✅ **Använd**: Acceptanskriterier som beskriver funktionalitet, valideringar, felmeddelanden, användarupplevelse. BPMN-referenser kan inkluderas här som teknisk referens
 
 **Systematisk förbättringsprocess:**
 1. **Analysera BPMN-processen:** Identifiera alla user tasks, service tasks, gateways, events och personor
-2. **Analysera befintliga user stories:** Validera mot BPMN, identifiera brister
-3. **Identifiera saknade user stories:** Per BPMN-element, per persona, per flöde
-4. **Förbättra befintliga user stories:** Specifika persona, konkret mål, tydligt värde, specifika acceptanskriterier
-5. **Skapa nya user stories:** För saknade BPMN-element/personor
-6. **Ta bort onödiga user stories:** Duplicerade, irrelevanta, för generiska
-7. **Validera slutresultat:** Kompletthet, kvalitet, konsistens
+2. **Analysera befintliga user stories:** Validera mot BPMN, identifiera brister, identifiera user stories som bara beskriver BPMN-syntax
+3. **Identifiera saknade user stories:** Per BPMN-element, per persona, per flöde - ENDAST om de ger värde för utvecklare
+4. **Förbättra befintliga user stories:** Specifika persona, konkret mål (funktionalitet, inte BPMN-syntax), tydligt värde (användarcentrerat), funktionella acceptanskriterier
+5. **Skapa nya user stories:** För saknade BPMN-element/personor - FOKUSERA PÅ FUNKTIONALITET OCH AFFÄRSVÄRDE
+6. **Ta bort onödiga user stories:** Duplicerade, irrelevanta, för generiska, user stories som bara beskriver BPMN-syntax
+7. **Validera slutresultat:** Kompletthet, kvalitet, konsistens, värde för utvecklare
+
+**⚠️ VALIDERING INNAN GODKÄNNANDE:**
+För varje user story, ställ dessa frågor:
+- Ger denna user story värde för utvecklare? (beskriver den funktionalitet, affärslogik, användarupplevelse?)
+- Beskriver den VAD som ska implementeras, inte bara HUR BPMN-processen fungerar?
+- Kan en utvecklare implementera direkt baserat på user story och acceptanskriterier?
+- Ger den affärskontext och värde, inte bara teknisk information?
+- Dubblerar den inte bara BPMN-diagrammet?
 
 **⚠️ LÄS USER_STORY_IMPROVEMENT_PROMPT.md FÖR DETALJERAD PROCESS OCH USER_STORY_ANALYSIS.md FÖR BEST PRACTICES**
 

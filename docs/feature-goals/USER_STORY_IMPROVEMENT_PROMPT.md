@@ -63,8 +63,11 @@ För varje befintlig user story, kontrollera:
 Dokumentera:
 - **Saknade user stories**: Vilka BPMN-element/personor saknas?
 - **Onödiga user stories**: Vilka user stories är duplicerade eller irrelevanta?
-- **Ofullständiga user stories**: Vilka user stories saknar viktiga detaljer?
+- **User stories som bara beskriver BPMN-syntax**: Vilka user stories beskriver bara hur BPMN-processen fungerar istället för funktionalitet?
+- **User stories utan affärsvärde**: Vilka user stories ger inget värde för personan eller utvecklare?
+- **Ofullständiga user stories**: Vilka user stories saknar viktiga detaljer (affärslogik, användarupplevelse, implementation)?
 - **För generiska user stories**: Vilka user stories är för generiska?
+- **Tekniska acceptanskriterier**: Vilka acceptanskriterier beskriver bara BPMN-flöde istället för funktionalitet?
 
 ---
 
@@ -72,19 +75,23 @@ Dokumentera:
 
 ### 3.1 Per BPMN-element
 För varje viktigt BPMN-element, skapa minst en user story:
-- **User tasks**: Minst en user story per task (från rätt persona)
-- **Service tasks**: Minst en user story per task (systemperspektiv)
-- **Business rule tasks**: Minst en user story per task (systemperspektiv)
-- **Gateways**: Minst en user story per utgående flöde (från rätt persona)
-- **Call activities**: Minst en user story per call activity (systemperspektiv)
-- **Boundary events**: Minst en user story per boundary event (om relevant)
+- **User tasks**: Minst en user story per task (från rätt persona) - FOKUSERA PÅ ANVÄNDARUPPLEVELSE
+- **Service tasks**: Minst en user story per task (endast om det ger värde för utvecklare) - FOKUSERA PÅ VAD SOM SKA IMPLEMENTERAS, INTE BPMN-SYNTAX
+- **Business rule tasks**: Minst en user story per task (endast om det ger värde) - FOKUSERA PÅ BESLUTSLOGIK OCH KRITERIER
+- **Gateways**: Minst en user story per utgående flöde (från rätt persona) - FOKUSERA PÅ BESLUT OCH VILLKOR, INTE BPMN-MEKANIK
+- **Call activities**: Minst en user story per call activity (endast om det ger värde) - FOKUSERA PÅ INTEGRATION OCH DATAFLÖDE
+- **Boundary events**: Minst en user story per boundary event (om relevant) - FOKUSERA PÅ FELHANTERING OCH ANVÄNDARUPPLEVELSE
+
+**⚠️ VIKTIGT: Skapa INTE user stories som bara beskriver BPMN-syntax. Varje user story måste ge värde för utvecklare genom att beskriva funktionalitet, affärslogik eller användarupplevelse.**
 
 ### 3.2 Per persona
 För varje persona som interagerar med processen:
-- **Kund/Stakeholder**: User stories för kundinteraktioner
-- **Handläggare/Caseworker**: User stories för handläggarinteraktioner
-- **Värderare/Valuator**: User stories för värderarinteraktioner
-- **System/Systemadministratör**: User stories för automatiserade processer
+- **Kund/Stakeholder**: User stories för kundinteraktioner - FOKUSERA PÅ ANVÄNDARUPPLEVELSE OCH VÄRDE
+- **Handläggare/Caseworker**: User stories för handläggarinteraktioner - FOKUSERA PÅ ARBETSFLÖDE OCH EFFEKTIVITET
+- **Värderare/Valuator**: User stories för värderarinteraktioner - FOKUSERA PÅ ARBETSFLÖDE OCH VÄRDE
+- **System/Systemadministratör**: User stories för automatiserade processer - ENDAST OM DET GER TYDLIGT VÄRDE FÖR UTVECKLARE (t.ex. "Som system vill jag automatiskt hantera X så att handläggare kan fokusera på Y")
+
+**⚠️ VIKTIGT: Undvik "systemadministratör" som persona för tekniska BPMN-element. Använd endast när det beskriver faktiskt värde eller när det är relevant för implementation.**
 
 ### 3.3 Per flöde
 För varje viktigt flöde:
@@ -103,8 +110,10 @@ För varje viktigt flöde:
 
 ### 4.2 Irrelevanta user stories
 - Täcker user story något som inte finns i BPMN-processen?
-- Är user story för specifik och inte användbar?
-- Ger user story inget värde för personan?
+- Beskriver user story bara BPMN-syntax istället för funktionalitet?
+- Ger user story inget värde för personan eller utvecklare?
+- Är user story för teknisk och beskriver bara hur BPMN-processen fungerar?
+- Dubblerar user story information som redan finns i BPMN-diagrammet?
 
 ### 4.3 För generiska user stories
 - Är user story så generisk att den inte ger värde?
@@ -125,31 +134,55 @@ Varje user story ska ha tydlig struktur:
 
 ### 5.2 Persona-specifikation
 **Regler:**
-- ✅ **Specifik persona**: Inte "användare" utan "kund", "handläggare", "värderare", "systemadministratör"
+- ✅ **Specifik persona**: Inte "användare" utan "kund", "handläggare", "värderare"
 - ✅ **Matchar BPMN**: Persona ska matcha BPMN lane eller task-assignment
+- ✅ **Användarcentrerad**: Persona ska vara en riktig användare, inte teknisk abstraktion
+- ✅ **Föredra användarperspektiv för automatiserade processer**: Om processen är automatiserad (service task, business rule task), formulera från användarens perspektiv som påverkas (t.ex. "Som handläggare vill jag att systemet automatiskt hanterar X så att jag inte behöver göra Y manuellt")
+- ❌ **Undvik "systemadministratör" för automatiserade processer**: Undvik "systemadministratör" som persona - detta är teknisk abstraktion
+- ❌ **Undvik "Som system" när det kan formuleras från användarperspektiv**: Föredra att formulera från handläggarens/kundens perspektiv även för automatiserade processer
 - ❌ **Inga generiska personor**: Undvik "användare", "slutanvändare", "person"
+- ⚠️ **Systemperspektiv - använd endast när nödvändigt**: Endast när det inte går att formulera från användarperspektiv och det ger tydligt värde för utvecklare (t.ex. "Som system vill jag automatiskt hantera X så att Y kan göra Z utan manuell intervention")
+
+**Exempel:**
+- ❌ **Dåligt**: "Som system vill jag automatiskt vänta på bekräftelse från Core system om utbetalningsstatus via event-based gateway (Gateway_15wjsxm) så att processen kan hantera både lyckade och avbrutna utbetalningar korrekt utan manuell intervention"
+- ✅ **Bra**: "Som handläggare vill jag att systemet automatiskt väntar på bekräftelse från Core system om utbetalningsstatus så att processen kan hantera både lyckade och avbrutna utbetalningar korrekt utan att jag behöver manuellt övervaka statusen" (BPMN-referensen finns i acceptanskriterierna)
 
 ### 5.3 Mål-specifikation
 **Regler:**
-- ✅ **Konkret och mätbart**: Inte "hantera dokument" utan "ladda upp signerade dokument via 'Upload document' user task"
-- ✅ **Kopplar till BPMN**: Inkludera BPMN-element-ID:n där relevant (t.ex. "via 'Upload document' user task (upload-document)")
-- ✅ **Specifik funktionalitet**: Beskriv exakt vad som ska hända
+- ✅ **Konkret och mätbart**: Inte "hantera dokument" utan "ladda upp signerade dokument"
+- ✅ **Beskriver funktionalitet, inte BPMN-syntax**: Inte "processen startar via start event" utan "processen kan initieras när X händer"
+- ✅ **Fokuserar på VAD, inte HUR**: Beskriv vad användaren/systemet gör, inte hur BPMN-processen fungerar
+- ✅ **Specifik funktionalitet**: Beskriv exakt vad som ska hända från användarens/systemets perspektiv
+- ✅ **Affärslogik och användarupplevelse**: Inkludera vad användaren ser, vad som valideras, vilka felmeddelanden som visas
+- ❌ **Undvik BPMN-referenser i mål-specifikationen**: Ta INTE med BPMN-element-ID:n eller "via 'X' service task" i mål-specifikationen. BPMN-referenser ska endast finnas i acceptanskriterierna som teknisk referens
+- ❌ **Undvik BPMN-syntax**: Undvik "start event triggas", "sequence flow går till", "gateway dirigerar" - detta är BPMN-mekanik, inte funktionalitet
 - ❌ **Inga generiska mål**: Undvik "hantera", "förbättra", "göra något"
+
+**Exempel:**
+- ❌ **Dåligt**: "Som handläggare vill jag att systemet automatiskt genomför utbetalning via 'Handle disbursement' service task (handle-disbursement) så att..."
+- ✅ **Bra**: "Som handläggare vill jag att systemet automatiskt genomför utbetalning så att..." (BPMN-referensen finns i acceptanskriterierna)
 
 ### 5.4 Värde-specifikation
 **Regler:**
 - ✅ **Tydligt värde**: Inte "för att det är bra" utan "vilket sparar tid" eller "vilket minskar risken för fel"
-- ✅ **Affärsnytta**: Beskriv varför detta är värdefullt
+- ✅ **Affärsnytta**: Beskriv varför detta är värdefullt för personan eller affären
+- ✅ **Användarcentrerat värde**: Beskriv vad personan får ut av det, inte teknisk konsekvens
 - ✅ **Mätbart värde** (när möjligt): "vilket sparar tid med upp till 50%"
+- ✅ **Kontext och motivation**: Förklara varför personan behöver detta, i vilken situation
+- ❌ **Undvik tekniska värden**: Undvik "så att processen kan initieras" eller "så att huvudprocessen kan fortsätta" - detta är teknisk konsekvens, inte värde
 - ❌ **Inga generiska värden**: Undvik "för att det är bra", "för att processen fungerar"
 
 ### 5.5 Acceptanskriterier
 **Regler:**
-- ✅ **Specifika**: Inte "systemet ska fungera" utan "systemet ska automatiskt screena BRF-information via 'BRF screening result' gateway"
-- ✅ **Testbara**: Kan verifieras med tester
-- ✅ **Implementeringsklara**: Utvecklare kan implementera direkt
-- ✅ **Kopplar till BPMN**: Refererar till specifika BPMN-element (gateways, tasks, events) med ID:n
-- ✅ **Tekniska detaljer**: Inkludera gateway-ID:n, task-ID:n, event-ID:n, datastore-ID:n, error codes, timeout-värden där relevant
+- ✅ **Funktionella, inte tekniska**: Fokusera på VAD systemet ska göra, inte BPMN-syntax
+- ✅ **Testbara**: Kan verifieras med funktionella tester, inte bara BPMN-validering
+- ✅ **Implementeringsklara**: Utvecklare kan implementera direkt baserat på kriterierna
+- ✅ **Beskriver beteende**: Beskriv vad användaren ser, vad systemet gör, vilka resultat som förväntas
+- ✅ **Inkluderar affärslogik**: Valideringar, felmeddelanden, edge cases, användarupplevelse
+- ✅ **Kopplar till BPMN som referens**: BPMN-ID:n kan inkluderas som referens (t.ex. "via 'Upload document' user task (upload-document)"), men fokusera på funktionalitet
+- ✅ **Tekniska detaljer där relevant**: Error codes, timeout-värden, API-endpoints, datastrukturer - men endast om de är relevanta för implementation
+- ❌ **Undvik BPMN-syntax i acceptanskriterier**: Undvik "ska triggas när", "ska gå till via Flow_X", "ska dirigeras via gateway" - detta är BPMN-mekanik, inte funktionalitet
+- ❌ **Undvik att bara beskriva BPMN-flöde**: Acceptanskriterier ska beskriva funktionalitet, inte bara bekräfta att BPMN-processen följer rätt flöde
 
 ### 5.6 Längd och läsbarhet
 **Mål:** ~20-40 ord per user story (exklusive acceptanskriterier)
@@ -249,10 +282,10 @@ Som handläggare vill jag kunna skicka påminnelser till kunder om väntande sig
 
 **Fördelar:**
 - ✅ Specifik persona ("handläggare")
-- ✅ Konkret mål med BPMN-referenser ("skicka påminnelser via boundary event")
-- ✅ Tydligt värde ("kunder påminns")
-- ✅ Specifika acceptanskriterier med BPMN-ID:n
-- ✅ Kopplar till faktisk BPMN-process
+- ✅ Konkret mål med funktionalitet ("skicka påminnelser") - inte bara BPMN-syntax
+- ✅ Tydligt värde ("kunder påminns") - användarcentrerat
+- ✅ Specifika acceptanskriterier med funktionella krav - inte bara BPMN-flöde
+- ✅ Kopplar till faktisk BPMN-process som referens, men fokuserar på funktionalitet
 
 ---
 
@@ -277,14 +310,19 @@ När du får en fil att förbättra:
 
 1. **Läs denna prompt** för att förstå processen
 2. **Läs USER_STORY_ANALYSIS.md** för att förstå best practices
-3. **Följ stegen systematiskt** (Steg 1-8)
-4. **Dokumentera dina beslut** (varför lägger du till/ta bort user stories?)
-5. **Uppdatera HTML-filen** med alla ändringar
-6. **Validera slutresultatet** mot checklistan
+3. **Läs USER_STORY_QUALITY_CHECKLIST.md** för att validera kvalitet
+4. **Följ stegen systematiskt** (Steg 1-8)
+5. **Validera varje user story** mot USER_STORY_QUALITY_CHECKLIST.md innan du inkluderar den
+6. **Dokumentera dina beslut** (varför lägger du till/ta bort user stories?)
+7. **Uppdatera HTML-filen** med alla ändringar
+8. **Validera slutresultatet** mot checklistan
 
 **Viktigt:** 
 - Kvalitet är viktigare än kvantitet
 - Specifika och relevanta user stories är bättre än generiska
-- Fokusera på värde för personan
-- Varje user story ska koppla till faktisk BPMN-process
+- Fokusera på värde för personan OCH utvecklare
+- Varje user story ska beskriva funktionalitet, inte BPMN-syntax
+- User stories ska ge implementation-värde, inte bara bekräfta BPMN-struktur
+- Undvik user stories som bara dubblerar BPMN-diagrammet
+- Fokusera på affärslogik, användarupplevelse och implementation-detaljer
 
