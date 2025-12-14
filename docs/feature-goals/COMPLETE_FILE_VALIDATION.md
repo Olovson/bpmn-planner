@@ -90,13 +90,13 @@ För varje fil, gå igenom ALLA 12 sektioner ovan och verifiera att varje punkt 
 1. [x] `mortgage-application-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 2. [x] `mortgage-appeal-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 3. [x] `mortgage-Activity_17f0nvn-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
-4. [ ] `mortgage-collateral-registration-v2.html` - ⚠️ BEHÖVER VALIDERING (alla sektioner)
-5. [ ] `mortgage-kyc-v2.html`
-6. [ ] `mortgage-manual-credit-evaluation-v2.html`
-7. [ ] `mortgage-mortgage-commitment-v2.html`
-8. [ ] `mortgage-object-valuation-v2.html`
-9. [ ] `mortgage-offer-v2.html`
-10. [ ] `mortgage-se-application-household-v2.html`
+4. [x] `mortgage-collateral-registration-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+5. [x] `mortgage-kyc-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+6. [x] `mortgage-manual-credit-evaluation-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+7. [x] `mortgage-mortgage-commitment-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+8. [x] `mortgage-object-valuation-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+9. [x] `mortgage-offer-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+10. [x] `mortgage-se-application-household-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 11. [ ] `mortgage-se-application-object-v2.html`
 12. [ ] `mortgage-se-application-stakeholder-v2.html`
 13. [ ] `mortgage-se-credit-decision-sales-contract-credit-decision-v2.html`

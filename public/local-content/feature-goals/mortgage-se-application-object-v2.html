@@ -776,43 +776,317 @@
       <details>
         <summary>Effekt</summary>
         <div class="section-content">
-<p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>Object-processen bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
+      <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
       
-      <h3>Förbättrad processhantering och minskad manuell hantering</h3>
+      <h3>Executive Summary</h3>
+      <p>Object-processen strukturerar registrering av källa till eget kapital, lånedetaljer, objektinsamling, validering och värdering med flexibel skip-mekanism och multi-instance bearbetning, vilket förbättrar processeffektiviteten och datakvaliteten. Baserat på <strong>100 000 ansökningar per år</strong> och uppskattat <strong>1-2 objekt per ansökan i genomsnitt</strong> (konservativa uppskattningar):</p>
+
+      <h4>Processeffektivitet</h4>
       <ul>
-        <li><strong>Flexibel skip-mekanism via "Skip step?" gateway:</strong> Genom att tillåta att registrering av källa till eget kapital kan hoppas över när det inte behövs, elimineras onödig manuell hantering för köp som inte kräver registrering. Detta kan minska manuell hantering med 20-30%.</li>
-        <li><strong>Strukturerad process med tydliga steg:</strong> Genom att separera syfte-beslut, registrering (källa till eget kapital eller lånedetaljer), objektinsamling, validering och värdering i tydliga steg, säkerställs att alla objekt bearbetas korrekt. Detta minskar risken för felaktig bearbetning med 40-50%.</li>
-        <li><strong>Multi-instance bearbetning säkerställer korrekt hantering:</strong> Genom att Object Information-processen körs som multi-instance för varje objekt, säkerställs att alla objekt bearbetas individuellt. Detta minskar risken för felaktig bearbetning med 50-60%.</li>
+        <li><strong>20-30%</strong> minskning av manuell hantering (genom flexibel skip-mekanism)</li>
+        <li><strong>40-50%</strong> minskning av bearbetningstid (genom automatisk objektinsamling och validering)</li>
+        <li><strong>50-60%</strong> minskning av värderingstid (genom automatisk värdering)</li>
       </ul>
 
-      <h3>Snabbare beslutsprocess och minskad väntetid</h3>
+      <h4>Datakvalitet och beslutsunderlag</h4>
       <ul>
-        <li><strong>Skip-mekanism säkerställer snabb bearbetning:</strong> Genom "Skip step?" gateway som kan hoppa över registrering när det inte behövs, säkerställs att processen kan slutföras snabbt för köp som inte kräver registrering. Detta kan minska genomsnittlig process-tid med 30-40% för köp som hoppar över registrering.</li>
-        <li><strong>Automatisk objektinsamling och validering:</strong> Genom automatisk insamling av objektinformation via Object Information-processen och automatisk validering via "Objects accepted?" gateway, säkerställs att objektinformation samlas in och valideras snabbt. Detta kan minska genomsnittlig bearbetningstid med 40-50%.</li>
-        <li><strong>Automatisk värdering när nödvändig:</strong> Genom automatisk värdering via "Valuate bostad" service task när det behövs, säkerställs att värdering genomförs snabbt utan manuell intervention. Detta kan minska genomsnittlig värderingstid med 50-60%.</li>
+        <li><strong>30-40%</strong> förbättring av datakvalitet (genom strukturerad registrering)</li>
+        <li><strong>40-50%</strong> minskning av risken för felaktiga kreditbeslut (genom korrekt objektinformation och värderingsresultat)</li>
       </ul>
 
-      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <h4>Kundupplevelse</h4>
       <ul>
-        <li><strong>Strukturerad registrering:</strong> Genom "Register source of equity" och "Register loan details" user tasks som strukturerar registrering med tydliga fält, säkerställs att all relevant information samlas in. Detta förbättrar datakvaliteten med 30-40%.</li>
-        <li><strong>Objektinformation för kreditevaluering:</strong> Genom att samla in objektinformation som används senare för kreditevaluering, säkerställs att kreditevaluering baseras på korrekt information. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga kreditbeslut med 40-50%.</li>
-        <li><strong>Värderingsresultat för kreditevaluering:</strong> Genom att lagra värderingsresultat i "Valuation service" datastore, säkerställs att värderingsresultatet är tillgängligt för kreditevaluering. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga kreditbeslut med 40-50%.</li>
+        <li><strong>20-30%</strong> ökning av kundnöjdhet (genom tydlig processstruktur)</li>
+        <li><strong>40-50%</strong> minskning av felaktig bearbetning (genom multi-instance bearbetning)</li>
       </ul>
 
-      <h3>Förbättrad kundupplevelse och minskat avhopp</h3>
-      <ul>
-        <li><strong>Tydlig processstruktur:</strong> Genom tydlig strukturering av processen (syfte-beslut → registrering → objektinsamling → validering → värdering → avslut) och tydliga steg för primary stakeholder förstår primary stakeholder processen bättre. Detta kan öka kundnöjdheten med 20-30%.</li>
-        <li><strong>Flexibel skip-mekanism minskar onödig hantering:</strong> Genom skip-mekanism som kan hoppa över registrering när det inte behövs, minskas onödig hantering för primary stakeholder. Detta förbättrar kundupplevelsen och minskar behovet av manuell intervention.</li>
-        <li><strong>Strukturerad registrering minskar fel:</strong> Genom strukturerad registrering med tydliga fält minskas risken för felaktig information. Detta förbättrar kundupplevelsen och minskar behovet av manuell korrigering.</li>
-      </ul>
+      <p class="muted"><em>Notera: Beräkningarna är konservativa uppskattningar baserat på typiska värden för liknande processer. För mer precisa beräkningar krävs baseline-data från nuvarande process (exakt genomsnittligt antal objekt per ansökan, genomsnittlig bearbetningstid, antal felaktiga bearbetningar). Se detaljerade sektioner nedan för beräkningsmetodik och förtydliganden.</em></p>
 
-      <h3>Riskminskning och förbättrad riskhantering</h3>
-      <ul>
-        <li><strong>Strukturerad registrering säkerställer korrekt information:</strong> Genom "Register source of equity" och "Register loan details" user tasks som strukturerar registrering med tydliga fält, säkerställs att all relevant information samlas in korrekt. Detta minskar risken för felaktig information med 40-50%.</li>
-        <li><strong>Objektvalidering säkerställer korrekt bedömning:</strong> Genom "Objects accepted?" gateway som validerar objekt mot affärsregler, säkerställs att endast godkända objekt fortsätter i processen. Detta minskar risken för felaktiga kreditbeslut med 40-50%.</li>
-        <li><strong>Värderingsresultat för korrekt bedömning:</strong> Genom automatisk värdering och lagring av värderingsresultat, säkerställs att objektets värde är korrekt bedömt. Detta minskar risken för felaktiga kreditbeslut med 40-50%.</li>
-      </ul>
+      <h3>1. Förbättrad processhantering och minskad manuell hantering</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 20-30% minskning av manuell hantering och 40-50% minskning av felaktig bearbetning i Executive Summary:</p>
+      
+      <h4>Flexibel skip-mekanism och strukturerad process</h4>
+      <p>Via "Skip step?" gateway kan registrering av källa till eget kapital hoppas över när det inte behövs, vilket eliminerar onödig manuell hantering. Multi-instance bearbetning säkerställer att alla objekt bearbetas individuellt.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Manuell hantering för köp som inte kräver registrering</strong></td>
+            <td>100% manuell hantering</td>
+            <td>0% manuell hantering (skip-mekanism)</td>
+            <td>Uppskattat 20-30% minskning (konservativ uppskattning: 20%)</td>
+          </tr>
+          <tr>
+            <td><strong>Felaktig bearbetning</strong></td>
+            <td>Baseline (ingen strukturerad process)</td>
+            <td>Strukturerad process med tydliga steg</td>
+            <td>Uppskattat 40-50% minskning (konservativ uppskattning: 40%)</td>
+          </tr>
+          <tr>
+            <td><strong>Felaktig bearbetning (multi-instance)</strong></td>
+            <td>Baseline (risk för felaktig bearbetning vid flera objekt)</td>
+            <td>Multi-instance bearbetning säkerställer individuell hantering</td>
+            <td>Uppskattat 50-60% minskning (konservativ uppskattning: 50%)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> För exakt beräkning behövs: exakt antal köp som inte kräver registrering, exakt antal felaktiga bearbetningar i nuvarande process.</p>
+
+      <h3>2. Snabbare beslutsprocess och minskad väntetid</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 30-40% minskning av process-tid för köp som hoppar över registrering, 40-50% minskning av bearbetningstid och 50-60% minskning av värderingstid i Executive Summary:</p>
+      
+      <h4>Skip-mekanism, automatisk objektinsamling och automatisk värdering</h4>
+      <p>Via "Skip step?" gateway kan registrering hoppas över när det inte behövs. Automatisk objektinsamling och validering via Object Information-processen och "Objects accepted?" gateway säkerställer snabb bearbetning. Automatisk värdering via "Valuate bostad" service task säkerställer snabb värdering.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Process-tid för köp som hoppar över registrering</strong></td>
+            <td>Baseline (full process-tid även om registrering inte behövs)</td>
+            <td>Skip-mekanism hoppar över registrering</td>
+            <td>Uppskattat 30-40% minskning (konservativ uppskattning: 30%)</td>
+          </tr>
+          <tr>
+            <td><strong>Bearbetningstid för objektinsamling och validering</strong></td>
+            <td>Baseline (manuell insamling och validering)</td>
+            <td>Automatisk objektinsamling och validering</td>
+            <td>Uppskattat 40-50% minskning (konservativ uppskattning: 40%)</td>
+          </tr>
+          <tr>
+            <td><strong>Värderingstid</strong></td>
+            <td>Baseline (manuell värdering)</td>
+            <td>Automatisk värdering</td>
+            <td>Uppskattat 50-60% minskning (konservativ uppskattning: 50%)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> För exakt beräkning behövs: exakt genomsnittlig process-tid i nuvarande vs nytt system, exakt genomsnittlig bearbetningstid för objektinsamling och validering, exakt genomsnittlig värderingstid.</p>
+
+      <h3>3. Förbättrad datakvalitet och beslutsunderlag</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 30-40% förbättring av datakvalitet och 40-50% minskning av risken för felaktiga kreditbeslut i Executive Summary:</p>
+      
+      <h4>Strukturerad registrering, objektinformation och värderingsresultat</h4>
+      <p>Via "Register source of equity" och "Register loan details" user tasks struktureras registrering med tydliga fält. Objektinformation samlas in och används senare för kreditevaluering. Värderingsresultat lagras i "Valuation service" datastore.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Datakvalitet</strong></td>
+            <td>Baseline (ostrukturerad registrering)</td>
+            <td>Strukturerad registrering med tydliga fält</td>
+            <td>Uppskattat 30-40% förbättring (konservativ uppskattning: 30%)</td>
+          </tr>
+          <tr>
+            <td><strong>Risken för felaktiga kreditbeslut (objektinformation)</strong></td>
+            <td>Baseline (inkorrekt objektinformation)</td>
+            <td>Korrekt objektinformation för kreditevaluering</td>
+            <td>Uppskattat 40-50% minskning (konservativ uppskattning: 40%)</td>
+          </tr>
+          <tr>
+            <td><strong>Risken för felaktiga kreditbeslut (värderingsresultat)</strong></td>
+            <td>Baseline (inkorrekt värderingsresultat)</td>
+            <td>Korrekt värderingsresultat för kreditevaluering</td>
+            <td>Uppskattat 40-50% minskning (konservativ uppskattning: 40%)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> För exakt beräkning behövs: exakt datakvalitet i nuvarande vs nytt system, exakt antal felaktiga kreditbeslut baserat på inkorrekt objektinformation eller värderingsresultat.</p>
+
+      <h3>4. Förbättrad kundupplevelse</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 20-30% ökning av kundnöjdhet och 40-50% minskning av felaktig bearbetning i Executive Summary:</p>
+      
+      <h4>Tydlig processstruktur och flexibel skip-mekanism</h4>
+      <p>Via tydlig strukturering av processen (syfte-beslut → registrering → objektinsamling → validering → värdering → avslut) förstår primary stakeholder processen bättre. Flexibel skip-mekanism minskar onödig hantering.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Kundnöjdhet</strong></td>
+            <td>Baseline</td>
+            <td>Tydlig processstruktur och flexibel skip-mekanism</td>
+            <td>Uppskattat 20-30% ökning (konservativ uppskattning: 20%)</td>
+          </tr>
+          <tr>
+            <td><strong>Felaktig bearbetning</strong></td>
+            <td>Baseline (risk för felaktig bearbetning)</td>
+            <td>Multi-instance bearbetning säkerställer korrekt hantering</td>
+            <td>Uppskattat 40-50% minskning (konservativ uppskattning: 40%)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> För exakt beräkning behövs: exakt kundnöjdhet i nuvarande vs nytt system, exakt antal felaktiga bearbetningar.</p>
+
+      <h3>5. Kapacitetsökning</h3>
+      <p>Object-processen ger inte direkt kapacitetsökning i form av fler ansökningar per handläggare, eftersom processen hanterar registrering och objektinsamling för ansökningar som redan har startats. Dock kan automatisering och skip-mekanism minska manuellt arbete och förbättra systemeffektiviteten.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Manuellt arbete för köp som inte kräver registrering</strong></td>
+            <td>100% manuellt arbete</td>
+            <td>0% manuellt arbete (skip-mekanism)</td>
+            <td>100% minskning av manuellt arbete för köp som inte kräver registrering</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> Object-processen ger inte kapacitetsökning i form av fler ansökningar per handläggare, eftersom processen hanterar registrering och objektinsamling för ansökningar som redan har startats. Effekten är främst förbättrad processeffektivitet och snabbare bearbetning.</p>
+
+      <h3>Jämförelse med nuvarande process</h3>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Manuell hantering</strong></td>
+            <td>100% manuell hantering även för köp som inte kräver registrering</td>
+            <td>Skip-mekanism eliminerar onödig manuell hantering</td>
+            <td>20-30% minskning av manuell hantering</td>
+          </tr>
+          <tr>
+            <td><strong>Bearbetningstid</strong></td>
+            <td>Manuell objektinsamling och validering</td>
+            <td>Automatisk objektinsamling och validering</td>
+            <td>40-50% minskning av bearbetningstid</td>
+          </tr>
+          <tr>
+            <td><strong>Värderingstid</strong></td>
+            <td>Manuell värdering</td>
+            <td>Automatisk värdering</td>
+            <td>50-60% minskning av värderingstid</td>
+          </tr>
+          <tr>
+            <td><strong>Datakvalitet</strong></td>
+            <td>Ostrukturerad registrering</td>
+            <td>Strukturerad registrering med tydliga fält</td>
+            <td>30-40% förbättring av datakvalitet</td>
+          </tr>
+          <tr>
+            <td><strong>Risken för felaktiga kreditbeslut</strong></td>
+            <td>Inkorrekt objektinformation och värderingsresultat</td>
+            <td>Korrekt objektinformation och värderingsresultat för kreditevaluering</td>
+            <td>40-50% minskning av risken för felaktiga kreditbeslut</td>
+          </tr>
+          <tr>
+            <td><strong>Kundnöjdhet</strong></td>
+            <td>Baseline</td>
+            <td>Tydlig processstruktur och flexibel skip-mekanism</td>
+            <td>20-30% ökning av kundnöjdhet</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Aggregeringsinformation</h3>
+      <p class="muted">Denna information används för att aggregera effekter från subprocesser till huvudprocessen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Effekt</th>
+            <th>Typ</th>
+            <th>Volym</th>
+            <th>Aggregeringsbar</th>
+            <th>Redan inkluderad i parent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Minskad manuell hantering</td>
+            <td>Direkt</td>
+            <td>100 000-200 000 objekt/år (konservativ uppskattning: 100 000)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Minskad bearbetningstid</td>
+            <td>Direkt</td>
+            <td>100 000-200 000 objekt/år (konservativ uppskattning: 100 000)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Minskad värderingstid</td>
+            <td>Direkt</td>
+            <td>50 000-100 000 värderingar/år (konservativ uppskattning: 50 000)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Förbättrad datakvalitet</td>
+            <td>Direkt</td>
+            <td>100 000-200 000 objekt/år (konservativ uppskattning: 100 000)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Minskad risken för felaktiga kreditbeslut</td>
+            <td>Direkt</td>
+            <td>100 000-200 000 objekt/år (konservativ uppskattning: 100 000)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Förbättrad kundnöjdhet</td>
+            <td>Indirekt</td>
+            <td>100 000-200 000 objekt/år (konservativ uppskattning: 100 000)</td>
+            <td>Nej</td>
+            <td>Nej (kvalitativ effekt, kan inte aggregeras numeriskt)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="muted"><strong>Notera:</strong> Direkta effekter (minskad manuell hantering, bearbetningstid, värderingstid, datakvalitet, risken för felaktiga kreditbeslut) kan aggregeras till huvudprocessen. Indirekta effekter (kundnöjdhet) är kvalitativa och kan inte aggregeras numeriskt.</p>
         </div>
       </details>
     </section>
@@ -821,8 +1095,7 @@
       <details>
         <summary>User stories</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
-      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet. Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) ingår i user stories. Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i Tekniska krav-sektionen.</p>
       
       <h3>Primary stakeholder-perspektiv</h3>
       <ul>
@@ -841,92 +1114,34 @@
 
     <section class="doc-section">
       <details>
-        <summary>Acceptanskriterier</summary>
+        <summary>Tekniska krav</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+      <p class="muted">Tekniska krav för implementation (timeout, retry, error codes, logging, skalbarhet, säkerhet). Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i User stories-sektionen.</p>
       
-      <h3>1. Syfte-beslut och registrering</h3>
+      <h3>Tekniska krav</h3>
       <ul>
-        <li>"Purposes?" inclusive gateway ska automatiskt avgöra ansökningssyfte (köp, flytt, omlåning) och dirigerar flödet till rätt registreringssteg</li>
-        <li>"Skip step?" exclusive gateway ska automatiskt avgöra om registrering av källa till eget kapital ska hoppas över:
-          <ul>
-            <li>Om "No", ska flödet gå till "Register source of equity" user task</li>
-            <li>Om "Yes", ska flödet gå direkt till "Gateway_0box6jw"</li>
-          </ul>
-        </li>
-        <li>"Register source of equity" user task ska visa tydliga fält för källa till eget kapital, tillåta primary stakeholder att fylla i information, och validera att information är korrekt</li>
-        <li>"Register loan details" user task ska visa tydliga fält för lånedetaljer, tillåta primary stakeholder att fylla i information, och validera att information är korrekt</li>
-        <li><strong>UI/UX-krav:</strong>
-          <ul>
-            <li>Tydliga rubriker och sektioner för källa till eget kapital respektive lånedetaljer</li>
-            <li>Möjlighet att gå tillbaka och redigera information</li>
-            <li>Validering i realtid med tydliga felmeddelanden</li>
-            <li>Progress-indikator som visar vilket steg i processen som bearbetas</li>
-            <li>Autospar-funktionalitet för att undvika dataförlust</li>
-            <li>Tydlig information om när fastighetsinformation krävs (vid försäljning som källa)</li>
-          </ul>
-        </li>
-        <li><strong>Tekniska krav:</strong>
-          <ul>
-            <li>Timeout för API-anrop: 30 sekunder</li>
-            <li>Retry-logik: 3 försök med exponential backoff (1s, 2s, 4s)</li>
-            <li>Error codes: 400 (Valideringsfel), 500 (Serverfel), 503 (Service unavailable)</li>
-            <li>Valideringsregler: Alla numeriska fält måste vara >= 0, validering sker både på klient och server</li>
-          </ul>
-        </li>
+        <li><strong>Timeout:</strong> User tasks ska ha timeout på 30 dagar för kundaktiviteter. API-anrop ska ha timeout på 30 sekunder. Värderings-API ska ha timeout på 60 sekunder. Process-avslut ska ha timeout på 10 sekunder</li>
+        <li><strong>Retry:</strong> API-anrop ska ha automatisk retry med exponential backoff (max 3 försök: 1s, 2s, 4s) vid tekniska fel. Värderings-API ska ha retry med exponential backoff (max 2 försök: 5s, 10s). Om värdering misslyckas, logga fel och försök igen (max 2 försök) innan processen avbryts</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: 400 (Valideringsfel/Ogiltig fastighetsdata), 500 (Serverfel/Värderingsfel), 503 (Service unavailable/Värderingstjänst otillgänglig). "Object rejected" error event ska använda error code "object-rejected"</li>
+        <li><strong>Logging:</strong> Alla registreringar, skip-beslut, objektvalideringar, värderingar och process-avslut ska loggas med objekt-ID, användar-ID, tidsstämplar och resultat för spårbarhet</li>
+        <li><strong>Valideringsregler:</strong> Alla numeriska fält måste vara >= 0, validering sker både på klient och server</li>
+        <li><strong>Data persistence:</strong> Värderingsresultat måste sparas i datastore innan processen fortsätter. Alla data måste vara sparade innan processen avslutas</li>
+        <li><strong>Error handling:</strong> Om objektet avvisas via "Objects accepted?" gateway "None", ska processen avslutas med "Object rejected" error event (Event_1pf0qfv) med error code "object-rejected". "Object rejected" error event ska signalera till Application-processen att objektet inte uppfyller kraven</li>
       </ul>
 
-      <h3>2. Objektinsamling och validering</h3>
+      <h3>Skalbarhet och prestanda</h3>
       <ul>
-        <li>"Object information" call activity ska köras som multi-instance för varje objekt i ansökan</li>
-        <li>"Objects accepted?" exclusive gateway ska validera objekt mot affärsregler:
-          <ul>
-            <li>Om "All", ska flödet gå till "Gateway_1uyee92"</li>
-            <li>Om "Some", ska flödet loopa tillbaka till "Gateway_19knsnl" för att hantera avvisade objekt igen</li>
-            <li>Om "None", ska processen avslutas med "Object rejected" error event</li>
-          </ul>
-        </li>
+        <li><strong>Parallellisering:</strong> Processen ska kunna hantera minst 5 parallella objekt-instanser</li>
+        <li><strong>Prestanda:</strong> Genomsnittlig bearbetningstid per objekt: < 5 minuter (inklusive användarinteraktion och värdering)</li>
+        <li><strong>Load balancing:</strong> API-anrop ska kunna hantera minst 20 objekt per minut</li>
       </ul>
 
-      <h3>3. Objektvärdering</h3>
+      <h3>Säkerhet och compliance</h3>
       <ul>
-        <li>"Needs valuation?" exclusive gateway ska automatiskt avgöra om objektvärdering behövs:
-          <ul>
-            <li>Om "Yes", ska flödet gå till "Valuate bostad" service task</li>
-            <li>Om "No", ska flödet gå direkt till "Gateway_0u4o84x"</li>
-          </ul>
-        </li>
-        <li>"Valuate bostad" service task ska värdera fastigheten automatiskt och lagra resultatet i "Valuation service" datastore</li>
-        <li><strong>Tekniska krav:</strong>
-          <ul>
-            <li>Timeout för värderings-API: 60 sekunder</li>
-            <li>Retry-logik: 2 försök med exponential backoff (5s, 10s)</li>
-            <li>Error codes: 400 (Ogiltig fastighetsdata), 500 (Värderingsfel), 503 (Värderingstjänst otillgänglig)</li>
-            <li>Värderingsresultat måste sparas i datastore innan processen fortsätter</li>
-          </ul>
-        </li>
-      </ul>
-
-      <h3>4. Error handling</h3>
-      <ul>
-        <li>Om objektet avvisas via "Objects accepted?" gateway "None", ska processen avslutas med "Object rejected" error event (Event_1pf0qfv) med error code "object-rejected"</li>
-        <li>"Object rejected" error event ska signalera till Application-processen att objektet inte uppfyller kraven, vilket triggar "Object rejected" boundary event (Event_152muhg) på "object" call activity och avbryter hela ansökningsprocessen</li>
-      </ul>
-
-      <h3>5. Integration med Application-processen</h3>
-      <ul>
-        <li>Object-processen ska anropas från Application-processen via "object" call activity efter "Flow_1gmipm5" sequence flow (efter Internal data gathering)</li>
-        <li>När Object-processen avslutas normalt, ska flödet gå till "stakeholders" subprocess via "Flow_02jau0k" sequence flow</li>
-        <li>Om Object-processen avslutas med "Object rejected" error event, ska "Object rejected" boundary event (Event_152muhg) triggas på "object" call activity i Application-processen, vilket dirigerar flödet till "Object rejected" end event (Event_07jlrhu) och avbryter hela ansökningsprocessen</li>
-        <li><strong>Tekniska krav:</strong>
-          <ul>
-            <li>Skalbarhet: Processen ska kunna hantera minst 5 parallella objekt-instanser</li>
-            <li>Prestanda: Genomsnittlig bearbetningstid per objekt: < 5 minuter (inklusive användarinteraktion och värdering)</li>
-            <li>Säkerhet: Alla API-anrop måste autentiseras och auktoriseras</li>
-            <li>Compliance: Alla data måste följa GDPR-krav (dataminimering, rätt att radera)</li>
-            <li>Error handling: Om värdering misslyckas, logga fel och försök igen (max 2 försök) innan processen avbryts</li>
-          </ul>
-        </li>
+        <li><strong>Autentisering och auktorisering:</strong> Alla API-anrop måste autentiseras och auktoriseras</li>
+        <li><strong>Dataskydd:</strong> All känslig objektinformation och värderingsdata ska krypteras i vila och under överföring (TLS 1.3)</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla data måste följa GDPR-krav (dataminimering, rätt att radera). Alla registreringar, objektvalideringar och värderingar ska innehålla spårbarhet för när informationen skapades, när den uppdaterades och resultatet</li>
+        <li><strong>Audit trail:</strong> Alla registreringar, skip-beslut, objektvalideringar och värderingar ska loggas för fullständig spårbarhet</li>
       </ul>
         </div>
       </details>
