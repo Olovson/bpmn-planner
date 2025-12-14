@@ -181,8 +181,18 @@ Varje user story ska ha tydlig struktur:
 - ✅ **Inkluderar affärslogik**: Valideringar, felmeddelanden, edge cases, användarupplevelse
 - ✅ **Kopplar till BPMN som referens**: BPMN-ID:n kan inkluderas som referens (t.ex. "via 'Upload document' user task (upload-document)"), men fokusera på funktionalitet
 - ✅ **Tekniska detaljer där relevant**: Error codes, timeout-värden, API-endpoints, datastrukturer - men endast om de är relevanta för implementation
+- ✅ **Börja med funktionalitet**: Acceptanskriterier ska börja med funktionella detaljer (vad användaren ser, vad systemet gör, UI/UX), och lägg BPMN-referenser som teknisk kontext i slutet
 - ❌ **Undvik BPMN-syntax i acceptanskriterier**: Undvik "ska triggas när", "ska gå till via Flow_X", "ska dirigeras via gateway" - detta är BPMN-mekanik, inte funktionalitet
 - ❌ **Undvik att bara beskriva BPMN-flöde**: Acceptanskriterier ska beskriva funktionalitet, inte bara bekräfta att BPMN-processen följer rätt flöde
+- ❌ **Undvik att börja med BPMN-referenser**: Undvik att börja acceptanskriterier med "Efter 'X' gateway (Gateway_ID)..." eller "När 'Y' call activity (y-id) triggar..." - börja istället med funktionalitet och lägg BPMN-referenser som teknisk kontext
+
+**Struktur för acceptanskriterier:**
+1. **Börja med funktionalitet**: Beskriv vad användaren ser, vad systemet gör, UI/UX-detaljer, valideringar, felmeddelanden
+2. **Lägg BPMN-referenser som teknisk kontext**: Lägg BPMN-ID:n och referenser i slutet som teknisk kontext för utvecklare
+
+**Exempel:**
+- ❌ **Dåligt**: "Efter parallel gateway (Gateway_1960pk9) samlar flöden från både 'Household' call activity (household) och 'Per stakeholder' subprocess (stakeholders), ska 'Confirm application' user task (confirm-application) aktiveras. Sammanfattningen ska visa alla insamlade data..."
+- ✅ **Bra**: "Sammanfattningen ska visa alla insamlade data i ett strukturerat format med tydliga rubriker (Intern data, Hushållsekonomi, Stakeholders, Objekt), tillåta mig att gå tillbaka och ändra information via tydliga länkar, och visa en tydlig 'Bekräfta'-knapp. När både hushållsekonomi och stakeholder-information är klara, ska 'Confirm application' user task (confirm-application) aktiveras via parallel gateway (Gateway_1960pk9) som samlar flöden från både 'Household' call activity (household) och 'Per stakeholder' subprocess (stakeholders)."
 
 ### 5.6 Längd och läsbarhet
 **Mål:** ~20-40 ord per user story (exklusive acceptanskriterier)

@@ -558,6 +558,9 @@ För varje user story, ställ dessa frågor:
   - Använd "ska"-formuleringar: Formulera som krav (t.ex. "Systemet ska...")
   - Koppla till feature goalet: Acceptanskriterier ska vara direkt relaterade till feature goalets funktionalitet
   - Fokusera på beteende: Beskriv vad systemet ska göra, inte hur det implementeras
+  - **Börja med funktionalitet**: Acceptanskriterier ska börja med funktionella detaljer (vad användaren ser, vad systemet gör, UI/UX, valideringar, felmeddelanden), och lägg BPMN-referenser som teknisk kontext i slutet
+  - **Undvik att börja med BPMN-referenser**: Undvik att börja acceptanskriterier med "Efter 'X' gateway..." eller "När 'Y' call activity triggar..." - börja istället med funktionalitet och lägg BPMN-referenser som teknisk kontext
+  - **Struktur**: 1) Funktionella detaljer först (UI/UX, valideringar, felmeddelanden), 2) BPMN-referenser som teknisk kontext i slutet
   - Nämn specifika processsteg: Referera till specifika call activities, gateways, error events, datastores
   - Inkludera konkreta krav: Specificera timeout-värden, valideringsregler, felmeddelanden, UI/UX-krav
   - Organisera i kategorier: För komplexa feature goals, organisera i kategorier baserat på processsteg

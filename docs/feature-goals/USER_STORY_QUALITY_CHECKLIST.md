@@ -32,6 +32,8 @@ Denna checklista säkerställer att user stories ger värde för utvecklare och 
 - [ ] Acceptanskriterier är **testbara** med funktionella tester
 - [ ] Acceptanskriterier inkluderar **affärslogik, valideringar, felmeddelanden, användarupplevelse**
 - [ ] Acceptanskriterier undviker "ska triggas när", "ska gå till via Flow_X" (detta är BPMN-syntax)
+- [ ] Acceptanskriterier **börjar med funktionalitet** (vad användaren ser, vad systemet gör, UI/UX) och lägger BPMN-referenser som teknisk kontext i slutet
+- [ ] Acceptanskriterier undviker att **börja med BPMN-referenser** (t.ex. "Efter 'X' gateway..." eller "När 'Y' call activity triggar...")
 
 ### 5. Ger implementation-detaljer
 - [ ] User story beskriver **vad användaren ser** (UI/UX)
