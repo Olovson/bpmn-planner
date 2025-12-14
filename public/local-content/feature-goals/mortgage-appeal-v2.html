@@ -390,18 +390,18 @@
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Ansökan har blivit automatiskt avvisad (is-automatically-rejected=Yes), Appeal anropas via Gateway_0f1a2lu. <strong>När:</strong> Stakeholder skickar in överklagan via "Submit appeal" (Stakeholder lane) med motivering "Ny lönespecifikation tillgänglig" och dokumentation. Caseworker granskar via "Screen appeal" (Caseworker lane) och accepterar. <strong>Då:</strong> "Screening accepted?" gateway returnerar Yes. Processen avslutas med Event_1pzbohb. <strong>Assert:</strong> Appeal-processen avslutas normalt, flödet går via Gateway_1qiy2jr till Manual credit evaluation, ansökan är redo för manuell kreditevaluering.</td>
+        <td><strong>Given:</strong> Ansökan har blivit automatiskt avvisad. Kunden har fått tydligt meddelande om avvisning och möjlighet att överklaga. Testdata: appeal-accepted. <strong>When:</strong> Kunden skickar in överklagan med motivering "Ny lönespecifikation tillgänglig" och laddar upp kompletterande dokumentation. Handläggare granskar överklagan och accepterar den. <strong>Then:</strong> Kunden ser tydligt meddelande om att överklagan har accepterats. Kunden ser att ansökan nu går vidare till manuell granskning. Handläggaren ser att överklagan är accepterad och att ansökan är redo för manuell kreditevaluering. Processen avslutas normalt. <strong>BPMN-referens:</strong> Appeal anropas via Gateway_0f1a2lu. "Screening accepted?" gateway (screening-accepted) returnerar Yes. Processen avslutas med Event_1pzbohb. Flödet går via Gateway_1qiy2jr till Manual credit evaluation.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S2</strong></td>
-        <td>Överklagan avvisad – loop via Gateway_1v59ktc</td>
+        <td>Överklagan avvisad – loop tillbaka för nytt försök</td>
         <td>Error</td>
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Ansökan har blivit automatiskt avvisad, Appeal anropas. <strong>När:</strong> Stakeholder skickar in överklagan, Caseworker granskar via "Screen appeal" och avvisar (motivering: "Ofullständig information"). <strong>Då:</strong> "Screening accepted?" gateway returnerar No. Processen loopar tillbaka via Gateway_1v59ktc (loop-gateway). <strong>Assert:</strong> Processen loopar tillbaka till start, Stakeholder kan skicka in ny överklagan, loop räknas (max antal gånger enligt policy, t.ex. 3 försök), om max antal nås avvisas ansökan permanent.</td>
+        <td><strong>Given:</strong> Ansökan har blivit automatiskt avvisad, Appeal anropas. Kunden har skickat in överklagan. Testdata: appeal-rejected. <strong>When:</strong> Kunden skickar in överklagan. Handläggare granskar överklagan och avvisar den med motivering "Ofullständig information". <strong>Then:</strong> Kunden ser tydligt meddelande om att överklagan har avvisats med motivering från handläggaren. Kunden ser tydlig information om hur många försök som återstår (t.ex. "Försök 1 av 3"). Kunden kan skicka in en ny överklagan med förbättrad information. Om max antal försök nås, ser kunden tydligt meddelande om permanent avvisning. <strong>BPMN-referens:</strong> "Screening accepted?" gateway (screening-accepted) returnerar No. Processen loopar tillbaka via Gateway_1v59ktc (loop-gateway) till "Submit appeal" user task. Loop räknas (max antal gånger enligt policy, t.ex. 3 försök).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -412,18 +412,18 @@
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Appeal-processen startar, "Submit appeal" user task är aktiv. <strong>När:</strong> Stakeholder startar överklagan men slutför inte "Submit appeal" inom 30 dagar (P30D). <strong>Då:</strong> Boundary event "event-appeal-timeout" triggas på "Submit appeal" task. End event "appeal-timeout" med escalation "appeal-timeout" (Escalation_34epnhh) triggas. <strong>Assert:</strong> Appeal-processen avslutas med timeout, escalation "appeal-timeout" signaleras, ansökan avvisas automatiskt i Appeal-processen.</td>
+        <td><strong>Given:</strong> Appeal-processen startar. Kunden har fått möjlighet att skicka in överklagan. Testdata: appeal-timeout. <strong>When:</strong> Kunden startar överklagan men slutför inte "Submit appeal" inom 30 dagar. <strong>Then:</strong> Kunden ser tydligt meddelande om att överklagan har avvisats automatiskt på grund av timeout. Kunden ser tydlig information om tidsgränsen (30 dagar) och att tiden har gått ut. Processen avslutas med timeout. Ansökan avvisas automatiskt. <strong>BPMN-referens:</strong> Boundary event "event-appeal-timeout" triggas på "Submit appeal" task efter 30 dagar (P30D). End event "appeal-timeout" med escalation "appeal-timeout" (Escalation_34epnhh) triggas.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S4</strong></td>
-        <td>Timeout på Appeal call activity i mortgage.bpmn</td>
+        <td>Timeout på Appeal call activity i huvudprocessen</td>
         <td>Error</td>
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Appeal anropas via "appeal" call activity i mortgage.bpmn. <strong>När:</strong> Hela Appeal call activity timeout (t.ex. efter längre tid än 30 dagar eller systemfel). <strong>Då:</strong> Boundary event "event-appeal-timeout" triggas på Appeal call activity i mortgage.bpmn. Escalation "appeal-timeout" (Escalation_0b3ql7g) triggas. Flödet går till "application-automatically-rejected" end event. <strong>Assert:</strong> Appeal call activity avbryts, escalation "appeal-timeout" signaleras till mortgage.bpmn, ansökan avvisas automatiskt via "application-automatically-rejected" end event, processen avslutas.</td>
+        <td><strong>Given:</strong> Appeal anropas från huvudprocessen. Testdata: appeal-timeout. <strong>When:</strong> Hela Appeal call activity timeout (t.ex. efter längre tid än 30 dagar eller systemfel). <strong>Then:</strong> Ansökan avvisas automatiskt. Processen avslutas med timeout. <strong>BPMN-referens:</strong> Boundary event "event-appeal-timeout" triggas på Appeal call activity i mortgage.bpmn. Escalation "appeal-timeout" (Escalation_0b3ql7g) triggas. Flödet går till "application-automatically-rejected" end event.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -434,7 +434,7 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Appeal accepteras, flödet går via Gateway_1qiy2jr till Manual credit evaluation. <strong>När:</strong> Manual credit evaluation triggar "credit-evaluation-automatically-rejected" escalation (Escalation_3ron523). <strong>Då:</strong> Escalation går tillbaka till Gateway_0f1a2lu som dirigerar tillbaka till Appeal. <strong>Assert:</strong> Appeal anropas igen (loop), Stakeholder kan skicka in ny överklagan, loop räknas, om max antal nås avvisas ansökan permanent, processen avslutas med "application-automatically-rejected".</td>
+        <td><strong>Given:</strong> Appeal accepteras. Ansökan går vidare till manuell kreditevaluering. Testdata: appeal-loop. <strong>When:</strong> Manuell kreditevaluering avvisar ansökan automatiskt. <strong>Then:</strong> Kunden får tydligt meddelande om att ansökan har avvisats igen och att de kan överklaga igen. Kunden kan skicka in en ny överklagan med förbättrad information. Kunden ser tydlig information om hur många försök som återstår. Om max antal försök nås, ser kunden tydligt meddelande om permanent avvisning. <strong>BPMN-referens:</strong> Flödet går via Gateway_1qiy2jr till Manual credit evaluation. Manual credit evaluation triggar "credit-evaluation-automatically-rejected" escalation (Escalation_3ron523). Escalation går tillbaka till Gateway_0f1a2lu som dirigerar tillbaka till Appeal. Appeal anropas igen (loop).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -445,7 +445,7 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Policy tillåter max 3 överklagansförsök. Stakeholder har redan skickat in 2 överklagningar som avvisats. <strong>När:</strong> Stakeholder skickar in tredje överklagan, Caseworker avvisar igen. <strong>Då:</strong> "Screening accepted?" gateway returnerar No. Loop-räknaren når max (3). <strong>Assert:</strong> Processen avslutas med permanent avvisning, ansökan kan inte överklagas igen, "application-automatically-rejected" end event triggas, Stakeholder får tydligt meddelande om permanent avvisning.</td>
+        <td><strong>Given:</strong> Policy tillåter max 3 överklagansförsök. Kunden har redan skickat in 2 överklagningar som avvisats. Testdata: appeal-max-attempts. <strong>When:</strong> Kunden skickar in tredje överklagan. Handläggare avvisar överklagan igen. <strong>Then:</strong> Kunden ser tydligt meddelande om permanent avvisning. Kunden ser tydlig information om att max antal försök har nåtts (t.ex. "Försök 3 av 3 - Max antal försök nått"). Kunden kan inte skicka in fler överklaganden. Ansökan avvisas permanent. <strong>BPMN-referens:</strong> "Screening accepted?" gateway (screening-accepted) returnerar No. Loop-räknaren når max (3). "application-automatically-rejected" end event triggas.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -456,18 +456,18 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Ansökan har blivit automatiskt avvisad, Appeal anropas. <strong>När:</strong> Stakeholder försöker skicka in överklagan via "Submit appeal" men saknar motivering eller dokumentation (t.ex. tomt motiveringsfält eller inga dokument uppladdade). <strong>Då:</strong> Systemet validerar överklagan och kräver komplettering. <strong>Assert:</strong> "Submit appeal" task blockerar submission, valideringsfel visas tydligt (t.ex. "Motivering krävs", "Dokumentation krävs"), Stakeholder kan komplettera och skicka in igen, processen fortsätter när överklagan är komplett.</td>
+        <td><strong>Given:</strong> Ansökan har blivit automatiskt avvisad, Appeal anropas. Kunden försöker skicka in överklagan. Testdata: appeal-incomplete. <strong>When:</strong> Kunden försöker skicka in överklagan men saknar motivering eller dokumentation (t.ex. tomt motiveringsfält eller inga dokument uppladdade). <strong>Then:</strong> Kunden ser tydliga valideringsfel (t.ex. "Motivering krävs", "Dokumentation krävs") med visuella indikatorer (t.ex. röd för obligatoriska fält som saknas). "Skicka in"-knappen är inaktiverad tills allt är korrekt ifyllt. Kunden kan komplettera informationen och skicka in igen. Processen fortsätter när överklagan är komplett. <strong>BPMN-referens:</strong> "Submit appeal" task validerar överklagan innan den kan skickas in.</td>
         <td>✅ Planerad</td>
       </tr>
     
       <tr>
         <td><strong>S8</strong></td>
-        <td>Caseworker avvisar med specifik motivering</td>
+        <td>Handläggare avvisar med specifik motivering</td>
         <td>Edge</td>
         <td>caseworker</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Stakeholder har skickat in överklagan med motivering och dokumentation. <strong>När:</strong> Caseworker granskar via "Screen appeal" (Caseworker lane) och avvisar med motivering "Dokumentationen stödjer inte överklagan" eller "Ny information är inte relevant". <strong>Då:</strong> "Screening accepted?" gateway returnerar No. Caseworker anger avvisningsmotivering. <strong>Assert:</strong> Avvisningsmotivering sparas, Stakeholder får tydligt meddelande om avvisning och motivering, processen loopar tillbaka via Gateway_1v59ktc, Stakeholder kan skicka in ny överklagan med förbättrad information.</td>
+        <td><strong>Given:</strong> Kunden har skickat in överklagan med motivering och dokumentation. Testdata: appeal-rejected-with-reason. <strong>When:</strong> Handläggare granskar överklagan och avvisar den med motivering "Dokumentationen stödjer inte överklagan" eller "Ny information är inte relevant". <strong>Then:</strong> Kunden ser tydligt meddelande om avvisning med motivering från handläggaren. Kunden ser tydlig information om hur många försök som återstår. Kunden kan skicka in en ny överklagan med förbättrad information baserat på motiveringen. Handläggaren ser att avvisningsmotivering är sparad. <strong>BPMN-referens:</strong> "Screening accepted?" gateway (screening-accepted) returnerar No. Caseworker anger avvisningsmotivering. Processen loopar tillbaka via Gateway_1v59ktc.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -478,7 +478,7 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Olika anropningskontexter: (a) Automatisk avvisning från Credit Decision, (b) Automatisk avvisning från Manual Credit Evaluation. <strong>När:</strong> Appeal anropas via "appeal" call activity från Gateway_0f1a2lu. <strong>Då:</strong> Appeal-processen startar korrekt oavsett anropningskontext. <strong>Assert:</strong> Appeal-processen fungerar identiskt oavsett anropningskontext, alla kontexter hanteras korrekt, flödet går korrekt till Manual credit evaluation efter accepterad överklagan.</td>
+        <td><strong>Given:</strong> Olika anropningskontexter: (a) Automatisk avvisning från Credit Decision, (b) Automatisk avvisning från Manual Credit Evaluation. Testdata: appeal-different-contexts. <strong>When:</strong> Appeal anropas från olika kontexter. <strong>Then:</strong> Kunden ser samma möjlighet att överklaga oavsett anropningskontext. Kunden kan skicka in överklagan på samma sätt. Efter accepterad överklagan, går ansökan korrekt vidare till manuell kreditevaluering. <strong>BPMN-referens:</strong> Appeal anropas via "appeal" call activity från Gateway_0f1a2lu. Appeal-processen fungerar identiskt oavsett anropningskontext.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -489,7 +489,7 @@
         <td>system</td>
         <td>P2</td>
         <td>functional</td>
-        <td><strong>Givet:</strong> Stakeholder har en aktiv överklagan. <strong>När:</strong> Stakeholder försöker skicka in en ny överklagan samtidigt (t.ex. via olika sessioner eller systemfel). <strong>Då:</strong> Systemet hanterar concurrent requests. <strong>Assert:</strong> Endast en överklagan kan vara aktiv åt gången, systemet blockerar eller avvisar concurrent försök, tydligt felmeddelande visas, processen fortsätter korrekt med en aktiv överklagan.</td>
+        <td><strong>Given:</strong> Kunden har en aktiv överklagan. Testdata: appeal-concurrent. <strong>When:</strong> Kunden försöker skicka in en ny överklagan samtidigt (t.ex. via olika sessioner eller systemfel). <strong>Then:</strong> Kunden ser tydligt felmeddelande om att en överklagan redan är aktiv. Systemet blockerar eller avvisar concurrent försök. Processen fortsätter korrekt med en aktiv överklagan. <strong>BPMN-referens:</strong> Systemet hanterar concurrent requests och säkerställer att endast en överklagan kan vara aktiv åt gången.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -1181,57 +1181,50 @@
       
       <h3>Kundfunktionalitet</h3>
       <ul>
-        <li>Systemet ska tillåta kunder att skicka in överklagan via "Submit appeal" user task i Stakeholder-portalen</li>
-        <li>Systemet ska kräva att kunder fyller i motivering och laddar upp kompletterande dokumentation innan överklagan kan skickas in</li>
-        <li>Systemet ska validera att överklagan är komplett innan den kan skickas in (t.ex. motivering och dokumentation måste finnas)</li>
-        <li>Systemet ska visa tydlig feedback om varför överklagan avvisades om den avvisas</li>
-        <li>Systemet ska tillåta kunder att skicka in en ny överklagan om den första avvisas (max antal gånger enligt policy)</li>
+        <li>Kunder ska kunna skicka in överklagan för automatiskt avvisade ansökningar. Kunden ska kunna fylla i motivering och ladda upp kompletterande dokumentation i ett tydligt formulär med strukturerade fält. UI ska visa tydlig struktur med separata sektioner för motivering och dokumentation, validering i realtid, och tydlig feedback om vad som saknas med visuella indikatorer (t.ex. röd för obligatoriska fält som saknas). Systemet ska validera att överklagan är komplett innan den kan skickas in (t.ex. motivering och dokumentation måste finnas), och visa tydliga felmeddelanden om något saknas. En tydlig "Skicka in"-knapp ska bara vara aktiverad när allt är korrekt ifyllt. [BPMN-referens: "Submit appeal" user task (submit-appeal) i Stakeholder lane]</li>
+        <li>Om överklagan avvisas, ska kunden se ett tydligt meddelande som förklarar varför överklagan avvisades, inklusive avvisningsmotivering från handläggaren. Meddelandet ska vara på svenska, affärsorienterat (inte tekniskt), med konkreta steg för att förbättra nästa överklagan, strukturerad information med bullet points, och visuella indikatorer (t.ex. röd varning). [BPMN-referens: När handläggare avvisar överklagan via "Screen appeal" user task (screen-appeal), visas feedback]</li>
+        <li>Om överklagan avvisas, ska kunden kunna skicka in en ny överklagan (max antal gånger enligt policy). UI ska visa tydlig information om hur många försök som återstår med visuell indikator (t.ex. "Försök 1 av 3") och tydlig feedback om varför den tidigare överklagan avvisades med strukturerad information med bullet points. [BPMN-referens: När "Screening accepted?" gateway (screening-accepted) avgör No, loopar processen tillbaka via Gateway_1v59ktc till "Submit appeal" user task]</li>
+        <li>Systemet ska visa tydlig tidsgräns (30 dagar), räknare som visar återstående tid med visuell indikator (t.ex. progress bar), och påminnelser (t.ex. 7 dagar innan tidsgränsen går ut) via e-post eller SMS. När timeout inträffar, ska kunden få tydligt meddelande om att överklagan har avvisats automatiskt med tydligt meddelande på svenska och visuella indikatorer (t.ex. röd varning). [BPMN-referens: "Submit appeal" user task (submit-appeal) har boundary event "event-appeal-timeout" (Timer: P30D) som triggar end event "appeal-timeout" med escalation "appeal-timeout" (Escalation_34epnhh) om överklagan inte skickas in inom 30 dagar]</li>
       </ul>
       
       <h3>Handläggarfunktionalitet</h3>
       <ul>
-        <li>Systemet ska tilldela "Screen appeal" user task till handläggare i Caseworker-systemet</li>
-        <li>Systemet ska visa handläggaren kundens motivering och kompletterande dokumentation</li>
-        <li>Systemet ska tillåta handläggare att acceptera eller avvisa överklagan via "Screening accepted?" gateway</li>
-        <li>Systemet ska visa handläggaren information om varför ansökan initialt avvisades</li>
+        <li>Handläggare ska kunna granska överklaganden från kunder med all relevant information samlad. Handläggaren ska kunna se kundens motivering och kompletterande dokumentation, samt information om varför ansökan initialt avvisades. UI ska visa tydlig struktur med separata sektioner för motivering, dokumentation, och information om varför ansökan initialt avvisades. UI ska visa tydlig sammanfattning med färgkodning (t.ex. röd för avvisningsorsaker, grön för kompletterande information), och tillåta handläggaren att ladda ner dokumentation. [BPMN-referens: "Screen appeal" user task (screen-appeal) tilldelas till handläggare i Caseworker lane]</li>
+        <li>Handläggare ska kunna acceptera eller avvisa överklagan med tydliga knappar för "Acceptera" och "Avvisa" i UI. Om överklagan accepteras, ska processen automatiskt fortsätta till manuell kreditevaluering. Om överklagan avvisas, ska systemet kräva motivering och processen ska automatiskt loopa tillbaka så att kunden kan skicka in en ny överklagan. Handläggaren ska kunna lägga till kommentarer och motivering för beslutet med strukturerade fält. [BPMN-referens: Handläggare kan acceptera eller avvisa överklagan via "Screen appeal" user task (screen-appeal), och "Screening accepted?" gateway (screening-accepted) avgör om överklagan accepteras (Yes → Event_1pzbohb, går vidare till manuell kreditevaluering) eller avvisas (No → Gateway_1v59ktc, loopar tillbaka)]</li>
+        <li>Handläggaren ska kunna se status för överklaganden i sitt gränssnitt med tydlig information om vilka överklaganden som har timeout och vilka som väntar på screening, med visuella indikatorer (t.ex. röd för timeout, gul för väntar på screening). Handläggaren ska kunna se antalet försök i sitt gränssnitt med tydlig information om hur många försök som har gjorts och hur många som återstår, och få notifikation när max antal försök har nåtts med tydligt meddelande. [BPMN-referens: Systemet hanterar timeout och loop-mekanismen automatiskt]</li>
       </ul>
       
       <h3>Timeout-hantering</h3>
       <ul>
-        <li>Systemet ska automatiskt timeout "Submit appeal" task om den inte slutförs inom 30 dagar (P30D)</li>
-        <li>Systemet ska trigga "Appeal timeout" end event med escalation "appeal-timeout" när timeout inträffar i Appeal-processen</li>
-        <li>Systemet ska automatiskt timeout Appeal call activity om hela processen timeout (boundary event på call activity)</li>
-        <li>Systemet ska trigga "Automatically rejected" end event när Appeal call activity timeout</li>
+        <li>Om kunden inte skickar in överklagan inom tidsgränsen (30 dagar), ska kunden se ett tydligt meddelande om att överklagan har avvisats automatiskt. Meddelandet ska vara på svenska, tydligt och affärsorienterat med visuella indikatorer (t.ex. röd varning). Processen ska avslutas och ansökan avvisas automatiskt. [BPMN-referens: "Submit appeal" user task timeout om den inte slutförs inom 30 dagar (P30D). "Appeal timeout" end event med escalation "appeal-timeout" (Escalation_34epnhh) triggas när timeout inträffar i Appeal-processen]</li>
+        <li>Om hela Appeal-processen timeout (t.ex. efter längre tid än 30 dagar eller systemfel), ska ansökan avvisas automatiskt. [BPMN-referens: Appeal call activity timeout (boundary event på call activity). "Automatically rejected" end event triggas när Appeal call activity timeout]</li>
       </ul>
       
       <h3>Loop-mekanism</h3>
       <ul>
-        <li>Systemet ska loopa tillbaka till "Submit appeal" när överklagan avvisas via loop-gateway</li>
-        <li>Systemet ska begränsa antalet loop-iterationer enligt policy (max antal överklagansförsök)</li>
-        <li>Systemet ska hantera loop-mekanismen korrekt så att kunden kan skicka in nya överklaganden</li>
+        <li>När överklagan avvisas, ska processen automatiskt loopa tillbaka så att kunden kan skicka in en ny överklagan (max antal gånger enligt policy). Systemet ska begränsa antalet loop-iterationer enligt policy (max antal överklagansförsök). Kunden ska kunna se hur många försök som återstår med tydlig visuell indikator (t.ex. "Försök 1 av 3"). Om max antal försök nås, ska ansökan avvisas permanent och kunden ska få tydligt meddelande om permanent avvisning. [BPMN-referens: När överklagan avvisas via "Screening accepted?" gateway (screening-accepted) No, loopar processen tillbaka via Gateway_1v59ktc (loop-gateway) till "Submit appeal" user task]</li>
       </ul>
       
       <h3>Integration med huvudprocessen</h3>
       <ul>
-        <li>Systemet ska anropa Appeal när en ansökan har blivit automatiskt avvisad via "Automatically rejected?" gateway</li>
-        <li>Systemet ska anropa Appeal när manuell kreditevaluering triggar "credit-evaluation-automatically-rejected" escalation (loop-mekanism)</li>
-        <li>Systemet ska gå vidare till manuell kreditevaluering när överklagan accepteras via gateway som samlar flöden</li>
-        <li>Systemet ska hantera "credit-evaluation-automatically-rejected" escalation från manuell kreditevaluering som kan trigga loop tillbaka till Appeal</li>
+        <li>När en ansökan har blivit automatiskt avvisad, ska systemet automatiskt anropa Appeal-processen. Kunden ska få tydlig information om att ansökan har avvisats och att de kan överklaga. [BPMN-referens: Appeal anropas när en ansökan har blivit automatiskt avvisad via "Automatically rejected?" gateway (Gateway_0f1a2lu)]</li>
+        <li>När överklagan accepteras, ska processen automatiskt gå vidare till manuell kreditevaluering. Kunden ska få tydlig information om att överklagan har accepterats och att ansökan nu går vidare till manuell granskning. [BPMN-referens: När överklagan accepteras via "Screening accepted?" gateway (screening-accepted) Yes, går processen vidare via Gateway_1qiy2jr till manuell kreditevaluering (Event_1pzbohb)]</li>
+        <li>Om manuell kreditevaluering triggar automatisk avvisning, ska systemet automatiskt anropa Appeal-processen igen (loop-mekanism). Kunden ska kunna skicka in en ny överklagan med förbättrad information. [BPMN-referens: När manuell kreditevaluering triggar "credit-evaluation-automatically-rejected" escalation (Escalation_3ron523), går flödet tillbaka till Gateway_0f1a2lu som dirigerar tillbaka till Appeal]</li>
       </ul>
 
       <h3>Tekniska krav</h3>
       <ul>
-        <li><strong>Timeout:</strong> User tasks ("Submit appeal", "Screen appeal") ska ha timeout på 30 dagar. Timer event "appeal-timeout" ska triggas efter 30 dagar</li>
-        <li><strong>Retry:</strong> Systemet ska hantera retry för integration med huvudprocessen vid tekniska fel</li>
-        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: APPEAL_TIMEOUT (för timeout), APPEAL_REJECTED (för avvisad överklagan), APPEAL_SERVICE_ERROR (för service-fel)</li>
-        <li><strong>Logging:</strong> Alla överklaganden, screeningar och eskaleringar ska loggas med överklagans-ID, användar-ID, tidsstämplar och resultat för spårbarhet</li>
+        <li><strong>Timeout:</strong> User tasks ("Submit appeal", "Screen appeal") ska ha timeout på 30 dagar. Om timeout inträffar, ska kunden eller handläggaren se tydligt meddelande om att processen har avslutats på grund av timeout. [BPMN-referens: Timer event "appeal-timeout" triggas efter 30 dagar (P30D)]</li>
+        <li><strong>Retry:</strong> Systemet ska hantera retry för integration med huvudprocessen vid tekniska fel. Om integration misslyckas, ska systemet automatiskt försöka igen med exponential backoff.</li>
+        <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: APPEAL_TIMEOUT (för timeout), APPEAL_REJECTED (för avvisad överklagan), APPEAL_SERVICE_ERROR (för service-fel). Felmeddelanden ska vara på svenska, tydliga och affärsorienterade (inte tekniska).</li>
+        <li><strong>Logging:</strong> Alla överklaganden, screeningar och eskaleringar ska loggas med överklagans-ID, användar-ID, tidsstämplar och resultat för spårbarhet och audit trail.</li>
       </ul>
 
       <h3>UI/UX-krav</h3>
       <ul>
-        <li><strong>Kund-vyer:</strong> "Submit appeal" user task ska visa tydlig, strukturerad information om överklagandet med separata sektioner för motivering och dokumentation</li>
-        <li><strong>Handläggar-vyer:</strong> "Screen appeal" user task ska visa tydlig information om överklagandet, motivering och dokumentation för handläggaren</li>
-        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för överklagandet (väntar på screening, accepterad, avvisad, timeout) med visuella indikatorer</li>
+        <li><strong>Kund-vyer:</strong> Kunder ska kunna skicka in överklagan i ett tydligt formulär med strukturerad information om överklagandet med separata sektioner för motivering och dokumentation. UI ska visa validering i realtid, tydliga felmeddelanden om något saknas, och en tydlig "Skicka in"-knapp som bara är aktiverad när allt är korrekt ifyllt. [BPMN-referens: "Submit appeal" user task (submit-appeal) i Stakeholder lane]</li>
+        <li><strong>Handläggar-vyer:</strong> Handläggare ska kunna granska överklaganden i ett tydligt gränssnitt med all relevant information samlad. UI ska visa tydlig information om överklagandet, motivering och dokumentation för handläggaren, samt information om varför ansökan initialt avvisades. UI ska visa tydlig sammanfattning med färgkodning (t.ex. röd för avvisningsorsaker, grön för kompletterande information), och tillåta handläggaren att ladda ner dokumentation. [BPMN-referens: "Screen appeal" user task (screen-appeal) i Caseworker lane]</li>
+        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för överklagandet (väntar på screening, accepterad, avvisad, timeout) med visuella indikatorer (t.ex. grön för accepterad, röd för avvisad, gul för väntar på screening). Kunder och handläggare ska kunna se status i sina respektive gränssnitt.</li>
       </ul>
 
       <h3>Skalbarhet och prestanda</h3>

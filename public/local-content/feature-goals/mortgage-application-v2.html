@@ -516,7 +516,7 @@
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Given:</strong> En person ansöker om bolån för köp. Alla krav uppfylls (pre-screening godkänd, fastighet godkänd). Testdata: customer-standard. <strong>When:</strong> Processen körs genom alla steg: pre-screening → objekt → hushåll/stakeholders → KALP-beräkning → bekräftelse → kreditupplysning. <strong>Then:</strong> Alla DMN-beslut returnerar APPROVED. KALP-beräkning är högre än ansökt belopp. Kunden bekräftar ansökan. Kreditinformation hämtas. Processen avslutas normalt (Event_0j4buhs). Ansökan är klar för kreditevaluering.</td>
+        <td><strong>Given:</strong> En person ansöker om bolån för köp. Personen uppfyller alla grundläggande krav (godkänd vid pre-screening). Fastigheten uppfyller bankens krav (godkänd vid bedömning). Testdata: customer-standard. <strong>When:</strong> Kunden fyller i ansökningsformulär med grundläggande information. Systemet hämtar automatiskt befintlig kunddata och visar den för kunden. Kunden fyller i hushållsekonomi och stakeholder-information parallellt. Systemet beräknar automatiskt maximalt lånebelopp (KALP) och utvärderar resultatet. Kunden ser en sammanfattning av all information och bekräftar ansökan. Systemet hämtar kreditinformation automatiskt. <strong>Then:</strong> Kunden ser hämtad information med visuell markering av auto-ifyllda fält (grön bockmarkering eller ikon). Kunden kan ändra information om den är felaktig via tydlig 'Redigera'-knapp per fält. UI visar tydlig progress-indikator för datainsamling (progress bar eller spinner). Kunden kan öppna både Household- och Stakeholders-formulären samtidigt i separata flikar/fönster. Kunden ser en sammanfattning med tydliga rubriker (Intern data, Hushållsekonomi, Stakeholders, Objekt). Kunden bekräftar ansökan via tydlig 'Bekräfta'-knapp. Kreditinformation är hämtad för alla stakeholders. Processen avslutas normalt och ansökan är klar för kreditevaluering. <strong>BPMN-referens:</strong> Pre-screening → objekt → hushåll/stakeholders → KALP-beräkning → bekräftelse → kreditupplysning. Alla DMN-beslut returnerar APPROVED. KALP-beräkning är högre än ansökt belopp. Processen avslutas normalt (Event_0j4buhs).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -527,7 +527,7 @@
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Flera personer ansöker tillsammans med separata hushåll. Alla personer är godkända. Testdata: customer-multi-household. <strong>When:</strong> Två parallella flöden startar: (1) Household för alla hushåll parallellt, (2) Per household subprocess med sekventiell körning (Household → Stakeholder → Object) per hushåll. <strong>Then:</strong> Parallella flöden körs korrekt. Varje hushåll bearbetas i rätt ordning. Alla hushåll och personer är bearbetade. Processen fortsätter när båda flöden är klara.</td>
+        <td><strong>Given:</strong> Flera personer ansöker tillsammans med separata hushåll. Alla personer är godkända. Testdata: customer-multi-household. <strong>When:</strong> Kunden fyller i information för flera hushåll parallellt. Kunden kan öppna både Household- och Stakeholders-formulären samtidigt i separata flikar/fönster för varje hushåll. Systemet bearbetar varje hushåll individuellt med sekventiell körning (Household → Stakeholder → Object) per hushåll. <strong>Then:</strong> Kunden kan se status för varje hushåll med tydliga statusindikatorer (t.ex. 'Pågår', 'Klar', 'Fel'). Varje hushåll bearbetas i rätt ordning. Kunden kan spara progress i varje formulär oberoende av varandra. Alla hushåll och personer är bearbetade. Processen fortsätter när båda flöden är klara. <strong>BPMN-referens:</strong> Två parallella flöden startar: (1) Household för alla hushåll parallellt, (2) Per household subprocess med sekventiell körning (Household → Stakeholder → Object) per hushåll.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -538,7 +538,7 @@
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Person uppfyller INTE grundläggande krav (t.ex. för ung, låg kreditscore, eller saknar anställning). Testdata: customer-rejected. <strong>When:</strong> Pre-screen Party DMN utvärderas. <strong>Then:</strong> DMN returnerar REJECTED. Boundary event Event_03349px triggas. Error_1vtortg (pre-screen-rejected) signaleras. Processen avslutas (Event_1uj7wwd). Tydligt felmeddelande visas som förklarar vilket krav som inte uppfylldes.</td>
+        <td><strong>Given:</strong> Person uppfyller INTE grundläggande krav (t.ex. för ung, låg kreditscore, eller saknar anställning). Testdata: customer-rejected. <strong>When:</strong> Systemet hämtar kunddata och gör pre-screening automatiskt. Pre-screening avvisar ansökan eftersom kunden inte uppfyller grundläggande krav. <strong>Then:</strong> Kunden ser ett tydligt felmeddelande som förklarar vilket krav som inte uppfylldes (t.ex. "Ålder under 18 år" eller "Kreditscore under 300"), vilken part som avvisades, och att ansökan inte kan fortsätta. Meddelandet visas i en tydlig varningsruta med ikon, tydlig rubrik ('Ansökan avvisad'), och strukturerad information med bullet points. Processen avslutas och kunden kan starta ny ansökan. <strong>BPMN-referens:</strong> Pre-screen Party DMN returnerar REJECTED. Boundary event Event_03349px triggas. Error_1vtortg (pre-screen-rejected) signaleras. Processen avslutas (Event_1uj7wwd).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -549,7 +549,7 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Flera personer ansöker tillsammans. Medlåntagare uppfyller INTE kraven (t.ex. för hög skuldsättning, låg inkomst). Testdata: customer-multi-stakeholder, stakeholder-rejected. <strong>When:</strong> Assess Stakeholder DMN utvärderas för medlåntagaren. <strong>Then:</strong> DMN returnerar REJECTED. Boundary event Event_1dhapnx triggas. Error_0xx0ma1 (stakeholder-rejected) signaleras. Processen avslutas (Event_1uk9ycv). Tydligt felmeddelande visas. Huvudsökande kan inte fortsätta ensam.</td>
+        <td><strong>Given:</strong> Flera personer ansöker tillsammans. Medlåntagare uppfyller INTE kraven (t.ex. för hög skuldsättning, låg inkomst). Testdata: customer-multi-stakeholder, stakeholder-rejected. <strong>When:</strong> Systemet utvärderar medlåntagaren mot grundläggande krav. Medlåntagaren avvisas vid validering. <strong>Then:</strong> Kunden ser ett tydligt felmeddelande som förklarar problemet (t.ex. "Medlåntagaren uppfyller inte grundläggande krav" eller "Skuldsättningen är för hög") med konkreta siffror där relevant. Meddelandet visas i en tydlig varningsruta med ikon, tydlig rubrik ('Stakeholder avvisad'), och strukturerad information med bullet points. Processen avslutas och kunden kan starta ny ansökan. Huvudsökande kan inte fortsätta ensam. <strong>BPMN-referens:</strong> Assess Stakeholder DMN returnerar REJECTED. Boundary event Event_1dhapnx triggas. Error_0xx0ma1 (stakeholder-rejected) signaleras. Processen avslutas (Event_1uk9ycv).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -560,7 +560,7 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Fastighet uppfyller INTE bankens krav (t.ex. för hög belåningsgrad, dålig belägenhet, eller dåligt skick). Testdata: customer-standard, property-rejected. <strong>When:</strong> Evaluate Fastighet/Bostadsrätt DMN utvärderas. <strong>Then:</strong> DMN returnerar REJECTED. Boundary event Event_152muhg triggas. Error_1pe398g (object-rejected) signaleras. Processen avslutas (Event_07jlrhu). Tydligt felmeddelande visas som förklarar problemet.</td>
+        <td><strong>Given:</strong> Fastighet uppfyller INTE bankens krav (t.ex. för hög belåningsgrad, dålig belägenhet, eller dåligt skick). Testdata: customer-standard, property-rejected. <strong>When:</strong> Systemet utvärderar fastigheten mot bankens krav. Fastigheten avvisas vid validering. <strong>Then:</strong> Kunden ser ett tydligt felmeddelande som förklarar problemet (t.ex. "Belåningsgraden är för hög" eller "Fastigheten ligger i ett område som inte uppfyller våra krav") med konkreta siffror där relevant. Meddelandet visas i en tydlig varningsruta med ikon, tydlig rubrik ('Fastighet avvisad'), och strukturerad information med bullet points. Processen avslutas och kunden kan starta ny ansökan. <strong>BPMN-referens:</strong> Evaluate Fastighet/Bostadsrätt DMN returnerar REJECTED. Boundary event Event_152muhg triggas. Error_1pe398g (object-rejected) signaleras. Processen avslutas (Event_07jlrhu).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -571,7 +571,7 @@
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Återkommande kund med god kredithistorik. Bekräftelse kan hoppas över enligt affärsregler. Testdata: customer-returning. <strong>When:</strong> Gateway skip-confirm-application = Yes. KALP beräknas och screenas. <strong>Then:</strong> KALP är godkänd. Confirm application hoppas över. Processen går direkt till kreditupplysning utan kundens bekräftelse.</td>
+        <td><strong>Given:</strong> Återkommande kund med god kredithistorik. Bekräftelse kan hoppas över enligt affärsregler. Testdata: customer-returning. <strong>When:</strong> Systemet bedömer automatiskt att bekräftelsesteget kan hoppas över baserat på affärslogik. Systemet beräknar automatiskt maximalt lånebelopp (KALP) och utvärderar resultatet mot affärsregler. KALP är godkänd. <strong>Then:</strong> Kunden behöver inte bekräfta ansökan manuellt. Processen fortsätter automatiskt till kreditupplysning utan kundens bekräftelse. <strong>BPMN-referens:</strong> Gateway skip-confirm-application = Yes. KALP beräknas och screenas. Confirm application hoppas över. Processen går direkt till kreditupplysning.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -582,7 +582,7 @@
         <td>system</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Kunden har god ekonomi. Bekräftelse hoppas INTE över. Testdata: customer-standard. <strong>When:</strong> KALP beräknas. Screen KALP DMN utvärderas. <strong>Then:</strong> Maximalt belopp är högre än ansökt belopp. Screen KALP returnerar APPROVED. Gateway_0fhav15 (KALP OK) = Yes. Kunden kan bekräfta ansökan. Processen fortsätter.</td>
+        <td><strong>Given:</strong> Kunden har god ekonomi. Bekräftelse hoppas INTE över. Testdata: customer-standard. <strong>When:</strong> Systemet beräknar automatiskt maximalt lånebelopp (KALP) baserat på hushållsaffordability. Systemet utvärderar resultatet mot affärsregler. Kunden ser en sammanfattning av all information och bekräftar ansökan. <strong>Then:</strong> Maximalt belopp är högre än ansökt belopp. Kunden ser en sammanfattning med tydliga rubriker (Intern data, Hushållsekonomi, Stakeholders, Objekt). Kunden bekräftar ansökan via tydlig 'Bekräfta'-knapp. Processen fortsätter. <strong>BPMN-referens:</strong> KALP beräknas. Screen KALP DMN returnerar APPROVED. Gateway_0fhav15 (KALP OK) = Yes.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -593,7 +593,7 @@
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Flytt/omlåning. Maximalt belopp < ansökt belopp. För flytt/omlåning avvisas ansökan om maximalt < ansökt (till skillnad från köp där beloppet justeras). Testdata: application-move-refinance, kalp-below-applied. <strong>When:</strong> Screen KALP DMN utvärderas för flytt/omlåning. <strong>Then:</strong> Screen KALP returnerar REJECTED. Gateway_0fhav15 (KALP OK) = No. Error_08o6vkh (application-rejected) signaleras. Processen avslutas. Tydligt felmeddelande: "Maximalt lånebelopp är under ansökt belopp. För flytt/omlåning måste du kunna låna det ansökta beloppet."</td>
+        <td><strong>Given:</strong> Flytt/omlåning. Maximalt belopp < ansökt belopp. För flytt/omlåning avvisas ansökan om maximalt < ansökt (till skillnad från köp där beloppet justeras). Testdata: application-move-refinance, kalp-below-applied. <strong>When:</strong> Systemet beräknar maximalt lånebelopp (KALP) och utvärderar resultatet mot affärsregler för flytt/omlåning. <strong>Then:</strong> Kunden ser ett tydligt felmeddelande: "Maximalt lånebelopp är under ansökt belopp. För flytt/omlåning måste du kunna låna det ansökta beloppet." Meddelandet visas i en tydlig varningsruta med ikon, tydlig rubrik ('Ansökan avvisad'), och strukturerad information med bullet points. Processen avslutas och kunden kan starta ny ansökan. <strong>BPMN-referens:</strong> Screen KALP DMN returnerar REJECTED. Gateway_0fhav15 (KALP OK) = No. Error_08o6vkh (application-rejected) signaleras. Processen avslutas.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -604,7 +604,7 @@
         <td>customer</td>
         <td>P0</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Köpansökan. Maximalt belopp < tröskelvärde för köp. Testdata: application-purchase, kalp-below-threshold. <strong>When:</strong> Screen KALP DMN utvärderas för köp. <strong>Then:</strong> Screen KALP returnerar REJECTED (regel: om maximalt < tröskelvärde → avvisa). Gateway_0fhav15 (KALP OK) = No. Error_08o6vkh (application-rejected) signaleras. Processen avslutas. Tydligt felmeddelande: "Maximalt lånebelopp är under vårt minimumbelopp för köpansökningar."</td>
+        <td><strong>Given:</strong> Köpansökan. Maximalt belopp < tröskelvärde för köp. Testdata: application-purchase, kalp-below-threshold. <strong>When:</strong> Systemet beräknar maximalt lånebelopp (KALP) och utvärderar resultatet mot affärsregler för köp. <strong>Then:</strong> Kunden ser ett tydligt felmeddelande: "Maximalt lånebelopp är under vårt minimumbelopp för köpansökningar." Meddelandet visas i en tydlig varningsruta med ikon, tydlig rubrik ('Ansökan avvisad'), och strukturerad information med bullet points. Processen avslutas och kunden kan starta ny ansökan. <strong>BPMN-referens:</strong> Screen KALP returnerar REJECTED (regel: om maximalt < tröskelvärde → avvisa). Gateway_0fhav15 (KALP OK) = No. Error_08o6vkh (application-rejected) signaleras. Processen avslutas.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -615,7 +615,7 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Köpansökan. Maximalt belopp < ansökt belopp. För köp kan beloppet justeras nedåt (till skillnad från flytt/omlåning). Testdata: application-purchase, kalp-below-applied. <strong>When:</strong> Screen KALP DMN utvärderas för köp. <strong>Then:</strong> Screen KALP returnerar APPROVED med justering. Ansökt belopp justeras automatiskt till maximalt belopp. Gateway_0fhav15 (KALP OK) = Yes. Kunden informeras om justeringen. Processen fortsätter.</td>
+        <td><strong>Given:</strong> Köpansökan. Maximalt belopp < ansökt belopp. För köp kan beloppet justeras nedåt (till skillnad från flytt/omlåning). Testdata: application-purchase, kalp-below-applied. <strong>When:</strong> Systemet beräknar maximalt lånebelopp (KALP) och utvärderar resultatet mot affärsregler för köp. <strong>Then:</strong> Ansökt belopp justeras automatiskt till maximalt belopp. Kunden informeras om justeringen med tydligt meddelande som förklarar varför justeringen gjordes (t.ex. "Maximalt lånebelopp (2 500 000 SEK) är under ansökt belopp (3 000 000 SEK). Ansökt belopp har justerats till 2 500 000 SEK."). Processen fortsätter. <strong>BPMN-referens:</strong> Screen KALP returnerar APPROVED med justering. Gateway_0fhav15 (KALP OK) = Yes.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -626,7 +626,7 @@
         <td>customer</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Confirm application user task är aktiv. Timeout = 30 dagar (P30D). Kunden bekräftar INTE ansökan. Testdata: timeout-scenario. <strong>When:</strong> 30 dagar passerar utan bekräftelse. <strong>Then:</strong> Boundary event Event_0ao6cvb (timer) triggas. Error_1bicfvu (application-timeout) signaleras. Processen avslutas (Event_111g1im). Tydligt meddelande: "Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar)." Kunden kan starta ny ansökan.</td>
+        <td><strong>Given:</strong> Ansökan är i bekräftelsesteget. Timeout = 30 dagar. Kunden bekräftar INTE ansökan. Testdata: timeout-scenario. <strong>When:</strong> 30 dagar passerar utan bekräftelse. <strong>Then:</strong> Kunden ser ett tydligt meddelande: "Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar)." Meddelandet visas i en tydlig varningsruta med ikon, tydlig rubrik ('Ansökan avslutad'), och strukturerad information. Kunden kan starta ny ansökan. <strong>BPMN-referens:</strong> Boundary event Event_0ao6cvb (timer) triggas. Error_1bicfvu (application-timeout) signaleras. Processen avslutas (Event_111g1im).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -637,7 +637,7 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Ansökan med flera personer har bekräftats eller bekräftelse har hoppats över. Testdata: customer-multi-stakeholder. <strong>When:</strong> Fetch credit information körs (multi-instance per stakeholder). <strong>Then:</strong> Kreditinformation hämtas från externa källor (t.ex. UC3) för varje person parallellt. Information sparas i "Personal credit information source" datastore. Processen avslutas normalt (Event_0j4buhs). Ansökan är klar för kreditevaluering.</td>
+        <td><strong>Given:</strong> Ansökan med flera personer har bekräftats eller bekräftelse har hoppats över. Testdata: customer-multi-stakeholder. <strong>When:</strong> Systemet hämtar kreditinformation från externa källor (t.ex. UC3) för alla stakeholders automatiskt. <strong>Then:</strong> Systemet visar progress för kreditupplysning med tydlig statusindikator för varje person (t.ex. 'Hämtad', 'Pågår', 'Fel'). Kreditinformation hämtas parallellt för varje person. Information sparas automatiskt. Processen avslutas normalt och ansökan är klar för kreditevaluering. <strong>BPMN-referens:</strong> Fetch credit information körs (multi-instance per stakeholder). Information sparas i "Personal credit information source" datastore. Processen avslutas normalt (Event_0j4buhs).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -648,7 +648,7 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Flera personer ansöker tillsammans. En person uppfyller INTE grundläggande krav. Testdata: customer-multi-stakeholder, stakeholder-rejected-pre-screen. <strong>When:</strong> Pre-screen Party DMN utvärderas för alla personer parallellt. <strong>Then:</strong> DMN returnerar REJECTED för en person. Boundary event Event_03349px triggas när första part avvisas. Error_1vtortg (pre-screen-rejected) signaleras. Processen avslutas omedelbart (Event_1uj7wwd), även om andra personer är godkända. Tydligt felmeddelande visas.</td>
+        <td><strong>Given:</strong> Flera personer ansöker tillsammans. En person uppfyller INTE grundläggande krav. Testdata: customer-multi-stakeholder, stakeholder-rejected-pre-screen. <strong>When:</strong> Systemet hämtar kunddata och gör pre-screening automatiskt för alla personer parallellt. Pre-screening avvisar en person eftersom personen inte uppfyller grundläggande krav. <strong>Then:</strong> Kunden ser ett tydligt felmeddelande som förklarar vilket krav som inte uppfylldes, vilken part som avvisades, och att ansökan inte kan fortsätta. Meddelandet visas i en tydlig varningsruta med ikon, tydlig rubrik ('Ansökan avvisad'), och strukturerad information med bullet points. Processen avslutas omedelbart, även om andra personer är godkända. Kunden kan starta ny ansökan. <strong>BPMN-referens:</strong> Pre-screen Party DMN returnerar REJECTED för en person. Boundary event Event_03349px triggas när första part avvisas. Error_1vtortg (pre-screen-rejected) signaleras. Processen avslutas omedelbart (Event_1uj7wwd).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -659,7 +659,7 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Flera personer med separata hushåll. Varje hushåll har egen ekonomi och fastighet. Testdata: customer-multi-household. <strong>When:</strong> Per household subprocess körs (multi-instance per hushåll). För varje hushåll körs sekventiellt: Household → Stakeholder → Object. <strong>Then:</strong> Sekvensen är korrekt per hushåll. Varje hushåll bearbetas individuellt. Alla hushåll är bearbetade i rätt ordning. Processen fortsätter när alla hushåll är klara.</td>
+        <td><strong>Given:</strong> Flera personer med separata hushåll. Varje hushåll har egen ekonomi och fastighet. Testdata: customer-multi-household. <strong>When:</strong> Kunden fyller i information för flera hushåll. Systemet bearbetar varje hushåll individuellt med sekventiell körning (Household → Stakeholder → Object) per hushåll. <strong>Then:</strong> Kunden kan se status för varje hushåll med tydliga statusindikatorer (t.ex. 'Pågår', 'Klar', 'Fel'). Sekvensen är korrekt per hushåll. Varje hushåll bearbetas individuellt. Alla hushåll är bearbetade i rätt ordning. Processen fortsätter när alla hushåll är klara. <strong>BPMN-referens:</strong> Per household subprocess körs (multi-instance per hushåll). För varje hushåll körs sekventiellt: Household → Stakeholder → Object.</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -670,7 +670,7 @@
         <td>system</td>
         <td>P1</td>
         <td>functional</td>
-        <td><strong>Given:</strong> Ansökan har bekräftats. Extern tjänst (t.ex. UC3) är otillgänglig eller svarar inte inom timeout. Testdata: external-service-unavailable. <strong>When:</strong> Fetch credit information körs (multi-instance per stakeholder). <strong>Then:</strong> För vissa personer lyckas hämtningen, för andra misslyckas den. Systemet hanterar felet: retry-mekanism ELLER tydligt felmeddelande. Partiell information kan sparas om vissa personer lyckas. Tydligt felmeddelande: "Kreditupplysning kunde inte hämtas för [person]. Vänligen försök igen senare."</td>
+        <td><strong>Given:</strong> Ansökan har bekräftats. Extern tjänst (t.ex. UC3) är otillgänglig eller svarar inte inom timeout. Testdata: external-service-unavailable. <strong>When:</strong> Systemet försöker hämta kreditinformation från externa källor för alla stakeholders. För vissa personer lyckas hämtningen, för andra misslyckas den. <strong>Then:</strong> Systemet visar tydlig status för varje person (t.ex. 'Hämtad', 'Pågår', 'Fel'). För personer där hämtningen misslyckas, visas ett tydligt felmeddelande: "Kreditupplysning kunde inte hämtas för [person]. Vänligen försök igen senare." Systemet hanterar felet: retry-mekanism ELLER tydligt felmeddelande. Partiell information kan sparas om vissa personer lyckas. <strong>BPMN-referens:</strong> Fetch credit information körs (multi-instance per stakeholder).</td>
         <td>✅ Planerad</td>
       </tr>
     
@@ -2411,92 +2411,65 @@
       
       <h3>1. Intern datainsamling och pre-screening</h3>
       <ul>
-        <li>Systemet ska automatiskt hämta befintlig kunddata från interna system (part, engagemang, kreditinformation) för alla identifierade parter i ansökan via "Internal data gathering" call activity</li>
-        <li>"Internal data gathering" ska köras som multi-instance för varje identifierad part, så att datainsamling och pre-screening sker separat för huvudansökande och medlåntagare</li>
-        <li>Systemet ska automatiskt utföra pre-screening via DMN-beslutsregel för varje part och kontrollera grundläggande krav (ålder ≥ 18 år, anställningsstatus, kreditscore ≥ 300)</li>
-        <li>Om en eller flera parter avvisas vid pre-screening, ska systemet trigga "pre-screen rejected" error event via boundary event på "Internal data gathering" call activity, avsluta processen, och visa tydligt felmeddelande till kunden som förklarar vilket krav som inte uppfylldes och vilken part som avvisades</li>
-        <li>Om alla parter godkänns vid pre-screening, ska processen fortsätta till "Object" call activity</li>
+        <li>Systemet ska automatiskt hämta och visa befintlig kunddata (part, engagemang, kreditinformation) för alla identifierade parter. Kunden ska se hämtad information i ett tydligt format med visuell markering av auto-ifyllda fält (t.ex. grön bockmarkering eller ikon), och kunna ändra information om den är felaktig via tydlig 'Redigera'-knapp per fält. [BPMN-referens: "Internal data gathering" call activity (internal-data-gathering) körs som multi-instance för varje identifierad part]</li>
+        <li>UI ska visa tydlig progress-indikator för datainsamling (t.ex. progress bar eller spinner) och tydligt visa vilka parter som har hämtats med statusindikatorer (t.ex. 'Hämtad', 'Pågår', 'Fel'). Datainsamling och pre-screening ska ske separat för huvudansökande och medlåntagare.</li>
+        <li>Om datainsamling misslyckas för en part, ska systemet visa tydligt felmeddelande och tillåta kunden att manuellt fylla i informationen.</li>
+        <li>Systemet ska automatiskt utföra pre-screening för varje part och kontrollera grundläggande krav (ålder ≥ 18 år, anställningsstatus, kreditscore ≥ 300). Om en eller flera parter avvisas vid pre-screening, ska kunden se ett tydligt felmeddelande som förklarar vilket krav som inte uppfylldes (t.ex. "Ålder under 18 år" eller "Kreditscore under 300"), vilken part som avvisades, och att ansökan inte kan fortsätta. Meddelandet ska visas i en tydlig varningsruta med ikon, tydlig rubrik ('Ansökan avvisad'), och strukturerad information med bullet points. Processen ska avslutas och kunden ska kunna starta ny ansökan. [BPMN-referens: "pre-screen rejected" error event via boundary event (Event_03349px, Error_1vtortg) på "Internal data gathering" call activity, processen avslutas (Event_1uj7wwd)]</li>
+        <li>Om alla parter godkänns vid pre-screening, ska processen automatiskt fortsätta till objektinformation. [BPMN-referens: processen fortsätter till "Object" call activity]</li>
       </ul>
 
       <h3>2. Objektinformation och validering</h3>
       <ul>
-        <li>Systemet ska samla in grundläggande information om fastigheten/bostadsrätten som ansökan gäller via "Object" call activity innan stakeholders-processen startar</li>
-        <li>Om fastigheten/bostadsrätten avvisas vid validering (t.ex. för hög LTV, dålig belägenhet), ska systemet trigga "object rejected" error event via boundary event på "Object" call activity, avsluta processen, och visa tydligt felmeddelande till kunden</li>
-        <li>Om objektet godkänns, ska processen fortsätta till "Stakeholders" subprocess</li>
+        <li>Systemet ska samla in grundläggande information om fastigheten/bostadsrätten som ansökan gäller innan stakeholders-processen startar. Kunden ska kunna fylla i objektinformation i ett tydligt formulär med strukturerade fält och validering. [BPMN-referens: "Object" call activity körs innan stakeholders-processen startar]</li>
+        <li>Om fastigheten/bostadsrätten avvisas vid validering (t.ex. för hög LTV, dålig belägenhet), ska kunden se ett tydligt felmeddelande som förklarar problemet (t.ex. "Belåningsgraden är för hög" eller "Fastigheten ligger i ett område som inte uppfyller våra krav") med konkreta siffror där relevant. Meddelandet ska visas i en tydlig varningsruta med ikon, tydlig rubrik ('Fastighet avvisad'), och strukturerad information med bullet points. Processen ska avslutas och kunden ska kunna starta ny ansökan. [BPMN-referens: "object rejected" error event via boundary event (Event_152muhg, Error_1pe398g) på "Object" call activity, processen avslutas (Event_07jlrhu)]</li>
+        <li>Om objektet godkänns, ska processen automatiskt fortsätta till parallell datainsamling (Household och Stakeholders). [BPMN-referens: processen fortsätter till "Stakeholders" subprocess]</li>
       </ul>
 
       <h3>3. Parallell datainsamling (Household och Stakeholders)</h3>
       <ul>
-        <li>Systemet ska köra "Household" och "Stakeholders" parallellt efter att intern data och objektinformation är insamlad, så att kunden kan fylla i både hushållsekonomi och stakeholder-information samtidigt</li>
-        <li>Kunden ska kunna öppna både Household- och Stakeholders-formulären samtidigt i separata flikar/fönster, spara progress i varje formulär oberoende av varandra, och systemet ska validera varje formulär separat och visa tydligt vilka formulär som är kompletta</li>
-        <li>"Household" call activity ska köras som multi-instance för flera hushåll om det behövs, så att varje hushåll kan registreras separat</li>
-        <li>"Stakeholders" subprocess ("Per household") ska köras som multi-instance - en gång per hushåll</li>
-        <li>Inne i "Stakeholders" subprocessen ska "Household" → "Stakeholder" → "Object" call activities köras sekventiellt för varje stakeholder, och "Stakeholder" call activity ska köras som multi-instance för flera stakeholders (t.ex. huvudansökande och medlåntagare)</li>
-        <li>Om en stakeholder avvisas vid validering, ska systemet trigga "stakeholder rejected" error event via boundary event på "Stakeholders" subprocess, avsluta processen, och visa tydligt felmeddelande till kunden</li>
-        <li>När både "Household" och "Stakeholders" är klara, ska processen fortsätta till "Skip step?" gateway</li>
+        <li>Efter att intern data och objektinformation är insamlad, ska kunden kunna fylla i både hushållsekonomi och stakeholder-information samtidigt. Kunden ska kunna öppna både Household- och Stakeholders-formulären samtidigt i separata flikar/fönster, spara progress i varje formulär oberoende av varandra, och systemet ska validera varje formulär separat och visa tydligt vilka formulär som är kompletta med progress-indikatorer. UI ska visa tydlig information om vilka steg som kan göras parallellt med visuella indikatorer (t.ex. ikoner eller badges som visar "Parallellt med Hushållsekonomi"). [BPMN-referens: "Household" call activity och "Stakeholders" subprocess ("Per household") körs parallellt via parallel gateway (Gateway_0n2ekt4) efter att intern data och objektinformation är insamlad]</li>
+        <li>Varje hushåll kan registreras separat, och varje hushåll kan ha flera stakeholders (t.ex. huvudansökande och medlåntagare). [BPMN-referens: "Household" körs som multi-instance för flera hushåll. "Stakeholders" subprocess körs som multi-instance - en gång per hushåll. Inne i "Stakeholders" subprocessen körs "Household" → "Stakeholder" → "Object" call activities sekventiellt för varje stakeholder, och "Stakeholder" call activity körs som multi-instance för flera stakeholders]</li>
+        <li>Om en stakeholder avvisas vid validering, ska kunden se ett tydligt felmeddelande som förklarar problemet (t.ex. "Medlåntagaren uppfyller inte grundläggande krav" eller "Skuldsättningen är för hög") med konkreta siffror där relevant. Meddelandet ska visas i en tydlig varningsruta med ikon, tydlig rubrik ('Stakeholder avvisad'), och strukturerad information med bullet points. Processen ska avslutas och kunden ska kunna starta ny ansökan. Huvudsökande kan inte fortsätta ensam. [BPMN-referens: "stakeholder rejected" error event via boundary event (Event_1dhapnx, Error_0xx0ma1) på "Stakeholders" subprocess, processen avslutas (Event_1uk9ycv)]</li>
+        <li>När både "Household" och "Stakeholders" är klara, ska processen automatiskt fortsätta till KALP-beräkning och screening. [BPMN-referens: processen fortsätter till "Skip step?" gateway (Gateway_1nszp2i)]</li>
       </ul>
 
       <h3>4. KALP-beräkning och screening</h3>
       <ul>
-        <li>"Skip step?" gateway ska avgöra om bekräftelsesteget ska hoppas över eller inte baserat på affärslogik</li>
-        <li>Om bekräftelse hoppas över ("Yes"), ska processen gå direkt till "Sammanför flöden" gateway och sedan "Fetch credit information"</li>
-        <li>Om bekräftelse inte hoppas över ("No"), ska systemet automatiskt beräkna maximalt lånebelopp baserat på hushållsaffordability (KALP) via "KALP" service task, lagra resultatet i datastore "KALP", och fortsätta till "Screen KALP" business rule task</li>
-        <li>"Screen KALP" DMN-beslutsregel ska utvärdera KALP-resultatet mot affärsregler baserat på ansökningstyp:
+        <li>Systemet ska automatiskt avgöra om bekräftelsesteget kan hoppas över baserat på affärslogik (t.ex. för återkommande kunder med god kredithistorik). Om bekräftelse hoppas över, ska processen automatiskt gå direkt till kreditupplysning utan kundens bekräftelse. [BPMN-referens: "Skip step?" gateway (skip-confirm-application) avgör om bekräftelsesteget ska hoppas över. Om "Yes", går processen direkt till "Sammanför flöden" gateway (Gateway_1nszp2i) och sedan "Fetch credit information"]</li>
+        <li>Om bekräftelse inte hoppas över, ska systemet automatiskt beräkna maximalt lånebelopp baserat på hushållsaffordability (KALP) och utvärdera resultatet mot affärsregler. Systemet ska visa KALP-resultatet för kunden om relevant. [BPMN-referens: "KALP" service task (Activity_0p3rqyp) beräknar maximalt lånebelopp, lagrar resultatet i datastore "KALP", och fortsätter till "Screen KALP" business rule task (Activity_1mezc6h)]</li>
+        <li>Systemet ska automatiskt utvärdera KALP-resultatet mot affärsregler baserat på ansökningstyp:
           <ul>
-            <li><strong>För köp:</strong> Om maximalt lånebelopp är under tröskelvärde → avvisa. Om maximalt lånebelopp är under ansökt belopp → sätt ansökt belopp till maximalt belopp. Om maximalt lånebelopp är över ansökt belopp → inga ändringar.</li>
-            <li><strong>För flytt/omlåning:</strong> Om maximalt lånebelopp är under ansökt belopp → avvisa.</li>
+            <li><strong>För köp:</strong> Om maximalt lånebelopp är under tröskelvärde → avvisa ansökan. Om maximalt lånebelopp är under ansökt belopp → justera ansökt belopp automatiskt till maximalt belopp och informera kunden om justeringen. Om maximalt lånebelopp är över ansökt belopp → inga ändringar.</li>
+            <li><strong>För flytt/omlåning:</strong> Om maximalt lånebelopp är under ansökt belopp → avvisa ansökan.</li>
           </ul>
+          [BPMN-referens: "Screen KALP" DMN-beslutsregel utvärderar KALP-resultatet mot affärsregler. "KALP OK?" gateway (Gateway_0fhav15) avgör om KALP-beräkningen och screening är godkänd baserat på "Screen KALP" resultat]
         </li>
-        <li>"KALP OK?" gateway ska avgöra om KALP-beräkningen och screening är godkänd baserat på "Screen KALP" resultat</li>
-        <li>Om KALP inte är OK ("No"), ska systemet trigga "application rejected" error event, avsluta processen, och visa tydligt felmeddelande till kunden som förklarar orsaken (t.ex. "Maximalt lånebelopp (2 500 000 SEK) är under ansökt belopp (3 000 000 SEK)") och konkreta steg för att förbättra situationen</li>
-        <li>Om KALP är OK ("Yes"), ska processen fortsätta till "Confirm application" user task (om bekräftelse inte hoppades över) eller direkt till "Sammanför flöden" gateway (om bekräftelse hoppades över)</li>
+        <li>Om KALP inte är OK, ska kunden se ett tydligt felmeddelande som förklarar orsaken (t.ex. "Maximalt lånebelopp (2 500 000 SEK) är under ansökt belopp (3 000 000 SEK)") och konkreta steg för att förbättra situationen. Meddelandet ska vara på svenska, tydligt och affärsorienterat med konkreta siffror. Processen ska avslutas och kunden ska kunna starta ny ansökan. [BPMN-referens: "application rejected" error event (Error_08o6vkh) signaleras, processen avslutas]</li>
+        <li>Om KALP är OK, ska processen automatiskt fortsätta till bekräftelse (om bekräftelse inte hoppades över) eller direkt till kreditupplysning (om bekräftelse hoppades över). [BPMN-referens: processen fortsätter till "Confirm application" user task (om bekräftelse inte hoppades över) eller direkt till "Sammanför flöden" gateway (Gateway_1nszp2i) om bekräftelse hoppades över]</li>
       </ul>
 
       <h3>5. Bekräftelse och timeout-hantering</h3>
       <ul>
-        <li>Kunden ska kunna se en sammanfattning av all insamlad information (intern data, hushåll, stakeholders, objekt) i "Confirm application" user task, med tydliga rubriker (Intern data, Hushållsekonomi, Stakeholders, Objekt), möjlighet att gå tillbaka och ändra information, och en tydlig "Bekräfta"-knapp</li>
-        <li>Om någon information saknas, ska systemet visa en varning och inte tillåta bekräftelse</li>
-        <li>Om kunden bekräftar ansökan, ska processen fortsätta till "Sammanför flöden" gateway</li>
-        <li>Om kunden inte bekräftar ansökan inom tidsgränsen (t.ex. 30 dagar), ska systemet trigga timeout boundary event på "Confirm application" user task, trigga "application-timeout" error event, avsluta processen, och visa tydligt felmeddelande till kunden</li>
+        <li>Kunden ska kunna se en sammanfattning av all insamlad information (intern data, hushåll, stakeholders, objekt) i ett strukturerat format med tydliga rubriker (Intern data, Hushållsekonomi, Stakeholders, Objekt), tillåta att gå tillbaka och ändra information via tydliga länkar (t.ex. 'Redigera' knappar per sektion), och visa en tydlig 'Bekräfta'-knapp. Om någon information saknas, ska systemet visa en varning med tydlig lista över vad som saknas och inte tillåta bekräftelse. UI ska visa tydlig progress-indikator och tydligt visa vilka steg som är klara med visuella indikatorer. [BPMN-referens: "Confirm application" user task (confirm-application) aktiveras när båda flödena är klara via parallel gateway (Gateway_1960pk9)]</li>
+        <li>Om kunden bekräftar ansökan, ska processen automatiskt fortsätta till kreditupplysning. [BPMN-referens: processen fortsätter till "Sammanför flöden" gateway (Gateway_1nszp2i)]</li>
+        <li>Om kunden inte bekräftar ansökan inom tidsgränsen (30 dagar), ska kunden se ett tydligt meddelande: "Ansökan avslutad: Du har inte bekräftat ansökan inom tidsgränsen (30 dagar)." Kunden ska kunna starta ny ansökan. [BPMN-referens: timeout boundary event (Event_0ao6cvb, P30D) på "Confirm application" user task, "application-timeout" error event (Error_1bicfvu) signaleras, processen avslutas (Event_111g1im)]</li>
       </ul>
 
       <h3>6. Kreditupplysning</h3>
       <ul>
-        <li>"Sammanför flöden" gateway ska samla ihop både bekräftelse-flödet (från "Confirm application") och skip-flödet (från "Skip step?" gateway "Yes"), så att "Fetch credit information" bara startar när antingen bekräftelse är klar eller bekräftelse har hoppats över</li>
-        <li>Systemet ska automatiskt hämta kreditinformation från externa källor (t.ex. UC3) för alla stakeholders via "Fetch credit information" service task när ansökan är bekräftad eller bekräftelse har hoppats över</li>
-        <li>"Fetch credit information" ska köras som multi-instance - en gång per stakeholder, så att kreditinformation hämtas separat för huvudansökande och medlåntagare</li>
-        <li>Kreditinformationen ska lagras i datastore "Personal credit information source" för användning i senare steg i kreditprocessen</li>
-        <li>När kreditupplysning är klar, ska processen avslutas normalt och ansökan ska gå vidare till kreditevaluering i Mortgage huvudprocessen</li>
+        <li>När antingen bekräftelse är klar eller bekräftelse har hoppats över, ska systemet automatiskt hämta kreditinformation från externa källor (t.ex. UC3) för alla stakeholders. Kreditinformation hämtas separat för huvudansökande och medlåntagare. Systemet ska visa progress för kreditupplysning med tydlig statusindikator för varje person (t.ex. 'Hämtad', 'Pågår', 'Fel'). Om hämtning misslyckas för en person, ska systemet visa tydligt felmeddelande och tillåta retry eller manuell hantering. Kreditinformationen lagras automatiskt för användning i senare steg i kreditprocessen. [BPMN-referens: "Sammanför flöden" gateway (Gateway_1nszp2i) samlar ihop både bekräftelse-flödet (från "Confirm application") och skip-flödet (från "Skip step?" gateway "Yes"), så att "Fetch credit information" service task bara startar när antingen bekräftelse är klar eller bekräftelse har hoppats över. "Fetch credit information" körs som multi-instance - en gång per stakeholder. Kreditinformationen lagras i datastore "Personal credit information source"]</li>
+        <li>När kreditupplysning är klar, ska processen automatiskt avslutas normalt och ansökan ska gå vidare till kreditevaluering i Mortgage huvudprocessen. [BPMN-referens: processen avslutas normalt (Event_0j4buhs)]</li>
       </ul>
 
       <h3>7. Felhantering och error events</h3>
       <ul>
-        <li>Systemet ska hantera alla error events via boundary events på relevanta call activities/user tasks:
-          <ul>
-            <li>"pre-screen rejected" error event via boundary event på "Internal data gathering" call activity</li>
-            <li>"object rejected" error event via boundary event på "Object" call activity</li>
-            <li>"stakeholder rejected" error event via boundary event på "Stakeholders" subprocess</li>
-            <li>"application rejected" error event via "KALP OK?" gateway "No" flöde</li>
-            <li>"application-timeout" error event via timeout boundary event på "Confirm application" user task</li>
-          </ul>
-        </li>
-        <li>Varje error event ska avsluta processen med korrekt felmeddelande till kunden som förklarar orsaken, vilken part/objekt som avvisades, och konkreta steg för att förbättra situationen</li>
-        <li>Felmeddelanden ska vara på svenska, tydliga och affärsorienterade (inte tekniska), och ska innehålla konkreta siffror där relevant (t.ex. "Maximalt lånebelopp (2 500 000 SEK) är under ansökt belopp (3 000 000 SEK)")</li>
+        <li>Systemet ska hantera alla fel genom att visa tydliga felmeddelanden till kunden som förklarar orsaken, vilken part/objekt som avvisades, och konkreta steg för att förbättra situationen. Varje felmeddelande ska avsluta processen och kunden ska kunna starta ny ansökan. Felmeddelanden ska vara på svenska, tydliga och affärsorienterade (inte tekniska), och ska innehålla konkreta siffror där relevant (t.ex. "Maximalt lånebelopp (2 500 000 SEK) är under ansökt belopp (3 000 000 SEK)"). Meddelanden ska visas i tydliga varningsrutor med ikon, tydlig rubrik, och strukturerad information med bullet points. [BPMN-referens: Systemet hanterar alla error events via boundary events på relevanta call activities/user tasks: "pre-screen rejected" error event (Error_1vtortg) via boundary event (Event_03349px) på "Internal data gathering" call activity, "object rejected" error event (Error_1pe398g) via boundary event (Event_152muhg) på "Object" call activity, "stakeholder rejected" error event (Error_0xx0ma1) via boundary event (Event_1dhapnx) på "Stakeholders" subprocess, "application rejected" error event (Error_08o6vkh) via "KALP OK?" gateway "No" flöde, "application-timeout" error event (Error_1bicfvu) via timeout boundary event (Event_0ao6cvb) på "Confirm application" user task]</li>
       </ul>
 
       <h3>8. Multi-instance och parallellitet</h3>
       <ul>
-        <li>Processen ska stödja multi-instance för flera parter, hushåll och stakeholders:
-          <ul>
-            <li>"Internal data gathering" som multi-instance för varje identifierad part</li>
-            <li>"Household" som multi-instance för flera hushåll</li>
-            <li>"Stakeholders" subprocess som multi-instance - en gång per hushåll</li>
-            <li>"Stakeholder" call activity som multi-instance inuti "Stakeholders" subprocessen</li>
-            <li>"Fetch credit information" som multi-instance för varje stakeholder</li>
-          </ul>
-        </li>
-        <li>Varje multi-instance ska hanteras separat med korrekt felhantering, så att om en instans avvisas, påverkar det inte andra instanser</li>
-        <li>"Household" och "Stakeholders" ska köras parallellt, så att kunden kan fylla i både hushållsekonomi och stakeholder-information samtidigt</li>
+        <li>Processen ska stödja flera parter, hushåll och stakeholders. Varje part, hushåll och stakeholder ska hanteras separat med korrekt felhantering, så att om en instans avvisas, påverkar det inte andra instanser. Kunden ska kunna se status för varje instans med tydliga statusindikatorer (t.ex. 'Pågår', 'Klar', 'Fel'). [BPMN-referens: Processen stödjer multi-instance för: "Internal data gathering" som multi-instance för varje identifierad part, "Household" som multi-instance för flera hushåll, "Stakeholders" subprocess som multi-instance - en gång per hushåll, "Stakeholder" call activity som multi-instance inuti "Stakeholders" subprocessen, "Fetch credit information" som multi-instance för varje stakeholder]</li>
+        <li>"Household" och "Stakeholders" ska köras parallellt, så att kunden kan fylla i både hushållsekonomi och stakeholder-information samtidigt. UI ska visa tydlig information om vilka steg som kan göras parallellt med visuella indikatorer. [BPMN-referens: "Household" och "Stakeholders" körs parallellt via parallel gateway (Gateway_0n2ekt4)]</li>
       </ul>
         </div>
       </details>

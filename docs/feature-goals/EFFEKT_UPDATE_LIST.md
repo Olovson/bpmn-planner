@@ -28,8 +28,8 @@
 - **Typ:** Huvudprocess
 - **Prioritet:** Hög
 
-### 4. ⏳ mortgage-kyc-v2.html
-- **Status:** ⏳ Väntar
+### 4. ✅ mortgage-kyc-v2.html
+- **Status:** ✅ Klar
 - **Typ:** Huvudprocess
 - **Prioritet:** Hög
 
@@ -156,10 +156,18 @@
 ## Sammanfattning
 
 - **Totalt antal filer:** 26
-- **Klar:** 1 (mortgage-application-v2.html)
-- **Återstående:** 25
+- **Klar:** 4 filer
+  1. ✅ mortgage-application-v2.html
+  2. ✅ mortgage-appeal-v2.html
+  3. ✅ mortgage-offer-v2.html
+  4. ✅ mortgage-kyc-v2.html
+- **Återstående:** 22 filer
 
 ## Nästa steg
 
-Börja med huvudprocesserna (2-9), sedan kritiska subprocesser (10-16), och slutligen övriga subprocesser (17-26).
+Fortsätt med huvudprocesserna (5-9), sedan kritiska subprocesser (10-16), och slutligen övriga subprocesser (17-26).
+
+## Återstarta arbetet
+
+Se `docs/feature-goals/EFFEKT_RESUME_PROMPT.md` för prompt att använda när du vill återstarta arbetet.
 

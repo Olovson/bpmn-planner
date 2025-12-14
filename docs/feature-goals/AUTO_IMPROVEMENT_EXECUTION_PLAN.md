@@ -563,21 +563,88 @@ För varje user story, ställ dessa frågor:
   - ❌ "Som användare vill jag hantera signering så att processen fungerar"
 
 #### Acceptanskriterier
+**⚠️ KRITISK REGEL - SAMMA PRINCIP SOM USER STORIES:**
+Acceptanskriterier ska följa samma princip som user stories: **Börja med funktionalitet, lägg BPMN-referenser som teknisk kontext i slutet.**
+
+**Viktiga regler för struktur:**
+- **Dela upp långa punkter:** Om en punkt innehåller flera acceptanskriterier, dela upp den i flera separata punkter för bättre läsbarhet. Varje punkt ska fokusera på ett specifikt acceptanskriterium.
+- **Separera funktionella detaljer från BPMN-referenser:** Lägg funktionella detaljer först, BPMN-referenser i slutet av varje punkt.
+
 - **Krav:**
+  - **Börja med funktionalitet:** Beskriv vad systemet gör, vad användaren ser, hur användaren interagerar - INTE BPMN-mekanik
+  - **Fokusera på användarupplevelse:** Beskriv UI/UX, visuella indikatorer, feedback, felmeddelanden
+  - **Lägg till funktionella detaljer:** Validering, feedback, felmeddelanden, progress-indikatorer, statusindikatorer
+  - **Lägg BPMN-referenser i slutet:** BPMN-ID:n, call activities, gateways, events ska vara teknisk kontext, inte huvudfokus
   - Var specifik och testbar: Acceptanskriterier ska vara konkreta och möjliga att verifiera
   - Använd "ska"-formuleringar: Formulera som krav (t.ex. "Systemet ska...")
   - Koppla till feature goalet: Acceptanskriterier ska vara direkt relaterade till feature goalets funktionalitet
-  - Fokusera på beteende: Beskriv vad systemet ska göra, inte hur det implementeras
-  - **Börja med funktionalitet**: Acceptanskriterier ska börja med funktionella detaljer (vad användaren ser, vad systemet gör, UI/UX, valideringar, felmeddelanden), och lägg BPMN-referenser som teknisk kontext i slutet
-  - **Undvik att börja med BPMN-referenser**: Undvik att börja acceptanskriterier med "Efter 'X' gateway..." eller "När 'Y' call activity triggar..." - börja istället med funktionalitet och lägg BPMN-referenser som teknisk kontext
-  - **Struktur**: 1) Funktionella detaljer först (UI/UX, valideringar, felmeddelanden), 2) BPMN-referenser som teknisk kontext i slutet
-  - Nämn specifika processsteg: Referera till specifika call activities, gateways, error events, datastores
   - Inkludera konkreta krav: Specificera timeout-värden, valideringsregler, felmeddelanden, UI/UX-krav
   - Organisera i kategorier: För komplexa feature goals, organisera i kategorier baserat på processsteg
-  - Beskriv felhantering: Specificera hur error events ska hanteras
+  - Beskriv felhantering: Specificera hur error events ska hanteras, vilka felmeddelanden som ska visas
+
+**Kritiska regler för att undvika BPMN-syntax:**
+- ❌ **Undvik att börja med BPMN-referenser:** "Systemet ska [funktionalitet] via 'X' call activity"
+- ✅ **Börja med funktionalitet:** "Systemet ska [funktionalitet med funktionella detaljer]. [UI/UX-krav]. [Validering och feedback]. [BPMN-referens som teknisk kontext i slutet]"
+- ❌ **Undvik BPMN-syntax i början:** "'X' gateway ska...", "'Y' call activity körs...", "Efter 'Z' boundary event..."
+- ✅ **Fokusera på funktionalitet:** "Kunden ska kunna...", "Systemet ska automatiskt...", "UI ska visa..."
+
 - **Exempel:**
-  - ✅ "Systemet ska automatiskt hämta befintlig kunddata från interna system (part, engagemang, kreditinformation) för alla identifierade parter i ansökan via 'Internal data gathering' call activity"
-  - ❌ "Systemet ska fungera bra"
+  - ✅ "Systemet ska automatiskt hämta och visa befintlig kunddata (part, engagemang, kreditinformation) för alla identifierade parter. Kunden ska se hämtad information i ett tydligt format med visuell markering av auto-ifyllda fält (t.ex. grön bockmarkering eller ikon), och kunna ändra information om den är felaktig via tydlig 'Redigera'-knapp per fält. UI ska visa tydlig progress-indikator för datainsamling (t.ex. progress bar eller spinner) och tydligt visa vilka parter som har hämtats med statusindikatorer. [BPMN-referens: 'Internal data gathering' call activity (internal-data-gathering) körs som multi-instance för varje identifierad part]"
+  - ❌ "Systemet ska automatiskt hämta befintlig kunddata från interna system via 'Internal data gathering' call activity" (börjar med BPMN-referens, saknar användarupplevelse)
+  - ❌ "Systemet ska fungera bra" (för vagt, inte testbart)
+
+#### Testgenerering - Testscenarier
+**⚠️ KRITISK REGEL - SAMMA PRINCIP SOM USER STORIES OCH ACCEPTANSKRITERIER:**
+Test-scenarier ska följa samma princip som user stories och acceptanskriterier: **Börja med funktionalitet och användarupplevelse, lägg BPMN-referenser som teknisk kontext i slutet.**
+
+- **Krav:**
+  - **Börja med funktionalitet:** Beskriv vad användaren gör, vad användaren ser, hur användaren interagerar - INTE BPMN-mekanik
+  - **Fokusera på användarupplevelse:** Beskriv UI/UX, visuella indikatorer, feedback, felmeddelanden
+  - **Lägg till funktionella detaljer:** Verifiera UI/UX, validering, feedback, felmeddelanden, progress-indikatorer, statusindikatorer
+  - **Lägg BPMN-referenser i slutet:** BPMN-ID:n, call activities, gateways, events ska vara teknisk kontext, inte huvudfokus
+  - **Given-When-Then struktur:** Varje scenario ska ha tydlig Given-When-Then struktur
+  - **Koppla till user stories och acceptanskriterier:** Verifiera att user stories och acceptanskriterier uppfylls
+  - **Specifika assertions:** Verifiera funktionella detaljer, inte bara BPMN-mekanik
+  - **Testdata-referenser:** Inkludera testdata-profiler (t.ex. customer-standard, customer-rejected)
+
+**Kritiska regler för att undvika BPMN-syntax:**
+- ❌ **Undvik att börja med BPMN-referenser:** "Processen körs genom alla steg: pre-screening → objekt → hushåll/stakeholders..."
+- ✅ **Börja med funktionalitet:** "Kunden fyller i ansökningsformulär. Systemet hämtar automatiskt befintlig kunddata och visar den för kunden..."
+- ❌ **Undvik BPMN-syntax i början:** "Pre-screen Party DMN utvärderas. DMN returnerar REJECTED. Boundary event triggas..."
+- ✅ **Fokusera på användarupplevelse:** "Systemet hämtar kunddata och gör pre-screening automatiskt. Pre-screening avvisar ansökan eftersom kunden inte uppfyller grundläggande krav. Kunden ser ett tydligt felmeddelande..."
+- ❌ **Undvik att verifiera bara BPMN-mekanik:** "Alla DMN-beslut returnerar APPROVED. Processen avslutas normalt (Event_0j4buhs)."
+- ✅ **Verifiera funktionella detaljer:** "Kunden ser hämtad information med visuell markering av auto-ifyllda fält. Kunden kan ändra information om den är felaktig. UI visar tydlig progress-indikator..."
+
+**Given-When-Then struktur:**
+```
+**Given:** [Förutsättningar och initialt tillstånd]
+- Vad måste vara sant innan testet startar?
+- Vilka testdata behövs? (t.ex. customer-standard, application-purchase)
+- Vilket systemtillstånd? (t.ex. "ansökan är i bekräftelsesteget")
+
+**When:** [Handlingar och händelser]
+- Vad gör användaren? (kortfattat, fokusera på kärnan)
+- Vad gör systemet? (kortfattat, fokusera på kärnan)
+- Vilka steg i processen? (inkludera alla viktiga steg - inte bara några)
+- Fokusera på funktionalitet och användarupplevelse, inte BPMN-mekanik
+
+**Then:** [Förväntade resultat]
+- Vad ser användaren? (kortfattat)
+- Vilka verifieringar? (funktionella detaljer, UI/UX, feedback)
+- Strukturera med korta meningar för bättre läsbarhet
+- Vilka tekniska detaljer? (event-ID:n, gateway-ID:n där relevant, i slutet)
+
+**BPMN-referens:** [Teknisk kontext i slutet]
+- BPMN-ID:n, call activities, gateways, events som teknisk referens
+```
+
+**Viktiga regler för struktur:**
+- **"When"-sektioner:** Inkludera alla viktiga steg - inte bara några. Beskriv vad användaren gör OCH vad systemet gör automatiskt.
+- **"Then"-sektioner:** Strukturera med korta meningar för bättre läsbarhet. Varje verifiering ska vara tydlig och lätt att skanna.
+
+- **Exempel:**
+  - ✅ "**Given:** En person ansöker om bolån för köp. Personen uppfyller alla grundläggande krav. Testdata: customer-standard. **When:** Kunden fyller i ansökningsformulär. Systemet hämtar automatiskt befintlig kunddata och visar den för kunden. Kunden bekräftar ansökan. **Then:** Kunden ser hämtad information med visuell markering av auto-ifyllda fält. Kunden kan ändra information om den är felaktig. UI visar tydlig progress-indikator. Kunden bekräftar ansökan. **BPMN-referens:** Pre-screening → objekt → hushåll/stakeholders → KALP-beräkning → bekräftelse → kreditupplysning. Alla DMN-beslut returnerar APPROVED. Processen avslutas normalt (Event_0j4buhs)."
+  - ❌ "**Given:** En person ansöker om bolån. **When:** Processen körs genom alla steg: pre-screening → objekt → hushåll/stakeholders. **Then:** Alla DMN-beslut returnerar APPROVED. Processen avslutas normalt (Event_0j4buhs)." (börjar med BPMN-referenser, saknar användarupplevelse)
 
 ### 4. Ersätt tekniska ID:n
 
