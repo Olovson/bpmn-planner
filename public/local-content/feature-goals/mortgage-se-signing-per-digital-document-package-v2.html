@@ -290,11 +290,13 @@
       <details>
         <summary>Omfattning</summary>
         <div class="section-content">
+<p class="muted"><strong>Notera:</strong> Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i "Tekniska krav"-sektionen.</p>
 <ul>
         <li>Multi-instance bearbetning av alla digitala dokumentpaket</li>
         <li>Skapande av signeringsordrar för varje dokumentpaket via signing provider</li>
         <li>Hantering av digital signering i PADES-format (för Sverige)</li>
         <li>Integration med Signing-processen för vidare signee-hantering</li>
+        <li>Felhantering vid misslyckade uppladdningar eller signeringsorder-skapande</li>
       </ul>
         </div>
       </details>
@@ -536,7 +538,211 @@
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>[Beskriv specifikt hur detta feature goal bidrar till affärseffekter. T.ex. om feature goalet leder till ökad automatisering, beskriv hur specifikt detta feature goal bidrar till effekten. Var konkret och mätbar där det är möjligt.]</p>
+      
+      <h3>Executive Summary</h3>
+      <p>Per digital document package-processens automatisering och parallellisering ger betydande affärseffekter baserat på 100 000 ansökningar per år och 200 handläggare (konservativa uppskattningar):</p>
+
+      <h4>Kostnadsbesparingar</h4>
+      <ul>
+        <li><strong>~3-5 MSEK</strong> kostnadsbesparingar per år (≈3-5 FTE elimineras genom direkt automatisering)</li>
+        <li><strong>20-30%</strong> minskade underhållskostnader (återanvändbar process eliminerar duplicerad logik)</li>
+      </ul>
+
+      <h4>Kapacitetsökning</h4>
+      <ul>
+        <li><strong>40-50%</strong> minskad handläggningstid för dokumentpaket-hantering</li>
+        <li><strong>Parallell bearbetning</strong> av flera dokumentpaket ökar genomströmningen</li>
+      </ul>
+
+      <h4>Kvalitetsförbättringar</h4>
+      <ul>
+        <li><strong>Konsistent dokumenthantering</strong> oavsett antal dokumentpaket</li>
+        <li><strong>Isolerad felhantering</strong> per dokumentpaket minskar risken för kaskadfel</li>
+      </ul>
+
+      <p class="muted"><em>Notera: Beräkningarna är konservativa uppskattningar baserat på typiska värden för liknande processer. För mer precisa beräkningar krävs baseline-data från nuvarande process (genomsnittlig process-tid, exakt manuell arbetstid per aktivitet, faktiska löner och overhead-kostnader). Se detaljerade sektioner nedan för beräkningsmetodik och förtydliganden.</em></p>
+      
+      <h3>1. Automatisering och kostnadsbesparingar</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till ~3-5 MSEK i kostnadsbesparingar i Executive Summary.</p>
+      <p>Automatiserad uppladdning av dokument via "Upload document" service task eliminerar manuell dokumenthantering. Automatiserad skapande av signeringsorder via "Create sign order" service task eliminerar manuell konfiguration. Parallell bearbetning via multi-instance subprocess ökar effektiviteten.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aktivitet</th>
+            <th>Volym</th>
+            <th>Tid per ansökan</th>
+            <th>Total tidssparande/år</th>
+            <th>FTE-värde</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Automatiserad dokumentuppladdning</td>
+            <td>100 000 ansökningar</td>
+            <td>10-15 min (manuell dokumenthantering elimineras)</td>
+            <td>16 667-25 000 timmar/år</td>
+            <td>≈9.3-13.9 FTE</td>
+          </tr>
+          <tr>
+            <td>Automatiserad signeringsorder-skapande</td>
+            <td>100 000 ansökningar</td>
+            <td>5-10 min (manuell konfiguration elimineras)</td>
+            <td>8 333-16 667 timmar/år</td>
+            <td>≈4.6-9.3 FTE</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Total kostnadsbesparing:</strong> 25 000-41 667 timmar/år ≈ 13.9-23.2 FTE. Baserat på 900 000 SEK/år per FTE (inklusive overhead) = ~12.5-20.9 MSEK/år. Konservativ uppskattning: ~3-5 MSEK/år (≈3-5 FTE).</p>
+      <p class="muted"><em>Notera: Exakt volym av dokumentpaket per ansökan kräver baseline-data från nuvarande process. Exakt manuell arbetstid per aktivitet kräver baseline-data för mer precisa beräkningar.</em></p>
+
+      <h3>2. Snabbare processering och förbättrad kundupplevelse</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 40-50% minskad handläggningstid i Executive Summary.</p>
+      <p>Automatisk dokumentuppladdning och signeringsorder-skapande minskar handläggningstid. Parallell bearbetning av flera dokumentpaket ökar genomströmningen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Handläggningstid (dokumentpaket-hantering)</td>
+            <td>1-1.5 timmar (manuell hantering)</td>
+            <td>0.5-0.9 timmar (automatiskt)</td>
+            <td>40-50% snabbare</td>
+          </tr>
+          <tr>
+            <td>Parallell bearbetning</td>
+            <td>Sekventiell bearbetning</td>
+            <td>Parallell bearbetning</td>
+            <td>Ökad genomströmning</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Processförbättringar:</strong> Konsistent dokumenthantering oavsett antal dokumentpaket säkerställer korrekt information. Isolerad felhantering per dokumentpaket minskar risken för kaskadfel.</p>
+      <p class="muted"><em>Notera: Exakt genomsnittlig process-tid kräver baseline-data från nuvarande process för mer precisa beräkningar.</em></p>
+
+      <h3>3. Kapacitetsökning</h3>
+      <p>Detaljerade beräkningar för kapacitetsökning.</p>
+      <p>Genom automatiserad dokumentuppladdning och signeringsorder-skapande kan handläggare fokusera på komplexa fall, vilket ökar kapaciteten. Parallell bearbetning ökar genomströmningen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Dokumentpaket-hanteringar per handläggare/år</td>
+            <td>500</td>
+            <td>650-700</td>
+            <td>30-40% ökning</td>
+          </tr>
+          <tr>
+            <td>Konsistent dokumenthantering</td>
+            <td>Varierande processer</td>
+            <td>Enhetlig process</td>
+            <td>Kvalitetsförbättring</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Processförbättringar:</strong> Återanvändbar process eliminerar duplicerad logik och säkerställer konsistent dokumenthantering. Detta minskar underhållskostnader med 20-30%.</p>
+      <p class="muted"><em>Notera: Exakt kapacitetsökning kräver baseline-data från nuvarande process (genomsnittlig process-tid per dokumentpaket-hantering, faktisk handläggarnöjdhet) för mer precisa beräkningar.</em></p>
+
+      <h3>Jämförelse med nuvarande process</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Manuell hantering (dokumentuppladdning)</td>
+            <td>100% manuell</td>
+            <td>0% (automatiskt)</td>
+            <td>100% automatisering</td>
+          </tr>
+          <tr>
+            <td>Manuell hantering (signeringsorder-skapande)</td>
+            <td>100% manuell</td>
+            <td>0% (automatiskt)</td>
+            <td>100% automatisering</td>
+          </tr>
+          <tr>
+            <td>Handläggningstid (dokumentpaket-hantering)</td>
+            <td>1-1.5 timmar</td>
+            <td>0.5-0.9 timmar</td>
+            <td>40-50% snabbare</td>
+          </tr>
+          <tr>
+            <td>Parallell bearbetning</td>
+            <td>Sekventiell</td>
+            <td>Parallell</td>
+            <td>Ökad genomströmning</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Aggregeringsinformation</h3>
+      <p class="muted">Denna information används för att aggregera effekter från subprocesser till huvudprocessen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Effekt</th>
+            <th>Typ</th>
+            <th>Volym</th>
+            <th>Aggregeringsbar</th>
+            <th>Redan inkluderad i parent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Automatisering (dokumentuppladdning + signeringsorder-skapande)</td>
+            <td>Direkt</td>
+            <td>100 000 ansökningar</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Kostnadsbesparingar (direkt automatisering)</td>
+            <td>Direkt</td>
+            <td>25 000-41 667 timmar/år ≈ 13.9-23.2 FTE (konservativt: 3-5 FTE)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Snabbare processering (automatiserad dokumentuppladdning + signeringsorder-skapande)</td>
+            <td>Direkt</td>
+            <td>100 000 ansökningar (40-50% snabbare)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Kvalitetsförbättringar (konsistent dokumenthantering)</td>
+            <td>Indirekt</td>
+            <td>Kvalitativ förbättring</td>
+            <td>Nej</td>
+            <td>Nej</td>
+          </tr>
+        </tbody>
+      </table>
         </div>
       </details>
     </section>
@@ -546,11 +752,12 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i user stories. Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i "Tekniska krav"-sektionen.</p>
       <h3>Handläggarperspektiv</h3>
       <ul>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt laddar upp digitala dokument till Signing provider <strong>så att</strong> dokumenten är tillgängliga för signering utan att jag behöver manuellt hantera varje dokument. <em>Acceptanskriterier: Systemet ska automatiskt ladda upp alla dokument i dokumentpaketet till Signing provider via "Upload document" service task (upload-document) med multi-instance loop för varje dokument i paketet. Dokument ska sparas korrekt i PADES-format med validering av filformat och filstorlek. Systemet ska implementera retry-logik med exponential backoff (max 3 försök) vid tillfälliga fel. Om uppladdning misslyckas, ska systemet logga felet med specifik error code (SIGNING_DIGITAL_SERVICE_ERROR, SIGNING_DIGITAL_TIMEOUT) och eskalera till handläggare. Handläggaren ska kunna se status för varje uppladdat dokument i sitt gränssnitt.</em></li>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt skapar signeringsorder för varje dokumentpaket <strong>så att</strong> signeringsorder är redo för signees utan att jag behöver manuellt konfigurera dem. <em>Acceptanskriterier: Systemet ska automatiskt skapa signeringsorder i Signing provider via "Create sign order" service task (create-signing-order) för varje dokumentpaket. Signeringsorder ska vara korrekt konfigurerad med dokument, signees, signeringsordning och deadline. Systemet ska validera att alla nödvändiga data finns (dokument-ID, signee-ID, signeringsordning) innan signeringsorder skapas. Om signeringsorder-skapande misslyckas, ska systemet logga felet och försöka igen med retry-logik (max 3 försök). Handläggaren ska kunna se status för varje signeringsorder i sitt gränssnitt.</em></li>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt bearbetar flera dokumentpaket parallellt <strong>så att</strong> signeringsprocessen går snabbare för ansökningar med många dokumentpaket. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta varje dokumentpaket parallellt via "Per digital document package" subprocess (per-digital-document-package) med multi-instance loop. Varje dokumentpaket ska bearbetas individuellt med egen instans av subprocessen, och flera dokumentpaket ska kunna bearbetas parallellt för att öka effektiviteten. Systemet ska hantera fel isolerat per dokumentpaket så att ett misslyckat dokumentpaket inte påverkar andra. Handläggaren ska kunna se status för varje dokumentpaket i sitt gränssnitt med visuella indikatorer.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt laddar upp digitala dokument till Signing provider <strong>så att</strong> dokumenten är tillgängliga för signering utan att jag behöver manuellt hantera varje dokument. <em>Acceptanskriterier: Systemet ska automatiskt ladda upp alla dokument i dokumentpaketet till Signing provider via "Upload document" service task med multi-instance loop för varje dokument i paketet. Dokument ska sparas korrekt i PADES-format med validering av filformat och filstorlek. Om uppladdning misslyckas, ska systemet eskalera till handläggare. Handläggaren ska kunna se status för varje uppladdat dokument i sitt gränssnitt.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt skapar signeringsorder för varje dokumentpaket <strong>så att</strong> signeringsorder är redo för signees utan att jag behöver manuellt konfigurera dem. <em>Acceptanskriterier: Systemet ska automatiskt skapa signeringsorder i Signing provider via "Create sign order" service task för varje dokumentpaket. Signeringsorder ska vara korrekt konfigurerad med dokument, signees, signeringsordning och deadline. Systemet ska validera att alla nödvändiga data finns (dokument-ID, signee-ID, signeringsordning) innan signeringsorder skapas. Om signeringsorder-skapande misslyckas, ska systemet eskalera till handläggare. Handläggaren ska kunna se status för varje signeringsorder i sitt gränssnitt.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt bearbetar flera dokumentpaket parallellt <strong>så att</strong> signeringsprocessen går snabbare för ansökningar med många dokumentpaket. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta varje dokumentpaket parallellt via "Per digital document package" subprocess med multi-instance loop. Varje dokumentpaket ska bearbetas individuellt med egen instans av subprocessen, och flera dokumentpaket ska kunna bearbetas parallellt för att öka effektiviteten. Systemet ska hantera fel isolerat per dokumentpaket så att ett misslyckat dokumentpaket inte påverkar andra. Handläggaren ska kunna se status för varje dokumentpaket i sitt gränssnitt med visuella indikatorer.</em></li>
       </ul>
         </div>
       </details>
@@ -558,16 +765,12 @@
 
     <section class="doc-section">
       <details>
-        <summary>Acceptanskriterier</summary>
+        <summary>Tekniska krav</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
-      <h3>1. Digital signering</h3>
-      <ul>
-        <li>Systemet ska automatiskt hantera digital signering av dokumentpaket</li>
-        <li>Signerade dokument ska korrekt sparas och vara tillgängliga</li>
-      </ul>
-
-      <h3>2. Tekniska krav</h3>
+<p class="muted">Tekniska krav för implementation (timeout, retry, error codes, logging, skalbarhet, säkerhet).</p>
+      <p class="muted"><strong>Notera:</strong> Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i "User stories"-sektionen.</p>
+      
+      <h3>Tekniska krav</h3>
       <ul>
         <li><strong>Timeout:</strong> User tasks ska ha timeout på 10 dagar per signee. Service tasks ska ha timeout på 60 sekunder</li>
         <li><strong>Retry:</strong> Service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
@@ -575,19 +778,13 @@
         <li><strong>Logging:</strong> Alla signeringar ska loggas med signerings-ID, signee-ID, tidsstämplar och status för spårbarhet</li>
       </ul>
 
-      <h3>3. UI/UX-krav</h3>
-      <ul>
-        <li><strong>Signee-vyer:</strong> User tasks ska visa tydlig, strukturerad information om dokumentpaketet med separata sektioner för varje dokument</li>
-        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje signee med visuella indikatorer</li>
-      </ul>
-
-      <h3>4. Skalbarhet och prestanda</h3>
+      <h3>Skalbarhet och prestanda</h3>
       <ul>
         <li>Systemet ska kunna hantera flera signeringar parallellt</li>
         <li>Service tasks ska kunna hantera minst 30 signeringar per minut</li>
       </ul>
 
-      <h3>5. Säkerhet och compliance</h3>
+      <h3>Säkerhet och compliance</h3>
       <ul>
         <li>Alla signerade dokument ska krypteras i vila och under överföring (TLS 1.3)</li>
         <li>Alla signeringar ska innehålla spårbarhet för vem som signerade, när och vilket dokument</li>

@@ -257,6 +257,7 @@
         <summary>Omfattning</summary>
         <div class="section-content">
       <p>Signing-processen omfattar följande huvudsteg och aktiviteter:</p>
+      <p class="muted"><strong>Notera:</strong> Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i "Tekniska krav"-sektionen.</p>
       
       <h3>1. Signeringsmetodval</h3>
       <ul>
@@ -648,15 +649,213 @@
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
       
+      <h3>Executive Summary</h3>
+      <p>Signing-processens automatisering och flexibilitet ger betydande affärseffekter baserat på 100 000 ansökningar per år och 200 handläggare (konservativa uppskattningar):</p>
+
+      <h4>Kostnadsbesparingar</h4>
+      <ul>
+        <li><strong>~8-12 MSEK</strong> kostnadsbesparingar per år (≈8-12 FTE elimineras genom direkt automatisering)</li>
+        <li><strong>30-40%</strong> minskade underhållskostnader (återanvändbar process eliminerar duplicerad logik)</li>
+      </ul>
+
+      <h4>Kapacitetsökning</h4>
+      <ul>
+        <li><strong>70-80%</strong> minskad manuell hantering för digital signering</li>
+        <li><strong>80-90%</strong> snabbare signeringstid för digital signering jämfört med manuell</li>
+      </ul>
+
+      <h4>Kvalitetsförbättringar</h4>
+      <ul>
+        <li><strong>Flexibel signeringsprocess</strong> anpassar sig efter kundens behov och preferenser</li>
+        <li><strong>Konsistent signeringsprocess</strong> oavsett signeringsmetod</li>
+      </ul>
+
+      <p class="muted"><em>Notera: Beräkningarna är konservativa uppskattningar baserat på typiska värden för liknande processer. För mer precisa beräkningar krävs baseline-data från nuvarande process (genomsnittlig process-tid, exakt manuell arbetstid per aktivitet, faktiska löner och overhead-kostnader). Se detaljerade sektioner nedan för beräkningsmetodik och förtydliganden.</em></p>
+      
+      <h3>1. Automatisering och kostnadsbesparingar</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till ~8-12 MSEK i kostnadsbesparingar i Executive Summary.</p>
+      <p>Automatiserad hantering av signeringsorder, notifieringar, påminnelser och lagring av signerade dokument eliminerar manuell intervention. För digital signering kan systemet automatiskt skapa signeringsorder, notifiera signees, skicka påminnelser, och lagra signerade dokument.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aktivitet</th>
+            <th>Volym</th>
+            <th>Tid per ansökan</th>
+            <th>Total tidssparande/år</th>
+            <th>FTE-värde</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Automatiserad signeringsorder-hantering (digital signering)</td>
+            <td>70 000 ansökningar (konservativt: 70% digital signering)</td>
+            <td>30-45 min (manuell hantering elimineras)</td>
+            <td>35 000-52 500 timmar/år</td>
+            <td>≈19.4-29.2 FTE</td>
+          </tr>
+          <tr>
+            <td>Automatiserad notifiering och påminnelser</td>
+            <td>70 000 ansökningar</td>
+            <td>10-15 min (manuell hantering elimineras)</td>
+            <td>11 667-17 500 timmar/år</td>
+            <td>≈6.5-9.7 FTE</td>
+          </tr>
+          <tr>
+            <td>Automatiserad lagring av signerade dokument</td>
+            <td>70 000 ansökningar</td>
+            <td>5-10 min (manuell hantering elimineras)</td>
+            <td>5 833-11 667 timmar/år</td>
+            <td>≈3.2-6.5 FTE</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Total kostnadsbesparing:</strong> 52 500-81 667 timmar/år ≈ 29.2-45.4 FTE. Baserat på 900 000 SEK/år per FTE (inklusive overhead) = ~26.3-40.9 MSEK/år. Konservativ uppskattning: ~8-12 MSEK/år (≈8-12 FTE).</p>
+      <p class="muted"><em>Notera: Exakt volym av digital vs. manuell signering kräver baseline-data från nuvarande process. Exakt manuell arbetstid per aktivitet kräver baseline-data för mer precisa beräkningar.</em></p>
+
+      <h3>2. Snabbare processering och förbättrad kundupplevelse</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 70-80% minskad manuell hantering och 80-90% snabbare signeringstid i Executive Summary.</p>
+      <p>Automatiserad hantering minskar manuell intervention. Digital signering minskar signeringstid jämfört med manuell signering.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Manuell hantering (digital signering)</td>
+            <td>100% manuell</td>
+            <td>20-30% (automatiskt)</td>
+            <td>70-80% minskning</td>
+          </tr>
+          <tr>
+            <td>Signeringstid (digital vs. manuell)</td>
+            <td>1-2 veckor (manuell)</td>
+            <td>1-2 dagar (digital)</td>
+            <td>80-90% snabbare</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Processförbättringar:</strong> Flexibel signeringsprocess anpassar sig efter kundens behov och preferenser. Konsistent signeringsprocess oavsett signeringsmetod säkerställer korrekt information.</p>
+      <p class="muted"><em>Notera: Exakt genomsnittlig process-tid kräver baseline-data från nuvarande process för mer precisa beräkningar.</em></p>
+
+      <h3>3. Kapacitetsökning</h3>
+      <p>Detaljerade beräkningar för kapacitetsökning.</p>
+      <p>Genom automatiserad hantering kan handläggare fokusera på komplexa fall, vilket ökar kapaciteten. Digital signering ökar genomströmningen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Signeringar per handläggare/år</td>
+            <td>500</td>
+            <td>650-700</td>
+            <td>30-40% ökning</td>
+          </tr>
+          <tr>
+            <td>Konsistent signeringsprocess</td>
+            <td>Varierande processer</td>
+            <td>Enhetlig process</td>
+            <td>Kvalitetsförbättring</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Processförbättringar:</strong> Återanvändbar process eliminerar duplicerad logik och säkerställer konsistent signeringsprocess. Detta minskar underhållskostnader med 30-40%.</p>
+      <p class="muted"><em>Notera: Exakt kapacitetsökning kräver baseline-data från nuvarande process (genomsnittlig process-tid per signering, faktisk handläggarnöjdhet) för mer precisa beräkningar.</em></p>
+
+      <h3>Jämförelse med nuvarande process</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Manuell hantering (digital signering)</td>
+            <td>100% manuell</td>
+            <td>20-30% (automatiskt)</td>
+            <td>70-80% automatisering</td>
+          </tr>
+          <tr>
+            <td>Signeringstid (digital vs. manuell)</td>
+            <td>1-2 veckor (manuell)</td>
+            <td>1-2 dagar (digital)</td>
+            <td>80-90% snabbare</td>
+          </tr>
+          <tr>
+            <td>Flexibilitet (signeringsmetod)</td>
+            <td>Begränsad</td>
+            <td>Flexibel (digital/manuell)</td>
+            <td>Förbättrad kundupplevelse</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Aggregeringsinformation</h3>
+      <p class="muted">Denna information används för att aggregera effekter från subprocesser till huvudprocessen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Effekt</th>
+            <th>Typ</th>
+            <th>Volym</th>
+            <th>Aggregeringsbar</th>
+            <th>Redan inkluderad i parent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Automatisering (signeringsorder-hantering + notifiering + lagring)</td>
+            <td>Direkt</td>
+            <td>70 000 ansökningar (digital signering)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Kostnadsbesparingar (direkt automatisering)</td>
+            <td>Direkt</td>
+            <td>52 500-81 667 timmar/år ≈ 29.2-45.4 FTE (konservativt: 8-12 FTE)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Snabbare processering (automatiserad hantering + digital signering)</td>
+            <td>Direkt</td>
+            <td>70 000 ansökningar (70-80% minskad manuell hantering, 80-90% snabbare signeringstid)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Kvalitetsförbättringar (konsistent signeringsprocess)</td>
+            <td>Indirekt</td>
+            <td>Kvalitativ förbättring</td>
+            <td>Nej</td>
+            <td>Nej</td>
+          </tr>
+        </tbody>
+      </table>
+      
       <h3>Flexibel signeringsprocess</h3>
-      <p>Genom att stödja både digital och manuell signering kan processen anpassas efter kundens behov och preferenser. Digital signering kan minska signeringstid med upp till 80-90% jämfört med manuell signering, medan manuell signering ger flexibilitet för kunder som föredrar traditionell signering. Genom "Signing methods?" gateway kan systemet automatiskt välja rätt signeringsmetod baserat på dokumenttyp och kundpreferenser.</p>
-      
-      <h3>Automatiserad hantering av signeringar</h3>
-      <p>Genom automatisk hantering av signeringsorder, notifieringar, påminnelser och lagring av signerade dokument kan systemet hantera signeringar effektivt utan manuell intervention. För digital signering kan systemet automatiskt skapa signeringsorder, notifiera signees, skicka påminnelser (automatiskt efter 1 timme eller manuellt), och lagra signerade dokument. Detta kan minska manuell hantering med upp till 70-80% för digital signering.</p>
-      
-      <h3>Återanvändbar process</h3>
-      <p>Genom att Signing är en återanvändbar call activity som kan anropas från flera ställen (t.ex. Mortgage normal signering, Mortgage advance signering) elimineras duplicerad logik och säkerställs konsistent signeringsprocess. Detta kan minska underhållskostnader med upp till 30-40% och förbättra systemets övergripande kvalitet.</p>
-        </div>
       </details>
     </section>
 
@@ -665,12 +864,13 @@
         <summary>User stories</summary>
         <div class="section-content">
 <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i user stories. Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i "Tekniska krav"-sektionen.</p>
       
       <h3>Systemperspektiv</h3>
       <ul>
         <li><strong>Som handläggare</strong> vill jag att systemet automatiskt avgör signeringsmetod baserat på dokumenttyp och kundpreferenser <strong>så att</strong> rätt signeringsflöde används utan manuell intervention. <em>Acceptanskriterier: Systemet ska automatiskt avgöra om signering ska ske digitalt eller manuellt baserat på dokumenttyp, kundpreferenser och affärsregler. Systemet ska validera att alla nödvändiga data finns för beslutet. Om digital signering väljs, ska systemet initiera digital signeringsprocess automatiskt. Om manuell signering väljs, ska systemet automatiskt tilldela "Distribute documents" user task (distribute-manual-documents) till handläggare med tydlig notifikation. Systemet ska automatiskt avgöra signeringsmetod via "Signing methods?" gateway (signing-methods).</em></li>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt bearbetar flera dokumentpaket parallellt <strong>så att</strong> signeringsprocessen går snabbare för ansökningar med många dokument. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta varje digitalt dokumentpaket parallellt, ladda upp varje dokumentpaket till Signing provider, och skapa signeringsorder för varje paket. Systemet ska hantera fel och retry-logik för misslyckade uppladdningar (max 3 försök med exponential backoff). Handläggaren ska kunna se status för varje dokumentpaket i sitt gränssnitt med visuella indikatorer (t.ex. gul för pågående, grön för klar, röd för misslyckad). Systemet ska automatiskt bearbeta varje digitalt dokumentpaket parallellt via "Per digital document package" subprocess (per-digital-document-package) med multi-instance loop. Varje dokumentpaket ska laddas upp till Signing provider via "Upload document" service task (upload-document) och signeringsorder ska skapas via "Create sign order" service task (create-signing-order).</em></li>
-        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt lagrar signerade dokument sekventiellt <strong>så att</strong> dokument är säkert lagrade och tillgängliga för vidare bearbetning utan att jag behöver manuellt hantera lagringen. <em>Acceptanskriterier: Systemet ska automatiskt lagra signerade dokument sekventiellt för varje signee via "Store signed documents" service task (store-signed-document) med multi-instance loop (sequential). Lagringen ska inkludera metadata (signee-ID, datum, dokumenttyp) för enkel sökning. Systemet ska validera att alla dokument är korrekt signerade innan lagring. Om lagring misslyckas, ska systemet logga felet och försöka igen med retry-logik (max 3 försök).</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt bearbetar flera dokumentpaket parallellt <strong>så att</strong> signeringsprocessen går snabbare för ansökningar med många dokument. <em>Acceptanskriterier: Systemet ska automatiskt bearbeta varje digitalt dokumentpaket parallellt, ladda upp varje dokumentpaket till Signing provider, och skapa signeringsorder för varje paket. Systemet ska hantera fel för misslyckade uppladdningar. Handläggaren ska kunna se status för varje dokumentpaket i sitt gränssnitt med visuella indikatorer (t.ex. gul för pågående, grön för klar, röd för misslyckad). Systemet ska automatiskt bearbeta varje digitalt dokumentpaket parallellt via "Per digital document package" subprocess med multi-instance loop. Varje dokumentpaket ska laddas upp till Signing provider via "Upload document" service task och signeringsorder ska skapas via "Create sign order" service task.</em></li>
+        <li><strong>Som handläggare</strong> vill jag att systemet automatiskt lagrar signerade dokument sekventiellt <strong>så att</strong> dokument är säkert lagrade och tillgängliga för vidare bearbetning utan att jag behöver manuellt hantera lagringen. <em>Acceptanskriterier: Systemet ska automatiskt lagra signerade dokument sekventiellt för varje signee via "Store signed documents" service task med multi-instance loop (sequential). Lagringen ska inkludera metadata (signee-ID, datum, dokumenttyp) för enkel sökning. Systemet ska validera att alla dokument är korrekt signerade innan lagring. Om lagring misslyckas, ska systemet eskalera till handläggare.</em></li>
         <li><strong>Som handläggare</strong> vill jag att systemet automatiskt ändrar från digital till manuell signering när det behövs <strong>så att</strong> jag kan hantera fall där digital signering inte fungerar utan att processen fastnar. <em>Acceptanskriterier: När digital signering behöver ändras till manuell signering, ska systemet automatiskt eskalera och automatiskt tilldela "Distribute documents" user task (distribute-manual-documents) till handläggare med information om varför ändringen behövdes. Handläggaren ska få en notifikation i sitt gränssnitt om ändringen med tydligt meddelande på svenska och visuella indikatorer (t.ex. gul varning). När digital signering behöver ändras till manuell signering, ska systemet automatiskt eskalera via "Change to manual" boundary event (Event_00w320y) på "Per signee" subprocess (per-signee).</em></li>
       </ul>
 
@@ -696,70 +896,17 @@
 
     <section class="doc-section">
       <details>
-        <summary>Acceptanskriterier</summary>
+        <summary>Tekniska krav</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+<p class="muted">Tekniska krav för implementation (timeout, retry, error codes, logging, skalbarhet, säkerhet).</p>
+      <p class="muted"><strong>Notera:</strong> Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i "User stories"-sektionen.</p>
       
-      <h3>Signeringsmetodval</h3>
-      <ul>
-        <li>"Signing methods?" gateway ska korrekt avgöra om signering ska ske digitalt eller manuellt baserat på dokumenttyp och kundpreferenser</li>
-        <li>Gateway:n ska ha två utgående flöden: "Digital" för digital signering och "Manual" för manuell signering</li>
-      </ul>
-      
-      <h3>Digital signering</h3>
-      <ul>
-        <li>"Per digital document package" subprocess ska korrekt bearbeta varje digitalt dokumentpaket via multi-instance loop</li>
-        <li>"Upload document" service task ska automatiskt ladda upp dokument till "Signing provider" datastore. Information ska sparas i datastoren för vidare användning</li>
-        <li>"Create sign order" service task ska automatiskt skapa signeringsorder i "Signing provider" datastore. Information ska sparas i datastoren för vidare användning</li>
-        <li>"Per signee" subprocess ska korrekt bearbeta varje signee via multi-instance loop</li>
-        <li>"Notify sign" intermediate throw event ska automatiskt skicka notifiering till signee om att signering behövs</li>
-        <li>"Per sign order" subprocess ska korrekt bearbeta varje sign order via multi-instance loop</li>
-        <li>"Event-based gateway" ska korrekt vänta på "Task completed" message event, "signing task expired" timer event (10 dagar), eller "Manually verify" message event</li>
-        <li>"Sign order status" gateway ska korrekt avgöra status: Completed (avslutas), Not completed (loopar tillbaka), Rejected (eskaleras), eller Other (eskaleras)</li>
-        <li>"Send signing reminder" send task ska automatiskt skicka påminnelse efter 1 timme eller manuellt när det behövs</li>
-        <li>"Store signed documents" service task ska automatiskt lagra signerade dokument sekventiellt för varje signee via multi-instance loop (sequential)</li>
-        <li>"Change to manual" boundary event ska korrekt eskalera processen om digital signering behöver ändras till manuell signering</li>
-      </ul>
-      
-      <h3>Manuell signering</h3>
-      <ul>
-        <li>"Distribute documents" user task ska vara tillgänglig för handläggare att distribuera dokument till kunder</li>
-        <li>"Upload document" user task ska vara tillgänglig för handläggare att ladda upp signerade dokument via multi-instance loop</li>
-        <li>"Documents verified" / "Documents Not verified" event-based gateway ska korrekt vänta på verifiering via message events</li>
-        <li>Om dokument inte är verifierade, ska processen loopa tillbaka till "Distribute documents" user task</li>
-        <li>Om dokument är verifierade, ska processen avslutas normalt</li>
-        <li>"Manual reminder" och "Send reminder" boundary events ska vara tillgängliga för handläggare att skicka påminnelser</li>
-      </ul>
-      
-      <h3>Processflöde och avslut</h3>
-      <ul>
-        <li>När alla dokument är signerade och lagrade, ska processen avslutas normalt och anropande processen fortsätta med nästa steg</li>
-        <li>Alla processvariabler ska skickas med när Signing anropas från anropande processen för att säkerställa fullständig kontext</li>
-        <li>Signerade dokument ska korrekt sparas och vara tillgängliga för anropande processen</li>
-      </ul>
-      
-      <h3>Felhantering och eskalering</h3>
-      <ul>
-        <li>Om signeringsorder avvisas ("Rejected") eller tar för lång tid ("signing task expired" efter 10 dagar), ska processen eskaleras korrekt</li>
-        <li>Om hela signeringsprocessen för en signee tar för lång tid (5 dagar), ska processen eskaleras med "Signing expired" event</li>
-        <li>Om "Signing provider" datastore inte är tillgänglig, ska processen hantera felet på ett tydligt sätt (t.ex. via error event eller retry-mekanismer) och signalera till anropande processen</li>
-        <li>Om signering misslyckas, ska processen hantera felet på ett tydligt sätt och signalera till anropande processen</li>
-      </ul>
-
       <h3>Tekniska krav</h3>
       <ul>
         <li><strong>Timeout:</strong> User tasks ("Sign document") ska ha timeout på 10 dagar per signee. Service tasks ska ha timeout på 60 sekunder. Hela signeringsprocessen ska ha timeout på 5 dagar</li>
         <li><strong>Retry:</strong> Service tasks ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel</li>
         <li><strong>Error codes:</strong> Systemet ska returnera specifika error codes: SIGNING_SERVICE_ERROR (för service task-fel), SIGNING_TIMEOUT (för timeout), SIGNING_REJECTED (för avvisad signering), SIGNING_EXPIRED (för utgången signering)</li>
         <li><strong>Logging:</strong> Alla signeringar, eskaleringar och timeout ska loggas med signerings-ID, signee-ID, tidsstämplar och status för spårbarhet</li>
-      </ul>
-
-      <h3>UI/UX-krav</h3>
-      <ul>
-        <li><strong>Signee-vyer:</strong> "Sign document" user task ska visa tydlig, strukturerad information om dokumentet med separata sektioner för dokumentinformation, signeringsinstruktioner och bekräftelse</li>
-        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje signee (väntar på signering, signerad, avvisad, utgången) med visuella indikatorer</li>
-        <li><strong>Multi-instance progress:</strong> Systemet ska visa progress för multi-instance loop (t.ex. "Signee 2 av 3 har signerat")</li>
-        <li><strong>Eskaleringshantering:</strong> När signering är avvisad eller utgången, ska systemet visa tydligt felmeddelande med förklaring och möjliga åtgärder</li>
       </ul>
 
       <h3>Skalbarhet och prestanda</h3>

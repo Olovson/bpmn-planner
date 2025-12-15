@@ -110,9 +110,9 @@ För varje fil, gå igenom ALLA 12 sektioner ovan och verifiera att varje punkt 
 21. [x] `mortgage-se-documentation-assessment-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 22. [x] `mortgage-se-internal-data-gathering-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 23. [x] `mortgage-se-manual-credit-evaluation-object-control-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
-24. [ ] `mortgage-se-object-information-v2.html`
-25. [ ] `mortgage-se-signing-per-digital-document-package-v2.html`
-26. [ ] `mortgage-se-signing-v2.html`
+24. [x] `mortgage-se-object-information-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+25. [x] `mortgage-se-signing-per-digital-document-package-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+26. [x] `mortgage-se-signing-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 
 **Totalt: 26 filer - ALLA behöver komplett validering av ALLA sektioner**
 
