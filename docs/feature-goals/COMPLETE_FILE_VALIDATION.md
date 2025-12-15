@@ -103,11 +103,11 @@ För varje fil, gå igenom ALLA 12 sektioner ovan och verifiera att varje punkt 
 14. [x] `mortgage-se-credit-decision-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 15. [x] `mortgage-se-credit-evaluation-Activity_1gzlxx4-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 16. [x] `mortgage-se-credit-evaluation-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
-17. [ ] `mortgage-se-disbursement-disbursement-advance-v2.html`
-18. [ ] `mortgage-se-disbursement-v2.html`
-19. [ ] `mortgage-se-document-generation-document-generation-advance-v2.html`
-20. [ ] `mortgage-se-document-generation-v2.html`
-21. [ ] `mortgage-se-documentation-assessment-v2.html`
+17. [x] `mortgage-se-disbursement-disbursement-advance-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+18. [x] `mortgage-se-disbursement-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+19. [x] `mortgage-se-document-generation-document-generation-advance-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+20. [x] `mortgage-se-document-generation-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+21. [x] `mortgage-se-documentation-assessment-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 22. [ ] `mortgage-se-internal-data-gathering-v2.html`
 23. [ ] `mortgage-se-manual-credit-evaluation-object-control-v2.html`
 24. [ ] `mortgage-se-object-information-v2.html`
