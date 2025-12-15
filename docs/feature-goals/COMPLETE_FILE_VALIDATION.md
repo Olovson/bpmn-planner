@@ -108,8 +108,8 @@ För varje fil, gå igenom ALLA 12 sektioner ovan och verifiera att varje punkt 
 19. [x] `mortgage-se-document-generation-document-generation-advance-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 20. [x] `mortgage-se-document-generation-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 21. [x] `mortgage-se-documentation-assessment-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
-22. [ ] `mortgage-se-internal-data-gathering-v2.html`
-23. [ ] `mortgage-se-manual-credit-evaluation-object-control-v2.html`
+22. [x] `mortgage-se-internal-data-gathering-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+23. [x] `mortgage-se-manual-credit-evaluation-object-control-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 24. [ ] `mortgage-se-object-information-v2.html`
 25. [ ] `mortgage-se-signing-per-digital-document-package-v2.html`
 26. [ ] `mortgage-se-signing-v2.html`

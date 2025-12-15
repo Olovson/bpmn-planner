@@ -29,11 +29,13 @@ Jag kan **INTE** fortsätta automatiskt utan användarinput. Men jag kan arbeta 
 19. ✅ `mortgage-se-document-generation-document-generation-advance-v2.html` - VALIDERAD
 20. ✅ `mortgage-se-document-generation-v2.html` - VALIDERAD
 21. ✅ `mortgage-se-documentation-assessment-v2.html` - VALIDERAD
+22. ✅ `mortgage-se-internal-data-gathering-v2.html` - VALIDERAD
+23. ✅ `mortgage-se-manual-credit-evaluation-object-control-v2.html` - VALIDERAD
 
 ### 🔄 Pågående
-22. 🔄 `mortgage-se-internal-data-gathering-v2.html` - PÅGÅR
+24. 🔄 `mortgage-se-object-information-v2.html` - PÅGÅR
 
-### ⏳ Väntande (4 filer kvar)
+### ⏳ Väntande (2 filer kvar)
 15. ⏳ `mortgage-se-credit-evaluation-Activity_1gzlxx4-v2.html`
 16. ⏳ `mortgage-se-credit-evaluation-v2.html`
 17. ⏳ `mortgage-se-disbursement-disbursement-advance-v2.html`
