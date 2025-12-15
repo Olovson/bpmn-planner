@@ -17,16 +17,18 @@ Jag kan **INTE** fortsätta automatiskt utan användarinput. Men jag kan arbeta 
 9. ✅ `mortgage-offer-v2.html` - VALIDERAD
 10. ✅ `mortgage-se-application-household-v2.html` - VALIDERAD
 
-### ✅ Klara filer (12 filer)
+### ✅ Klara filer (14 filer)
 11. ✅ `mortgage-se-application-object-v2.html` - VALIDERAD
 12. ✅ `mortgage-se-application-stakeholder-v2.html` - VALIDERAD
+13. ✅ `mortgage-se-credit-decision-sales-contract-credit-decision-v2.html` - VALIDERAD
+14. ✅ `mortgage-se-credit-decision-v2.html` - VALIDERAD
+15. ✅ `mortgage-se-credit-evaluation-Activity_1gzlxx4-v2.html` - VALIDERAD
+16. ✅ `mortgage-se-credit-evaluation-v2.html` - VALIDERAD
 
 ### 🔄 Pågående
-13. 🔄 `mortgage-se-credit-decision-sales-contract-credit-decision-v2.html` - PÅGÅR
+17. 🔄 `mortgage-se-disbursement-disbursement-advance-v2.html` - PÅGÅR
 
-### ⏳ Väntande (13 filer kvar)
-13. ⏳ `mortgage-se-credit-decision-sales-contract-credit-decision-v2.html`
-14. ⏳ `mortgage-se-credit-decision-v2.html`
+### ⏳ Väntande (9 filer kvar)
 15. ⏳ `mortgage-se-credit-evaluation-Activity_1gzlxx4-v2.html`
 16. ⏳ `mortgage-se-credit-evaluation-v2.html`
 17. ⏳ `mortgage-se-disbursement-disbursement-advance-v2.html`

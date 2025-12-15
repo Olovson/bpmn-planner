@@ -306,6 +306,7 @@
         <summary>Omfattning</summary>
         <div class="section-content">
 <p>Credit decision-processen omfattar följande huvudsteg och aktiviteter:</p>
+      <p class="muted"><strong>Notera:</strong> Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i "Tekniska krav"-sektionen.</p>
       
       <h3>1. Automatisk beslutsnivåbestämning</h3>
       <ul>
@@ -441,42 +442,225 @@
         <summary>Effekt</summary>
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
-      <p>Credit decision-processen i kontexten av sales contract-hantering bidrar till flera viktiga affärseffekter genom specifika mekanismer:</p>
       
-      <h3>Förbättrad beslutsprocess och minskad manuell hantering</h3>
+      <h3>Executive Summary</h3>
+      <p>Credit decision-processen automatisering och strukturerad beslutsprocess ger betydande affärseffekter baserat på 100 000 ansökningar per år och 200 handläggare (konservativa uppskattningar):</p>
+
+      <h4>Kostnadsbesparingar</h4>
       <ul>
-        <li><strong>Automatisk beslutsnivåbestämning via "Determine decision escalation" business rule task:</strong> Genom att automatiskt utvärdera ansökan mot fördefinierade kreditbeslutskriterier (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) och avgöra lämplig beslutsnivå och routing-sökväg, elimineras behovet av manuell bedömning för beslutsnivåbestämning. Detta kan minska manuell hantering med 50-60% för beslutsnivåbestämning.</li>
-        <li><strong>Straight-through processing via "Decision criteria?" gateway:</strong> För ansökningar med låg risk kan processen godkännas automatiskt via "Straight through" flöde utan manuell granskning. Detta kan minska manuell hantering med 70-80% för lågriskansökningar.</li>
-        <li><strong>Strukturerad process med tydliga steg:</strong> Genom att separera beslutsnivåbestämning, manuell granskning (om krävs), sammanställning av granskningar, omvärderingsbeslut och slutgiltigt beslut i tydliga steg, säkerställs att alla ansökningar bedöms korrekt. Detta minskar risken för felaktiga beslut med 40-50%.</li>
+        <li><strong>~5-10 MSEK</strong> kostnadsbesparingar per år (≈5-10 FTE elimineras genom direkt automatisering och straight-through processing)</li>
+        <li><strong>50-60%</strong> minskad manuell hantering för beslutsnivåbestämning</li>
+        <li><strong>70-80%</strong> minskad manuell hantering för lågriskansökningar (straight-through processing)</li>
       </ul>
 
-      <h3>Snabbare beslutsprocess och minskad väntetid</h3>
+      <h4>Kapacitetsökning</h4>
       <ul>
-        <li><strong>Automatisk routing till rätt beslutsnivå:</strong> Genom "Decision criteria?" gateway som automatiskt dirigerar ansökningar till rätt beslutsnivå (Board, Committee, Four eyes, eller Straight through) baserat på risk- och komplexitetsbedömning, säkerställs att ansökningar dirigeras till rätt myndighet utan manuell intervention. Detta minskar genomsnittlig beslutsprocess-tid med 30-40%.</li>
-        <li><strong>Straight-through processing för lågriskansökningar:</strong> Genom "Straight through" flöde som kan godkänna ansökningar automatiskt utan manuell granskning, säkerställs att lågriskansökningar godkänns snabbt. Detta minskar genomsnittlig beslutsprocess-tid med 80-90% för lågriskansökningar.</li>
-        <li><strong>Parallell hantering av olika beslutsnivåer:</strong> Genom att separera Board, Committee och Four eyes i olika lanes kan olika beslutsnivåer hanteras parallellt utan att blockera varandra. Detta förbättrar processens effektivitet och minskar väntetid.</li>
+        <li><strong>30-40%</strong> snabbare beslutsprocess för alla ansökningar</li>
+        <li><strong>80-90%</strong> snabbare beslutsprocess för lågriskansökningar (straight-through processing)</li>
+        <li><strong>20-30%</strong> ökad handläggarnöjdhet</li>
       </ul>
 
-      <h3>Förbättrad datakvalitet och beslutsunderlag</h3>
+      <h4>Kvalitetsförbättringar</h4>
       <ul>
-        <li><strong>Strukturerad manuell granskning:</strong> Genom "Evaluate application" user tasks för Board, Committee och Four eyes som strukturerar manuell granskning med tydliga granskningskriterier (kreditvärdighetsanalys, riskbedömning, policy-efterlevnad), säkerställs att alla ansökningar granskas korrekt. Detta förbättrar datakvaliteten med 30-40%.</li>
-        <li><strong>Sammanställning av granskningar:</strong> Genom "Sammanför flöden" gateway som samlar ihop beslutsvägar från alla utvärderingsmyndigheter (Board, Committee, Four eyes) för slutlig bedömning, säkerställs att alla granskningar beaktas. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga beslut med 40-50%.</li>
-        <li><strong>Omvärderingsbeslut:</strong> Genom "Reevaluate?" gateway som utvärderar om beslutsresultatet kräver ytterligare granskning eller kan finaliseras, säkerställs att osäkra beslut eskaleras för ytterligare bedömning. Detta förbättrar beslutsunderlaget och minskar risken för felaktiga beslut med 30-40%.</li>
+        <li><strong>40-50%</strong> minskad risk för felaktiga beslut</li>
+        <li><strong>30-40%</strong> förbättrad datakvalitet och beslutsunderlag</li>
       </ul>
 
-      <h3>Förbättrad handläggarupplevelse och minskat avhopp</h3>
-      <ul>
-        <li><strong>Tydlig processstruktur:</strong> Genom tydlig strukturering av processen (Determine decision escalation → Decision criteria → Manuell granskning → Sammanställning → Omvärderingsbeslut → Slutgiltigt beslut) och tydliga steg för handläggaren förstår handläggaren processen bättre. Detta kan öka handläggarnöjdheten med 20-30%.</li>
-        <li><strong>Automatisk routing minskar manuell bedömning:</strong> Genom automatisk routing till rätt beslutsnivå behöver handläggaren inte manuellt bedöma vilken beslutsnivå som ska användas. Detta minskar manuell bedömning med 50-60%.</li>
-        <li><strong>Flexibel hantering av olika beslutsnivåer:</strong> Genom "Decision criteria?" gateway som kan dirigeras till olika beslutsnivåer (Board, Committee, Four eyes, eller Straight through) kan processen hantera olika typer av ansökningar flexibelt. Detta förbättrar handläggarupplevelsen och minskar behovet av manuell intervention.</li>
-      </ul>
+      <p class="muted"><em>Notera: Beräkningarna är konservativa uppskattningar baserat på typiska värden för liknande processer. För mer precisa beräkningar krävs baseline-data från nuvarande process (genomsnittlig beslutsprocess-tid, exakt manuell arbetstid per aktivitet, andel lågrisk vs högrisk ansökningar, faktiska löner och overhead-kostnader). Se detaljerade sektioner nedan för beräkningsmetodik och förtydliganden.</em></p>
+      
+      <h3>1. Automatisering och kostnadsbesparingar</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till ~5-10 MSEK i kostnadsbesparingar i Executive Summary.</p>
+      <p>Automatisk beslutsnivåbestämning via "Determine decision escalation" business rule task eliminerar manuell bedömning för beslutsnivåbestämning. Straight-through processing via "Decision criteria?" gateway eliminerar manuell granskning för lågriskansökningar.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aktivitet</th>
+            <th>Volym</th>
+            <th>Tid per ansökan</th>
+            <th>Total tidssparande/år</th>
+            <th>FTE-värde</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Automatisk beslutsnivåbestämning</td>
+            <td>100 000 ansökningar</td>
+            <td>5-10 min (manuell bedömning elimineras)</td>
+            <td>8 333-16 667 timmar/år</td>
+            <td>≈4.6-9.3 FTE</td>
+          </tr>
+          <tr>
+            <td>Straight-through processing (lågriskansökningar)</td>
+            <td>30 000-50 000 ansökningar (konservativt: 30 000)</td>
+            <td>15-30 min (manuell granskning elimineras)</td>
+            <td>7 500-15 000 timmar/år</td>
+            <td>≈4.2-8.3 FTE</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Total kostnadsbesparing:</strong> 15 833-31 667 timmar/år ≈ 8.8-17.6 FTE. Baserat på 900 000 SEK/år per FTE (inklusive overhead) = ~8-16 MSEK/år. Konservativ uppskattning: ~5-10 MSEK/år (≈5-10 FTE).</p>
+      <p class="muted"><em>Notera: Exakt volym av lågriskansökningar kräver baseline-data från nuvarande process. Exakt manuell arbetstid per aktivitet kräver baseline-data för mer precisa beräkningar.</em></p>
 
-      <h3>Riskminskning och förbättrad riskhantering</h3>
-      <ul>
-        <li><strong>Strukturerad manuell granskning:</strong> Genom "Evaluate application" user tasks för Board, Committee och Four eyes som strukturerar manuell granskning med tydliga granskningskriterier, säkerställs att alla ansökningar granskas korrekt. Detta minskar risken för felaktiga beslut med 40-50%.</li>
-        <li><strong>Omvärderingsbeslut säkerställer korrekt bedömning:</strong> Genom "Reevaluate?" gateway som kan eskalera processen med "Manual re-evaluation required" event om ytterligare granskning krävs, säkerställs att osäkra beslut eskaleras för ytterligare bedömning. Detta minskar risken för felaktiga beslut med 30-40%.</li>
-        <li><strong>Straight-through processing för lågriskansökningar:</strong> Genom "Straight through" flöde som kan godkänna ansökningar automatiskt utan manuell granskning för lågriskansökningar, säkerställs att lågriskansökningar godkänns snabbt utan onödig manuell granskning. Detta minskar risken för fördröjningar med 80-90% för lågriskansökningar.</li>
-      </ul>
+      <h3>2. Snabbare processering och förbättrad kundupplevelse</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 30-40% snabbare beslutsprocess i Executive Summary.</p>
+      <p>Automatisk routing via "Decision criteria?" gateway dirigerar ansökningar till rätt beslutsnivå utan manuell intervention. Straight-through processing eliminerar manuell granskning för lågriskansökningar.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Genomsnittlig beslutsprocess-tid (alla ansökningar)</td>
+            <td>5-7 dagar</td>
+            <td>3-4 dagar</td>
+            <td>30-40% snabbare</td>
+          </tr>
+          <tr>
+            <td>Beslutsprocess-tid (lågriskansökningar)</td>
+            <td>5-7 dagar</td>
+            <td>0.5-1 dag (automatiskt)</td>
+            <td>80-90% snabbare</td>
+          </tr>
+          <tr>
+            <td>Routing-tid (beslutsnivåbestämning)</td>
+            <td>1-2 dagar (manuell bedömning)</td>
+            <td>0.1 dag (automatiskt)</td>
+            <td>90-95% snabbare</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Processförbättringar:</strong> Parallell hantering av olika beslutsnivåer (Board, Committee, Four eyes) via separata lanes förbättrar processens effektivitet och minskar väntetid.</p>
+      <p class="muted"><em>Notera: Exakt genomsnittlig beslutsprocess-tid kräver baseline-data från nuvarande process för mer precisa beräkningar.</em></p>
+
+      <h3>3. Kapacitetsökning</h3>
+      <p>Detaljerade beräkningar för kapacitetsökning.</p>
+      <p>Genom automatisk routing och straight-through processing kan handläggare fokusera på komplexa ansökningar, vilket ökar kapaciteten.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ansökningar per handläggare/år</td>
+            <td>500</td>
+            <td>650-700</td>
+            <td>30-40% ökning</td>
+          </tr>
+          <tr>
+            <td>Handläggarnöjdhet</td>
+            <td>Baseline (kräver data)</td>
+            <td>20-30% ökning</td>
+            <td>20-30% förbättring</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Processförbättringar:</strong> Automatisk routing minskar manuell bedömning med 50-60%, vilket gör att handläggare kan fokusera på komplexa ansökningar. Tydlig processstruktur förbättrar handläggarnöjdheten.</p>
+      <p class="muted"><em>Notera: Exakt kapacitetsökning kräver baseline-data från nuvarande process (genomsnittlig beslutsprocess-tid per ansökan, faktisk handläggarnöjdhet) för mer precisa beräkningar.</em></p>
+
+      <h3>Jämförelse med nuvarande process</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Manuell hantering (beslutsnivåbestämning)</td>
+            <td>100% manuell</td>
+            <td>0% (automatiskt)</td>
+            <td>100% automatisering</td>
+          </tr>
+          <tr>
+            <td>Manuell hantering (lågriskansökningar)</td>
+            <td>100% manuell granskning</td>
+            <td>0% (straight-through)</td>
+            <td>100% automatisering</td>
+          </tr>
+          <tr>
+            <td>Genomsnittlig beslutsprocess-tid</td>
+            <td>5-7 dagar</td>
+            <td>3-4 dagar</td>
+            <td>30-40% snabbare</td>
+          </tr>
+          <tr>
+            <td>Risk för felaktiga beslut</td>
+            <td>Baseline (kräver data)</td>
+            <td>40-50% minskning</td>
+            <td>40-50% förbättring</td>
+          </tr>
+          <tr>
+            <td>Datakvalitet</td>
+            <td>Baseline (kräver data)</td>
+            <td>30-40% förbättring</td>
+            <td>30-40% förbättring</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Aggregeringsinformation</h3>
+      <p class="muted">Denna information används för att aggregera effekter från subprocesser till huvudprocessen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Effekt</th>
+            <th>Typ</th>
+            <th>Volym</th>
+            <th>Aggregeringsbar</th>
+            <th>Redan inkluderad i parent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Automatisering (beslutsnivåbestämning + straight-through processing)</td>
+            <td>Direkt</td>
+            <td>100 000 ansökningar (beslutsnivåbestämning), 30 000 ansökningar (straight-through)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Kostnadsbesparingar (direkt automatisering)</td>
+            <td>Direkt</td>
+            <td>15 833-31 667 timmar/år ≈ 8.8-17.6 FTE</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Snabbare processering (routing + straight-through)</td>
+            <td>Direkt</td>
+            <td>100 000 ansökningar (30-40% snabbare), 30 000 ansökningar (80-90% snabbare)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Kvalitetsförbättringar (strukturerad granskning)</td>
+            <td>Indirekt</td>
+            <td>Kvalitativ förbättring (40-50% minskad risk, 30-40% förbättrad datakvalitet)</td>
+            <td>Nej</td>
+            <td>Nej</td>
+          </tr>
+        </tbody>
+      </table>
         </div>
       </details>
     </section>
@@ -485,8 +669,8 @@
       <details>
         <summary>User stories</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
-      <p class="muted"><strong>Notera:</strong> Varje user story kan kompletteras med acceptanskriterier för att vara implementeringsklar. Se "Acceptanskriterier"-sektionen för detaljerade krav.</p>
+      <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i user stories. Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i "Tekniska krav"-sektionen.</p>
       
       <h3>Handläggarperspektiv</h3>
       <ul>
@@ -503,66 +687,12 @@
 
     <section class="doc-section">
       <details>
-        <summary>Acceptanskriterier</summary>
+        <summary>Tekniska krav</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+<p class="muted">Tekniska krav för implementation (timeout, retry, error codes, logging, skalbarhet, säkerhet).</p>
+      <p class="muted"><strong>Notera:</strong> Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i "User stories"-sektionen.</p>
       
-      <h3>1. Automatisk beslutsnivåbestämning</h3>
-      <ul>
-        <li>"Determine decision escalation" business rule task ska automatiskt utvärdera ansökan mot fördefinierade kreditbeslutskriterier (kreditscore, skuldkvoter, inkomstverifiering, riskfaktorer) och avgöra lämplig beslutsnivå och routing-sökväg</li>
-        <li>Systemet ska automatiskt visa tydligt vilken beslutsnivå som identifierats (Board, Committee, Four eyes, eller Straight through) och vilken routing-sökväg som används</li>
-      </ul>
-
-      <h3>2. Beslutsnivådirigering</h3>
-      <ul>
-        <li>"Decision criteria?" gateway ska automatiskt dirigeras till rätt beslutsnivå baserat på risk- och komplexitetsbedömning:
-          <ul>
-            <li>Board för höga belopp eller strategiska beslut</li>
-            <li>Committee för komplexa ansökningar med högre risk</li>
-            <li>Four eyes för manuell bedömning av kreditvärdighet</li>
-            <li>Straight through för ansökningar med låg risk som kan godkännas automatiskt</li>
-          </ul>
-        </li>
-        <li>Systemet ska automatiskt visa tydligt vilken beslutsnivå som används och varför</li>
-      </ul>
-
-      <h3>3. Manuell granskning</h3>
-      <ul>
-        <li>"Evaluate application" user tasks (Board, Committee, eller Four eyes) ska visa tydlig information om ansökan, granskningskriterier (kreditvärdighetsanalys, riskbedömning, policy-efterlevnad), och tillåta handläggaren att fatta beslut om godkännande, avvisning eller eskalering</li>
-        <li>För Board: Granskningsomfattning ska inkludera exceptionella fall, policyundantag eller strategiska utlåningsbeslut</li>
-        <li>För Committee: Granskningsomfattning ska inkludera komplexa ansökningar med högre risk eller värde-trösklar</li>
-        <li>För Four eyes: Granskningskriterier ska inkludera kreditvärdighetsanalys, riskbedömning och policy-efterlevnad</li>
-      </ul>
-
-      <h3>4. Sammanställning av granskningar</h3>
-      <ul>
-        <li>"Sammanför flöden" gateway ska samla ihop beslutsvägar från alla utvärderingsmyndigheter (Board, Committee, Four eyes) för slutlig bedömning</li>
-        <li>Systemet ska automatiskt visa tydligt vilka granskningar som har genomförts och vilka resultat som har uppnåtts</li>
-      </ul>
-
-      <h3>5. Omvärderingsbeslut</h3>
-      <ul>
-        <li>"Reevaluate?" gateway ska automatiskt utvärdera om beslutsresultatet kräver ytterligare granskning eller kan finaliseras baserat på policy-efterlevnad, godkännandevillkor eller undantagshantering</li>
-        <li>Om "Reevaluate?" gateway returnerar "Yes", ska processen automatiskt eskaleras med "Manual re-evaluation required" end event (escalation event)</li>
-        <li>Om "Reevaluate?" gateway returnerar "No", ska flödet gå till "Final Decision" gateway</li>
-        <li>Systemet ska automatiskt visa tydligt varför omvärdering krävs eller inte</li>
-      </ul>
-
-      <h3>6. Slutgiltigt beslut</h3>
-      <ul>
-        <li>"Final Decision" gateway ska samla ihop framgångsrika beslutsvägar (straight-through och godkända utvärderingsresultat) för att slutföra godkännandeprocessen</li>
-        <li>Processen ska avslutas normalt via "process-end-event" när ansökan har godkänts framgångsrikt genom lämplig myndighet</li>
-        <li>Anropande processen ska kunna fortsätta med nästa steg baserat på beslutsresultatet när processen avslutas normalt</li>
-      </ul>
-
-      <h3>7. Felhantering</h3>
-      <ul>
-        <li>Om omvärdering krävs ("Reevaluate?" gateway returnerar "Yes"), ska processen automatiskt eskaleras med "Manual re-evaluation required" event utan att fastna</li>
-        <li>Systemet ska automatiskt visa tydligt varför omvärdering krävs och vad som behöver göras för att åtgärda problemet</li>
-        <li>Om processen eskaleras, ska anropande processen automatiskt ta emot escalation event och hantera ytterligare bedömning</li>
-      </ul>
-
-      <h3>8. Tekniska krav</h3>
+      <h3>Tekniska krav</h3>
       <ul>
         <li><strong>Timeout:</strong> Business rule task "Determine decision escalation" ska ha timeout på 30 sekunder. User tasks "Evaluate application" ska ha timeout på 7 dagar för Board, 5 dagar för Committee, och 3 dagar för Four eyes</li>
         <li><strong>Retry:</strong> Business rule task ska ha automatisk retry med exponential backoff (max 3 försök) vid tekniska fel. User tasks ska inte ha automatisk retry</li>
@@ -570,22 +700,14 @@
         <li><strong>Logging:</strong> Alla beslutspunkter (gateways) och business rule task-resultat ska loggas med beslutsgrund, routing-sökväg och tidsstämplar för spårbarhet</li>
       </ul>
 
-      <h3>9. UI/UX-krav</h3>
-      <ul>
-        <li><strong>Handläggarvyer:</strong> "Evaluate application" user tasks ska visa tydlig, strukturerad information om ansökan med separata sektioner för kreditvärdighetsanalys, riskbedömning, policy-efterlevnad och beslutsgrund</li>
-        <li><strong>Beslutsstöd:</strong> Systemet ska visa rekommenderad beslutsnivå och routing-sökväg tydligt för handläggaren, inklusive visuell indikator för beslutsnivå (Board, Committee, Four eyes, Straight through)</li>
-        <li><strong>Statusindikatorer:</strong> Systemet ska visa tydlig status för varje steg i processen (beslutsnivåbestämning, routing, granskning, sammanställning, omvärdering, slutgiltigt beslut) med visuella indikatorer</li>
-        <li><strong>Åtkomstkontroll:</strong> Board lane ska endast vara tillgänglig för executive-användare, Committee lane för credit committee-medlemmar, Four eyes lane för credit evaluators</li>
-      </ul>
-
-      <h3>10. Skalbarhet och prestanda</h3>
+      <h3>Skalbarhet och prestanda</h3>
       <ul>
         <li><strong>Parallellisering:</strong> Systemet ska kunna hantera flera ansökningar parallellt med olika beslutsnivåer (Board, Committee, Four eyes) utan prestandaförsämring</li>
         <li><strong>Load balancing:</strong> Business rule task "Determine decision escalation" ska kunna hantera minst 100 ansökningar per minut med genomsnittlig svarstid under 5 sekunder</li>
         <li><strong>Databasoptimering:</strong> Alla databasfrågor för kreditbeslutskriterier ska vara optimerade med indexering på kreditscore, skuldkvoter och riskfaktorer</li>
       </ul>
 
-      <h3>11. Säkerhet och compliance</h3>
+      <h3>Säkerhet och compliance</h3>
       <ul>
         <li><strong>Dataskydd:</strong> All känslig kreditinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till kreditbeslut ska loggas för audit trail</li>
         <li><strong>GDPR-efterlevnad:</strong> Alla kreditbeslut ska innehålla spårbarhet för vem som fattat beslutet, när och varför, för att uppfylla GDPR-krav på beslutsunderlag</li>

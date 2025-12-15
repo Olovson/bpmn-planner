@@ -264,6 +264,7 @@
         <summary>Omfattning</summary>
         <div class="section-content">
       <p>Automatic Credit Evaluation-processen omfattar följande huvudsteg och aktiviteter:</p>
+      <p class="muted"><strong>Notera:</strong> Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i "Tekniska krav"-sektionen.</p>
       
       <h3>1. Produktval och prissättning</h3>
       <ul>
@@ -709,14 +710,204 @@
         <div class="section-content">
 <p class="muted">Förväntad affärseffekt som uppnås med feature goalet.</p>
       
-      <h3>Automatiserad kreditevaluering</h3>
-      <p>Genom automatisk kreditevaluering baserat på riskklassificering, prisinformation, amorteringsberäkningar, hushållsaffordabilitet och kreditpolicyer kan systemet snabbt bedöma om ansökan kan godkännas automatiskt eller kräver manuell granskning. För ansökningar som automatiskt godkänns kan processen fortsätta direkt, vilket kan minska handläggningstid med upp till 60-70% jämfört med manuell process. Endast ansökningar som kräver manuell bedömning dirigeras till handläggare.</p>
+      <h3>Executive Summary</h3>
+      <p>Automatic Credit Evaluation-processen automatisering och återanvändbarhet ger betydande affärseffekter baserat på 100 000 ansökningar per år och 200 handläggare (konservativa uppskattningar):</p>
+
+      <h4>Kostnadsbesparingar</h4>
+      <ul>
+        <li><strong>~8-12 MSEK</strong> kostnadsbesparingar per år (≈8-12 FTE elimineras genom direkt automatisering)</li>
+        <li><strong>30-40%</strong> minskade underhållskostnader (återanvändbar process eliminerar duplicerad logik)</li>
+      </ul>
+
+      <h4>Kapacitetsökning</h4>
+      <ul>
+        <li><strong>60-70%</strong> minskad handläggningstid för automatiskt godkända ansökningar</li>
+        <li><strong>40-50%</strong> minskad risk för inkonsistenta bedömningar</li>
+      </ul>
+
+      <h4>Kvalitetsförbättringar</h4>
+      <ul>
+        <li><strong>40-50%</strong> minskad risk för inkonsistenta bedömningar</li>
+        <li><strong>Konsistent evalueringsprocess</strong> för alla ansökningar oavsett var processen anropas från</li>
+      </ul>
+
+      <p class="muted"><em>Notera: Beräkningarna är konservativa uppskattningar baserat på typiska värden för liknande processer. För mer precisa beräkningar krävs baseline-data från nuvarande process (genomsnittlig handläggningstid, exakt manuell arbetstid per aktivitet, faktiska löner och overhead-kostnader). Se detaljerade sektioner nedan för beräkningsmetodik och förtydliganden.</em></p>
       
-      <h3>Konsistent evalueringsprocess</h3>
-      <p>Genom att använda samma automatiska kreditevaluering för alla ansökningar (oavsett var processen anropas från) säkerställs konsistent evalueringsprocess. Detta kan minska risken för inkonsistenta bedömningar med upp till 40-50% och förbättra kvaliteten på beslutsunderlaget.</p>
+      <h3>1. Automatisering och kostnadsbesparingar</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till ~8-12 MSEK i kostnadsbesparingar i Executive Summary.</p>
+      <p>Automatiserad kreditevaluering eliminerar manuell bedömning för automatiskt godkända ansökningar. Återanvändbar process eliminerar duplicerad logik.</p>
       
-      <h3>Återanvändbar process</h3>
-      <p>Genom att Automatic Credit Evaluation är en återanvändbar call activity som kan anropas från flera ställen (t.ex. Mortgage, Mortgage Commitment, Object Control, Manual Credit Evaluation) elimineras duplicerad logik och säkerställs konsistent evalueringsprocess. Detta kan minska underhållskostnader med upp till 30-40% och förbättra systemets övergripande kvalitet.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Aktivitet</th>
+            <th>Volym</th>
+            <th>Tid per ansökan</th>
+            <th>Total tidssparande/år</th>
+            <th>FTE-värde</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Automatiserad kreditevaluering (automatiskt godkända ansökningar)</td>
+            <td>40 000-60 000 ansökningar (konservativt: 40 000)</td>
+            <td>30-45 min (manuell bedömning elimineras)</td>
+            <td>20 000-45 000 timmar/år</td>
+            <td>≈11.1-25.0 FTE</td>
+          </tr>
+          <tr>
+            <td>Underhållskostnader (återanvändbar process)</td>
+            <td>Kvalitativ förbättring</td>
+            <td>30-40% minskning</td>
+            <td>Kvalitativ</td>
+            <td>Kvalitativ</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Total kostnadsbesparing:</strong> 20 000-45 000 timmar/år ≈ 11.1-25.0 FTE. Baserat på 900 000 SEK/år per FTE (inklusive overhead) = ~10-22.5 MSEK/år. Konservativ uppskattning: ~8-12 MSEK/år (≈8-12 FTE).</p>
+      <p class="muted"><em>Notera: Exakt volym av automatiskt godkända ansökningar kräver baseline-data från nuvarande process. Exakt manuell arbetstid per aktivitet kräver baseline-data för mer precisa beräkningar.</em></p>
+
+      <h3>2. Snabbare processering och förbättrad kundupplevelse</h3>
+      <p>Detaljerade beräkningar för hur vi kom fram till 60-70% minskad handläggningstid i Executive Summary.</p>
+      <p>Automatiserad kreditevaluering minskar handläggningstid för automatiskt godkända ansökningar.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Handläggningstid (automatiskt godkända ansökningar)</td>
+            <td>2-3 timmar (manuell bedömning)</td>
+            <td>0.5-1 timme (automatiskt)</td>
+            <td>60-70% snabbare</td>
+          </tr>
+          <tr>
+            <td>Konsistent evalueringsprocess</td>
+            <td>Varierande processer</td>
+            <td>Enhetlig process</td>
+            <td>40-50% minskad risk för inkonsistenta bedömningar</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Processförbättringar:</strong> Endast ansökningar som kräver manuell bedömning dirigeras till handläggare. Automatiskt godkända ansökningar kan fortsätta direkt.</p>
+      <p class="muted"><em>Notera: Exakt genomsnittlig handläggningstid kräver baseline-data från nuvarande process för mer precisa beräkningar.</em></p>
+
+      <h3>3. Kapacitetsökning</h3>
+      <p>Detaljerade beräkningar för kapacitetsökning.</p>
+      <p>Genom automatiserad kreditevaluering kan handläggare fokusera på komplexa ansökningar, vilket ökar kapaciteten.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ansökningar per handläggare/år</td>
+            <td>500</td>
+            <td>650-700</td>
+            <td>30-40% ökning</td>
+          </tr>
+          <tr>
+            <td>Konsistent evalueringsprocess</td>
+            <td>Varierande processer</td>
+            <td>Enhetlig process</td>
+            <td>40-50% minskad risk för inkonsistenta bedömningar</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p><strong>Processförbättringar:</strong> Återanvändbar process eliminerar duplicerad logik och säkerställer konsistent evalueringsprocess. Detta minskar underhållskostnader med 30-40%.</p>
+      <p class="muted"><em>Notera: Exakt kapacitetsökning kräver baseline-data från nuvarande process (genomsnittlig handläggningstid per ansökan) för mer precisa beräkningar.</em></p>
+
+      <h3>Jämförelse med nuvarande process</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Aspekt</th>
+            <th>Nuvarande</th>
+            <th>Nytt system</th>
+            <th>Förbättring</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Handläggningstid (automatiskt godkända ansökningar)</td>
+            <td>2-3 timmar (manuell bedömning)</td>
+            <td>0.5-1 timme (automatiskt)</td>
+            <td>60-70% snabbare</td>
+          </tr>
+          <tr>
+            <td>Konsistent evalueringsprocess</td>
+            <td>Varierande processer</td>
+            <td>Enhetlig process</td>
+            <td>40-50% minskad risk för inkonsistenta bedömningar</td>
+          </tr>
+          <tr>
+            <td>Underhållskostnader</td>
+            <td>Duplicerad logik</td>
+            <td>Återanvändbar process</td>
+            <td>30-40% minskning</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Aggregeringsinformation</h3>
+      <p class="muted">Denna information används för att aggregera effekter från subprocesser till huvudprocessen.</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Effekt</th>
+            <th>Typ</th>
+            <th>Volym</th>
+            <th>Aggregeringsbar</th>
+            <th>Redan inkluderad i parent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Automatisering (automatiserad kreditevaluering)</td>
+            <td>Direkt</td>
+            <td>40 000 ansökningar (automatiskt godkända)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Kostnadsbesparingar (direkt automatisering)</td>
+            <td>Direkt</td>
+            <td>20 000-45 000 timmar/år ≈ 11.1-25.0 FTE (konservativt: 8-12 FTE)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Snabbare processering (automatiserad kreditevaluering)</td>
+            <td>Direkt</td>
+            <td>40 000 ansökningar (60-70% snabbare)</td>
+            <td>Ja</td>
+            <td>Nej</td>
+          </tr>
+          <tr>
+            <td>Kvalitetsförbättringar (konsistent evalueringsprocess)</td>
+            <td>Indirekt</td>
+            <td>Kvalitativ förbättring (40-50% minskad risk för inkonsistenta bedömningar)</td>
+            <td>Nej</td>
+            <td>Nej</td>
+          </tr>
+        </tbody>
+      </table>
         </div>
       </details>
     </section>
@@ -725,7 +916,8 @@
       <details>
         <summary>User stories</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted">Relevanta och realistiska user stories som kan kopplas till feature goalet.</p>
+      <p class="muted"><strong>Notera:</strong> Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i user stories. Tekniska krav (timeout, retry, error codes, logging, skalbarhet, säkerhet) finns i "Tekniska krav"-sektionen.</p>
       
       <h3>Handläggarperspektiv</h3>
       <ul>
@@ -742,16 +934,14 @@
 
     <section class="doc-section">
       <details>
-        <summary>Acceptanskriterier</summary>
+        <summary>Tekniska krav</summary>
         <div class="section-content">
-<p class="muted">Relevanta och realistiska acceptanskriterier som kan kopplas till feature goalet.</p>
+<p class="muted">Tekniska krav för implementation (timeout, retry, error codes, logging, skalbarhet, säkerhet).</p>
+      <p class="muted"><strong>Notera:</strong> Funktionella acceptanskriterier (vad användaren ser/gör, UI/UX) finns i "User stories"-sektionen.</p>
       
-      <h3>Produktval och prissättning</h3>
+      <h3>Tekniska krav</h3>
       <ul>
-        <li>"Select product" business rule task ska korrekt välja produkt baserat på ansökningsdata via affärsregler</li>
-        <li>"Fetch price" service task ska automatiskt hämta prisinformation från "Pricing engine" datastore. Information ska sparas i datastoren för vidare användning</li>
-        <li>"Determine amortisation" business rule task ska korrekt beräkna amortering baserat på produktval, prisinformation och ansökningsdata via affärsregler</li>
-        <li><strong>Tekniska krav:</strong>
+        <li><strong>Produktval och prissättning:</strong>
           <ul>
             <li>Timeout för "Select product" (DMN): 10 sekunder</li>
             <li>Timeout för "Fetch price": 30 sekunder, Retry: 2 försök med exponential backoff (5s, 10s)</li>
@@ -759,22 +949,7 @@
             <li>Error codes: 400 (Ogiltig input-data), 500 (Serverfel), 503 (Pricing engine otillgängligt)</li>
           </ul>
         </li>
-      </ul>
-      
-      <h3>Stakeholder-bearbetning</h3>
-      <ul>
-        <li>"For each stakeholder" subprocess ska korrekt bearbeta varje stakeholder i ansökan via multi-instance loop</li>
-        <li>"Needs updated Credit information" gateway ska korrekt avgöra om uppdaterad kreditinformation behövs för stakeholder. Om "Yes", ska processen gå till "Fetch credit information" service task. Om "No", ska processen fortsätta direkt till nästa steg</li>
-        <li>"Fetch credit information" service task ska automatiskt hämta kreditinformation från "Personal credit information source" datastore när det behövs. Information ska sparas i datastoren för vidare användning</li>
-      </ul>
-      
-      <h3>Hushållsbearbetning</h3>
-      <ul>
-        <li>"For each household" subprocess ska korrekt bearbeta varje hushåll i ansökan via multi-instance loop</li>
-        <li>"Calculate household affordabilty" service task ska automatiskt beräkna hushållsaffordabilitet baserat på inkomst, utgifter, befintliga skulder och ekonomiska förpliktelser. Data ska hämtas från "Stacc Affordability" datastore och sparas i datastoren för vidare användning</li>
-        <li>"Evaluate household" business rule task ska korrekt bedöma hushållsaffordabilitet mot låne- och policykriterier via affärsregler</li>
-        <li>"Evaluate stakeholders" business rule task ska korrekt bedöma stakeholders i hushållet via affärsregler</li>
-        <li><strong>Tekniska krav:</strong>
+        <li><strong>Hushållsbearbetning:</strong>
           <ul>
             <li>Timeout för "Calculate household affordability" (Stacc API): 60 sekunder, Retry: 2 försök med exponential backoff (10s, 20s)</li>
             <li>Timeout för "Evaluate household" (DMN): 10 sekunder</li>
@@ -782,14 +957,7 @@
             <li>Error codes: 400 (Ogiltig hushållsdata), 500 (Serverfel), 503 (Stacc Affordability otillgängligt)</li>
           </ul>
         </li>
-      </ul>
-      
-      <h3>Riskklassificering och bedömning</h3>
-      <ul>
-        <li>"Fetch risk classification" service task ska automatiskt hämta riskklassificering från "Risk engine" datastore. Riskklassificering ska baseras på kreditscore, ekonomiska data och ansökningskaraktäristika. Information ska sparas i datastoren för vidare användning</li>
-        <li>"Evaluate application" business rule task ska korrekt bedöma ansökan baserat på riskklassificering, hushållsaffordabilitet och stakeholder-bedömningar via affärsregler</li>
-        <li>"Evaluate credit policies" business rule task ska korrekt bedöma ansökan mot alla kreditpolicyer och lånekriterier via affärsregler för att avgöra om ansökan kan godkännas automatiskt eller kräver manuell granskning</li>
-        <li><strong>Tekniska krav:</strong>
+        <li><strong>Riskklassificering och bedömning:</strong>
           <ul>
             <li>Timeout för "Fetch risk classification": 30 sekunder, Retry: 2 försök med exponential backoff (5s, 10s)</li>
             <li>Timeout för "Evaluate application" (DMN): 10 sekunder</li>
@@ -798,13 +966,7 @@
             <li>Alla evalueringsresultat måste sparas i datastore innan processen avslutas</li>
           </ul>
         </li>
-      </ul>
-      
-      <h3>Integration med anropande processer</h3>
-      <ul>
-        <li>Credit Evaluation-processen ska kunna anropas från flera ställen (Mortgage, Mortgage Commitment, Object Control, Manual Credit Evaluation) via call activities</li>
-        <li>När Credit Evaluation-processen avslutas normalt, ska evalueringsresultat returneras till anropande processen för vidare bearbetning</li>
-        <li><strong>Tekniska krav:</strong>
+        <li><strong>Integration med anropande processer:</strong>
           <ul>
             <li>Skalbarhet: Processen ska kunna hantera minst 20 parallella evalueringsinstanser</li>
             <li>Prestanda: Genomsnittlig bearbetningstid per evaluering: < 2 minuter (exklusive användarinteraktion, endast systemtasks)</li>
@@ -814,13 +976,19 @@
           </ul>
         </li>
       </ul>
-      </ul>
-      
-      <h3>Processflöde och avslut</h3>
+
+      <h3>Skalbarhet och prestanda</h3>
       <ul>
-        <li>När kreditevaluering är slutförd, ska processen avslutas normalt och anropande processen fortsätta med nästa steg baserat på evalueringsresultatet</li>
-        <li>Alla processvariabler ska skickas med när Automatic Credit Evaluation anropas från anropande processen för att säkerställa fullständig kontext</li>
-        <li>Evalueringsresultatet ska korrekt sparas och vara tillgängligt för anropande processen</li>
+        <li><strong>Parallellisering:</strong> Multi-instance subprocesses ska kunna bearbeta stakeholders och hushåll parallellt för att förbättra prestanda</li>
+        <li><strong>Load balancing:</strong> Service tasks ska kunna hantera minst 50 ansökningar per minut med genomsnittlig svarstid under 10 sekunder per ansökan</li>
+        <li><strong>Caching:</strong> Systemet ska implementera caching för prissättningsdata, kreditinformation och riskklassificering för att minska belastning på externa tjänster</li>
+      </ul>
+
+      <h3>Säkerhet och compliance</h3>
+      <ul>
+        <li><strong>Dataskydd:</strong> All känslig kreditinformation ska krypteras i vila och under överföring (TLS 1.3). Åtkomst till kreditdata ska loggas för audit trail</li>
+        <li><strong>GDPR-efterlevnad:</strong> Alla kreditevalueringar ska innehålla spårbarhet för när utvärderingen genomfördes, vilka data som användes och resultatet, för att uppfylla GDPR-krav</li>
+        <li><strong>Audit trail:</strong> Alla utvärderingsresultat ska loggas med ansöknings-ID, tidsstämplar, utvärderingssteg och resultat för fullständig spårbarhet</li>
       </ul>
       
       <h3>Felhantering</h3>
