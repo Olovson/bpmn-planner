@@ -97,8 +97,8 @@ För varje fil, gå igenom ALLA 12 sektioner ovan och verifiera att varje punkt 
 8. [x] `mortgage-object-valuation-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 9. [x] `mortgage-offer-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 10. [x] `mortgage-se-application-household-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
-11. [ ] `mortgage-se-application-object-v2.html`
-12. [ ] `mortgage-se-application-stakeholder-v2.html`
+11. [x] `mortgage-se-application-object-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
+12. [x] `mortgage-se-application-stakeholder-v2.html` - ✅ VALIDERAD OCH PERFEKT (alla sektioner)
 13. [ ] `mortgage-se-credit-decision-sales-contract-credit-decision-v2.html`
 14. [ ] `mortgage-se-credit-decision-v2.html`
 15. [ ] `mortgage-se-credit-evaluation-Activity_1gzlxx4-v2.html`

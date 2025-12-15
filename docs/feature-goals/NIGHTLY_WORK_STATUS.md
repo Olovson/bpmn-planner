@@ -17,11 +17,14 @@ Jag kan **INTE** fortsätta automatiskt utan användarinput. Men jag kan arbeta 
 9. ✅ `mortgage-offer-v2.html` - VALIDERAD
 10. ✅ `mortgage-se-application-household-v2.html` - VALIDERAD
 
-### 🔄 Pågående
-11. 🔄 `mortgage-se-application-object-v2.html` - PÅGÅR
+### ✅ Klara filer (12 filer)
+11. ✅ `mortgage-se-application-object-v2.html` - VALIDERAD
+12. ✅ `mortgage-se-application-stakeholder-v2.html` - VALIDERAD
 
-### ⏳ Väntande (15 filer kvar)
-12. ⏳ `mortgage-se-application-stakeholder-v2.html`
+### 🔄 Pågående
+13. 🔄 `mortgage-se-credit-decision-sales-contract-credit-decision-v2.html` - PÅGÅR
+
+### ⏳ Väntande (13 filer kvar)
 13. ⏳ `mortgage-se-credit-decision-sales-contract-credit-decision-v2.html`
 14. ⏳ `mortgage-se-credit-decision-v2.html`
 15. ⏳ `mortgage-se-credit-evaluation-Activity_1gzlxx4-v2.html`
