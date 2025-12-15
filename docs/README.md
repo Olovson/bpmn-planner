@@ -88,3 +88,25 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - Du ska **skriva/uppdatera Confluence‑sidor** → använd `confluence/template.md` och `confluence/README.md`.
 - Du ska **förstå varför hierarkin infördes** → läs `confluence/REFACTORING_SUMMARY.md`.
 
+## Praktiska npm‑kommandon (snabböversikt)
+
+För dagligt arbete räcker det i princip med dessa:
+
+- **Utveckling & bygg**  
+  - `npm run dev` – startar Vite‑devservern.  
+  - `npm run build` – bygger produktion.  
+  - `npm run preview` – testar byggd version lokalt.
+
+- **Tester (Vitest)**  
+  - `npm test` – kör alla Vitest‑tester (unit + integration).  
+  - `npm run test:watch` – Vitest i watch‑läge.  
+  - `npm run test:llm:smoke` – minimal smoke‑test mot LLM (cloud‑läge).
+
+- **Playwright / E2E**  
+  - `npx playwright test` – kör alla Playwright‑tester i `tests/playwright-e2e/`.  
+  - `npx playwright test tests/playwright-e2e/scenarios/happy-path/mortgage-credit-decision-happy.spec.ts`  
+    – endast mortgage credit decision happy‑path (pilot).
+
+Övriga skript i `package.json` är mer avancerade/engångsverktyg. De finns kvar för behovsanvändning,
+men behövs normalt inte i det dagliga flödet.
+

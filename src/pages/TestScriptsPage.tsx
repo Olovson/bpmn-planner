@@ -30,6 +30,7 @@ const TestScriptsPage = () => {
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'tests') navigate('/test-report');
+    else if (view === 'e2e-tests') navigate('/e2e-tests');
     else if (view === 'files') navigate('/files');
     else if (view === 'timeline') navigate('/timeline');
     else navigate('/test-report');
