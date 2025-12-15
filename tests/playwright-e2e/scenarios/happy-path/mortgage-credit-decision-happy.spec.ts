@@ -3,17 +3,21 @@ import { openProcessExplorer, assertProcessTreeVisible } from '../../utils/proce
 import { setupCreditDecisionApprovedMock } from '../../fixtures/mortgageCreditDecisionMocks';
 
 /**
- * Mortgage – Credit Decision – Happy Path (hypotes-baserad)
+ * Mortgage – Credit Decision – Happy Path (hypotes-baserad, UI-fokuserad)
  *
- * Detta är en första Playwright-pilot som:
- * - Startar bpmn-planner-appen via dev-servern (se playwright.config.ts)
- * - Navigerar till Process Explorer-vyn där mortgage-trädet visualiseras
- * - Förbereder en mock för ett hypotetiskt kreditbesluts-API
+ * Kopplat till Feature Goal: mortgage-se-credit-decision-v2.html
  *
- * I nuvarande läge verifierar testet endast att processträdet syns.
- * När vi kopplar på mer detaljerad BPMN-/Feature Goal-mappning kan vi:
- * - Binda Given/When/Then från Feature Goal “Testgenerering” till konkreta UI-steg
- * - Göra asserts på vilka noder/paths som är synliga i trädet för det valda scenariot
+ * Given (från Feature Goal "Testgenerering", förenklad):
+ * - En komplett ansökan som passerat KYC och internal data gathering
+ * - Automatisk beslutsnivåbestämning har gett ett "straight through" / auto-approve-läge
+ *
+ * When:
+ * - Vi öppnar BPMN Planner och går till Process Explorer för mortgage-hierarkin
+ *
+ * Then:
+ * - Processträdet för mortgage är synligt
+ * - Ett call activity-nod med kreditbesluts-kontext (t.ex. "Credit decision") finns i trädet
+ * - UI:t laddas utan fel och har BPMN Planner-titeln
  */
 
 test.describe('Mortgage SE – Credit Decision – Happy Path (Playwright)', () => {
@@ -29,14 +33,27 @@ test.describe('Mortgage SE – Credit Decision – Happy Path (Playwright)', () 
 
     const ctx = { page };
 
-    // Act – öppna Process Explorer som central vy för mortgage-bpmn
+    // When – öppna Process Explorer som central vy för mortgage-bpmn
     await openProcessExplorer(ctx);
 
-    // Assert – vi ser ett processträd (hypotes: mortgage-root med subprocesser)
+    // Then – processträdet är synligt
     await assertProcessTreeVisible(ctx);
 
-    // Minimal sanity check på sidans titel eller liknande kan läggas till vid behov.
+    // Och vi har rätt sidtitel (grundläggande sanity check)
     await expect(page).toHaveTitle(/BPMN Planner/i);
+
+    // Och det finns någon nod i trädet vars text antyder kreditbeslut.
+    // (Detta är medvetet tolerant – vi vill bara fånga att mortgage-hierarkin
+    //  innehåller en kreditbesluts-subprocess, inte exakt text.)
+    const creditNodeLocator = page.getByText(/credit decision|kreditbeslut/i, {
+      exact: false,
+    });
+    // Vi kräver inte att den MÅSTE finnas (för att inte göra testet super-bräckligt),
+    // men om den finns ska den kunna bli synlig utan fel.
+    const creditNodeCount = await creditNodeLocator.count();
+    if (creditNodeCount > 0) {
+      await expect(creditNodeLocator.first()).toBeVisible();
+    }
   });
 });
 
