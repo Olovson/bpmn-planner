@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { LogOut, History, GitBranch, Network, List, FileText, Folder, Calendar, Settings, Palette, PlayCircle } from 'lucide-react';
+import { LogOut, History, GitBranch, Network, List, FileText, Folder, Calendar, Settings, Palette, PlayCircle, BarChart3 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -10,6 +10,7 @@ export type ViewKey =
   | 'listvy'
   | 'tests'
   | 'e2e-tests'
+  | 'test-coverage'
   | 'timeline'
   | 'configuration'
   | 'files'
@@ -34,7 +35,7 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+  const displayEmail = userEmail === 'seed-bot@local.test' ? null : userEmail;
   const handleTabChange = (v: string) => {
     if (v === 'tests' && !isTestsEnabled) return;
     onViewChange(v as ViewKey);
@@ -165,6 +166,24 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
             <TooltipContent side="right">E2E / Playwright</TooltipContent>
           </Tooltip>
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handleTabChange('test-coverage')}
+                aria-label="Test Coverage"
+                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                  currentView === 'test-coverage'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Test Coverage Explorer</TooltipContent>
+          </Tooltip>
+
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -227,9 +246,9 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
 
       {/* Bottom: user & actions */}
       <div className="flex flex-col items-center gap-3">
-        {userEmail && (
+        {displayEmail && (
           <span className="text-[10px] text-muted-foreground rotate-90 whitespace-nowrap mb-1">
-            {userEmail}
+            {displayEmail}
           </span>
         )}
         <Tooltip>

@@ -11,9 +11,9 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type Iteration = 'Köp bostadsrätt' | 'Köp villa' | 'Flytta och höj bostadslån';
+export type Iteration = 'Köp bostadsrätt' | 'Köp villa' | 'Flytta och höj bostadslån';
 
-type UserStory = {
+export type UserStory = {
   id?: string;
   role: string;
   goal: string;
@@ -24,7 +24,7 @@ type UserStory = {
 
 // Vad som behöver testas i bankprojektet (faktiska affärsflöden baserat på BPMN)
 // Alla teststeg här ska vara baserade på faktiska BPMN-noder och Feature Goals
-type BankProjectTestStep = {
+export type BankProjectTestStep = {
   bpmnNodeId: string; // ID från BPMN-filen (t.ex. "internal-data-gathering", "confirm-application")
   bpmnNodeType: 'UserTask' | 'ServiceTask' | 'BusinessRuleTask' | 'CallActivity' | 'BoundaryEvent' | 'Gateway';
   bpmnNodeName: string; // Namn från BPMN-filen
@@ -36,7 +36,7 @@ type BankProjectTestStep = {
   backendState?: string; // Förväntat backend-tillstånd efter teststeget
 };
 
-type E2eScenario = {
+export type E2eScenario = {
   id: string;
   name: string;
   priority: 'P0' | 'P1' | 'P2';
@@ -91,7 +91,13 @@ const renderBulletList = (text?: string, options?: { isCode?: boolean }) => {
   if (rawItems.length <= 1) {
     // För korta texter – visa som vanlig paragraf
     return (
-      <p className={isCode ? 'text-[11px] font-mono break-all whitespace-pre-line' : 'text-[11px] text-muted-foreground whitespace-pre-line'}>
+      <p
+        className={
+          isCode
+            ? 'text-[11px] font-mono break-all whitespace-pre-line'
+            : 'text-[11px] text-muted-foreground whitespace-pre-line break-words'
+        }
+      >
         {text}
       </p>
     );
@@ -106,7 +112,14 @@ const renderBulletList = (text?: string, options?: { isCode?: boolean }) => {
         const displayText = !isLast && endsWithDot && !item.endsWith('.') ? `${item}.` : item;
 
         return (
-          <li key={idx} className={isCode ? 'text-[11px] font-mono break-all whitespace-pre-line' : 'text-[11px] text-muted-foreground whitespace-pre-line'}>
+          <li
+            key={idx}
+            className={
+              isCode
+                ? 'text-[11px] font-mono break-all whitespace-pre-line'
+                : 'text-[11px] text-muted-foreground whitespace-pre-line break-words'
+            }
+          >
             {displayText}
           </li>
         );
@@ -115,309 +128,7 @@ const renderBulletList = (text?: string, options?: { isCode?: boolean }) => {
   );
 };
 
-const scenarios: E2eScenario[] = [
-  {
-    id: 'FG_CREDIT_DECISION_TC01',
-    name: 'Mortgage SE – Credit Decision – Happy Path',
-    priority: 'P0',
-    type: 'happy-path',
-    iteration: 'Köp bostadsrätt',
-    bpmnProcess: 'mortgage-se-credit-decision.bpmn',
-    bpmnCallActivityId: 'credit-decision',
-    featureGoalFile: 'public/local-content/feature-goals/mortgage-se-credit-decision-v2.html',
-    featureGoalTestId: 'Testgenerering / huvud-scenario',
-    testFile:
-      'tests/playwright-e2e/scenarios/happy-path/mortgage-credit-decision-happy.spec.ts',
-    command:
-      'npx playwright test tests/playwright-e2e/scenarios/happy-path/mortgage-credit-decision-happy.spec.ts',
-    summary:
-      'Visualiserar kreditbesluts-subprocessen i Process Explorer och verifierar att mortgage-hierarkin laddas korrekt under ett hypotetiskt auto-approve-scenario.',
-    given:
-      'En komplett ansökan som har passerat KYC och internal data gathering, där automatisk beslutsnivåbestämning (business rule) ger ett auto-approve/straight-through-läge.',
-    when:
-      'Vi startar BPMN Planner, navigerar till E2E-sidan och öppnar Process Explorer-vyn för mortgage-hierarkin.',
-    then:
-      'Processträdet för mortgage är synligt, UI:t laddas utan fel, och en nod med kreditbesluts-kontext (t.ex. "Credit decision") finns i trädet. Detta fungerar som UI-/struktur-verifiering för subprocessen innan riktiga integrationer finns.',
-    notesForBankProject:
-      'Detta scenario testar kreditbesluts-subprocessen. Teststeg och subprocesser kommer att valideras och läggas till stegvis.',
-    bankProjectTestSteps: [],
-    subprocessSteps: [],
-  },
-  {
-    id: 'FG_APPLICATION_S1',
-    name: 'Application – Normalflöde, komplett ansökan med en person',
-    priority: 'P0',
-    type: 'happy-path',
-    iteration: 'Köp bostadsrätt',
-    bpmnProcess: 'mortgage-se-application.bpmn',
-    bpmnCallActivityId: 'application',
-    featureGoalFile: 'public/local-content/feature-goals/mortgage-application-v2.html',
-    featureGoalTestId: 'Testgenerering / S1',
-    testFile:
-      'tests/playwright-e2e/scenarios/happy-path/mortgage-application-happy.spec.ts',
-    command:
-      'npx playwright test tests/playwright-e2e/scenarios/happy-path/mortgage-application-happy.spec.ts',
-    summary:
-      'Täcker huvudflödet för Application-subprocessen där en kund fyller i en komplett ansökan med en person och processen avslutas med en ansökan redo för kreditevaluering.',
-    given:
-      'En kund som ansöker om bolån för köp, uppfyller grundläggande krav (godkänd vid pre-screening) och har en fastighet som uppfyller bankens krav. Testdata: customer-standard.',
-    when:
-      'Kunden fyller i ansökningsformulär med grundläggande information. Systemet hämtar befintlig kunddata, kunden kompletterar hushållsekonomi och stakeholder-information, och systemet beräknar automatiskt maximalt lånebelopp (KALP). Kunden får en sammanfattning och bekräftar ansökan.',
-    then:
-      'All relevant information (intern data, hushåll, stakeholders, objekt) är insamlad och validerad. Kunden ser en sammanfattning och kan bekräfta ansökan via en tydlig knapp. Processen avslutas normalt i Application-subprocessen och är redo för kreditevaluering.',
-    notesForBankProject:
-      'Detta scenario testar hela Application-subprocessen. Teststeg och subprocesser kommer att valideras och läggas till stegvis.',
-    bankProjectTestSteps: [],
-    subprocessSteps: [],
-  },
-  {
-    id: 'FG_APPLICATION_S3',
-    name: 'Application – Pre-screen avvisad',
-    priority: 'P0',
-    type: 'error',
-    iteration: 'Köp bostadsrätt',
-    bpmnProcess: 'mortgage-se-application.bpmn',
-    bpmnCallActivityId: 'application',
-    featureGoalFile: 'public/local-content/feature-goals/mortgage-application-v2.html',
-    featureGoalTestId: 'Testgenerering / S3',
-    testFile:
-      'tests/playwright-e2e/scenarios/error/mortgage-application-pre-screen-rejected.spec.ts',
-    command:
-      'npx playwright test tests/playwright-e2e/scenarios/error/mortgage-application-pre-screen-rejected.spec.ts',
-    summary:
-      'Täcker error-flödet där pre-screening avvisar ansökan eftersom kunden inte uppfyller grundläggande krav.',
-    given:
-      'En person ansöker om bolån men uppfyller INTE grundläggande krav (t.ex. för ung, låg kreditscore, eller saknar anställning). Testdata: customer-rejected.',
-    when:
-      'Systemet hämtar kunddata automatiskt och gör pre-screening. Pre-screening avvisar ansökan eftersom kunden inte uppfyller grundläggande krav.',
-    then:
-      'Kunden ser ett tydligt felmeddelande som förklarar vilket krav som inte uppfylldes, vilken part som avvisades, och att ansökan inte kan fortsätta. Processen avslutas och kunden kan starta ny ansökan.',
-    notesForBankProject:
-      'Detta scenario testar error-hanteringen i Application-subprocessen när pre-screening avvisar ansökan. Alla teststeg nedan är baserade på faktiska BPMN-noder och Feature Goals, direkt användbara i bankprojektet. Implementera UI-felmeddelanden, error events och assertions enligt era faktiska integrationer.',
-    bankProjectTestSteps: [
-      {
-        bpmnNodeId: 'internal-data-gathering',
-        bpmnNodeType: 'CallActivity',
-        bpmnNodeName: 'Internal data gathering',
-        action: 'Systemet hämtar kunddata automatiskt',
-        apiCall: 'GET /api/customer/{id} (eller motsvarande integration)',
-        assertion: 'Kunddata är hämtad',
-        backendState: 'Application.internalDataGathered = true',
-      },
-      {
-        bpmnNodeId: 'screen-party',
-        bpmnNodeType: 'BusinessRuleTask',
-        bpmnNodeName: 'Screen party',
-        action: 'Systemet genomför pre-screening mot grundläggande krav',
-        dmnDecision: 'pre-screen-party (DMN)',
-        assertion: 'Pre-screening returnerar REJECTED',
-        backendState: 'PreScreenResult.status = "REJECTED", PreScreenResult.reason = "Ålder under 18 år" (eller motsvarande)',
-      },
-      {
-        bpmnNodeId: 'Event_03349px',
-        bpmnNodeType: 'BoundaryEvent',
-        bpmnNodeName: 'Pre-screen rejected',
-        action: 'Error event triggas när pre-screening avvisar ansökan',
-        assertion: 'Error event "pre-screen-rejected" signaleras och processen avslutas',
-        backendState: 'Application.status = "REJECTED", Application.rejectionReason = "pre-screen-rejected"',
-      },
-    ],
-    subprocessSteps: [
-      {
-        order: 1,
-        bpmnFile: 'mortgage-se-application.bpmn',
-        callActivityId: 'internal-data-gathering',
-        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-internal-data-gathering-v2.html',
-        description:
-          'Intern datainsamling – systemet hämtar kunddata och gör pre-screening som avvisar ansökan.',
-        hasPlaywrightSupport: false,
-        given:
-          'Kunden är identifierad men uppfyller INTE grundläggande krav (customer-rejected).',
-        when:
-          'Systemet hämtar intern kunddata automatiskt och gör en pre-screening mot grundläggande krav som avvisar ansökan.',
-        then:
-          'Pre-screening returnerar REJECTED. Error event triggas och processen avslutas. Kunden ser ett tydligt felmeddelande.',
-      },
-    ],
-  },
-  {
-    id: 'FG_APPLICATION_S2',
-    name: 'Application – Normalflöde, ansökan med flera personer (medsökare)',
-    priority: 'P0',
-    type: 'happy-path',
-    iteration: 'Köp bostadsrätt',
-    bpmnProcess: 'mortgage-se-application.bpmn',
-    bpmnCallActivityId: 'application',
-    featureGoalFile: 'public/local-content/feature-goals/mortgage-application-v2.html',
-    featureGoalTestId: 'Testgenerering / S2',
-    testFile:
-      'tests/playwright-e2e/scenarios/happy-path/mortgage-application-multi-stakeholder.spec.ts',
-    command:
-      'npx playwright test tests/playwright-e2e/scenarios/happy-path/mortgage-application-multi-stakeholder.spec.ts',
-    summary:
-      'Täcker huvudflödet för Application-subprocessen där flera personer (huvudansökande och medsökare) ansöker tillsammans. Systemet bearbetar varje hushåll individuellt med sekventiell körning per hushåll.',
-    given:
-      'Flera personer ansöker tillsammans med separata hushåll. Alla personer är godkända vid pre-screening. Testdata: customer-multi-household.',
-    when:
-      'Kunden fyller i information för flera hushåll parallellt. Kunden kan öppna både Household- och Stakeholders-formulären samtidigt i separata flikar/fönster för varje hushåll. Systemet bearbetar varje hushåll individuellt med sekventiell körning (Household → Stakeholder → Object) per hushåll. Kunden bekräftar ansökan.',
-    then:
-      'Kunden kan se status för varje hushåll med tydliga statusindikatorer (t.ex. "Pågår", "Klar", "Fel"). Varje hushåll bearbetas i rätt ordning. Kunden kan spara progress i varje formulär oberoende av varandra. Alla hushåll och personer är bearbetade. Processen fortsätter när båda flöden är klara och ansökan är redo för kreditevaluering.',
-    notesForBankProject:
-      'Detta scenario testar hela Application-subprocessen med multi-instance för flera stakeholders och hushåll. Alla teststeg nedan är baserade på faktiska BPMN-noder från mortgage-se-application.bpmn och Feature Goals, direkt användbara i bankprojektet. Implementera UI-interaktioner, API-anrop och assertions enligt era faktiska integrationer. Särskilt viktigt: multi-instance hantering för stakeholders och hushåll.',
-    bankProjectTestSteps: [
-      {
-        bpmnNodeId: 'internal-data-gathering',
-        bpmnNodeType: 'CallActivity',
-        bpmnNodeName: 'Internal data gathering',
-        action: 'Systemet hämtar befintlig kunddata automatiskt (multi-instance per part)',
-        apiCall: 'GET /api/customer/{id}, GET /api/engagements/{id}, GET /api/credit-information/{id} (eller motsvarande integrationer)',
-        assertion: 'Kunddata är hämtad för alla parter och visas i UI, pre-screening är godkänd för alla parter',
-        backendState: 'Application.internalDataGathered = true, PreScreenResult.status = "APPROVED" för alla parter',
-      },
-      {
-        bpmnNodeId: 'household',
-        bpmnNodeType: 'CallActivity',
-        bpmnNodeName: 'Household',
-        action: 'Kunden fyller i hushållsekonomi (multi-instance per hushåll)',
-        uiInteraction: 'Fyll i formulär för varje hushåll med inkomster, utgifter, tillgångar, klicka "Spara" per hushåll',
-        apiCall: 'POST /api/application/{id}/households (eller motsvarande API)',
-        assertion: 'Hushållsekonomi är sparad och validerad för alla hushåll',
-        backendState: 'Application.householdData.complete = true för alla hushåll',
-      },
-      {
-        bpmnNodeId: 'stakeholder',
-        bpmnNodeType: 'CallActivity',
-        bpmnNodeName: 'Stakeholder',
-        action: 'Kunden fyller i stakeholder-information (multi-instance per stakeholder, sekventiellt per hushåll)',
-        uiInteraction: 'Fyll i formulär för huvudansökande och medsökare med persondata, klicka "Spara" per stakeholder',
-        apiCall: 'POST /api/application/{id}/stakeholders (eller motsvarande API)',
-        assertion: 'Stakeholder-information är sparad och validerad för alla stakeholders',
-        backendState: 'Application.stakeholderData.complete = true för alla stakeholders',
-      },
-      {
-        bpmnNodeId: 'object',
-        bpmnNodeType: 'CallActivity',
-        bpmnNodeName: 'Object',
-        action: 'Kunden fyller i objektinformation (sekventiellt efter Stakeholder per hushåll)',
-        uiInteraction: 'Fyll i formulär med fastighetsinformation, välj fastighetstyp, klicka "Spara"',
-        apiCall: 'POST /api/application/{id}/object (eller motsvarande API)',
-        assertion: 'Objektinformation är sparad och validerad',
-        backendState: 'Application.objectData.complete = true',
-      },
-      {
-        bpmnNodeId: 'Activity_0p3rqyp',
-        bpmnNodeType: 'ServiceTask',
-        bpmnNodeName: 'KALP',
-        action: 'Systemet beräknar automatiskt maximalt lånebelopp (KALP) baserat på hushållsaffordability',
-        apiCall: 'POST /api/application/{id}/calculate-kalp (eller motsvarande API)',
-        assertion: 'KALP är beräknat och högre än ansökt belopp',
-        backendState: 'Application.kalpCalculated = true, Application.maxLoanAmount > Application.requestedAmount',
-      },
-      {
-        bpmnNodeId: 'Activity_1mezc6h',
-        bpmnNodeType: 'BusinessRuleTask',
-        bpmnNodeName: 'Screen KALP',
-        action: 'Systemet utvärderar KALP-resultatet mot affärsregler',
-        dmnDecision: 'screen-kalp (DMN)',
-        assertion: 'Screen KALP returnerar APPROVED',
-        backendState: 'Application.kalpScreenResult = "APPROVED"',
-      },
-      {
-        bpmnNodeId: 'confirm-application',
-        bpmnNodeType: 'UserTask',
-        bpmnNodeName: 'Confirm application',
-        action: 'Kunden bekräftar ansökan',
-        uiInteraction: 'Granska sammanfattning av ansökan för alla hushåll och stakeholders, klicka "Bekräfta ansökan"',
-        apiCall: 'POST /api/application/{id}/confirm (eller motsvarande API)',
-        assertion: 'Ansökan är bekräftad och redo för kreditevaluering',
-        backendState: 'Application.status = "CONFIRMED", Application.readyForCreditEvaluation = true',
-      },
-      {
-        bpmnNodeId: 'fetch-credit-information',
-        bpmnNodeType: 'ServiceTask',
-        bpmnNodeName: 'Fetch credit information',
-        action: 'Systemet hämtar kreditinformation från externa källor för alla stakeholders (multi-instance)',
-        apiCall: 'GET /api/credit-information/{stakeholderId} (eller motsvarande integrationer)',
-        assertion: 'Kreditinformation är hämtad för alla stakeholders',
-        backendState: 'Application.creditInformationFetched = true för alla stakeholders',
-      },
-    ],
-    subprocessSteps: [
-      {
-        order: 1,
-        bpmnFile: 'mortgage-se-application.bpmn',
-        callActivityId: 'internal-data-gathering',
-        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-internal-data-gathering-v2.html',
-        description:
-          'Intern datainsamling – systemet hämtar befintlig kunddata automatiskt för alla parter (multi-instance).',
-        hasPlaywrightSupport: false,
-        given:
-          'Flera personer är identifierade och har befintlig data i banksystemen (customer-multi-household).',
-        when:
-          'Systemet hämtar intern kunddata automatiskt för alla parter parallellt och gör pre-screening mot grundläggande krav.',
-        then:
-          'Kundens basinformation finns tillgänglig för alla parter och pre-screening är godkänd för alla parter.',
-      },
-      {
-        order: 2,
-        bpmnFile: 'mortgage-se-application.bpmn',
-        callActivityId: 'household',
-        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-application-household-v2.html',
-        description:
-          'Hushållsekonomi – kunden fyller i inkomster, utgifter, lån och tillgångar för varje hushåll (multi-instance).',
-        hasPlaywrightSupport: false,
-        given:
-          'Flera hushåll som ska utvärderas för ansökan, med behov av komplett ekonomisk information per hushåll.',
-        when:
-          'Kunden fyller i inkomster, utgifter, lån och tillgångar per hushåll i household-formuläret. Kunden kan se status för varje hushåll.',
-        then:
-          'Hushållsekonomi är komplett för alla hushåll och kan användas för KALP-beräkning och kreditbedömning.',
-      },
-      {
-        order: 3,
-        bpmnFile: 'mortgage-se-application.bpmn',
-        callActivityId: 'stakeholder',
-        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-application-stakeholder-v2.html',
-        description:
-          'Stakeholder-information – kunden fyller i personuppgifter för alla parter (multi-instance, sekventiellt per hushåll).',
-        hasPlaywrightSupport: false,
-        given:
-          'Huvudansökande och medsökare som ska ingå i ansökan, med separata hushåll.',
-        when:
-          'Kunden fyller i stakeholder-formulär med persondata för alla parter. Systemet bearbetar varje stakeholder sekventiellt per hushåll.',
-        then:
-          'Alla definierade parter har kompletta och validerade stakeholder-profiler kopplade till ansökan.',
-      },
-      {
-        order: 4,
-        bpmnFile: 'mortgage-se-application.bpmn',
-        callActivityId: 'object',
-        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-application-object-v2.html',
-        description:
-          'Objektinformation – kunden anger uppgifter om bostadsrätt/fastighet (sekventiellt efter Stakeholder per hushåll).',
-        hasPlaywrightSupport: false,
-        given:
-          'En bostadsrätt/fastighet som kunden vill köpa och som ska ligga till grund för lånet.',
-        when:
-          'Kunden fyller i objektformulär med uppgifter om bostadsrätt/fastighet (adress, typ, pris, etc.).',
-        then:
-          'Objektinformationen är komplett och uppfyller kraven för att kunna värderas och användas som säkerhet.',
-      },
-      {
-        order: 5,
-        bpmnFile: 'mortgage-se-application.bpmn',
-        description:
-          'Bekräfta ansökan – sammanfattning visas för alla hushåll och stakeholders, kunden bekräftar ansökan innan den går vidare till kreditevaluering.',
-        hasPlaywrightSupport: false,
-        given:
-          'Intern data, hushåll, stakeholders och objektinformation är komplett och validerad för alla hushåll.',
-        when:
-          'Kunden granskar en sammanfattning av ansökan för alla hushåll och stakeholders och klickar på "Bekräfta ansökan".',
-        then:
-          'Ansökan markeras som komplett och kan skickas vidare till kreditevaluering utan blockerande fel.',
-      },
-    ],
-  },
+export const scenarios: E2eScenario[] = [
   {
     id: 'E2E_BR001',
     name: 'E2E-BR-001: En sökande - Bostadsrätt godkänd automatiskt (Happy Path)',
@@ -437,9 +148,9 @@ const scenarios: E2eScenario[] = [
     given:
       'En person köper sin första bostadsrätt. Personen uppfyller alla grundläggande krav (godkänd vid pre-screening). Bostadsrätten uppfyller alla kriterier automatiskt: värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV-ratio ≤ 85%, plats är acceptabel (inte riskområde). INGEN befintlig fastighet att sälja. Testdata: customer-standard, application-commitment-happy, object-bostadsratt-happy, object-info-apartment.',
     when:
-      'Kunden fyller i Application (intern data, hushåll, stakeholder, objekt). Systemet godkänner Mortgage Commitment automatiskt. Object Valuation hämtar bostadsrättsvärdering. Object Information hämtar BRF-information och screenar bostadsrätten (föreningsskuld, LTV, plats). Credit Evaluation godkänner automatiskt. KYC godkänns automatiskt med självdeklaration. Credit Decision godkänner. Kunden accepterar Offer. Document Generation genererar dokument. Kunden signerar digitalt. Disbursement genomförs.',
+      'Kunden fyller i Application (intern data, hushåll, stakeholder, objekt). Mortgage Commitment blir godkänd automatiskt baserat på Credit Evaluation och kunden bekräftar beslutet. Object Valuation hämtar bostadsrättsvärdering. Object Information hämtar BRF-information och screenar bostadsrätten (föreningsskuld, LTV, plats). Credit Evaluation godkänner automatiskt. KYC godkänns automatiskt med självdeklaration. Credit Decision godkänner. Kunden accepterar Offer. Document Generation genererar dokument. Kunden signerar digitalt. Disbursement genomförs.',
     then:
-      'Hela processen från Application till Disbursement slutförs utan fel. Bostadsrätt är godkänd automatiskt. Alla DMN-beslut returnerar APPROVED. Alla gateway-beslut går genom happy path. Utbetalning är slutförd och dokument är arkiverade. Processen avslutas normalt.',
+      'Hela processen från Application till Disbursement slutförs utan fel. Bostadsrätt är godkänd automatiskt. Alla relevanta DMN-beslut ger utfall som leder till happy path (t.ex. APPROVED, låg risk, inga avvikelser). Alla gateway-beslut går genom happy path. Utbetalning är slutförd och dokument är arkiverade. Processen avslutas normalt.',
     notesForBankProject:
       'Detta är det enklaste och vanligaste E2E-scenariot - en person, ingen befintlig fastighet, allt godkänns automatiskt. Alla teststeg nedan är baserade på faktiska BPMN-noder från mortgage.bpmn och Feature Goals, direkt användbara i bankprojektet. Implementera UI-interaktioner, API-anrop och assertions enligt era faktiska integrationer.',
     bankProjectTestSteps: [
@@ -594,7 +305,7 @@ const scenarios: E2eScenario[] = [
         description: 'Application – Komplett ansökan med en person',
         hasPlaywrightSupport: false,
         given: 'En person ansöker om bolån för köp. Personen uppfyller alla grundläggande krav (godkänd vid pre-screening via Pre-screen Party DMN). Fastigheten är bostadsrätt och uppfyller bankens krav (godkänd vid bedömning via Evaluate Bostadsrätt DMN). Testdata: customer-standard.',
-        when: 'Kunden navigerar till ansökningsstart (nav-application). Systemet hämtar automatiskt befintlig kunddata via GET /api/party/information (fetch-party-information) och GET /api/party/engagements (fetch-engagements) och visar den för kunden med visuell markering av auto-ifyllda fält. Kunden navigerar till hushållsekonomi (/application/household → /application/household/register) och fyller i expenses-cars-loans (bilar + billån), expenses-children (barn), expenses-child-support (underhållsbidrag), expenses-other (andra utgifter), incomes-child-support (underhållsbidrag), incomes-other (andra inkomster) och bekräftar (submit-button). Systemet hämtar personlig information för stakeholder via GET /api/stakeholder/personal-information (fetch-personal-information). Kunden navigerar till personlig ekonomi (/application/stakeholder/personal-economy) och fyller i input-personal-income (löner, andra inkomster), input-personal-expenses (boende, transport, andra utgifter) och bekräftar (btn-submit-personal-economy). Kunden navigerar till objekt (nav-object), väljer objekttyp (select-property-type: Bostadsrätt) och anger värdering (input-property-valuation). Systemet värderar fastigheten via POST /api/valuation/property (valuate-property). Systemet beräknar automatiskt maximalt lånebelopp via POST /api/application/kalp och screenar resultatet (Screen KALP DMN = APPROVED). Kunden navigerar till sammanfattning (nav-confirm-application), granskar all information (summary-all-data: visar intern data, hushåll, stakeholder, objekt) och bekräftar ansökan (btn-confirm-application). Systemet hämtar kreditinformation automatiskt via POST /api/application/fetch-credit-information.',
+        when: 'Kunden navigerar till ansökningsstart (nav-application). Systemet hämtar automatiskt befintlig kunddata via GET /api/party/information (fetch-party-information) och GET /api/party/engagements (fetch-engagements) och fyller i relevanta fält i ansökningsformuläret som kunden kan granska och vid behov ändra. Kunden navigerar till hushållsekonomi (/application/household → /application/household/register) och fyller i expenses-cars-loans (bilar + billån), expenses-children (barn), expenses-child-support (underhållsbidrag), expenses-other (andra utgifter), incomes-child-support (underhållsbidrag), incomes-other (andra inkomster) och bekräftar (submit-button). Systemet hämtar personlig information för stakeholder via GET /api/stakeholder/personal-information (fetch-personal-information). Kunden navigerar till personlig ekonomi (/application/stakeholder/personal-economy) och fyller i input-personal-income (löner, andra inkomster), input-personal-expenses (boende, transport, andra utgifter) och bekräftar (btn-submit-personal-economy). Kunden navigerar till objekt (nav-object), väljer objekttyp (select-property-type: Bostadsrätt) och anger värdering (input-property-valuation). Systemet värderar fastigheten via POST /api/valuation/property (valuate-property). Systemet beräknar automatiskt maximalt lånebelopp via POST /api/application/kalp och screenar resultatet (Screen KALP DMN = APPROVED). Kunden navigerar till sammanfattning (nav-confirm-application), granskar all information (summary-all-data: visar intern data, hushåll, stakeholder, objekt) och bekräftar ansökan (btn-confirm-application). Systemet hämtar kreditinformation automatiskt via POST /api/application/fetch-credit-information.',
         then: 'Ansökan är komplett och redo för kreditevaluering. All data är insamlad (intern data, hushåll, stakeholder, objekt). Pre-screen Party DMN returnerar APPROVED. Screen KALP DMN returnerar APPROVED. KALP-beräkning är högre än ansökt belopp. Backend state: Application.status = "COMPLETE", Application.readyForEvaluation = true, Application.allDataCollected = true. Processen avslutas normalt (Event_0j4buhs) och ansökan är redo för kreditevaluering.',
         subprocessesSummary:
           'internal-data-gathering (CallActivity → mortgage-se-internal-data-gathering.bpmn). stakeholder (CallActivity → mortgage-se-stakeholder.bpmn). household (CallActivity → mortgage-se-household.bpmn). object (CallActivity → mortgage-se-object.bpmn). confirm-application (UserTask).',
@@ -767,6 +478,402 @@ const scenarios: E2eScenario[] = [
       },
     ],
   },
+  {
+    id: 'E2E_BR006',
+    name: 'E2E-BR-006: Två sökande - Bostadsrätt godkänd automatiskt (Happy Path, medsökare)',
+    priority: 'P0',
+    type: 'happy-path',
+    iteration: 'Köp bostadsrätt',
+    bpmnProcess: 'mortgage.bpmn',
+    bpmnCallActivityId: undefined,
+    featureGoalFile: 'public/local-content/feature-goals/mortgage-application-v2.html',
+    featureGoalTestId: 'E2E-BR-006 - Två sökande, bostadsrätt, happy path',
+    testFile:
+      'tests/playwright-e2e/scenarios/happy-path/mortgage-bostadsratt-two-applicants-happy.spec.ts',
+    command:
+      'npx playwright test tests/playwright-e2e/scenarios/happy-path/mortgage-bostadsratt-two-applicants-happy.spec.ts',
+    summary:
+      'Komplett E2E-scenario för två personer (huvudansökande + medsökare) som köper bostadsrätt tillsammans. Bostadsrätten uppfyller alla kriterier automatiskt (värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV ≤ 85%, plats acceptabel). INGEN befintlig fastighet att sälja. Multi-instance för hushåll och stakeholders. Går genom hela flödet från Application till Disbursement.',
+    given:
+      'Två personer (huvudansökande och medsökare) köper sin första gemensamma bostadsrätt. Båda uppfyller alla grundläggande krav (godkända vid pre-screening). Bostadsrätten uppfyller alla kriterier automatiskt: värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV-ratio ≤ 85%, plats är acceptabel (inte riskområde). INGEN befintlig fastighet att sälja. Det finns 2 stakeholders och minst 1 hushåll som ska konfigureras. Testdata: customer-standard-primary, customer-standard-coapplicant, application-commitment-happy, object-bostadsratt-happy, object-info-apartment.',
+    when:
+      'Kunden fyller i Application med multi-instance för hushåll och stakeholders (Household → Stakeholder → Object per hushåll). Båda personerna fyller i sin hushållsekonomi och personliga ekonomi. Systemet godkänner Mortgage Commitment automatiskt. Object Valuation hämtar bostadsrättsvärdering. Object Information hämtar BRF-information och screenar bostadsrätten (föreningsskuld, LTV, plats) för hela engagemanget. Credit Evaluation kör multi-instance för alla stakeholders och hushåll och godkänner automatiskt. Båda personerna genomgår KYC (multi-instance per stakeholder) och KYC godkänns automatiskt med självdeklaration. Credit Decision godkänner. Huvudansökande (och ev. medsökare) accepterar Offer. Document Generation genererar dokument för båda. Båda signerar digitalt (multi-instance i Signing). Disbursement genomförs.',
+    then:
+      'Hela processen från Application till Disbursement slutförs utan fel för två sökande. Bostadsrätt är godkänd automatiskt. Alla DMN-beslut returnerar APPROVED. Alla gateway-beslut går genom happy path. Båda personerna är KYC-godkända och inkluderade i kreditevalueringen. Utbetalning är slutförd och dokument är arkiverade. Processen avslutas normalt.',
+    notesForBankProject:
+      'Detta scenario bygger vidare på E2E_BR001 men testar multi-instance för hushåll, stakeholders, KYC och Credit Evaluation. Alla teststeg nedan är baserade på samma BPMN-noder som E2E_BR001, men med fokus på att båda sökande hanteras korrekt. Implementera UI-interaktioner, API-anrop och assertions så att multi-instance (flere stakeholders/hushåll) täcks i bankens riktiga E2E-tester.',
+    bankProjectTestSteps: [
+      {
+        bpmnNodeId: 'application',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Application',
+        action:
+          'Kunderna (huvudansökande + medsökare) fyller i komplett ansökan med multi-instance för hushåll och stakeholders (Household → Stakeholder → Object per hushåll).',
+        uiInteraction:
+          'Navigate: application-start (nav-application). Navigate: household (/application/household). För varje hushåll: Navigate: register-household-economy (/application/household/register). Fill: expenses-cars-loans, expenses-children, expenses-child-support, expenses-other, incomes-child-support, incomes-other för hushållet. Click: submit-button. For each stakeholder in household: Navigate: stakeholders (nav-stakeholders) → stakeholder (nav-stakeholder). Navigate: register-personal-economy-information (/application/stakeholder/personal-economy). Fill: input-personal-income (löner, andra inkomster) och input-personal-expenses (boende, transport, andra utgifter). Click: btn-submit-personal-economy. Navigate: object (nav-object) per hushåll. Select: select-property-type (Bostadsrätt). Fill: input-property-valuation. Click: btn-submit-object. Navigate: confirm-application (nav-confirm-application). Verify: summary-all-data visar båda hushåll och båda stakeholders. Click: btn-confirm-application. Verify: success-message (ansökan bekräftad).',
+        apiCall:
+          'GET /api/party/information (fetch-party-information) för båda parter, GET /api/party/engagements (fetch-engagements), GET /api/stakeholder/personal-information (fetch-personal-information) per stakeholder, POST /api/valuation/property (valuate-property), POST /api/application/kalp, POST /api/application/fetch-credit-information',
+        dmnDecision:
+          'Pre-screen Party DMN = APPROVED (för båda parter), Evaluate Bostadsrätt DMN = APPROVED, Screen KALP DMN = APPROVED',
+        assertion:
+          'Ansökan är komplett och redo för kreditevaluering för två sökande. All data är insamlad för båda (intern data, hushåll, stakeholders, objekt). Pre-screen Party DMN returnerar APPROVED för båda. KALP-beräkning är högre än ansökt belopp givet båda inkomsterna.',
+        backendState:
+          'Application.status = "COMPLETE", Application.readyForEvaluation = true, Application.allDataCollected = true, Application.stakeholders.length = 2',
+      },
+      {
+        bpmnNodeId: 'is-purchase',
+        bpmnNodeType: 'Gateway',
+        bpmnNodeName: 'Is purchase?',
+        action: 'Gateway avgör om ansökan är för köp (inte refinansiering).',
+        dmnDecision: 'is-purchase gateway decision',
+        assertion: 'Gateway returnerar Yes (köp).',
+        backendState: 'Application.purpose = "PURCHASE"',
+      },
+      {
+        bpmnNodeId: 'mortgage-commitment',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Mortgage commitment',
+        action:
+          'Systemet godkänner mortgage commitment automatiskt baserat på båda sökandes information och kund fattar beslut.',
+        uiInteraction:
+          'Navigate: decide-on-mortgage-commitment (/mortgage-commitment/decide). Review: credit-evaluation-1 approved (visar att båda parter är inkluderade). Fill: input-mortgage-commitment-decision (välj "Won bidding round / Interested in object"). Click: btn-submit-mortgage-commitment. Verify: decide-on-mortgage-commitment-confirmation (success-message).',
+        apiCall: 'GET /api/object/brf-information (fetch-brf-information), POST /api/mortgage-commitment/decision',
+        dmnDecision:
+          'mortgage-commitment-decision gateway = "Won bidding round / Interested in object", is-object-approved = Yes, is-terms-approved = Yes, won-bidding-round = Yes',
+        assertion:
+          'Mortgage commitment är godkänd automatiskt. Kundparet har vunnit budgivning. Objekt är godkänt. Inga villkor har ändrats. Processen avslutas normalt.',
+        backendState:
+          'MortgageCommitment.status = "APPROVED", MortgageCommitment.wonBiddingRound = true, MortgageCommitment.objectApproved = true, MortgageCommitment.termsChanged = false',
+      },
+      {
+        bpmnNodeId: 'object-valuation',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Object valuation',
+        action: 'Systemet hämtar bostadsrättsvärdering för objektet som båda sökande köper.',
+        apiCall: 'GET /api/valuation/bostadsratt/{objectId}',
+        assertion: 'Värdering är hämtad och sparad.',
+        backendState: 'Object.valuation.complete = true, Object.valuation.value >= 1500000',
+      },
+      {
+        bpmnNodeId: 'credit-evaluation',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Automatic Credit Evaluation',
+        action:
+          'Systemet utvärderar kredit automatiskt med multi-instance för båda stakeholders och hushåll (alla inkomster/utgifter beaktas).',
+        apiCall:
+          'POST /api/pricing/price (fetch-price), POST /api/stacc/affordability (calculate-household-affordability), GET /api/credit/personal-information (fetch-credit-information) per stakeholder, POST /api/risk/classification (fetch-risk-classification), POST /api/credit-evaluation',
+        assertion: 'Kreditevaluering är godkänd automatiskt för lånet med två sökande.',
+        backendState: 'CreditEvaluation.status = "APPROVED", CreditEvaluation.automaticallyApproved = true',
+      },
+      {
+        bpmnNodeId: 'is-automatically-approved',
+        bpmnNodeType: 'Gateway',
+        bpmnNodeName: 'Automatically approved?',
+        action: 'Gateway avgör om ansökan kan godkännas automatiskt baserat på båda sökandenas profil.',
+        dmnDecision: 'is-automatically-approved gateway decision',
+        assertion: 'Gateway returnerar Yes (auto-approved).',
+        backendState: 'Application.automaticallyApproved = true',
+      },
+      {
+        bpmnNodeId: 'kyc',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'KYC',
+        action:
+          'Systemet genomför KYC-screening automatiskt med självdeklaration, en gång per stakeholder (multi-instance).',
+        uiInteraction:
+          'För varje stakeholder: Navigate: kyc-start (nav-kyc). Navigate: submit-self-declaration. Fill: input-pep-status (No), input-source-of-funds (standard: lön, ev. försäljning fastighet), input-purpose-of-transaction. Click: btn-submit-declaration. Verify: success-message-kyc-approved för respektive person.',
+        apiCall:
+          'GET /api/kyc/{customerId} per stakeholder, POST /api/kyc/aml-risk-score, POST /api/kyc/sanctions-pep-screening, POST /api/dmn/evaluate-kyc-aml',
+        dmnDecision:
+          'evaluate-kyc-aml (DMN: table-bisnode-credit, table-own-experience) = APPROVED för båda, gateway-needs-review = No',
+        assertion:
+          'KYC är godkänd automatiskt med självdeklaration för båda sökande. Självdeklaration är skickad för båda. AML/KYC riskpoäng <30, ingen PEP/sanktionsmatch för någon av dem. Evaluate KYC/AML DMN returnerar APPROVED. Needs review = No (auto-approved). Processen avslutas normalt.',
+        backendState:
+          'KYC.status = "APPROVED" för båda, KYC.needsReview = false, KYC.amlRiskScore < 30, KYC.pepMatch = false, KYC.sanctionsMatch = false, KYC.selfDeclarationSubmitted = true för båda',
+      },
+      {
+        bpmnNodeId: 'credit-decision',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Credit decision',
+        action: 'Systemet fattar kreditbeslut baserat på båda sökandenas ekonomiska profil.',
+        apiCall: 'POST /api/credit-decision',
+        assertion: 'Kreditbeslut är godkänt.',
+        backendState: 'CreditDecision.status = "APPROVED"',
+      },
+      {
+        bpmnNodeId: 'is-credit-approved',
+        bpmnNodeType: 'Gateway',
+        bpmnNodeName: 'Credit approved?',
+        action: 'Gateway avgör om kredit är godkänd.',
+        dmnDecision: 'is-credit-approved gateway decision',
+        assertion: 'Gateway returnerar Yes (credit approved).',
+        backendState: 'CreditDecision.approved = true',
+      },
+      {
+        bpmnNodeId: 'offer',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Offer preparation',
+        action: 'Systemet förbereder erbjudande baserat på båda sökandenas profil och kunderna accepterar.',
+        uiInteraction:
+          'Navigate: offer-start. Navigate: decide-offer (user task). Review: offer-details (validera lånebelopp, kontonummer, datum, att båda sökande är med). Click: offer-decision-accept (Accept offer button). Verify: success-message (erbjudande accepterat).',
+        apiCall: 'GET /api/offer/{applicationId}, POST /api/offer/accept',
+        dmnDecision: 'sales-contract-assessed = Yes (för happy path), offer-decision gateway = "Accept offer"',
+        assertion:
+          'Erbjudande är accepterat. Kundparet har bekräftat lånebelopp, kontonummer, datum och villkor. Offer decision gateway = "Accept offer". Processen fortsätter till Document generation.',
+        backendState:
+          'Offer.status = "ACCEPTED", Offer.decision = "ACCEPT", Offer.contractAssessed = true, Offer.loanAmount = validated, Offer.accountNumber = validated, Offer.dates = validated',
+      },
+      {
+        bpmnNodeId: 'document-generation',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Document generation',
+        action: 'Systemet genererar lånedokument för lånet där två sökande står som låntagare.',
+        apiCall: 'POST /api/document-generation/prepare-loan (prepare-loan), POST /api/document-generation/generate-documents (generate-documents)',
+        assertion: 'Dokument är genererade.',
+        backendState: 'DocumentGeneration.status = "COMPLETE", DocumentGeneration.documents.length > 0',
+      },
+      {
+        bpmnNodeId: 'signing',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Signing',
+        action: 'Båda sökande signerar dokument digitalt.',
+        uiInteraction:
+          'Navigate: signing-start. Select: signing-methods = Digital. Navigate: per-digital-document-package (multi-instance per dokumentpaket). Navigate: per-signee (multi-instance per signatär – huvudansökande + medsökare). Navigate: per-sign-order (multi-instance per signeringsorder). Sign: digital-signature (PADES) för båda. Verify: signing-completed success.',
+        apiCall: 'POST /api/signing/upload-document, POST /api/signing/create-sign-order, POST /api/signing/digital-signature (PADES), POST /api/signing/store-signed-document',
+        dmnDecision: 'signing-methods gateway = Digital (inclusive gateway, för happy path)',
+        assertion:
+          'Dokument är signerade digitalt (PADES) och sparade. Alla dokumentpaket, signatärer (båda sökande) och signeringsorder är signerade. Signeringsorder är skapade i Signing provider datastore.',
+        backendState:
+          'Signing.status = "COMPLETE", Signing.allDocumentsSigned = true, Signing.method = "DIGITAL", Signing.signatureType = "PADES", Signing.allSignOrdersComplete = true',
+      },
+      {
+        bpmnNodeId: 'disbursement',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Disbursement',
+        action: 'Systemet genomför utbetalning och arkiverar dokument.',
+        apiCall: 'POST /api/disbursement/handle (handle-disbursement), POST /api/disbursement/archive-documents (archive-documents)',
+        assertion: 'Utbetalning är slutförd och dokument är arkiverade.',
+        backendState: 'Disbursement.status = "COMPLETE", Disbursement.documentsArchived = true',
+      },
+      {
+        bpmnNodeId: 'needs-collateral-registration',
+        bpmnNodeType: 'Gateway',
+        bpmnNodeName: 'Needs collateral registration?',
+        action: 'Gateway avgör om säkerhetsregistrering behövs.',
+        dmnDecision: 'needs-collateral-registration gateway decision',
+        assertion: 'Gateway returnerar No (ingen säkerhetsregistrering behövs).',
+        backendState: 'Application.needsCollateralRegistration = false',
+      },
+    ],
+    subprocessSteps: [
+      {
+        order: 1,
+        bpmnFile: 'mortgage-se-application.bpmn',
+        callActivityId: 'application',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-application-v2.html',
+        description: 'Application – Komplett ansökan med två personer (multi-instance hushåll och stakeholders)',
+        hasPlaywrightSupport: false,
+        given:
+          'Två personer ansöker om bolån för köp tillsammans. Båda uppfyller alla grundläggande krav (godkända vid pre-screening via Pre-screen Party DMN). Fastigheten är bostadsrätt och uppfyller bankens krav (godkänd via Evaluate Bostadsrätt DMN). Det finns 2 stakeholders och minst 1 hushåll. Testdata: customer-standard-primary, customer-standard-coapplicant.',
+        when:
+          'Kunderna navigerar till ansökningsstart (nav-application). Systemet hämtar automatiskt befintlig kunddata via GET /api/party/information och GET /api/party/engagements för båda parter och visar den. För varje hushåll: kunderna fyller i hushållsekonomi i household-formulär (expenses-cars-loans, expenses-children, expenses-child-support, expenses-other, incomes-child-support, incomes-other) och bekräftar. Systemet hämtar personlig information för varje stakeholder via GET /api/stakeholder/personal-information. För varje stakeholder: kunden fyller i personlig ekonomi (inkomster, utgifter) och bekräftar. För varje hushåll: kunderna fyller i objektinformation (Bostadsrätt, värdering) och systemet värderar fastigheten via POST /api/valuation/property. Systemet beräknar automatiskt maximalt lånebelopp via POST /api/application/kalp och screenar resultatet (Screen KALP DMN = APPROVED). Kunderna granskar sammanfattning för båda hushåll och båda stakeholders och bekräftar ansökan. Systemet hämtar kreditinformation automatiskt via POST /api/application/fetch-credit-information.',
+        then:
+          'Ansökan är komplett och redo för kreditevaluering för två sökande. All data (intern data, hushåll, båda stakeholders, objekt) är insamlad och validerad. Pre-screen Party DMN returnerar APPROVED för båda. Screen KALP DMN returnerar APPROVED. KALP-beräkning är högre än ansökt belopp. Application.status = "COMPLETE", Application.readyForEvaluation = true, Application.stakeholders.length = 2.',
+        subprocessesSummary:
+          'internal-data-gathering (CallActivity → mortgage-se-internal-data-gathering.bpmn). stakeholder (CallActivity → mortgage-se-stakeholder.bpmn, multi-instance). household (CallActivity → mortgage-se-household.bpmn, multi-instance). object (CallActivity → mortgage-se-object.bpmn). confirm-application (UserTask).',
+        serviceTasksSummary:
+          'fetch-party-information (internal-data-gathering, per stakeholder). fetch-engagements (internal-data-gathering). fetch-personal-information (stakeholder, per stakeholder). valuate-property (object). KALP (application). fetch-credit-information (application).',
+        userTasksSummary:
+          'register-household-economy-information (Household – kunderna fyller i hushållsekonomi per hushåll). register-personal-economy-information (Stakeholder – båda sökande fyller i personlig ekonomi). confirm-application (kunden bekräftar ansökan för båda).',
+        businessRulesSummary:
+          'Pre-screen Party DMN (förhandsbedömning per person). Evaluate Bostadsrätt DMN (bedömning av objekt). Screen KALP DMN (bedömning av KALP-resultat för båda).',
+      },
+      {
+        order: 2,
+        bpmnFile: 'mortgage-se-mortgage-commitment.bpmn',
+        callActivityId: 'mortgage-commitment',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-mortgage-commitment-v2.html',
+        description: 'Mortgage Commitment – Kundparet vinner budgivning',
+        hasPlaywrightSupport: false,
+        given: 'Ansökan är klar för köp-engagemang med två sökande. Objekt är inte utvärderat. Testdata: application-commitment-happy.',
+        when:
+          'Automatic Credit Evaluation (credit-evaluation-1) godkänner lånet med två sökande. "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved) = Yes. "Mortgage commitment ready" message event triggas. Kund fattar beslut (decide-mortgage-commitment user task). "Mortgage commitment decision?" gateway (mortgage-commitment-decision) = "Won bidding round / Interested in object". "Is object evaluated?" gateway (is-object-evaluated) = No. Object information samlas (object-information call activity, fetch-brf-information service task). "Object rejected?" gateway (is-object-approved) = No (objekt godkänt). "Has terms changed?" gateway (has-terms-changed) = No. "Is terms approved?" gateway (is-terms-approved) = Yes. "Won bidding round?" gateway (won-bidding-round) = Yes.',
+        then:
+          'Processen avslutas normalt (Event_0az10av). Går vidare till Credit evaluation. MortgageCommitment.status = "APPROVED", MortgageCommitment.wonBiddingRound = true, MortgageCommitment.objectApproved = true.',
+        subprocessesSummary:
+          'credit-evaluation-1 (CallActivity → mortgage-se-credit-evaluation.bpmn, inkluderar båda stakeholders). object-information (CallActivity → mortgage-se-object-information.bpmn).',
+        serviceTasksSummary:
+          'fetch-brf-information (object-information – hämtar BRF-information för objektet).',
+        userTasksSummary:
+          'decide-mortgage-commitment (kunden fattar beslut om köpintresse/bud). won-bidding-round (UserTask – markera vinst i budgivningen).',
+        businessRulesSummary:
+          'Gateways: is-mortgage-commitment-approved, is-object-evaluated, is-object-approved, has-terms-changed, is-terms-approved, won-bidding-round.',
+      },
+      {
+        order: 3,
+        bpmnFile: 'mortgage-se-object-valuation.bpmn',
+        callActivityId: 'object-valuation',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-object-valuation-v2.html',
+        description: 'Object Valuation – Hämtar bostadsrättsvärdering',
+        hasPlaywrightSupport: false,
+        given: 'Objekt är bostadsrätt. Extern tjänst (Bostadsrätt valuation service) är tillgänglig. Testdata: object-bostadsratt-happy.',
+        when:
+          '"Object type" gateway (object-type) identifierar objektet som bostadsrätt. "Fetch bostadsrätts-valuation" service task (fetch-bostadsratts-valuation) hämtar värdering från Bostadsrätt valuation service datastore (DataStoreReference_1cdjo60).',
+        then:
+          'Värdering sparas i datastoren. Gateway_0f8c0ne sammanstrålar flödet. Processen avslutas normalt (process-end-event). Värdering returneras till huvudprocessen. Object.valuation.complete = true, Object.valuation.value >= 1500000.',
+        subprocessesSummary: 'Inga ytterligare call activities i happy path (ren servicetask-baserad subprocess).',
+        serviceTasksSummary:
+          'fetch-fastighets-valuation (för småhus). fetch-bostadsratts-valuation (för bostadsrätt – används i detta scenario).',
+        userTasksSummary: 'Inga user tasks i denna subprocess i happy path.',
+        businessRulesSummary: 'object-type gateway (avgör typ av objekt: småhus vs bostadsrätt).',
+      },
+      {
+        order: 4,
+        bpmnFile: 'mortgage-se-credit-evaluation.bpmn',
+        callActivityId: 'credit-evaluation',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-credit-evaluation-v2.html',
+        description: 'Credit Evaluation – Automatisk kreditevaluering med två stakeholders',
+        hasPlaywrightSupport: false,
+        given:
+          'Automatic Credit Evaluation-processen startar. Ansökan har 2 stakeholders och minst 1 hushåll. Kreditinformation behövs inte initialt. Testdata: application-standard-credit-evaluation-two-stakeholders.',
+        when:
+          '"Select product" business rule task (select-product) väljer produkt. "Fetch price" service task (fetch-price) hämtar prissättning från Pricing engine. "Determine amortisation" business rule task (determine-amortisation) beräknar amortering. "For each stakeholder" multi-instance (loop-stakeholder) bearbetar båda stakeholders: "Needs updated Credit information?" gateway (needs-updated-credit-information) = No (för happy path). "For each household" multi-instance (loop-household): "Calculate household affordability" service task (calculate-household-affordability) beräknar affordability via Stacc API baserat på båda inkomsterna. "Fetch risk classification" service task (fetch-risk-classification) hämtar riskklassificering. "Evaluate application" business rule task (evaluate-application) utvärderar ansökan. "Evaluate credit policies" business rule task (evaluate-credit-policies) utför policyutvärdering.',
+        then:
+          'Alla steg lyckas. Processen avslutas normalt (process-end-event). Resultat returneras till anropande processen. CreditEvaluation.status = "APPROVED", CreditEvaluation.automaticallyApproved = true. Alla stakeholders och hushåll har beaktats korrekt.',
+        subprocessesSummary:
+          'loop-stakeholder (multi-instance per stakeholder). loop-household (multi-instance per hushåll).',
+        serviceTasksSummary:
+          'fetch-price (hämtar pris från Pricing engine). calculate-household-affordability (beräknar hushållsaffordability via Stacc). fetch-risk-classification (hämtar riskklassificering). fetch-credit-information (för de stakeholders där det behövs, ej i denna happy path).',
+        userTasksSummary: 'Inga user tasks i Automatic Credit Evaluation i happy path (STP-process).',
+        businessRulesSummary:
+          'select-product (BusinessRuleTask, DMN). determine-amortisation (BusinessRuleTask, DMN). evaluate-application (BusinessRuleTask, DMN). evaluate-credit-policies (BusinessRuleTask, DMN). needs-updated-credit-information gateway.',
+      },
+      {
+        order: 5,
+        bpmnFile: 'mortgage-se-kyc.bpmn',
+        callActivityId: 'kyc',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-kyc-v2.html',
+        description: 'KYC – Godkänd automatiskt med självdeklaration för två stakeholders',
+        hasPlaywrightSupport: false,
+        given:
+          'Två stakeholders utan befintlig KYC-data. Låg AML-risk, ingen PEP/sanktionsmatch för någon av dem. Testdata: customer-standard-primary, customer-standard-coapplicant.',
+        when:
+          '"KYC questions needed?" gateway (kyc-questions-needed) = Yes för båda. "Fetch KYC" service task (fetch-kyc) hittar ingen befintlig data. För varje stakeholder: Självdeklaration skickas (submit-self-declaration user task: PEP-status = No, källa till medel = standard, syfte = köp bostadsrätt). "Fetch AML / KYC risk score" service task (fetch-aml-kyc-risk) hämtar riskpoäng (< 30) för båda. "Fetch sanctions and PEP" service task (fetch-screening-and-sanctions) hämtar screening (ingen match). "Evaluate KYC/AML" business rule task (assess-kyc-aml) godkänner via DMN (table-bisnode-credit, table-own-experience).',
+        then:
+          '"Needs review?" gateway (needs-review) = No för båda stakeholders. Processen avslutas normalt (process-end-event). KYC godkänd automatiskt. KYC.status = "APPROVED", KYC.needsReview = false, KYC.amlRiskScore < 30, KYC.pepMatch = false, KYC.sanctionsMatch = false för båda.',
+        subprocessesSummary: 'Inga ytterligare call activities i happy path (en KYC-subprocess med implicit multi-instance per person).',
+        serviceTasksSummary:
+          'fetch-kyc (hämtar befintlig KYC-data). fetch-aml-kyc-risk (hämtar AML/KYC-riskpoäng). fetch-screening-and-sanctions (hämtar PEP/sanktionsscreening).',
+        userTasksSummary:
+          'submit-self-declaration (kunden fyller i självdeklaration kring PEP, källa till medel, syfte – per stakeholder).',
+        businessRulesSummary:
+          'assess-kyc-aml (BusinessRuleTask/DMN – table-bisnode-credit, table-own-experience). kyc-questions-needed gateway. needs-review gateway.',
+      },
+      {
+        order: 6,
+        bpmnFile: 'mortgage-se-credit-decision.bpmn',
+        callActivityId: 'credit-decision',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-credit-decision-v2.html',
+        description: 'Credit Decision – Kreditbeslut godkänt för två sökande',
+        hasPlaywrightSupport: false,
+        given:
+          'Credit decision-processen startar. Ansökan har låg risk totalt givet båda sökandenas profil. KYC är godkänd för båda. Kreditevaluering är godkänd. Testdata: credit-decision-low-risk-two-stakeholders.',
+        when:
+          '"Determine decision escalation" business rule task (determine-decision-escalation) utvärderar ansökan. "Decision criteria?" gateway (decision-criteria) = Straight through (automatiskt godkännande).',
+        then:
+          'Gateway_1lhswyt (Final Decision) samlar ihop resultatet. Processen avslutas normalt (process-end-event). Godkänt beslut returneras till anropande processen. CreditDecision.status = "APPROVED".',
+        subprocessesSummary: 'Inga ytterligare subprocesser i happy path.',
+        serviceTasksSummary: 'Inga rena service tasks i denna subprocess i happy path.',
+        userTasksSummary: 'Inga user tasks i denna subprocess i happy path (STP-beslut).',
+        businessRulesSummary:
+          'determine-decision-escalation (BusinessRuleTask, DMN). decision-criteria gateway (avgör Straight through vs Four eyes).',
+      },
+      {
+        order: 7,
+        bpmnFile: 'mortgage-se-offer.bpmn',
+        callActivityId: 'offer',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-offer-v2.html',
+        description: 'Offer – Erbjudande accepterat av kundparet',
+        hasPlaywrightSupport: false,
+        given:
+          'Köpekontrakt är redan bedömt. Erbjudande är redo. Kreditbeslut är godkänt för lånet där två sökande står som låntagare. Testdata: offer-contract-assessed-happy.',
+        when:
+          '"Sales contract assessed?" gateway (sales-contract-assessed) = Yes. Processen hoppar över kontraktuppladdning. "Decide on offer" user task (decide-offer) aktiveras. Kundparet accepterar erbjudandet (validerar lånebelopp, kontonummer, datum och att båda parter är korrekt angivna).',
+        then:
+          '"Decision" gateway (offer-decision) = "Accept offer". Processen avslutas normalt (process-end-event). Går vidare till Document Generation. Offer.status = "ACCEPTED", Offer.decision = "ACCEPT".',
+        subprocessesSummary:
+          'Sales contract flow (upload/assessment) finns som alternativt flöde men används inte i denna happy path (sales-contract-assessed = Yes).',
+        serviceTasksSummary: 'Inga dedikerade service tasks i happy path (kontrakt redan bedömt).',
+        userTasksSummary:
+          'decide-offer (kunden/kundparet granskar erbjudande och accepterar – belopp, kontonummer, datum).',
+        businessRulesSummary:
+          'sales-contract-assessed gateway (avgör om kontraktflöde ska köras). offer-decision gateway (Accept offer / Avvisa).',
+      },
+      {
+        order: 8,
+        bpmnFile: 'mortgage-se-document-generation.bpmn',
+        callActivityId: 'document-generation',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-document-generation-v2.html',
+        description: 'Document Generation – Genererar lånedokument för två sökande',
+        hasPlaywrightSupport: false,
+        given:
+          'Document generation-processen startar. Låneansökan för köp, offer accepterad. Två sökande finns kopplade till ansökan. Testdata: document-generation-standard.',
+        when:
+          '"Prepare loan" service task (Activity_1qsvac1) förbereder lånet med all nödvändig information (loan parts, loan numbers, party-information, objektinformation). "Select documents" business rule task (select-documents) väljer dokumenttyper via DMN-beslutsregler. "Generate Document" service task (generate-documents, multi-instance) genererar alla dokument parallellt. Dokument sparas till Document generation service data store (DataStoreReference_1px1m7r).',
+        then:
+          'Alla dokument för lånet med två sökande är genererade och lagrade. Processen avslutas normalt (Event_1vwpr3l). Dokument tillgängliga för signering. DocumentGeneration.status = "COMPLETE", DocumentGeneration.documents.length > 0.',
+        subprocessesSummary: 'Multi-instance över dokumentuppsättningar via generate-documents.',
+        serviceTasksSummary:
+          'prepare-loan (Activity_1qsvac1 – förbereder lånet). generate-documents (multi-instance – genererar alla dokument).',
+        userTasksSummary: 'Inga user tasks i document-generation i happy path.',
+        businessRulesSummary:
+          'select-documents (BusinessRuleTask, DMN – väljer dokumentuppsättning beroende på scenario).',
+      },
+      {
+        order: 9,
+        bpmnFile: 'mortgage-se-signing.bpmn',
+        callActivityId: 'signing',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-signing-v2.html',
+        description: 'Signing – Digital signering av båda sökande',
+        hasPlaywrightSupport: false,
+        given:
+          'Signing-processen startar. Digital signering väljs. Ett dokumentpaket, två signees (huvudansökande + medsökare), en sign order. Signing provider är tillgänglig. Dokument är genererade. Testdata: signing-digital-happy.',
+        when:
+          '"Signing methods?" gateway (signing-methods) avgör "Digital" (inclusive gateway). "Per digital document package" subprocess (per-digital-document-package, multi-instance) laddar upp dokument (upload-document service task) och skapar signeringsorder (create-signing-order service task). "Per signee" subprocess (per-signee, multi-instance) notifierar varje signee (båda sökande). "Per sign order" subprocess (per-sign-order, multi-instance) väntar på "Task completed" message event (Event_18v8q1a). "Sign order status" gateway (sign-order-status) avgör "Completed". "Store signed documents" service task (store-signed-document) lagrar dokument med PADES-signatur.',
+        then:
+          'Processen avslutas normalt (Event_0lxhh2n). Signing.status = "COMPLETE", Signing.allDocumentsSigned = true, Signing.method = "DIGITAL", Signing.signatureType = "PADES".',
+        subprocessesSummary:
+          'per-digital-document-package (multi-instance per dokumentpaket). per-signee (multi-instance per signee – två sökande). per-sign-order (multi-instance per signeringsorder).',
+        serviceTasksSummary:
+          'upload-document (laddar upp dokument till signeringsleverantör). create-signing-order (skapar signeringsorder). store-signed-document (lagrar signerade dokument).',
+        userTasksSummary:
+          'Digital signering via Signing provider (båda sökande signerar – implicit user interaction i externt gränssnitt).',
+        businessRulesSummary:
+          'signing-methods gateway (avgör Digital vs Manual). sign-order-status gateway (Completed vs övriga status).',
+      },
+      {
+        order: 10,
+        bpmnFile: 'mortgage-se-disbursement.bpmn',
+        callActivityId: 'disbursement',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-disbursement-v2.html',
+        description: 'Disbursement – Utbetalning och arkivering',
+        hasPlaywrightSupport: false,
+        given:
+          'Disbursement-processen startar. Signering är klar och dokument är signerade av båda sökande. Testdata: disbursement-standard.',
+        when:
+          '"Handle disbursement" service task (handle-disbursement) genomför utbetalning via Core system data store. Event-based gateway (Gateway_15wjsxm) väntar på event. "Disbursement completed" message event (disbursement-completed) triggas från Core system. "Archive documents" service task (archive-documents) arkiverar dokument till Document archive service.',
+        then:
+          'Utbetalning är slutförd. Dokument är arkiverade. Processen avslutas normalt (Event_0gubmbi). "event-loan-paid-out" triggas i huvudprocessen. Disbursement.status = "COMPLETE", Disbursement.documentsArchived = true.',
+        subprocessesSummary:
+          'Event-based gateway (Gateway_15wjsxm) som väntar på disbursement events (completed/cancelled).',
+        serviceTasksSummary:
+          'handle-disbursement (genomför utbetalning via Core system). archive-documents (arkiverar dokument).',
+        userTasksSummary: 'Inga user tasks i disbursement i happy path (helt automatiskt flöde).',
+        businessRulesSummary:
+          'Event-baserad styrning via Gateway_15wjsxm (disbursement-completed vs disbursement-cancelled).',
+      },
+    ],
+  },
 ];
 
 const E2eTestsOverviewPage = () => {
@@ -783,6 +890,7 @@ const E2eTestsOverviewPage = () => {
     else if (view === 'tree') navigate('/process-explorer');
     else if (view === 'listvy') navigate('/node-matrix');
     else if (view === 'tests') navigate('/test-report');
+    else if (view === 'test-coverage') navigate('/test-coverage');
     else if (view === 'files') navigate('/files');
     else if (view === 'timeline') navigate('/timeline');
     else if (view === 'configuration') navigate('/configuration');
@@ -1096,25 +1204,25 @@ const E2eTestsOverviewPage = () => {
                           Subprocesser / call activities i scenariot (i körordning)
                         </p>
                         <div className="overflow-x-auto max-w-full">
-                          <Table>
+                          <Table className="table-fixed w-full">
                             <TableHeader>
                               <TableRow>
-                                <TableHead>#</TableHead>
-                                <TableHead>BPMN‑fil</TableHead>
-                                <TableHead>Feature Goal</TableHead>
-                                <TableHead>Beskrivning</TableHead>
-                                <TableHead className="min-w-[140px]">Given</TableHead>
-                                <TableHead className="min-w-[140px]">When</TableHead>
-                                <TableHead className="min-w-[140px]">Then</TableHead>
-                                <TableHead className="min-w-[140px]">UI‑interaktion</TableHead>
-                                <TableHead className="min-w-[140px]">API‑anrop / DMN</TableHead>
-                                <TableHead className="min-w-[140px]">Assertion</TableHead>
-                                <TableHead className="min-w-[140px]">Backend‑tillstånd</TableHead>
-                                <TableHead className="min-w-[140px]">Subprocesser</TableHead>
-                                <TableHead className="min-w-[140px]">Service tasks</TableHead>
-                                <TableHead className="min-w-[140px]">User tasks</TableHead>
-                                <TableHead className="min-w-[140px]">Business rules / DMN</TableHead>
-                                <TableHead>Playwright‑stöd</TableHead>
+                                <TableHead className="w-[60px]">#</TableHead>
+                                <TableHead className="w-[280px]">BPMN‑fil</TableHead>
+                                <TableHead className="w-[280px]">Feature Goal</TableHead>
+                                <TableHead className="w-[280px]">Beskrivning</TableHead>
+                                <TableHead className="w-[280px]">Given</TableHead>
+                                <TableHead className="w-[280px]">When</TableHead>
+                                <TableHead className="w-[280px]">Then</TableHead>
+                                <TableHead className="w-[280px]">UI‑interaktion</TableHead>
+                                <TableHead className="w-[280px]">API‑anrop / DMN</TableHead>
+                                <TableHead className="w-[280px]">Assertion</TableHead>
+                                <TableHead className="w-[280px]">Backend‑tillstånd</TableHead>
+                                <TableHead className="w-[280px]">Subprocesser</TableHead>
+                                <TableHead className="w-[280px]">Service tasks</TableHead>
+                                <TableHead className="w-[280px]">User tasks</TableHead>
+                                <TableHead className="w-[280px]">Business rules / DMN</TableHead>
+                                <TableHead className="w-[280px]">Playwright‑stöd</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1126,13 +1234,13 @@ const E2eTestsOverviewPage = () => {
                                   ) ?? null;
                                 return (
                                   <TableRow key={rowId}>
-                                    <TableCell className="text-xs text-muted-foreground align-top">
+                                    <TableCell className="text-xs text-muted-foreground align-top w-[60px]">
                                       {step.order}
                                     </TableCell>
-                                    <TableCell className="text-xs font-mono align-top">
+                                    <TableCell className="text-xs font-mono align-top w-[280px]">
                                       {step.bpmnFile}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.featureGoalFile ? (
                                         <code className="text-[11px] font-mono break-all">
                                           {step.featureGoalFile}
@@ -1141,59 +1249,59 @@ const E2eTestsOverviewPage = () => {
                                         <span className="text-[11px] text-muted-foreground">–</span>
                                       )}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">{step.description}</TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">{step.description}</TableCell>
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.given ? renderBulletList(step.given) : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.when ? renderBulletList(step.when) : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.then ? renderBulletList(step.then) : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {aggregatedStep?.uiInteraction
                                         ? renderBulletList(aggregatedStep.uiInteraction)
                                         : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {aggregatedStep?.apiCall
                                         ? renderBulletList(aggregatedStep.apiCall, { isCode: true })
                                         : aggregatedStep?.dmnDecision
                                         ? renderBulletList(`DMN: ${aggregatedStep.dmnDecision}`, { isCode: true })
                                         : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {aggregatedStep?.assertion
                                         ? renderBulletList(aggregatedStep.assertion)
                                         : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {aggregatedStep?.backendState
                                         ? renderBulletList(aggregatedStep.backendState, { isCode: true })
                                         : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.subprocessesSummary
                                         ? renderBulletList(step.subprocessesSummary)
                                         : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.serviceTasksSummary
                                         ? renderBulletList(step.serviceTasksSummary, { isCode: true })
                                         : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.userTasksSummary
                                         ? renderBulletList(step.userTasksSummary)
                                         : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.businessRulesSummary
                                         ? renderBulletList(step.businessRulesSummary)
                                         : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs">
+                                    <TableCell className="text-xs align-top w-[280px]">
                                       {step.hasPlaywrightSupport ? (
                                         <Badge
                                           variant="secondary"

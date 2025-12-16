@@ -29,6 +29,7 @@ import { LlmDebugView } from "./pages/LlmDebugView";
 import ConfigurationPage from "./pages/ConfigurationPage";
 import StyleGuidePage from "./pages/StyleGuidePage";
 import E2eTestsOverviewPage from "./pages/E2eTestsOverviewPage";
+import TestCoverageExplorerPage from "./pages/TestCoverageExplorerPage";
 import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
@@ -110,6 +111,7 @@ const App = () => {
                   <Route path="/bpmn/:filename" element={<Index />} />
                   <Route path="/process-explorer" element={<ProcessExplorer />} />
                   <Route path="/e2e-tests" element={<E2eTestsOverviewPage />} />
+                  <Route path="/test-coverage" element={<TestCoverageExplorerPage />} />
                   <Route path="/node-matrix" element={<NodeMatrix />} />
                   <Route path="/test-report" element={<TestReport />} />
                   <Route path="/test-scripts" element={<TestScriptsPage />} />

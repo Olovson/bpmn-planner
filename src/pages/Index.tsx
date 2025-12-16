@@ -42,13 +42,15 @@ const Index = () => {
       ? 'tree'
       : location.pathname.includes('/e2e-tests')
         ? 'e2e-tests'
-        : location.pathname.includes('/timeline')
-          ? 'timeline'
-          : location.pathname.includes('/configuration')
-            ? 'configuration'
-            : location.pathname.includes('/styleguide')
-              ? 'styleguide'
-              : 'diagram';
+        : location.pathname.includes('/test-coverage')
+          ? 'test-coverage'
+          : location.pathname.includes('/timeline')
+            ? 'timeline'
+            : location.pathname.includes('/configuration')
+              ? 'configuration'
+              : location.pathname.includes('/styleguide')
+                ? 'styleguide'
+                : 'diagram';
 
   const handleViewChange = (value: string) => {
     if (value === 'listvy') {
@@ -57,6 +59,8 @@ const Index = () => {
       baseNavigate('/process-explorer');
     } else if (value === 'e2e-tests') {
       baseNavigate('/e2e-tests');
+    } else if (value === 'test-coverage') {
+      baseNavigate('/test-coverage');
     } else if (value === 'tests') {
       baseNavigate('/test-report');
     } else if (value === 'configuration') {
