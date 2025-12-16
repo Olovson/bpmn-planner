@@ -359,144 +359,165 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
     return callActivities;
   };
 
+  // Förbered data för transponerad tabell
+  // Rader blir: Nivå 0, Nivå 1, ..., Given, When, Then
+  // Kolumner blir: Varje path
+  const transposedData = useMemo(() => {
+    const rows: Array<Array<{ content: React.ReactNode; backgroundColor?: string }>> = [];
+    
+    // Skapa rader för varje nivå + Given/When/Then
+    const rowCount = maxDepth + 3; // maxDepth nivåer + Given + When + Then
+    
+    // Initiera rader
+    for (let i = 0; i < rowCount; i++) {
+      rows.push([]);
+    }
+    
+    // Fyll i data för varje kolumn (path)
+    groupedRows.forEach((groupedRow, colIdx) => {
+      const { pathRow, callActivityNode, testInfo } = groupedRow;
+      const { path } = pathRow;
+      
+      // Hitta alla callActivities i denna path
+      const callActivitiesInPath = getCallActivitiesInPath(path);
+      
+      // Hitta den lägsta callActivity (närmast leaf-noden) för att bestämma basfärgen
+      const lowestCallActivity = callActivitiesInPath.length > 0 
+        ? callActivitiesInPath[callActivitiesInPath.length - 1] 
+        : null;
+      
+      // Hämta basfärg för den lägsta callActivity
+      const baseColor = lowestCallActivity?.node.bpmnElementId 
+        ? callActivityColors.get(lowestCallActivity.node.bpmnElementId)
+        : undefined;
+      
+      // Fyll i hierarki-kolumner (Nivå 0, Nivå 1, etc.)
+      for (let level = 0; level < maxDepth; level++) {
+        const node = path[level];
+        let cellBackgroundColor: string | undefined = undefined;
+        
+        if (node) {
+          if (baseColor) {
+            if (node.type === 'callActivity' && node.bpmnElementId) {
+              if (node.bpmnElementId === lowestCallActivity?.node.bpmnElementId) {
+                cellBackgroundColor = baseColor;
+              } else {
+                const rgbaMatch = baseColor.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+                if (rgbaMatch) {
+                  const [, r, g, b] = rgbaMatch;
+                  cellBackgroundColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
+                }
+              }
+            } else {
+              cellBackgroundColor = baseColor;
+            }
+          }
+          
+          const nodeStyle = getProcessNodeStyle(node.type);
+          rows[level].push({
+            content: (
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: nodeStyle.hexColor }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate" title={node.label}>
+                    {node.label}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate" title={node.bpmnFile}>
+                    {node.bpmnFile}
+                  </div>
+                  {node.bpmnElementId && (
+                    <div className="text-xs font-mono text-muted-foreground truncate" title={node.bpmnElementId}>
+                      {node.bpmnElementId}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ),
+            backgroundColor: cellBackgroundColor,
+          });
+        } else {
+          rows[level].push({
+            content: <span className="text-xs text-muted-foreground">–</span>,
+          });
+        }
+      }
+      
+      // Fyll i Given/When/Then kolumner
+      if (testInfo) {
+        // Given
+        rows[maxDepth].push({
+          content: renderBulletList(testInfo.subprocessStep.given),
+        });
+        // When
+        rows[maxDepth + 1].push({
+          content: renderBulletList(testInfo.subprocessStep.when),
+        });
+        // Then
+        rows[maxDepth + 2].push({
+          content: renderBulletList(testInfo.subprocessStep.then),
+        });
+      } else {
+        rows[maxDepth].push({
+          content: <span className="text-xs text-muted-foreground">–</span>,
+        });
+        rows[maxDepth + 1].push({
+          content: <span className="text-xs text-muted-foreground">–</span>,
+        });
+        rows[maxDepth + 2].push({
+          content: <span className="text-xs text-muted-foreground">–</span>,
+        });
+      }
+    });
+    
+    return rows;
+  }, [groupedRows, maxDepth, callActivityColors, rowspanByGroup]);
+
+  // Skapa rad-headers
+  const rowHeaders = useMemo(() => {
+    const headers = Array.from({ length: maxDepth }, (_, i) => `Nivå ${i}`);
+    return [...headers, 'Given', 'When', 'Then'];
+  }, [maxDepth]);
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full caption-bottom text-sm" style={{ minWidth: 'max-content' }}>
+      <table className="table-fixed w-full caption-bottom text-sm">
         <TableHeader>
           <TableRow>
-            {columnHeaders.map((header, idx) => (
-              <TableHead key={idx} className="min-w-[200px]">
-                {header}
-              </TableHead>
-            ))}
+            <TableHead className="min-w-[150px] sticky left-0 bg-background z-10">Rad</TableHead>
+            {groupedRows.map((groupedRow, colIdx) => {
+              const { pathRow } = groupedRow;
+              const { path } = pathRow;
+              const leafNode = path[path.length - 1];
+              return (
+                <TableHead key={colIdx} className="w-[300px]">
+                  <div className="text-xs font-medium truncate" title={leafNode?.label || `Path ${colIdx + 1}`}>
+                    {leafNode?.label || `Path ${colIdx + 1}`}
+                  </div>
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {groupedRows.map((groupedRow, rowIdx) => {
-            const { pathRow, callActivityNode, testInfo, groupKey } = groupedRow;
-            const { path } = pathRow;
-            const rowKey = `path-${rowIdx}-${path.map((n) => n.id).join('-')}`;
-
-            // Beräkna rowspan för denna grupp
-            const rowspan = rowspanByGroup.get(groupKey) || 1;
-            const isFirstInGroup = !shownGroupsRef.current.has(groupKey);
-            if (isFirstInGroup) {
-              shownGroupsRef.current.add(groupKey);
-            }
-
-            // Hitta alla callActivities i denna path
-            const callActivitiesInPath = getCallActivitiesInPath(path);
-            
-            // Hitta den lägsta callActivity (närmast leaf-noden) för att bestämma basfärgen
-            const lowestCallActivity = callActivitiesInPath.length > 0 
-              ? callActivitiesInPath[callActivitiesInPath.length - 1] 
-              : null;
-            
-            // Hämta basfärg för den lägsta callActivity
-            const baseColor = lowestCallActivity?.node.bpmnElementId 
-              ? callActivityColors.get(lowestCallActivity.node.bpmnElementId)
-              : undefined;
-
-            return (
-              <TableRow key={rowKey}>
-                {/* Hierarki-kolumner */}
-                {Array.from({ length: maxDepth }, (_, colIdx) => {
-                  const node = path[colIdx];
-                  if (!node) {
-                    return (
-                      <TableCell key={colIdx} className="align-top">
-                        <span className="text-xs text-muted-foreground">–</span>
-                      </TableCell>
-                    );
-                  }
-
-                  const nodeStyle = getProcessNodeStyle(node.type);
-                  
-                  // Hämta bakgrundsfärg för denna cell
-                  let cellBackgroundColor: string | undefined = undefined;
-                  
-                  if (baseColor) {
-                    // Kolla om denna nod är en callActivity
-                    if (node.type === 'callActivity' && node.bpmnElementId) {
-                      // Om detta är den lägsta callActivity, använd ljus version
-                      if (node.bpmnElementId === lowestCallActivity?.node.bpmnElementId) {
-                        cellBackgroundColor = baseColor; // Ljus version (0.08 opacity)
-                      } else {
-                        // Om detta är en högre callActivity som innehåller den lägsta, använd starkare version
-                        const rgbaMatch = baseColor.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
-                        if (rgbaMatch) {
-                          const [, r, g, b] = rgbaMatch;
-                          cellBackgroundColor = `rgba(${r}, ${g}, ${b}, 0.15)`; // Starkare version
-                        }
-                      }
-                    } else {
-                      // Om detta inte är en callActivity, använd basfärgen (tillhör den lägsta callActivity)
-                      cellBackgroundColor = baseColor;
-                    }
-                  }
-
-                  return (
-                    <TableCell
-                      key={colIdx}
-                      className="align-top"
-                      style={cellBackgroundColor ? { backgroundColor: cellBackgroundColor } : undefined}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: nodeStyle.hexColor }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate" title={node.label}>
-                            {node.label}
-                          </div>
-                          <div className="text-xs text-muted-foreground truncate" title={node.bpmnFile}>
-                            {node.bpmnFile}
-                          </div>
-                          {node.bpmnElementId && (
-                            <div className="text-xs font-mono text-muted-foreground truncate" title={node.bpmnElementId}>
-                              {node.bpmnElementId}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                  );
-                })}
-                {/* Test-information kolumner - visa bara på första raden i gruppen med rowspan */}
-                {isFirstInGroup && testInfo ? (
-                  // Första raden i gruppen: visa test-information med rowspan
-                  <>
-                    <TableCell className="align-top min-w-[300px]" rowSpan={rowspan}>
-                      {renderBulletList(testInfo.subprocessStep.given)}
-                    </TableCell>
-                    <TableCell className="align-top min-w-[300px]" rowSpan={rowspan}>
-                      {renderBulletList(testInfo.subprocessStep.when)}
-                    </TableCell>
-                    <TableCell className="align-top min-w-[300px]" rowSpan={rowspan}>
-                      {renderBulletList(testInfo.subprocessStep.then)}
-                    </TableCell>
-                  </>
-                ) : !testInfo ? (
-                  // Inga test-information för denna rad
-                  <>
-                    <TableCell className="align-top">
-                      <span className="text-xs text-muted-foreground">–</span>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <span className="text-xs text-muted-foreground">–</span>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <span className="text-xs text-muted-foreground">–</span>
-                    </TableCell>
-                  </>
-                ) : (
-                  // Om testInfo finns men inte är första i gruppen: rendera inga celler (rowspan hanterar detta)
-                  null
-                )}
-              </TableRow>
-            );
-          })}
+          {transposedData.map((row, rowIdx) => (
+            <TableRow key={rowIdx}>
+              <TableCell className="min-w-[150px] sticky left-0 bg-background z-10 font-medium">
+                {rowHeaders[rowIdx]}
+              </TableCell>
+              {row.map((cell, colIdx) => (
+                <TableCell
+                  key={colIdx}
+                  className="align-top w-[300px]"
+                  style={cell.backgroundColor ? { backgroundColor: cell.backgroundColor } : undefined}
+                >
+                  {cell.content}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
         </TableBody>
       </table>
     </div>
