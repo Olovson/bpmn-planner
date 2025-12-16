@@ -144,13 +144,13 @@ export const scenarios: E2eScenario[] = [
     command:
       'npx playwright test tests/playwright-e2e/scenarios/happy-path/mortgage-bostadsratt-happy.spec.ts',
     summary:
-      'Komplett E2E-scenario för en person som köper sin första bostadsrätt. Bostadsrätten uppfyller alla kriterier automatiskt (värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV ≤ 85%, plats acceptabel). INGEN befintlig fastighet att sälja. Går genom hela flödet från Application till Disbursement.',
+      'Komplett E2E-scenario för en person som köper sin första bostadsrätt. Bostadsrätten uppfyller alla kriterier automatiskt (värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV ≤ 85%, plats acceptabel). INGEN befintlig fastighet att sälja. Går genom hela flödet från Application till Collateral Registration.',
     given:
       'En person köper sin första bostadsrätt. Personen uppfyller alla grundläggande krav (godkänd vid pre-screening). Bostadsrätten uppfyller alla kriterier automatiskt: värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV-ratio ≤ 85%, plats är acceptabel (inte riskområde). INGEN befintlig fastighet att sälja. Testdata: customer-standard, application-commitment-happy, object-bostadsratt-happy, object-info-apartment.',
     when:
-      'Kunden fyller i Application (intern data, hushåll, stakeholder, objekt). Mortgage Commitment blir godkänd automatiskt baserat på Credit Evaluation och kunden bekräftar beslutet. Object Valuation hämtar bostadsrättsvärdering. Object Information hämtar BRF-information och screenar bostadsrätten (föreningsskuld, LTV, plats). Credit Evaluation godkänner automatiskt. KYC godkänns automatiskt med självdeklaration. Credit Decision godkänner. Kunden accepterar Offer. Document Generation genererar dokument. Kunden signerar digitalt. Disbursement genomförs.',
+      'Kunden fyller i Application (intern data, hushåll, stakeholder, objekt). Mortgage Commitment blir godkänd automatiskt baserat på Credit Evaluation och kunden bekräftar beslutet. Object Valuation hämtar bostadsrättsvärdering. Object Information hämtar BRF-information och screenar bostadsrätten (föreningsskuld, LTV, plats). Credit Evaluation godkänner automatiskt. KYC godkänns automatiskt med självdeklaration. Credit Decision godkänner. Kunden accepterar Offer. Document Generation genererar dokument. Kunden signerar digitalt. Disbursement genomförs. Needs collateral registration gateway = Yes. Collateral Registration registrerar säkerhet och handläggaren distribuerar meddelande om panträtt till BRF.',
     then:
-      'Hela processen från Application till Disbursement slutförs utan fel. Bostadsrätt är godkänd automatiskt. Alla relevanta DMN-beslut ger utfall som leder till happy path (t.ex. APPROVED, låg risk, inga avvikelser). Alla gateway-beslut går genom happy path. Utbetalning är slutförd och dokument är arkiverade. Processen avslutas normalt.',
+      'Hela processen från Application till Collateral Registration slutförs utan fel. Bostadsrätt är godkänd automatiskt. Alla relevanta DMN-beslut ger utfall som leder till happy path (t.ex. APPROVED, låg risk, inga avvikelser). Alla gateway-beslut går genom happy path. Utbetalning är slutförd och dokument är arkiverade. Säkerheten är registrerad och verifierad. Meddelande om panträtt är distribuerat till BRF. Processen avslutas normalt.',
     notesForBankProject:
       'Detta är det enklaste och vanligaste E2E-scenariot - en person, ingen befintlig fastighet, allt godkänns automatiskt. Alla teststeg nedan är baserade på faktiska BPMN-noder från mortgage.bpmn och Feature Goals, direkt användbara i bankprojektet. Implementera UI-interaktioner, API-anrop och assertions enligt era faktiska integrationer.',
     bankProjectTestSteps: [
@@ -291,9 +291,21 @@ export const scenarios: E2eScenario[] = [
         bpmnNodeType: 'Gateway',
         bpmnNodeName: 'Needs collateral registration?',
         action: 'Gateway avgör om säkerhetsregistrering behövs',
-        dmnDecision: 'needs-collateral-registration gateway decision',
-        assertion: 'Gateway returnerar No (ingen säkerhetsregistrering behövs)',
-        backendState: 'Application.needsCollateralRegistration = false',
+        dmnDecision: 'needs-collateral-registration gateway decision = Yes',
+        assertion: 'Gateway returnerar Yes (säkerhetsregistrering behövs)',
+        backendState: 'Application.needsCollateralRegistration = true',
+      },
+      {
+        bpmnNodeId: 'collateral-registration',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Collateral registration',
+        action: 'Systemet registrerar säkerhet och handläggaren distribuerar meddelande om panträtt till BRF',
+        uiInteraction:
+          'Navigate: collateral-registration-start. Property type gateway = Bostadsrätt. Navigate: distribute-notice-of-pledge-to-brf. Handläggaren distribuerar meddelande om panträtt till BRF (via post/e-post eller portal). Navigate: verify (om timer event triggas). Handläggaren verifierar registreringen. Is verified? gateway = Yes.',
+        apiCall: 'POST /api/collateral-registration/distribute-notice (distribute-notice-of-pledge-to-brf), POST /api/collateral-registration/verify (verify)',
+        dmnDecision: 'property-type gateway = Bostadsrätt, is-verified gateway = Yes',
+        assertion: 'Säkerheten är registrerad och verifierad. Meddelande om panträtt är distribuerat till BRF. Verifiering är bekräftad.',
+        backendState: 'CollateralRegistration.status = "VERIFIED", CollateralRegistration.propertyType = "BOSTADSRATT", CollateralRegistration.distributed = true, CollateralRegistration.verified = true',
       },
     ],
     subprocessSteps: [
@@ -476,6 +488,25 @@ export const scenarios: E2eScenario[] = [
         businessRulesSummary:
           'Event-baserad styrning via Gateway_15wjsxm (disbursement-completed vs disbursement-cancelled).',
       },
+      {
+        order: 11,
+        bpmnFile: 'mortgage-se-collateral-registration.bpmn',
+        callActivityId: 'collateral-registration',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-collateral-registration-v2.html',
+        description: 'Collateral Registration – Registrering av säkerhet',
+        hasPlaywrightSupport: false,
+        given: 'Lånet har betalats ut (event-loan-paid-out). Säkerhetsregistrering behövs (needs-collateral-registration = Yes). Fastigheten är bostadsrätt. Fastighetsinformation är tillgänglig från Application-processen. Testdata: collateral-registration-bostadsratt-happy.',
+        when: '"Property type" gateway (property-type) avgör "Bostadsrätt". Handläggaren distribuerar meddelande om panträtt till BRF via "Distribute notice of pledge to BRF" user task (distribute-notice-of-pledge-to-brf). "Sammanför flöden" gateway samlar flöden. "Vänta på verifiering" event-based gateway väntar på verifiering. "Verified" message event mottas automatiskt (eller "Wait for system update" timer event triggas och handläggaren verifierar via "Verify" user task). "Is verified?" gateway (is-verified) = Yes.',
+        then: 'Säkerheten är registrerad och verifierad. Meddelande om panträtt är distribuerat till BRF. Verifiering är bekräftad. Processen avslutas normalt. "event-collateral-registration-completed" triggas i huvudprocessen. CollateralRegistration.status = "VERIFIED", CollateralRegistration.propertyType = "BOSTADSRATT", CollateralRegistration.distributed = true, CollateralRegistration.verified = true.',
+        subprocessesSummary:
+          'Inga ytterligare call activities i happy path (enkel subprocess med user tasks och gateways).',
+        serviceTasksSummary:
+          'Inga service tasks i happy path för bostadsrätt (distribution sker via user task).',
+        userTasksSummary:
+          'distribute-notice-of-pledge-to-brf (handläggaren distribuerar meddelande om panträtt till BRF). verify (handläggaren verifierar registreringen om timer event triggas).',
+        businessRulesSummary:
+          'property-type gateway (avgör småhus vs bostadsrätt). is-verified gateway (avgör om verifiering är godkänd).',
+      },
     ],
   },
   {
@@ -493,13 +524,13 @@ export const scenarios: E2eScenario[] = [
     command:
       'npx playwright test tests/playwright-e2e/scenarios/happy-path/mortgage-bostadsratt-two-applicants-happy.spec.ts',
     summary:
-      'Komplett E2E-scenario för två personer (huvudansökande + medsökare) som köper bostadsrätt tillsammans. Bostadsrätten uppfyller alla kriterier automatiskt (värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV ≤ 85%, plats acceptabel). INGEN befintlig fastighet att sälja. Multi-instance för hushåll och stakeholders. Går genom hela flödet från Application till Disbursement.',
+      'Komplett E2E-scenario för två personer (huvudansökande + medsökare) som köper bostadsrätt tillsammans. Bostadsrätten uppfyller alla kriterier automatiskt (värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV ≤ 85%, plats acceptabel). INGEN befintlig fastighet att sälja. Multi-instance för hushåll och stakeholders. Går genom hela flödet från Application till Collateral Registration.',
     given:
       'Två personer (huvudansökande och medsökare) köper sin första gemensamma bostadsrätt. Båda uppfyller alla grundläggande krav (godkända vid pre-screening). Bostadsrätten uppfyller alla kriterier automatiskt: värde ≥ 1.5M SEK, föreningsskuld ≤ 5000 SEK/m², LTV-ratio ≤ 85%, plats är acceptabel (inte riskområde). INGEN befintlig fastighet att sälja. Det finns 2 stakeholders och minst 1 hushåll som ska konfigureras. Testdata: customer-standard-primary, customer-standard-coapplicant, application-commitment-happy, object-bostadsratt-happy, object-info-apartment.',
     when:
-      'Kunden fyller i Application med multi-instance för hushåll och stakeholders (Household → Stakeholder → Object per hushåll). Båda personerna fyller i sin hushållsekonomi och personliga ekonomi. Systemet godkänner Mortgage Commitment automatiskt. Object Valuation hämtar bostadsrättsvärdering. Object Information hämtar BRF-information och screenar bostadsrätten (föreningsskuld, LTV, plats) för hela engagemanget. Credit Evaluation kör multi-instance för alla stakeholders och hushåll och godkänner automatiskt. Båda personerna genomgår KYC (multi-instance per stakeholder) och KYC godkänns automatiskt med självdeklaration. Credit Decision godkänner. Huvudansökande (och ev. medsökare) accepterar Offer. Document Generation genererar dokument för båda. Båda signerar digitalt (multi-instance i Signing). Disbursement genomförs.',
+      'Kunden fyller i Application med multi-instance för hushåll och stakeholders (Household → Stakeholder → Object per hushåll). Båda personerna fyller i sin hushållsekonomi och personliga ekonomi. Systemet godkänner Mortgage Commitment automatiskt. Object Valuation hämtar bostadsrättsvärdering. Object Information hämtar BRF-information och screenar bostadsrätten (föreningsskuld, LTV, plats) för hela engagemanget. Credit Evaluation kör multi-instance för alla stakeholders och hushåll och godkänner automatiskt. Båda personerna genomgår KYC (multi-instance per stakeholder) och KYC godkänns automatiskt med självdeklaration. Credit Decision godkänner. Huvudansökande (och ev. medsökare) accepterar Offer. Document Generation genererar dokument för båda. Båda signerar digitalt (multi-instance i Signing). Disbursement genomförs. Needs collateral registration gateway = Yes. Collateral Registration registrerar säkerhet och handläggaren distribuerar meddelande om panträtt till BRF.',
     then:
-      'Hela processen från Application till Disbursement slutförs utan fel för två sökande. Bostadsrätt är godkänd automatiskt. Alla DMN-beslut returnerar APPROVED. Alla gateway-beslut går genom happy path. Båda personerna är KYC-godkända och inkluderade i kreditevalueringen. Utbetalning är slutförd och dokument är arkiverade. Processen avslutas normalt.',
+      'Hela processen från Application till Collateral Registration slutförs utan fel för två sökande. Bostadsrätt är godkänd automatiskt. Alla DMN-beslut returnerar APPROVED. Alla gateway-beslut går genom happy path. Båda personerna är KYC-godkända och inkluderade i kreditevalueringen. Utbetalning är slutförd och dokument är arkiverade. Säkerheten är registrerad och verifierad. Meddelande om panträtt är distribuerat till BRF. Processen avslutas normalt.',
     notesForBankProject:
       'Detta scenario bygger vidare på E2E_BR001 men testar multi-instance för hushåll, stakeholders, KYC och Credit Evaluation. Alla teststeg nedan är baserade på samma BPMN-noder som E2E_BR001, men med fokus på att båda sökande hanteras korrekt. Implementera UI-interaktioner, API-anrop och assertions så att multi-instance (flere stakeholders/hushåll) täcks i bankens riktiga E2E-tester.',
     bankProjectTestSteps: [
@@ -659,10 +690,22 @@ export const scenarios: E2eScenario[] = [
         bpmnNodeId: 'needs-collateral-registration',
         bpmnNodeType: 'Gateway',
         bpmnNodeName: 'Needs collateral registration?',
-        action: 'Gateway avgör om säkerhetsregistrering behövs.',
-        dmnDecision: 'needs-collateral-registration gateway decision',
-        assertion: 'Gateway returnerar No (ingen säkerhetsregistrering behövs).',
-        backendState: 'Application.needsCollateralRegistration = false',
+        action: 'Gateway avgör om säkerhetsregistrering behövs',
+        dmnDecision: 'needs-collateral-registration gateway decision = Yes',
+        assertion: 'Gateway returnerar Yes (säkerhetsregistrering behövs)',
+        backendState: 'Application.needsCollateralRegistration = true',
+      },
+      {
+        bpmnNodeId: 'collateral-registration',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Collateral registration',
+        action: 'Systemet registrerar säkerhet och handläggaren distribuerar meddelande om panträtt till BRF',
+        uiInteraction:
+          'Navigate: collateral-registration-start. Property type gateway = Bostadsrätt. Navigate: distribute-notice-of-pledge-to-brf. Handläggaren distribuerar meddelande om panträtt till BRF (via post/e-post eller portal). Navigate: verify (om timer event triggas). Handläggaren verifierar registreringen. Is verified? gateway = Yes.',
+        apiCall: 'POST /api/collateral-registration/distribute-notice (distribute-notice-of-pledge-to-brf), POST /api/collateral-registration/verify (verify)',
+        dmnDecision: 'property-type gateway = Bostadsrätt, is-verified gateway = Yes',
+        assertion: 'Säkerheten är registrerad och verifierad. Meddelande om panträtt är distribuerat till BRF. Verifiering är bekräftad.',
+        backendState: 'CollateralRegistration.status = "VERIFIED", CollateralRegistration.propertyType = "BOSTADSRATT", CollateralRegistration.distributed = true, CollateralRegistration.verified = true',
       },
     ],
     subprocessSteps: [
@@ -871,6 +914,25 @@ export const scenarios: E2eScenario[] = [
         userTasksSummary: 'Inga user tasks i disbursement i happy path (helt automatiskt flöde).',
         businessRulesSummary:
           'Event-baserad styrning via Gateway_15wjsxm (disbursement-completed vs disbursement-cancelled).',
+      },
+      {
+        order: 11,
+        bpmnFile: 'mortgage-se-collateral-registration.bpmn',
+        callActivityId: 'collateral-registration',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-collateral-registration-v2.html',
+        description: 'Collateral Registration – Registrering av säkerhet',
+        hasPlaywrightSupport: false,
+        given: 'Lånet har betalats ut (event-loan-paid-out). Säkerhetsregistrering behövs (needs-collateral-registration = Yes). Fastigheten är bostadsrätt. Fastighetsinformation är tillgänglig från Application-processen. Testdata: collateral-registration-bostadsratt-happy.',
+        when: '"Property type" gateway (property-type) avgör "Bostadsrätt". Handläggaren distribuerar meddelande om panträtt till BRF via "Distribute notice of pledge to BRF" user task (distribute-notice-of-pledge-to-brf). "Sammanför flöden" gateway samlar flöden. "Vänta på verifiering" event-based gateway väntar på verifiering. "Verified" message event mottas automatiskt (eller "Wait for system update" timer event triggas och handläggaren verifierar via "Verify" user task). "Is verified?" gateway (is-verified) = Yes.',
+        then: 'Säkerheten är registrerad och verifierad. Meddelande om panträtt är distribuerat till BRF. Verifiering är bekräftad. Processen avslutas normalt. "event-collateral-registration-completed" triggas i huvudprocessen. CollateralRegistration.status = "VERIFIED", CollateralRegistration.propertyType = "BOSTADSRATT", CollateralRegistration.distributed = true, CollateralRegistration.verified = true.',
+        subprocessesSummary:
+          'Inga ytterligare call activities i happy path (enkel subprocess med user tasks och gateways).',
+        serviceTasksSummary:
+          'Inga service tasks i happy path för bostadsrätt (distribution sker via user task).',
+        userTasksSummary:
+          'distribute-notice-of-pledge-to-brf (handläggaren distribuerar meddelande om panträtt till BRF). verify (handläggaren verifierar registreringen om timer event triggas).',
+        businessRulesSummary:
+          'property-type gateway (avgör småhus vs bostadsrätt). is-verified gateway (avgör om verifiering är godkänd).',
       },
     ],
   },

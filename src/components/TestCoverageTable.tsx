@@ -399,11 +399,54 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
     return callActivities;
   };
 
+  // Gruppera kolumner efter groupKey för att kunna merga testinfo-cellerna
+  const groupedColumns = useMemo(() => {
+    const groups = new Map<string, Array<{ colIdx: number; groupedRow: GroupedRow }>>();
+    
+    groupedRows.forEach((groupedRow, colIdx) => {
+      const groupKey = groupedRow.groupKey;
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, []);
+      }
+      groups.get(groupKey)!.push({ colIdx, groupedRow });
+    });
+    
+    // Sortera grupperna efter:
+    // 1. Depth (lägsta subprocess först, sedan uppåt) - så att lägre subprocesser skrivs först
+    // 2. Sedan efter kolumnindex (för att behålla tabellordningen)
+    const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+      const aRow = a[1][0].groupedRow;
+      const bRow = b[1][0].groupedRow;
+      
+      // Om ingen callActivityNode, sätt längst ned (högst depth)
+      if (!aRow.callActivityNode && !bRow.callActivityNode) {
+        // Om båda saknar callActivityNode, sortera efter kolumnindex
+        return a[1][0].colIdx - b[1][0].colIdx;
+      }
+      if (!aRow.callActivityNode) return 1;
+      if (!bRow.callActivityNode) return -1;
+      
+      // Hitta depth för callActivityNode i path:en
+      const aDepth = aRow.pathRow.path.findIndex((n) => n.id === aRow.callActivityNode!.id);
+      const bDepth = bRow.pathRow.path.findIndex((n) => n.id === bRow.callActivityNode!.id);
+      
+      // Sortera efter depth (högre depth = lägre subprocess = kommer först)
+      if (aDepth !== bDepth) {
+        return bDepth - aDepth;
+      }
+      
+      // Om samma depth, sortera efter kolumnindex för att behålla tabellordningen
+      return a[1][0].colIdx - b[1][0].colIdx;
+    });
+    
+    return sortedGroups;
+  }, [groupedRows]);
+
   // Förbered data för transponerad tabell
   // Rader blir: Nivå 0, Nivå 1, ..., Given, When, Then
   // Kolumner blir: Varje path
   const transposedData = useMemo(() => {
-    const rows: Array<Array<{ content: React.ReactNode; backgroundColor?: string }>> = [];
+    const rows: Array<Array<{ content: React.ReactNode; backgroundColor?: string; colspan?: number; skip?: boolean }>> = [];
     
     // Skapa rader för varje nivå + Given/When/Then
     const rowCount = maxDepth + 3; // maxDepth nivåer + Given + When + Then
@@ -479,35 +522,95 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
         }
       }
       
-      // Fyll i Given/When/Then kolumner
+      // För Given/When/Then, vi hanterar dem separat nedan med colspan
+      // Sätt placeholder för nu (kommer att skrivas över)
+      rows[maxDepth].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+      rows[maxDepth + 1].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+      rows[maxDepth + 2].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+    });
+    
+    // Fyll i Given/When/Then med merged cells baserat på groupedColumns
+    groupedColumns.forEach(([groupKey, columns]) => {
+      const firstCol = columns[0];
+      const { callActivityNode, testInfo } = firstCol.groupedRow;
+      const { path } = firstCol.groupedRow.pathRow;
+      const colspan = columns.length;
+      const startColIdx = firstCol.colIdx;
+      
+      // Hämta färg för testinfo-raderna baserat på callActivityNode
+      let testInfoBackgroundColor: string | undefined = undefined;
+      if (callActivityNode && callActivityNode.bpmnElementId) {
+        const callActivityDepth = path.findIndex((n) => n.id === callActivityNode.id);
+        if (callActivityDepth >= 0) {
+          testInfoBackgroundColor = getCallActivityColor(
+            path,
+            callActivityNode.bpmnElementId,
+            callActivityDepth,
+          );
+        }
+      }
+      
       if (testInfo) {
-        // Given
-        rows[maxDepth].push({
+        // Given - skriv över första cellen och sätt colspan
+        rows[maxDepth][startColIdx] = {
           content: renderBulletList(testInfo.subprocessStep.given),
-        });
+          backgroundColor: testInfoBackgroundColor,
+          colspan,
+        };
+        // Markera övriga celler i gruppen som ska hoppas över
+        for (let i = 1; i < colspan; i++) {
+          rows[maxDepth][startColIdx + i] = { content: <></>, skip: true };
+        }
+        
         // When
-        rows[maxDepth + 1].push({
+        rows[maxDepth + 1][startColIdx] = {
           content: renderBulletList(testInfo.subprocessStep.when),
-        });
+          backgroundColor: testInfoBackgroundColor,
+          colspan,
+        };
+        for (let i = 1; i < colspan; i++) {
+          rows[maxDepth + 1][startColIdx + i] = { content: <></>, skip: true };
+        }
+        
         // Then
-        rows[maxDepth + 2].push({
+        rows[maxDepth + 2][startColIdx] = {
           content: renderBulletList(testInfo.subprocessStep.then),
-        });
+          backgroundColor: testInfoBackgroundColor,
+          colspan,
+        };
+        for (let i = 1; i < colspan; i++) {
+          rows[maxDepth + 2][startColIdx + i] = { content: <></>, skip: true };
+        }
       } else {
-        rows[maxDepth].push({
+        // Ingen testinfo - sätt tomma celler med colspan
+        rows[maxDepth][startColIdx] = {
           content: <span className="text-xs text-muted-foreground">–</span>,
-        });
-        rows[maxDepth + 1].push({
+          colspan,
+        };
+        for (let i = 1; i < colspan; i++) {
+          rows[maxDepth][startColIdx + i] = { content: <></>, skip: true };
+        }
+        
+        rows[maxDepth + 1][startColIdx] = {
           content: <span className="text-xs text-muted-foreground">–</span>,
-        });
-        rows[maxDepth + 2].push({
+          colspan,
+        };
+        for (let i = 1; i < colspan; i++) {
+          rows[maxDepth + 1][startColIdx + i] = { content: <></>, skip: true };
+        }
+        
+        rows[maxDepth + 2][startColIdx] = {
           content: <span className="text-xs text-muted-foreground">–</span>,
-        });
+          colspan,
+        };
+        for (let i = 1; i < colspan; i++) {
+          rows[maxDepth + 2][startColIdx + i] = { content: <></>, skip: true };
+        }
       }
     });
     
     return rows;
-  }, [groupedRows, maxDepth, topLevelCallActivities, rowspanByGroup, getCallActivityColor]);
+  }, [groupedRows, maxDepth, topLevelCallActivities, getCallActivityColor, groupedColumns]);
 
   // Skapa rad-headers
   const rowHeaders = useMemo(() => {
@@ -541,15 +644,37 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
               <TableCell className="w-[100px] sticky left-0 bg-background z-10 font-medium">
                 {rowHeaders[rowIdx]}
               </TableCell>
-              {row.map((cell, colIdx) => (
-                <TableCell
-                  key={colIdx}
-                  className="align-top w-[300px]"
-                  style={cell.backgroundColor ? { backgroundColor: cell.backgroundColor } : undefined}
-                >
-                  {cell.content}
-                </TableCell>
-              ))}
+              {row.map((cell, colIdx) => {
+                // Hoppa över celler som är markerade som skip (de är del av en merged cell)
+                if (cell.skip) {
+                  return null;
+                }
+                
+                // Identifiera om detta är en testinfo-rad (Given, When, Then)
+                const isTestInfoRow = rowIdx >= maxDepth;
+                
+                // Kombinera backgroundColor
+                const cellStyle: React.CSSProperties = cell.backgroundColor
+                  ? { backgroundColor: cell.backgroundColor }
+                  : {};
+                
+                return (
+                  <TableCell
+                    key={colIdx}
+                    className="align-top w-[300px]"
+                    style={Object.keys(cellStyle).length > 0 ? cellStyle : undefined}
+                    colSpan={cell.colspan}
+                  >
+                    {isTestInfoRow ? (
+                      <div className="max-h-[150px] overflow-y-auto">
+                        {cell.content}
+                      </div>
+                    ) : (
+                      cell.content
+                    )}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>
