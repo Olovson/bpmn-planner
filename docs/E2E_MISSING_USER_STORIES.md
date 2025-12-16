@@ -8,15 +8,29 @@
 
 ## Noteringar
 
-### Inga noteringar ännu
+### 2025-01-XX - E2E_BR001
 
-Inga saknade user stories har identifierats ännu eftersom vi inte har börjat implementera E2E-tester.
+**E2E-scenario:** E2E-BR-001: En sökande - Bostadsrätt godkänd automatiskt (Happy Path)  
+**Feature Goal:** `public/local-content/feature-goals/mortgage-se-application-stakeholder-v2.html`  
+**Saknas:** UI Flow-tabell för S1 (Normalflöde – komplett process) innehåller bara TODO. Specifika page IDs, locator IDs och navigationssteg saknas för:
+- `consent-to-credit-check` user task
+- `register-personal-economy-information` user task
+- Navigationssteg mellan user tasks
+**Varför:** Behövs för att kunna implementera faktiska Playwright-tester med specifika locators och page IDs.  
+**Föreslagen user story:** Komplettera UI Flow-tabellen med specifika page IDs (t.ex. `/application/stakeholder/consent`, `/application/stakeholder/register-economy`), locator IDs (t.ex. `btn-consent-to-credit-check`, `input-personal-income`, `input-personal-expenses`), och navigationssteg.
 
-**När vi börjar implementera E2E-tester, kommer vi att notera:**
-- Vilket E2E-scenario vi bygger
-- Vilken Feature Goal som saknar user stories
-- Vad som saknas (vilken funktionalitet/scenario)
-- Varför det behövs för E2E-testet
+---
+
+### 2025-01-XX - E2E_BR001
+
+**E2E-scenario:** E2E-BR-001: En sökande - Bostadsrätt godkänd automatiskt (Happy Path)  
+**Feature Goal:** `public/local-content/feature-goals/mortgage-mortgage-commitment-v2.html`  
+**Saknas:** UI Flow-tabell för S1 innehåller TODO för locator IDs och testdata. Specifika locator IDs saknas för:
+- `decide-mortgage-commitment` user task fält
+- Submit-knapp locator
+- Bekräftelsemeddelande locator
+**Varför:** Behövs för att kunna implementera faktiska Playwright-tester med specifika locators.  
+**Föreslagen user story:** Komplettera UI Flow-tabellen med specifika locator IDs (t.ex. `input-mortgage-commitment-decision`, `btn-submit-mortgage-commitment`, `success-message-mortgage-commitment`) och testdata-profil.
 
 ---
 

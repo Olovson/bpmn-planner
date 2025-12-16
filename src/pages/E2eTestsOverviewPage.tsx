@@ -26,7 +26,7 @@ type UserStory = {
 // Alla teststeg här ska vara baserade på faktiska BPMN-noder och Feature Goals
 type BankProjectTestStep = {
   bpmnNodeId: string; // ID från BPMN-filen (t.ex. "internal-data-gathering", "confirm-application")
-  bpmnNodeType: 'UserTask' | 'ServiceTask' | 'BusinessRuleTask' | 'CallActivity' | 'BoundaryEvent';
+  bpmnNodeType: 'UserTask' | 'ServiceTask' | 'BusinessRuleTask' | 'CallActivity' | 'BoundaryEvent' | 'Gateway';
   bpmnNodeName: string; // Namn från BPMN-filen
   action: string; // Vad som händer - baserat på Feature Goal och BPMN-nodens syfte
   uiInteraction?: string; // För UserTask: vad användaren gör i UI (baserat på Feature Goal)
@@ -68,7 +68,51 @@ type E2eScenario = {
     when?: string;
     then?: string;
     linkedUserStories?: number[];
+    subprocessesSummary?: string;
+    serviceTasksSummary?: string;
+    userTasksSummary?: string;
+    businessRulesSummary?: string;
   }[];
+};
+
+const renderBulletList = (text?: string, options?: { isCode?: boolean }) => {
+  if (!text) {
+    return <span className="text-[11px] text-muted-foreground">–</span>;
+  }
+
+  const isCode = options?.isCode ?? false;
+
+  // Dela upp på punkt + mellanslag för långa stycken, men behåll kommatecken inne i satser
+  const rawItems = text
+    .split('. ')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  if (rawItems.length <= 1) {
+    // För korta texter – visa som vanlig paragraf
+    return (
+      <p className={isCode ? 'text-[11px] font-mono break-all whitespace-pre-line' : 'text-[11px] text-muted-foreground whitespace-pre-line'}>
+        {text}
+      </p>
+    );
+  }
+
+  return (
+    <ul className="list-disc ml-4 space-y-1">
+      {rawItems.map((item, idx) => {
+        // Lägg tillbaka punkt på slutet om originaltexten hade det
+        const endsWithDot = text.trim().endsWith('.');
+        const isLast = idx === rawItems.length - 1;
+        const displayText = !isLast && endsWithDot && !item.endsWith('.') ? `${item}.` : item;
+
+        return (
+          <li key={idx} className={isCode ? 'text-[11px] font-mono break-all whitespace-pre-line' : 'text-[11px] text-muted-foreground whitespace-pre-line'}>
+            {displayText}
+          </li>
+        );
+      })}
+    </ul>
+  );
 };
 
 const scenarios: E2eScenario[] = [
@@ -397,9 +441,331 @@ const scenarios: E2eScenario[] = [
     then:
       'Hela processen från Application till Disbursement slutförs utan fel. Bostadsrätt är godkänd automatiskt. Alla DMN-beslut returnerar APPROVED. Alla gateway-beslut går genom happy path. Utbetalning är slutförd och dokument är arkiverade. Processen avslutas normalt.',
     notesForBankProject:
-      'Detta är det enklaste och vanligaste E2E-scenariot - en person, ingen befintlig fastighet, allt godkänns automatiskt. Teststeg och subprocesser kommer att valideras och läggas till stegvis.',
-    bankProjectTestSteps: [],
-    subprocessSteps: [],
+      'Detta är det enklaste och vanligaste E2E-scenariot - en person, ingen befintlig fastighet, allt godkänns automatiskt. Alla teststeg nedan är baserade på faktiska BPMN-noder från mortgage.bpmn och Feature Goals, direkt användbara i bankprojektet. Implementera UI-interaktioner, API-anrop och assertions enligt era faktiska integrationer.',
+    bankProjectTestSteps: [
+      {
+        bpmnNodeId: 'application',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Application',
+        action: 'Kunden fyller i komplett ansökan (intern data, objekt, hushåll, stakeholder)',
+        uiInteraction:
+          'Navigate: application-start (nav-application). Navigate: household (/application/household). Navigate: register-household-economy (/application/household/register). Fill: expenses-cars-loans (bilar + billån), expenses-children (barn), expenses-child-support (underhållsbidrag), expenses-other (andra utgifter), incomes-child-support (underhållsbidrag), incomes-other (andra inkomster). Click: submit-button. Verify: success-message. Navigate: stakeholders (nav-stakeholders) → stakeholder (nav-stakeholder). Navigate: register-personal-economy-information (/application/stakeholder/personal-economy). Fill: input-personal-income (löner, andra inkomster), input-personal-expenses (boende, transport, andra utgifter). Click: btn-submit-personal-economy. Verify: success-message. Navigate: object (nav-object). Select: select-property-type (Bostadsrätt). Fill: input-property-valuation. Click: btn-submit-object. Navigate: confirm-application (nav-confirm-application). Verify: summary-all-data (visar intern data, hushåll, stakeholder, objekt). Click: btn-confirm-application. Verify: success-message (ansökan bekräftad).',
+        apiCall: 'GET /api/party/information (fetch-party-information), GET /api/party/engagements (fetch-engagements), GET /api/stakeholder/personal-information (fetch-personal-information), POST /api/valuation/property (valuate-property), POST /api/application/kalp, POST /api/application/fetch-credit-information',
+        dmnDecision: 'Pre-screen Party DMN = APPROVED, Evaluate Bostadsrätt DMN = APPROVED, Screen KALP DMN = APPROVED',
+        assertion: 'Ansökan är komplett och redo för kreditevaluering. All data är insamlad (intern data, hushåll, stakeholder, objekt). Pre-screen Party DMN returnerar APPROVED. KALP-beräkning är högre än ansökt belopp.',
+        backendState: 'Application.status = "COMPLETE", Application.readyForEvaluation = true, Application.allDataCollected = true',
+      },
+      {
+        bpmnNodeId: 'is-purchase',
+        bpmnNodeType: 'Gateway',
+        bpmnNodeName: 'Is purchase?',
+        action: 'Gateway avgör om ansökan är för köp',
+        dmnDecision: 'is-purchase gateway decision',
+        assertion: 'Gateway returnerar Yes (köp)',
+        backendState: 'Application.purpose = "PURCHASE"',
+      },
+      {
+        bpmnNodeId: 'mortgage-commitment',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Mortgage commitment',
+        action: 'Systemet godkänner mortgage commitment automatiskt och kund fattar beslut',
+        uiInteraction:
+          'Navigate: decide-on-mortgage-commitment (/mortgage-commitment/decide). Review: credit-evaluation-1 approved (visas i UI). Fill: input-mortgage-commitment-decision (välj "Won bidding round / Interested in object"). Click: btn-submit-mortgage-commitment. Verify: decide-on-mortgage-commitment-confirmation (success-message).',
+        apiCall: 'GET /api/object/brf-information (fetch-brf-information), POST /api/mortgage-commitment/decision',
+        dmnDecision: 'mortgage-commitment-decision gateway = "Won bidding round / Interested in object", is-object-approved = Yes, is-terms-approved = Yes, won-bidding-round = Yes',
+        assertion: 'Mortgage commitment är godkänd automatiskt. Kund har vunnit budgivning. Objekt är godkänt. Inga villkor har ändrats. Processen avslutas normalt.',
+        backendState: 'MortgageCommitment.status = "APPROVED", MortgageCommitment.wonBiddingRound = true, MortgageCommitment.objectApproved = true, MortgageCommitment.termsChanged = false',
+      },
+      {
+        bpmnNodeId: 'object-valuation',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Object valuation',
+        action: 'Systemet hämtar bostadsrättsvärdering',
+        apiCall: 'GET /api/valuation/bostadsratt/{objectId}',
+        assertion: 'Värdering är hämtad och sparad',
+        backendState: 'Object.valuation.complete = true, Object.valuation.value >= 1500000',
+      },
+      {
+        bpmnNodeId: 'credit-evaluation',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Automatic Credit Evaluation',
+        action: 'Systemet utvärderar kredit automatiskt',
+        apiCall: 'POST /api/pricing/price (fetch-price), POST /api/stacc/affordability (calculate-household-affordability), GET /api/credit/personal-information (fetch-credit-information), POST /api/risk/classification (fetch-risk-classification), POST /api/credit-evaluation',
+        assertion: 'Kreditevaluering är godkänd automatiskt',
+        backendState: 'CreditEvaluation.status = "APPROVED", CreditEvaluation.automaticallyApproved = true',
+      },
+      {
+        bpmnNodeId: 'is-automatically-approved',
+        bpmnNodeType: 'Gateway',
+        bpmnNodeName: 'Automatically approved?',
+        action: 'Gateway avgör om ansökan kan godkännas automatiskt',
+        dmnDecision: 'is-automatically-approved gateway decision',
+        assertion: 'Gateway returnerar Yes (auto-approved)',
+        backendState: 'Application.automaticallyApproved = true',
+      },
+      {
+        bpmnNodeId: 'kyc',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'KYC',
+        action: 'Systemet genomför KYC-screening automatiskt med självdeklaration',
+        uiInteraction:
+          'Navigate: kyc-start (nav-kyc). Navigate: submit-self-declaration. Fill: input-pep-status (No), input-source-of-funds (standard: lön, försäljning fastighet), input-purpose-of-transaction. Click: btn-submit-declaration. Verify: success-message-kyc-approved.',
+        apiCall: 'GET /api/kyc/{customerId}, POST /api/kyc/aml-risk-score, POST /api/kyc/sanctions-pep-screening, POST /api/dmn/evaluate-kyc-aml',
+        dmnDecision: 'evaluate-kyc-aml (DMN: table-bisnode-credit, table-own-experience) = APPROVED, gateway-needs-review = No',
+        assertion: 'KYC är godkänd automatiskt med självdeklaration. Självdeklaration är skickad. AML/KYC riskpoäng <30, ingen PEP/sanktionsmatch. Evaluate KYC/AML DMN returnerar APPROVED. Needs review = No (auto-approved). Processen avslutas normalt.',
+        backendState: 'KYC.status = "APPROVED", KYC.needsReview = false, KYC.amlRiskScore < 30, KYC.pepMatch = false, KYC.sanctionsMatch = false, KYC.selfDeclarationSubmitted = true',
+      },
+      {
+        bpmnNodeId: 'credit-decision',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Credit decision',
+        action: 'Systemet fattar kreditbeslut',
+        apiCall: 'POST /api/credit-decision',
+        assertion: 'Kreditbeslut är godkänt',
+        backendState: 'CreditDecision.status = "APPROVED"',
+      },
+      {
+        bpmnNodeId: 'is-credit-approved',
+        bpmnNodeType: 'Gateway',
+        bpmnNodeName: 'Credit approved?',
+        action: 'Gateway avgör om kredit är godkänd',
+        dmnDecision: 'is-credit-approved gateway decision',
+        assertion: 'Gateway returnerar Yes (credit approved)',
+        backendState: 'CreditDecision.approved = true',
+      },
+      {
+        bpmnNodeId: 'offer',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Offer preparation',
+        action: 'Systemet förbereder erbjudande och kunden accepterar',
+        uiInteraction:
+          'Navigate: offer-start. Navigate: decide-offer (user task). Review: offer-details (validera lånebelopp, kontonummer, datum). Click: offer-decision-accept (Accept offer button). Verify: success-message (erbjudande accepterat).',
+        apiCall: 'GET /api/offer/{applicationId}, POST /api/offer/accept',
+        dmnDecision: 'sales-contract-assessed = Yes (för happy path), offer-decision gateway = "Accept offer"',
+        assertion: 'Erbjudande är accepterat. Kunden har bekräftat lånebelopp, kontonummer, datum och villkor. Offer decision gateway = "Accept offer". Processen fortsätter till Document generation.',
+        backendState: 'Offer.status = "ACCEPTED", Offer.decision = "ACCEPT", Offer.contractAssessed = true, Offer.loanAmount = validated, Offer.accountNumber = validated, Offer.dates = validated',
+      },
+      {
+        bpmnNodeId: 'document-generation',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Document generation',
+        action: 'Systemet genererar lånedokument',
+        apiCall: 'POST /api/document-generation/prepare-loan (prepare-loan), POST /api/document-generation/generate-documents (generate-documents)',
+        assertion: 'Dokument är genererade',
+        backendState: 'DocumentGeneration.status = "COMPLETE", DocumentGeneration.documents.length > 0',
+      },
+      {
+        bpmnNodeId: 'signing',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Signing',
+        action: 'Kunden signerar dokument digitalt',
+        uiInteraction:
+          'Navigate: signing-start. Select: signing-methods = Digital. Navigate: per-digital-document-package (multi-instance per dokumentpaket). Navigate: per-signee (multi-instance per signatär). Navigate: per-sign-order (multi-instance per signeringsorder). Sign: digital-signature (PADES). Verify: signing-completed success.',
+        apiCall: 'POST /api/signing/upload-document, POST /api/signing/create-sign-order, POST /api/signing/digital-signature (PADES), POST /api/signing/store-signed-document',
+        dmnDecision: 'signing-methods gateway = Digital (inclusive gateway, för happy path)',
+        assertion: 'Dokument är signerade digitalt (PADES) och sparade. Alla dokumentpaket, signatärer och signeringsorder är signerade. Signeringsorder är skapade i Signing provider datastore.',
+        backendState: 'Signing.status = "COMPLETE", Signing.allDocumentsSigned = true, Signing.method = "DIGITAL", Signing.signatureType = "PADES", Signing.allSignOrdersComplete = true',
+      },
+      {
+        bpmnNodeId: 'disbursement',
+        bpmnNodeType: 'CallActivity',
+        bpmnNodeName: 'Disbursement',
+        action: 'Systemet genomför utbetalning och arkiverar dokument',
+        apiCall: 'POST /api/disbursement/handle (handle-disbursement), POST /api/disbursement/archive-documents (archive-documents)',
+        assertion: 'Utbetalning är slutförd och dokument är arkiverade',
+        backendState: 'Disbursement.status = "COMPLETE", Disbursement.documentsArchived = true',
+      },
+      {
+        bpmnNodeId: 'needs-collateral-registration',
+        bpmnNodeType: 'Gateway',
+        bpmnNodeName: 'Needs collateral registration?',
+        action: 'Gateway avgör om säkerhetsregistrering behövs',
+        dmnDecision: 'needs-collateral-registration gateway decision',
+        assertion: 'Gateway returnerar No (ingen säkerhetsregistrering behövs)',
+        backendState: 'Application.needsCollateralRegistration = false',
+      },
+    ],
+    subprocessSteps: [
+      {
+        order: 1,
+        bpmnFile: 'mortgage-se-application.bpmn',
+        callActivityId: 'application',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-application-v2.html',
+        description: 'Application – Komplett ansökan med en person',
+        hasPlaywrightSupport: false,
+        given: 'En person ansöker om bolån för köp. Personen uppfyller alla grundläggande krav (godkänd vid pre-screening via Pre-screen Party DMN). Fastigheten är bostadsrätt och uppfyller bankens krav (godkänd vid bedömning via Evaluate Bostadsrätt DMN). Testdata: customer-standard.',
+        when: 'Kunden navigerar till ansökningsstart (nav-application). Systemet hämtar automatiskt befintlig kunddata via GET /api/party/information (fetch-party-information) och GET /api/party/engagements (fetch-engagements) och visar den för kunden med visuell markering av auto-ifyllda fält. Kunden navigerar till hushållsekonomi (/application/household → /application/household/register) och fyller i expenses-cars-loans (bilar + billån), expenses-children (barn), expenses-child-support (underhållsbidrag), expenses-other (andra utgifter), incomes-child-support (underhållsbidrag), incomes-other (andra inkomster) och bekräftar (submit-button). Systemet hämtar personlig information för stakeholder via GET /api/stakeholder/personal-information (fetch-personal-information). Kunden navigerar till personlig ekonomi (/application/stakeholder/personal-economy) och fyller i input-personal-income (löner, andra inkomster), input-personal-expenses (boende, transport, andra utgifter) och bekräftar (btn-submit-personal-economy). Kunden navigerar till objekt (nav-object), väljer objekttyp (select-property-type: Bostadsrätt) och anger värdering (input-property-valuation). Systemet värderar fastigheten via POST /api/valuation/property (valuate-property). Systemet beräknar automatiskt maximalt lånebelopp via POST /api/application/kalp och screenar resultatet (Screen KALP DMN = APPROVED). Kunden navigerar till sammanfattning (nav-confirm-application), granskar all information (summary-all-data: visar intern data, hushåll, stakeholder, objekt) och bekräftar ansökan (btn-confirm-application). Systemet hämtar kreditinformation automatiskt via POST /api/application/fetch-credit-information.',
+        then: 'Ansökan är komplett och redo för kreditevaluering. All data är insamlad (intern data, hushåll, stakeholder, objekt). Pre-screen Party DMN returnerar APPROVED. Screen KALP DMN returnerar APPROVED. KALP-beräkning är högre än ansökt belopp. Backend state: Application.status = "COMPLETE", Application.readyForEvaluation = true, Application.allDataCollected = true. Processen avslutas normalt (Event_0j4buhs) och ansökan är redo för kreditevaluering.',
+        subprocessesSummary:
+          'internal-data-gathering (CallActivity → mortgage-se-internal-data-gathering.bpmn). stakeholder (CallActivity → mortgage-se-stakeholder.bpmn). household (CallActivity → mortgage-se-household.bpmn). object (CallActivity → mortgage-se-object.bpmn). confirm-application (UserTask).',
+        serviceTasksSummary:
+          'fetch-party-information (internal-data-gathering). fetch-engagements (internal-data-gathering). fetch-personal-information (stakeholder). valuate-property (object). KALP (application). fetch-credit-information (application).',
+        userTasksSummary:
+          'register-household-economy-information (Household – kunden fyller i hushållsekonomi). register-personal-economy-information (Stakeholder – kunden fyller i personlig ekonomi). confirm-application (kunden bekräftar ansökan).',
+        businessRulesSummary:
+          'Pre-screen Party DMN (förhandsbedömning av kund). Evaluate Bostadsrätt DMN (bedömning av objekt). Screen KALP DMN (bedömning av KALP-resultat).',
+      },
+      {
+        order: 2,
+        bpmnFile: 'mortgage-se-mortgage-commitment.bpmn',
+        callActivityId: 'mortgage-commitment',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-mortgage-commitment-v2.html',
+        description: 'Mortgage Commitment – Kund vinner budgivning',
+        hasPlaywrightSupport: false,
+        given: 'Ansökan är klar för köp-engagemang. Objekt är inte utvärderat. Testdata: application-commitment-happy.',
+        when: 'Automatic Credit Evaluation (credit-evaluation-1) godkänner. "Is mortgage commitment approved?" gateway (is-mortgage-commitment-approved) = Yes. "Mortgage commitment ready" message event triggas. Kund fattar beslut (decide-mortgage-commitment user task). "Mortgage commitment decision?" gateway (mortgage-commitment-decision) = "Won bidding round / Interested in object". "Is object evaluated?" gateway (is-object-evaluated) = No. Object information samlas (object-information call activity, fetch-brf-information service task). "Object rejected?" gateway (is-object-approved) = No (objekt godkänt). "Has terms changed?" gateway (has-terms-changed) = No. "Is terms approved?" gateway (is-terms-approved) = Yes. "Won bidding round?" gateway (won-bidding-round) = Yes.',
+        then: 'Processen avslutas normalt (Event_0az10av). Går vidare till Credit evaluation. MortgageCommitment.status = "APPROVED", MortgageCommitment.wonBiddingRound = true, MortgageCommitment.objectApproved = true.',
+        subprocessesSummary:
+          'credit-evaluation-1 (CallActivity → mortgage-se-credit-evaluation.bpmn). object-information (CallActivity → mortgage-se-object-information.bpmn).',
+        serviceTasksSummary:
+          'fetch-brf-information (object-information – hämtar BRF-information för objektet).',
+        userTasksSummary:
+          'decide-mortgage-commitment (kunden fattar beslut om köpintresse/bud). won-bidding-round (UserTask – markera vinst i budgivningen).',
+        businessRulesSummary:
+          'Gateways: is-mortgage-commitment-approved, is-object-evaluated, is-object-approved, has-terms-changed, is-terms-approved, won-bidding-round (styr flödet i subprocessen).',
+      },
+      {
+        order: 3,
+        bpmnFile: 'mortgage-se-object-valuation.bpmn',
+        callActivityId: 'object-valuation',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-object-valuation-v2.html',
+        description: 'Object Valuation – Hämtar bostadsrättsvärdering',
+        hasPlaywrightSupport: false,
+        given: 'Objekt är bostadsrätt. Extern tjänst (Bostadsrätt valuation service) är tillgänglig. Testdata: object-bostadsratt-happy.',
+        when: '"Object type" gateway (object-type) identifierar objektet som bostadsrätt. "Fetch bostadsrätts-valuation" service task (fetch-bostadsratts-valuation) hämtar värdering från Bostadsrätt valuation service datastore (DataStoreReference_1cdjo60).',
+        then: 'Värdering sparas i datastoren. Gateway_0f8c0ne sammanstrålar flödet. Processen avslutas normalt (process-end-event). Värdering returneras till huvudprocessen. Object.valuation.complete = true, Object.valuation.value >= 1500000.',
+        subprocessesSummary: 'Inga ytterligare call activities i happy path (ren servicetask-baserad subprocess).',
+        serviceTasksSummary:
+          'fetch-fastighets-valuation (för småhus). fetch-bostadsratts-valuation (för bostadsrätt – används i detta scenario).',
+        userTasksSummary: 'Inga user tasks i denna subprocess i happy path.',
+        businessRulesSummary:
+          'object-type gateway (avgör typ av objekt: småhus vs bostadsrätt).',
+      },
+      {
+        order: 4,
+        bpmnFile: 'mortgage-se-credit-evaluation.bpmn',
+        callActivityId: 'credit-evaluation',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-credit-evaluation-v2.html',
+        description: 'Credit Evaluation – Automatisk kreditevaluering',
+        hasPlaywrightSupport: false,
+        given: 'Automatic Credit Evaluation-processen startar. Ansökan har 1 stakeholder, 1 hushåll. Kreditinformation behövs inte. Testdata: application-standard-credit-evaluation.',
+        when: '"Select product" business rule task (select-product) väljer produkt. "Fetch price" service task (fetch-price) hämtar prissättning från Pricing engine. "Determine amortisation" business rule task (determine-amortisation) beräknar amortering. "For each stakeholder" multi-instance (loop-stakeholder): "Needs updated Credit information?" gateway (needs-updated-credit-information) = No. "For each household" multi-instance (loop-household): "Calculate household affordability" service task (calculate-household-affordability) beräknar affordability via Stacc API. "Fetch risk classification" service task (fetch-risk-classification) hämtar riskklassificering. "Evaluate application" business rule task (evaluate-application) utvärderar ansökan. "Evaluate credit policies" business rule task (evaluate-credit-policies) utför policyutvärdering.',
+        then: 'Alla steg lyckas. Processen avslutas normalt (process-end-event). Resultat returneras till anropande processen. CreditEvaluation.status = "APPROVED", CreditEvaluation.automaticallyApproved = true.',
+        subprocessesSummary:
+          'loop-stakeholder (multi-instance per stakeholder). loop-household (multi-instance per hushåll).',
+        serviceTasksSummary:
+          'fetch-price (hämtar pris från Pricing engine). calculate-household-affordability (beräknar hushållsaffordability via Stacc). fetch-risk-classification (hämtar riskklassificering). fetch-credit-information (hämtar kreditinformation när det behövs).',
+        userTasksSummary: 'Inga user tasks i Automatic Credit Evaluation i happy path (ren STP-process).',
+        businessRulesSummary:
+          'select-product (BusinessRuleTask, DMN). determine-amortisation (BusinessRuleTask, DMN). evaluate-application (BusinessRuleTask, DMN). evaluate-credit-policies (BusinessRuleTask, DMN). needs-updated-credit-information gateway (avgör om kreditinformation ska hämtas).',
+      },
+      {
+        order: 5,
+        bpmnFile: 'mortgage-se-kyc.bpmn',
+        callActivityId: 'kyc',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-kyc-v2.html',
+        description: 'KYC – Godkänd automatiskt med självdeklaration',
+        hasPlaywrightSupport: false,
+        given: 'Ny kund utan befintlig KYC-data. Låg AML-risk, ingen PEP/sanktionsmatch. Testdata: customer-standard.',
+        when: '"KYC questions needed?" gateway (kyc-questions-needed) = Yes. "Fetch KYC" service task (fetch-kyc) hittar ingen befintlig data. Självdeklaration skickas (submit-self-declaration user task: PEP-status = No, källa till medel = standard, syfte = köp bostadsrätt). "Fetch AML / KYC risk score" service task (fetch-aml-kyc-risk) hämtar riskpoäng (< 30). "Fetch sanctions and PEP" service task (fetch-screening-and-sanctions) hämtar screening (ingen match). "Evaluate KYC/AML" business rule task (assess-kyc-aml) godkänner via DMN (table-bisnode-credit, table-own-experience).',
+        then: '"Needs review?" gateway (needs-review) = No. Processen avslutas normalt (process-end-event). KYC godkänd automatiskt. KYC.status = "APPROVED", KYC.needsReview = false, KYC.amlRiskScore < 30, KYC.pepMatch = false, KYC.sanctionsMatch = false.',
+        subprocessesSummary: 'Inga ytterligare call activities i happy path (enkel KYC-subprocess).',
+        serviceTasksSummary:
+          'fetch-kyc (hämtar befintlig KYC-data). fetch-aml-kyc-risk (hämtar AML/KYC-riskpoäng). fetch-screening-and-sanctions (hämtar PEP/sanktionsscreening).',
+        userTasksSummary:
+          'submit-self-declaration (kunden fyller i självdeklaration kring PEP, källa till medel, syfte).',
+        businessRulesSummary:
+          'assess-kyc-aml (BusinessRuleTask/DMN – table-bisnode-credit, table-own-experience). kyc-questions-needed gateway. needs-review gateway.',
+      },
+      {
+        order: 6,
+        bpmnFile: 'mortgage-se-credit-decision.bpmn',
+        callActivityId: 'credit-decision',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-credit-decision-v2.html',
+        description: 'Credit Decision – Kreditbeslut godkänt',
+        hasPlaywrightSupport: false,
+        given: 'Credit decision-processen startar. Ansökan har låg risk. KYC är godkänd. Kreditevaluering är godkänd. Testdata: credit-decision-low-risk.',
+        when: '"Determine decision escalation" business rule task (determine-decision-escalation) utvärderar ansökan. "Decision criteria?" gateway (decision-criteria) = Straight through (automatiskt godkännande).',
+        then: 'Gateway_1lhswyt (Final Decision) samlar ihop resultatet. Processen avslutas normalt (process-end-event). Godkänt beslut returneras till anropande processen. CreditDecision.status = "APPROVED".',
+        subprocessesSummary: 'Inga ytterligare subprocesser i happy path (enkel beslutsprocess).',
+        serviceTasksSummary: 'Inga rena service tasks i denna subprocess i happy path.',
+        userTasksSummary: 'Inga user tasks i denna subprocess i happy path (STP-baserat beslut).',
+        businessRulesSummary:
+          'determine-decision-escalation (BusinessRuleTask, DMN). decision-criteria gateway (avgör Straight through vs Four eyes).',
+      },
+      {
+        order: 7,
+        bpmnFile: 'mortgage-se-offer.bpmn',
+        callActivityId: 'offer',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-offer-v2.html',
+        description: 'Offer – Erbjudande accepterat',
+        hasPlaywrightSupport: false,
+        given: 'Köpekontrakt är redan bedömt. Erbjudande är redo. Kreditbeslut är godkänt. Testdata: offer-contract-assessed-happy.',
+        when: '"Sales contract assessed?" gateway (sales-contract-assessed) = Yes. Processen hoppar över kontraktuppladdning. "Decide on offer" user task (decide-offer) aktiveras. Kunden accepterar erbjudandet (validerar lånebelopp, kontonummer, datum).',
+        then: '"Decision" gateway (offer-decision) = "Accept offer". Processen avslutas normalt (process-end-event). Går vidare till Document Generation. Offer.status = "ACCEPTED", Offer.decision = "ACCEPT".',
+        subprocessesSummary:
+          'Sales contract flow (upload/assessment) finns som alternativt flöde men används inte i denna happy path (sales-contract-assessed = Yes).',
+        serviceTasksSummary: 'Inga dedikerade service tasks i happy path (kontrakt redan bedömt).',
+        userTasksSummary:
+          'decide-offer (kunden granskar erbjudande och accepterar – belopp, kontonummer, datum).',
+        businessRulesSummary:
+          'sales-contract-assessed gateway (avgör om kontraktflöde ska köras). offer-decision gateway (Accept offer / Avvisa).',
+      },
+      {
+        order: 8,
+        bpmnFile: 'mortgage-se-document-generation.bpmn',
+        callActivityId: 'document-generation',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-document-generation-v2.html',
+        description: 'Document Generation – Genererar lånedokument',
+        hasPlaywrightSupport: false,
+        given: 'Document generation-processen startar. Låneansökan för köp, offer accepterad. Testdata: document-generation-standard.',
+        when: '"Prepare loan" service task (Activity_1qsvac1) förbereder lånet med all nödvändig information (loan parts, loan numbers, party-information, objektinformation). "Select documents" business rule task (select-documents) väljer 3 dokumenttyper via DMN-beslutsregler. "Generate Document" service task (generate-documents, multi-instance) genererar alla 3 dokument parallellt. Dokument sparas till Document generation service data store (DataStoreReference_1px1m7r).',
+        then: 'Alla 3 dokument genererade och lagrade. Processen avslutas normalt (Event_1vwpr3l). Dokument tillgängliga för signering. DocumentGeneration.status = "COMPLETE", DocumentGeneration.documents.length > 0.',
+        subprocessesSummary: 'Multi-instance över dokumentuppsättningar via generate-documents (ingen separat call activity i happy path).',
+        serviceTasksSummary:
+          'prepare-loan (Activity_1qsvac1 – förbereder lånet). generate-documents (multi-instance – genererar alla dokument).',
+        userTasksSummary: 'Inga user tasks i document-generation i happy path.',
+        businessRulesSummary:
+          'select-documents (BusinessRuleTask, DMN – väljer dokumentuppsättning beroende på scenario).',
+      },
+      {
+        order: 9,
+        bpmnFile: 'mortgage-se-signing.bpmn',
+        callActivityId: 'signing',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-signing-v2.html',
+        description: 'Signing – Digital signering',
+        hasPlaywrightSupport: false,
+        given: 'Signing-processen startar. Digital signering väljs. Ett dokumentpaket, en signee, en sign order. Signing provider är tillgänglig. Dokument är genererade. Testdata: signing-digital-happy.',
+        when: '"Signing methods?" gateway (signing-methods) avgör "Digital" (inclusive gateway). "Per digital document package" subprocess (per-digital-document-package, multi-instance) laddar upp dokument (upload-document service task) och skapar signeringsorder (create-signing-order service task). "Per signee" subprocess (per-signee, multi-instance) notifierar signee. "Per sign order" subprocess (per-sign-order, multi-instance) väntar på "Task completed" message event (Event_18v8q1a). "Sign order status" gateway (sign-order-status) avgör "Completed". "Store signed documents" service task (store-signed-document) lagrar dokument med PADES-signatur.',
+        then: 'Processen avslutas normalt (Event_0lxhh2n). Signing.status = "COMPLETE", Signing.allDocumentsSigned = true, Signing.method = "DIGITAL", Signing.signatureType = "PADES".',
+        subprocessesSummary:
+          'per-digital-document-package (multi-instance per dokumentpaket). per-signee (multi-instance per signee). per-sign-order (multi-instance per sign order).',
+        serviceTasksSummary:
+          'upload-document (laddar upp dokument till signeringsleverantör). create-signing-order (skapar signeringsorder). store-signed-document (lagrar signerade dokument).',
+        userTasksSummary:
+          'Digital signering sker via extern signeringslösning (ingen explicit BPMN-UserTask i huvudprocessen, men användaren signerar i signeringsflödet).',
+        businessRulesSummary:
+          'signing-methods gateway (avgör Digital vs Manual). sign-order-status gateway (Completed vs övriga status).',
+      },
+      {
+        order: 10,
+        bpmnFile: 'mortgage-se-disbursement.bpmn',
+        callActivityId: 'disbursement',
+        featureGoalFile: 'public/local-content/feature-goals/mortgage-se-disbursement-v2.html',
+        description: 'Disbursement – Utbetalning och arkivering',
+        hasPlaywrightSupport: false,
+        given: 'Disbursement-processen startar. Signering är klar. Dokument är signerade. Testdata: disbursement-standard.',
+        when: '"Handle disbursement" service task (handle-disbursement) genomför utbetalning via Core system data store. Event-based gateway (Gateway_15wjsxm) väntar på event. "Disbursement completed" message event (disbursement-completed) triggas från Core system. "Archive documents" service task (archive-documents) arkiverar dokument till Document archive service.',
+        then: 'Utbetalning är slutförd. Dokument är arkiverade. Processen avslutas normalt (Event_0gubmbi). "event-loan-paid-out" triggas i huvudprocessen. Disbursement.status = "COMPLETE", Disbursement.documentsArchived = true.',
+        subprocessesSummary:
+          'Event-based gateway (Gateway_15wjsxm) som väntar på disbursement events (completed/cancelled).',
+        serviceTasksSummary:
+          'handle-disbursement (genomför utbetalning via Core system). archive-documents (arkiverar dokument).',
+        userTasksSummary: 'Inga user tasks i disbursement i happy path (helt automatiskt flöde).',
+        businessRulesSummary:
+          'Event-baserad styrning via Gateway_15wjsxm (disbursement-completed vs disbursement-cancelled).',
+      },
+    ],
   },
 ];
 
@@ -737,24 +1103,36 @@ const E2eTestsOverviewPage = () => {
                                 <TableHead>BPMN‑fil</TableHead>
                                 <TableHead>Feature Goal</TableHead>
                                 <TableHead>Beskrivning</TableHead>
-                                <TableHead className="min-w-[120px]">Given</TableHead>
-                                <TableHead className="min-w-[120px]">When</TableHead>
-                                <TableHead className="min-w-[120px]">Then</TableHead>
+                                <TableHead className="min-w-[140px]">Given</TableHead>
+                                <TableHead className="min-w-[140px]">When</TableHead>
+                                <TableHead className="min-w-[140px]">Then</TableHead>
+                                <TableHead className="min-w-[140px]">UI‑interaktion</TableHead>
+                                <TableHead className="min-w-[140px]">API‑anrop / DMN</TableHead>
+                                <TableHead className="min-w-[140px]">Assertion</TableHead>
+                                <TableHead className="min-w-[140px]">Backend‑tillstånd</TableHead>
+                                <TableHead className="min-w-[140px]">Subprocesser</TableHead>
+                                <TableHead className="min-w-[140px]">Service tasks</TableHead>
+                                <TableHead className="min-w-[140px]">User tasks</TableHead>
+                                <TableHead className="min-w-[140px]">Business rules / DMN</TableHead>
                                 <TableHead>Playwright‑stöd</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {s.subprocessSteps.map((step) => {
                                 const rowId = `${s.id}-step-${step.order}`;
+                                const aggregatedStep =
+                                  s.bankProjectTestSteps?.find(
+                                    (testStep) => testStep.bpmnNodeId === step.callActivityId
+                                  ) ?? null;
                                 return (
                                   <TableRow key={rowId}>
-                                    <TableCell className="text-xs text-muted-foreground">
+                                    <TableCell className="text-xs text-muted-foreground align-top">
                                       {step.order}
                                     </TableCell>
-                                    <TableCell className="text-xs font-mono">
+                                    <TableCell className="text-xs font-mono align-top">
                                       {step.bpmnFile}
                                     </TableCell>
-                                    <TableCell className="text-xs">
+                                    <TableCell className="text-xs align-top">
                                       {step.featureGoalFile ? (
                                         <code className="text-[11px] font-mono break-all">
                                           {step.featureGoalFile}
@@ -763,33 +1141,57 @@ const E2eTestsOverviewPage = () => {
                                         <span className="text-[11px] text-muted-foreground">–</span>
                                       )}
                                     </TableCell>
-                                    <TableCell className="text-xs">{step.description}</TableCell>
-                                    <TableCell className="text-xs">
-                                      {step.given ? (
-                                        <p className="text-[11px] text-muted-foreground whitespace-pre-line">
-                                          {step.given}
-                                        </p>
-                                      ) : (
-                                        <span className="text-[11px] text-muted-foreground">–</span>
-                                      )}
+                                    <TableCell className="text-xs align-top">{step.description}</TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {step.given ? renderBulletList(step.given) : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs">
-                                      {step.when ? (
-                                        <p className="text-[11px] text-muted-foreground whitespace-pre-line">
-                                          {step.when}
-                                        </p>
-                                      ) : (
-                                        <span className="text-[11px] text-muted-foreground">–</span>
-                                      )}
+                                    <TableCell className="text-xs align-top">
+                                      {step.when ? renderBulletList(step.when) : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
-                                    <TableCell className="text-xs">
-                                      {step.then ? (
-                                        <p className="text-[11px] text-muted-foreground whitespace-pre-line">
-                                          {step.then}
-                                        </p>
-                                      ) : (
-                                        <span className="text-[11px] text-muted-foreground">–</span>
-                                      )}
+                                    <TableCell className="text-xs align-top">
+                                      {step.then ? renderBulletList(step.then) : <span className="text-[11px] text-muted-foreground">–</span>}
+                                    </TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {aggregatedStep?.uiInteraction
+                                        ? renderBulletList(aggregatedStep.uiInteraction)
+                                        : <span className="text-[11px] text-muted-foreground">–</span>}
+                                    </TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {aggregatedStep?.apiCall
+                                        ? renderBulletList(aggregatedStep.apiCall, { isCode: true })
+                                        : aggregatedStep?.dmnDecision
+                                        ? renderBulletList(`DMN: ${aggregatedStep.dmnDecision}`, { isCode: true })
+                                        : <span className="text-[11px] text-muted-foreground">–</span>}
+                                    </TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {aggregatedStep?.assertion
+                                        ? renderBulletList(aggregatedStep.assertion)
+                                        : <span className="text-[11px] text-muted-foreground">–</span>}
+                                    </TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {aggregatedStep?.backendState
+                                        ? renderBulletList(aggregatedStep.backendState, { isCode: true })
+                                        : <span className="text-[11px] text-muted-foreground">–</span>}
+                                    </TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {step.subprocessesSummary
+                                        ? renderBulletList(step.subprocessesSummary)
+                                        : <span className="text-[11px] text-muted-foreground">–</span>}
+                                    </TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {step.serviceTasksSummary
+                                        ? renderBulletList(step.serviceTasksSummary, { isCode: true })
+                                        : <span className="text-[11px] text-muted-foreground">–</span>}
+                                    </TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {step.userTasksSummary
+                                        ? renderBulletList(step.userTasksSummary)
+                                        : <span className="text-[11px] text-muted-foreground">–</span>}
+                                    </TableCell>
+                                    <TableCell className="text-xs align-top">
+                                      {step.businessRulesSummary
+                                        ? renderBulletList(step.businessRulesSummary)
+                                        : <span className="text-[11px] text-muted-foreground">–</span>}
                                     </TableCell>
                                     <TableCell className="text-xs">
                                       {step.hasPlaywrightSupport ? (
@@ -816,103 +1218,17 @@ const E2eTestsOverviewPage = () => {
                       <div className="grid gap-3 md:grid-cols-3">
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-muted-foreground">Given</p>
-                          <p className="text-xs whitespace-pre-line">{s.given}</p>
+                          <div className="text-xs">{renderBulletList(s.given)}</div>
                         </div>
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-muted-foreground">When</p>
-                          <p className="text-xs whitespace-pre-line">{s.when}</p>
+                          <div className="text-xs">{renderBulletList(s.when)}</div>
                         </div>
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-muted-foreground">Then</p>
-                          <p className="text-xs whitespace-pre-line">{s.then}</p>
+                          <div className="text-xs">{renderBulletList(s.then)}</div>
                         </div>
                       </div>
-
-                      {/* Vad som faktiskt behöver testas i bankprojektet (baserat på BPMN-noder) */}
-                      {s.bankProjectTestSteps && s.bankProjectTestSteps.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">
-                            Teststeg för bankprojektet (baserat på faktiska BPMN-noder)
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Dessa teststeg är direkt användbara i bankprojektet. Varje steg är baserat på faktiska BPMN-noder från{' '}
-                            <code className="font-mono">{s.bpmnProcess}</code> och Feature Goals.
-                          </p>
-                          <div className="overflow-x-auto max-w-full">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="min-w-[100px]">BPMN‑nod</TableHead>
-                                  <TableHead className="min-w-[80px]">Typ</TableHead>
-                                  <TableHead className="min-w-[200px]">Action</TableHead>
-                                  <TableHead className="min-w-[150px]">UI‑interaktion</TableHead>
-                                  <TableHead className="min-w-[150px]">API‑anrop / DMN</TableHead>
-                                  <TableHead className="min-w-[200px]">Assertion</TableHead>
-                                  <TableHead className="min-w-[150px]">Backend‑tillstånd</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {s.bankProjectTestSteps.map((testStep, idx) => (
-                                  <TableRow key={`${s.id}-teststep-${idx}`}>
-                                    <TableCell className="text-xs">
-                                      <div className="flex flex-col gap-1">
-                                        <code className="text-[11px] font-mono">{testStep.bpmnNodeId}</code>
-                                        <span className="text-[10px] text-muted-foreground">{testStep.bpmnNodeName}</span>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-xs">
-                                      <Badge variant="outline" className="text-[10px]">
-                                        {testStep.bpmnNodeType}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-xs">
-                                      <p className="text-[11px] text-muted-foreground whitespace-pre-line">
-                                        {testStep.action}
-                                      </p>
-                                    </TableCell>
-                                    <TableCell className="text-xs">
-                                      {testStep.uiInteraction ? (
-                                        <p className="text-[11px] text-muted-foreground whitespace-pre-line">
-                                          {testStep.uiInteraction}
-                                        </p>
-                                      ) : (
-                                        <span className="text-[11px] text-muted-foreground">–</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-xs">
-                                      {testStep.apiCall ? (
-                                        <code className="text-[11px] font-mono break-all whitespace-pre-line">
-                                          {testStep.apiCall}
-                                        </code>
-                                      ) : testStep.dmnDecision ? (
-                                        <code className="text-[11px] font-mono break-all">
-                                          DMN: {testStep.dmnDecision}
-                                        </code>
-                                      ) : (
-                                        <span className="text-[11px] text-muted-foreground">–</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-xs">
-                                      <p className="text-[11px] text-muted-foreground whitespace-pre-line">
-                                        {testStep.assertion}
-                                      </p>
-                                    </TableCell>
-                                    <TableCell className="text-xs">
-                                      {testStep.backendState ? (
-                                        <code className="text-[11px] font-mono break-all whitespace-pre-line">
-                                          {testStep.backendState}
-                                        </code>
-                                      ) : (
-                                        <span className="text-[11px] text-muted-foreground">–</span>
-                                      )}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </div>
-                      )}
 
                       <div className="space-y-1">
                         <p className="text-sm font-medium">
