@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { getProcessNodeStyle } from '@/lib/processTree';
 import type { E2eScenario } from '@/pages/E2eTestsOverviewPage';
+import { sortCallActivities } from '@/lib/ganttDataConverter';
 
 interface TestCoverageTableProps {
   tree: ProcessTreeNode;
@@ -95,13 +96,57 @@ function flattenToPaths(
     const testInfoByCallActivity = buildTestInfoMap(newPath, scenarios, selectedScenarioId);
     rows.push({ path: newPath, testInfoByCallActivity });
   } else {
-    // Annars, fortsätt rekursivt med alla barn
-    for (const child of node.children) {
+    // Sortera barnen baserat på ProcessTree-ordningen (samma som Process Explorer)
+    const sortedChildren = sortCallActivities(node.children);
+    // Annars, fortsätt rekursivt med alla barn (i sorterad ordning)
+    for (const child of sortedChildren) {
       rows.push(...flattenToPaths(child, scenarios, selectedScenarioId, newPath));
     }
   }
 
   return rows;
+}
+
+// Sortera paths baserat på ProcessTree-ordningen (samma logik som Process Explorer)
+function sortPathsByProcessTreeOrder(pathRows: PathRow[]): PathRow[] {
+  return [...pathRows].sort((a, b) => {
+    // Jämför paths nivå för nivå
+    const minLength = Math.min(a.path.length, b.path.length);
+    
+    for (let i = 0; i < minLength; i++) {
+      const nodeA = a.path[i];
+      const nodeB = b.path[i];
+      
+      // Om samma nod, fortsätt till nästa nivå
+      if (nodeA.id === nodeB.id) {
+        continue;
+      }
+      
+      // Sortera baserat på visualOrderIndex, orderIndex, branchId, label (samma som sortCallActivities)
+      const aVisual = nodeA.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+      const bVisual = nodeB.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+      if (aVisual !== bVisual) {
+        return aVisual - bVisual;
+      }
+      
+      const aOrder = nodeA.orderIndex ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = nodeB.orderIndex ?? Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      
+      if (nodeA.branchId !== nodeB.branchId) {
+        if (nodeA.branchId === 'main') return -1;
+        if (nodeB.branchId === 'main') return 1;
+        return (nodeA.branchId || '').localeCompare(nodeB.branchId || '');
+      }
+      
+      return nodeA.label.localeCompare(nodeB.label);
+    }
+    
+    // Om en path är kortare än den andra, den kortare kommer först
+    return a.path.length - b.path.length;
+  });
 }
 
 const renderBulletList = (text?: string) => {
@@ -132,11 +177,12 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
   // Beräkna max djup för att veta hur många kolumner vi behöver
   const maxDepth = useMemo(() => calculateMaxDepth(tree), [tree]);
 
-  // Flattena trädet till paths
-  const pathRows = useMemo(
-    () => flattenToPaths(tree, scenarios, selectedScenarioId),
-    [tree, scenarios, selectedScenarioId],
-  );
+  // Flattena trädet till paths och sortera baserat på ProcessTree-ordningen
+  const pathRows = useMemo(() => {
+    const rows = flattenToPaths(tree, scenarios, selectedScenarioId);
+    // Sortera paths baserat på ProcessTree-ordningen (samma som Process Explorer)
+    return sortPathsByProcessTreeOrder(rows);
+  }, [tree, scenarios, selectedScenarioId]);
 
   // Bygg en set över alla callActivityIds som faktiskt har entries i subprocessSteps
   const callActivityIdsWithTestInfo = useMemo(() => {
@@ -196,14 +242,47 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
       });
     });
 
-    // Sortera grupper så att alla rader med samma groupKey är sammanhängande
-    // Detta är nödvändigt för att rowspan ska fungera korrekt
+    // Sortera grupper baserat på path:ens faktiska ordning (samma som Process Explorer)
+    // Men gruppera rader med samma groupKey tillsammans för rowspan
     groups.sort((a, b) => {
-      if (a.groupKey !== b.groupKey) {
-        return a.groupKey.localeCompare(b.groupKey);
+      // Jämför paths nivå för nivå (samma logik som sortPathsByProcessTreeOrder)
+      const pathA = a.pathRow.path;
+      const pathB = b.pathRow.path;
+      const minLength = Math.min(pathA.length, pathB.length);
+      
+      for (let i = 0; i < minLength; i++) {
+        const nodeA = pathA[i];
+        const nodeB = pathB[i];
+        
+        // Om samma nod, fortsätt till nästa nivå
+        if (nodeA.id === nodeB.id) {
+          continue;
+        }
+        
+        // Sortera baserat på visualOrderIndex, orderIndex, branchId, label (samma som sortCallActivities)
+        const aVisual = nodeA.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+        const bVisual = nodeB.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+        if (aVisual !== bVisual) {
+          return aVisual - bVisual;
+        }
+        
+        const aOrder = nodeA.orderIndex ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = nodeB.orderIndex ?? Number.MAX_SAFE_INTEGER;
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+        
+        if (nodeA.branchId !== nodeB.branchId) {
+          if (nodeA.branchId === 'main') return -1;
+          if (nodeB.branchId === 'main') return 1;
+          return (nodeA.branchId || '').localeCompare(nodeB.branchId || '');
+        }
+        
+        return nodeA.label.localeCompare(nodeB.label);
       }
-      // Om samma groupKey, behåll ursprunglig ordning (baserat på path)
-      return 0;
+      
+      // Om en path är kortare än den andra, den kortare kommer först
+      return pathA.length - pathB.length;
     });
 
     return groups;
@@ -232,6 +311,54 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
     return [...hierarchyHeaders, 'Given', 'When', 'Then'];
   }, [maxDepth]);
 
+  // Generera bakgrundsfärg för varje callActivity
+  // Lägre subprocesser får ljus färg, högre processer som innehåller dem får starkare version
+  const callActivityColors = useMemo(() => {
+    const colorMap = new Map<string, string>();
+    const baseColors = [
+      { r: 59, g: 130, b: 246 },   // Blå
+      { r: 16, g: 185, b: 129 },   // Smaragd
+      { r: 245, g: 158, b: 11 },   // Gul
+      { r: 239, g: 68, b: 68 },    // Röd
+      { r: 139, g: 92, b: 246 },    // Lila
+      { r: 236, g: 72, b: 153 },    // Rödrosa
+      { r: 14, g: 165, b: 233 },    // Kornblå
+      { r: 34, g: 197, b: 94 },     // Grön
+    ];
+
+    // Samla alla callActivities från alla paths
+    const allCallActivities = new Set<string>();
+    pathRows.forEach((pathRow) => {
+      pathRow.path.forEach((node) => {
+        if (node.type === 'callActivity' && node.bpmnElementId) {
+          allCallActivities.add(node.bpmnElementId);
+        }
+      });
+    });
+
+    // Ge varje callActivity en unik färg
+    let colorIndex = 0;
+    allCallActivities.forEach((callActivityId) => {
+      const baseColor = baseColors[colorIndex % baseColors.length];
+      // Lägre subprocesser får ljus färg (0.08 opacity)
+      colorMap.set(callActivityId, `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, 0.08)`);
+      colorIndex++;
+    });
+
+    return colorMap;
+  }, [pathRows]);
+
+  // Hjälpfunktion för att hitta alla callActivities i en path och deras hierarkiska relationer
+  const getCallActivitiesInPath = (path: ProcessTreeNode[]): Array<{ node: ProcessTreeNode; depth: number }> => {
+    const callActivities: Array<{ node: ProcessTreeNode; depth: number }> = [];
+    path.forEach((node, index) => {
+      if (node.type === 'callActivity' && node.bpmnElementId) {
+        callActivities.push({ node, depth: index });
+      }
+    });
+    return callActivities;
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full caption-bottom text-sm" style={{ minWidth: 'max-content' }}>
@@ -257,6 +384,19 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
               shownGroupsRef.current.add(groupKey);
             }
 
+            // Hitta alla callActivities i denna path
+            const callActivitiesInPath = getCallActivitiesInPath(path);
+            
+            // Hitta den lägsta callActivity (närmast leaf-noden) för att bestämma basfärgen
+            const lowestCallActivity = callActivitiesInPath.length > 0 
+              ? callActivitiesInPath[callActivitiesInPath.length - 1] 
+              : null;
+            
+            // Hämta basfärg för den lägsta callActivity
+            const baseColor = lowestCallActivity?.node.bpmnElementId 
+              ? callActivityColors.get(lowestCallActivity.node.bpmnElementId)
+              : undefined;
+
             return (
               <TableRow key={rowKey}>
                 {/* Hierarki-kolumner */}
@@ -271,16 +411,35 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
                   }
 
                   const nodeStyle = getProcessNodeStyle(node.type);
-                  const isCallActivity =
-                    callActivityNode &&
-                    node.type === 'callActivity' &&
-                    node.bpmnElementId === callActivityNode.bpmnElementId;
+                  
+                  // Hämta bakgrundsfärg för denna cell
+                  let cellBackgroundColor: string | undefined = undefined;
+                  
+                  if (baseColor) {
+                    // Kolla om denna nod är en callActivity
+                    if (node.type === 'callActivity' && node.bpmnElementId) {
+                      // Om detta är den lägsta callActivity, använd ljus version
+                      if (node.bpmnElementId === lowestCallActivity?.node.bpmnElementId) {
+                        cellBackgroundColor = baseColor; // Ljus version (0.08 opacity)
+                      } else {
+                        // Om detta är en högre callActivity som innehåller den lägsta, använd starkare version
+                        const rgbaMatch = baseColor.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+                        if (rgbaMatch) {
+                          const [, r, g, b] = rgbaMatch;
+                          cellBackgroundColor = `rgba(${r}, ${g}, ${b}, 0.15)`; // Starkare version
+                        }
+                      }
+                    } else {
+                      // Om detta inte är en callActivity, använd basfärgen (tillhör den lägsta callActivity)
+                      cellBackgroundColor = baseColor;
+                    }
+                  }
 
                   return (
                     <TableCell
                       key={colIdx}
                       className="align-top"
-                      style={isCallActivity ? { backgroundColor: 'rgba(59, 130, 246, 0.1)' } : undefined}
+                      style={cellBackgroundColor ? { backgroundColor: cellBackgroundColor } : undefined}
                     >
                       <div className="flex items-center gap-2">
                         <div
@@ -331,8 +490,10 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
                       <span className="text-xs text-muted-foreground">–</span>
                     </TableCell>
                   </>
-                ) : null
-                // Om testInfo finns men inte är första i gruppen: rendera inga celler (rowspan hanterar detta)
+                ) : (
+                  // Om testInfo finns men inte är första i gruppen: rendera inga celler (rowspan hanterar detta)
+                  null
+                )}
               </TableRow>
             );
           })}
