@@ -213,7 +213,7 @@ async function main() {
 
     console.log('✅ Analys klar!');
     console.log('\n💡 För detaljerad analys med BPMN-filer, använd kvalitetsvalideringssidan:');
-    console.log('   http://localhost:8080/e2e-quality-validation');
+    console.log('   http://localhost:8080jag/e2e-quality-validation');
 
   } catch (error) {
     console.error('❌ Fel vid analys:', error);

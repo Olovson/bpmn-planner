@@ -191,7 +191,44 @@ const renderBulletList = (text?: string, options?: { isCode?: boolean }) => {
 };
 
 // Konvertera nodtyp till läsbart namn
-const getNodeTypeLabel = (type: string): string => {
+// Hjälpfunktion för att avgöra om en User Task är kund- eller handläggaraktivitet
+const isCustomerUserTask = (node: ProcessTreeNode): boolean => {
+  if (node.type !== 'userTask') {
+    return false; // Inte relevant för andra typer
+  }
+
+  const label = (node.label || '').toLowerCase();
+
+  // Nyckelord som tydligt indikerar interna/handläggar-uppgifter
+  const internalKeywords = [
+    'review',
+    'granska',
+    'assess',
+    'utvärdera',
+    'advanced-underwriting',
+    'board',
+    'committee',
+    'four eyes',
+    'four-eyes',
+    'manual',
+    'distribute',
+    'distribuera',
+    'archive',
+    'arkivera',
+    'verify',
+    'handläggare',
+  ];
+
+  // Om den matchar interna ord → behandla som intern/backoffice
+  if (internalKeywords.some((keyword) => label.includes(keyword))) {
+    return false;
+  }
+
+  // Default: kund- eller stakeholder-interaktion (t.ex. "register ...", "consent to credit check" osv.)
+  return true;
+};
+
+const getNodeTypeLabel = (node: ProcessTreeNode): string => {
   const typeMap: Record<string, string> = {
     process: 'Process',
     callActivity: 'Call Activity',
@@ -202,7 +239,16 @@ const getNodeTypeLabel = (type: string): string => {
     gateway: 'Gateway',
     boundaryEvent: 'Boundary Event',
   };
-  return typeMap[type] || type.charAt(0).toUpperCase() + type.slice(1).replace(/([A-Z])/g, ' $1');
+  
+  const baseLabel = typeMap[node.type] || node.type.charAt(0).toUpperCase() + node.type.slice(1).replace(/([A-Z])/g, ' $1');
+  
+  // För User Tasks, lägg till (kund) eller (handläggare)
+  if (node.type === 'userTask') {
+    const isCustomer = isCustomerUserTask(node);
+    return `${baseLabel} (${isCustomer ? 'kund' : 'handläggare'})`;
+  }
+  
+  return baseLabel;
 };
 
 interface GroupedRow {
@@ -548,8 +594,8 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
                     {node.bpmnFile}
                   </div>
                   {isLeafNode ? (
-                    <div className="text-xs text-muted-foreground truncate" title={getNodeTypeLabel(node.type)}>
-                      {getNodeTypeLabel(node.type)}
+                    <div className="text-xs text-muted-foreground truncate" title={getNodeTypeLabel(node)}>
+                      {getNodeTypeLabel(node)}
                     </div>
                   ) : (
                     node.bpmnElementId && (

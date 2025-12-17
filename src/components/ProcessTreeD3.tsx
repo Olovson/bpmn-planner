@@ -47,6 +47,47 @@ const getColorForNodeType = (type: ProcessNodeType): string => {
   return getProcessNodeStyle(type).hexColor;
 };
 
+// Färgkonfiguration för User Tasks beroende på om de är kund/stakeholder-nära eller interna
+const CUSTOMER_USER_TASK_COLOR = '#DC2626'; // röd – kund/stakeholder-interaktion
+const INTERNAL_USER_TASK_COLOR = '#7F1D1D'; // mörkare röd – interna/backoffice-uppgifter
+
+// Heuristik: avgör om en User Task sannolikt involverar kunden/stakeholders baserat på namnet.
+// Grundidé:
+// - Default för User Tasks = kund/stakeholder (ljusröd)
+// - Om namnet tydligt signalerar handläggare/backoffice ("review", "assess", "manual", "distribute" etc.) = intern (mörkröd)
+const isCustomerFacingUserTask = (node: ProcessTreeNode): boolean => {
+  if (node.type !== 'userTask') return false;
+  const label = (node.label || '').toLowerCase();
+
+  // Nyckelord som tydligt indikerar interna/handläggar-uppgifter
+  const internalKeywords = [
+    'review',
+    'granska',
+    'assess',
+    'utvärdera',
+    'advanced-underwriting',
+    'board',
+    'committee',
+    'four eyes',
+    'four-eyes',
+    'manual',
+    'distribute',
+    'distribuera',
+    'archive',
+    'arkivera',
+    'verify',
+    'handläggare',
+  ];
+
+  // Om den matchar interna ord → behandla som intern/backoffice
+  if (internalKeywords.some((keyword) => label.includes(keyword))) {
+    return false;
+  }
+
+  // Default: kund- eller stakeholder-interaktion (t.ex. "register ...", "consent to credit check" osv.)
+  return true;
+};
+
 const getLegendItems = () => {
   // DMN Decision finns i modellen men vi visar den inte i legenden ännu.
   const order: ProcessNodeType[] = ['process', 'callActivity', 'userTask', 'serviceTask', 'businessRuleTask'];
@@ -681,6 +722,14 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
       .attr('r', (d: any) => ((d.data as any)._hasChildren ? 12 : 8))
       .attr('fill', (d: any) => {
         const data = d.data as ProcessTreeNode;
+
+        // User Tasks: särskilj kund/stakeholder-uppgifter från interna/backoffice-uppgifter
+        if (data.type === 'userTask') {
+          return isCustomerFacingUserTask(data)
+            ? CUSTOMER_USER_TASK_COLOR
+            : INTERNAL_USER_TASK_COLOR;
+        }
+
         // Special highlight: ServiceTasks configured to use bankens integrationskälla
         if (data.type === 'serviceTask' && data.bpmnFile && data.bpmnElementId) {
           const useStacc = useStaccIntegration(data.bpmnFile, data.bpmnElementId);
@@ -689,6 +738,7 @@ export const ProcessTreeD3 = forwardRef<ProcessTreeD3Api, ProcessTreeD3Props>(({
             return '#22c55e';
           }
         }
+
         return getColorForNodeType(data.type);
       })
       .attr('stroke', (d: any) => {
