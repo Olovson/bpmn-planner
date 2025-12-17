@@ -152,7 +152,214 @@ export default function TestCoverageExplorerPage() {
     return Math.max(currentDepth + 1, ...childDepths);
   };
 
-  // Export-funktion
+  // Export-funktion - exporterar som HTML med exakt samma formatering
+  const exportToHtml = () => {
+    if (!tree) return;
+
+    try {
+      // Hämta tabellens DOM-element
+      const tableElement = document.querySelector('table.table-fixed');
+      if (!tableElement) {
+        toast({
+          title: 'Export misslyckades',
+          description: 'Kunde inte hitta tabellen på sidan',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Klona tabellen för att behålla alla styles
+      const clonedTable = tableElement.cloneNode(true) as HTMLElement;
+      
+      // Kopiera alla inline styles från originaltabellen
+      const copyStyles = (source: Element, target: Element) => {
+        if (source instanceof HTMLElement && target instanceof HTMLElement) {
+          const computedStyle = window.getComputedStyle(source);
+          const styleProps = ['backgroundColor', 'color', 'fontSize', 'fontWeight', 'padding', 'textAlign', 'verticalAlign', 'border', 'width', 'minWidth', 'maxHeight', 'overflowY', 'overflow'];
+          
+          styleProps.forEach((prop) => {
+            const value = computedStyle.getPropertyValue(prop);
+            if (value && value !== 'none' && value !== 'normal') {
+              // Konvertera camelCase till kebab-case för CSS
+              const cssProp = prop.replace(/([A-Z])/g, '-$1').toLowerCase();
+              target.style.setProperty(cssProp, value);
+            }
+          });
+          
+          // Kopiera inline style attribute om det finns (detta har högst prioritet)
+          if (source.getAttribute('style')) {
+            const existingStyle = target.getAttribute('style') || '';
+            target.setAttribute('style', existingStyle + '; ' + source.getAttribute('style'));
+          }
+        }
+        
+        // Rekursivt kopiera för barn
+        const sourceChildren = Array.from(source.children);
+        const targetChildren = Array.from(target.children);
+        sourceChildren.forEach((sourceChild, index) => {
+          if (targetChildren[index]) {
+            copyStyles(sourceChild, targetChildren[index]);
+          }
+        });
+      };
+      
+      copyStyles(tableElement, clonedTable);
+      
+      // Se till att alla div-element inuti testinfo-cellerna får rätt max-height
+      // Hitta alla rader som är Given, When, eller Then (de är på index maxDepth, maxDepth+1, maxDepth+2)
+      const maxDepth = calculateMaxDepth(tree);
+      const tbody = clonedTable.querySelector('tbody');
+      if (tbody) {
+        const rows = Array.from(tbody.children);
+        // Given, When, Then rader är de sista tre raderna
+        const testInfoRowIndices = [rows.length - 3, rows.length - 2, rows.length - 1];
+        
+        testInfoRowIndices.forEach((rowIndex) => {
+          if (rowIndex >= 0 && rows[rowIndex]) {
+            const cells = Array.from(rows[rowIndex].children);
+            cells.forEach((cell) => {
+              const divs = cell.querySelectorAll('div');
+              divs.forEach((div) => {
+                // Sätt max-height och overflow-y om de inte redan är satta
+                const divEl = div as HTMLElement;
+                if (!divEl.style.maxHeight || divEl.style.maxHeight === 'none') {
+                  divEl.style.setProperty('max-height', '150px');
+                  divEl.style.setProperty('overflow-y', 'auto');
+                }
+              });
+            });
+          }
+        });
+      }
+
+      // Hämta valt scenario-namn
+      const selectedScenario = e2eScenarios.find((s) => s.id === selectedScenarioId);
+      const scenarioName = selectedScenario ? `${selectedScenario.id} – ${selectedScenario.name}` : '';
+
+      // Skapa komplett HTML-dokument
+      const htmlContent = `<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Coverage - ${scenarioName}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #1f2937;
+      background: #ffffff;
+      padding: 20px;
+    }
+    .header {
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .table-container {
+      overflow-x: auto;
+      width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 8px 12px;
+      text-align: left;
+      border: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f9fafb;
+      font-weight: 600;
+    }
+    /* Testinfo-cellerna (Given, When, Then) ska ha max-höjd */
+    td > div {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    td > div ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    td > div li {
+      margin-bottom: 4px;
+    }
+    @media print {
+      body {
+        padding: 0;
+      }
+      .header {
+        page-break-after: avoid;
+      }
+      table {
+        page-break-inside: auto;
+      }
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Test Coverage Explorer</h1>
+    <p><strong>Scenario:</strong> ${scenarioName}</p>
+    <p><strong>Exporterad:</strong> ${format(new Date(), 'yyyy-MM-dd HH:mm')}</p>
+  </div>
+  <div class="table-container">
+    ${clonedTable.outerHTML}
+  </div>
+</body>
+</html>`;
+
+      // Skapa blob och ladda ner
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const timestamp = format(new Date(), 'yyyy-MM-dd_HHmm');
+      link.download = `test-coverage_${timestamp}.html`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Export slutförd',
+        description: `Tabellen exporterad som HTML`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Export misslyckades',
+        description: error instanceof Error ? error.message : 'Ett fel uppstod vid export',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Export-funktion - exporterar i transponerad struktur (samma som tabellen)
   const exportToExcel = () => {
     if (!tree) return;
 
@@ -206,9 +413,7 @@ export default function TestCoverageExplorerPage() {
       });
 
       // Sortera grupper baserat på path:ens faktiska ordning (samma som Process Explorer)
-      // Men gruppera rader med samma groupKey tillsammans för rowspan
       groupedRows.sort((a, b) => {
-        // Jämför paths nivå för nivå (samma logik som sortPathsByProcessTreeOrder)
         const pathA = a.pathRow.path;
         const pathB = b.pathRow.path;
         const minLength = Math.min(pathA.length, pathB.length);
@@ -217,12 +422,10 @@ export default function TestCoverageExplorerPage() {
           const nodeA = pathA[i];
           const nodeB = pathB[i];
 
-          // Om samma nod, fortsätt till nästa nivå
           if (nodeA.id === nodeB.id) {
             continue;
           }
 
-          // Sortera baserat på visualOrderIndex, orderIndex, branchId, label (samma som sortCallActivities)
           const aVisual = nodeA.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
           const bVisual = nodeB.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
           if (aVisual !== bVisual) {
@@ -244,73 +447,242 @@ export default function TestCoverageExplorerPage() {
           return nodeA.label.localeCompare(nodeB.label);
         }
 
-        // Om en path är kortare än den andra, den kortare kommer först
         return pathA.length - pathB.length;
       });
 
-      // Beräkna rowspan för varje grupp
-      const rowspanByGroup = new Map<string, number>();
-      groupedRows.forEach((group) => {
-        const count = rowspanByGroup.get(group.groupKey) || 0;
-        rowspanByGroup.set(group.groupKey, count + 1);
+      // Identifiera toppnivå-callActivities för färgning
+      const topLevelCallActivities = new Map<string, { node: ProcessTreeNode; colorIndex: number }>();
+      const baseColors = [
+        { r: 59, g: 130, b: 246 },   // Blå
+        { r: 16, g: 185, b: 129 },   // Smaragd
+        { r: 245, g: 158, b: 11 },   // Gul
+        { r: 239, g: 68, b: 68 },    // Röd
+        { r: 139, g: 92, b: 246 },    // Lila
+        { r: 236, g: 72, b: 153 },    // Rödrosa
+        { r: 14, g: 165, b: 233 },    // Kornblå
+        { r: 34, g: 197, b: 94 },     // Grön
+      ];
+
+      pathRows.forEach((pathRow) => {
+        if (pathRow.path.length > 1) {
+          const level1Node = pathRow.path[1];
+          if (level1Node.type === 'callActivity' && level1Node.bpmnElementId) {
+            if (!topLevelCallActivities.has(level1Node.bpmnElementId)) {
+              topLevelCallActivities.set(level1Node.bpmnElementId, {
+                node: level1Node,
+                colorIndex: topLevelCallActivities.size,
+              });
+            }
+          }
+        }
       });
 
-      // Förbered data för export
-      const exportData: any[] = [];
-      const shownGroups = new Set<string>();
-
-      groupedRows.forEach((groupedRow) => {
-        const { pathRow, testInfo, groupKey } = groupedRow;
-        const { path } = pathRow;
-        const isFirstInGroup = !shownGroups.has(groupKey);
-        if (isFirstInGroup) {
-          shownGroups.add(groupKey);
+      // Hjälpfunktion för att hitta toppnivå-callActivity
+      const findTopLevelCallActivity = (path: ProcessTreeNode[], callActivityId: string, depth: number): string | null => {
+        if (depth === 1) {
+          return callActivityId;
         }
+        if (path.length > 1) {
+          const level1Node = path[1];
+          if (level1Node.type === 'callActivity' && level1Node.bpmnElementId) {
+            return level1Node.bpmnElementId;
+          }
+        }
+        return null;
+      };
 
-        const row: any = {};
+      // Hjälpfunktion för att hitta alla callActivities i en path
+      const getCallActivitiesInPath = (path: ProcessTreeNode[]): Array<{ node: ProcessTreeNode; depth: number }> => {
+        const callActivities: Array<{ node: ProcessTreeNode; depth: number }> = [];
+        path.forEach((node, index) => {
+          if (node.type === 'callActivity' && node.bpmnElementId) {
+            callActivities.push({ node, depth: index });
+          }
+        });
+        return callActivities;
+      };
 
-        // Hierarki-kolumner
-        for (let i = 0; i < maxDepth; i++) {
-          const node = path[i];
+      // Hjälpfunktion för att få färg
+      const getCallActivityColor = (
+        path: ProcessTreeNode[],
+        callActivityId: string,
+        depth: number,
+      ): string | undefined => {
+        const topLevelId = findTopLevelCallActivity(path, callActivityId, depth);
+        if (!topLevelId) return undefined;
+        
+        const topLevelInfo = topLevelCallActivities.get(topLevelId);
+        if (!topLevelInfo) return undefined;
+        
+        const baseColor = baseColors[topLevelInfo.colorIndex % baseColors.length];
+        
+        let opacity = 0.08;
+        if (depth === 1) opacity = 0.15;
+        else if (depth === 2) opacity = 0.12;
+        else if (depth === 3) opacity = 0.10;
+        
+        return `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${opacity})`;
+      };
+
+      // Gruppera kolumner efter groupKey för att hantera merged cells
+      const groupedColumns = new Map<string, Array<{ colIdx: number; groupedRow: typeof groupedRows[0] }>>();
+      groupedRows.forEach((groupedRow, colIdx) => {
+        const groupKey = groupedRow.groupKey;
+        if (!groupedColumns.has(groupKey)) {
+          groupedColumns.set(groupKey, []);
+        }
+        groupedColumns.get(groupKey)!.push({ colIdx, groupedRow });
+      });
+
+      // Förbered transponerad data (rader = Nivå 0, Nivå 1, ..., Given, When, Then; kolumner = paths)
+      const exportRows: Array<Array<{ value: string; backgroundColor?: string }>> = [];
+      const rowCount = maxDepth + 3; // maxDepth nivåer + Given + When + Then
+
+      // Initiera rader
+      for (let i = 0; i < rowCount; i++) {
+        exportRows.push([]);
+      }
+
+      // Fyll i data för varje kolumn (path)
+      groupedRows.forEach((groupedRow, colIdx) => {
+        const { pathRow, callActivityNode, testInfo } = groupedRow;
+        const { path } = pathRow;
+
+        // Fyll i hierarki-kolumner (Nivå 0, Nivå 1, etc.)
+        for (let level = 0; level < maxDepth; level++) {
+          const node = path[level];
+          let backgroundColor: string | undefined = undefined;
+
           if (node) {
-            row[`Nivå ${i}`] = node.label || '';
-            row[`Nivå ${i} - BPMN Fil`] = node.bpmnFile || '';
-            row[`Nivå ${i} - Element ID`] = node.bpmnElementId || '';
+            if (node.type === 'callActivity' && node.bpmnElementId) {
+              backgroundColor = getCallActivityColor(path, node.bpmnElementId, level);
+            } else {
+              const callActivitiesInPath = getCallActivitiesInPath(path);
+              if (callActivitiesInPath.length > 0) {
+                const nearestCallActivity = callActivitiesInPath
+                  .filter((ca) => ca.depth < level)
+                  .sort((a, b) => b.depth - a.depth)[0];
+                
+                if (nearestCallActivity && nearestCallActivity.node.bpmnElementId) {
+                  backgroundColor = getCallActivityColor(
+                    path,
+                    nearestCallActivity.node.bpmnElementId,
+                    nearestCallActivity.depth,
+                  );
+                }
+              }
+            }
+
+            const nodeLabel = node.label || '';
+            exportRows[level].push({ value: nodeLabel, backgroundColor });
           } else {
-            row[`Nivå ${i}`] = '';
-            row[`Nivå ${i} - BPMN Fil`] = '';
-            row[`Nivå ${i} - Element ID`] = '';
+            exportRows[level].push({ value: '' });
           }
         }
 
-        // Test-information (bara på första raden i gruppen)
-        if (isFirstInGroup && testInfo) {
-          row['Given'] = testInfo.subprocessStep.given || '';
-          row['When'] = testInfo.subprocessStep.when || '';
-          row['Then'] = testInfo.subprocessStep.then || '';
-        } else {
-          row['Given'] = '';
-          row['When'] = '';
-          row['Then'] = '';
+        // Fyll i Given/When/Then
+        let testInfoBackgroundColor: string | undefined = undefined;
+        if (callActivityNode && callActivityNode.bpmnElementId) {
+          const callActivityDepth = path.findIndex((n) => n.id === callActivityNode.id);
+          if (callActivityDepth >= 0) {
+            testInfoBackgroundColor = getCallActivityColor(
+              path,
+              callActivityNode.bpmnElementId,
+              callActivityDepth,
+            );
+          }
         }
 
-        exportData.push(row);
+        if (testInfo) {
+          exportRows[maxDepth].push({
+            value: testInfo.subprocessStep.given || '',
+            backgroundColor: testInfoBackgroundColor,
+          });
+          exportRows[maxDepth + 1].push({
+            value: testInfo.subprocessStep.when || '',
+            backgroundColor: testInfoBackgroundColor,
+          });
+          exportRows[maxDepth + 2].push({
+            value: testInfo.subprocessStep.then || '',
+            backgroundColor: testInfoBackgroundColor,
+          });
+        } else {
+          exportRows[maxDepth].push({ value: '' });
+          exportRows[maxDepth + 1].push({ value: '' });
+          exportRows[maxDepth + 2].push({ value: '' });
+        }
+      });
+
+      // Konvertera till Excel-format
+      const excelData: any[][] = [];
+      
+      // Rad-header (första kolumnen)
+      const rowHeaders = Array.from({ length: maxDepth }, (_, i) => `Nivå ${i}`);
+      rowHeaders.push('Given', 'When', 'Then');
+
+      // Kolumn-headers (första raden)
+      const headerRow: any[] = ['Rad'];
+      groupedRows.forEach((groupedRow) => {
+        const leafNode = groupedRow.pathRow.path[groupedRow.pathRow.path.length - 1];
+        headerRow.push(leafNode?.label || '');
+      });
+      excelData.push(headerRow);
+
+      // Data-rader
+      exportRows.forEach((row, rowIdx) => {
+        const excelRow: any[] = [rowHeaders[rowIdx]];
+        row.forEach((cell) => {
+          excelRow.push(cell.value);
+        });
+        excelData.push(excelRow);
       });
 
       // Skapa worksheet
-      const ws = XLSX.utils.json_to_sheet(exportData);
+      const ws = XLSX.utils.aoa_to_sheet(excelData);
 
       // Sätt kolumnbredder
-      const colWidths: any[] = [];
-      for (let i = 0; i < maxDepth; i++) {
-        colWidths.push({ wch: 30 }); // Nivå X
-        colWidths.push({ wch: 25 }); // Nivå X - BPMN Fil
-        colWidths.push({ wch: 30 }); // Nivå X - Element ID
+      const colWidths: any[] = [{ wch: 12 }]; // Rad-header
+      for (let i = 0; i < groupedRows.length; i++) {
+        colWidths.push({ wch: 30 }); // Varje path-kolumn
       }
-      colWidths.push({ wch: 50 }); // Given
-      colWidths.push({ wch: 50 }); // When
-      colWidths.push({ wch: 50 }); // Then
       ws['!cols'] = colWidths;
+
+      // Applicera färger på celler
+      // Excel stöder inte rgba med opacity, så vi konverterar till RGB och gör färgerna lite mörkare för bättre synlighet
+      for (let rowIdx = 0; rowIdx < exportRows.length; rowIdx++) {
+        const row = exportRows[rowIdx];
+        for (let colIdx = 0; colIdx < row.length; colIdx++) {
+          const cell = row[colIdx];
+          if (cell.backgroundColor) {
+            const cellRef = XLSX.utils.encode_cell({ r: rowIdx + 1, c: colIdx + 1 }); // +1 för header-rad
+            if (!ws[cellRef]) continue;
+            
+            // Konvertera rgba till RGB och gör färgen lite mörkare för bättre synlighet i Excel
+            const rgbMatch = cell.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (rgbMatch) {
+              let r = parseInt(rgbMatch[1]);
+              let g = parseInt(rgbMatch[2]);
+              let b = parseInt(rgbMatch[3]);
+              
+              // Gör färgen lite mörkare för bättre synlighet (blend med vit bakgrund)
+              // Formel: result = original * opacity + white * (1 - opacity)
+              // För opacity ~0.1-0.15, gör vi färgen mer synlig
+              r = Math.min(255, Math.round(r + (255 - r) * 0.7)); // Gör 70% mer synlig
+              g = Math.min(255, Math.round(g + (255 - g) * 0.7));
+              b = Math.min(255, Math.round(b + (255 - b) * 0.7));
+              
+              const hexColor = ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+              
+              // Sätt färg
+              if (!ws[cellRef].s) ws[cellRef].s = {};
+              ws[cellRef].s.fill = {
+                fgColor: { rgb: hexColor },
+                patternType: 'solid',
+              };
+            }
+          }
+        }
+      }
 
       // Skapa workbook
       const wb = XLSX.utils.book_new();
@@ -325,7 +697,7 @@ export default function TestCoverageExplorerPage() {
 
       toast({
         title: 'Export slutförd',
-        description: `${exportData.length} rader exporterade till ${filename}`,
+        description: `Tabellen exporterad till ${filename}`,
       });
     } catch (error) {
       toast({
@@ -436,10 +808,16 @@ export default function TestCoverageExplorerPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={exportToExcel} variant="outline" className="gap-2">
-                    <Download className="h-4 w-4" />
-                    Exportera till Excel
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={exportToExcel} variant="outline" className="gap-2">
+                      <Download className="h-4 w-4" />
+                      Exportera till Excel
+                    </Button>
+                    <Button onClick={exportToHtml} variant="outline" className="gap-2">
+                      <Download className="h-4 w-4" />
+                      Exportera till HTML
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div className="px-6 pb-6 overflow-x-auto">

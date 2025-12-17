@@ -1,196 +1,180 @@
-# Nästa steg för E2E-scenarion
+# E2E Test - Nästa steg
 
 **Datum:** 2025-01-XX  
-**Status:** E2E_BR001 är komplett och validerad
+**Status:** E2E_BR001 och E2E_BR006 är kompletta, kvalitetsvalidering på plats
 
 ---
 
-## ✅ Vad som är klart
+## ✅ Vad vi har nu
 
-### E2E_BR001: En sökande - Bostadsrätt godkänd automatiskt (Happy Path)
-
-**Status:** ✅ **KOMPLETT OCH VALIDERAD**
-
-1. ✅ **Validering slutförd** - Alla komponenter validerade mot BPMN-filer
-2. ✅ **Komplett dokumentation** - 14 teststeg i `bankProjectTestSteps`, 10 subprocesser i `subprocessSteps`
-3. ✅ **UI-interaktioner** - Alla user tasks har detaljerade UI-interaktioner
-4. ✅ **Playwright-test** - Strukturerat test med 14 test.step() sektioner
-5. ✅ **Feature Goals mappade** - Alla 10 Feature Goals är mappade
+1. **E2E_BR001** - En sökande, Bostadsrätt (Happy Path) - ✅ Komplett
+2. **E2E_BR006** - Två sökande, Bostadsrätt (Happy Path) - ✅ Komplett
+3. **Kvalitetsvalidering** - BPMN → Scenarios mapping, Mock-kvalitet - ✅ På plats
+4. **Mock-responser** - 31 API:er mockade för happy path - ✅ På plats
 
 ---
 
-## 🎯 Rekommenderat nästa steg
+## 🎯 Föreslagna nästa steg (prioriterade)
 
-### Alternativ 1: E2E-BR-006 - Två sökande (med medsökare) - Bostadsrätt godkänd automatiskt
+### Prioritet 1: Förbättra befintliga scenarion med mer detaljer
 
-**Prioritet:** **P0 - HÖGST**  
-**Anledning:** Användaren nämnde specifikt att "en kund med en medsökare" är relevant
+**Syfte:** Göra E2E_BR001 och E2E_BR006 mer kompletta och realistiska, även om informationen är spekulativ.
 
-**Beskrivning:**
-- Två personer köper bostadsrätt tillsammans (huvudansökande + medsökare)
-- Bostadsrätten uppfyller alla kriterier automatiskt
-- INGEN befintlig fastighet att sälja
-- Multi-instance för stakeholders och hushåll
+**Vad som kan förbättras:**
 
-**Skillnader från E2E_BR001:**
-- Multi-instance Application subprocess (flera stakeholders)
-- Multi-instance KYC (en per stakeholder)
-- Multi-instance Household (en per hushåll)
-- Sekventiell körning per hushåll (Household → Stakeholder → Object)
+1. **Förbättra mock-responser med mer realistiska fält**
+   - Lägg till fler fält i mock-responser baserat på logiska antaganden
+   - T.ex. timestamps, IDs, metadata som troligen behövs
+   - **Värde:** Ger mer realistiska tester, även om exakta fält kan skilja sig
 
-**Arbetsgång:**
-1. Identifiera huvudflöde i `mortgage.bpmn` (samma som E2E_BR001, men med multi-instance)
-2. Analysera Application subprocess med multi-instance stakeholders
-3. Analysera KYC subprocess med multi-instance
-4. Mappa till Feature Goals (Application S2, KYC multi-instance scenarion)
-5. Skapa komplett `bankProjectTestSteps` och `subprocessSteps`
-6. Validera mot BPMN-filer
-7. Förbättra Playwright-test
+2. **Förbättra UI-interaktioner med mer detaljer**
+   - Utöka UI-interaktioner med fler steg baserat på Feature Goals
+   - Lägg till verifieringar och assertions
+   - **Värde:** Ger mer komplett test-spec, även om exakta IDs kan skilja sig
 
-**Fördelar:**
-- Bygger på E2E_BR001 (kan återanvända mycket)
-- Testar multi-instance hantering (viktigt för bankprojektet)
-- Användaren nämnde detta specifikt
+3. **Förbättra backend states med mer detaljer**
+   - Utöka backend states med fler fält baserat på logiska antaganden
+   - T.ex. status-historik, metadata, relations-ID:n
+   - **Värde:** Ger mer komplett bild av vad som förväntas, även om strukturen kan skilja sig
+
+**Implementering:**
+- Analysera Feature Goals för att hitta fler detaljer
+- Utöka mock-responser steg för steg
+- Förbättra UI-interaktioner med fler steg
+- Uppdatera backend states med fler fält
+
+**Tidsåtgång:** 2-3 timmar per scenario
 
 ---
 
-### Alternativ 2: E2E-005 - Application avvisad (Error Path)
+### Prioritet 2: Skapa error path-scenarion
 
-**Prioritet:** **P0**  
-**Anledning:** Viktig error path, relativt enkelt att implementera
+**Syfte:** Skapa scenarion för felhantering, även om API-responser är spekulativa.
 
-**Beskrivning:**
-- Application-processen avvisas vid pre-screening eller internal data gathering
-- Error event triggas
-- Processen avslutas med error
+**Vad som kan skapas:**
 
-**Skillnader från E2E_BR001:**
-- Error path istället för happy path
-- Boundary events triggas
-- Processen avslutas tidigt
+1. **E2E_BR002: Application avvisad (pre-screen)**
+   - Scenario där pre-screen DMN returnerar REJECTED
+   - Mock-responser med 400/403 errors
+   - **Värde:** Testar felhantering, även om exakta error-codes kan skilja sig
 
-**Arbetsgång:**
-1. Identifiera error paths i Application subprocess
-2. Analysera boundary events (pre-screen-rejected, application-aborted)
-3. Mappa till Feature Goals (error scenarion)
-4. Skapa komplett `bankProjectTestSteps` och `subprocessSteps`
-5. Validera mot BPMN-filer
-6. Förbättra Playwright-test
+2. **E2E_BR003: KYC avvisad**
+   - Scenario där KYC/AML screening hittar problem
+   - Mock-responser med KYC-status = REJECTED
+   - **Värde:** Testar KYC-felhantering, även om exakta fält kan skilja sig
 
-**Fördelar:**
-- Relativt enkelt (färre steg än happy path)
-- Viktig error path för att testa felhantering
-- Bygger på Application subprocess (redan känd)
+3. **E2E_BR004: Credit Decision avvisad**
+   - Scenario där credit decision returnerar REJECTED
+   - Mock-responser med rejection-reason
+   - **Värde:** Testar credit decision-felhantering, även om exakta strukturer kan skilja sig
 
----
+**Implementering:**
+- Analysera BPMN-filer för error paths
+- Skapa nya scenarion baserat på error paths
+- Skapa mock-responser för error-scenarion (spekulativa men logiska)
+- Uppdatera Playwright-tester för error paths
 
-### Alternativ 3: E2E-001 - Refinansiering Happy Path - En person (komplettera)
-
-**Prioritet:** **P0**  
-**Anledning:** Huvudflöde för refinansiering, delvis implementerad
-
-**Beskrivning:**
-- En person refinansierar befintligt lån
-- INGEN köp-process (hoppar över mortgage-commitment, object-valuation)
-- Går direkt från Application till Credit Evaluation
-
-**Skillnader från E2E_BR001:**
-- is-purchase = No (refinansiering)
-- Hoppar över mortgage-commitment och object-valuation
-- Resten är samma (KYC, Credit Decision, Offer, Signing, Disbursement)
-
-**Arbetsgång:**
-1. Identifiera huvudflöde i `mortgage.bpmn` (is-purchase = No)
-2. Analysera subprocesser (Application, Credit Evaluation, KYC, etc.)
-3. Mappa till Feature Goals
-4. Skapa komplett `bankProjectTestSteps` och `subprocessSteps`
-5. Validera mot BPMN-filer
-6. Förbättra Playwright-test
-
-**Fördelar:**
-- Delvis implementerad (Application och Credit Decision finns)
-- Enklare än köp (färre steg)
-- Huvudflöde för refinansiering
+**Tidsåtgång:** 3-4 timmar per scenario
 
 ---
 
-## 📊 Jämförelse
+### Prioritet 3: Förbättra kvalitetsvalidering
 
-| Scenario | Prioritet | Komplexitet | Bygger på E2E_BR001 | Användaren nämnde |
-|----------|-----------|-------------|---------------------|-------------------|
-| **E2E-BR-006** (Två sökande) | P0 | Medel | ✅ Ja | ✅ Ja |
-| **E2E-005** (Application avvisad) | P0 | Låg | ⚠️ Delvis | ❌ Nej |
-| **E2E-001** (Refinansiering) | P0 | Låg | ⚠️ Delvis | ❌ Nej |
+**Syfte:** Utöka valideringssidan med fler kontroller, även om informationen är spekulativ.
 
----
+**Vad som kan förbättras:**
 
-## 🎯 Rekommendation
+1. **Validera UserTasks → UI Flow mapping**
+   - Extrahera UserTasks från BPMN-filer
+   - Jämför med `uiInteraction` i `bankProjectTestSteps`
+   - Identifiera UserTasks som saknar UI-interaktioner
+   - **Värde:** Säkerställer att alla UserTasks har UI-flöden dokumenterade
 
-**Nästa steg: E2E-BR-006 - Två sökande (med medsökare)**
+2. **Validera BusinessRuleTasks → DMN mapping**
+   - Extrahera BusinessRuleTasks från BPMN-filer
+   - Jämför med `dmnDecision` i `bankProjectTestSteps`
+   - Identifiera BusinessRuleTasks som saknar DMN-beslut
+   - **Värde:** Säkerställer att alla DMN-beslut är dokumenterade
 
-**Anledningar:**
-1. ✅ **Användaren nämnde specifikt** att "en kund med en medsökare" är relevant
-2. ✅ **Bygger på E2E_BR001** - kan återanvända mycket av strukturen
-3. ✅ **Testar multi-instance** - viktigt för bankprojektet
-4. ✅ **P0 prioritet** - kritiskt scenario
-5. ✅ **Naturlig progression** - från en sökande till två sökande
+**Implementering:**
+- Utöka valideringssidan med UserTask-validering
+- Utöka valideringssidan med BusinessRuleTask-validering
+- Visa resultat i valideringssidan
 
-**Arbetsgång:**
-1. Identifiera huvudflöde i `mortgage.bpmn` (samma som E2E_BR001)
-2. Analysera Application subprocess med multi-instance stakeholders
-3. Analysera KYC subprocess med multi-instance
-4. Mappa till Feature Goals (Application S2, KYC multi-instance)
-5. Skapa komplett `bankProjectTestSteps` och `subprocessSteps`
-6. Validera mot BPMN-filer
-7. Förbättra Playwright-test
+**Tidsåtgång:** 2-3 timmar
 
 ---
 
-## 📝 Alternativ: Om vi vill fokusera på error paths först
+### Prioritet 4: Skapa alternative path-scenarion
 
-Om vi istället vill fokusera på error paths för att få bättre testtäckning:
+**Syfte:** Skapa scenarion för alternativa flöden, även om implementationen är spekulativ.
 
-**Nästa steg: E2E-005 - Application avvisad**
+**Vad som kan skapas:**
 
-**Anledningar:**
-1. ✅ **Relativt enkelt** - färre steg än happy path
-2. ✅ **Viktig error path** - testar felhantering
-3. ✅ **P0 prioritet** - kritiskt scenario
-4. ✅ **Bygger på Application** - redan känd subprocess
+1. **E2E_BR007: Appeal-flöde**
+   - Scenario där kunden överklagar ett avslag
+   - Mock-responser för appeal-processen
+   - **Värde:** Testar appeal-flödet, även om exakta API:er kan skilja sig
 
----
+2. **E2E_BR008: Manual Credit Evaluation**
+   - Scenario där credit evaluation kräver manuell granskning
+   - Mock-responser för manual review
+   - **Värde:** Testar manual review-flödet, även om exakta strukturer kan skilja sig
 
-## 🚀 Nästa steg - Oavsett val
+**Implementering:**
+- Analysera BPMN-filer för alternative paths
+- Skapa nya scenarion baserat på alternative paths
+- Skapa mock-responser för alternative paths (spekulativa men logiska)
+- Uppdatera Playwright-tester för alternative paths
 
-När vi har valt nästa scenario, följer vi samma process som för E2E_BR001:
-
-1. **Identifiera huvudflöde** i BPMN-filer
-2. **Analysera subprocesser** rekursivt
-3. **Mappa till Feature Goals** och extrahera Given/When/Then
-4. **Skapa komplett struktur** (`bankProjectTestSteps` och `subprocessSteps`)
-5. **Validera mot BPMN-filer** (systematisk kontroll)
-6. **Förbättra Playwright-test** med faktiska teststeg
-
----
-
-## 📋 Checklista för nästa scenario
-
-- [ ] Identifiera huvudflöde i BPMN-filer
-- [ ] Analysera alla subprocesser rekursivt
-- [ ] Mappa till Feature Goals
-- [ ] Skapa `bankProjectTestSteps` (alla BPMN-noder)
-- [ ] Skapa `subprocessSteps` (alla call activities)
-- [ ] Detaljera UI-interaktioner för user tasks
-- [ ] Validera mot BPMN-filer
-- [ ] Förbättra Playwright-test
-- [ ] Dokumentera saknade user stories (om några)
+**Tidsåtgång:** 3-4 timmar per scenario
 
 ---
 
-## 💡 Tips
+## Rekommendation: Börja med Prioritet 1
 
-- **Återanvänd struktur** från E2E_BR001 där möjligt
-- **Fokusera på skillnader** - vad är annorlunda jämfört med E2E_BR001?
-- **Var noggrann med multi-instance** - detta är nytt för E2E-BR-006
-- **Validera systematiskt** - använd samma valideringsprocess som för E2E_BR001
+**Varför:**
+- Bygger vidare på befintliga scenarion (E2E_BR001, E2E_BR006)
+- Ger omedelbar förbättring av test-kvalitet
+- Skapar mer komplett test-spec för test lead
+- Även om informationen är spekulativ, ger det en bättre startpunkt
 
+**Nästa konkreta steg:**
+1. Analysera Feature Goals för att hitta fler detaljer för E2E_BR001
+2. Utöka mock-responser med fler realistiska fält
+3. Förbättra UI-interaktioner med fler steg
+4. Uppdatera backend states med fler fält
+
+---
+
+## Balansering: Spekulativt men värdefullt
+
+**Filosofi:**
+- Vi spekulerar i API-responser, testscenarion, UI etc. eftersom vi måste starta med något
+- Detta ger test lead en startpunkt, även om exakta implementationer kan skilja sig
+- När faktiska implementationer finns, kan test lead justera och förbättra
+
+**Vad som är värdefullt:**
+- ✅ BPMN-struktur och testscenarion (validerat)
+- ✅ Identifiering av vad som behöver testas (validerat)
+- ✅ Spekulativa mock-responser (ger startpunkt)
+- ✅ Spekulativa UI-interaktioner (ger startpunkt)
+- ✅ Spekulativa backend states (ger startpunkt)
+
+**Vad som behöver justeras senare:**
+- ⚠️ API-endpoints (kan skilja sig)
+- ⚠️ Mock-response-strukturer (kan skilja sig)
+- ⚠️ UI-locator IDs (kan skilja sig)
+- ⚠️ Backend state-strukturer (kan skilja sig)
+
+---
+
+## Nästa steg: Välj prioritet
+
+Vilket område vill du prioritera?
+
+1. **Förbättra befintliga scenarion** (mer detaljer, bättre mock-responser)
+2. **Skapa error path-scenarion** (felhantering)
+3. **Förbättra kvalitetsvalidering** (UserTasks, BusinessRuleTasks)
+4. **Skapa alternative path-scenarion** (appeal, manual review)
+5. **Något annat?**

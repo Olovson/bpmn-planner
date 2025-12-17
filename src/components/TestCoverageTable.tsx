@@ -3,7 +3,7 @@ import { TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/compon
 import { Badge } from '@/components/ui/badge';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { getProcessNodeStyle } from '@/lib/processTree';
-import type { E2eScenario } from '@/pages/E2eTestsOverviewPage';
+import type { E2eScenario, BankProjectTestStep } from '@/pages/E2eTestsOverviewPage';
 import { sortCallActivities } from '@/lib/ganttDataConverter';
 
 interface TestCoverageTableProps {
@@ -16,6 +16,7 @@ interface TestInfo {
   scenarioId: string;
   scenarioName: string;
   subprocessStep: E2eScenario['subprocessSteps'][0];
+  bankProjectStep?: BankProjectTestStep;
 }
 
 interface PathRow {
@@ -50,10 +51,15 @@ function findTestInfoForCallActivity(
       (step) => step.callActivityId === callActivityId,
     );
     if (subprocessStep) {
+      const bankProjectStep = scenario.bankProjectTestSteps.find(
+        (step) => step.bpmnNodeId === callActivityId,
+      );
+
       testInfo.push({
         scenarioId: scenario.id,
         scenarioName: scenario.name,
         subprocessStep,
+        bankProjectStep,
       });
     }
   }
@@ -149,21 +155,54 @@ function sortPathsByProcessTreeOrder(pathRows: PathRow[]): PathRow[] {
   });
 }
 
-const renderBulletList = (text?: string) => {
+const renderBulletList = (text?: string, options?: { isCode?: boolean }) => {
   if (!text) return <span className="text-xs text-muted-foreground">–</span>;
+  const isCode = options?.isCode ?? false;
   const items = text.split('. ').filter((item) => item.trim().length > 0);
   if (items.length <= 1) {
-    return <p className="text-xs text-muted-foreground whitespace-pre-line break-words">{text}</p>;
+    return (
+      <p
+        className={
+          isCode
+            ? 'text-[11px] font-mono break-all whitespace-pre-line'
+            : 'text-[11px] text-muted-foreground whitespace-pre-line break-words'
+        }
+      >
+        {text}
+      </p>
+    );
   }
   return (
     <ul className="list-disc ml-4 space-y-1">
       {items.map((item, idx) => (
-        <li key={idx} className="text-xs text-muted-foreground whitespace-pre-line break-words">
+        <li
+          key={idx}
+          className={
+            isCode
+              ? 'text-[11px] font-mono break-all whitespace-pre-line'
+              : 'text-[11px] text-muted-foreground whitespace-pre-line break-words'
+          }
+        >
           {item}
         </li>
       ))}
     </ul>
   );
+};
+
+// Konvertera nodtyp till läsbart namn
+const getNodeTypeLabel = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    process: 'Process',
+    callActivity: 'Call Activity',
+    userTask: 'User Task',
+    serviceTask: 'Service Task',
+    businessRuleTask: 'Business Rule Task',
+    dmnDecision: 'DMN Decision',
+    gateway: 'Gateway',
+    boundaryEvent: 'Boundary Event',
+  };
+  return typeMap[type] || type.charAt(0).toUpperCase() + type.slice(1).replace(/([A-Z])/g, ' $1');
 };
 
 interface GroupedRow {
@@ -443,13 +482,13 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
   }, [groupedRows]);
 
   // Förbered data för transponerad tabell
-  // Rader blir: Nivå 0, Nivå 1, ..., Given, When, Then
+  // Rader blir: Nivå 0, Nivå 1, ..., Given, When, Then, UI-interaktion, API-anrop, DMN-beslut
   // Kolumner blir: Varje path
   const transposedData = useMemo(() => {
     const rows: Array<Array<{ content: React.ReactNode; backgroundColor?: string; colspan?: number; skip?: boolean }>> = [];
     
-    // Skapa rader för varje nivå + Given/When/Then
-    const rowCount = maxDepth + 3; // maxDepth nivåer + Given + When + Then
+    // Skapa rader för varje nivå + Given/When/Then + UI-interaktion + API-anrop + DMN-beslut
+    const rowCount = maxDepth + 6; // maxDepth nivåer + 3 (G/W/T) + 3 (UI/API/DMN)
     
     // Initiera rader
     for (let i = 0; i < rowCount; i++) {
@@ -491,6 +530,9 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
           }
           
           const nodeStyle = getProcessNodeStyle(node.type);
+          // Kolla om detta är en leaf-nod (sista noden i path:en)
+          const isLeafNode = level === path.length - 1;
+          
           rows[level].push({
             content: (
               <div className="flex items-center gap-2">
@@ -505,10 +547,16 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
                   <div className="text-xs text-muted-foreground truncate" title={node.bpmnFile}>
                     {node.bpmnFile}
                   </div>
-                  {node.bpmnElementId && (
-                    <div className="text-xs font-mono text-muted-foreground truncate" title={node.bpmnElementId}>
-                      {node.bpmnElementId}
+                  {isLeafNode ? (
+                    <div className="text-xs text-muted-foreground truncate" title={getNodeTypeLabel(node.type)}>
+                      {getNodeTypeLabel(node.type)}
                     </div>
+                  ) : (
+                    node.bpmnElementId && (
+                      <div className="text-xs font-mono text-muted-foreground truncate" title={node.bpmnElementId}>
+                        {node.bpmnElementId}
+                      </div>
+                    )
                   )}
                 </div>
               </div>
@@ -522,14 +570,17 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
         }
       }
       
-      // För Given/When/Then, vi hanterar dem separat nedan med colspan
+      // För Given/When/Then och UI/API/DMN, vi hanterar dem separat nedan med colspan
       // Sätt placeholder för nu (kommer att skrivas över)
       rows[maxDepth].push({ content: <span className="text-xs text-muted-foreground">–</span> });
       rows[maxDepth + 1].push({ content: <span className="text-xs text-muted-foreground">–</span> });
       rows[maxDepth + 2].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+      rows[maxDepth + 3].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+      rows[maxDepth + 4].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+      rows[maxDepth + 5].push({ content: <span className="text-xs text-muted-foreground">–</span> });
     });
     
-    // Fyll i Given/When/Then med merged cells baserat på groupedColumns
+    // Fyll i Given/When/Then + UI/API/DMN med merged cells baserat på groupedColumns
     groupedColumns.forEach(([groupKey, columns]) => {
       const firstCol = columns[0];
       const { callActivityNode, testInfo } = firstCol.groupedRow;
@@ -550,61 +601,144 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
         }
       }
       
+      const givenRowIdx = maxDepth;
+      const whenRowIdx = maxDepth + 1;
+      const thenRowIdx = maxDepth + 2;
+      const uiRowIdx = maxDepth + 3;
+      const apiRowIdx = maxDepth + 4;
+      const dmnRowIdx = maxDepth + 5;
+
       if (testInfo) {
         // Given - skriv över första cellen och sätt colspan
-        rows[maxDepth][startColIdx] = {
+        rows[givenRowIdx][startColIdx] = {
           content: renderBulletList(testInfo.subprocessStep.given),
           backgroundColor: testInfoBackgroundColor,
           colspan,
         };
         // Markera övriga celler i gruppen som ska hoppas över
         for (let i = 1; i < colspan; i++) {
-          rows[maxDepth][startColIdx + i] = { content: <></>, skip: true };
+          rows[givenRowIdx][startColIdx + i] = { content: <></>, skip: true };
         }
         
         // When
-        rows[maxDepth + 1][startColIdx] = {
+        rows[whenRowIdx][startColIdx] = {
           content: renderBulletList(testInfo.subprocessStep.when),
           backgroundColor: testInfoBackgroundColor,
           colspan,
         };
         for (let i = 1; i < colspan; i++) {
-          rows[maxDepth + 1][startColIdx + i] = { content: <></>, skip: true };
+          rows[whenRowIdx][startColIdx + i] = { content: <></>, skip: true };
         }
         
         // Then
-        rows[maxDepth + 2][startColIdx] = {
+        rows[thenRowIdx][startColIdx] = {
           content: renderBulletList(testInfo.subprocessStep.then),
           backgroundColor: testInfoBackgroundColor,
           colspan,
         };
         for (let i = 1; i < colspan; i++) {
-          rows[maxDepth + 2][startColIdx + i] = { content: <></>, skip: true };
+          rows[thenRowIdx][startColIdx + i] = { content: <></>, skip: true };
+        }
+
+        // UI-interaktion / API-anrop / DMN-beslut kommer från bankProjectStep (om den finns)
+        if (testInfo.bankProjectStep) {
+          const { uiInteraction, apiCall, dmnDecision } = testInfo.bankProjectStep;
+
+          // UI-interaktion
+          rows[uiRowIdx][startColIdx] = {
+            content: renderBulletList(uiInteraction),
+            backgroundColor: testInfoBackgroundColor,
+            colspan,
+          };
+          for (let i = 1; i < colspan; i++) {
+            rows[uiRowIdx][startColIdx + i] = { content: <></>, skip: true };
+          }
+
+          // API-anrop
+          rows[apiRowIdx][startColIdx] = {
+            content: renderBulletList(apiCall, { isCode: true }),
+            backgroundColor: testInfoBackgroundColor,
+            colspan,
+          };
+          for (let i = 1; i < colspan; i++) {
+            rows[apiRowIdx][startColIdx + i] = { content: <></>, skip: true };
+          }
+
+          // DMN-beslut
+          rows[dmnRowIdx][startColIdx] = {
+            content: renderBulletList(dmnDecision),
+            backgroundColor: testInfoBackgroundColor,
+            colspan,
+          };
+          for (let i = 1; i < colspan; i++) {
+            rows[dmnRowIdx][startColIdx + i] = { content: <></>, skip: true };
+          }
+        } else {
+          // Ingen bankProjectStep kopplad – sätt placeholders för UI/API/DMN
+          rows[uiRowIdx][startColIdx] = {
+            content: <span className="text-xs text-muted-foreground">–</span>,
+            backgroundColor: testInfoBackgroundColor,
+            colspan,
+          };
+          rows[apiRowIdx][startColIdx] = {
+            content: <span className="text-xs text-muted-foreground">–</span>,
+            backgroundColor: testInfoBackgroundColor,
+            colspan,
+          };
+          rows[dmnRowIdx][startColIdx] = {
+            content: <span className="text-xs text-muted-foreground">–</span>,
+            backgroundColor: testInfoBackgroundColor,
+            colspan,
+          };
+          for (let i = 1; i < colspan; i++) {
+            rows[uiRowIdx][startColIdx + i] = { content: <></>, skip: true };
+            rows[apiRowIdx][startColIdx + i] = { content: <></>, skip: true };
+            rows[dmnRowIdx][startColIdx + i] = { content: <></>, skip: true };
+          }
         }
       } else {
         // Ingen testinfo - sätt tomma celler med colspan
-        rows[maxDepth][startColIdx] = {
+        rows[givenRowIdx][startColIdx] = {
           content: <span className="text-xs text-muted-foreground">–</span>,
           colspan,
         };
         for (let i = 1; i < colspan; i++) {
-          rows[maxDepth][startColIdx + i] = { content: <></>, skip: true };
+          rows[givenRowIdx][startColIdx + i] = { content: <></>, skip: true };
         }
         
-        rows[maxDepth + 1][startColIdx] = {
+        rows[whenRowIdx][startColIdx] = {
           content: <span className="text-xs text-muted-foreground">–</span>,
           colspan,
         };
         for (let i = 1; i < colspan; i++) {
-          rows[maxDepth + 1][startColIdx + i] = { content: <></>, skip: true };
+          rows[whenRowIdx][startColIdx + i] = { content: <></>, skip: true };
         }
         
-        rows[maxDepth + 2][startColIdx] = {
+        rows[thenRowIdx][startColIdx] = {
           content: <span className="text-xs text-muted-foreground">–</span>,
           colspan,
         };
         for (let i = 1; i < colspan; i++) {
-          rows[maxDepth + 2][startColIdx + i] = { content: <></>, skip: true };
+          rows[thenRowIdx][startColIdx + i] = { content: <></>, skip: true };
+        }
+
+        // UI-interaktion, API-anrop och DMN-beslut placeholders
+        rows[uiRowIdx][startColIdx] = {
+          content: <span className="text-xs text-muted-foreground">–</span>,
+          colspan,
+        };
+        rows[apiRowIdx][startColIdx] = {
+          content: <span className="text-xs text-muted-foreground">–</span>,
+          colspan,
+        };
+        rows[dmnRowIdx][startColIdx] = {
+          content: <span className="text-xs text-muted-foreground">–</span>,
+          colspan,
+        };
+        for (let i = 1; i < colspan; i++) {
+          rows[uiRowIdx][startColIdx + i] = { content: <></>, skip: true };
+          rows[apiRowIdx][startColIdx + i] = { content: <></>, skip: true };
+          rows[dmnRowIdx][startColIdx + i] = { content: <></>, skip: true };
         }
       }
     });
@@ -615,7 +749,7 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
   // Skapa rad-headers
   const rowHeaders = useMemo(() => {
     const headers = Array.from({ length: maxDepth }, (_, i) => `Nivå ${i}`);
-    return [...headers, 'Given', 'When', 'Then'];
+    return [...headers, 'Given', 'When', 'Then', 'UI-interaktion', 'API-anrop', 'DMN-beslut'];
   }, [maxDepth]);
 
   return (
