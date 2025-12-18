@@ -395,9 +395,26 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
         }
       }
 
-      // Skapa groupKey baserat på callActivity (eller path om ingen callActivity)
-      // Alla leaf-noder som delar samma callActivity med test-info får samma groupKey
-      const groupKey = callActivityNode?.bpmnElementId || `no-test-info-${pathRow.path.map((n) => n.id).join('-')}`;
+      // Skapa groupKey baserat på callActivity OCH dess position i path:en
+      // Detta säkerställer att olika subprocesser med samma callActivity-ID får olika groupKeys
+      // Om callActivity finns, använd callActivityId + depth i path för att göra den unik
+      // Annars använd hela path:en
+      let groupKey: string;
+      if (callActivityNode && callActivityNode.bpmnElementId) {
+        const callActivityDepth = pathRow.path.findIndex((n) => n.id === callActivityNode.id);
+        // Använd callActivityId + depth + parent path för att göra den unik
+        // Om callActivity är på depth 0 eller 1, använd bara callActivityId (toppnivå)
+        // Annars inkludera parent-noderna för att skilja mellan olika instanser
+        if (callActivityDepth <= 1) {
+          groupKey = callActivityNode.bpmnElementId;
+        } else {
+          // För djupare callActivities, inkludera parent-path för att göra den unik
+          const parentPath = pathRow.path.slice(0, callActivityDepth).map((n) => n.id).join('-');
+          groupKey = `${callActivityNode.bpmnElementId}-${parentPath}`;
+        }
+      } else {
+        groupKey = `no-test-info-${pathRow.path.map((n) => n.id).join('-')}`;
+      }
 
       groups.push({
         pathRow,
