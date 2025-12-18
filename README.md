@@ -6,7 +6,9 @@
 > LLM-kontrakt & prompts: `prompts/llm/*`  
 > Test-scenarion & design-scenarion: `docs/TEST_MAPPING_DESIGN_SCENARIOS.md`  
 > **👨‍💼 För Test Lead**: `docs/README_FOR_TESTLEAD.md` - Guide om hur BPMN Planner fungerar och hur du tar test scripts vidare till ditt reella projekt  
-> **📋 Projektorganisation**: `docs/project-organization/` - Ways of working, teststrategi, roller och projektstruktur
+> **📋 Projektorganisation**: `docs/project-organization/` - Ways of working, teststrategi, roller och projektstruktur  
+> **🧪 E2E Test Coverage**: `docs/TEST_COVERAGE_USER_GUIDE.md` - Guide för test coverage-visualisering och validering  
+> **🔍 API Reference**: `docs/API_REFERENCE.md` - Teknisk dokumentation för komponenter och hooks
 >
 > **Not om subprocesser (callActivity vs subProcess)**  
 > I många modeller används både `bpmn:callActivity` (tydlig extern subprocess) och `bpmn:subProcess` (inlinad subprocess) för att beskriva logiken.  
@@ -620,9 +622,11 @@ Checklista:
 5. Justera metadata i **Node Matrix**.  
 6. **Integrationer** (`#/integrations`) – hantera Stacc vs. bankens integrationskällor för Service Tasks.  
 7. **Timeline** – visualisera och redigera tidsordning för subprocesser i Gantt-chart.  
-8. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
-9. **Återgenerera vid behov**.  
-10. **Reset Registry** – rensa allt.
+8. **Test Coverage** (`#/test-coverage`) – visualisera E2E test-täckning och exportera till HTML/Excel.  
+9. **E2E Quality Validation** (`#/e2e-quality-validation`) – validera test-scenarion och identifiera saknade komponenter.  
+10. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
+11. **Återgenerera vid behov**.  
+12. **Reset Registry** – rensa allt.
 
 ---
 
@@ -634,6 +638,8 @@ Checklista:
 - Playwright-skapande automatiskt  
 - **Design-scenarion** (`testMapping.ts`) för lokal testgenerering utan LLM
 - **Integrationer-sida** (`#/integrations`) för hantering av Stacc vs. bankens integrationskällor
+- **E2E Test Coverage** (`#/test-coverage`) - Visualisering av test-täckning med tre vyer (kondenserad, hierarkisk, fullständig)
+- **E2E Quality Validation** (`#/e2e-quality-validation`) - Automatisk validering av test-scenarion mot BPMN
 - Node Dashboard  
 - SOT i Supabase Storage  
 - Job queue för historik  

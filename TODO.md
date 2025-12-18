@@ -76,10 +76,18 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 - [ ] Förbättra diagnostik för LOW_CONFIDENCE matchningar i subprocess-synkning
 
 ### UI/UX-förbättringar
+- [x] Test Coverage-sida med tre vyer (kondenserad, hierarkisk, fullständig)
+- [x] HTML-export med interaktiv filtrering och vy-växling
+- [x] Excel-export för test coverage-data
+- [x] E2E Quality Validation-sida med kopiera-knappar och exempel-kod
+- [x] Färgkodning av user tasks (kund vs handläggare) i Process Explorer
+- [x] Färgkodning av user tasks i Test Coverage-sidan
 - [ ] Förbättra loading states i Process Explorer
 - [ ] Lägg till keyboard shortcuts för vanliga åtgärder
 - [ ] Förbättra responsivitet på mobil enheter
 - [ ] Lägg till dark mode toggle (om inte redan implementerat)
+- [ ] Lägg till sökfunktion i Test Coverage-tabellen
+- [ ] Lägg till filter för att dölja kolumner utan test-info
 
 ---
 
@@ -128,8 +136,9 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 
 ## 📤 Export/Import
 
+- [x] Implementera export till Excel (test coverage)
+- [x] Implementera export till HTML (test coverage med interaktiv filtrering)
 - [ ] Implementera export till PDF (dokumentation)
-- [ ] Implementera export till Excel (test matrix, coverage)
 - [ ] Implementera export till JSON/XML (process data)
 - [ ] Implementera export till Confluence/Notion markdown
 - [ ] Skapa REST API för externa verktyg
@@ -148,7 +157,10 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 
 ## 📚 Dokumentation
 
-- [ ] Uppdatera API-dokumentation
+- [x] Uppdatera API-dokumentation (API_REFERENCE.md skapad)
+- [x] Skapa användarguide för test-coverage-sidan (TEST_COVERAGE_USER_GUIDE.md skapad)
+- [x] Skapa E2E maintenance guide (E2E_MAINTENANCE_GUIDE.md)
+- [x] Skapa BPMN update validation guide (BPMN_UPDATE_VALIDATION.md)
 - [ ] Skapa video-guider för vanliga uppgifter
 - [ ] Förbättra inline-dokumentation i koden
 - [ ] Skapa troubleshooting-guide för vanliga problem
@@ -184,5 +196,18 @@ Se [Feature Roadmap](docs/FEATURE_ROADMAP.md) för detaljerade beskrivningar av:
 
 ---
 
-**Senast uppdaterad:** 2025-01-XX
+**Senast uppdaterad:** 2025-01-27
+
+## ✅ Nyligen slutförda uppgifter
+
+### E2E Test Coverage System
+- [x] Test Coverage Explorer-sida med tre vyer (kondenserad, hierarkisk, fullständig)
+- [x] HTML-export med alla tre vyerna och interaktiv filtrering
+- [x] Excel-export för test coverage-data
+- [x] E2E Quality Validation-sida med automatisk validering
+- [x] Kopiera-knappar och exempel-kod för valideringsförslag
+- [x] Färgkodning av user tasks (kund vs handläggare)
+- [x] Gruppering av aktiviteter per subprocess
+- [x] BPMN version comparison script (`compare-bpmn-versions.ts`)
+- [x] Dokumentation: API Reference, User Guide, Maintenance Guide
 

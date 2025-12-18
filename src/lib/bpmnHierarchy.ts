@@ -37,9 +37,8 @@
  *    const hierarchy = await buildBpmnHierarchy('mortgage.bpmn', bpmnUrl);
  * 
  * 2. Generate hierarchical tests:
- *    const testFile = generateHierarchicalTestFile(
- *      hierarchy.rootName,
- *      hierarchy.rootNode.children,
+ *    const testFile = generateHierarchicalTestFileFromTree(
+ *      processTree,
  *      hierarchy.bpmnFile
  *    );
  * 
