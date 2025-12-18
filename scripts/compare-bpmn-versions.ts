@@ -2,8 +2,18 @@
 /**
  * Script för att jämföra BPMN-filer mellan två versioner
  * 
+ * Detta script identifierar:
+ * - Nya/borttagna filer
+ * - Nya/borttagna tasks/callActivities
+ * - Ändrade task-namn (samma ID, annat namn)
+ * - Omnamngivna tasks/callActivities (samma namn, annat ID) - KRITISKT
+ * 
  * Användning:
- *   tsx scripts/compare-bpmn-versions.ts
+ *   tsx scripts/compare-bpmn-versions.ts [sökväg-till-gamla-arkivmapp] [sökväg-till-nya-arkivmapp]
+ * 
+ * Om inga sökvägar anges, jämförs den senaste archive-mappen med den näst senaste
+ * 
+ * Detta script är en given startpunkt för den manuella arbetsprocessen när BPMN-filer uppdateras.
  */
 
 import * as fs from 'fs';
@@ -148,9 +158,44 @@ function formatElementList(elements: BpmnElement[]): string {
   }).join('\n');
 }
 
+/**
+ * Hitta archive-mappar
+ */
+function findArchiveFolders(): string[] {
+  const fixturesDir = path.join(__dirname, '../tests/fixtures/bpmn');
+  if (!fs.existsSync(fixturesDir)) {
+    return [];
+  }
+
+  const entries = fs.readdirSync(fixturesDir, { withFileTypes: true });
+  const folders = entries
+    .filter(e => e.isDirectory() && e.name.startsWith('mortgage-se'))
+    .map(e => path.join(fixturesDir, e.name))
+    .sort()
+    .reverse(); // Senaste först
+
+  return folders;
+}
+
 async function main() {
-  const oldDir = path.join(__dirname, '../tests/fixtures/bpmn/mortgage-se 2025.11.29');
-  const newDir = path.join(__dirname, '../tests/fixtures/bpmn/mortgage-se 2025.12.08');
+  const args = process.argv.slice(2);
+  
+  let oldDir: string;
+  let newDir: string;
+
+  if (args.length >= 2) {
+    oldDir = args[0];
+    newDir = args[1];
+  } else {
+    const folders = findArchiveFolders();
+    if (folders.length < 2) {
+      console.error('❌ Kunde inte hitta tillräckligt många archive-mappar');
+      console.error('   Använd: tsx scripts/compare-bpmn-versions.ts [gamla-mappen] [nya-mappen]');
+      process.exit(1);
+    }
+    newDir = folders[0]; // Senaste
+    oldDir = folders[1]; // Näst senaste
+  }
 
   if (!fs.existsSync(oldDir)) {
     console.error(`❌ Kunde inte hitta mappen: ${oldDir}`);
@@ -179,8 +224,8 @@ async function main() {
   console.log('='.repeat(80));
   console.log('BPMN FILER - JÄMFÖRELSE');
   console.log('='.repeat(80));
-  console.log(`\n📁 Gamla mappen: mortgage-se 2025.11.29 (${oldFiles.length} filer)`);
-  console.log(`📁 Nya mappen: mortgage-se 2025.12.08 (${newFiles.length} filer)\n`);
+  console.log(`\n📁 Gamla mappen: ${path.basename(oldDir)} (${oldFiles.length} filer)`);
+  console.log(`📁 Nya mappen: ${path.basename(newDir)} (${newFiles.length} filer)\n`);
 
   // New files
   if (newFileNames.length > 0) {
@@ -255,7 +300,7 @@ async function main() {
       }
 
       // CallActivities
-      if (callActivityChanges.added.length > 0 || callActivityChanges.removed.length > 0 || callActivityChanges.changed.length > 0) {
+      if (callActivityChanges.added.length > 0 || callActivityChanges.removed.length > 0 || callActivityChanges.changed.length > 0 || callActivityChanges.renamed.length > 0) {
         console.log(`\n  📞 CallActivities:`);
         if (callActivityChanges.added.length > 0) {
           console.log(`     ➕ Tillagda (${callActivityChanges.added.length}):`);
@@ -264,6 +309,14 @@ async function main() {
         if (callActivityChanges.removed.length > 0) {
           console.log(`     ➖ Borttagna (${callActivityChanges.removed.length}):`);
           console.log(formatElementList(callActivityChanges.removed));
+          console.log(`     ⚠️  Uppdatera: Ta bort från subprocessSteps i E2eTestsOverviewPage.tsx`);
+        }
+        if (callActivityChanges.renamed.length > 0) {
+          console.log(`     🔄 Omnamngivna (${callActivityChanges.renamed.length}) - KRITISKT:`);
+          for (const { old, new: newEl } of callActivityChanges.renamed) {
+            console.log(`       - "${old.name}": ${old.id} → ${newEl.id}`);
+            console.log(`         ⚠️  Uppdatera callActivityId i subprocessSteps från "${old.id}" till "${newEl.id}"`);
+          }
         }
         if (callActivityChanges.changed.length > 0) {
           console.log(`     🔄 Ändrade (${callActivityChanges.changed.length}):`);
@@ -298,58 +351,88 @@ async function main() {
       }
 
       // ServiceTasks
-      if (serviceTaskChanges.added.length > 0 || serviceTaskChanges.removed.length > 0 || serviceTaskChanges.changed.length > 0) {
+      if (serviceTaskChanges.added.length > 0 || serviceTaskChanges.removed.length > 0 || serviceTaskChanges.changed.length > 0 || serviceTaskChanges.renamed.length > 0) {
         console.log(`\n  ⚙️  ServiceTasks:`);
         if (serviceTaskChanges.added.length > 0) {
           console.log(`     ➕ Tillagda (${serviceTaskChanges.added.length}):`);
           console.log(formatElementList(serviceTaskChanges.added));
+          console.log(`     ⚠️  Uppdatera: Lägg till i bankProjectTestSteps i E2eTestsOverviewPage.tsx`);
         }
         if (serviceTaskChanges.removed.length > 0) {
           console.log(`     ➖ Borttagna (${serviceTaskChanges.removed.length}):`);
           console.log(formatElementList(serviceTaskChanges.removed));
+          console.log(`     ⚠️  Uppdatera: Ta bort från bankProjectTestSteps i E2eTestsOverviewPage.tsx`);
+        }
+        if (serviceTaskChanges.renamed.length > 0) {
+          console.log(`     🔄 Omnamngivna (${serviceTaskChanges.renamed.length}) - KRITISKT:`);
+          for (const { old, new: newEl } of serviceTaskChanges.renamed) {
+            console.log(`       - "${old.name}": ${old.id} → ${newEl.id}`);
+            console.log(`         ⚠️  Uppdatera bpmnNodeId i bankProjectTestSteps från "${old.id}" till "${newEl.id}"`);
+          }
         }
         if (serviceTaskChanges.changed.length > 0) {
           console.log(`     🔄 Ändrade (${serviceTaskChanges.changed.length}):`);
           for (const { old, new: newEl } of serviceTaskChanges.changed) {
             console.log(`       - ${old.id}: namn "${old.name}" → "${newEl.name}"`);
+            console.log(`         ⚠️  Uppdatera bpmnNodeName i bankProjectTestSteps`);
           }
         }
       }
 
       // UserTasks
-      if (userTaskChanges.added.length > 0 || userTaskChanges.removed.length > 0 || userTaskChanges.changed.length > 0) {
+      if (userTaskChanges.added.length > 0 || userTaskChanges.removed.length > 0 || userTaskChanges.changed.length > 0 || userTaskChanges.renamed.length > 0) {
         console.log(`\n  👤 UserTasks:`);
         if (userTaskChanges.added.length > 0) {
           console.log(`     ➕ Tillagda (${userTaskChanges.added.length}):`);
           console.log(formatElementList(userTaskChanges.added));
+          console.log(`     ⚠️  Uppdatera: Lägg till i bankProjectTestSteps i E2eTestsOverviewPage.tsx`);
         }
         if (userTaskChanges.removed.length > 0) {
           console.log(`     ➖ Borttagna (${userTaskChanges.removed.length}):`);
           console.log(formatElementList(userTaskChanges.removed));
+          console.log(`     ⚠️  Uppdatera: Ta bort från bankProjectTestSteps i E2eTestsOverviewPage.tsx`);
+        }
+        if (userTaskChanges.renamed.length > 0) {
+          console.log(`     🔄 Omnamngivna (${userTaskChanges.renamed.length}) - KRITISKT:`);
+          for (const { old, new: newEl } of userTaskChanges.renamed) {
+            console.log(`       - "${old.name}": ${old.id} → ${newEl.id}`);
+            console.log(`         ⚠️  Uppdatera bpmnNodeId i bankProjectTestSteps från "${old.id}" till "${newEl.id}"`);
+          }
         }
         if (userTaskChanges.changed.length > 0) {
           console.log(`     🔄 Ändrade (${userTaskChanges.changed.length}):`);
           for (const { old, new: newEl } of userTaskChanges.changed) {
             console.log(`       - ${old.id}: namn "${old.name}" → "${newEl.name}"`);
+            console.log(`         ⚠️  Uppdatera bpmnNodeName i bankProjectTestSteps`);
           }
         }
       }
 
       // BusinessRuleTasks
-      if (businessRuleChanges.added.length > 0 || businessRuleChanges.removed.length > 0 || businessRuleChanges.changed.length > 0) {
+      if (businessRuleChanges.added.length > 0 || businessRuleChanges.removed.length > 0 || businessRuleChanges.changed.length > 0 || businessRuleChanges.renamed.length > 0) {
         console.log(`\n  📋 BusinessRuleTasks:`);
         if (businessRuleChanges.added.length > 0) {
           console.log(`     ➕ Tillagda (${businessRuleChanges.added.length}):`);
           console.log(formatElementList(businessRuleChanges.added));
+          console.log(`     ⚠️  Uppdatera: Lägg till i bankProjectTestSteps i E2eTestsOverviewPage.tsx`);
         }
         if (businessRuleChanges.removed.length > 0) {
           console.log(`     ➖ Borttagna (${businessRuleChanges.removed.length}):`);
           console.log(formatElementList(businessRuleChanges.removed));
+          console.log(`     ⚠️  Uppdatera: Ta bort från bankProjectTestSteps i E2eTestsOverviewPage.tsx`);
+        }
+        if (businessRuleChanges.renamed.length > 0) {
+          console.log(`     🔄 Omnamngivna (${businessRuleChanges.renamed.length}) - KRITISKT:`);
+          for (const { old, new: newEl } of businessRuleChanges.renamed) {
+            console.log(`       - "${old.name}": ${old.id} → ${newEl.id}`);
+            console.log(`         ⚠️  Uppdatera bpmnNodeId i bankProjectTestSteps från "${old.id}" till "${newEl.id}"`);
+          }
         }
         if (businessRuleChanges.changed.length > 0) {
           console.log(`     🔄 Ändrade (${businessRuleChanges.changed.length}):`);
           for (const { old, new: newEl } of businessRuleChanges.changed) {
             console.log(`       - ${old.id}: namn "${old.name}" → "${newEl.name}"`);
+            console.log(`         ⚠️  Uppdatera bpmnNodeName i bankProjectTestSteps`);
           }
         }
       }

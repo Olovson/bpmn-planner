@@ -4,7 +4,9 @@ import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Copy, Check } from 'lucide-react';
 import { scenarios } from './E2eTestsOverviewPage';
 import type { E2eScenario } from './E2eTestsOverviewPage';
 import { useProcessTree } from '@/hooks/useProcessTree';
@@ -16,6 +18,16 @@ interface ValidationIssue {
   message: string;
   location?: string;
   suggestion?: string;
+  exampleCode?: string; // Exempel-kod som kan kopieras
+  metadata?: {
+    taskId?: string;
+    taskName?: string;
+    taskType?: 'ServiceTask' | 'UserTask' | 'BusinessRuleTask';
+    bpmnFile?: string;
+    apiCall?: string;
+    fieldPath?: string;
+    expectedValue?: string;
+  };
 }
 
 interface CompletenessMetrics {
@@ -62,12 +74,19 @@ interface BpmnValidationResult {
   serviceTasksDocumented: Array<{ id: string; name: string; apiCall?: string }>;
   missingServiceTasks: BpmnServiceTask[];
   undocumentedServiceTasks: BpmnServiceTask[];
+  removedServiceTasks: Array<{ id: string; name: string; source: string }>; // Tasks i dokumentationen men inte i BPMN
   userTasksInBpmn: BpmnUserTask[];
   userTasksDocumented: Array<{ id: string; name: string; uiInteraction?: string }>;
   missingUserTasks: BpmnUserTask[];
+  removedUserTasks: Array<{ id: string; name: string; source: string }>; // Tasks i dokumentationen men inte i BPMN
   businessRuleTasksInBpmn: BpmnBusinessRuleTask[];
   businessRuleTasksDocumented: Array<{ id: string; name: string; dmnDecision?: string }>;
   missingBusinessRuleTasks: BpmnBusinessRuleTask[];
+  removedBusinessRuleTasks: Array<{ id: string; name: string; source: string }>; // Tasks i dokumentationen men inte i BPMN
+  callActivitiesInBpmn: Array<{ id: string; name: string }>;
+  callActivitiesDocumented: Array<{ id: string; name: string; source: string }>;
+  missingCallActivities: Array<{ id: string; name: string }>;
+  removedCallActivities: Array<{ id: string; name: string; source: string }>; // CallActivities i dokumentationen men inte i BPMN
 }
 
 interface BackendStateField {
@@ -221,6 +240,121 @@ function extractNodesFromTree(
   return nodes;
 }
 
+// Generera exempel-kod för olika typer av issues
+function generateExampleCode(issue: ValidationIssue): string | undefined {
+  const { category, metadata } = issue;
+  
+  if (!metadata) return undefined;
+  
+  // ServiceTask som saknas i bankProjectTestSteps
+  if (category === 'BPMN → Scenarios Mapping' && metadata.taskType === 'ServiceTask') {
+    const taskId = metadata.taskId || 'task-id';
+    const taskName = metadata.taskName || 'Task Name';
+    const apiCall = metadata.apiCall || `POST /api/${taskId.replace(/-/g, '/')}`;
+    
+    return `{
+  bpmnNodeId: '${taskId}',
+  bpmnNodeType: 'ServiceTask',
+  bpmnNodeName: '${taskName}',
+  action: '${taskName}',
+  apiCall: '${apiCall}',
+  assertion: 'Verifiera att ${taskName} har körts',
+},`;
+  }
+  
+  // UserTask som saknas i bankProjectTestSteps
+  if (category === 'BPMN → Scenarios Mapping' && metadata.taskType === 'UserTask') {
+    const taskId = metadata.taskId || 'task-id';
+    const taskName = metadata.taskName || 'Task Name';
+    
+    return `{
+  bpmnNodeId: '${taskId}',
+  bpmnNodeType: 'UserTask',
+  bpmnNodeName: '${taskName}',
+  action: '${taskName}',
+  uiInteraction: 'Beskriv UI-interaktion här (t.ex. "Fyll i formulär, klicka på knapp")',
+  assertion: 'Verifiera att ${taskName} är klar',
+},`;
+  }
+  
+  // BusinessRuleTask som saknas i bankProjectTestSteps
+  if (category === 'BPMN → Scenarios Mapping' && metadata.taskType === 'BusinessRuleTask') {
+    const taskId = metadata.taskId || 'task-id';
+    const taskName = metadata.taskName || 'Task Name';
+    
+    return `{
+  bpmnNodeId: '${taskId}',
+  bpmnNodeType: 'BusinessRuleTask',
+  bpmnNodeName: '${taskName}',
+  action: '${taskName}',
+  dmnDecision: 'Beskriv DMN-beslut här (t.ex. "APPROVED" eller "REJECTED")',
+  assertion: 'Verifiera att ${taskName} har körts',
+},`;
+  }
+  
+  // UserTask som saknar UI-interaktion
+  if (category === 'UserTask Documentation' && metadata.taskId) {
+    const taskId = metadata.taskId;
+    const taskName = metadata.taskName || 'Task Name';
+    
+    return `// I bankProjectTestSteps, uppdatera ${taskId}:
+{
+  ...existingFields,
+  uiInteraction: 'Beskriv UI-interaktion här (t.ex. "Fyll i formulär, klicka på knapp")',
+}`;
+  }
+  
+  // BusinessRuleTask som saknar DMN-beslut
+  if (category === 'BusinessRuleTask Documentation' && metadata.taskId) {
+    const taskId = metadata.taskId;
+    const taskName = metadata.taskName || 'Task Name';
+    
+    return `// I bankProjectTestSteps, uppdatera ${taskId}:
+{
+  ...existingFields,
+  dmnDecision: 'Beskriv DMN-beslut här (t.ex. "APPROVED" eller "REJECTED")',
+}`;
+  }
+  
+  // Mock som saknas
+  if (category === 'API Mock Coverage' && metadata.apiCall) {
+    const apiCall = metadata.apiCall;
+    const method = apiCall.split(' ')[0] || 'POST';
+    const path = apiCall.split(' ')[1] || '/api/endpoint';
+    
+    return `// I mortgageE2eMocks.ts, lägg till:
+await page.route('**${path}', async (route) => {
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      // Lägg till mock-response här
+    }),
+  });
+});`;
+  }
+  
+  // Mock-response som saknar fält
+  if (category === 'Mock Response Quality' && metadata.apiCall && metadata.fieldPath && metadata.expectedValue) {
+    const apiCall = metadata.apiCall;
+    const fieldPath = metadata.fieldPath;
+    const expectedValue = metadata.expectedValue;
+    
+    return `// I mortgageE2eMocks.ts, uppdatera mock-response för ${apiCall}:
+// Lägg till fält: ${fieldPath} = ${expectedValue}`;
+  }
+  
+  // Subprocess som saknar Given/When/Then
+  if (category === 'Subprocess Documentation') {
+    return `// I subprocessSteps, lägg till:
+given: 'Beskriv initialt tillstånd här',
+when: 'Beskriv vad som händer här',
+then: 'Beskriv förväntat resultat här',`;
+  }
+  
+  return undefined;
+}
+
 // Extrahera task-namn från summary-strängar (t.ex. "fetch-party-information (internal-data-gathering)" → "fetch-party-information")
 function extractTaskNamesFromSummary(summary?: string): Set<string> {
   const taskNames = new Set<string>();
@@ -369,6 +503,131 @@ function validateBpmnMapping(
     const businessRuleTasksDocumented: Array<{ id: string; name: string; dmnDecision?: string }> = [];
     const missingBusinessRuleTasks: BpmnBusinessRuleTask[] = [];
     
+    // Identifiera borttagna tasks (finns i dokumentationen men inte i BPMN)
+    const removedServiceTasks: Array<{ id: string; name: string; source: string }> = [];
+    const removedUserTasks: Array<{ id: string; name: string; source: string }> = [];
+    const removedBusinessRuleTasks: Array<{ id: string; name: string; source: string }> = [];
+    
+    // Extrahera callActivities från BPMN
+    const callActivitiesInBpmn: Array<{ id: string; name: string }> = [];
+    const callActivitiesDocumented: Array<{ id: string; name: string; source: string }> = [];
+    const missingCallActivities: Array<{ id: string; name: string }> = [];
+    const removedCallActivities: Array<{ id: string; name: string; source: string }> = [];
+    
+    // Extrahera callActivities från process tree för denna BPMN-fil
+    function extractCallActivitiesFromTree(node: ProcessTreeNode, targetBpmnFile: string): Array<{ id: string; name: string }> {
+      const result: Array<{ id: string; name: string }> = [];
+      
+      if (node.bpmnFile === targetBpmnFile && node.type === 'callActivity') {
+        result.push({
+          id: node.bpmnElementId || node.id,
+          name: node.label || node.id,
+        });
+      }
+      
+      node.children.forEach(child => {
+        result.push(...extractCallActivitiesFromTree(child, targetBpmnFile));
+      });
+      
+      return result;
+    }
+    
+    const callActivitiesInBpmnForFile = extractCallActivitiesFromTree(processTree, bpmnFile);
+    callActivitiesInBpmn.push(...callActivitiesInBpmnForFile);
+    
+    // Extrahera dokumenterade callActivities från subprocessSteps
+    const subprocessStepsForFile = subprocessStepsByBpmnFile.get(bpmnFile) || [];
+    subprocessStepsForFile.forEach((step) => {
+      if (step.callActivityId) {
+        callActivitiesDocumented.push({
+          id: step.callActivityId,
+          name: step.description || step.callActivityId,
+          source: `subprocessSteps[${step.order}].callActivityId`,
+        });
+      }
+    });
+    
+    // Identifiera saknade callActivities (finns i BPMN men inte i dokumentationen)
+    callActivitiesInBpmn.forEach((bpmnCa) => {
+      const documented = callActivitiesDocumented.find(doc => doc.id === bpmnCa.id);
+      if (!documented) {
+        missingCallActivities.push(bpmnCa);
+      }
+    });
+    
+    // Identifiera borttagna callActivities (finns i dokumentationen men inte i BPMN)
+    callActivitiesDocumented.forEach((docCa) => {
+      const existsInBpmn = callActivitiesInBpmn.some(bpmnCa => bpmnCa.id === docCa.id);
+      if (!existsInBpmn) {
+        removedCallActivities.push(docCa);
+      }
+    });
+    
+    // Identifiera borttagna ServiceTasks
+    documentedServiceTasks.forEach((docTask, docId) => {
+      // Kontrollera om task finns i BPMN för denna fil
+      const existsInBpmn = serviceTasksInBpmn.some(bpmnTask => bpmnTask.id === docId);
+      if (!existsInBpmn) {
+        // Kontrollera om task kan finnas i en annan fil (via summaries)
+        let foundInSummaries = false;
+        for (const [summaryTaskName] of documentedServiceTasksFromSummaries.entries()) {
+          if (docId.toLowerCase().includes(summaryTaskName) || summaryTaskName.includes(docId.toLowerCase())) {
+            foundInSummaries = true;
+            break;
+          }
+        }
+        if (!foundInSummaries) {
+          removedServiceTasks.push({
+            id: docId,
+            name: docTask.name,
+            source: `bankProjectTestSteps → ${docId}`,
+          });
+        }
+      }
+    });
+    
+    // Identifiera borttagna UserTasks
+    documentedUserTasks.forEach((docTask, docId) => {
+      const existsInBpmn = userTasksInBpmn.some(bpmnTask => bpmnTask.id === docId);
+      if (!existsInBpmn) {
+        let foundInSummaries = false;
+        for (const [summaryTaskName] of documentedUserTasksFromSummaries.entries()) {
+          if (docId.toLowerCase().includes(summaryTaskName) || summaryTaskName.includes(docId.toLowerCase())) {
+            foundInSummaries = true;
+            break;
+          }
+        }
+        if (!foundInSummaries) {
+          removedUserTasks.push({
+            id: docId,
+            name: docTask.name,
+            source: `bankProjectTestSteps → ${docId}`,
+          });
+        }
+      }
+    });
+    
+    // Identifiera borttagna BusinessRuleTasks
+    documentedBusinessRuleTasks.forEach((docTask, docId) => {
+      const existsInBpmn = businessRuleTasksInBpmn.some(bpmnTask => bpmnTask.id === docId);
+      if (!existsInBpmn) {
+        let foundInSummaries = false;
+        for (const [summaryTaskName] of documentedBusinessRuleTasksFromSummaries.entries()) {
+          if (docId.toLowerCase().includes(summaryTaskName) || summaryTaskName.includes(docId.toLowerCase())) {
+            foundInSummaries = true;
+            break;
+          }
+        }
+        if (!foundInSummaries) {
+          removedBusinessRuleTasks.push({
+            id: docId,
+            name: docTask.name,
+            source: `bankProjectTestSteps → ${docId}`,
+          });
+        }
+      }
+    });
+    
     // Jämför BPMN ServiceTasks med dokumenterade
     serviceTasksInBpmn.forEach((bpmnTask) => {
       let documented = documentedServiceTasks.get(bpmnTask.id);
@@ -507,12 +766,19 @@ function validateBpmnMapping(
       serviceTasksDocumented,
       missingServiceTasks,
       undocumentedServiceTasks,
+      removedServiceTasks,
       userTasksInBpmn,
       userTasksDocumented,
       missingUserTasks,
+      removedUserTasks,
       businessRuleTasksInBpmn,
       businessRuleTasksDocumented,
       missingBusinessRuleTasks,
+      removedBusinessRuleTasks,
+      callActivitiesInBpmn,
+      callActivitiesDocumented,
+      missingCallActivities,
+      removedCallActivities,
     });
   }
   
@@ -767,6 +1033,82 @@ async function analyzeMockResponses(scenario: E2eScenario): Promise<MockResponse
   return analyses;
 }
 
+// Komponent för att visa en issue med kopiera-knapp
+function IssueCard({ issue, icon, color }: { issue: ValidationIssue; icon: string; color: string }) {
+  const [copied, setCopied] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+
+  const handleCopy = async () => {
+    if (issue.exampleCode) {
+      await navigator.clipboard.writeText(issue.exampleCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <Alert variant={issue.severity === 'error' ? 'destructive' : 'default'}>
+      <AlertDescription>
+        <div className="flex items-start gap-2">
+          <span className={color}>{icon}</span>
+          <div className="flex-1">
+            <div className="font-medium">[{issue.category}] {issue.message}</div>
+            {issue.location && (
+              <div className="text-xs text-muted-foreground mt-1">
+                📍 {issue.location}
+              </div>
+            )}
+            {issue.suggestion && (
+              <div className="text-xs text-muted-foreground mt-1">
+                💡 {issue.suggestion}
+              </div>
+            )}
+            {issue.exampleCode && (
+              <div className="mt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCode(!showCode)}
+                    className="h-7 text-xs"
+                  >
+                    {showCode ? 'Dölj' : 'Visa'} exempel-kod
+                  </Button>
+                  {showCode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopy}
+                      className="h-7 text-xs"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Kopierad!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3 mr-1" />
+                          Kopiera kod
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+                {showCode && (
+                  <pre className="text-xs bg-muted p-2 rounded border overflow-x-auto">
+                    <code>{issue.exampleCode}</code>
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 // Normalisera API-anrop för jämförelse
 function normalizeApiCall(apiCall: string): string {
   // Extrahera endpoint från API-anrop (t.ex. "GET /api/party/information")
@@ -931,33 +1273,39 @@ async function validateScenario(
 
   subprocessSteps.forEach((step, index) => {
     if (!step.given || step.given.trim().length === 0) {
-      issues.push({
+      const issue: ValidationIssue = {
         severity: 'warning',
         category: 'Subprocess Documentation',
         message: `Subprocess "${step.description}" (order ${step.order}) saknar Given`,
         location: `subprocessSteps[${index}].given`,
         suggestion: 'Lägg till Given-beskrivning baserat på Feature Goal',
-      });
+      };
+      issue.exampleCode = generateExampleCode(issue);
+      issues.push(issue);
     }
 
     if (!step.when || step.when.trim().length === 0) {
-      issues.push({
+      const issue: ValidationIssue = {
         severity: 'warning',
         category: 'Subprocess Documentation',
         message: `Subprocess "${step.description}" (order ${step.order}) saknar When`,
         location: `subprocessSteps[${index}].when`,
         suggestion: 'Lägg till When-beskrivning baserat på Feature Goal',
-      });
+      };
+      issue.exampleCode = generateExampleCode(issue);
+      issues.push(issue);
     }
 
     if (!step.then || step.then.trim().length === 0) {
-      issues.push({
+      const issue: ValidationIssue = {
         severity: 'warning',
         category: 'Subprocess Documentation',
         message: `Subprocess "${step.description}" (order ${step.order}) saknar Then`,
         location: `subprocessSteps[${index}].then`,
         suggestion: 'Lägg till Then-beskrivning baserat på Feature Goal',
-      });
+      };
+      issue.exampleCode = generateExampleCode(issue);
+      issues.push(issue);
     }
 
     if (step.given && step.when && step.then) {
@@ -994,13 +1342,20 @@ async function validateScenario(
         if (mockAnalysis.hasMock) {
           completeness.apiMocks.mocked++;
         } else {
-          issues.push({
+          const issue: ValidationIssue = {
             severity: 'warning',
-            category: 'API Mock',
+            category: 'API Mock Coverage',
             message: `API-anrop "${step.apiCall}" saknar mock`,
             location: `bankProjectTestSteps[${index}].apiCall`,
             suggestion: `Lägg till mock för ${step.apiCall} i mortgageE2eMocks.ts`,
-          });
+            metadata: {
+              apiCall: step.apiCall,
+              taskId: step.bpmnNodeId,
+              taskName: step.bpmnNodeName,
+            },
+          };
+          issue.exampleCode = generateExampleCode(issue);
+          issues.push(issue);
         }
       }
     }
@@ -1118,43 +1473,169 @@ async function validateScenario(
     }
   });
   
+  // Lägg till issues för borttagna tasks och callActivities
+  bpmnValidation.forEach((bpmnResult) => {
+    // Borttagna ServiceTasks
+    if (bpmnResult.removedServiceTasks.length > 0) {
+      bpmnResult.removedServiceTasks.forEach((removedTask) => {
+        const issue: ValidationIssue = {
+          severity: 'warning',
+          category: 'BPMN → Scenarios Mapping',
+          message: `ServiceTask "${removedTask.name}" (${removedTask.id}) finns i dokumentationen men inte längre i BPMN-fil ${bpmnResult.bpmnFile}`,
+          location: removedTask.source,
+          suggestion: `Ta bort ServiceTask "${removedTask.name}" från bankProjectTestSteps eller uppdatera bpmnNodeId om task-ID har ändrats`,
+          metadata: {
+            taskId: removedTask.id,
+            taskName: removedTask.name,
+            taskType: 'ServiceTask',
+            bpmnFile: bpmnResult.bpmnFile,
+          },
+        };
+        issues.push(issue);
+      });
+    }
+    
+    // Borttagna UserTasks
+    if (bpmnResult.removedUserTasks.length > 0) {
+      bpmnResult.removedUserTasks.forEach((removedTask) => {
+        const issue: ValidationIssue = {
+          severity: 'warning',
+          category: 'BPMN → Scenarios Mapping',
+          message: `UserTask "${removedTask.name}" (${removedTask.id}) finns i dokumentationen men inte längre i BPMN-fil ${bpmnResult.bpmnFile}`,
+          location: removedTask.source,
+          suggestion: `Ta bort UserTask "${removedTask.name}" från bankProjectTestSteps eller uppdatera bpmnNodeId om task-ID har ändrats`,
+          metadata: {
+            taskId: removedTask.id,
+            taskName: removedTask.name,
+            taskType: 'UserTask',
+            bpmnFile: bpmnResult.bpmnFile,
+          },
+        };
+        issues.push(issue);
+      });
+    }
+    
+    // Borttagna BusinessRuleTasks
+    if (bpmnResult.removedBusinessRuleTasks.length > 0) {
+      bpmnResult.removedBusinessRuleTasks.forEach((removedTask) => {
+        const issue: ValidationIssue = {
+          severity: 'warning',
+          category: 'BPMN → Scenarios Mapping',
+          message: `BusinessRuleTask "${removedTask.name}" (${removedTask.id}) finns i dokumentationen men inte längre i BPMN-fil ${bpmnResult.bpmnFile}`,
+          location: removedTask.source,
+          suggestion: `Ta bort BusinessRuleTask "${removedTask.name}" från bankProjectTestSteps eller uppdatera bpmnNodeId om task-ID har ändrats`,
+          metadata: {
+            taskId: removedTask.id,
+            taskName: removedTask.name,
+            taskType: 'BusinessRuleTask',
+            bpmnFile: bpmnResult.bpmnFile,
+          },
+        };
+        issues.push(issue);
+      });
+    }
+    
+    // Borttagna callActivities
+    if (bpmnResult.removedCallActivities.length > 0) {
+      bpmnResult.removedCallActivities.forEach((removedCa) => {
+        const issue: ValidationIssue = {
+          severity: 'warning',
+          category: 'BPMN → Scenarios Mapping',
+          message: `CallActivity "${removedCa.name}" (${removedCa.id}) finns i dokumentationen men inte längre i BPMN-fil ${bpmnResult.bpmnFile}`,
+          location: removedCa.source,
+          suggestion: `Ta bort CallActivity "${removedCa.name}" från subprocessSteps eller uppdatera callActivityId om ID har ändrats`,
+          metadata: {
+            taskId: removedCa.id,
+            taskName: removedCa.name,
+            bpmnFile: bpmnResult.bpmnFile,
+          },
+        };
+        issues.push(issue);
+      });
+    }
+    
+    // Saknade callActivities
+    if (bpmnResult.missingCallActivities.length > 0) {
+      bpmnResult.missingCallActivities.forEach((missingCa) => {
+        const issue: ValidationIssue = {
+          severity: 'warning',
+          category: 'BPMN → Scenarios Mapping',
+          message: `CallActivity "${missingCa.name}" (${missingCa.id}) finns i BPMN-fil ${bpmnResult.bpmnFile} men saknas i dokumentation`,
+          location: `subprocessSteps (saknas)`,
+          suggestion: `Lägg till CallActivity "${missingCa.name}" i subprocessSteps med given/when/then`,
+          metadata: {
+            taskId: missingCa.id,
+            taskName: missingCa.name,
+            bpmnFile: bpmnResult.bpmnFile,
+          },
+        };
+        issues.push(issue);
+      });
+    }
+  });
+  
   // Lägg till issues för saknade ServiceTasks
   bpmnValidation.forEach((bpmnResult) => {
     if (bpmnResult.missingServiceTasks.length > 0) {
       bpmnResult.missingServiceTasks.forEach((missingTask) => {
-        issues.push({
+        const issue: ValidationIssue = {
           severity: 'warning',
           category: 'BPMN → Scenarios Mapping',
           message: `ServiceTask "${missingTask.name}" (${missingTask.id}) finns i BPMN-fil ${bpmnResult.bpmnFile} men saknas i dokumentation`,
           location: `bankProjectTestSteps (saknas)`,
           suggestion: `Lägg till ServiceTask "${missingTask.name}" i bankProjectTestSteps med korrekt API-anrop`,
-        });
+          metadata: {
+            taskId: missingTask.id,
+            taskName: missingTask.name,
+            taskType: 'ServiceTask',
+            bpmnFile: bpmnResult.bpmnFile,
+            apiCall: `POST /api/${missingTask.id.replace(/-/g, '/')}`,
+          },
+        };
+        issue.exampleCode = generateExampleCode(issue);
+        issues.push(issue);
       });
     }
     
     // Lägg till issues för saknade UserTasks
     if (bpmnResult.missingUserTasks.length > 0) {
       bpmnResult.missingUserTasks.forEach((missingTask) => {
-        issues.push({
+        const issue: ValidationIssue = {
           severity: 'warning',
           category: 'BPMN → Scenarios Mapping',
           message: `UserTask "${missingTask.name}" (${missingTask.id}) finns i BPMN-fil ${bpmnResult.bpmnFile} men saknas i dokumentation`,
           location: `bankProjectTestSteps (saknas)`,
           suggestion: `Lägg till UserTask "${missingTask.name}" i bankProjectTestSteps med korrekt UI-interaktion`,
-        });
+          metadata: {
+            taskId: missingTask.id,
+            taskName: missingTask.name,
+            taskType: 'UserTask',
+            bpmnFile: bpmnResult.bpmnFile,
+          },
+        };
+        issue.exampleCode = generateExampleCode(issue);
+        issues.push(issue);
       });
     }
     
     // Lägg till issues för saknade BusinessRuleTasks
     if (bpmnResult.missingBusinessRuleTasks.length > 0) {
       bpmnResult.missingBusinessRuleTasks.forEach((missingTask) => {
-        issues.push({
+        const issue: ValidationIssue = {
           severity: 'warning',
           category: 'BPMN → Scenarios Mapping',
           message: `BusinessRuleTask "${missingTask.name}" (${missingTask.id}) finns i BPMN-fil ${bpmnResult.bpmnFile} men saknas i dokumentation`,
           location: `bankProjectTestSteps (saknas)`,
           suggestion: `Lägg till BusinessRuleTask "${missingTask.name}" i bankProjectTestSteps med korrekt DMN-beslut`,
-        });
+          metadata: {
+            taskId: missingTask.id,
+            taskName: missingTask.name,
+            taskType: 'BusinessRuleTask',
+            bpmnFile: bpmnResult.bpmnFile,
+          },
+        };
+        issue.exampleCode = generateExampleCode(issue);
+        issues.push(issue);
       });
     }
     
@@ -1169,13 +1650,20 @@ async function validateScenario(
         );
       
       if (!isDocumentedViaSummary && (!docTask.uiInteraction || docTask.uiInteraction.trim().length === 0)) {
-        issues.push({
+        const issue: ValidationIssue = {
           severity: 'error',
           category: 'UserTask Documentation',
           message: `UserTask "${docTask.name}" (${docTask.id}) är dokumenterad men saknar UI-interaktion`,
           location: `bankProjectTestSteps → ${docTask.id}.uiInteraction`,
           suggestion: 'Lägg till UI-interaktion baserat på Feature Goal',
-        });
+          metadata: {
+            taskId: docTask.id,
+            taskName: docTask.name,
+            taskType: 'UserTask',
+          },
+        };
+        issue.exampleCode = generateExampleCode(issue);
+        issues.push(issue);
       }
     });
     
@@ -1191,13 +1679,20 @@ async function validateScenario(
         );
       
       if (!isDocumentedViaSummary && (!docTask.dmnDecision || docTask.dmnDecision.trim().length === 0)) {
-        issues.push({
+        const issue: ValidationIssue = {
           severity: 'error',
           category: 'BusinessRuleTask Documentation',
           message: `BusinessRuleTask "${docTask.name}" (${docTask.id}) är dokumenterad men saknar DMN-beslut`,
           location: `bankProjectTestSteps → ${docTask.id}.dmnDecision`,
           suggestion: 'Lägg till DMN-beslut baserat på BPMN-nodens syfte',
-        });
+          metadata: {
+            taskId: docTask.id,
+            taskName: docTask.name,
+            taskType: 'BusinessRuleTask',
+          },
+        };
+        issue.exampleCode = generateExampleCode(issue);
+        issues.push(issue);
       }
     });
   });
@@ -1209,13 +1704,20 @@ async function validateScenario(
   mockResponseAnalysis.forEach((analysis) => {
     if (analysis.missingFields.length > 0) {
       analysis.missingFields.forEach((field) => {
-        issues.push({
+        const issue: ValidationIssue = {
           severity: 'info',
           category: 'Mock Response Quality',
           message: `Mock-response för ${analysis.apiCall} saknar fält "${field.fullPath}" (förväntat värde: ${field.value})`,
           location: `mortgageE2eMocks.ts → ${analysis.apiCall}`,
           suggestion: analysis.suggestions.find((s) => s.includes(field.field)) || `Lägg till ${field.field} i mock-response`,
-        });
+          metadata: {
+            apiCall: analysis.apiCall,
+            fieldPath: field.fullPath,
+            expectedValue: field.value,
+          },
+        };
+        issue.exampleCode = generateExampleCode(issue);
+        issues.push(issue);
       });
     }
   });
@@ -1940,26 +2442,12 @@ export default function E2eQualityValidationPage() {
                                       : 'text-blue-600';
 
                                 return (
-                                  <Alert key={idx} variant={issue.severity === 'error' ? 'destructive' : 'default'}>
-                                    <AlertDescription>
-                                      <div className="flex items-start gap-2">
-                                        <span className={color}>{icon}</span>
-                                        <div className="flex-1">
-                                          <div className="font-medium">[{issue.category}] {issue.message}</div>
-                                          {issue.location && (
-                                            <div className="text-xs text-muted-foreground mt-1">
-                                              📍 {issue.location}
-                                            </div>
-                                          )}
-                                          {issue.suggestion && (
-                                            <div className="text-xs text-muted-foreground mt-1">
-                                              💡 {issue.suggestion}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </AlertDescription>
-                                  </Alert>
+                                  <IssueCard
+                                    key={idx}
+                                    issue={issue}
+                                    icon={icon}
+                                    color={color}
+                                  />
                                 );
                               })}
                             </div>

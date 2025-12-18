@@ -25,12 +25,19 @@ Detta dokument beskriver processen för att förbättra Feature Goal HTML-dokume
 - **Generera status-lista** - `generate-feature-goal-status.ts`
 - **Förbättra läsbarhet** (collapsible sections) - `improve-feature-goal-readability.ts`
 - **Arkivera BPMN-filer** - `archive-bpmn-files.ts`
+- **Validera E2E test scenarios** - `/e2e-quality-validation` (automatisk validering)
+- **Visualisera test coverage** - `/test-coverage` (automatisk visualisering)
 
 ### ✏️ Manuellt (endast innehållsförbättringar)
 - **Förbättra innehållet** - Ersätta tekniska ID:n, göra texten lättläst, affärsorienterad
 - **Markera filer som klara** - Uppdatera checkboxar i status-listan (kan automatiseras i framtiden)
+- **Uppdatera E2E test scenarios** - Lägg till saknade tasks i `E2eTestsOverviewPage.tsx` (använd valideringssystemet)
+- **Uppdatera test scripts** - Uppdatera Playwright test scripts om processen ändrats
+- **Uppdatera mocks** - Uppdatera `mortgageE2eMocks.ts` om API-endpoints ändrats
 
 **Viktigt:** Allt utom innehållsförbättringar är automatiskt. Du behöver bara fokusera på att förbättra kvaliteten på texten.
+
+**⚠️ NYTT:** Efter BPMN-uppdateringar, uppdatera även E2E test scenarios och valideringssystemet (se Steg 0.5 nedan).
 
 ## ✅ Status
 
@@ -96,6 +103,31 @@ public/local-content/feature-goals/
 
 ### Steg 0: Automatisk identifiering och uppdatering (kör alla scripts)
 
+**⚠️ NYTT: Efter BPMN-uppdateringar, uppdatera även E2E test scenarios och valideringssystemet**
+
+När du har uppdaterat BPMN-filer, behöver du också uppdatera:
+
+1. **E2E test scenarios** (`src/pages/E2eTestsOverviewPage.tsx`)
+   - Använd valideringssystemet på `/e2e-quality-validation` för att identifiera vad som saknas
+   - Se `docs/E2E_MAINTENANCE_GUIDE.md` för detaljerad guide
+   - Valideringssystemet visar exakt vad som behöver läggas till med kopiera-knappar för exempel-kod
+
+2. **Test scripts** (Playwright)
+   - Uppdatera test scripts i `tests/playwright-e2e/scenarios/` om processen ändrats
+   - Uppdatera mocks i `tests/playwright-e2e/fixtures/mortgageE2eMocks.ts` om API-endpoints ändrats
+
+3. **Valideringssystemet** (`/e2e-quality-validation`)
+   - Körs automatiskt och identifierar vad som saknas
+   - Använd kopiera-knapparna för att kopiera exempel-kod direkt
+
+4. **Test Coverage-sidan** (`/test-coverage`)
+   - Uppdateras automatiskt baserat på BPMN-struktur
+   - Test-information (Given/When/Then) behöver uppdateras manuellt i `E2eTestsOverviewPage.tsx`
+
+**Se `docs/E2E_MAINTENANCE_GUIDE.md` för komplett guide om E2E test maintenance.**
+
+### Steg 0: Automatisk identifiering och uppdatering (kör alla scripts)
+
 **Kör dessa 3 scripts i ordning - allt är automatiskt:**
 
 ```bash
@@ -122,6 +154,53 @@ npx tsx scripts/generate-feature-goal-status.ts
 **Du behöver bara:**
 - Öppna status-filen: `docs/feature-goals/FEATURE_GOAL_STATUS.md`
 - Börja förbättra innehållet i filerna (se Steg 1-5 nedan)
+
+### Steg 0.5: Uppdatera E2E test scenarios och valideringssystemet (efter BPMN-uppdateringar)
+
+**⚠️ VIKTIGT:** När du har uppdaterat BPMN-filer, behöver du också uppdatera E2E test scenarios och relaterade komponenter.
+
+**1. Identifiera ändringar:**
+   - **NYTT**: Kör `npx tsx scripts/compare-bpmn-versions.ts` för att identifiera alla ändringar (given startpunkt)
+   - Granska `bpmn-changes-report.md` för detaljerad analys av:
+     - Ändrade task-ID:n (omnamngivna tasks)
+     - Ändrade callActivity-ID:n (omnamngivna callActivities)
+     - Borttagna tasks/callActivities
+     - Nya tasks/callActivities
+   
+**2. Kör valideringssystemet:**
+   - Gå till `/e2e-quality-validation` i appen
+   - Systemet identifierar automatiskt vad som saknas:
+     - ServiceTasks/UserTasks/BusinessRuleTasks som saknas i `bankProjectTestSteps`
+     - Tasks som saknar API-anrop/UI-interaktion/DMN-beslut
+     - Saknade mocks för dokumenterade API-anrop
+     - Saknade fält i mock-responser
+     - **NYTT**: Borttagna tasks/callActivities (finns i dokumentationen men inte i BPMN)
+
+**3. Uppdatera E2E test scenarios (`src/pages/E2eTestsOverviewPage.tsx`):**
+   - För varje saknad task som identifieras:
+     - Klicka på "Visa exempel-kod" i valideringssystemet
+     - Kopiera exempel-koden med "Kopiera kod"-knappen
+     - Lägg till i `bankProjectTestSteps` eller `subprocessSteps` enligt förslaget
+   - Uppdatera `subprocessSteps` för ändrade callActivities:
+     - Lägg till/uppdatera `given`/`when`/`then` texter
+     - Uppdatera `serviceTasksSummary`/`userTasksSummary`/`businessRulesSummary`
+
+**4. Uppdatera mocks (`tests/playwright-e2e/fixtures/mortgageE2eMocks.ts`):**
+   - För varje saknad mock som identifieras:
+     - Klicka på "Visa exempel-kod" i valideringssystemet
+     - Kopiera exempel-koden och lägg till i mock-filen
+     - Se till att mock-response matchar `backendState` i scenarios
+
+**5. Uppdatera test scripts (om processen ändrats):**
+   - Uppdatera Playwright test scripts i `tests/playwright-e2e/scenarios/` om processen ändrats
+   - Verifiera att test scripts matchar uppdaterade scenarios
+
+**6. Verifiera:**
+   - Kör validering igen på `/e2e-quality-validation`
+   - Kontrollera att alla warnings/errors är åtgärdade
+   - Testa test-coverage-sidan (`/test-coverage`) för att se att allt visas korrekt
+
+**Se `docs/E2E_MAINTENANCE_GUIDE.md` för komplett guide om E2E test maintenance.**
 
 ### Steg 0.8: Systematisk batch-förbättring av alla filer
 

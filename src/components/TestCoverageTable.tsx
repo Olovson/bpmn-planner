@@ -11,6 +11,7 @@ interface TestCoverageTableProps {
   tree: ProcessTreeNode;
   scenarios: E2eScenario[];
   selectedScenarioId?: string; // Om angivet, visa endast detta scenario
+  viewMode?: 'condensed' | 'hierarchical' | 'full'; // Om angivet, använd denna vy (annars använd intern state)
 }
 
 interface TestInfo {
@@ -327,9 +328,11 @@ function collectActivitiesPerCallActivity(
   return result;
 }
 
-export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestCoverageTableProps) {
+export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMode: viewModeProp }: TestCoverageTableProps) {
   // State för att välja vy: 'condensed' (kondenserad), 'hierarchical' (hierarkisk), eller 'full' (fullständig)
-  const [viewMode, setViewMode] = useState<'condensed' | 'hierarchical' | 'full'>('condensed');
+  // Om viewModeProp anges, använd den (för export), annars använd intern state
+  const [viewModeState, setViewMode] = useState<'condensed' | 'hierarchical' | 'full'>('condensed');
+  const viewMode = viewModeProp ?? viewModeState;
   
   // Beräkna max djup för att veta hur många kolumner vi behöver
   const maxDepth = useMemo(() => calculateMaxDepth(tree), [tree]);
@@ -1410,36 +1413,38 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
 
   return (
     <div className="space-y-4">
-      {/* View mode selector */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">Vy:</span>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={viewMode === 'condensed' ? 'default' : 'outline'}
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => setViewMode('condensed')}
-          >
-            Kondenserad (per subprocess)
-          </Button>
-          <Button
-            variant={viewMode === 'hierarchical' ? 'default' : 'outline'}
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => setViewMode('hierarchical')}
-          >
-            Hierarkisk (alla subprocesser)
-          </Button>
-          <Button
-            variant={viewMode === 'full' ? 'default' : 'outline'}
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => setViewMode('full')}
-          >
-            Fullständig (per aktivitet)
-          </Button>
+      {/* View mode selector - bara visa om vi använder intern state (inte vid export) */}
+      {!viewModeProp && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Vy:</span>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={viewMode === 'condensed' ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setViewMode('condensed')}
+            >
+              Kondenserad (per subprocess)
+            </Button>
+            <Button
+              variant={viewMode === 'hierarchical' ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setViewMode('hierarchical')}
+            >
+              Hierarkisk (alla subprocesser)
+            </Button>
+            <Button
+              variant={viewMode === 'full' ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setViewMode('full')}
+            >
+              Fullständig (per aktivitet)
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="overflow-x-auto">
         <table 
