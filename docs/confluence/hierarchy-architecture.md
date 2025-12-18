@@ -113,7 +113,7 @@ Project
 ### Core Functions
 
 - `buildBpmnHierarchy()` - Builds hierarchical model from BPMN file
-- `generateHierarchicalTestFile()` - Generates nested test structure
+- `generateHierarchicalTestFileFromTree()` - Generates nested test structure (uses ProcessTree)
 - `generateTestDescribeStructure()` - Creates describe block hierarchy
 - `getTestableNodes()` - Gets all nodes that should have tests
 - `getFeatureGoals()` - Gets all CallActivities

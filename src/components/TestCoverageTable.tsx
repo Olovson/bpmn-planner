@@ -20,6 +20,7 @@ interface TestCoverageTableProps {
   scenarios: E2eScenario[];
   selectedScenarioId?: string; // Om angivet, visa endast detta scenario
   viewMode?: 'condensed' | 'hierarchical' | 'full'; // Om angivet, använd denna vy (annars använd intern state)
+  searchQuery?: string; // Söksträng för att filtrera rader
 }
 
 // Beräkna max djup i trädet
@@ -246,7 +247,7 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
   const groupedRows = useMemo(() => {
     const groups: GroupedRow[] = [];
 
-    pathRows.forEach((pathRow) => {
+    filteredPathRows.forEach((pathRow) => {
       // Hitta den lägsta callActivity med test-information (börja från slutet av sökvägen, dvs. närmast leaf-noden)
       // Gå igenom sökvägen från lägsta till högsta nivå (från leaf mot root)
       let callActivityNode: ProcessTreeNode | null = null;
@@ -343,7 +344,7 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
     });
 
     return groups;
-  }, [pathRows, callActivityIdsWithTestInfo]);
+  }, [filteredPathRows, callActivityIdsWithTestInfo]);
 
   // Beräkna rowspan för varje grupp
   const rowspanByGroup = useMemo(() => {

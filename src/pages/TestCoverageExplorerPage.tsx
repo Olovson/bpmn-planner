@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Download, Search, X } from 'lucide-react';
 import { TestCoverageTable } from '@/components/TestCoverageTable';
 import { scenarios as allScenarios } from '@/pages/E2eTestsOverviewPage';
 import { format } from 'date-fns';
@@ -33,6 +34,8 @@ export default function TestCoverageExplorerPage() {
   );
 
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'condensed' | 'hierarchical' | 'full'>('condensed');
   const { toast } = useToast();
 
 
@@ -980,6 +983,7 @@ export default function TestCoverageExplorerPage() {
                     scenarios={e2eScenarios}
                     selectedScenarioId={selectedScenarioId}
                     viewMode="condensed"
+                    searchQuery={searchQuery}
                   />
                 </div>
                 <div data-export-view="hierarchical">
@@ -988,6 +992,7 @@ export default function TestCoverageExplorerPage() {
                     scenarios={e2eScenarios}
                     selectedScenarioId={selectedScenarioId}
                     viewMode="hierarchical"
+                    searchQuery={searchQuery}
                   />
                 </div>
                 <div data-export-view="full">
@@ -996,6 +1001,7 @@ export default function TestCoverageExplorerPage() {
                     scenarios={e2eScenarios}
                     selectedScenarioId={selectedScenarioId}
                     viewMode="full"
+                    searchQuery={searchQuery}
                   />
                 </div>
               </div>

@@ -117,52 +117,6 @@ export function formatDateForGantt(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/**
- * Converts ProcessTreeNode callActivities to DHTMLX Gantt tasks
- * @deprecated Use buildGanttTasksFromProcessTree for hierarchical timelines.
- * 
- * @param callActivities - Array of callActivity nodes (already sorted)
- * @param baseDate - Base date for all tasks (default: 2026-01-01)
- * @param defaultDurationDays - Default duration in days (default: 14 = 2 weeks)
- * @returns Array of GanttTask objects
- */
-export function convertToGanttTasks(
-  callActivities: ProcessTreeNode[],
-  baseDate: Date = new Date('2026-01-01'),
-  defaultDurationDays: number = 14
-): GanttTask[] {
-  return callActivities.map((node) => {
-    // All tasks start at base date initially
-    // (User can edit dates later)
-    const startDate = new Date(baseDate);
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + defaultDurationDays);
-
-    return {
-      id: node.id,
-      text: node.label,
-      start_date: formatDateForGantt(startDate),
-      end_date: formatDateForGantt(endDate),
-      duration: defaultDurationDays,
-      progress: 0,
-      type: 'task',
-      orderIndex: node.orderIndex,
-      branchId: node.branchId,
-      bpmnFile: node.bpmnFile,
-      bpmnElementId: node.bpmnElementId,
-      meta: {
-        kind: node.type,
-        bpmnFile: node.bpmnFile,
-        bpmnElementId: node.bpmnElementId,
-        processId: node.processId,
-        orderIndex: node.orderIndex ?? null,
-        visualOrderIndex: node.visualOrderIndex ?? null,
-        branchId: node.branchId ?? null,
-        scenarioPath: node.scenarioPath ?? [],
-      },
-    };
-  });
-}
 
 /**
  * Main function: Extract, sort, and convert callActivities to Gantt tasks
