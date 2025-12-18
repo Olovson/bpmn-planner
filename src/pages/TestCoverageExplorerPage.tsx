@@ -32,9 +32,7 @@ export default function TestCoverageExplorerPage() {
     [],
   );
 
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
-    e2eScenarios.length > 0 ? e2eScenarios[0].id : '',
-  );
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
   const { toast } = useToast();
 
   // Hjälpfunktion för att hitta test-information för en callActivity
@@ -206,28 +204,42 @@ export default function TestCoverageExplorerPage() {
       copyStyles(tableElement, clonedTable);
       
       // Se till att alla div-element inuti testinfo-cellerna får rätt max-height
-      // Hitta alla rader som är Given, When, eller Then (de är på index maxDepth, maxDepth+1, maxDepth+2)
+      // Detektera vilken vy som är aktiv baserat på data-attribut
+      const viewMode = tableElement.getAttribute('data-view-mode') || 'condensed';
       const maxDepth = calculateMaxDepth(tree);
       const tbody = clonedTable.querySelector('tbody');
       if (tbody) {
         const rows = Array.from(tbody.children);
-        // Given, When, Then rader är de sista tre raderna
-        const testInfoRowIndices = [rows.length - 3, rows.length - 2, rows.length - 1];
         
-        testInfoRowIndices.forEach((rowIndex) => {
-          if (rowIndex >= 0 && rows[rowIndex]) {
-            const cells = Array.from(rows[rowIndex].children);
-            cells.forEach((cell) => {
-              const divs = cell.querySelectorAll('div');
-              divs.forEach((div) => {
-                // Sätt max-height och overflow-y om de inte redan är satta
-                const divEl = div as HTMLElement;
-                if (!divEl.style.maxHeight || divEl.style.maxHeight === 'none') {
-                  divEl.style.setProperty('max-height', '150px');
-                  divEl.style.setProperty('overflow-y', 'auto');
-                }
+        // Hitta testinfo-rader dynamiskt baserat på rad-headers istället för att anta position
+        // Testinfo-rader är: Given, When, Then, UI-interaktion, API-anrop, DMN-beslut
+        const testInfoRowHeaders = ['Given', 'When', 'Then', 'UI-interaktion', 'API-anrop', 'DMN-beslut'];
+        if (viewMode === 'condensed' || viewMode === 'hierarchical') {
+          // I kondenserad och hierarkisk vy finns också "Aktiviteter" rad
+          testInfoRowHeaders.unshift('Aktiviteter');
+        }
+        
+        rows.forEach((row, rowIndex) => {
+          // Hitta första cellen (rad-header) för att identifiera rad-typen
+          const firstCell = row.querySelector('td:first-child, th:first-child');
+          if (firstCell) {
+            const rowHeader = firstCell.textContent?.trim() || '';
+            // Om detta är en testinfo-rad, sätt max-height på divs i cellerna
+            if (testInfoRowHeaders.includes(rowHeader) || rowIndex >= maxDepth) {
+              const cells = Array.from(row.children);
+              // Hoppa över första cellen (rad-header)
+              cells.slice(1).forEach((cell) => {
+                const divs = cell.querySelectorAll('div');
+                divs.forEach((div) => {
+                  // Sätt max-height och overflow-y om de inte redan är satta
+                  const divEl = div as HTMLElement;
+                  if (!divEl.style.maxHeight || divEl.style.maxHeight === 'none') {
+                    divEl.style.setProperty('max-height', '150px');
+                    divEl.style.setProperty('overflow-y', 'auto');
+                  }
+                });
               });
-            });
+            }
           }
         });
       }
@@ -235,8 +247,71 @@ export default function TestCoverageExplorerPage() {
       // Hämta valt scenario-namn
       const selectedScenario = e2eScenarios.find((s) => s.id === selectedScenarioId);
       const scenarioName = selectedScenario ? `${selectedScenario.id} – ${selectedScenario.name}` : '';
+      
+      // viewMode och tbody är redan deklarerade ovan
+      const viewModeLabel = viewMode === 'condensed' 
+        ? 'Kondenserad (per subprocess)' 
+        : viewMode === 'hierarchical'
+        ? 'Hierarkisk (alla subprocesser)'
+        : 'Fullständig (per aktivitet)';
 
-      // Skapa komplett HTML-dokument
+      // Förbered scenario-data för export (endast nödvändig data)
+      const scenariosData = e2eScenarios.map((s) => ({
+        id: s.id,
+        name: s.name,
+      }));
+
+      // Lägg till data-attribut på kolumner och celler för att kunna filtrera
+      // I kondenserad vy: kolumner är per callActivity, test-info kan komma från olika scenarion
+      // I fullständig vy: kolumner är per path, varje kolumn kan tillhöra olika scenarion
+      const thead = clonedTable.querySelector('thead');
+      
+      // Bygg en map över vilka callActivities som tillhör vilka scenarion
+      const callActivityToScenarios = new Map<string, Set<string>>();
+      e2eScenarios.forEach((scenario) => {
+        scenario.subprocessSteps.forEach((step) => {
+          if (step.callActivityId) {
+            if (!callActivityToScenarios.has(step.callActivityId)) {
+              callActivityToScenarios.set(step.callActivityId, new Set());
+            }
+            callActivityToScenarios.get(step.callActivityId)!.add(scenario.id);
+          }
+        });
+      });
+      
+      if (thead && tbody) {
+        const headerRow = thead.querySelector('tr');
+        const dataRows = Array.from(tbody.querySelectorAll('tr'));
+        
+        if (headerRow) {
+          const headerCells = Array.from(headerRow.querySelectorAll('th'));
+          
+          // För kondenserad och hierarkisk vy: kolumner är callActivities
+          if (viewMode === 'condensed' || viewMode === 'hierarchical') {
+            const allScenarioIds = Array.from(new Set(Array.from(callActivityToScenarios.values()).flatMap(s => Array.from(s))));
+            headerCells.forEach((cell, idx) => {
+              if (idx > 0) {
+                // Markera alla kolumner som kan innehålla data från alla scenarion
+                cell.setAttribute('data-scenarios', JSON.stringify(allScenarioIds));
+                cell.setAttribute('data-exported-scenario', selectedScenarioId || 'all');
+              }
+            });
+          } else {
+            // För fullständig vy: varje kolumn kan tillhöra olika scenarion
+            // Detta är mer komplext och kräver att vi vet vilket scenario varje path tillhör
+            // För nu, markerar vi alla kolumner som kan innehålla data från alla scenarion
+            const allScenarioIds = Array.from(new Set(Array.from(callActivityToScenarios.values()).flatMap(s => Array.from(s))));
+            headerCells.forEach((cell, idx) => {
+              if (idx > 0) {
+                cell.setAttribute('data-scenarios', JSON.stringify(allScenarioIds));
+                cell.setAttribute('data-exported-scenario', selectedScenarioId || 'all');
+              }
+            });
+          }
+        }
+      }
+
+      // Skapa komplett HTML-dokument med interaktiv filtrering
       const htmlContent = `<!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -271,6 +346,55 @@ export default function TestCoverageExplorerPage() {
       color: #6b7280;
       font-size: 14px;
       margin-bottom: 4px;
+    }
+    .filters {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background-color: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .filter-group label {
+      font-weight: 500;
+      font-size: 14px;
+      color: #374151;
+      min-width: 80px;
+    }
+    .filter-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .filter-button {
+      padding: 4px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 12px;
+      background-color: white;
+      color: #1f2937;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-button:hover {
+      border-color: #9ca3af;
+      background-color: #f9fafb;
+    }
+    .filter-button.active {
+      background-color: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+    .filter-button.active:hover {
+      background-color: #2563eb;
+      border-color: #2563eb;
     }
     .table-container {
       overflow-x: auto;
@@ -323,12 +447,131 @@ export default function TestCoverageExplorerPage() {
 <body>
   <div class="header">
     <h1>Test Coverage Explorer</h1>
-    <p><strong>Scenario:</strong> ${scenarioName}</p>
     <p><strong>Exporterad:</strong> ${format(new Date(), 'yyyy-MM-dd HH:mm')}</p>
+  </div>
+  <div class="filters">
+    <div class="filter-group">
+      <label>Scenario:</label>
+      <div class="filter-buttons">
+        <button class="filter-button ${!selectedScenarioId ? 'active' : ''}" data-scenario="all">Alla scenarion</button>
+        ${scenariosData.map((s) => `<button class="filter-button ${selectedScenarioId === s.id ? 'active' : ''}" data-scenario="${s.id}">${s.id} – ${s.name}</button>`).join('')}
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>Vy:</label>
+      <div class="filter-buttons">
+        <button class="filter-button ${viewMode === 'condensed' ? 'active' : ''}" data-view-mode="condensed">Kondenserad (per subprocess)</button>
+        <button class="filter-button ${viewMode === 'hierarchical' ? 'active' : ''}" data-view-mode="hierarchical">Hierarkisk (alla subprocesser)</button>
+        <button class="filter-button ${viewMode === 'full' ? 'active' : ''}" data-view-mode="full">Fullständig (per aktivitet)</button>
+      </div>
+    </div>
   </div>
   <div class="table-container">
     ${clonedTable.outerHTML}
   </div>
+  <script>
+    // Scenario-data
+    const scenariosData = ${JSON.stringify(scenariosData)};
+    const currentScenarioId = '${selectedScenarioId || 'all'}';
+    const currentViewMode = '${viewMode}';
+    
+    // Filtrera baserat på scenario
+    function filterByScenario(scenarioId) {
+      const table = document.querySelector('table');
+      if (!table) return;
+      
+      const thead = table.querySelector('thead');
+      const tbody = table.querySelector('tbody');
+      if (!thead || !tbody) return;
+      
+      const headerRow = thead.querySelector('tr');
+      if (!headerRow) return;
+      
+      const headerCells = Array.from(headerRow.querySelectorAll('th'));
+      const dataRows = Array.from(tbody.querySelectorAll('tr'));
+      
+      headerCells.forEach((cell, colIdx) => {
+        if (colIdx === 0) return; // Hoppa över "Rad"-kolumnen
+        
+        const exportedScenario = cell.getAttribute('data-exported-scenario');
+        let shouldShow = true;
+        
+        // Om filen exporterades med ett specifikt scenario, visa bara om det matchar
+        if (exportedScenario && exportedScenario !== 'all') {
+          shouldShow = scenarioId === 'all' || scenarioId === exportedScenario;
+        } else {
+          // Om filen exporterades med "Alla scenarion", filtrera baserat på scenario
+          const scenariosAttr = cell.getAttribute('data-scenarios');
+          if (scenarioId !== 'all' && scenariosAttr) {
+            try {
+              const scenarios = JSON.parse(scenariosAttr);
+              shouldShow = scenarios.includes(scenarioId);
+            } catch (e) {
+              shouldShow = true;
+            }
+          }
+        }
+        
+        // Visa/dölj kolumn
+        cell.style.display = shouldShow ? '' : 'none';
+        
+        // Visa/dölj motsvarande celler i data-rader
+        dataRows.forEach((row) => {
+          const cells = Array.from(row.querySelectorAll('td'));
+          if (cells[colIdx]) {
+            cells[colIdx].style.display = shouldShow ? '' : 'none';
+          }
+        });
+      });
+    }
+    
+    // Växla vy (detta kräver att vi har båda vyerna exporterade, vilket vi inte har ännu)
+    // För nu, visa bara en varning om användaren försöker växla
+    function changeViewMode(viewMode) {
+      if (viewMode !== currentViewMode) {
+        alert('Vy-växling kräver att filen exporteras med båda vyerna. Exportera igen med önskad vy vald.');
+        // Återställ dropdown till nuvarande värde
+        document.getElementById('view-mode-select').value = currentViewMode;
+        return;
+      }
+    }
+    
+    // Event listeners för scenario-knappar
+    document.querySelectorAll('.filter-button[data-scenario]').forEach(button => {
+      button.addEventListener('click', function() {
+        const scenarioId = this.getAttribute('data-scenario') === 'all' ? 'all' : this.getAttribute('data-scenario');
+        
+        // Uppdatera aktiva knappar
+        document.querySelectorAll('.filter-button[data-scenario]').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        this.classList.add('active');
+        
+        filterByScenario(scenarioId);
+      });
+    });
+    
+    // Event listeners för view mode-knappar
+    document.querySelectorAll('.filter-button[data-view-mode]').forEach(button => {
+      button.addEventListener('click', function() {
+        const viewMode = this.getAttribute('data-view-mode');
+        
+        if (viewMode !== currentViewMode) {
+          alert('Vy-växling kräver att filen exporteras med båda vyerna. Exportera igen med önskad vy vald.');
+          return;
+        }
+        
+        // Uppdatera aktiva knappar
+        document.querySelectorAll('.filter-button[data-view-mode]').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+    
+    // Initial filtrering
+    filterByScenario(currentScenarioId);
+  </script>
 </body>
 </html>`;
 
@@ -364,6 +607,10 @@ export default function TestCoverageExplorerPage() {
     if (!tree) return;
 
     try {
+      // Detektera vilken vy som är aktiv
+      const tableElement = document.querySelector('table.table-fixed');
+      const viewMode = tableElement?.getAttribute('data-view-mode') || 'condensed';
+      
       const maxDepth = calculateMaxDepth(tree);
       let pathRows = flattenToPaths(tree, e2eScenarios, selectedScenarioId);
       
@@ -791,22 +1038,31 @@ export default function TestCoverageExplorerPage() {
             <CardContent className="p-0">
               <div className="p-6 pb-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <label htmlFor="scenario-select" className="text-sm font-medium">
-                      Välj scenario:
-                    </label>
-                    <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
-                      <SelectTrigger id="scenario-select" className="w-[300px]">
-                        <SelectValue placeholder="Välj ett scenario" />
-                      </SelectTrigger>
-                      <SelectContent>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Scenario:</span>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant={!selectedScenarioId ? 'default' : 'outline'}
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => setSelectedScenarioId('')}
+                        >
+                          Alla scenarion
+                        </Button>
                         {e2eScenarios.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
+                          <Button
+                            key={s.id}
+                            variant={selectedScenarioId === s.id ? 'default' : 'outline'}
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => setSelectedScenarioId(s.id)}
+                          >
                             {s.id} – {s.name}
-                          </SelectItem>
+                          </Button>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button onClick={exportToExcel} variant="outline" className="gap-2">

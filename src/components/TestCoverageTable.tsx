@@ -1,6 +1,7 @@
-import React, { useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useMemo, useRef, useEffect, useCallback, useState } from 'react';
 import { TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { getProcessNodeStyle } from '@/lib/processTree';
 import type { E2eScenario, BankProjectTestStep } from '@/pages/E2eTestsOverviewPage';
@@ -258,9 +259,85 @@ interface GroupedRow {
   groupKey: string;
 }
 
+// Hjälpfunktion för att samla alla aktiviteter per callActivity
+function collectActivitiesPerCallActivity(
+  tree: ProcessTreeNode,
+  scenarios: E2eScenario[],
+  selectedScenarioId?: string,
+): Map<string, {
+  callActivityNode: ProcessTreeNode;
+  activities: {
+    serviceTasks: ProcessTreeNode[];
+    userTasksCustomer: ProcessTreeNode[];
+    userTasksEmployee: ProcessTreeNode[];
+    businessRules: ProcessTreeNode[];
+  };
+  testInfo: TestInfo | null;
+}> {
+  const result = new Map();
+  
+  // Rekursivt gå igenom trädet och samla aktiviteter per callActivity
+  function traverse(node: ProcessTreeNode, currentCallActivity: ProcessTreeNode | null = null) {
+    // Om detta är en callActivity, använd den som ny currentCallActivity
+    if (node.type === 'callActivity' && node.bpmnElementId) {
+      // Kontrollera om denna callActivity har test-info
+      const testInfoArray = findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId);
+      if (testInfoArray.length > 0) {
+        // Skapa entry för denna callActivity om den inte redan finns
+        if (!result.has(node.bpmnElementId)) {
+          result.set(node.bpmnElementId, {
+            callActivityNode: node,
+            activities: {
+              serviceTasks: [],
+              userTasksCustomer: [],
+              userTasksEmployee: [],
+              businessRules: [],
+            },
+            testInfo: testInfoArray[0],
+          });
+        }
+        // Fortsätt med denna callActivity som ny currentCallActivity
+        currentCallActivity = node;
+      }
+    }
+    
+    // Om vi har en currentCallActivity och detta är en aktivitet (inte callActivity eller process)
+    if (currentCallActivity && currentCallActivity.bpmnElementId) {
+      const entry = result.get(currentCallActivity.bpmnElementId);
+      if (entry) {
+        if (node.type === 'serviceTask') {
+          entry.activities.serviceTasks.push(node);
+        } else if (node.type === 'userTask') {
+          if (isCustomerUserTask(node)) {
+            entry.activities.userTasksCustomer.push(node);
+          } else {
+            entry.activities.userTasksEmployee.push(node);
+          }
+        } else if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
+          entry.activities.businessRules.push(node);
+        }
+      }
+    }
+    
+    // Rekursivt gå igenom barnen
+    node.children.forEach(child => traverse(child, currentCallActivity));
+  }
+  
+  traverse(tree);
+  return result;
+}
+
 export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestCoverageTableProps) {
+  // State för att välja vy: 'condensed' (kondenserad), 'hierarchical' (hierarkisk), eller 'full' (fullständig)
+  const [viewMode, setViewMode] = useState<'condensed' | 'hierarchical' | 'full'>('condensed');
+  
   // Beräkna max djup för att veta hur många kolumner vi behöver
   const maxDepth = useMemo(() => calculateMaxDepth(tree), [tree]);
+
+  // Samla aktiviteter per callActivity
+  const activitiesPerCallActivity = useMemo(() => {
+    return collectActivitiesPerCallActivity(tree, scenarios, selectedScenarioId);
+  }, [tree, scenarios, selectedScenarioId]);
 
   // Flattena trädet till paths och sortera baserat på ProcessTree-ordningen
   const pathRows = useMemo(() => {
@@ -527,10 +604,510 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
     return sortedGroups;
   }, [groupedRows]);
 
-  // Förbered data för transponerad tabell
-  // Rader blir: Nivå 0, Nivå 1, ..., Given, When, Then, UI-interaktion, API-anrop, DMN-beslut
-  // Kolumner blir: Varje path
-  const transposedData = useMemo(() => {
+  // Skapa en lista över alla callActivities (sorterade) - endast de med test-info (för kondenserad vy)
+  const callActivitiesList = useMemo(() => {
+    return Array.from(activitiesPerCallActivity.values()).sort((a, b) => {
+      // Sortera baserat på callActivity-nodens position i trädet
+      const aOrder = a.callActivityNode.visualOrderIndex ?? a.callActivityNode.orderIndex ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.callActivityNode.visualOrderIndex ?? b.callActivityNode.orderIndex ?? Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.callActivityNode.label.localeCompare(b.callActivityNode.label);
+    });
+  }, [activitiesPerCallActivity]);
+
+  // Skapa en lista över alla callActivities i hierarkisk ordning (för hierarkisk vy)
+  // Använder samma logik som collectActivitiesPerCallActivity men för alla callActivities
+  // Behåller hierarkisk ordning genom att samla i rätt ordning direkt från trädet
+  const hierarchicalCallActivitiesList = useMemo(() => {
+    const result = new Map<string, {
+      callActivityNode: ProcessTreeNode;
+      activities: {
+        serviceTasks: ProcessTreeNode[];
+        userTasksCustomer: ProcessTreeNode[];
+        userTasksEmployee: ProcessTreeNode[];
+        businessRules: ProcessTreeNode[];
+      };
+      testInfo: TestInfo | null;
+      depth: number;
+      path: ProcessTreeNode[]; // Behåll path för att kunna sortera hierarkiskt
+    }>();
+    const orderedList: Array<{
+      callActivityNode: ProcessTreeNode;
+      activities: {
+        serviceTasks: ProcessTreeNode[];
+        userTasksCustomer: ProcessTreeNode[];
+        userTasksEmployee: ProcessTreeNode[];
+        businessRules: ProcessTreeNode[];
+      };
+      testInfo: TestInfo | null;
+      depth: number;
+      path: ProcessTreeNode[];
+    }> = [];
+
+    // Rekursivt samla alla callActivities med deras aktiviteter i hierarkisk ordning
+    function traverse(node: ProcessTreeNode, currentCallActivity: ProcessTreeNode | null = null, depth: number = 0, path: ProcessTreeNode[] = []) {
+      const currentPath = [...path, node];
+      
+      // Om detta är en callActivity
+      if (node.type === 'callActivity' && node.bpmnElementId) {
+        const testInfoArray = findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId);
+        const testInfo = testInfoArray.length > 0 ? testInfoArray[0] : null;
+        
+        // Skapa entry för denna callActivity om den inte redan finns
+        if (!result.has(node.bpmnElementId)) {
+          const entry = {
+            callActivityNode: node,
+            activities: {
+              serviceTasks: [] as ProcessTreeNode[],
+              userTasksCustomer: [] as ProcessTreeNode[],
+              userTasksEmployee: [] as ProcessTreeNode[],
+              businessRules: [] as ProcessTreeNode[],
+            },
+            testInfo,
+            depth,
+            path: currentPath,
+          };
+          result.set(node.bpmnElementId, entry);
+          orderedList.push(entry);
+        }
+        
+        // Fortsätt med denna callActivity som ny currentCallActivity
+        currentCallActivity = node;
+      }
+      
+      // Om vi har en currentCallActivity och detta är en aktivitet (inte callActivity eller process)
+      if (currentCallActivity && currentCallActivity.bpmnElementId) {
+        const entry = result.get(currentCallActivity.bpmnElementId);
+        if (entry) {
+          if (node.type === 'serviceTask') {
+            entry.activities.serviceTasks.push(node);
+          } else if (node.type === 'userTask') {
+            if (isCustomerUserTask(node)) {
+              entry.activities.userTasksCustomer.push(node);
+            } else {
+              entry.activities.userTasksEmployee.push(node);
+            }
+          } else if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
+            entry.activities.businessRules.push(node);
+          }
+        }
+      }
+      
+      // Sortera barnen med sortCallActivities för att behålla rätt ordning
+      const sortedChildren = sortCallActivities(node.children, node.type === 'process' ? 'root' : 'subprocess');
+      
+      // Rekursivt gå igenom barnen i sorterad ordning
+      sortedChildren.forEach(child => {
+        const newDepth = (node.type === 'callActivity' && node.bpmnElementId) ? depth + 1 : depth;
+        traverse(child, currentCallActivity, newDepth, currentPath);
+      });
+    }
+
+    traverse(tree);
+    
+    // Returnera i samma ordning som de hittades (hierarkisk ordning bevarad)
+    return orderedList;
+  }, [tree, scenarios, selectedScenarioId]);
+
+  // Förbered data för kondenserad vy (en kolumn per callActivity med grupperade aktiviteter)
+  const transposedDataCondensed = useMemo(() => {
+    const rows: Array<Array<{ content: React.ReactNode; backgroundColor?: string; colspan?: number; skip?: boolean }>> = [];
+    
+    // Skapa rader för varje nivå + Aktiviteter (grupperade) + Given/When/Then + UI-interaktion + API-anrop + DMN-beslut
+    const rowCount = maxDepth + 7; // maxDepth nivåer + 1 (Aktiviteter) + 3 (G/W/T) + 3 (UI/API/DMN)
+    const activitiesRowIdx = maxDepth;
+    const givenRowIdx = maxDepth + 1;
+    const whenRowIdx = maxDepth + 2;
+    const thenRowIdx = maxDepth + 3;
+    const uiRowIdx = maxDepth + 4;
+    const apiRowIdx = maxDepth + 5;
+    const dmnRowIdx = maxDepth + 6;
+    
+    // Initiera rader
+    for (let i = 0; i < rowCount; i++) {
+      rows.push([]);
+    }
+    
+    // Fyll i data för varje kolumn (callActivity)
+    callActivitiesList.forEach((callActivityData, colIdx) => {
+      const { callActivityNode, activities, testInfo } = callActivityData;
+      
+      // Hitta path för denna callActivity (för att kunna visa hierarki)
+      const findPathToNode = (node: ProcessTreeNode, targetId: string, currentPath: ProcessTreeNode[] = []): ProcessTreeNode[] | null => {
+        const newPath = [...currentPath, node];
+        if (node.id === targetId) {
+          return newPath;
+        }
+        for (const child of node.children) {
+          const found = findPathToNode(child, targetId, newPath);
+          if (found) return found;
+        }
+        return null;
+      };
+      const path = findPathToNode(tree, callActivityNode.id) || [callActivityNode];
+      
+      // Fyll i hierarki-kolumner (Nivå 0, Nivå 1, etc.) - visa bara callActivity-noden
+      for (let level = 0; level < maxDepth; level++) {
+        const node = path[level];
+        let cellBackgroundColor: string | undefined = undefined;
+        
+        if (node) {
+          if (node.type === 'callActivity' && node.bpmnElementId) {
+            cellBackgroundColor = getCallActivityColor(path, node.bpmnElementId, level);
+          }
+          
+          const nodeStyle = getProcessNodeStyle(node.type);
+          const isLeafNode = level === path.length - 1;
+          
+          rows[level].push({
+            content: (
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: nodeStyle.hexColor }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate" title={node.label}>
+                    {node.label}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate" title={node.bpmnFile}>
+                    {node.bpmnFile}
+                  </div>
+                  {isLeafNode && node.bpmnElementId && (
+                    <div className="text-xs font-mono text-muted-foreground truncate" title={node.bpmnElementId}>
+                      {node.bpmnElementId}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ),
+            backgroundColor: cellBackgroundColor,
+          });
+        } else {
+          rows[level].push({
+            content: <span className="text-xs text-muted-foreground">–</span>,
+          });
+        }
+      }
+      
+      // Beräkna bakgrundsfärg för denna callActivity
+      const cellBackgroundColor = callActivityNode.bpmnElementId 
+        ? getCallActivityColor(path, callActivityNode.bpmnElementId, path.findIndex(n => n.id === callActivityNode.id))
+        : undefined;
+      
+      // Fyll i Aktiviteter-raden (grupperade)
+      // Använd callActivity-id i keys för att göra dem unika mellan kolumner
+      const callActivityId = callActivityNode.bpmnElementId || callActivityNode.id;
+      const activityGroups: React.ReactNode[] = [];
+      
+      if (activities.serviceTasks.length > 0) {
+        activityGroups.push(
+          <div key={`${callActivityId}-serviceTasks`} className="mb-2">
+            <div className="text-xs font-semibold text-amber-600 mb-1">Service Tasks:</div>
+            <ul className="list-disc ml-4 space-y-0.5">
+              {activities.serviceTasks.map((task, idx) => (
+                <li key={`${callActivityId}-serviceTask-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      if (activities.userTasksCustomer.length > 0) {
+        activityGroups.push(
+          <div key={`${callActivityId}-userTasksCustomer`} className="mb-2">
+            <div className="text-xs font-semibold text-red-600 mb-1">User Tasks (kund):</div>
+            <ul className="list-disc ml-4 space-y-0.5">
+              {activities.userTasksCustomer.map((task, idx) => (
+                <li key={`${callActivityId}-userTaskCustomer-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      if (activities.userTasksEmployee.length > 0) {
+        activityGroups.push(
+          <div key={`${callActivityId}-userTasksEmployee`} className="mb-2">
+            <div className="text-xs font-semibold text-red-800 mb-1">User Tasks (handläggare):</div>
+            <ul className="list-disc ml-4 space-y-0.5">
+              {activities.userTasksEmployee.map((task, idx) => (
+                <li key={`${callActivityId}-userTaskEmployee-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      if (activities.businessRules.length > 0) {
+        activityGroups.push(
+          <div key={`${callActivityId}-businessRules`} className="mb-2">
+            <div className="text-xs font-semibold text-cyan-600 mb-1">Business Rules / DMN:</div>
+            <ul className="list-disc ml-4 space-y-0.5">
+              {activities.businessRules.map((task, idx) => (
+                <li key={`${callActivityId}-businessRule-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      rows[activitiesRowIdx].push({
+        content: activityGroups.length > 0 ? <div className="space-y-1">{activityGroups}</div> : <span className="text-xs text-muted-foreground">–</span>,
+        backgroundColor: cellBackgroundColor,
+      });
+      
+      // Fyll i Given/When/Then + UI/API/DMN
+      
+      if (testInfo) {
+        rows[givenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep.given),
+          backgroundColor: cellBackgroundColor,
+        });
+        
+        rows[whenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep.when),
+          backgroundColor: cellBackgroundColor,
+        });
+        
+        rows[thenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep.then),
+          backgroundColor: cellBackgroundColor,
+        });
+        
+        if (testInfo.bankProjectStep) {
+          rows[uiRowIdx].push({
+            content: renderBulletList(testInfo.bankProjectStep.uiInteraction),
+            backgroundColor: cellBackgroundColor,
+          });
+          
+          rows[apiRowIdx].push({
+            content: renderBulletList(testInfo.bankProjectStep.apiCall, { isCode: true }),
+            backgroundColor: cellBackgroundColor,
+          });
+          
+          rows[dmnRowIdx].push({
+            content: renderBulletList(testInfo.bankProjectStep.dmnDecision),
+            backgroundColor: cellBackgroundColor,
+          });
+        } else {
+          rows[uiRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+          rows[apiRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+          rows[dmnRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+        }
+      } else {
+        rows[givenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[whenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[thenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[uiRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[apiRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[dmnRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+      }
+    });
+    
+    return rows;
+  }, [callActivitiesList, maxDepth, topLevelCallActivities, getCallActivityColor, tree, scenarios, selectedScenarioId]);
+
+  // Förbered data för hierarkisk vy (en kolumn per callActivity i hierarkin, med grupperade aktiviteter)
+  const transposedDataHierarchical = useMemo(() => {
+    const rows: Array<Array<{ content: React.ReactNode; backgroundColor?: string; colspan?: number; skip?: boolean }>> = [];
+    
+    // Skapa rader för varje nivå + Aktiviteter (grupperade) + Given/When/Then + UI-interaktion + API-anrop + DMN-beslut
+    const rowCount = maxDepth + 7; // maxDepth nivåer + 1 (Aktiviteter) + 3 (G/W/T) + 3 (UI/API/DMN)
+    const activitiesRowIdx = maxDepth;
+    const givenRowIdx = maxDepth + 1;
+    const whenRowIdx = maxDepth + 2;
+    const thenRowIdx = maxDepth + 3;
+    const uiRowIdx = maxDepth + 4;
+    const apiRowIdx = maxDepth + 5;
+    const dmnRowIdx = maxDepth + 6;
+    
+    // Initiera rader
+    for (let i = 0; i < rowCount; i++) {
+      rows.push([]);
+    }
+    
+    // Fyll i data för varje kolumn (callActivity)
+    hierarchicalCallActivitiesList.forEach((callActivityData, colIdx) => {
+      const { callActivityNode, activities, testInfo, depth } = callActivityData;
+      
+      // Hitta path för denna callActivity (för att kunna visa hierarki)
+      const findPathToNode = (node: ProcessTreeNode, targetId: string, currentPath: ProcessTreeNode[] = []): ProcessTreeNode[] | null => {
+        const newPath = [...currentPath, node];
+        if (node.id === targetId) {
+          return newPath;
+        }
+        for (const child of node.children) {
+          const found = findPathToNode(child, targetId, newPath);
+          if (found) return found;
+        }
+        return null;
+      };
+      const path = findPathToNode(tree, callActivityNode.id) || [callActivityNode];
+      
+      // Fyll i hierarki-kolumner (Nivå 0, Nivå 1, etc.) - visa hela path:en
+      for (let level = 0; level < maxDepth; level++) {
+        const node = path[level];
+        let cellBackgroundColor: string | undefined = undefined;
+        
+        if (node) {
+          if (node.type === 'callActivity' && node.bpmnElementId) {
+            cellBackgroundColor = getCallActivityColor(path, node.bpmnElementId, level);
+          }
+          
+          const nodeStyle = getProcessNodeStyle(node.type);
+          const isLeafNode = level === path.length - 1;
+          
+          rows[level].push({
+            content: (
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: nodeStyle.hexColor }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate" title={node.label}>
+                    {node.label}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate" title={node.bpmnFile}>
+                    {node.bpmnFile}
+                  </div>
+                  {isLeafNode && node.bpmnElementId && (
+                    <div className="text-xs font-mono text-muted-foreground truncate" title={node.bpmnElementId}>
+                      {node.bpmnElementId}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ),
+            backgroundColor: cellBackgroundColor,
+          });
+        } else {
+          rows[level].push({
+            content: <span className="text-xs text-muted-foreground">–</span>,
+          });
+        }
+      }
+      
+      // Beräkna bakgrundsfärg för denna callActivity
+      const cellBackgroundColor = callActivityNode.bpmnElementId 
+        ? getCallActivityColor(path, callActivityNode.bpmnElementId, path.findIndex(n => n.id === callActivityNode.id))
+        : undefined;
+      
+      // Fyll i Aktiviteter-raden (grupperade) - samma som condensed
+      // Använd callActivity-id i keys för att göra dem unika mellan kolumner
+      const callActivityId = callActivityNode.bpmnElementId || callActivityNode.id;
+      const activityGroups: React.ReactNode[] = [];
+      
+      if (activities.serviceTasks.length > 0) {
+        activityGroups.push(
+          <div key={`${callActivityId}-serviceTasks`} className="mb-2">
+            <div className="text-xs font-semibold text-amber-600 mb-1">Service Tasks:</div>
+            <ul className="list-disc ml-4 space-y-0.5">
+              {activities.serviceTasks.map((task, idx) => (
+                <li key={`${callActivityId}-serviceTask-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      if (activities.userTasksCustomer.length > 0) {
+        activityGroups.push(
+          <div key={`${callActivityId}-userTasksCustomer`} className="mb-2">
+            <div className="text-xs font-semibold text-red-600 mb-1">User Tasks (kund):</div>
+            <ul className="list-disc ml-4 space-y-0.5">
+              {activities.userTasksCustomer.map((task, idx) => (
+                <li key={`${callActivityId}-userTaskCustomer-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      if (activities.userTasksEmployee.length > 0) {
+        activityGroups.push(
+          <div key={`${callActivityId}-userTasksEmployee`} className="mb-2">
+            <div className="text-xs font-semibold text-red-800 mb-1">User Tasks (handläggare):</div>
+            <ul className="list-disc ml-4 space-y-0.5">
+              {activities.userTasksEmployee.map((task, idx) => (
+                <li key={`${callActivityId}-userTaskEmployee-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      if (activities.businessRules.length > 0) {
+        activityGroups.push(
+          <div key={`${callActivityId}-businessRules`} className="mb-2">
+            <div className="text-xs font-semibold text-cyan-600 mb-1">Business Rules / DMN:</div>
+            <ul className="list-disc ml-4 space-y-0.5">
+              {activities.businessRules.map((task, idx) => (
+                <li key={`${callActivityId}-businessRule-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      rows[activitiesRowIdx].push({
+        content: activityGroups.length > 0 ? <div className="space-y-1">{activityGroups}</div> : <span className="text-xs text-muted-foreground">–</span>,
+        backgroundColor: cellBackgroundColor,
+      });
+      
+      // Fyll i Given/When/Then + UI/API/DMN - samma som condensed
+      if (testInfo) {
+        rows[givenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep.given),
+          backgroundColor: cellBackgroundColor,
+        });
+        
+        rows[whenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep.when),
+          backgroundColor: cellBackgroundColor,
+        });
+        
+        rows[thenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep.then),
+          backgroundColor: cellBackgroundColor,
+        });
+        
+        if (testInfo.bankProjectStep) {
+          rows[uiRowIdx].push({
+            content: renderBulletList(testInfo.bankProjectStep.uiInteraction),
+            backgroundColor: cellBackgroundColor,
+          });
+          
+          rows[apiRowIdx].push({
+            content: renderBulletList(testInfo.bankProjectStep.apiCall, { isCode: true }),
+            backgroundColor: cellBackgroundColor,
+          });
+          
+          rows[dmnRowIdx].push({
+            content: renderBulletList(testInfo.bankProjectStep.dmnDecision),
+            backgroundColor: cellBackgroundColor,
+          });
+        } else {
+          rows[uiRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+          rows[apiRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+          rows[dmnRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+        }
+      } else {
+        rows[givenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[whenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[thenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[uiRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[apiRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+        rows[dmnRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
+      }
+    });
+    
+    return rows;
+  }, [hierarchicalCallActivitiesList, maxDepth, topLevelCallActivities, getCallActivityColor, tree, scenarios, selectedScenarioId]);
+
+  // Förbered data för fullständig vy (en kolumn per path/aktivitet)
+  const transposedDataFull = useMemo(() => {
     const rows: Array<Array<{ content: React.ReactNode; backgroundColor?: string; colspan?: number; skip?: boolean }>> = [];
     
     // Skapa rader för varje nivå + Given/When/Then + UI-interaktion + API-anrop + DMN-beslut
@@ -792,73 +1369,149 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId }: TestC
     return rows;
   }, [groupedRows, maxDepth, topLevelCallActivities, getCallActivityColor, groupedColumns]);
 
-  // Skapa rad-headers
+  // Välj rätt data baserat på viewMode
+  const transposedData = viewMode === 'condensed' 
+    ? transposedDataCondensed 
+    : viewMode === 'hierarchical'
+    ? transposedDataHierarchical
+    : transposedDataFull;
+  
+  // Skapa rad-headers baserat på viewMode
   const rowHeaders = useMemo(() => {
     const headers = Array.from({ length: maxDepth }, (_, i) => `Nivå ${i}`);
-    return [...headers, 'Given', 'When', 'Then', 'UI-interaktion', 'API-anrop', 'DMN-beslut'];
-  }, [maxDepth]);
+    if (viewMode === 'condensed' || viewMode === 'hierarchical') {
+      return [...headers, 'Aktiviteter', 'Given', 'When', 'Then', 'UI-interaktion', 'API-anrop', 'DMN-beslut'];
+    } else {
+      return [...headers, 'Given', 'When', 'Then', 'UI-interaktion', 'API-anrop', 'DMN-beslut'];
+    }
+  }, [maxDepth, viewMode]);
+
+  // Kolumner baserat på viewMode
+  const columns = viewMode === 'condensed' 
+    ? callActivitiesList.map((callActivityData) => ({
+        callActivityNode: callActivityData.callActivityNode,
+        label: callActivityData.callActivityNode.label,
+        bpmnFile: callActivityData.callActivityNode.bpmnFile,
+      }))
+    : viewMode === 'hierarchical'
+    ? hierarchicalCallActivitiesList.map((callActivityData) => ({
+        callActivityNode: callActivityData.callActivityNode,
+        label: callActivityData.callActivityNode.label,
+        bpmnFile: callActivityData.callActivityNode.bpmnFile,
+      }))
+    : groupedRows.map((groupedRow) => {
+        const leafNode = groupedRow.pathRow.path[groupedRow.pathRow.path.length - 1];
+        return {
+          callActivityNode: null,
+          label: leafNode?.label || 'Path',
+          bpmnFile: leafNode?.bpmnFile || '',
+        };
+      });
 
   return (
-    <div className="overflow-x-auto">
-      <table className="table-fixed w-full caption-bottom text-sm">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px] sticky left-0 bg-background z-10">Rad</TableHead>
-            {groupedRows.map((groupedRow, colIdx) => {
-              const { pathRow } = groupedRow;
-              const { path } = pathRow;
-              const leafNode = path[path.length - 1];
-              return (
+    <div className="space-y-4">
+      {/* View mode selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">Vy:</span>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={viewMode === 'condensed' ? 'default' : 'outline'}
+            size="sm"
+            className="text-xs h-7"
+            onClick={() => setViewMode('condensed')}
+          >
+            Kondenserad (per subprocess)
+          </Button>
+          <Button
+            variant={viewMode === 'hierarchical' ? 'default' : 'outline'}
+            size="sm"
+            className="text-xs h-7"
+            onClick={() => setViewMode('hierarchical')}
+          >
+            Hierarkisk (alla subprocesser)
+          </Button>
+          <Button
+            variant={viewMode === 'full' ? 'default' : 'outline'}
+            size="sm"
+            className="text-xs h-7"
+            onClick={() => setViewMode('full')}
+          >
+            Fullständig (per aktivitet)
+          </Button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table 
+          className="table-fixed w-full caption-bottom text-sm"
+          data-view-mode={viewMode}
+        >
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px] sticky left-0 bg-background z-10">Rad</TableHead>
+              {columns.map((col, colIdx) => (
                 <TableHead key={colIdx} className="w-[300px]">
-                  <div className="text-xs font-medium truncate" title={leafNode?.label || `Path ${colIdx + 1}`}>
-                    {leafNode?.label || `Path ${colIdx + 1}`}
+                  <div className="text-xs font-medium truncate" title={col.label}>
+                    {col.label}
                   </div>
+                  {col.bpmnFile && (
+                    <div className="text-xs text-muted-foreground truncate" title={col.bpmnFile}>
+                      {col.bpmnFile}
+                    </div>
+                  )}
                 </TableHead>
-              );
-            })}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {transposedData.map((row, rowIdx) => (
-            <TableRow key={rowIdx}>
-              <TableCell className="w-[100px] sticky left-0 bg-background z-10 font-medium">
-                {rowHeaders[rowIdx]}
-              </TableCell>
-              {row.map((cell, colIdx) => {
-                // Hoppa över celler som är markerade som skip (de är del av en merged cell)
-                if (cell.skip) {
-                  return null;
-                }
-                
-                // Identifiera om detta är en testinfo-rad (Given, When, Then)
-                const isTestInfoRow = rowIdx >= maxDepth;
-                
-                // Kombinera backgroundColor
-                const cellStyle: React.CSSProperties = cell.backgroundColor
-                  ? { backgroundColor: cell.backgroundColor }
-                  : {};
-                
-                return (
-                  <TableCell
-                    key={colIdx}
-                    className="align-top w-[300px]"
-                    style={Object.keys(cellStyle).length > 0 ? cellStyle : undefined}
-                    colSpan={cell.colspan}
-                  >
-                    {isTestInfoRow ? (
-                      <div className="max-h-[150px] overflow-y-auto">
-                        {cell.content}
-                      </div>
-                    ) : (
-                      cell.content
-                    )}
-                  </TableCell>
-                );
-              })}
+              ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </table>
+          </TableHeader>
+          <TableBody>
+            {transposedData.map((row, rowIdx) => (
+              <TableRow key={rowIdx}>
+                <TableCell className="w-[100px] sticky left-0 bg-background z-10 font-medium">
+                  {rowHeaders[rowIdx]}
+                </TableCell>
+                {row.map((cell, colIdx) => {
+                  // Hoppa över celler som är markerade som skip (de är del av en merged cell)
+                  if (cell.skip) {
+                    return null;
+                  }
+                  
+                  // Identifiera om detta är en testinfo-rad (Given, When, Then, UI, API, DMN)
+                  const isTestInfoRow = (viewMode === 'condensed' || viewMode === 'hierarchical')
+                    ? rowIdx >= maxDepth + 1 
+                    : rowIdx >= maxDepth;
+                  
+                  return (
+                    <TableCell
+                      key={colIdx}
+                      className="align-top"
+                      style={{
+                        backgroundColor: cell.backgroundColor,
+                        padding: isTestInfoRow ? '4px 8px' : undefined,
+                      }}
+                      colSpan={cell.colspan}
+                    >
+                      {isTestInfoRow ? (
+                        <div 
+                          className="overflow-y-auto"
+                          style={{
+                            maxHeight: '150px',
+                          }}
+                        >
+                          {cell.content}
+                        </div>
+                      ) : (
+                        cell.content
+                      )}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </table>
+      </div>
     </div>
   );
 }
+
+// OLD CODE REMOVED - using callActivitiesList instead
