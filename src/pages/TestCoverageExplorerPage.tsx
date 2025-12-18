@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,6 +37,13 @@ export default function TestCoverageExplorerPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'condensed' | 'hierarchical' | 'full'>('condensed');
   const { toast } = useToast();
+
+  // Sätt första scenariot som standard när e2eScenarios är tillgängligt
+  useEffect(() => {
+    if (e2eScenarios.length > 0 && !selectedScenarioId) {
+      setSelectedScenarioId(e2eScenarios[0].id);
+    }
+  }, [e2eScenarios, selectedScenarioId]);
 
 
   // Beräkna max djup
@@ -161,8 +168,9 @@ export default function TestCoverageExplorerPage() {
       copyStylesForTable(hierarchicalTableElement, clonedHierarchicalTable, 'hierarchical');
       copyStylesForTable(fullTableElement, clonedFullTable, 'full');
 
-      // Hämta valt scenario-namn
-      const selectedScenario = e2eScenarios.find((s) => s.id === selectedScenarioId);
+      // Hämta valt scenario-namn (använd första scenariot om inget är valt)
+      const effectiveScenarioId = selectedScenarioId || (e2eScenarios.length > 0 ? e2eScenarios[0].id : '');
+      const selectedScenario = e2eScenarios.find((s) => s.id === effectiveScenarioId);
       const scenarioName = selectedScenario ? `${selectedScenario.id} – ${selectedScenario.name}` : '';
       
       // Standardvy är condensed
@@ -330,8 +338,7 @@ export default function TestCoverageExplorerPage() {
     <div class="filter-group">
       <label>Scenario:</label>
       <div class="filter-buttons">
-        <button class="filter-button ${!selectedScenarioId ? 'active' : ''}" data-scenario="all">Alla scenarion</button>
-        ${scenariosData.map((s) => `<button class="filter-button ${selectedScenarioId === s.id ? 'active' : ''}" data-scenario="${s.id}">${s.id} – ${s.name}</button>`).join('')}
+        ${scenariosData.map((s) => `<button class="filter-button ${effectiveScenarioId === s.id ? 'active' : ''}" data-scenario="${s.id}">${s.id} – ${s.name}</button>`).join('')}
       </div>
     </div>
     <div class="filter-group">
@@ -351,7 +358,7 @@ export default function TestCoverageExplorerPage() {
   <script>
     // Scenario-data
     const scenariosData = ${JSON.stringify(scenariosData)};
-    let currentScenarioId = '${selectedScenarioId || 'all'}';
+    let currentScenarioId = '${effectiveScenarioId}';
     let currentViewMode = '${defaultViewMode}';
     
     // Hitta alla tabeller
@@ -373,6 +380,19 @@ export default function TestCoverageExplorerPage() {
     
     // Filtrera baserat på scenario
     function filterByScenario(scenarioId) {
+      // Om inget scenario är valt, använd första scenariot
+      if (!scenarioId && scenariosData.length > 0) {
+        scenarioId = scenariosData[0].id;
+        currentScenarioId = scenarioId;
+        // Uppdatera aktiva knappar
+        document.querySelectorAll('.filter-button[data-scenario]').forEach(btn => {
+          btn.classList.remove('active');
+          if (btn.getAttribute('data-scenario') === scenarioId) {
+            btn.classList.add('active');
+          }
+        });
+      }
+      
       const activeTable = tables[currentViewMode];
       if (!activeTable) return;
       
@@ -394,17 +414,20 @@ export default function TestCoverageExplorerPage() {
         
         // Om filen exporterades med ett specifikt scenario, visa bara om det matchar
         if (exportedScenario && exportedScenario !== 'all') {
-          shouldShow = scenarioId === 'all' || scenarioId === exportedScenario;
+          shouldShow = scenarioId === exportedScenario;
         } else {
-          // Om filen exporterades med "Alla scenarion", filtrera baserat på scenario
+          // Om filen exporterades med flera scenarion, filtrera baserat på scenario
           const scenariosAttr = cell.getAttribute('data-scenarios');
-          if (scenarioId !== 'all' && scenariosAttr) {
+          if (scenarioId && scenariosAttr) {
             try {
               const scenarios = JSON.parse(scenariosAttr);
               shouldShow = scenarios.includes(scenarioId);
             } catch (e) {
               shouldShow = true;
             }
+          } else if (!scenarioId) {
+            // Om inget scenario är valt, visa inget
+            shouldShow = false;
           }
         }
         
@@ -433,7 +456,7 @@ export default function TestCoverageExplorerPage() {
     // Event listeners för scenario-knappar
     document.querySelectorAll('.filter-button[data-scenario]').forEach(button => {
       button.addEventListener('click', function() {
-        const scenarioId = this.getAttribute('data-scenario') === 'all' ? 'all' : this.getAttribute('data-scenario');
+        const scenarioId = this.getAttribute('data-scenario');
         
         // Uppdatera aktiva knappar
         document.querySelectorAll('.filter-button[data-scenario]').forEach(btn => {
@@ -934,14 +957,6 @@ export default function TestCoverageExplorerPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Scenario:</span>
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant={!selectedScenarioId ? 'default' : 'outline'}
-                          size="sm"
-                          className="text-xs h-7"
-                          onClick={() => setSelectedScenarioId('')}
-                        >
-                          Alla scenarion
-                        </Button>
                         {e2eScenarios.map((s) => (
                           <Button
                             key={s.id}

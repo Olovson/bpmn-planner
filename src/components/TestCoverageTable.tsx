@@ -204,7 +204,7 @@ function collectActivitiesPerCallActivity(
   return result;
 }
 
-export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMode: viewModeProp }: TestCoverageTableProps) {
+export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMode: viewModeProp, searchQuery }: TestCoverageTableProps) {
   // State för att välja vy: 'condensed' (kondenserad), 'hierarchical' (hierarkisk), eller 'full' (fullständig)
   // Om viewModeProp anges, använd den (för export), annars använd intern state
   const [viewModeState, setViewMode] = useState<'condensed' | 'hierarchical' | 'full'>('condensed');
@@ -224,6 +224,57 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
     // Sortera paths baserat på ProcessTree-ordningen (samma som Process Explorer)
     return sortPathsByProcessTreeOrder(rows);
   }, [tree, scenarios, selectedScenarioId]);
+
+  // Filtrera pathRows baserat på searchQuery
+  const filteredPathRows = useMemo(() => {
+    if (!searchQuery || searchQuery.trim() === '') {
+      return pathRows;
+    }
+    
+    const query = searchQuery.toLowerCase().trim();
+    return pathRows.filter((pathRow) => {
+      // Sök i node labels
+      const nodeLabels = pathRow.path.map((node) => node.label.toLowerCase());
+      if (nodeLabels.some((label) => label.includes(query))) {
+        return true;
+      }
+      
+      // Sök i BPMN element IDs
+      const bpmnElementIds = pathRow.path
+        .map((node) => node.bpmnElementId?.toLowerCase())
+        .filter((id): id is string => !!id);
+      if (bpmnElementIds.some((id) => id.includes(query))) {
+        return true;
+      }
+      
+      // Sök i BPMN filnamn
+      const bpmnFiles = pathRow.path
+        .map((node) => node.bpmnFile?.toLowerCase())
+        .filter((file): file is string => !!file);
+      if (bpmnFiles.some((file) => file.includes(query))) {
+        return true;
+      }
+      
+      // Sök i test information (Given, When, Then, UI, API, DMN)
+      const testInfoValues = Array.from(pathRow.testInfoByCallActivity.values())
+        .flat()
+        .map((info) => [
+          info.given?.toLowerCase(),
+          info.when?.toLowerCase(),
+          info.then?.toLowerCase(),
+          info.ui?.toLowerCase(),
+          info.api?.toLowerCase(),
+          info.dmn?.toLowerCase(),
+        ])
+        .flat()
+        .filter((text): text is string => !!text);
+      if (testInfoValues.some((text) => text.includes(query))) {
+        return true;
+      }
+      
+      return false;
+    });
+  }, [pathRows, searchQuery]);
 
   // Bygg en set över alla callActivityIds som faktiskt har entries i subprocessSteps
   const callActivityIdsWithTestInfo = useMemo(() => {
