@@ -67,6 +67,6 @@ Se `feature-goal/mortgage.application.doc.ts` (om den finns) för ett komplett e
 
 - Börja med att generera dokumentation lokalt för att se base-innehållet
 - Skapa override-fil för noder som behöver förbättring
-- Använd ChatGPT/Ollama för att generera innehåll, kopiera till override-fil, och commit
+- Använd Claude/Ollama för att generera innehåll, kopiera till override-fil, och commit
 - Iterativt förbättra override-filerna över tid
 

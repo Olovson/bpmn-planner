@@ -2,7 +2,7 @@
  * LLM Debug View
  * 
  * Enkel intern vy för att se senaste LLM-anrop och vilken provider som använts
- * (ChatGPT som moln-LLM och Ollama som lokal LLM).
+ * (Claude som moln-LLM och Ollama som lokal LLM).
  */
 
 import { useLlmEvents, useLlmStats } from '@/hooks/useLlmEvents';
@@ -61,7 +61,7 @@ export function LlmDebugView() {
             </div>
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <div className="text-sm text-muted-foreground">ChatGPT</div>
+                <div className="text-sm text-muted-foreground">Claude</div>
                 <div className="text-xl font-semibold">{stats.byProvider.cloud}</div>
               </div>
               <div>
@@ -124,7 +124,7 @@ export function LlmDebugView() {
                         <td className="p-2">
                           <Badge
                             variant={
-                              providerLabel === 'ChatGPT'
+                              providerLabel === 'Claude'
                                 ? 'default'
                                 : providerLabel === 'Local-fallback'
                                 ? 'destructive'

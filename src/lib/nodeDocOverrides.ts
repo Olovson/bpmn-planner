@@ -483,6 +483,111 @@ export function mergeLlmPatch<T extends FeatureGoalDocModel | EpicDocModel | Bus
 // ============================================================================
 
 /**
+ * Validation result type
+ */
+export interface ModelValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Validates a Feature Goal model after merge to ensure it's complete and valid.
+ * 
+ * @param model - Model to validate
+ * @returns Validation result with errors and warnings
+ */
+export function validateFeatureGoalModelAfterMerge(
+  model: FeatureGoalDocModel
+): ModelValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Required string fields
+  if (!model.summary || typeof model.summary !== 'string' || !model.summary.trim()) {
+    errors.push('Field "summary" is required and must be a non-empty string');
+  }
+  if (!model.testDescription || typeof model.testDescription !== 'string') {
+    errors.push('Field "testDescription" is required and must be a string');
+  }
+
+  // Required array fields
+  const requiredArrayFields: Array<keyof FeatureGoalDocModel> = [
+    'effectGoals',
+    'scopeIncluded',
+    'scopeExcluded',
+    'epics',
+    'flowSteps',
+    'dependencies',
+    'scenarios',
+    'implementationNotes',
+    'relatedItems',
+  ];
+
+  for (const field of requiredArrayFields) {
+    if (!Array.isArray(model[field])) {
+      errors.push(`Field "${field}" must be an array`);
+    } else if (field === 'epics') {
+      // Validate epic objects
+      const epics = model[field] as FeatureGoalDocModel['epics'];
+      epics.forEach((epic, index) => {
+        if (!epic || typeof epic !== 'object') {
+          errors.push(`Field "epics[${index}]" must be an object`);
+        } else {
+          if (!epic.id || typeof epic.id !== 'string') {
+            errors.push(`Field "epics[${index}].id" must be a non-empty string`);
+          }
+          if (!epic.name || typeof epic.name !== 'string') {
+            errors.push(`Field "epics[${index}].name" must be a non-empty string`);
+          }
+          if (!epic.description || typeof epic.description !== 'string') {
+            errors.push(`Field "epics[${index}].description" must be a non-empty string`);
+          }
+        }
+      });
+    } else if (field === 'scenarios') {
+      // Validate scenario objects
+      const scenarios = model[field] as FeatureGoalDocModel['scenarios'];
+      scenarios.forEach((scenario, index) => {
+        if (!scenario || typeof scenario !== 'object') {
+          errors.push(`Field "scenarios[${index}]" must be an object`);
+        } else {
+          if (!scenario.id || typeof scenario.id !== 'string') {
+            errors.push(`Field "scenarios[${index}].id" must be a non-empty string`);
+          }
+          if (!scenario.name || typeof scenario.name !== 'string') {
+            errors.push(`Field "scenarios[${index}].name" must be a non-empty string`);
+          }
+          if (!scenario.type || typeof scenario.type !== 'string') {
+            errors.push(`Field "scenarios[${index}].type" must be a non-empty string`);
+          }
+          if (!scenario.outcome || typeof scenario.outcome !== 'string') {
+            errors.push(`Field "scenarios[${index}].outcome" must be a non-empty string`);
+          }
+        }
+      });
+    }
+  }
+
+  // Warnings for empty arrays (not errors, but might indicate incomplete data)
+  if (model.effectGoals.length === 0) {
+    warnings.push('Field "effectGoals" is empty - consider adding effect goals');
+  }
+  if (model.flowSteps.length === 0) {
+    warnings.push('Field "flowSteps" is empty - consider adding flow steps');
+  }
+  if (model.scenarios.length === 0) {
+    warnings.push('Field "scenarios" is empty - consider adding scenarios');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+/**
  * Validates an Epic model after merge to ensure it's complete and valid.
  * 
  * @param model - Model to validate

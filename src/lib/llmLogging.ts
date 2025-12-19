@@ -41,8 +41,8 @@ const recentLlmEvents: LlmLogEvent[] = [];
 export function getProviderLabel(
   finalProvider: LlmProvider,
   fallbackUsed: boolean
-): 'ChatGPT' | 'Ollama' | 'Local-fallback' {
-  if (finalProvider === 'cloud') return 'ChatGPT';
+): 'Claude' | 'Ollama' | 'Local-fallback' {
+  if (finalProvider === 'cloud') return 'Claude';
   if (fallbackUsed) return 'Local-fallback';
   return 'Ollama';
 }

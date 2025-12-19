@@ -84,7 +84,7 @@ const DocViewer = () => {
       return 'Lokal generering';
     }
     if (generationSource === 'llm-slow-chatgpt') {
-      return 'LLM (ChatGPT)';
+      return 'LLM (Claude)';
     }
     if (generationSource === 'llm-slow-ollama') {
       return 'LLM (Ollama)';
@@ -494,7 +494,7 @@ const DocViewer = () => {
                     }
                   }}
                 >
-                  ChatGPT
+                  Claude
                 </Button>
                 <Button
                   size="sm"

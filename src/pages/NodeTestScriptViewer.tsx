@@ -18,7 +18,7 @@ interface NormalizedVariant {
 }
 
 const modeLabel = (mode: NormalizedMode) =>
-  mode === 'local' ? 'Lokal fallback (ingen LLM)' : 'LLM (ChatGPT/Ollama)';
+  mode === 'local' ? 'Lokal fallback (ingen LLM)' : 'LLM (Claude/Ollama)';
 
 const NodeTestScriptViewer = () => {
   const navigate = useNavigate();
@@ -314,7 +314,7 @@ const NodeTestScriptViewer = () => {
                   onClick={() => setActiveMode('full')}
                   disabled={!hasFullVariant}
                 >
-                  LLM (ChatGPT/Ollama)
+                  LLM (Claude/Ollama)
                 </Button>
               </div>
             </CardHeader>

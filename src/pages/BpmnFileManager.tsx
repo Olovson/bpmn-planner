@@ -1909,13 +1909,13 @@ export default function BpmnFileManager() {
       if (isLocalMode) {
         resultMessage.push('Lokal körning (ingen LLM)');
       } else {
-        resultMessage.push(
-          `LLM-provider: ${
-            llmProvider === 'cloud'
-              ? 'ChatGPT (moln)'
-              : 'Ollama (lokal)'
-          }`,
-        );
+          resultMessage.push(
+            `LLM-provider: ${
+              llmProvider === 'cloud'
+                ? 'Claude (moln)'
+                : 'Ollama (lokal)'
+            }`,
+          );
       }
       if (useHierarchy && result.metadata) {
         resultMessage.push(`Hierarkisk analys: ${result.metadata.totalFilesAnalyzed} filer`);
@@ -3011,7 +3011,7 @@ export default function BpmnFileManager() {
     generationMode === 'local'
       ? 'Lokal fallback (ingen LLM)'
       : llmProvider === 'cloud'
-      ? 'ChatGPT (moln-LLM)'
+      ? 'Claude (moln-LLM)'
       : 'Ollama (lokal LLM)';
 
   return (
@@ -3306,7 +3306,7 @@ export default function BpmnFileManager() {
               aria-pressed={generationMode === 'slow' && llmProvider === 'cloud'}
             >
               <Sparkles className="w-4 h-4" />
-              ChatGPT (moln-LLM)
+              Claude (moln-LLM)
             </Button>
             <Button
               size="sm"
@@ -4034,7 +4034,7 @@ export default function BpmnFileManager() {
                               }
                               const providerLabel =
                                 (snap as any).llmProvider === 'cloud'
-                                  ? 'ChatGPT'
+                                  ? 'Claude'
                                   : (snap as any).llmProvider === 'local'
                                   ? 'Ollama'
                                   : (snap as any).llmProvider === 'fallback' || snap.mode === 'local'
@@ -4078,7 +4078,7 @@ export default function BpmnFileManager() {
                               }
                               const providerLabel =
                                 (snap as any).llmProvider === 'cloud'
-                                  ? 'ChatGPT'
+                                  ? 'Claude'
                                   : (snap as any).llmProvider === 'local'
                                   ? 'Ollama'
                                   : (snap as any).llmProvider === 'fallback' || snap.mode === 'local'
@@ -4113,7 +4113,7 @@ export default function BpmnFileManager() {
                         const latest = artifactStatusByFile.get(file.file_name)!.latestJob!;
                         const providerLabel =
                           (latest.result as any)?.llmProvider === 'cloud'
-                            ? 'ChatGPT'
+                            ? 'Claude'
                             : (latest.result as any)?.llmProvider === 'local'
                             ? 'Ollama'
                             : (latest.result as any)?.llmProvider === 'fallback' || latest.mode === 'local'
@@ -4245,7 +4245,7 @@ export default function BpmnFileManager() {
                       };
                       const providerLabel =
                         jobResult.llmProvider === 'cloud'
-                          ? 'ChatGPT'
+                          ? 'Claude'
                           : jobResult.llmProvider === 'local'
                           ? 'Ollama'
                           : jobResult.llmProvider === 'fallback' || job.mode === 'local'

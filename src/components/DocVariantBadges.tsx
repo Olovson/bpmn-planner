@@ -18,7 +18,7 @@ export const DocVariantBadges = ({ docId, compact }: DocVariantBadgesProps) => {
   return (
     <div className={`flex flex-wrap gap-1 ${compact ? 'mt-1' : 'mt-2'}`}>
       {hasLocal && <span className={baseClass}>Lokal</span>}
-      {hasChatgpt && <span className={baseClass}>ChatGPT</span>}
+      {hasChatgpt && <span className={baseClass}>Claude</span>}
       {hasOllama && <span className={baseClass}>Ollama</span>}
     </div>
   );

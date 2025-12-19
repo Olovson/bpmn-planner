@@ -234,7 +234,7 @@ export interface LlmHtmlRenderOptions {
   llmMetadata?: LlmMetadata;
   /**
    * När true visas en tydlig badge högst upp i dokumentet som markerar
-   * att ChatGPT (moln-LLM) var otillgänglig och fallback har aktiverats.
+   * att Claude (moln-LLM) var otillgänglig och fallback har aktiverats.
    */
   fallbackBadge?: boolean;
   /**
@@ -1253,8 +1253,6 @@ function buildTestGenerationSectionV2(
       outcome: 'Kunden styrs till komplettering, beslut skjuts upp',
       status: '⏳ TODO',
     });
-    }
-  }
   }
 
   // Generate UI Flow steps for each scenario
@@ -3116,7 +3114,7 @@ const renderBusinessRuleDocLegacy = async (
  * 
  * @param context - Node documentation context
  * @param links - Template links
- * @param llmContent - Optional LLM-generated content (for ChatGPT/Ollama)
+ * @param llmContent - Optional LLM-generated content (for Claude/Ollama)
  * @param llmMetadata - Optional LLM metadata
  * @returns Complete HTML document
  */

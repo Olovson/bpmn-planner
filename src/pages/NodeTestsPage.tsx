@@ -30,7 +30,7 @@ const NodeTestsPage = () => {
     elementId: elementId || undefined,
   });
   const [implementedTestFile, setImplementedTestFile] = useState<string | null>(null);
-  // Gemensamt läge för provider (matchar dokumentationsvyerna: Lokal fallback / ChatGPT / Ollama)
+  // Gemensamt läge för provider (matchar dokumentationsvyerna: Lokal fallback / Claude / Ollama)
   const [providerMode, setProviderMode] = useState<'local-fallback' | 'chatgpt' | 'ollama'>('local-fallback');
 
   const filteredTests = useMemo(
@@ -206,7 +206,7 @@ const NodeTestsPage = () => {
                   variant={providerMode === 'chatgpt' ? 'default' : 'outline'}
                   onClick={() => setProviderMode('chatgpt')}
                 >
-                  ChatGPT
+                  Claude
                 </Button>
                 <Button
                   size="sm"
@@ -353,7 +353,7 @@ const NodeTestsPage = () => {
                             {test.scriptProvider === 'local-fallback'
                               ? 'Lokal fallback'
                               : test.scriptProvider === 'chatgpt'
-                              ? 'ChatGPT'
+                              ? 'Claude'
                               : test.scriptProvider === 'ollama'
                               ? 'Ollama'
                               : test.variant === 'local-fallback'
@@ -470,7 +470,7 @@ const NodeTestsPage = () => {
                         {providerMode === 'local-fallback'
                           ? 'Lokal fallback'
                           : providerMode === 'chatgpt'
-                          ? 'ChatGPT'
+                          ? 'Claude'
                           : 'Ollama'}
                         . Generera dokumentation/tester med denna provider för att fylla dem.
                       </div>

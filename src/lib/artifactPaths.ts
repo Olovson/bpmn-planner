@@ -14,7 +14,7 @@ const normalizeMode = (mode: ArtifactMode): 'local' | 'slow' | null => {
  * Bygger lagringssökvägar för dokumentations-HTML.
  *
  * - Lokal fallback (ingen LLM): docs/local/<docFileName>
- * - LLM (ChatGPT): docs/slow/chatgpt/<docFileName>
+ * - LLM (Claude): docs/slow/chatgpt/<docFileName>
  * - LLM (Ollama): docs/slow/ollama/<docFileName>
  *
  * legacyPath behålls som docs/<docFileName> för bakåtkompatibilitet.

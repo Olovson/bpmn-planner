@@ -2,7 +2,7 @@
  * Shared abstraction for LLM documentation generation.
  * 
  * This module extracts the reusable logic for preparing LLM requests and interpreting
- * responses for the ChatGPT API path.
+ * responses for the Claude API path.
  * 
  * The goal is to have a single source of truth for:
  * - Prompt selection
@@ -35,7 +35,7 @@ import {
 
 /**
  * Gets the appropriate prompt for a document type.
- * Reuses the same prompt loader used by the ChatGPT API path.
+ * Reuses the same prompt loader used by the Claude API path.
  */
 export function getPromptForDocType(docType: DocumentationDocType): string {
   if (docType === 'businessRule') {
@@ -82,7 +82,7 @@ export function buildLlmInputPayload(
 
 /**
  * Builds the full LLM request structure (system prompt + user prompt).
- * This is what would be sent to ChatGPT.
+ * This is what would be sent to Claude.
  */
 export interface LlmRequestStructure {
   systemPrompt: string;
@@ -110,7 +110,7 @@ export function buildLlmRequestStructure(
 
 /**
  * Maps raw LLM response text to the appropriate model type.
- * Reuses the same mapper functions used by the ChatGPT API path.
+ * Reuses the same mapper functions used by the Claude API path.
  */
 export function mapLlmResponseToModel(
   docType: DocumentationDocType,

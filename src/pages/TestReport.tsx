@@ -496,7 +496,7 @@ const TestReport = () => {
                   onClick={() => providerHasData['chatgpt'] && setProviderScope('chatgpt')}
                   disabled={!providerHasData['chatgpt']}
                 >
-                  ChatGPT
+                  Claude
                 </button>
                 <button
                   type="button"
@@ -718,7 +718,7 @@ const TestReport = () => {
                                 ) : node.hasPlannedForOtherProviders ? (
                                   <div className="flex flex-col gap-1">
                                     <span className="text-xs text-muted-foreground">
-                                      Inga scenarion för {providerScope === 'local-fallback' ? 'Lokal fallback' : providerScope === 'chatgpt' ? 'ChatGPT' : 'Ollama'}
+                                      Inga scenarion för {providerScope === 'local-fallback' ? 'Lokal fallback' : providerScope === 'chatgpt' ? 'Claude' : 'Ollama'}
                                     </span>
                                     <span className="text-[10px] text-amber-600">
                                       Finns för: {node.availableProviders.join(', ')}
@@ -912,7 +912,7 @@ const TestReport = () => {
                               | null
                               | undefined;
                             if (provider === 'local-fallback') return 'Lokal fallback';
-                            if (provider === 'chatgpt') return 'ChatGPT';
+                            if (provider === 'chatgpt') return 'Claude';
                             if (provider === 'ollama') return 'Ollama';
                             return '–';
                           })()}
