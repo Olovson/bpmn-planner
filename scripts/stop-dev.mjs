@@ -41,6 +41,15 @@ async function main() {
     log('⚠️  ChromaDB server körde inte eller kunde inte stoppas.');
   }
 
+  // Stoppa Chroma Auto Indexer
+  log('Stoppar Chroma Auto Indexer...');
+  try {
+    execSync("pkill -f 'chroma-auto-indexer.mjs'", { stdio: 'ignore' });
+    log('✅ Chroma Auto Indexer stoppad.');
+  } catch (err) {
+    log('⚠️  Chroma Auto Indexer körde inte eller kunde inte stoppas.');
+  }
+
   // Stoppa edge functions och dev-server (de körs i bakgrunden)
   log('Stoppar edge functions och dev-server...');
   try {

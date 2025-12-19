@@ -26,6 +26,7 @@
     "stop:dev": "node scripts/stop-dev.mjs",
     "chroma:start": "node scripts/start-chroma-server.mjs",
     "chroma:stop": "node scripts/stop-chroma-server.mjs",
+    "chroma:auto-indexer": "node scripts/chroma-auto-indexer.mjs",
     "sync:github": "node scripts/sync-to-github.mjs",
     "graph:inspect": "tsx scripts/graph-inspect.ts",
     "mortgage:order-debug": "vitest run tests/integration/mortgage.order-debug.test.ts",

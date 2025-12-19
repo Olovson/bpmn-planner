@@ -278,6 +278,79 @@ async function main() {
   console.log(`   Chunks: ${totalChunks}`);
   console.log(`   Collection: ${COLLECTION_NAME}`);
   console.log('='.repeat(60));
+  
+  // Automatisk borttagning av dokumentation som nu finns i ChromaDB
+  await cleanupIndexedDocs(files);
+}
+
+/**
+ * Rensa dokumentation som nu finns indexerad i ChromaDB
+ * 
+ * Detta tar bort .md filer som har indexerats i ChromaDB, eftersom
+ * all information nu finns i vektordatabasen för AI-assistentens minne.
+ * 
+ * Viktiga filer (README.md, templates, etc.) behålls.
+ */
+async function cleanupIndexedDocs(indexedFiles: string[]): Promise<void> {
+  const KEEP_FILES = [
+    'README.md',
+    'README_FOR_TESTLEAD.md',
+    'QUICK_START.md',
+    'START_HERE.md',
+    'template.md',
+    'epic-template.html',
+    'feature-goal-template.html',
+    'feature-goal-template-v2.html',
+    'business-rule-task-template.html',
+    'test-generation-section-example.html',
+  ];
+  
+  const KEEP_PATTERNS = [
+    /README/i,
+    /template/i,
+    /\.html$/i,
+    /\.json$/i,
+  ];
+  
+  console.log('\n🧹 Rensar dokumentation som nu finns i ChromaDB...\n');
+  
+  let removedCount = 0;
+  let keptCount = 0;
+  
+  for (const filePath of indexedFiles) {
+    const fileName = path.basename(filePath);
+    const relativePath = path.relative(projectRoot, filePath);
+    
+    // Behåll viktiga filer
+    const shouldKeep = 
+      KEEP_FILES.some(keep => fileName === keep) ||
+      KEEP_PATTERNS.some(pattern => pattern.test(fileName)) ||
+      relativePath.includes('confluence/') || // Behåll Confluence-dokumentation
+      relativePath.includes('project-organization/'); // Behåll projektorganisation
+    
+    if (shouldKeep) {
+      keptCount++;
+      console.log(`   ✓ Behåller: ${relativePath}`);
+      continue;
+    }
+    
+    // Ta bort filen
+    try {
+      fs.unlinkSync(filePath);
+      removedCount++;
+      console.log(`   🗑️  Tog bort: ${relativePath}`);
+    } catch (error) {
+      console.error(`   ❌ Kunde inte ta bort ${relativePath}:`, error);
+    }
+  }
+  
+  console.log('\n' + '='.repeat(60));
+  console.log('✅ Rensning klar!');
+  console.log(`   Behållna: ${keptCount}`);
+  console.log(`   Borttagna: ${removedCount}`);
+  console.log('='.repeat(60));
+  console.log('\n💡 All information finns nu i ChromaDB för AI-assistentens minne.');
+  console.log('   Viktiga filer (README, templates, etc.) behölls för referens.\n');
 }
 
 main().catch(console.error);

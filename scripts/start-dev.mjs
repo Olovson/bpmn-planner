@@ -208,6 +208,28 @@ async function main() {
   const chromaPid = await startChromaServer();
   await new Promise((resolve) => setTimeout(resolve, 2000));
   
+  // 3.3. Starta Chroma DB Auto Indexer (för automatisk indexering)
+  log('Startar Chroma DB Auto Indexer...');
+  const autoIndexerProc = spawn('node', ['scripts/chroma-auto-indexer.mjs'], {
+    cwd: projectRoot,
+    stdio: 'pipe',
+    detached: false,
+  });
+  
+  autoIndexerProc.stdout.on('data', (data) => {
+    process.stdout.write(`[ChromaAutoIndexer] ${data}`);
+  });
+  
+  autoIndexerProc.stderr.on('data', (data) => {
+    process.stderr.write(`[ChromaAutoIndexer] ${data}`);
+  });
+  
+  autoIndexerProc.on('exit', (code) => {
+    if (code !== 0 && code !== null) {
+      log(`⚠️  Chroma Auto Indexer avslutades med kod ${code}`);
+    }
+  });
+  
   // 3.5. Indexera med Cipher (om ChromaDB är redo)
   log('Kontrollerar Cipher-indexering...');
   try {
