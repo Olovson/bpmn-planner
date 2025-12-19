@@ -32,6 +32,15 @@ async function main() {
     log('⚠️  Supabase körde inte eller kunde inte stoppas.');
   }
 
+  // Stoppa ChromaDB server
+  log('Stoppar ChromaDB server...');
+  try {
+    execSync('node scripts/stop-chroma-server.mjs', { stdio: 'inherit' });
+    log('✅ ChromaDB server stoppad.');
+  } catch (err) {
+    log('⚠️  ChromaDB server körde inte eller kunde inte stoppas.');
+  }
+
   // Stoppa edge functions och dev-server (de körs i bakgrunden)
   log('Stoppar edge functions och dev-server...');
   try {
