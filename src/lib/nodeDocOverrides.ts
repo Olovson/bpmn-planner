@@ -8,8 +8,8 @@
  */
 
 import type { FeatureGoalDocModel } from './featureGoalLlmTypes';
-import type { EpicDocModel } from './epicDocTypes';
-import type { BusinessRuleDocModel } from './businessRuleDocTypes';
+import type { EpicDocModel, EpicScenario } from './epicDocTypes';
+import type { BusinessRuleDocModel, BusinessRuleScenario } from './businessRuleDocTypes';
 import type { NodeDocumentationContext } from './documentationContext';
 import { sanitizeElementId } from './nodeArtifactPaths';
 
@@ -390,26 +390,76 @@ export function mergeBusinessRuleOverrides(
 
 /**
  * Merges an LLM-generated partial model into a base/override model.
- * LLM fields take precedence (replace strategy) - when LLM is used, it's authoritative.
  * 
- * This is used to merge LLM output (from ChatGPT or Ollama) into the base model
- * that may already have per-node overrides applied.
+ * ## Merge Strategy
+ * 
+ * **LLM fields take precedence (replace strategy)** - when LLM is used, it's authoritative.
+ * This ensures that Claude's generated content overrides both base model and per-node overrides.
+ * 
+ * ### Simple Fields (strings):
+ * - If LLM provides a non-empty value → **replace** base/override value
+ * - If LLM provides empty/whitespace → **keep** base/override value
+ * - If LLM doesn't provide field → **keep** base/override value
+ * 
+ * ### Array Fields:
+ * - If LLM provides a non-empty array → **replace** base/override array completely
+ * - If LLM provides empty array → **keep** base/override array (don't replace with empty)
+ * - If LLM doesn't provide field → **keep** base/override array
+ * 
+ * ### Edge Cases:
+ * - **Saknade fält i LLM**: Behålls från base/override (modellen är alltid komplett)
+ * - **Extra fält i LLM**: Ignoreras (TypeScript-typer säkerställer att endast giltiga fält accepteras)
+ * - **Tomma strängar**: Behandlas som "saknas" (behåll base/override)
+ * - **Tomma arrays**: Behandlas som "saknas" (behåll base/override)
+ * 
+ * ## Pipeline Order
+ * 
+ * 1. Build base model from BPMN context
+ * 2. Apply per-node overrides (if any)
+ * 3. Apply LLM patch (this function) ← **Här är vi**
+ * 4. Fetch test scenarios from database
+ * 5. Fetch E2E test info
+ * 6. Render HTML
+ * 
+ * ## Example
+ * 
+ * ```typescript
+ * // Base model
+ * const base = { summary: "Base summary", effectGoals: ["Goal 1"] };
+ * 
+ * // LLM patch
+ * const llmPatch = { summary: "LLM summary", effectGoals: ["Goal 2", "Goal 3"] };
+ * 
+ * // Result
+ * const merged = { summary: "LLM summary", effectGoals: ["Goal 2", "Goal 3"] };
+ * // LLM's values replace base values completely
+ * ```
+ * 
+ * @param base - Base model (may already have per-node overrides applied)
+ * @param llmPatch - Partial model from LLM (Claude/Anthropic)
+ * @returns Merged model with LLM values taking precedence
+ * @throws Never throws - always returns a valid model (falls back to base if LLM patch is invalid)
  */
 export function mergeLlmPatch<T extends FeatureGoalDocModel | EpicDocModel | BusinessRuleDocModel>(
   base: T,
   llmPatch: Partial<T>
 ): T {
+  if (!llmPatch || typeof llmPatch !== 'object') {
+    console.warn('[mergeLlmPatch] Invalid llmPatch provided, using base model');
+    return base;
+  }
+
   const merged = { ...base };
 
-  // Simple fields: LLM wins if provided
-  if (llmPatch.summary !== undefined && llmPatch.summary.trim()) {
+  // Simple fields: LLM wins if provided and non-empty
+  if (llmPatch.summary !== undefined && typeof llmPatch.summary === 'string' && llmPatch.summary.trim()) {
     merged.summary = llmPatch.summary;
   }
-  if ('testDescription' in llmPatch && llmPatch.testDescription !== undefined) {
-    merged.testDescription = llmPatch.testDescription as string;
+  if ('testDescription' in llmPatch && llmPatch.testDescription !== undefined && typeof llmPatch.testDescription === 'string') {
+    merged.testDescription = llmPatch.testDescription;
   }
 
-  // Array fields: LLM replaces if provided (not extend - LLM is authoritative)
+  // Array fields: LLM replaces if provided and non-empty (not extend - LLM is authoritative)
   const arrayFields: Array<keyof T> = Object.keys(base).filter(
     (key) => Array.isArray(base[key as keyof T])
   ) as Array<keyof T>;
@@ -417,6 +467,8 @@ export function mergeLlmPatch<T extends FeatureGoalDocModel | EpicDocModel | Bus
   for (const field of arrayFields) {
     if (llmPatch[field] !== undefined && Array.isArray(llmPatch[field])) {
       const llmArray = llmPatch[field] as unknown[];
+      // Only replace if LLM provided a non-empty array
+      // Empty arrays are treated as "not provided" (keep base/override)
       if (llmArray.length > 0) {
         merged[field] = llmArray as T[keyof T];
       }
@@ -424,5 +476,169 @@ export function mergeLlmPatch<T extends FeatureGoalDocModel | EpicDocModel | Bus
   }
 
   return merged;
+}
+
+// ============================================================================
+// Post-Merge Validation
+// ============================================================================
+
+/**
+ * Validates an Epic model after merge to ensure it's complete and valid.
+ * 
+ * @param model - Model to validate
+ * @returns Validation result with errors and warnings
+ */
+export function validateEpicModelAfterMerge(
+  model: EpicDocModel
+): ModelValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Required string fields
+  if (!model.summary || typeof model.summary !== 'string' || !model.summary.trim()) {
+    errors.push('Field "summary" is required and must be a non-empty string');
+  }
+  if (!model.testDescription || typeof model.testDescription !== 'string') {
+    errors.push('Field "testDescription" is required and must be a string');
+  }
+
+  // Required array fields
+  const requiredArrayFields: Array<keyof EpicDocModel> = [
+    'prerequisites',
+    'inputs',
+    'flowSteps',
+    'interactions',
+    'dataContracts',
+    'businessRulesPolicy',
+    'scenarios',
+    'implementationNotes',
+    'relatedItems',
+  ];
+
+  for (const field of requiredArrayFields) {
+    if (!Array.isArray(model[field])) {
+      errors.push(`Field "${field}" must be an array`);
+    } else if (field === 'scenarios') {
+      // Validate scenario objects
+      const scenarios = model[field] as EpicScenario[];
+      scenarios.forEach((scenario, index) => {
+        if (!scenario || typeof scenario !== 'object') {
+          errors.push(`Field "scenarios[${index}]" must be an object`);
+        } else {
+          if (!scenario.id || typeof scenario.id !== 'string') {
+            errors.push(`Field "scenarios[${index}].id" must be a non-empty string`);
+          }
+          if (!scenario.name || typeof scenario.name !== 'string') {
+            errors.push(`Field "scenarios[${index}].name" must be a non-empty string`);
+          }
+          if (!scenario.type || typeof scenario.type !== 'string') {
+            errors.push(`Field "scenarios[${index}].type" must be a non-empty string`);
+          }
+          if (!scenario.description || typeof scenario.description !== 'string') {
+            errors.push(`Field "scenarios[${index}].description" must be a non-empty string`);
+          }
+          if (!scenario.outcome || typeof scenario.outcome !== 'string') {
+            errors.push(`Field "scenarios[${index}].outcome" must be a non-empty string`);
+          }
+        }
+      });
+    }
+  }
+
+  // Warnings for empty arrays (not errors, but might indicate incomplete data)
+  if (model.inputs.length === 0) {
+    warnings.push('Field "inputs" is empty - consider adding inputs');
+  }
+  if (model.flowSteps.length === 0) {
+    warnings.push('Field "flowSteps" is empty - consider adding flow steps');
+  }
+  if (model.scenarios.length === 0) {
+    warnings.push('Field "scenarios" is empty - consider adding scenarios');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+/**
+ * Validates a Business Rule model after merge to ensure it's complete and valid.
+ * 
+ * @param model - Model to validate
+ * @returns Validation result with errors and warnings
+ */
+export function validateBusinessRuleModelAfterMerge(
+  model: BusinessRuleDocModel
+): ModelValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Required string fields
+  if (!model.summary || typeof model.summary !== 'string' || !model.summary.trim()) {
+    errors.push('Field "summary" is required and must be a non-empty string');
+  }
+  if (!model.testDescription || typeof model.testDescription !== 'string') {
+    errors.push('Field "testDescription" is required and must be a string');
+  }
+
+  // Required array fields
+  const requiredArrayFields: Array<keyof BusinessRuleDocModel> = [
+    'inputs',
+    'decisionLogic',
+    'outputs',
+    'businessRulesPolicy',
+    'scenarios',
+    'implementationNotes',
+    'relatedItems',
+  ];
+
+  for (const field of requiredArrayFields) {
+    if (!Array.isArray(model[field])) {
+      errors.push(`Field "${field}" must be an array`);
+    } else if (field === 'scenarios') {
+      // Validate scenario objects
+      const scenarios = model[field] as BusinessRuleScenario[];
+      scenarios.forEach((scenario, index) => {
+        if (!scenario || typeof scenario !== 'object') {
+          errors.push(`Field "scenarios[${index}]" must be an object`);
+        } else {
+          if (!scenario.id || typeof scenario.id !== 'string') {
+            errors.push(`Field "scenarios[${index}].id" must be a non-empty string`);
+          }
+          if (!scenario.name || typeof scenario.name !== 'string') {
+            errors.push(`Field "scenarios[${index}].name" must be a non-empty string`);
+          }
+          if (!scenario.input || typeof scenario.input !== 'string') {
+            errors.push(`Field "scenarios[${index}].input" must be a non-empty string`);
+          }
+          if (!scenario.outcome || typeof scenario.outcome !== 'string') {
+            errors.push(`Field "scenarios[${index}].outcome" must be a non-empty string`);
+          }
+        }
+      });
+    }
+  }
+
+  // Warnings for empty arrays (not errors, but might indicate incomplete data)
+  if (model.inputs.length === 0) {
+    warnings.push('Field "inputs" is empty - consider adding inputs');
+  }
+  if (model.decisionLogic.length === 0) {
+    warnings.push('Field "decisionLogic" is empty - consider adding decision logic');
+  }
+  if (model.outputs.length === 0) {
+    warnings.push('Field "outputs" is empty - consider adding outputs');
+  }
+  if (model.scenarios.length === 0) {
+    warnings.push('Field "scenarios" is empty - consider adding scenarios');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
 }
 

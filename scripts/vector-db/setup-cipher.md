@@ -7,7 +7,7 @@ Cipher är ett minneslager för AI-kodningsagenter (Cursor) via MCP. Vi använde
 ```
 Cursor (AI Assistant)
     ↓
-Cipher (MCP Server)
+Cipher (MCP Server) - Körs automatiskt av Cursor
     ↓
 Chroma (Vektordatabas) ← Vår indexerade dokumentation
 ```
@@ -29,54 +29,85 @@ Chroma (Vektordatabas) ← Vår indexerade dokumentation
    npm install -g @byterover/cipher
    ```
 
-2. **Våra scripts använder Chroma:**
+2. **Indexera dokumentation i Chroma:**
    ```bash
    npm run vector:index  # Indexerar i Chroma
+   ```
+
+3. **Starta ChromaDB server (automatiskt med `npm run start:dev`):**
+   ```bash
+   npm run chroma:start
    ```
 
 ## Konfiguration för Cursor
 
 ### Steg 1: Konfigurera Cipher MCP
 
-Cipher behöver konfigureras att använda vår Chroma-databas. Skapa en MCP-konfiguration:
+Cipher behöver konfigureras att använda vår Chroma-databas. Lägg till i Cursor's `settings.json`:
 
-**För Cursor:** Lägg till i Cursor settings (MCP configuration):
+**Sökväg till settings.json:**
+- **macOS:** `~/Library/Application Support/Cursor/User/settings.json`
+- **Windows:** `%APPDATA%\Cursor\User\settings.json`
+- **Linux:** `~/.config/Cursor/User/settings.json`
 
+**Konfiguration:**
 ```json
 {
   "mcpServers": {
     "cipher": {
       "command": "cipher",
-      "args": ["--vector-db", "chroma", "--chroma-path", ".chroma"]
+      "args": [
+        "--vector-db",
+        "chroma",
+        "--chroma-path",
+        ".chroma"
+      ]
     }
   }
 }
 ```
 
-Eller via Cipher's egen konfiguration (om det stöds).
+**Viktigt:**
+- Om `settings.json` redan har `mcpServers`, lägg till `cipher` i det befintliga objektet
+- Om `settings.json` inte har `mcpServers`, lägg till hela objektet
+- Se till att JSON är korrekt formaterad
 
-### Steg 2: Indexera projektet
-
-Först indexera dokumentation i Chroma:
-```bash
-npm run vector:index
+**Om relativa sökvägar inte fungerar, använd absoluta sökvägar:**
+```json
+{
+  "mcpServers": {
+    "cipher": {
+      "command": "/Users/magnusolovson/.nvm/versions/node/v20.19.5/bin/cipher",
+      "args": [
+        "--vector-db",
+        "chroma",
+        "--chroma-path",
+        "/Users/magnusolovson/Documents/Projects/bpmn-planner/.chroma"
+      ]
+    }
+  }
+}
 ```
 
-Sedan låt Cipher använda Chroma:
-```bash
-cipher index --use-existing-vector-db
-```
+### Steg 2: Starta om Cursor
+
+Efter att ha konfigurerat Cipher:
+1. **Spara** `settings.json`
+2. **Starta om Cursor** (viktigt!)
+3. Cursor startar automatiskt Cipher MCP-server
+
+### Steg 3: Verifiera
+
+Efter omstart:
+- Öppna Developer Tools: `Cmd/Ctrl + Shift + I`
+- Leta efter "MCP" eller "Cipher" i console
+- Inga felmeddelanden = bra tecken
 
 ## Användning
 
 ### Indexera dokumentation (Chroma)
 ```bash
 npm run vector:index
-```
-
-### Indexera projektet (Cipher + Chroma)
-```bash
-npm run cipher:index
 ```
 
 ### Söka manuellt (Chroma)
@@ -90,17 +121,26 @@ När Cipher är konfigurerad i Cursor kommer AI-assistenten automatiskt att:
 - Komma ihåg tidigare diskussioner
 - Använda projektets dokumentation som kontext
 
+## Automatisk Start
+
+ChromaDB startar automatiskt med `npm run start:dev`:
+- ChromaDB server startas i bakgrunden
+- Cipher använder ChromaDB via MCP (körs av Cursor)
+- Allt är redo när projektet startar
+
 ## Fördelar med Kombinationen
 
 ✅ **Cipher (MCP):**
 - Integrerat med Cursor
 - Automatisk kontext-hämtning
 - Konversationshistorik
+- Körs automatiskt av Cursor
 
 ✅ **Chroma (Vektordatabas):**
 - Semantisk sökning
 - Indexerad dokumentation
 - Kontroll över vad som indexeras
+- Lokal databas (ingen data lämnar datorn)
 
 ✅ **Tillsammans:**
 - Cursor får automatiskt relevant kontext
@@ -112,3 +152,4 @@ När Cipher är konfigurerad i Cursor kommer AI-assistenten automatiskt att:
 - Cipher GitHub: https://github.com/campfirein/cipher
 - MCP Documentation: https://modelcontextprotocol.io
 - Chroma Documentation: https://docs.trychroma.com
+- Detaljerad konfigurationsguide: `docs/CURSOR_MCP_CONFIGURATION.md`

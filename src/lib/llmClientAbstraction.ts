@@ -2,7 +2,7 @@
  * LLM Client Abstraction
  * 
  * Detta modul definierar ett abstrakt gränssnitt för LLM-klienter och tillhandahåller
- * implementationer för både molnbaserade (OpenAI/ChatGPT) och lokala (Llama via Ollama) LLM:er.
+ * implementationer för både molnbaserade (Claude/Anthropic) och lokala (Llama via Ollama) LLM:er.
  */
 
 export type LlmProvider = 'cloud' | 'local';

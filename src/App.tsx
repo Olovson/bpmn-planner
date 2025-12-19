@@ -10,6 +10,7 @@ import TestScriptsPage from "./pages/TestScriptsPage";
 import NodeTestsPage from "./pages/NodeTestsPage";
 import NodeTestScriptViewer from "./pages/NodeTestScriptViewer";
 import BpmnFileManager from "./pages/BpmnFileManager";
+import BpmnDiffOverviewPage from "./pages/BpmnDiffOverviewPage";
 import RegistryStatus from "./pages/RegistryStatus";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
@@ -28,7 +29,6 @@ import DocViewer from "./pages/DocViewer";
 import { LlmDebugView } from "./pages/LlmDebugView";
 import ConfigurationPage from "./pages/ConfigurationPage";
 import StyleGuidePage from "./pages/StyleGuidePage";
-import E2eTestsOverviewPage from "./pages/E2eTestsOverviewPage";
 import TestCoverageExplorerPage from "./pages/TestCoverageExplorerPage";
 import E2eQualityValidationPage from "./pages/E2eQualityValidationPage";
 import { supabase } from "@/integrations/supabase/client";
@@ -111,7 +111,6 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/bpmn/:filename" element={<Index />} />
                   <Route path="/process-explorer" element={<ProcessExplorer />} />
-                  <Route path="/e2e-tests" element={<E2eTestsOverviewPage />} />
                   <Route path="/e2e-quality-validation" element={<E2eQualityValidationPage />} />
                   <Route path="/test-coverage" element={<TestCoverageExplorerPage />} />
                   <Route path="/node-matrix" element={<NodeMatrix />} />
@@ -120,6 +119,7 @@ const App = () => {
                   <Route path="/node-tests" element={<NodeTestsPage />} />
                   <Route path="/node-test-script" element={<NodeTestScriptViewer />} />
                   <Route path="/files" element={<ProtectedRoute><BpmnFileManager /></ProtectedRoute>} />
+                  <Route path="/bpmn-diff" element={<ProtectedRoute><BpmnDiffOverviewPage /></ProtectedRoute>} />
                   <Route path="/registry-status" element={<ProtectedRoute><RegistryStatus /></ProtectedRoute>} />
                   <Route path="/llm-debug" element={<ProtectedRoute><LlmDebugView /></ProtectedRoute>} />
                   <Route path="/graph-debug" element={<ProtectedRoute><ProcessGraphDebugPage /></ProtectedRoute>} />

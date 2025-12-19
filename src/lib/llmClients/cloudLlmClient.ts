@@ -1,26 +1,22 @@
 /**
- * Cloud LLM Client (OpenAI/ChatGPT)
+ * Cloud LLM Client (Claude/Anthropic)
  * 
- * Wrappar befintlig OpenAI-integration för att implementera LlmClient-interface.
+ * Wrappar Anthropic Claude-integration för att implementera LlmClient-interface.
  */
 
-import OpenAI from 'openai';
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionCreateParams,
-} from 'openai/resources/index.mjs';
+import Anthropic from '@anthropic-ai/sdk';
 import type { LlmClient } from '../llmClientAbstraction';
 
 const USE_LLM =
   String(import.meta.env.VITE_USE_LLM ?? '').trim().toLowerCase() === 'true';
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 const MODE = import.meta.env.MODE;
 const ALLOW_LLM_IN_TESTS =
   String(import.meta.env.VITE_ALLOW_LLM_IN_TESTS ?? '')
     .trim()
     .toLowerCase() === 'true';
 
-const FULL_MODEL = 'gpt-4o';
+const FULL_MODEL = 'claude-sonnet-4-20250514'; // Claude Sonnet 4.5
 const IS_BROWSER = typeof window !== 'undefined';
 
 // Normalfall: LLM är aktiverat i dev/prod när VITE_USE_LLM=true och vi har API-nyckel.
@@ -29,17 +25,17 @@ const IS_BROWSER = typeof window !== 'undefined';
 const shouldEnableLlm =
   USE_LLM && !!API_KEY && (MODE !== 'test' || ALLOW_LLM_IN_TESTS);
 
-let openAiClient: OpenAI | null = null;
+let anthropicClient: Anthropic | null = null;
 
 if (shouldEnableLlm) {
-  openAiClient = new OpenAI({
+  anthropicClient = new Anthropic({
     apiKey: API_KEY,
     ...(IS_BROWSER ? { dangerouslyAllowBrowser: true } : {}),
   });
 }
 
 /**
- * Error som kastas när OpenAI-kontot är inaktivt eller har billing-problem.
+ * Error som kastas när Claude-kontot är inaktivt eller har billing-problem.
  * Detta stoppar alla ytterligare anrop för att undvika onödiga kostnader.
  */
 export class CloudLlmAccountInactiveError extends Error {
@@ -87,42 +83,45 @@ export class CloudLlmClient implements LlmClient {
     temperature?: number;
     responseFormat?: { type: 'json_schema'; json_schema: any };
   }): Promise<string | null> {
-    if (!shouldEnableLlm || !openAiClient) return null;
+    if (!shouldEnableLlm || !anthropicClient) return null;
 
     // Stoppa alla anrop om kontot är inaktivt
     if (accountInactive) {
       console.warn('[Cloud LLM] Account is inactive - skipping request to avoid costs');
-      throw new CloudLlmAccountInactiveError('OpenAI account is inactive. Please check billing details.');
+      throw new CloudLlmAccountInactiveError('Claude account is inactive. Please check billing details.');
     }
 
-    const messages: ChatCompletionMessageParam[] = [];
-    if (args.systemPrompt) {
-      messages.push({ role: 'system', content: args.systemPrompt });
-    }
-    messages.push({ role: 'user', content: args.userPrompt });
+    // Claude använder system message som separat parameter
+    const messages: Anthropic.MessageParam[] = [
+      { role: 'user', content: args.userPrompt }
+    ];
 
-    const responseFormat: ChatCompletionCreateParams.ResponseFormat | undefined =
+    // Claude stödjer structured outputs via response_format
+    // Format: { type: 'json_schema', json_schema: { name, strict, schema } }
+    const responseFormat: Anthropic.MessageCreateParams.ResponseFormat | undefined =
       args.responseFormat
         ? {
             type: 'json_schema',
-            json_schema: {
-              name: args.responseFormat.json_schema.name || 'ResponseSchema',
-              strict: args.responseFormat.json_schema.strict ?? true,
-              schema: args.responseFormat.json_schema.schema,
-            },
+            json_schema: args.responseFormat.json_schema,
           }
         : undefined;
 
     try {
-      const response = await openAiClient.chat.completions.create({
+      const response = await anthropicClient.messages.create({
         model: this.modelName,
         temperature: args.temperature ?? 0.35,
         max_tokens: args.maxTokens ?? 1800,
+        system: args.systemPrompt,
         messages,
-        response_format: responseFormat,
+        ...(responseFormat ? { response_format: responseFormat } : {}),
       });
 
-      return response.choices?.[0]?.message?.content?.trim() ?? null;
+      // Claude returnerar content som en array, första elementet är text
+      const content = response.content[0];
+      if (content.type === 'text') {
+        return content.text.trim();
+      }
+      return null;
     } catch (error: any) {
       // Hantera 429 Rate Limit fel
       if (error?.status === 429 || error?.code === 'rate_limit_exceeded') {
@@ -132,13 +131,15 @@ export class CloudLlmClient implements LlmClient {
         const isAccountInactive = 
           errorMessage.toLowerCase().includes('account is not active') ||
           errorMessage.toLowerCase().includes('billing') ||
-          errorMessage.toLowerCase().includes('payment');
+          errorMessage.toLowerCase().includes('payment') ||
+          errorMessage.toLowerCase().includes('authentication') ||
+          errorMessage.toLowerCase().includes('invalid api key');
         
         if (isAccountInactive) {
           accountInactive = true;
           console.error('[Cloud LLM] Account is inactive - stopping all future requests');
           throw new CloudLlmAccountInactiveError(
-            `OpenAI account is inactive: ${errorMessage}. Please check billing details on https://platform.openai.com/account/billing`
+            `Claude account is inactive: ${errorMessage}. Please check billing details on https://console.anthropic.com/settings/billing`
           );
         }
         

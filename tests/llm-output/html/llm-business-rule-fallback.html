@@ -136,20 +136,20 @@
       </ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-summary="llm">
       <h2>Sammanfattning &amp; scope</h2>
-      <p>Eligibility Rule kombinerar flera risk- och kreditparametrar för att avgöra om en ansökan kan godkännas, ska skickas till manuell granskning eller avslås.</p>
-      <p>Regeln säkerställer konsekvent tillämpning av kreditpolicy och riskmandat för målgrupperna.</p>
-      <ul><li>Eligibility Rule avgör om en ansökan ligger inom bankens riktlinjer för kreditgivning.</li><li>Regeln används för att automatisera delar av kreditbeslutet och säkerställa likabehandling.</li><li>Omfattar endast den aktuella kreditprodukten – andra produkter hanteras i separata regler.</li></ul>
+      <ul><li>Eligibility Rule kombinerar flera risk- och kreditparametrar för att avgöra om en ansökan kan godkännas, ska skickas till manuell granskning eller avslås. Regeln säkerställer konsekvent tillämpning av kreditpolicy och riskmandat för målgrupperna.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-prerequisites="fallback">
       <h2>Förutsättningar &amp; kontext</h2>
       <ul><li>Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.</li><li>Kräver att central kund- och ansökningsdata är komplett och validerad.</li><li>Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-inputs="llm">
       <h2>Inputs &amp; datakällor</h2>
+      
+      
       <table>
         <tr>
           <th>Fält</th>
@@ -159,50 +159,83 @@
           <th>Validering</th>
           <th>Felhantering</th>
         </tr>
+        
         <tr>
-          <td>riskScore</td>
-          <td>Kreditmotor / UC</td>
-          <td>Tal (0–1000)</td>
-          <td>Ja</td>
-          <td>Inom definierat intervall</td>
-          <td>Avslå eller skicka till manuell granskning</td>
+          <td>Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
         <tr>
-          <td>debtToIncomeRatio</td>
-          <td>Intern beräkning</td>
-          <td>Decimal</td>
-          <td>Ja</td>
-          <td>&gt;= 0</td>
-          <td>Flagga för manuell granskning vid saknade data</td>
+          <td>Kräver att central kund- och ansökningsdata är komplett och validerad.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
         <tr>
-          <td>loanToValue</td>
-          <td>Fastighetsvärdering</td>
-          <td>Procent</td>
-          <td>Ja</td>
-          <td>0–100 %</td>
-          <td>Avslå vid orimliga värden</td>
+          <td>Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
       </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-decision-logic="llm">
       <h2>Beslutslogik (DMN / regler)</h2>
-      <p>Regeln kombinerar riskScore, skuldsättning, belåningsgrad och eventuella riskflaggor för att fatta ett samlat beslut.</p>
       <ul><li>Hög riskScore och måttlig skuldsättning ger normalt auto-approve.</li><li>Mellanrisk eller ofullständig data leder till manuell granskning.</li><li>Tydliga exklusionskriterier (t.ex. betalningsanmärkningar eller sanktionsflaggor) ger auto-decline.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-outputs="llm">
       <h2>Output &amp; effekter</h2>
-      <ul><li>Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.</li><li>Processpåverkan: fortsätter till Nästa steg i processen vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE.</li><li>Flaggor: t.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff.</li><li>Loggning: beslut, huvudparametrar och regelversion loggas för audit.</li></ul>
+      
+      <table>
+        <tr>
+          <th>Outputtyp</th>
+          <th>Typ</th>
+          <th>Effekt</th>
+          <th>Loggning</th>
+        </tr>
+        
+        <tr>
+          <td>Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Processpåverkan: fortsätter till Nästa steg i processen vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Flaggor: t.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td>beslut, huvudparametrar och regelversion loggas för audit.</td>
+        </tr>
+      </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-business-rules="llm">
       <h2>Affärsregler &amp; policystöd</h2>
       <ul><li>Stödjer intern kreditpolicy och mandat för respektive produkt och segment.</li><li>Bygger på dokumenterade riskramverk och beslutsmodeller.</li><li>Tar hänsyn till regulatoriska krav (t.ex. konsumentkreditlag, AML/KYC) på en övergripande nivå.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-scenarios="llm">
       <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
       <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
       <table>
@@ -238,25 +271,16 @@
       </table>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-implementation-notes="llm">
       <h2>Implementation &amp; integrationsnoter</h2>
       <ul><li>DMN-tabell: <a href="/dmn/example.dmn">example.dmn</a></li><li>BPMN-koppling: Business Rule Task i filen mortgage.bpmn.</li><li>BPMN viewer: <a href="#/bpmn/mortgage.bpmn">Öppna noden i viewer</a></li><li>API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).</li><li>Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.</li></ul>
     </section>
 
-    <section class="doc-section">
+    <section class="doc-section" data-source-related-items="llm">
       <h2>Relaterade regler &amp; subprocesser</h2>
       <ul><li>Relaterad DMN-modell: <a href="/dmn/example.dmn">example.dmn</a></li><li>Relaterad BPMN-subprocess: <a href="#/bpmn/mortgage.bpmn">Visa i BPMN viewer</a></li><li>Överordnad nod: Rotprocess</li></ul>
     </section>
   
-
-
-
-
-
-
-
-
-
   </div>
 </body>
 </html>

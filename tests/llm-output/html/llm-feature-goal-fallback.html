@@ -138,33 +138,54 @@
 
     <section class="doc-section">
       <h2>Sammanfattning &amp; scope</h2>
-      <p>Internal data gathering samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet. Feature Goalet säkerställer att rätt data, regler och interaktioner finns på plats för att fatta välgrundade kreditbeslut.</p>
+      <p>Detta Feature Goal samlar flera epics till ett sammanhängande steg i bolåneresan där kundens behov, riskprofil och underlag hanteras på ett strukturerat sätt. Målet är att skapa en tydlig brygga mellan föregående processsteg och efterföljande beslut, med fokus på spårbarhet och konsekvent tillämpning av regler.</p>
       
       <h3>Ingår</h3>
       <ul>
-        <li>Feature Goal <strong>Internal data gathering</strong> binder ihop Processstart med Nedströms leverans i initiativet mortgage-se-application.</li><li>Möjliggör ett sammanhängande kreditflöde där data, regler och interaktioner hänger ihop.</li><li>Fokuserar på att skapa ett spårbart underlag för kreditbeslut i hela initiativet.</li>
+        <li>hantering av de epics som är direkt kopplade till detta steg i bolåneprocessen.</li><li>insamling och konsolidering av de uppgifter som krävs för att kunna fatta nästa kreditbeslut.</li><li>tillämpning av relevanta affärsregler och policys på den information som samlas in här.</li>
       </ul>
       
       <h3>Ingår inte</h3>
       <ul>
-        <li>end-to-end-flöde för det specifika kreditinitiativet.</li><li>eftermarknadsprocesser och generella engagemangsändringar.</li><li>tekniska implementationer i underliggande system – dessa dokumenteras separat.</li>
+        <li>generella eftermarknadsprocesser och kundåtgärder utanför det aktuella bolåneärendet.</li><li>detaljerad produktutveckling eller prissättningsstrategi, som hanteras i andra fora.</li>
       </ul>
     </section>
 
     <section class="doc-section">
       <h2>Effektmål</h2>
-      <ul><li>Ökad automatisering i kreditprocessen, med mindre manuellt arbete per ansökan.</li><li>Minskad handläggningstid per ansökan genom mer komplett och strukturerad datainsamling.</li><li>Förbättrad datakvalitet och minskade felkällor i underlag för kreditevaluering.</li><li>Säkrade och mer förutsägbara kreditevalueringar enligt kreditpolicy och riskramverk.</li><li>Högre kundnöjdhet genom snabbare och tydligare besked i tidiga steg av kundresan.</li></ul>
+      <ul><li>Minska manuellt arbete genom ökad grad av automatisering i det aktuella steget av bolåneflödet.</li><li>Förbättra kvaliteten i beslutsunderlaget genom att samla data och regler på ett enhetligt sätt.</li><li>Skapa en mer förutsägbar kundupplevelse genom tydliga besked och färre omtag.</li></ul>
     </section>
 
     <section class="doc-section">
       <h2>Ingående Epics</h2>
-      <p class="muted">Inga epics identifierade ännu – fyll på när BPMN-hierarkin är komplett.</p>
+      
+      <table>
+        <tr>
+          <th>Epic-ID</th>
+          <th>Epic-namn</th>
+          <th>Beskrivning</th>
+          <th>Team</th>
+        </tr>
+        
+        <tr>
+          <td>E1</td>
+          <td>Förberedelse av underlag</td>
+          <td>Samlar in och kvalitetssäkrar de uppgifter som behövs för det aktuella Feature Goalet.</td>
+          <td>Kredit och produktteam</td>
+        </tr>
+        <tr>
+          <td>E2</td>
+          <td>Affärsregler och validering</td>
+          <td>Tillämpning av centrala affärsregler och kontroller på insamlade data.</td>
+          <td>Risk & Policy</td>
+        </tr>
+      </table>
     </section>
 
     <section class="doc-section">
       <h2>Affärsflöde</h2>
       <ol>
-        <li>Initiativet startar i Processstart när en kreditprocess initieras.</li><li>Internal data gathering samlar in, koordinerar och kvalitetssäkrar data och beslut från ingående epics.</li><li>Regler och policystöd appliceras på ett konsekvent sätt för att möjliggöra välgrundade kreditbeslut.</li><li>Resultat och status förs vidare till Nedströms leverans och vidare in i efterföljande processer.</li>
+        <li>Kund- och ansökningsdata samlas in och förbereds för vidare bearbetning.</li><li>Relevanta affärsregler och kontroller tillämpas för att identifiera avvikelser eller kompletteringsbehov.</li><li>Resultat och status samlas i en gemensam struktur som kan återanvändas i efterföljande beslutssteg.</li>
       </ol>
     </section>
 
@@ -179,22 +200,22 @@
         </tr>
         
         <tr>
-          <td>S1</td>
-          <td>Normalflöde – komplett ansökan</td>
+          <td>FG-S1</td>
+          <td>Normalflöde med komplett data</td>
           <td>Happy</td>
-          <td>Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.</td>
+          <td>Feature Goalet kan slutföras utan avvikelser och levererar ett komplett underlag till nästa steg.</td>
         </tr>
         <tr>
-          <td>S2</td>
-          <td>Ofullständig information</td>
+          <td>FG-S2</td>
+          <td>Delvis ofullständig data</td>
           <td>Edge</td>
-          <td>Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.</td>
+          <td>Feature Goalet identifierar vilka uppgifter som saknas och flaggar ärendet för komplettering.</td>
         </tr>
         <tr>
-          <td>S3</td>
-          <td>Hög riskprofil</td>
-          <td>Edge</td>
-          <td>Ärendet flaggas för extra granskning eller avslag enligt policy.</td>
+          <td>FG-S3</td>
+          <td>Kritisk avvikelse eller tekniskt fel</td>
+          <td>Error</td>
+          <td>Feature Goalet kan inte slutföras, ärendet stoppas och skickas till manuell hantering med tydlig orsak.</td>
         </tr>
       </table>
     </section>
@@ -202,7 +223,7 @@
     <section class="doc-section">
       <h2>Koppling till automatiska tester</h2>
       <p>
-        Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
+        Scenarierna FG-S1–FG-S3 ska mappas mot automatiska tester där scenario-ID och namn återanvänds i testfall. Testerna ska säkerställa att normalflöde, kompletteringsfall och kritiska avvikelser hanteras enligt beskrivningen.
         <br />Testfil: <code>tests/mortgage.smoke.spec.ts</code>
         <br />
         Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
@@ -211,7 +232,7 @@
 
     <section class="doc-section">
       <h2>Implementation Notes (för dev)</h2>
-      <ul><li>API- och integrationskontrakt ska vara dokumenterade per epic och nod.</li><li>Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.</li><li>Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.</li><li>DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.</li></ul>
+      <ul><li>Feature Goalet bör implementeras så att det är återanvändbart för flera relaterade processer.</li><li>Loggning ska ge spårbarhet från inkommande underlag till de beslut och flaggor som sätts.</li><li>Felhantering ska tydligt skilja på affärsmässiga avvikelser och tekniska problem i underliggande system.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -221,7 +242,7 @@
 
     <section class="doc-section">
       <h2>Relaterade regler / subprocesser</h2>
-      <ul><li>Relaterad subprocess: <a href="#/bpmn/mortgage.bpmn">Visa i BPMN viewer</a></li><li>Relaterade regler/DMN: <a href="/dmn/example.dmn">example.dmn</a></li><li>Föregående noder: initierande steg i processen.</li></ul>
+      <ul><li>Relaterade Feature Goals som ligger före eller efter detta steg i bolåneresan.</li><li>Epics och Business Rules som tillsammans beskriver den logik och de flöden som Feature Goalet omfattar.</li></ul>
     </section>
 
     <section class="doc-section">
@@ -234,15 +255,6 @@
       <ul><li>Feature Goalet stödjer de definierade affärsscenarierna och uppfyller beskrivna policys och regler.</li><li>Alla epics som ingår är implementerade, testade och dokumenterade med spårbarhet mot detta Feature Goal.</li><li>Automatiska tester täcker centrala flöden, felhantering och definierade risk-/policykrav.</li><li>Loggning och mätpunkter finns på plats för uppföljning, insikter och incidenthantering.</li><li>Dokumentation (Feature Goal, epics, regler) är uppdaterad och tillgänglig för berörda team.</li></ul>
     </section>
   
-
-
-
-
-
-
-
-
-
   </div>
 </body>
 </html>

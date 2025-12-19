@@ -44,8 +44,9 @@ async function buildClientProcessGraph(rootFile: string): Promise<ProcessGraph |
     return null;
   }
 
-  // Load bpmn-map
-  const bpmnMap = loadBpmnMap(rawBpmnMap);
+  // Load bpmn-map (from storage or project file)
+  const { loadBpmnMapFromStorage } = await import('@/lib/bpmn/bpmnMapStorage');
+  const bpmnMap = await loadBpmnMapFromStorage();
 
   // Build ProcessGraph
   const graph = buildProcessGraph(parseResults, {

@@ -316,26 +316,42 @@ function isSchemaFormatError(error: unknown): boolean {
 
 function sanitizeJsonResponse(raw: string): string {
   let result = raw.trim();
-  result = result.replace(/```(?:json)?/gi, '').replace(/```/g, '');
+  
+  // Steg 1: Ta bort markdown-code blocks
+  result = result.replace(/```(?:json|javascript)?/gi, '').replace(/```/g, '').trim();
 
-  // Remove any leading text before the first JSON character
+  // Steg 2: Hitta första JSON-struktur
   const firstBrace = result.indexOf('{');
   const firstBracket = result.indexOf('[');
   const startCandidates = [firstBrace, firstBracket].filter((idx) => idx >= 0);
-  if (startCandidates.length) {
-    const start = Math.min(...startCandidates);
-    if (start > 0) {
-      result = result.slice(start);
-    }
+  
+  if (startCandidates.length === 0) {
+    return result; // Ingen JSON-struktur hittades, returnera som den är
   }
 
-  // Trim anything after the last closing brace/bracket
-  const lastBrace = result.lastIndexOf('}');
-  const lastBracket = result.lastIndexOf(']');
-  const end = Math.max(lastBrace, lastBracket);
+  const start = Math.min(...startCandidates);
+  if (start > 0) {
+    result = result.slice(start);
+  }
+
+  // Steg 3: Hitta korrekt avslutning baserat på vad som startade
+  let end = -1;
+  if (firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)) {
+    // Startade med objekt, hitta sista }
+    end = result.lastIndexOf('}');
+  } else if (firstBracket >= 0) {
+    // Startade med array, hitta sista ]
+    end = result.lastIndexOf(']');
+  }
+
   if (end >= 0 && end + 1 < result.length) {
     result = result.slice(0, end + 1);
   }
 
-  return result.trim();
+  result = result.trim();
+
+  // Steg 4: Fixa vanliga JSON-problem (trailing commas)
+  result = result.replace(/,(\s*[}\]])/g, '$1');
+
+  return result;
 }

@@ -1,6 +1,6 @@
 {
   "error": "Lokal LLM (Ollama) unavailable",
   "provider": "local",
-  "details": "Validation failed: Missing required field: summary, Missing required field: effectGoals, Missing required field: scopeIncluded, Missing required field: scopeExcluded, Missing required field: epics, Missing required field: flowSteps, Missing required field: dependencies, Missing required field: scenarios, Missing required field: testDescription, Missing required field: implementationNotes, Missing required field: relatedItems",
-  "timestamp": "2025-11-25T20:36:37.809Z"
+  "details": "Validation failed: Failed to parse JSON: Bad control character in string literal in JSON at position 39",
+  "timestamp": "2025-12-19T18:34:32.064Z"
 }

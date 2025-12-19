@@ -15,7 +15,7 @@ import { LocalLlmUnavailableError } from './llmClients/localLlmClient';
 
 const USE_LLM =
   String(import.meta.env.VITE_USE_LLM ?? '').trim().toLowerCase() === 'true';
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 const MODE = import.meta.env.MODE;
 const ALLOW_LLM_IN_TESTS =
   String(import.meta.env.VITE_ALLOW_LLM_IN_TESTS ?? '')

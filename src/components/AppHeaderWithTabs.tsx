@@ -9,7 +9,6 @@ export type ViewKey =
   | 'tree'
   | 'listvy'
   | 'tests'
-  | 'e2e-tests'
   | 'test-coverage'
   | 'timeline'
   | 'configuration'
@@ -146,24 +145,6 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
             <TooltipContent side="right">
               {isTestsEnabled ? 'Tests' : 'Tests ej tillgängliga ännu'}
             </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => handleTabChange('e2e-tests')}
-                aria-label="E2E / Playwright"
-                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                  currentView === 'e2e-tests'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                <PlayCircle className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">E2E / Playwright</TooltipContent>
           </Tooltip>
 
           <Tooltip>

@@ -40,10 +40,8 @@ const Index = () => {
     ? 'listvy'
     : location.pathname.includes('/process-explorer')
       ? 'tree'
-      : location.pathname.includes('/e2e-tests')
-        ? 'e2e-tests'
-        : location.pathname.includes('/test-coverage')
-          ? 'test-coverage'
+      : location.pathname.includes('/test-coverage')
+        ? 'test-coverage'
           : location.pathname.includes('/timeline')
             ? 'timeline'
             : location.pathname.includes('/configuration')
@@ -57,8 +55,6 @@ const Index = () => {
       baseNavigate('/node-matrix');
     } else if (value === 'tree') {
       baseNavigate('/process-explorer');
-    } else if (value === 'e2e-tests') {
-      baseNavigate('/e2e-tests');
     } else if (value === 'test-coverage') {
       baseNavigate('/test-coverage');
     } else if (value === 'tests') {

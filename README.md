@@ -1,6 +1,6 @@
 # 🚀 BPMN Planner
 
-**BPMN Planner** tar BPMN-/DMN-filer, bygger en deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar dokumentation, testunderlag och metadata för produkt- och utvecklingsteamet. Supabase används som backend och innehåll kan genereras både via mallar (utan LLM) och via LLM (ChatGPT/Ollama).
+**BPMN Planner** tar BPMN-/DMN-filer, bygger en deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar dokumentation, testunderlag och metadata för produkt- och utvecklingsteamet. Supabase används som backend och innehåll kan genereras både via mallar (utan LLM) och via LLM (Claude/Ollama).
 
 > Arkitektur & hierarki: `docs/bpmn-hierarchy-architecture.md`  
 > LLM-kontrakt & prompts: `prompts/llm/*`  
@@ -32,7 +32,7 @@
   - Noder utan `orderIndex` får istället `visualOrderIndex` baserat på DI-koordinater (vänster→höger-sortering per fil).
   - Sortering i UI och Gantt följer alltid `visualOrderIndex` → `orderIndex` → `branchId` (endast root) → `label`. Se `docs/VISUAL_ORDERING_IMPLEMENTATION.md`.
   - För felsökning finns scriptet `npm run mortgage:order-debug` som kör hela parse → graph → tree-flödet för mortgage-fixtures och skriver ut tabeller (både full traversal och "unika aktiviteter per fil") med ordningsmetadata.
-  - För att exportera hela BPMN-trädet i markdown-format (användbart för ChatGPT/andra verktyg): `npm run print:bpmn-tree` - genererar `bpmn-tree-output.md` med hierarkisk trädvy och flat lista av alla noder sorterade i ordningsföljd.
+  - För att exportera hela BPMN-trädet i markdown-format (användbart för Claude/andra verktyg): `npm run print:bpmn-tree` - genererar `bpmn-tree-output.md` med hierarkisk trädvy och flat lista av alla noder sorterade i ordningsföljd.
 
 - **Dokumentation**
   - Feature Goals, Epics och Business Rules genereras via modellbaserade JSON-kontrakt:
@@ -50,14 +50,14 @@
 - **LLM-lägen & providers**
   - Lokal generering (utan LLM): snabb, deterministisk, mallbaserad.
   - Slow LLM Mode: rikare text via:
-    - ChatGPT (moln, gpt-4o) via `cloudLlmClient`.
+    - Claude (moln, claude-sonnet-4-20250514) via `cloudLlmClient`.
     - Lokal modell via Ollama (t.ex. `llama3:latest`) via `localLlmClient`.
   - Internt används providers som `'cloud'` och `'local'`, men i loggar/UI visas alltid:
-    - `ChatGPT` (cloud),
+    - `Claude` (cloud),
     - `Ollama` (local),
     - `Local-fallback` (local när den tagit över efter ett misslyckat ChatGPT-försök).
   - `generateDocumentationWithLlm` bygger JSON-input (processContext/currentNodeContext), använder `generateWithFallback` per docType/provider och loggar LLM-events (inkl. latency, tokenbudget-varningar) som kan inspekteras i LLM Debug-vyn.
-  - HTML-dokument får metadata om LLM-användning och visar en diskret banner när lokal LLM används som fallback istället för ChatGPT.
+  - HTML-dokument får metadata om LLM-användning och visar en diskret banner när lokal LLM används som fallback istället för Claude.
 
 ---
 
@@ -225,10 +225,10 @@ BPMN Planner stödjer två sätt att generera testscenarion för Playwright-test
 ## LLM-genererade scenarion (Slow LLM Mode)
 
 När LLM är aktiverat (`VITE_USE_LLM=true`) kan systemet generera testscenarion via:
-- **ChatGPT** (moln-LLM) – "gold standard" för kontraktet
+- **Claude** (moln-LLM) – "gold standard" för kontraktet
 - **Ollama** (lokal LLM) – best-effort fallback
 
-LLM-scenarion genereras via `generateTestSpecWithLlm()` och sparas i `node_planned_scenarios` med provider `chatgpt` eller `ollama`.
+LLM-scenarion genereras via `generateTestSpecWithLlm()` och sparas i `node_planned_scenarios` med provider `cloud` (Claude) eller `ollama`.
 
 ## Design-scenarion (Lokal generering)
 
@@ -353,16 +353,16 @@ SUPABASE_SERVICE_ROLE_KEY=<service role>
 SEED_USER_EMAIL=seed-bot@local.test
 SEED_USER_PASSWORD=Passw0rd!
 VITE_USE_LLM=true
-VITE_OPENAI_API_KEY=<OpenAI key>
+VITE_ANTHROPIC_API_KEY=<Claude API key>
 VITE_LLM_LOCAL_BASE_URL=http://localhost:11434
 VITE_LLM_LOCAL_MODEL=llama3:latest
 ```
 
-> **Obs:** när `VITE_USE_LLM=true` och `VITE_OPENAI_API_KEY` är satt används LLM-kontrakten för ChatGPT/Ollama. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
+> **Obs:** när `VITE_USE_LLM=true` och `VITE_ANTHROPIC_API_KEY` är satt används LLM-kontrakten för Claude/Ollama. Om LLM är avstängd används alltid lokal modellbaserad dokumentation.
 
 ## 2.5. Fusklapp – LLM‑utveckling (starta allt)
 
-När du ska jobba med LLM (ChatGPT/Ollama), använd alltid samma grundsekvens:
+När du ska jobba med LLM (Claude/Ollama), använd alltid samma grundsekvens:
 
 1. Gå till projektet
 ```bash
@@ -400,7 +400,7 @@ LLM_HEALTH_TEST=true npx vitest run tests/integration/llm.health.local.test.ts
 För att vissa delar av appen ska fungera fullt ut lokalt (t.ex. LLM‑health och process‑trädet) behöver du starta relevanta edge functions i egna terminalfönster:
 
 ```bash
-# Terminal 1 – LLM health (Ollama/ChatGPT-status)
+# Terminal 1 – LLM health (Ollama/Claude-status)
 supabase functions serve llm-health --no-verify-jwt --env-file supabase/.env
 
 # Terminal 2 – build-process-tree (för processgrafen)
@@ -414,7 +414,7 @@ npm run dev
 ```
 
 Så länge dessa tre terminaler är igång får du:
-- korrekt LLM‑status på sidan `#/files` (ChatGPT/Ollama tillgänglig/ej tillgänglig),
+- korrekt LLM‑status på sidan `#/files` (Claude/Ollama tillgänglig/ej tillgänglig),
 - fungerande process‑träd/byggfunktioner i UI.
 
 ## 4. Dev-server
@@ -457,7 +457,7 @@ Detta script:
   - **Sheet 3: Summary** - Metadata, legend och ordering information
 
 **Användning:**
-- **Markdown**: Kopiera till ChatGPT eller andra verktyg, använd för dokumentation, versionkontrollera i Git
+- **Markdown**: Kopiera till Claude eller andra verktyg, använd för dokumentation, versionkontrollera i Git
 - **Excel**: Öppna i Excel/LibreOffice/Google Sheets för enkel läsning, filtrering och sortering
   - Perfekt för att analysera hierarkin visuellt
   - Kan exporteras till andra format (CSV, PDF, etc.)
@@ -511,7 +511,7 @@ Detta script:
   - Legend och ordering information
 
 **Användning:**
-- Kopiera `bpmn-tree-output.md` till ChatGPT eller andra verktyg
+- Kopiera `bpmn-tree-output.md` till Claude eller andra verktyg
 - Använd för dokumentation eller analys
 - Versionkontrollera i Git
 
@@ -530,8 +530,8 @@ npm run mortgage:order-debug     # Debug callActivity-ordning för mortgage-fixt
 Det finns dedikerade script för att köra ett litet antal riktiga LLM-tester (Feature Goal + Epic + Business Rule) utan att påverka resten av sviten:
 
 ```bash
-npm run test:llm:smoke        # endast ChatGPT (cloud)
-npm run test:llm:smoke:cloud  # strikt ChatGPT-smoke med LLM_SMOKE_STRICT=true
+npm run test:llm:smoke        # endast Claude (cloud)
+npm run test:llm:smoke:cloud  # strikt Claude-smoke med LLM_SMOKE_STRICT=true
 npm run test:llm:smoke:local  # endast Ollama (lokal), best-effort
 ```
 
@@ -543,31 +543,31 @@ Scriptet `test:llm:smoke` sätter:
 
 och kör `tests/integration/llm.real.smoke.test.ts`, som:
 
-- använder `generateDocumentationWithLlm` med verklig OpenAI-klient när:
-  - `VITE_OPENAI_API_KEY` är satt,
+- använder `generateDocumentationWithLlm` med verklig Claude-klient när:
+  - `VITE_ANTHROPIC_API_KEY` är satt,
   - `VITE_USE_LLM=true`,
   - `VITE_ALLOW_LLM_IN_TESTS=true`,
 - testar LLM-flödet (JSON → modell → HTML) för:
   - Feature Goal (`docType = "feature"`),
   - Epic (`docType = "epic"`),
   - Business Rule (`docType = "businessRule"`),
-- skriver LLM-baserad HTML (ChatGPT) och mallbaserad fallback-HTML till `tests/llm-output/html/`:
-  - `llm-feature-goal-chatgpt.html` / `llm-feature-goal-ollama.html` / `llm-feature-goal-fallback.html`
-  - `llm-epic-chatgpt.html` / `llm-epic-ollama.html` / `llm-epic-fallback.html`
-  - `llm-business-rule-chatgpt.html` / `llm-business-rule-ollama.html` / `llm-business-rule-fallback.html`
+- skriver LLM-baserad HTML (Claude) och mallbaserad fallback-HTML till `tests/llm-output/html/`:
+  - `llm-feature-goal-cloud.html` / `llm-feature-goal-ollama.html` / `llm-feature-goal-fallback.html`
+  - `llm-epic-cloud.html` / `llm-epic-ollama.html` / `llm-epic-fallback.html`
+  - `llm-business-rule-cloud.html` / `llm-business-rule-ollama.html` / `llm-business-rule-fallback.html`
 - skriver även råa LLM-svar (texten/JSON-strängen som skickas tillbaka från respektive LLM) till `tests/llm-output/json/`:
-  - `llm-feature-goal-chatgpt.json` / `llm-feature-goal-ollama.json`
-  - `llm-epic-chatgpt.json` / `llm-epic-ollama.json`
-  - `llm-business-rule-chatgpt.json` / `llm-business-rule-ollama.json`
+  - `llm-feature-goal-cloud.json` / `llm-feature-goal-ollama.json`
+  - `llm-epic-cloud.json` / `llm-epic-ollama.json`
+  - `llm-business-rule-cloud.json` / `llm-business-rule-ollama.json`
 - markerar i den LLM-baserade HTML:en vilka sektioner som kommer från LLM kontra fallback (t.ex. `data-source-summary="llm|fallback"`, `data-source-scenarios="llm|fallback"` per `<section class="doc-section">`), vilket gör det enkelt att inspektera källan i browserns devtools.
- - vid Feature Goal‑körning verifierar den även att LLM‑scenarion (ChatGPT) lagras i tabellen `node_planned_scenarios` och därmed blir tillgängliga i nodens testrapport.  
+ - vid Feature Goal‑körning verifierar den även att LLM‑scenarion (Claude) lagras i tabellen `node_planned_scenarios` och därmed blir tillgängliga i nodens testrapport.  
    Den hierarkiska BPMN‑generatorn seedar dessutom alltid bas‑scenarion för `local-fallback` per nod till samma tabell, så att Lokal fallback‑läget i testrapporten har ett tydligt utgångsläge även utan LLM.
 
 Om LLM inte är aktiverat i tests (t.ex. ingen API-nyckel) hoppar smoke-test-filen automatiskt över sina tester (`describe.skip`).
 
 ### Extra viktig LLM-notis (för både människor och agenter)
 
-- **ChatGPT (cloud) är “gold standard” för kontraktet.**  
+- **Claude (cloud) är "gold standard" för kontraktet.**  
   - Använd alltid:  
     `npm run test:llm:smoke:cloud`  
     för att verifiera att promptar, validering och JSON-kontrakt fortfarande fungerar.
@@ -577,7 +577,7 @@ Om LLM inte är aktiverat i tests (t.ex. ingen API-nyckel) hoppar smoke-test-fil
   - Använd:  
     `npm run test:llm:smoke:local`  
     för att inspektera lokal-modellens beteende (Feature/Epic/BusinessRule), se rå-output och valideringsfel.
-  - Den sviten får gärna vara röd under utveckling – den ska **inte** blockera ChatGPT-flödet.
+  - Den sviten får gärna vara röd under utveckling – den ska **inte** blockera Claude-flödet.
 
 - **Ändra aldrig JSON-modellerna lättvindigt.**  
   - Typer/kontrakt som `FeatureGoalDocModel`, `EpicDocModel`, `BusinessRuleDocModel` är centrala:
@@ -617,7 +617,7 @@ Checklista:
 
 1. **Files** – ladda upp BPMN/DMN eller synka GitHub.  
 2. **Build hierarchy** – bygger deterministisk struktur.  
-3. **Generate documentation** – välj Lokal fallback (ingen LLM), ChatGPT (moln-LLM) eller Ollama (lokal LLM).  
+3. **Generate documentation** – välj Lokal fallback (ingen LLM), Claude (moln-LLM) eller Ollama (lokal LLM).  
 4. Visa resultat i **Viewer / Tree / List / Timeline**.  
 5. Justera metadata i **Node Matrix**.  
 6. **Integrationer** (`#/integrations`) – hantera Stacc vs. bankens integrationskällor för Service Tasks.  

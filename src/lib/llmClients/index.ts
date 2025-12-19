@@ -11,7 +11,7 @@ import { localLlmClientInstance } from './localLlmClient';
 /**
  * Hämtar rätt LLM-klient baserat på provider.
  * 
- * @param provider - 'cloud' för OpenAI/ChatGPT, 'local' för lokal Llama-instans
+ * @param provider - 'cloud' för Claude/Anthropic, 'local' för lokal Llama-instans
  * @returns LlmClient-instans
  */
 export function getLlmClient(provider: LlmProvider): LlmClient {

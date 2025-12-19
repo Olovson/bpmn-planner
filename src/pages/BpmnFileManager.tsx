@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -71,7 +71,6 @@ import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { buildDocStoragePaths, buildTestStoragePaths } from '@/lib/artifactPaths';
 import { isPGRST204Error, getSchemaErrorMessage } from '@/lib/schemaVerification';
 import { useLlmHealth } from '@/hooks/useLlmHealth';
-import bpmnMap from '../../bpmn-map.json';
 
 /**
  * Creates a summary from ProcessGraph and ProcessTree
@@ -251,6 +250,28 @@ export default function BpmnFileManager() {
   const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
   const [rootFileName, setRootFileName] = useState<string | null>(null);
   const [validatingMap, setValidatingMap] = useState(false);
+  const [unresolvedDiffsCount, setUnresolvedDiffsCount] = useState(0);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [mapSuggestions, setMapSuggestions] = useState<MapSuggestion[]>([]);
+  const [showMapSuggestionsDialog, setShowMapSuggestionsDialog] = useState(false);
+  const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<string>>(new Set());
+
+  // Load unresolved diffs count
+  useEffect(() => {
+    const loadUnresolvedDiffsCount = async () => {
+      try {
+        const unresolvedDiffs = await getAllUnresolvedDiffs();
+        const totalCount = Array.from(unresolvedDiffs.values()).reduce((sum, set) => sum + set.size, 0);
+        setUnresolvedDiffsCount(totalCount);
+      } catch (error) {
+        console.warn('[BpmnFileManager] Error loading unresolved diffs count:', error);
+      }
+    };
+    loadUnresolvedDiffsCount();
+    // Refresh when files change
+    const interval = setInterval(loadUnresolvedDiffsCount, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, [files]);
 
   // Check if hierarchy has been built when files or rootFileName changes
   useEffect(() => {
@@ -518,7 +539,8 @@ export default function BpmnFileManager() {
       }
 
       const files = filesData ?? [];
-      const mapProcesses = Array.isArray((bpmnMap as any).processes) ? (bpmnMap as any).processes : [];
+      const currentMap = await loadBpmnMapFromStorage();
+      const mapProcesses = currentMap.processes;
 
       const bpmnFilesSet = new Set<string>(files.map((f: any) => f.file_name));
       const unmappedCallActivities: any[] = [];
@@ -642,8 +664,8 @@ export default function BpmnFileManager() {
       );
 
       const rootFileNameFromMap: string | null =
-        typeof (bpmnMap as any).orchestration?.root_process === 'string'
-          ? `${(bpmnMap as any).orchestration.root_process}.bpmn`
+        typeof currentMap.orchestration?.root_process === 'string'
+          ? `${currentMap.orchestration.root_process}.bpmn`
           : null;
 
       for (const file of files) {
@@ -1184,6 +1206,32 @@ export default function BpmnFileManager() {
         isRootFile && useHierarchy
           ? existingBpmnFiles
           : [file.file_name];
+      // Automatisk diff-baserad regenerering: skapa filter baserat på olösta diff:er
+      // Fallback-strategi: om vi är osäkra (ingen diff-data), regenerera allt
+      let nodeFilter: ((node: any) => boolean) | undefined = undefined;
+      try {
+        const { getAllUnresolvedDiffs, createDiffBasedNodeFilter } = await import('@/lib/bpmnDiffRegeneration');
+        const unresolvedDiffs = await getAllUnresolvedDiffs();
+        
+        if (unresolvedDiffs.size > 0) {
+          // Skapa filter som endast inkluderar noder med olösta diff:er (added/modified)
+          // Fallback: om ingen diff-data finns för en fil, regenerera allt (säkrast)
+          nodeFilter = createDiffBasedNodeFilter(unresolvedDiffs, {
+            autoRegenerateChanges: true, // Regenerera added/modified
+            autoRegenerateUnchanged: false, // Inte regenerera unchanged (sparar kostnad)
+            autoRegenerateRemoved: false, // Inte regenerera removed (de finns inte längre)
+          });
+          
+          console.log(`[BpmnFileManager] Using diff-based filter: ${unresolvedDiffs.size} files with unresolved diffs`);
+        } else {
+          // Ingen diff-data: fallback till att regenerera allt (säkrast)
+          console.log(`[BpmnFileManager] No diff data found, regenerating all nodes (fallback)`);
+        }
+      } catch (error) {
+        console.warn('[BpmnFileManager] Error setting up diff filter, falling back to regenerate all:', error);
+        // Fallback: regenerera allt om diff-logik failar
+      }
+      
       const result = await generateAllFromBpmnWithGraph(
         file.file_name,
         graphFiles,
@@ -1194,20 +1242,15 @@ export default function BpmnFileManager() {
         generationSourceLabel,
         !isLocalMode ? llmProvider : undefined,
         localAvailable,
-        featureGoalTemplateVersion
+        featureGoalTemplateVersion,
+        nodeFilter
       );
       checkCancellation();
 
       // Only show warnings if showReport is true (single file generation)
       // For batch generation, warnings are collected and shown in the summary
       if (showReport) {
-        if (result.metadata?.llmFallbackUsed && result.metadata.llmFinalProvider === 'local') {
-          toast({
-            title: 'LLM-fallback använd',
-            description:
-              'ChatGPT (moln-LLM) var inte tillgänglig. Dokumentationen genererades i stället via lokal LLM (Ollama).',
-          });
-        }
+        // Fallback information removed per user request
       }
       const nodeArtifacts = result.nodeArtifacts || [];
       const missingDependencies = result.metadata?.missingDependencies || [];
@@ -1918,10 +1961,41 @@ export default function BpmnFileManager() {
         }
       }
       syncOverlayProgress('Generering klar');
+      
+      // Mark diffs as resolved for all successfully generated nodes
+      // This applies whether we used a diff filter or regenerated everything
+      if (nodeArtifacts.length > 0) {
+        try {
+          const { markDiffsAsResolved } = await import('@/lib/bpmnDiffRegeneration');
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          // Collect all node keys from generated artifacts
+          const generatedNodeKeys = nodeArtifacts
+            .map(artifact => `${artifact.bpmnFile}::${artifact.elementId}`)
+            .filter(Boolean);
+          
+          if (generatedNodeKeys.length > 0) {
+            // Mark diffs as resolved for all files that were included in generation
+            const filesToResolve = new Set(nodeArtifacts.map(a => a.bpmnFile));
+            for (const fileName of filesToResolve) {
+              const fileNodeKeys = generatedNodeKeys.filter(key => key.startsWith(`${fileName}::`));
+              if (fileNodeKeys.length > 0) {
+                await markDiffsAsResolved(fileName, fileNodeKeys, user?.id);
+                console.log(`[BpmnFileManager] Marked ${fileNodeKeys.length} diffs as resolved for ${fileName}`);
+              }
+            }
+          }
+        } catch (error) {
+          // Don't fail generation if marking diffs as resolved fails
+          console.warn('[BpmnFileManager] Error marking diffs as resolved:', error);
+        }
+      }
+      
       if (activeJob) {
           await setJobStatus(activeJob.id, 'succeeded', {
             finished_at: new Date().toISOString(),
             progress: jobProgressCount,
+            total: jobTotalCount,
             result: {
               dorDod: dorDodCount,
               tests: totalTestCount,
@@ -2603,24 +2677,223 @@ export default function BpmnFileManager() {
   };
 
   // Sequential file upload to avoid race conditions with multiple file uploads
+  // Supports both individual file selection and folder selection (recursive)
   const handleFiles = async (fileList: FileList) => {
     const files = Array.from(fileList).filter(file =>
       file.name.endsWith('.bpmn') || file.name.endsWith('.dmn')
     );
 
+    if (files.length === 0) {
+      toast({
+        title: 'Inga filer hittades',
+        description: 'Inga .bpmn eller .dmn filer hittades i vald mapp eller filer.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // For folder uploads with many files, show confirmation
+    if (files.length > 10) {
+      setPendingFiles(files);
+      return;
+    }
+
+    await uploadFiles(files);
+  };
+
+  const uploadFiles = async (files: File[]) => {
     console.debug(`Starting sequential upload of ${files.length} files`);
+    
+    // Show progress toast for multiple files
+    if (files.length > 1) {
+      toast({
+        title: 'Uppladdning pågår',
+        description: `Laddar upp ${files.length} filer...`,
+      });
+    }
+    
+    let successCount = 0;
+    let failCount = 0;
+    const uploadedFileNames: string[] = [];
     
     for (const file of files) {
       try {
-        await uploadMutation.mutateAsync(file);
+        const result = await uploadMutation.mutateAsync(file);
+        successCount++;
+        uploadedFileNames.push(result?.file?.file_name || file.name);
         console.debug(`Successfully uploaded: ${file.name}`);
       } catch (error) {
+        failCount++;
         console.error(`Failed to upload ${file.name}:`, error);
         // Continue with next file even if one fails
       }
     }
     
     console.debug('All file uploads completed');
+    
+    // Show summary toast for multiple files
+    if (files.length > 1) {
+      toast({
+        title: 'Uppladdning klar',
+        description: `${successCount} filer uppladdade${failCount > 0 ? `, ${failCount} misslyckades` : ''}`,
+        variant: failCount > 0 ? 'destructive' : 'default',
+      });
+    }
+    
+    setPendingFiles([]);
+    
+    // Analysera och föreslå uppdateringar till bpmn-map.json om BPMN-filer laddades upp
+    if (uploadedFileNames.some(name => name.endsWith('.bpmn'))) {
+      try {
+        await analyzeAndSuggestMapUpdates();
+      } catch (error) {
+        console.warn('[BpmnFileManager] Error analyzing map suggestions:', error);
+      }
+    }
+  };
+  
+  const analyzeAndSuggestMapUpdates = async () => {
+    try {
+      const { data: filesData, error } = await supabase
+        .from('bpmn_files')
+        .select('file_name, meta')
+        .eq('file_type', 'bpmn');
+      
+      if (error) throw error;
+      
+      const currentMap = await loadBpmnMapFromStorage();
+      const suggestions = await suggestBpmnMapUpdates(currentMap, filesData || []);
+      
+      // Separera matchningar: hög konfidens (matched) vs tvetydiga/låg konfidens
+      const highConfidenceSuggestions = suggestions.suggestions.filter(
+        s => s.matchStatus === 'matched'
+      );
+      const needsReviewSuggestions = suggestions.suggestions.filter(
+        s => s.matchStatus !== 'matched'
+      );
+      
+      // Automatiskt acceptera och spara hög konfidens-matchningar
+      if (highConfidenceSuggestions.length > 0 || suggestions.newFiles.length > 0) {
+        const autoAcceptedKeys = new Set(
+          highConfidenceSuggestions.map(s => `${s.bpmn_file}::${s.bpmn_id}`)
+        );
+        
+        // Förbered nya filer för att läggas till
+        const newFilesData = suggestions.newFiles
+          .map(fileName => {
+            const fileData = filesData?.find(f => f.file_name === fileName);
+            return fileData ? { file_name: fileName, meta: fileData.meta } : null;
+          })
+          .filter(Boolean) as Array<{ file_name: string; meta: any }>;
+        
+        const updatedMap = generateUpdatedBpmnMap(
+          currentMap, 
+          highConfidenceSuggestions, 
+          autoAcceptedKeys,
+          newFilesData.length > 0 ? newFilesData : undefined
+        );
+        
+        // Spara automatiskt (utan GitHub-sync som standard)
+        const result = await saveBpmnMapToStorage(updatedMap, false);
+        
+        if (result.success) {
+          console.log(`[BpmnFileManager] Automatically updated bpmn-map.json with ${highConfidenceSuggestions.length} high-confidence matches`);
+          
+          if (highConfidenceSuggestions.length > 0 || suggestions.newFiles.length > 0) {
+            toast({
+              title: 'bpmn-map.json uppdaterad automatiskt',
+              description: `${highConfidenceSuggestions.length} matchningar accepterades automatiskt${suggestions.newFiles.length > 0 ? `, ${suggestions.newFiles.length} nya filer tillagda` : ''}`,
+            });
+          }
+          
+          // Invalidera queries
+          invalidateStructureQueries(queryClient);
+          await queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+          await queryClient.invalidateQueries({ queryKey: ['process-graph'] });
+        }
+      }
+      
+      // Visa dialog endast för matchningar som behöver granskning
+      if (needsReviewSuggestions.length > 0) {
+        setMapSuggestions(needsReviewSuggestions);
+        setShowMapSuggestionsDialog(true);
+        setAcceptedSuggestions(new Set());
+        
+        toast({
+          title: 'Granska matchningar',
+          description: `${needsReviewSuggestions.length} matchningar behöver manuell granskning (tvetydiga eller låg konfidens)`,
+          variant: 'default',
+        });
+      } else if (suggestions.newFiles.length > 0 && highConfidenceSuggestions.length === 0) {
+        // Om det bara är nya filer utan matchningar, visa info
+        toast({
+          title: 'Nya filer upptäckta',
+          description: `${suggestions.newFiles.length} nya filer har lagts till i bpmn-map.json`,
+        });
+      }
+    } catch (error) {
+      console.error('[BpmnFileManager] Error analyzing map updates:', error);
+    }
+  };
+  
+  const handleSaveUpdatedMap = async (syncToGitHub: boolean = false) => {
+    try {
+      const currentMap = await loadBpmnMapFromStorage();
+      const updatedMap = generateUpdatedBpmnMap(currentMap, mapSuggestions, acceptedSuggestions, undefined);
+      
+      const result = await saveBpmnMapToStorage(updatedMap, syncToGitHub);
+      
+      if (result.success) {
+        toast({
+          title: 'bpmn-map.json uppdaterad',
+          description: result.githubSynced
+            ? 'Filen har uppdaterats i Supabase storage och synkats till GitHub.'
+            : 'Filen har uppdaterats i Supabase storage.',
+        });
+        
+        // Invalidera queries så att ny mappning laddas
+        invalidateStructureQueries(queryClient);
+        await queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+        await queryClient.invalidateQueries({ queryKey: ['process-graph'] });
+        
+        setShowMapSuggestionsDialog(false);
+      } else {
+        toast({
+          title: 'Uppdatering misslyckades',
+          description: result.error || 'Kunde inte spara bpmn-map.json',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('[BpmnFileManager] Error saving map:', error);
+      toast({
+        title: 'Uppdatering misslyckades',
+        description: error instanceof Error ? error.message : 'Okänt fel',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleExportUpdatedMap = async () => {
+    // Fallback: exportera som fil om användaren vill ha det manuellt
+    const currentMap = await loadBpmnMapFromStorage();
+    const updatedMap = generateUpdatedBpmnMap(currentMap, mapSuggestions, acceptedSuggestions, undefined);
+    
+    const jsonStr = JSON.stringify(updatedMap, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bpmn-map-updated.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: 'bpmn-map.json exporterad',
+      description: 'Den uppdaterade filen har laddats ner.',
+    });
   };
 
   const handleDownload = async (file: BpmnFile) => {
@@ -2747,11 +3020,26 @@ export default function BpmnFileManager() {
       {/* main med min-w-0 så att tabeller och paneler inte orsakar global horisontell scroll */}
       <main className="flex-1 min-w-0 overflow-auto">
         <div className="container mx-auto py-8 px-4 relative">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">BPMN & DMN Filhantering</h1>
-            <p className="text-muted-foreground">
-              Hantera dina BPMN- och DMN-filer, registrera status och generera artefakter för hela hierarkin.
-            </p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">BPMN & DMN Filhantering</h1>
+              <p className="text-muted-foreground">
+                Hantera dina BPMN- och DMN-filer, registrera status och generera artefakter för hela hierarkin.
+              </p>
+            </div>
+            {unresolvedDiffsCount > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => navigate('/bpmn-diff')}
+                className="gap-2"
+              >
+                <AlertCircle className="w-4 h-4" />
+                Diff-översikt
+                <Badge variant="destructive" className="ml-1">
+                  {unresolvedDiffsCount}
+                </Badge>
+              </Button>
+            )}
           </div>
 
       {/* Upload Area */}
@@ -2794,21 +3082,67 @@ export default function BpmnFileManager() {
             Släpp .bpmn eller .dmn filer här
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            eller klicka för att välja filer
+            eller klicka för att välja filer eller en mapp
           </p>
-          <input
-            type="file"
-            id="file-upload"
-            className="hidden"
-            accept=".bpmn,.dmn"
-            multiple
-            onChange={(e) => e.target.files && handleFiles(e.target.files)}
-          />
-          <Button asChild>
-            <label htmlFor="file-upload" className="cursor-pointer">
-              Välj filer
-            </label>
-          </Button>
+          <div className="flex gap-2 justify-center">
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              accept=".bpmn,.dmn"
+              multiple
+              onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            />
+            <Button asChild>
+              <label htmlFor="file-upload" className="cursor-pointer">
+                Välj filer
+              </label>
+            </Button>
+            <input
+              type="file"
+              id="folder-upload"
+              className="hidden"
+              // @ts-ignore - webkitdirectory is a valid HTML attribute
+              webkitdirectory=""
+              directory=""
+              multiple
+              onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            />
+            <Button variant="outline" asChild>
+              <label htmlFor="folder-upload" className="cursor-pointer">
+                Välj mapp (rekursivt)
+              </label>
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Mappval hittar automatiskt alla .bpmn och .dmn filer rekursivt i vald mapp
+          </p>
+          {pendingFiles.length > 0 && (
+            <Alert className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Bekräfta uppladdning</AlertTitle>
+              <AlertDescription className="mt-2">
+                <p className="mb-2">
+                  Hittade <strong>{pendingFiles.length} filer</strong> i vald mapp.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => uploadFiles(pendingFiles)}
+                  >
+                    Ladda upp alla
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPendingFiles([])}
+                  >
+                    Avbryt
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </Card>
       
@@ -4246,6 +4580,125 @@ export default function BpmnFileManager() {
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showMapSuggestionsDialog} onOpenChange={setShowMapSuggestionsDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Föreslagna uppdateringar till bpmn-map.json</DialogTitle>
+            <DialogDescription>
+              Nya filer har analyserats och matchningar har gjorts automatiskt. Välj vilka uppdateringar du vill inkludera.
+            </DialogDescription>
+          </DialogHeader>
+          {mapSuggestions.length > 0 && (
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">
+                  {mapSuggestions.length} föreslagna matchningar
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const allKeys = new Set(mapSuggestions.map(s => `${s.bpmn_file}::${s.bpmn_id}`));
+                      setAcceptedSuggestions(allKeys);
+                    }}
+                  >
+                    Välj alla
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAcceptedSuggestions(new Set())}
+                  >
+                    Avmarkera alla
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {mapSuggestions.map((suggestion, idx) => {
+                  const key = `${suggestion.bpmn_file}::${suggestion.bpmn_id}`;
+                  const isAccepted = acceptedSuggestions.has(key);
+                  const confidenceColor = 
+                    suggestion.matchStatus === 'matched' ? 'text-green-600' :
+                    suggestion.matchStatus === 'ambiguous' ? 'text-yellow-600' :
+                    'text-orange-600';
+                  
+                  return (
+                    <div
+                      key={idx}
+                      className={`border rounded-lg p-3 ${isAccepted ? 'bg-muted' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isAccepted}
+                          onChange={(e) => {
+                            const newSet = new Set(acceptedSuggestions);
+                            if (e.target.checked) {
+                              newSet.add(key);
+                            } else {
+                              newSet.delete(key);
+                            }
+                            setAcceptedSuggestions(newSet);
+                          }}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs bg-muted px-1 rounded">{suggestion.bpmn_file}</code>
+                            <span className="text-sm font-medium">{suggestion.name}</span>
+                            <Badge variant="outline" className={confidenceColor}>
+                              {suggestion.matchStatus === 'matched' ? 'Hög konfidens' :
+                               suggestion.matchStatus === 'ambiguous' ? 'Tvetydig' :
+                               'Låg konfidens'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            → <code>{suggestion.suggested_subprocess_bpmn_file}</code>
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {suggestion.reason} (konfidens: {(suggestion.confidence * 100).toFixed(0)}%)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowMapSuggestionsDialog(false)}
+                >
+                  Avbryt
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleExportUpdatedMap}
+                  disabled={acceptedSuggestions.size === 0}
+                >
+                  Exportera som fil
+                </Button>
+                <Button
+                  onClick={() => handleSaveUpdatedMap(false)}
+                  disabled={acceptedSuggestions.size === 0}
+                >
+                  Spara i storage ({acceptedSuggestions.size} valda)
+                </Button>
+                <Button
+                  onClick={() => handleSaveUpdatedMap(true)}
+                  disabled={acceptedSuggestions.size === 0}
+                >
+                  Spara + synka till GitHub ({acceptedSuggestions.size} valda)
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

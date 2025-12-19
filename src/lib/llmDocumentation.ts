@@ -28,6 +28,11 @@ import { resolveLlmProvider } from './llmProviderResolver';
 import { generateWithFallback } from './llmFallback';
 import { logLlmEvent, extractErrorCode } from './llmLogging';
 import { estimatePromptTokens } from './tokenUtils';
+import {
+  buildFeatureGoalJsonSchema,
+  buildEpicJsonSchema,
+  buildBusinessRuleJsonSchema,
+} from './llmJsonSchemas';
 
 export type DocumentationDocType = 'feature' | 'epic' | 'businessRule';
 
@@ -54,10 +59,11 @@ export async function generateDocumentationWithLlm(
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
   allowFallback: boolean = true,
+  childrenDocumentation?: Map<string, ChildNodeDocumentation>,
 ): Promise<DocumentationLlmResult | null> {
   if (!isLlmEnabled()) return null;
 
-  const { processContext, currentNodeContext } = buildContextPayload(context, links);
+  const { processContext, currentNodeContext } = buildContextPayload(context, links, childrenDocumentation);
   const docLabel =
     docType === 'feature'
       ? 'Feature'
@@ -97,31 +103,44 @@ export async function generateDocumentationWithLlm(
     try {
       let jsonText = response.trim();
 
-      // Hantera vanliga markdown-fences, t.ex. ```json ... ```
-      if (jsonText.startsWith('```')) {
-        const fenceMatch = jsonText.match(/^```[a-zA-Z0-9_-]*\s*([\s\S]*?)```$/);
-        if (fenceMatch && fenceMatch[1]) {
-          jsonText = fenceMatch[1].trim();
-        } else {
-          // Ta bort första raden om den bara innehåller ``` eller ```json
-          const lines = jsonText.split('\n');
-          if (lines[0].trim().startsWith('```')) {
-            lines.shift();
-          }
-          // Ta bort sista raden om den är en avslutande fence
-          if (lines.length && lines[lines.length - 1].trim() === '```') {
-            lines.pop();
-          }
-          jsonText = lines.join('\n').trim();
-        }
-      }
+      // Om structured outputs används (cloud provider), JSON:en är redan korrekt
+      // Men vi behöver fortfarande hantera fallback-scenarier (local provider, eller om structured outputs misslyckas)
+      if (resolution.chosen === 'cloud' && responseFormat) {
+        // Med structured outputs är JSON:en garanterat korrekt - direkt parse
+        const parsed = JSON.parse(jsonText);
+      } else {
+        // För local provider eller fallback: använd robust parsing
+        // Steg 1: Ta bort markdown-code blocks (```json ... ``` eller ``` ... ```)
+        jsonText = jsonText.replace(/```(?:json|javascript)?/gi, '').replace(/```/g, '').trim();
 
-      // Försök sanera bort ev. förklarande text före/efter JSON-objektet,
-      // t.ex. "Here is the JSON object:" eller kommentarer.
-      const firstBrace = jsonText.indexOf('{');
-      const lastBrace = jsonText.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        jsonText = jsonText.slice(firstBrace, lastBrace + 1).trim();
+        // Steg 2: Hitta första JSON-struktur ({ eller [)
+        const firstBrace = jsonText.indexOf('{');
+        const firstBracket = jsonText.indexOf('[');
+        const startCandidates = [firstBrace, firstBracket].filter((idx) => idx >= 0);
+        
+        if (startCandidates.length === 0) {
+          throw new Error('No JSON structure found (no { or [)');
+        }
+
+        const start = Math.min(...startCandidates);
+        if (start > 0) {
+          jsonText = jsonText.slice(start);
+        }
+
+        // Steg 3: Hitta sista matchande avslutning
+        let end = -1;
+        if (firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)) {
+          end = jsonText.lastIndexOf('}');
+        } else if (firstBracket >= 0) {
+          end = jsonText.lastIndexOf(']');
+        }
+
+        if (end >= 0 && end + 1 < jsonText.length) {
+          jsonText = jsonText.slice(0, end + 1);
+        }
+
+        jsonText = jsonText.trim();
+        jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1'); // Fix trailing commas
       }
 
       const parsed = JSON.parse(jsonText);
@@ -167,6 +186,23 @@ export async function generateDocumentationWithLlm(
     }
   };
 
+  // Bygg JSON schema för structured outputs (endast för cloud provider)
+  const jsonSchemaObj = 
+    docType === 'feature' ? buildFeatureGoalJsonSchema() :
+    docType === 'epic' ? buildEpicJsonSchema() :
+    buildBusinessRuleJsonSchema();
+
+  // Använd structured outputs för cloud provider (Claude garanterar korrekt JSON)
+  // Claude's json_schema format: { name, strict, schema }
+  const responseFormat = resolution.chosen === 'cloud' ? {
+    type: 'json_schema' as const,
+    json_schema: {
+      name: jsonSchemaObj.name,
+      strict: jsonSchemaObj.strict,
+      schema: jsonSchemaObj.schema,
+    },
+  } : undefined;
+
   try {
     // Använd hybrid/fallback-strategi
     const result = await generateWithFallback({
@@ -175,6 +211,7 @@ export async function generateDocumentationWithLlm(
       systemPrompt: basePrompt,
       userPrompt,
       validateResponse,
+      responseFormat,
     });
 
     // Validera HTML-innehåll (om det finns HTML i svaret)
@@ -294,7 +331,22 @@ export async function generateDocumentationWithLlm(
   }
 }
 
-export function buildContextPayload(context: NodeDocumentationContext, links: TemplateLinks) {
+export interface ChildNodeDocumentation {
+  id: string;
+  name: string;
+  type: string;
+  summary: string;
+  flowSteps: string[];
+  inputs?: string[];
+  outputs?: string[];
+  scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+}
+
+export function buildContextPayload(
+  context: NodeDocumentationContext,
+  links: TemplateLinks,
+  childrenDocumentation?: Map<string, ChildNodeDocumentation>
+) {
   const parentChain = context.parentChain || [];
   const trail = [...parentChain, context.node];
   const hierarchyTrail = trail.map((node) => ({
@@ -388,6 +440,25 @@ export function buildContextPayload(context: NodeDocumentationContext, links: Te
       name: node.name,
       type: node.type,
     })),
+    // Inkludera dokumentation från child nodes om den finns (för Feature Goals med child epics)
+    childrenDocumentation: childrenDocumentation
+      ? context.childNodes
+          .map((child) => {
+            const childDoc = childrenDocumentation.get(child.id);
+            if (!childDoc) return null;
+            return {
+              id: child.bpmnElementId,
+              name: child.name,
+              type: child.type,
+              summary: childDoc.summary,
+              flowSteps: childDoc.flowSteps,
+              inputs: childDoc.inputs,
+              outputs: childDoc.outputs,
+              scenarios: childDoc.scenarios,
+            };
+          })
+          .filter((doc): doc is NonNullable<typeof doc> => doc !== null)
+      : undefined,
     descendantHighlights: descendantPaths.slice(0, 10),
     descendantTypeCounts,
     flows: {

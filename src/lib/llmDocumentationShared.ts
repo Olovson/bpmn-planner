@@ -12,7 +12,7 @@
 
 import type { NodeDocumentationContext } from './documentationContext';
 import type { TemplateLinks } from './documentationTemplates';
-import type { DocumentationDocType } from './llmDocumentation';
+import type { DocumentationDocType, ChildNodeDocumentation } from './llmDocumentation';
 import { buildContextPayload as buildContextPayloadInternal } from './llmDocumentation';
 import {
   getFeaturePrompt,
@@ -60,9 +60,10 @@ export function getPromptForDocType(docType: DocumentationDocType): string {
 export function buildLlmInputPayload(
   docType: DocumentationDocType,
   context: NodeDocumentationContext,
-  links: TemplateLinks
+  links: TemplateLinks,
+  childrenDocumentation?: Map<string, ChildNodeDocumentation>
 ): string {
-  const { processContext, currentNodeContext } = buildContextPayloadInternal(context, links);
+  const { processContext, currentNodeContext } = buildContextPayloadInternal(context, links, childrenDocumentation);
   const docLabel =
     docType === 'feature'
       ? 'Feature'
@@ -91,10 +92,11 @@ export interface LlmRequestStructure {
 export function buildLlmRequestStructure(
   docType: DocumentationDocType,
   context: NodeDocumentationContext,
-  links: TemplateLinks
+  links: TemplateLinks,
+  childrenDocumentation?: Map<string, ChildNodeDocumentation>
 ): LlmRequestStructure {
   const systemPrompt = getPromptForDocType(docType);
-  const userPrompt = buildLlmInputPayload(docType, context, links);
+  const userPrompt = buildLlmInputPayload(docType, context, links, childrenDocumentation);
 
   return {
     systemPrompt,

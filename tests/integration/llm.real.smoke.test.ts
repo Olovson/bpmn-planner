@@ -283,7 +283,7 @@ if (!isLlmEnabled()) {
       }
 
       // Lokalt genererad dokumentation (utan LLM) för diff jämförelse – samma för alla providers
-      const localHtml = renderFeatureGoalDoc(context, links);
+      const localHtml = await renderFeatureGoalDoc(context, links);
       writeFileSync(
         join(dir, 'html', 'llm-feature-goal-fallback.html'),
         localHtml,
@@ -398,7 +398,7 @@ if (!isLlmEnabled()) {
         }
       }
 
-      const localHtml = renderEpicDoc(context, links);
+      const localHtml = await renderEpicDoc(context, links);
       writeFileSync(
         join(dir, 'html', 'llm-epic-fallback.html'),
         localHtml,
@@ -509,7 +509,7 @@ if (!isLlmEnabled()) {
         }
       }
 
-      const localHtml = renderBusinessRuleDoc(context, links);
+      const localHtml = await renderBusinessRuleDoc(context, links);
       writeFileSync(
         join(dir, 'html', 'llm-business-rule-fallback.html'),
         localHtml,

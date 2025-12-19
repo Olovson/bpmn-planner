@@ -41,6 +41,7 @@ export interface GenerateWithFallbackOptions {
   systemPrompt: string;
   userPrompt: string;
   validateResponse?: (response: string) => { valid: boolean; errors: string[] };
+  responseFormat?: { type: 'json_schema'; json_schema: any };
 }
 
 export interface GenerateWithFallbackResult {
@@ -128,6 +129,7 @@ export async function generateWithFallback(
       userPrompt,
       maxTokens: profile.maxTokens,
       temperature: profile.temperature,
+      responseFormat: options.responseFormat,
     });
 
     if (!response) {
@@ -179,7 +181,7 @@ export async function generateWithFallback(
       if (alternativeProvider === 'cloud' && isCloudLlmAccountInactive()) {
         throw new CloudLlmAccountInactiveError(
           'Cannot fallback to cloud: account is inactive. ' +
-          'Please check billing details on https://platform.openai.com/account/billing'
+          'Please check billing details on https://console.anthropic.com/settings/billing'
         );
       }
 
@@ -193,6 +195,7 @@ export async function generateWithFallback(
           userPrompt,
           maxTokens: altProfile.maxTokens,
           temperature: altProfile.temperature,
+          responseFormat: options.responseFormat,
         });
 
         if (!altResponse) {

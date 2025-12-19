@@ -81,7 +81,7 @@ const DocViewer = () => {
       return 'Lokalt förbättrat innehåll (v2)';
     }
     if (generationSource === 'local' || generationSource === 'local-fallback') {
-      return 'Lokal fallback (utan LLM)';
+      return 'Lokal generering';
     }
     if (generationSource === 'llm-slow-chatgpt') {
       return 'LLM (ChatGPT)';
@@ -482,7 +482,7 @@ const DocViewer = () => {
                     }
                   }}
                 >
-                  Lokal fallback
+                  Lokal
                 </Button>
                 <Button
                   size="sm"

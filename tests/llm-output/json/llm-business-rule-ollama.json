@@ -1,6 +1,6 @@
 {
   "error": "Lokal LLM (Ollama) unavailable",
   "provider": "local",
-  "details": "Validation failed: Failed to parse JSON: Expected property name or '}' in JSON at position 1",
-  "timestamp": "2025-11-25T19:52:47.528Z"
+  "details": "Validation failed: Failed to parse JSON: No JSON structure found (no { or [)",
+  "timestamp": "2025-12-19T18:35:25.828Z"
 }

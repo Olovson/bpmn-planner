@@ -60,6 +60,8 @@ JSON-modellen är:
   - vilka kunder/segment som omfattas,
   - hur det stödjer bankens kreditstrategi, riskhantering och kundupplevelse.
 
+**Viktigt:** Om `currentNodeContext.childrenDocumentation` finns i inputen, använd `summary` från child epics för att skriva en mer detaljerad och realistisk summary som reflekterar vad Feature Goalet faktiskt gör baserat på dess child epics.
+
 ### effectGoals
 
 **Syfte:** Synliggöra konkreta effektmål med Feature Goalet – vilken nytta/förändring det ska skapa.
@@ -96,6 +98,8 @@ JSON-modellen är:
   - `description`: 1–2 meningar om epicens roll i flödet.
   - `team`: vilket team som typiskt äger epiken (generellt namn, t.ex. `"Risk & Kredit"`).
 
+**Viktigt:** Om `currentNodeContext.childrenDocumentation` finns i inputen, använd den informationen för att skriva mer detaljerade och realistiska epic-beskrivningar. Varje child epic i `childrenDocumentation` innehåller `summary`, `flowSteps`, `inputs`, och `outputs` som hjälper dig att förstå vad epiken faktiskt gör. Använd denna information när du skriver `description` för varje epic i `epics`-arrayen.
+
 ### flowSteps
 
 **Syfte:** Beskriva Feature Goal-nivåns affärsflöde från start till slut.
@@ -105,6 +109,8 @@ JSON-modellen är:
   - kundens/handläggarens handlingar,
   - systemets respons,
   - viktiga beslutspunkter.
+
+**Viktigt:** Om `currentNodeContext.childrenDocumentation` finns i inputen, använd `flowSteps` från child epics för att skapa mer realistiska och detaljerade flowSteps. Kombinera och sammanfatta flowSteps från child epics till en logisk sekvens på Feature Goal-nivå.
 
 ### dependencies
 

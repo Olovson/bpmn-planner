@@ -947,6 +947,13 @@ async function renderDocWithLlmFallback(
   localAvailable: boolean = false,
   onLlmResult?: (provider: LlmProvider, fallbackUsed: boolean, docJson?: unknown) => void,
   featureGoalTemplateVersion?: 'v1' | 'v2',
+  childrenDocumentation?: Map<string, {
+    summary: string;
+    flowSteps: string[];
+    inputs?: string[];
+    outputs?: string[];
+    scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+  }>,
 ): Promise<string> {
   const llmActive = llmAllowed && isLlmEnabled();
   const basePayload = {
@@ -968,7 +975,9 @@ async function renderDocWithLlmFallback(
       context,
       links,
       llmProvider,
-      localAvailable
+      localAvailable,
+      true, // allowFallback
+      childrenDocumentation
     );
     if (llmResult && llmResult.text && llmResult.text.trim()) {
       onLlmResult?.(llmResult.provider, llmResult.fallbackUsed, llmResult.docJson);
@@ -986,7 +995,7 @@ async function renderDocWithLlmFallback(
 
       // Use unified render functions - they handle base + overrides + LLM patch
       if (docType === 'feature') {
-        return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata, featureGoalTemplateVersion || 'v1');
+        return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata, featureGoalTemplateVersion || 'v2');
       }
 
       if (docType === 'epic') {
@@ -1171,7 +1180,13 @@ export async function generateAllFromBpmnWithGraph(
   generationSource?: string,
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
-  featureGoalTemplateVersion: 'v1' | 'v2' = 'v1',
+  featureGoalTemplateVersion: 'v1' | 'v2' = 'v2',
+  /**
+   * Optional filter function to determine which nodes should be generated.
+   * Returns true if node should be generated, false to skip.
+   * If not provided, all nodes are generated (default behavior).
+   */
+  nodeFilter?: (node: BpmnProcessNode) => boolean,
 ): Promise<GenerationResult> {
   const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
     if (progressCallback) {
@@ -1206,6 +1221,32 @@ export async function generateAllFromBpmnWithGraph(
       hierarchyDepth: summary.hierarchyDepth,
     });
     const testableNodes = getTestableNodes(graph);
+
+    // Beräkna depth för varje nod (för hierarkisk generering: leaf nodes först)
+    const nodeDepthMap = new Map<string, number>();
+    const calculateNodeDepth = (node: BpmnProcessNode, visited = new Set<string>()): number => {
+      if (visited.has(node.id)) return 0; // Avoid cycles
+      visited.add(node.id);
+      
+      if (node.children.length === 0) {
+        nodeDepthMap.set(node.id, 0);
+        return 0;
+      }
+      
+      const maxChildDepth = Math.max(
+        ...node.children.map(child => calculateNodeDepth(child, visited))
+      );
+      const depth = maxChildDepth + 1;
+      nodeDepthMap.set(node.id, depth);
+      return depth;
+    };
+    
+    // Beräkna depth för alla noder
+    for (const node of testableNodes) {
+      if (!nodeDepthMap.has(node.id)) {
+        calculateNodeDepth(node);
+      }
+    }
 
     // Generera artefakter från grafen
     const result: GenerationResult = {
@@ -1335,9 +1376,14 @@ export async function generateAllFromBpmnWithGraph(
     await reportProgress('node-analysis:complete', 'Nodanalyser klara', `${testableNodes.length} noder`);
 
     // Seed node_planned_scenarios med bas-scenarion för Lokal fallback
+    // OBS: Dessa är endast fallback-scenarion. Nya scenarion genereras från BPMN-filerna
+    // via LLM eller från dokumentationen, och prioriteras över dessa.
     try {
       const rows = createPlannedScenariosFromGraph(testableNodes);
+      // Lägg till i map för fallback, men prioritera inte dessa över LLM-genererade
       hydrateScenarioMapFromRows(rows);
+      // Spara endast om det inte redan finns scenarion i databasen (för att inte skriva över manuellt skapade)
+      // Men när vi genererar dokumentation, kommer LLM-scenarion alltid prioriteras
       await savePlannedScenarios(rows, 'bpmnGenerators');
     } catch (e) {
       console.error(
@@ -1349,6 +1395,9 @@ export async function generateAllFromBpmnWithGraph(
     }
 
     // Generera dokumentation per fil (inte per element)
+    // STRATEGI: Två-pass generering för bättre kontext
+    // Pass 1: Leaf nodes först (högst depth) - genererar dokumentation för epics/tasks
+    // Pass 2: Parent nodes (lägst depth) - genererar Feature Goals med kunskap om child epics
     // NOTE: Dokumentation använder fortfarande testableNodes från grafen för LLM-generering,
     // men ProcessTree kan användas för strukturell dokumentation om önskat
     await reportProgress('docgen:start', 'Genererar dokumentation/testinstruktioner', `${filesToGenerate.length} filer`);
@@ -1364,6 +1413,15 @@ export async function generateAllFromBpmnWithGraph(
       return `<p>Subprocess-kopplingen är inte bekräftad. Följande diagnostik finns:</p><p>${reasonText}</p>`;
     };
 
+    // Map för att spara genererad dokumentation från child nodes (används i Pass 2)
+    const generatedChildDocs = new Map<string, {
+      summary: string;
+      flowSteps: string[];
+      inputs?: string[];
+      outputs?: string[];
+      scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+    }>();
+
     for (const file of filesToGenerate) {
       await reportProgress('docgen:file', 'Genererar dokumentation/testinstruktioner', file);
       const docFileName = file.replace('.bpmn', '.html');
@@ -1372,24 +1430,57 @@ export async function generateAllFromBpmnWithGraph(
       const nodesInFile = testableNodes.filter(node => node.bpmnFile === file);
       
       if (nodesInFile.length > 0) {
+        // Sortera noder efter depth (högst depth = leaf nodes först)
+        // Detta säkerställer att child nodes genereras före parent nodes
+        const sortedNodesInFile = [...nodesInFile].sort((a, b) => {
+          const depthA = nodeDepthMap.get(a.id) ?? 0;
+          const depthB = nodeDepthMap.get(b.id) ?? 0;
+          return depthB - depthA; // Högre depth först (leaf nodes)
+        });
+        
         // Skapa en sammanslagen dokumentation för hela filen – med fokus på innehåll.
         // Själva app-layouten hanteras i DocViewer och den gemensamma wrappern.
         let combinedBody = `<h1>Dokumentation för ${file}</h1>
 `;
         
         const processedDocNodes = new Set<string>();
-        for (const node of nodesInFile) {
+        
+        // PASS 1: Generera leaf nodes först (högst depth)
+        // Spara dokumentation från child nodes för att använda i Pass 2
+        // För callActivities: använd subprocessFile som key för att undvika duplicering av återkommande subprocesser
+        for (const node of sortedNodesInFile) {
           if (!node.element || !node.bpmnElementId) continue;
+          
+          // Apply node filter if provided (for selective regeneration based on diff)
+          if (nodeFilter && !nodeFilter(node)) {
+            console.log(`[bpmnGenerators] Skipping node ${node.bpmnElementId} (filtered out by diff)`);
+            continue;
+          }
+          
+          // För callActivities, använd subprocessFile som key (unik per subprocess-fil)
+          // För tasks/epics, använd nodeKey (unik per instans)
+          const docKey = node.type === 'callActivity' && node.subprocessFile
+            ? `subprocess:${node.subprocessFile}` // Unik per subprocess-fil
+            : `${node.bpmnFile}::${node.bpmnElementId}`; // Unik per instans för tasks
+          
+          // VIKTIGT: För återkommande noder (subprocesser, tasks, epics):
+          // - Dokumentation (summary, flowSteps, scenarios, etc.) genereras PER INSTANS
+          //   eftersom kontexten kan vara annorlunda för varje användning
+          const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
+          const skipDocGeneration = processedDocNodes.has(docKey);
+          
+          if (skipDocGeneration) {
+            // För återkommande noder: generera instans-specifik dokumentation
+            // eftersom kontexten kan vara annorlunda för varje användning
+            console.log(`[bpmnGenerators] Generating instance-specific documentation for reused node ${docKey} (instance: ${nodeKey})`);
+            // Fortsätt med dokumentationsgenerering (inte continue)
+          }
+          
           await reportProgress(
             'docgen:file',
             'Genererar dokumentation/testinstruktioner',
-            `${file} → ${node.name || node.bpmnElementId}`,
+            `${file} → ${node.name || node.bpmnElementId}${node.type === 'callActivity' && node.subprocessFile ? ` (subprocess: ${node.subprocessFile})` : ''}`,
           );
-          const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
-          if (processedDocNodes.has(nodeKey)) {
-            console.log(`Skipping duplicate doc generation in this run: ${nodeKey}`);
-            continue;
-          }
 
           const docFileKey = getNodeDocFileKey(node.bpmnFile, node.bpmnElementId);
           const testFileKey = getNodeTestFileKey(node.bpmnFile, node.bpmnElementId);
@@ -1407,64 +1498,136 @@ export async function generateAllFromBpmnWithGraph(
           let lastDocJson: unknown | undefined;
 
           if (nodeContext) {
+            // Samla dokumentation från child nodes (om de redan genererats)
+            // För callActivities, använd subprocessFile som key; för tasks, använd child.id
+            const childDocsForNode = new Map<string, {
+              summary: string;
+              flowSteps: string[];
+              inputs?: string[];
+              outputs?: string[];
+              scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+            }>();
+            
+            for (const child of node.children) {
+              // För callActivities, använd subprocessFile som key för att hitta dokumentation
+              // även om child är en annan instans av samma subprocess
+              const childDocKey = child.type === 'callActivity' && child.subprocessFile
+                ? `subprocess:${child.subprocessFile}`
+                : child.id;
+              
+              const childDoc = generatedChildDocs.get(childDocKey);
+              if (childDoc) {
+                childDocsForNode.set(child.id, childDoc); // Använd child.id som key i Map för att matcha med node.children
+              }
+            }
+            
             if (node.type === 'callActivity') {
-              nodeDocContent = await renderDocWithLlmFallback(
-                'feature',
-                nodeContext,
-                docLinks,
-                async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined, featureGoalTemplateVersion),
-                useLlm,
-                llmProvider,
-                localAvailable,
-                undefined,
-                featureGoalTemplateVersion,
-                async (provider, fallbackUsed, docJson) => {
-                  if (fallbackUsed) {
-                    llmFallbackUsed = true;
-                    llmFinalProvider = provider;
-                  }
-                  const scenarioProvider = mapProviderToScenarioProvider(
-                    provider,
-                    fallbackUsed,
+              // För återkommande noder (subprocesser, tasks, epics): generera instans-specifik dokumentation
+              // eftersom summary, flowSteps, epics, scenarios, testDescription kan vara annorlunda
+              // baserat på varför noden används (t.ex. initial verifiering vs re-verifiering)
+              // För subprocesser: använd subprocessFile som key för child docs (för parent node prompts)
+              // Men generera dokumentation per instans
+              if (skipDocGeneration && node.subprocessFile) {
+                const existingDoc = generatedChildDocs.get(docKey);
+                if (existingDoc) {
+                  // För återkommande subprocesser: generera instans-specifik dokumentation
+                  // med LLM för att få kontext-specifika summary, flowSteps, epics, scenarios, etc.
+                  console.log(`[bpmnGenerators] Generating instance-specific documentation for reused subprocess ${node.subprocessFile} (instance: ${nodeKey})`);
+                  
+                  // Generera instans-specifik dokumentation med LLM
+                  nodeDocContent = await renderDocWithLlmFallback(
+                    'feature',
+                    nodeContext,
+                    docLinks,
+                    async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined, featureGoalTemplateVersion),
+                    useLlm,
+                    llmProvider,
+                    localAvailable,
+                    undefined,
+                    featureGoalTemplateVersion,
+                    childDocsForNode.size > 0 ? childDocsForNode : undefined,
+                    async (provider, fallbackUsed, docJson) => {
+                      if (fallbackUsed) {
+                        llmFallbackUsed = true;
+                        llmFinalProvider = provider;
+                      }
+                      if (docJson) {
+                        lastDocJson = docJson;
+                      }
+                      // Spara inte i generatedChildDocs för återkommande subprocesser
+                      // (vi vill generera per instans, men första gången sparas redan)
+                    },
                   );
-                  if (docJson) {
-                    lastDocJson = docJson;
-                  }
-                  if (
-                    useLlm &&
-                    !fallbackUsed &&
-                    scenarioProvider &&
-                    docJson &&
-                    node.bpmnFile &&
-                    node.bpmnElementId
-                  ) {
-                    const scenarios = buildScenariosFromDocJson('feature', docJson);
-                    if (scenarios.length) {
-                      try {
-                        await supabase.from('node_planned_scenarios').upsert(
-                          {
-                            bpmn_file: node.bpmnFile,
-                            bpmn_element_id: node.bpmnElementId,
-                            provider: scenarioProvider,
-                            origin: 'llm-doc',
-                            scenarios,
-                          },
-                          {
-                            onConflict: 'bpmn_file,bpmn_element_id,provider',
-                          },
-                        );
-                        const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
-                        setScenarioEntry(nodeKey, scenarioProvider, scenarios);
-                      } catch (e) {
-                        console.warn(
-                          '[bpmnGenerators] Failed to upsert node_planned_scenarios for feature',
-                          e,
-                        );
+                } else {
+                  // Ingen dokumentation att hämta - detta borde inte hända, men fallback
+                  nodeDocContent = await renderFeatureGoalDoc(
+                    nodeContext,
+                    docLinks,
+                    undefined,
+                    undefined,
+                    featureGoalTemplateVersion,
+                  );
+                }
+              } else {
+                // Första gången subprocessen genereras - generera både dokumentation och testscenarion
+                nodeDocContent = await renderDocWithLlmFallback(
+                  'feature',
+                  nodeContext,
+                  docLinks,
+                  async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined, featureGoalTemplateVersion),
+                  useLlm,
+                  llmProvider,
+                  localAvailable,
+                  undefined,
+                  featureGoalTemplateVersion,
+                  childDocsForNode.size > 0 ? childDocsForNode : undefined,
+                  async (provider, fallbackUsed, docJson) => {
+                    if (fallbackUsed) {
+                      llmFallbackUsed = true;
+                      llmFinalProvider = provider;
+                    }
+                    const scenarioProvider = mapProviderToScenarioProvider(
+                      provider,
+                      fallbackUsed,
+                    );
+                    if (docJson) {
+                      lastDocJson = docJson;
+                    }
+                    if (
+                      useLlm &&
+                      !fallbackUsed &&
+                      scenarioProvider &&
+                      docJson &&
+                      node.bpmnFile &&
+                      node.bpmnElementId
+                    ) {
+                      const scenarios = buildScenariosFromDocJson('feature', docJson);
+                      if (scenarios.length) {
+                        try {
+                          await supabase.from('node_planned_scenarios').upsert(
+                            {
+                              bpmn_file: node.bpmnFile,
+                              bpmn_element_id: node.bpmnElementId,
+                              provider: scenarioProvider,
+                              origin: 'llm-doc',
+                              scenarios,
+                            },
+                            {
+                              onConflict: 'bpmn_file,bpmn_element_id,provider',
+                            },
+                          );
+                          setScenarioEntry(nodeKey, scenarioProvider, scenarios);
+                        } catch (e) {
+                          console.warn(
+                            '[bpmnGenerators] Failed to upsert node_planned_scenarios for feature',
+                            e,
+                          );
+                        }
                       }
                     }
-                  }
-                },
-              );
+                  },
+                );
+              }
               // Skapa även en separat feature goal-sida för matched subprocesser
               // Include template version in filename so v1 and v2 can coexist
               // For call activities, use subprocessFile if available (the actual subprocess BPMN file),
@@ -1521,6 +1684,29 @@ export async function generateAllFromBpmnWithGraph(
                   );
                   if (docJson) {
                     lastDocJson = docJson;
+                    
+                    // Spara child node dokumentation för att använda i parent node prompts
+                    // För callActivities: använd subprocessFile som key (för återkommande subprocesser)
+                    // För tasks/epics: använd node.id som key
+                    // VIKTIGT: För återkommande noder sparar vi bara första gången
+                    // (för att använda i parent node prompts), men genererar dokumentation per instans
+                    if (docJson && typeof docJson === 'object') {
+                      const childDocKey = node.type === 'callActivity' && node.subprocessFile
+                        ? `subprocess:${node.subprocessFile}`
+                        : node.id;
+                      
+                      // Spara bara om det inte redan finns (första gången noden genereras)
+                      if (!generatedChildDocs.has(childDocKey)) {
+                        const childDocInfo = {
+                          summary: (docJson as any).summary || '',
+                          flowSteps: Array.isArray((docJson as any).decisionLogic) ? (docJson as any).decisionLogic : [],
+                          inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
+                          outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
+                          scenarios: Array.isArray((docJson as any).scenarios) ? (docJson as any).scenarios : [],
+                        };
+                        generatedChildDocs.set(childDocKey, childDocInfo);
+                      }
+                    }
                   }
                   if (
                     useLlm &&
@@ -1536,19 +1722,23 @@ export async function generateAllFromBpmnWithGraph(
                     );
                     if (scenarios.length) {
                       try {
+                        // För återkommande noder: markera som instans-specifik
+                        const origin = skipDocGeneration
+                          ? 'llm-spec' // Instans-specifik för återkommande noder
+                          : 'llm-doc'; // Första gången noden genereras
+                        
                         await supabase.from('node_planned_scenarios').upsert(
                           {
                             bpmn_file: node.bpmnFile,
                             bpmn_element_id: node.bpmnElementId,
                             provider: scenarioProvider,
-                            origin: 'llm-doc',
+                            origin,
                             scenarios,
                           },
                           {
                             onConflict: 'bpmn_file,bpmn_element_id,provider',
                           },
                         );
-                        const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
                         setScenarioEntry(nodeKey, scenarioProvider, scenarios);
                       } catch (e) {
                         console.warn(
@@ -1559,6 +1749,8 @@ export async function generateAllFromBpmnWithGraph(
                     }
                   }
                 },
+                undefined, // featureGoalTemplateVersion (not applicable)
+                undefined, // childrenDocumentation (not applicable for businessRule/epic)
               );
               if (!(docLinks as any).dmnLink) {
                 nodeDocContent +=
@@ -1584,6 +1776,29 @@ export async function generateAllFromBpmnWithGraph(
                   );
                   if (docJson) {
                     lastDocJson = docJson;
+                    
+                    // Spara child node dokumentation för att använda i parent node prompts
+                    // För callActivities: använd subprocessFile som key (för återkommande subprocesser)
+                    // För tasks/epics: använd node.id som key
+                    // VIKTIGT: För återkommande subprocesser sparar vi bara första gången
+                    // (för att använda i parent node prompts), men genererar dokumentation per instans
+                    if (docJson && typeof docJson === 'object') {
+                      const childDocKey = node.type === 'callActivity' && node.subprocessFile
+                        ? `subprocess:${node.subprocessFile}`
+                        : node.id;
+                      
+                      // Spara bara om det inte redan finns (första gången subprocessen genereras)
+                      if (!generatedChildDocs.has(childDocKey)) {
+                        const childDocInfo = {
+                          summary: (docJson as any).summary || '',
+                          flowSteps: Array.isArray((docJson as any).flowSteps) ? (docJson as any).flowSteps : [],
+                          inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
+                          outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
+                          scenarios: Array.isArray((docJson as any).scenarios) ? (docJson as any).scenarios : [],
+                        };
+                        generatedChildDocs.set(childDocKey, childDocInfo);
+                      }
+                    }
                   }
                   if (
                     useLlm &&
@@ -1596,19 +1811,23 @@ export async function generateAllFromBpmnWithGraph(
                     const scenarios = buildScenariosFromDocJson('epic', docJson);
                     if (scenarios.length) {
                       try {
+                        // För återkommande noder: markera som instans-specifik
+                        const origin = skipDocGeneration
+                          ? 'llm-spec' // Instans-specifik för återkommande noder
+                          : 'llm-doc'; // Första gången noden genereras
+                        
                         await supabase.from('node_planned_scenarios').upsert(
                           {
                             bpmn_file: node.bpmnFile,
                             bpmn_element_id: node.bpmnElementId,
                             provider: scenarioProvider,
-                            origin: 'llm-doc',
+                            origin,
                             scenarios,
                           },
                           {
                             onConflict: 'bpmn_file,bpmn_element_id,provider',
                           },
                         );
-                        const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
                         setScenarioEntry(nodeKey, scenarioProvider, scenarios);
                       } catch (e) {
                         console.warn(
@@ -1632,10 +1851,15 @@ export async function generateAllFromBpmnWithGraph(
 
           // Bygg testskelett. Försök först använda docJson.scenarios (om de finns),
           // annars fall back till separat LLM-anrop för testscript.
+          // VIKTIGT: För återkommande subprocesser genereras testscenarion PER INSTANS
+          // eftersom kontexten kan vara annorlunda (t.ex. första gången vs re-verifiering)
           let llmScenarios: { name: string; description: string; expectedResult?: string; steps?: string[] }[] | null =
             null;
 
-          if (useLlm && lastDocJson) {
+          // För återkommande subprocesser: hoppa över docJson.scenarios och generera alltid nya per instans
+          const shouldGenerateInstanceSpecificScenarios = skipDocGeneration && node.type === 'callActivity' && node.subprocessFile;
+          
+          if (useLlm && lastDocJson && !shouldGenerateInstanceSpecificScenarios) {
             const docTypeForNode: DocumentationDocType =
               node.type === 'callActivity'
                 ? 'feature'
@@ -1648,7 +1872,17 @@ export async function generateAllFromBpmnWithGraph(
             );
           }
 
-          if (useLlm && (!llmScenarios || llmScenarios.length === 0)) {
+          // Prioritera alltid att generera nya scenarion från BPMN-filerna
+          // För återkommande noder: generera alltid instans-specifika scenarion
+          // eftersom kontexten kan vara annorlunda för varje användning
+          if (useLlm && (!llmScenarios || llmScenarios.length === 0 || shouldGenerateInstanceSpecificScenarios)) {
+            if (shouldGenerateInstanceSpecificScenarios) {
+              const nodeTypeLabel = node.type === 'callActivity' && node.subprocessFile
+                ? `subprocess ${node.subprocessFile}`
+                : `${node.type} ${node.bpmnElementId}`;
+              console.log(`[bpmnGenerators] Generating instance-specific test scenarios for reused ${nodeTypeLabel} (instance: ${nodeKey})`);
+            }
+            
             const generated = await generateTestSpecWithLlm(
               node.element,
               llmProvider,
@@ -1661,18 +1895,70 @@ export async function generateAllFromBpmnWithGraph(
                 expectedResult: s.expectedResult,
                 steps: s.steps,
               }));
+              
+              // För återkommande noder, spara scenarion med origin 'llm-spec' (instans-specifik)
+              // För första gången, sparas scenarion redan i renderDocWithLlmFallback callback
+              if (shouldGenerateInstanceSpecificScenarios) {
+                const scenarioProvider = mapProviderToScenarioProvider(
+                  llmProvider || 'cloud',
+                  false,
+                );
+                try {
+                  await supabase.from('node_planned_scenarios').upsert(
+                    {
+                      bpmn_file: node.bpmnFile,
+                      bpmn_element_id: node.bpmnElementId,
+                      provider: scenarioProvider,
+                      origin: 'llm-spec', // Markera som instans-specifik
+                      scenarios: generated.map(s => {
+                        const category = s.type === 'edge-case' ? 'edge-case' as const
+                          : s.type === 'error-case' ? 'error-case' as const
+                          : 'happy-path' as const;
+                        return {
+                          id: s.id || `${node.bpmnElementId}-${generated.indexOf(s)}`,
+                          name: s.name,
+                          description: s.description,
+                          status: 'pending' as const,
+                          category,
+                        };
+                      }),
+                    },
+                    {
+                      onConflict: 'bpmn_file,bpmn_element_id,provider',
+                    },
+                  );
+                  setScenarioEntry(nodeKey, scenarioProvider, generated.map(s => ({
+                    id: s.id || `${node.bpmnElementId}-${generated.indexOf(s)}`,
+                    name: s.name,
+                    description: s.description,
+                    status: 'pending' as const,
+                    category: s.type || 'happy-path',
+                  })));
+                } catch (e) {
+                  console.warn(
+                    '[bpmnGenerators] Failed to upsert node_planned_scenarios for reused subprocess',
+                    e,
+                  );
+                }
+              }
             }
           }
 
           let scenarioInputs =
             llmScenarios && llmScenarios.length ? llmScenarios : null;
 
+          // Sista fallback: använd gamla scenarion från databasen endast om LLM-generering misslyckades
+          // Detta säkerställer att nya BPMN-filer alltid får nya scenarion genererade från filerna
           if (!scenarioInputs || scenarioInputs.length === 0) {
             const providerEntries = plannedScenarioMap.get(nodeKey);
             if (providerEntries) {
               for (const provider of FALLBACK_PROVIDER_ORDER) {
                 const providerScenarios = providerEntries.get(provider);
                 if (providerScenarios && providerScenarios.length > 0) {
+                  console.log(
+                    `[bpmnGenerators] Using fallback scenarios from database for ${nodeKey} (provider: ${provider}). ` +
+                    `Consider regenerating with LLM to get scenarios based on current BPMN structure.`
+                  );
                   scenarioInputs = providerScenarios.map(mapTestScenarioToSkeleton);
                   break;
                 }
@@ -1692,7 +1978,8 @@ export async function generateAllFromBpmnWithGraph(
             docFileName: docFileKey,
             testFileName: testFileKey,
           });
-          processedDocNodes.add(nodeKey);
+          // Markera som processad med rätt key (docKey för callActivities, nodeKey för tasks)
+          processedDocNodes.add(docKey);
 
           const bodyMatch = nodeDocContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
           if (bodyMatch) {

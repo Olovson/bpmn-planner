@@ -21,6 +21,19 @@ import {
   mergeBusinessRuleOverrides,
   mergeLlmPatch,
 } from './nodeDocOverrides';
+import {
+  fetchPlannedScenarios,
+  findE2eTestInfoForNode,
+  aggregateE2eTestInfoForFeatureGoal,
+  type ScenarioProvider,
+  type TestScenarioData,
+  type E2eTestStepInfo,
+} from './testDataHelpers';
+import {
+  validateFeatureGoalModelAfterMerge,
+  validateEpicModelAfterMerge,
+  validateBusinessRuleModelAfterMerge,
+} from './nodeDocOverrides';
 
 export interface TemplateLinks {
   bpmnViewerLink?: string;
@@ -283,26 +296,9 @@ export const wrapDocument = (
       ? ` class="doc-shell" ${dataAttrs.join(' ')}`
       : ' class="doc-shell"';
 
-  const fallbackBadgeHtml = fallbackBadge
-    ? `
-    <div class="llm-fallback-badge">
-      ChatGPT (moln-LLM) otillgänglig — fallback aktiverad
-    </div>${
-      fallbackReason
-        ? `
-    <div class="llm-fallback-details">
-      Orsak: ${escapeHtmlForBadge(fallbackReason)}
-    </div>`
-        : ''
-    }`
-    : '';
-  const showFallbackBanner = fallbackUsed && finalProvider === 'local';
-  const fallbackBannerHtml = showFallbackBanner
-    ? `
-    <div class="llm-fallback-banner">
-      ChatGPT (moln-LLM) kunde inte nås. Detta dokument är genererat av lokal LLM (Ollama) som fallback.
-    </div>`
-    : '';
+  // Fallback information removed per user request
+  const fallbackBadgeHtml = '';
+  const fallbackBannerHtml = '';
   
   return `<!DOCTYPE html>
 <html lang="sv">
@@ -392,37 +388,7 @@ export const wrapDocument = (
       font-weight: 600;
       margin-bottom: 8px;
     }
-    .llm-fallback-banner {
-      padding: 8px 12px;
-      margin-bottom: 16px;
-      border-radius: 6px;
-      background-color: #fefce8;
-      color: #854d0e;
-      border: 1px solid #fef9c3;
-      font-size: 0.85rem;
-    }
-    .llm-fallback-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      margin-bottom: 12px;
-      border-radius: 4px;
-      background-color: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffeeba;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .llm-fallback-details {
-      font-size: 0.8rem;
-      color: #4b5563;
-      margin-bottom: 16px;
-      white-space: pre-wrap;
-    }
-    .llm-fallback-local-note {
-      font-size: 0.8rem;
-      color: #2563eb;
-      margin-bottom: 16px;
-    }
+    /* Fallback CSS removed per user request */
   </style>
 </head>
 <body>
@@ -884,6 +850,8 @@ function buildFeatureGoalDocHtmlFromModelV2(
   context: NodeDocumentationContext,
   links: TemplateLinks,
   model: FeatureGoalDocModel,
+  plannedScenarios?: TestScenarioData | null,
+  e2eTestInfo?: Map<string, E2eTestStepInfo[]>,
 ): string {
   const node = context.node;
   const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
@@ -1139,7 +1107,7 @@ function buildFeatureGoalDocHtmlFromModelV2(
       <p>${bpmnProcessLink}</p>
     </section>
 
-    ${buildTestGenerationSectionV2(context, model, processOutputs)}
+    ${buildTestGenerationSectionV2(context, model, processOutputs, plannedScenarios, e2eTestInfo)}
   `;
 }
 
@@ -1150,6 +1118,8 @@ function buildTestGenerationSectionV2(
   context: NodeDocumentationContext,
   model: FeatureGoalDocModel,
   processOutputs: string[],
+  plannedScenarios?: TestScenarioData | null,
+  e2eTestInfo?: Map<string, E2eTestStepInfo[]>,
 ): string {
   const node = context.node;
   const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
@@ -1283,6 +1253,8 @@ function buildTestGenerationSectionV2(
       outcome: 'Kunden styrs till komplettering, beslut skjuts upp',
       status: '⏳ TODO',
     });
+    }
+  }
   }
 
   // Generate UI Flow steps for each scenario
@@ -1470,25 +1442,50 @@ function buildTestGenerationSectionV2(
       <li><strong>${ref.id}</strong>: ${ref.description}</li>
     `).join('');
 
-  // Generate implementation mapping
+  // Generate implementation mapping with E2E test info if available
   const implMapping = activities.map(activity => {
     let type: 'UI' | 'API' | 'Both' = 'UI';
     let method = '-';
+    let apiCall = '';
+    let uiInteraction = '';
+    let dmnDecision = '';
+
+    // Try to find E2E test info for this activity
+    const activityNodeId = descendantEpics.find(
+      e => (e.name || e.bpmnElementId) === activity.name
+    )?.bpmnElementId;
+    
+    if (activityNodeId && e2eTestInfo) {
+      const testInfo = e2eTestInfo.get(activityNodeId);
+      if (testInfo && testInfo.length > 0) {
+        // Use first matching test step
+        const step = testInfo[0];
+        if (step.apiCall) apiCall = step.apiCall;
+        if (step.uiInteraction) uiInteraction = step.uiInteraction;
+        if (step.dmnDecision) dmnDecision = step.dmnDecision;
+      }
+    }
+
     if (activity.type === 'service-task' || activity.type === 'business-rule-task') {
       type = 'API';
-      method = '[TODO: Lägg till HTTP method, t.ex. GET eller POST]';
+      method = apiCall ? apiCall.split(' ')[0] : '[TODO: Lägg till HTTP method]';
     } else if (activity.type === 'call-activity') {
       type = 'Both';
     }
+    
     const route = activity.type === 'user-task' || activity.type === 'call-activity'
-      ? `[TODO: Lägg till route, t.ex. /${activity.name.toLowerCase().replace(/\s+/g, '-')}]`
-      : `[TODO: Lägg till endpoint, t.ex. /api/v1/${activity.name.toLowerCase().replace(/\s+/g, '-')}]`;
+      ? (uiInteraction ? `[Extracted from E2E: ${uiInteraction.substring(0, 50)}...]` : `[TODO: Lägg till route]`)
+      : (apiCall ? apiCall.split(' ').slice(1).join(' ') : `[TODO: Lägg till endpoint]`);
+    
     return {
       activity: activity.name,
       type,
       route,
       method,
       baseUrl: '[TODO: Lägg till base URL för miljön]',
+      apiCall: apiCall || '-',
+      uiInteraction: uiInteraction || '-',
+      dmnDecision: dmnDecision || '-',
       comment: activity.description.length > 80 ? activity.description.substring(0, 77) + '...' : activity.description,
     };
   });
@@ -1500,7 +1497,7 @@ function buildTestGenerationSectionV2(
         <td>${m.route}</td>
         <td>${m.method}</td>
         <td>${m.baseUrl}</td>
-        <td>${m.comment}</td>
+        <td>${m.apiCall !== '-' ? `<strong>API:</strong> ${m.apiCall}<br/>` : ''}${m.uiInteraction !== '-' ? `<strong>UI:</strong> ${m.uiInteraction.substring(0, 100)}${m.uiInteraction.length > 100 ? '...' : ''}<br/>` : ''}${m.dmnDecision !== '-' ? `<strong>DMN:</strong> ${m.dmnDecision}` : ''}${m.apiCall === '-' && m.uiInteraction === '-' && m.dmnDecision === '-' ? m.comment : ''}</td>
       </tr>
     `).join('');
 
@@ -1561,7 +1558,7 @@ function buildTestGenerationSectionV2(
             <th>Route/Endpoint</th>
             <th>Method</th>
             <th>Base URL</th>
-            <th>Kommentar</th>
+            <th>Test Information (API/UI/DMN)</th>
           </tr>
         </thead>
         <tbody>
@@ -2621,52 +2618,190 @@ function buildBusinessRuleDocBody(
 
 /**
  * Unified render function for Feature Goal documentation.
- * Handles: base model → per-node overrides → optional LLM patch → HTML renderer
+ * 
+ * ## Pipeline Steps
+ * 
+ * 1. **Build base model** from BPMN context
+ * 2. **Apply per-node overrides** (if any exist in `src/data/node-docs/`)
+ * 3. **Apply LLM patch** (if `llmContent` is provided - from Claude/Anthropic)
+ * 4. **Fetch test data** (only for v2 template):
+ *    - Planned scenarios from database (prioritizes provider based on LLM usage)
+ *    - E2E test info (API calls, UI interactions, DMN decisions)
+ * 5. **Render HTML** using v1 or v2 template
+ * 
+ * ## Error Handling
+ * 
+ * - **Missing overrides**: Gracefully falls back to base model (expected behavior)
+ * - **Invalid LLM content**: Falls back to base model, logs warning
+ * - **Missing test scenarios**: Uses empty array, logs info (not critical)
+ * - **Missing E2E test info**: Uses undefined, renders with placeholders (not critical)
+ * 
+ * ## Validation
+ * 
+ * The model is validated after merge to ensure:
+ * - All required fields are present
+ * - String fields are non-empty (or have fallback values)
+ * - Array fields are arrays (even if empty)
  * 
  * @param context - Node documentation context
  * @param links - Template links
- * @param llmContent - Optional LLM-generated content (for ChatGPT/Ollama)
+ * @param llmContent - Optional LLM-generated content (from Claude/Anthropic)
  * @param llmMetadata - Optional LLM metadata
- * @param templateVersion - Template version to use ('v1' or 'v2'), defaults to 'v1'
+ * @param templateVersion - Template version to use ('v1' or 'v2'), defaults to 'v2'
+ * @param scenarioProvider - Explicit scenario provider (overrides auto-detection)
  * @returns Complete HTML document
+ * @throws Never throws - always returns valid HTML (falls back gracefully on errors)
  */
 export async function renderFeatureGoalDoc(
   context: NodeDocumentationContext,
   links: TemplateLinks,
   llmContent?: string,
   llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
-  templateVersion: FeatureGoalTemplateVersion = 'v1',
+  templateVersion: FeatureGoalTemplateVersion = 'v2',
+  scenarioProvider?: ScenarioProvider,
 ): Promise<string> {
-  // 1. Build base model from context
-  let model = buildFeatureGoalDocModelFromContext(context);
+  try {
+    // 1. Build base model from context
+    let model = buildFeatureGoalDocModelFromContext(context);
 
-  // 2. Apply per-node overrides (if any)
-  const overrides = await loadFeatureGoalOverrides(context);
-  model = mergeFeatureGoalOverrides(model, overrides);
+    // 2. Apply per-node overrides (if any)
+    let overrides;
+    try {
+      overrides = await loadFeatureGoalOverrides(context);
+      model = mergeFeatureGoalOverrides(model, overrides);
+    } catch (error) {
+      console.warn(
+        `[renderFeatureGoalDoc] Error loading overrides for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        error
+      );
+      // Continue with base model - overrides are optional
+    }
 
-  // 3. Apply LLM patch (if provided)
-  if (llmContent) {
-    const llmModel = mapFeatureGoalLlmToSections(llmContent);
-    model = mergeLlmPatch(model, llmModel);
+    // 3. Apply LLM patch (if provided)
+    if (llmContent) {
+      try {
+        const llmModel = mapFeatureGoalLlmToSections(llmContent);
+        model = mergeLlmPatch(model, llmModel);
+      } catch (error) {
+        console.warn(
+          `[renderFeatureGoalDoc] Error parsing/merging LLM content for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+          error
+        );
+        // Continue with base/override model - LLM patch is optional
+      }
+    }
+
+    // 3.5. Validate model after merge
+    const validation = validateFeatureGoalModelAfterMerge(model);
+    if (!validation.valid) {
+      console.error(
+        `[renderFeatureGoalDoc] Model validation failed for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        validation.errors
+      );
+      // Log warnings but don't fail
+      if (validation.warnings.length > 0) {
+        console.warn(
+          `[renderFeatureGoalDoc] Model validation warnings for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+          validation.warnings
+        );
+      }
+      // Continue anyway - model might still be renderable with missing fields
+    } else if (validation.warnings.length > 0) {
+      // Log warnings for empty arrays (not critical)
+      console.info(
+        `[renderFeatureGoalDoc] Model validation warnings for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        validation.warnings
+      );
+    }
+
+    // 4. Fetch test data from database and E2E scenarios (only for v2)
+    let plannedScenarios: TestScenarioData | null = null;
+    let e2eTestInfo: Map<string, E2eTestStepInfo[]> | undefined = undefined;
+
+    if (templateVersion === 'v2') {
+      // Determine preferred provider: use cloud if LLM was used, otherwise local-fallback
+      const preferredProvider = scenarioProvider || (llmContent ? 'cloud' : 'local-fallback');
+      
+      // Fetch planned scenarios from database
+      if (context.node.bpmnFile && context.node.bpmnElementId) {
+        try {
+          plannedScenarios = await fetchPlannedScenarios(
+            context.node.bpmnFile,
+            context.node.bpmnElementId,
+            preferredProvider,
+          );
+        } catch (error) {
+          console.warn(
+            `[renderFeatureGoalDoc] Error fetching planned scenarios for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+            error
+          );
+          // Continue with null - scenarios are optional
+        }
+      }
+
+      // Aggregate E2E test info for child nodes
+      const childNodeIds = context.childNodes
+        .filter(child => ['callActivity', 'userTask', 'serviceTask', 'businessRuleTask'].includes(child.type))
+        .map(child => child.bpmnElementId)
+        .filter((id): id is string => Boolean(id));
+      
+      if (childNodeIds.length > 0) {
+        try {
+          e2eTestInfo = aggregateE2eTestInfoForFeatureGoal(childNodeIds, context.node.bpmnFile);
+        } catch (error) {
+          console.warn(
+            `[renderFeatureGoalDoc] Error aggregating E2E test info for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+            error
+          );
+          // Continue with undefined - E2E test info is optional
+        }
+      }
+    }
+
+    // 5. Render HTML via unified renderer (v1 or v2)
+    const body = templateVersion === 'v2' 
+      ? buildFeatureGoalDocHtmlFromModelV2(context, links, model, plannedScenarios, e2eTestInfo)
+      : buildFeatureGoalDocHtmlFromModel(context, links, model);
+    const title = context.node.name || context.node.bpmnElementId || 'Feature Goal';
+    return wrapDocument(title, body, llmMetadata);
+  } catch (error) {
+    // Final fallback: return minimal HTML document
+    console.error(
+      `[renderFeatureGoalDoc] Critical error rendering documentation for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+      error
+    );
+    const title = context.node.name || context.node.bpmnElementId || 'Feature Goal';
+    return wrapDocument(
+      title,
+      `<section><h2>Error</h2><p>Failed to render documentation. Please check the console for details.</p></section>`,
+      llmMetadata
+    );
   }
-
-  // 4. Render HTML via unified renderer (v1 or v2)
-  const body = templateVersion === 'v2' 
-    ? buildFeatureGoalDocHtmlFromModelV2(context, links, model)
-    : buildFeatureGoalDocHtmlFromModel(context, links, model);
-  const title = context.node.name || context.node.bpmnElementId || 'Feature Goal';
-  return wrapDocument(title, body, llmMetadata);
 }
 
 /**
  * Unified render function for Epic documentation.
- * Handles: base model → per-node overrides → optional LLM patch → HTML renderer
+ * 
+ * ## Pipeline Steps
+ * 
+ * 1. **Build base model** from BPMN context
+ * 2. **Apply per-node overrides** (if any exist in `src/data/node-docs/`)
+ * 3. **Apply LLM patch** (if `llmContent` is provided - from Claude/Anthropic)
+ * 4. **Validate model** after merge
+ * 5. **Render HTML** using unified renderer
+ * 
+ * ## Error Handling
+ * 
+ * - **Missing overrides**: Gracefully falls back to base model (expected behavior)
+ * - **Invalid LLM content**: Falls back to base model, logs warning
+ * - **Validation errors**: Logs errors but continues (model might still be renderable)
  * 
  * @param context - Node documentation context
  * @param links - Template links
- * @param llmContent - Optional LLM-generated content (for ChatGPT/Ollama)
+ * @param llmContent - Optional LLM-generated content (from Claude/Anthropic)
  * @param llmMetadata - Optional LLM metadata
  * @returns Complete HTML document
+ * @throws Never throws - always returns valid HTML (falls back gracefully on errors)
  */
 export async function renderEpicDoc(
   context: NodeDocumentationContext,
@@ -2674,23 +2809,77 @@ export async function renderEpicDoc(
   llmContent?: string,
   llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
 ): Promise<string> {
-  // 1. Build base model from context
-  let model = buildEpicDocModelFromContext(context);
+  try {
+    // 1. Build base model from context
+    let model = buildEpicDocModelFromContext(context);
 
-  // 2. Apply per-node overrides (if any)
-  const overrides = await loadEpicOverrides(context);
-  model = mergeEpicOverrides(model, overrides);
+    // 2. Apply per-node overrides (if any)
+    let overrides;
+    try {
+      overrides = await loadEpicOverrides(context);
+      model = mergeEpicOverrides(model, overrides);
+    } catch (error) {
+      console.warn(
+        `[renderEpicDoc] Error loading overrides for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        error
+      );
+      // Continue with base model - overrides are optional
+    }
 
-  // 3. Apply LLM patch (if provided)
-  if (llmContent) {
-    const llmModel = mapEpicLlmToSections(llmContent);
-    model = mergeLlmPatch(model, llmModel);
+    // 3. Apply LLM patch (if provided)
+    if (llmContent) {
+      try {
+        const llmModel = mapEpicLlmToSections(llmContent);
+        model = mergeLlmPatch(model, llmModel);
+      } catch (error) {
+        console.warn(
+          `[renderEpicDoc] Error parsing/merging LLM content for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+          error
+        );
+        // Continue with base/override model - LLM patch is optional
+      }
+    }
+
+    // 3.5. Validate model after merge
+    const validation = validateEpicModelAfterMerge(model);
+    if (!validation.valid) {
+      console.error(
+        `[renderEpicDoc] Model validation failed for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        validation.errors
+      );
+      // Log warnings but don't fail
+      if (validation.warnings.length > 0) {
+        console.warn(
+          `[renderEpicDoc] Model validation warnings for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+          validation.warnings
+        );
+      }
+      // Continue anyway - model might still be renderable with missing fields
+    } else if (validation.warnings.length > 0) {
+      // Log warnings for empty arrays (not critical)
+      console.info(
+        `[renderEpicDoc] Model validation warnings for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        validation.warnings
+      );
+    }
+
+    // 4. Render HTML via unified renderer
+    const body = buildEpicDocHtmlFromModel(context, links, model);
+    const title = context.node.name || context.node.bpmnElementId || 'Epic';
+    return wrapDocument(title, body, llmMetadata);
+  } catch (error) {
+    // Final fallback: return minimal HTML document
+    console.error(
+      `[renderEpicDoc] Critical error rendering documentation for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+      error
+    );
+    const title = context.node.name || context.node.bpmnElementId || 'Epic';
+    return wrapDocument(
+      title,
+      `<section><h2>Error</h2><p>Failed to render documentation. Please check the console for details.</p></section>`,
+      llmMetadata
+    );
   }
-
-  // 4. Render HTML via unified renderer
-  const body = buildEpicDocHtmlFromModel(context, links, model);
-  const title = context.node.name || context.node.bpmnElementId || 'Epic';
-  return wrapDocument(title, body, llmMetadata);
 }
 
 const renderBusinessRuleDocLegacy = async (
@@ -2931,29 +3120,107 @@ const renderBusinessRuleDocLegacy = async (
  * @param llmMetadata - Optional LLM metadata
  * @returns Complete HTML document
  */
+/**
+ * Unified render function for Business Rule documentation.
+ * 
+ * ## Pipeline Steps
+ * 
+ * 1. **Build base model** from BPMN context
+ * 2. **Apply per-node overrides** (if any exist in `src/data/node-docs/`)
+ * 3. **Apply LLM patch** (if `llmContent` is provided - from Claude/Anthropic)
+ * 4. **Validate model** after merge
+ * 5. **Render HTML** using unified renderer
+ * 
+ * ## Error Handling
+ * 
+ * - **Missing overrides**: Gracefully falls back to base model (expected behavior)
+ * - **Invalid LLM content**: Falls back to base model, logs warning
+ * - **Validation errors**: Logs errors but continues (model might still be renderable)
+ * 
+ * @param context - Node documentation context
+ * @param links - Template links
+ * @param llmContent - Optional LLM-generated content (from Claude/Anthropic)
+ * @param llmMetadata - Optional LLM metadata
+ * @returns Complete HTML document
+ * @throws Never throws - always returns valid HTML (falls back gracefully on errors)
+ */
 export async function renderBusinessRuleDoc(
   context: NodeDocumentationContext,
   links: TemplateLinks,
   llmContent?: string,
   llmMetadata?: LlmMetadata | LlmHtmlRenderOptions,
 ): Promise<string> {
-  // 1. Build base model from context
-  let model = buildBusinessRuleDocModelFromContext(context, links);
+  try {
+    // 1. Build base model from context
+    let model = buildBusinessRuleDocModelFromContext(context, links);
 
-  // 2. Apply per-node overrides (if any)
-  const overrides = await loadBusinessRuleOverrides(context);
-  model = mergeBusinessRuleOverrides(model, overrides);
+    // 2. Apply per-node overrides (if any)
+    let overrides;
+    try {
+      overrides = await loadBusinessRuleOverrides(context);
+      model = mergeBusinessRuleOverrides(model, overrides);
+    } catch (error) {
+      console.warn(
+        `[renderBusinessRuleDoc] Error loading overrides for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        error
+      );
+      // Continue with base model - overrides are optional
+    }
 
-  // 3. Apply LLM patch (if provided)
-  if (llmContent) {
-    const llmModel = mapBusinessRuleLlmToSections(llmContent);
-    model = mergeLlmPatch(model, llmModel);
+    // 3. Apply LLM patch (if provided)
+    if (llmContent) {
+      try {
+        const llmModel = mapBusinessRuleLlmToSections(llmContent);
+        model = mergeLlmPatch(model, llmModel);
+      } catch (error) {
+        console.warn(
+          `[renderBusinessRuleDoc] Error parsing/merging LLM content for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+          error
+        );
+        // Continue with base/override model - LLM patch is optional
+      }
+    }
+
+    // 3.5. Validate model after merge
+    const validation = validateBusinessRuleModelAfterMerge(model);
+    if (!validation.valid) {
+      console.error(
+        `[renderBusinessRuleDoc] Model validation failed for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        validation.errors
+      );
+      // Log warnings but don't fail
+      if (validation.warnings.length > 0) {
+        console.warn(
+          `[renderBusinessRuleDoc] Model validation warnings for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+          validation.warnings
+        );
+      }
+      // Continue anyway - model might still be renderable with missing fields
+    } else if (validation.warnings.length > 0) {
+      // Log warnings for empty arrays (not critical)
+      console.info(
+        `[renderBusinessRuleDoc] Model validation warnings for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+        validation.warnings
+      );
+    }
+
+    // 4. Render HTML via unified renderer
+    const body = buildBusinessRuleDocHtmlFromModel(context, links, model);
+    const title = context.node.name || context.node.bpmnElementId || 'Business Rule';
+    return wrapDocument(title, body, llmMetadata);
+  } catch (error) {
+    // Final fallback: return minimal HTML document
+    console.error(
+      `[renderBusinessRuleDoc] Critical error rendering documentation for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
+      error
+    );
+    const title = context.node.name || context.node.bpmnElementId || 'Business Rule';
+    return wrapDocument(
+      title,
+      `<section><h2>Error</h2><p>Failed to render documentation. Please check the console for details.</p></section>`,
+      llmMetadata
+    );
   }
-
-  // 4. Render HTML via unified renderer
-  const body = buildBusinessRuleDocHtmlFromModel(context, links, model);
-  const title = context.node.name || context.node.bpmnElementId || 'Business Rule';
-  return wrapDocument(title, body, llmMetadata);
 }
 
 function buildBusinessRuleDocHtmlFromModel(

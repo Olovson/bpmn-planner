@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
 import { invalidateStructureQueries } from '@/lib/queryInvalidation';
+import { calculateAndSaveDiff } from '@/lib/bpmnDiffRegeneration';
 
 export interface BpmnFileUsage {
   dorDodCount: number;
@@ -56,6 +57,39 @@ export const useUploadBpmnFile = () => {
       queryClient.invalidateQueries({ queryKey: ['root-bpmn-file'] });
       // Force refetch of bpmn-files immediately
       await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
+
+      // Calculate and save diff for the uploaded file
+      if (data?.file?.file_name && data?.file?.file_type === 'bpmn') {
+        try {
+          // Fetch the file content from storage
+          const { data: fileContent, error: contentError } = await supabase.storage
+            .from('bpmn-files')
+            .download(data.file.file_name);
+
+          if (!contentError && fileContent) {
+            const content = await fileContent.text();
+            const meta = data.file.meta;
+
+            // Calculate and save diff
+            const diffResult = await calculateAndSaveDiff(
+              data.file.file_name,
+              content,
+              meta
+            );
+
+            if (diffResult.diffCount > 0) {
+              console.log(`[useBpmnFiles] Calculated diff for ${data.file.file_name}:`, {
+                added: diffResult.added,
+                removed: diffResult.removed,
+                modified: diffResult.modified,
+              });
+            }
+          }
+        } catch (diffError) {
+          // Don't fail the upload if diff calculation fails
+          console.error('[useBpmnFiles] Error calculating diff:', diffError);
+        }
+      }
 
       toast({
         title: 'Fil uppladdad',

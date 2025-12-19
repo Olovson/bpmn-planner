@@ -1004,7 +1004,7 @@ const E2eTestsOverviewPage = () => {
     else if (view === 'timeline') navigate('/timeline');
     else if (view === 'configuration') navigate('/configuration');
     else if (view === 'styleguide') navigate('/styleguide');
-    else navigate('/e2e-tests');
+    else navigate('/test-coverage');
   };
 
   // Filtrera scenarier baserat på sökning och filter
@@ -1039,7 +1039,7 @@ const E2eTestsOverviewPage = () => {
     <div className="min-h-screen bg-background">
       <AppHeaderWithTabs
         userEmail={user?.email ?? null}
-        currentView="e2e-tests"
+        currentView="test-coverage"
         onViewChange={handleViewChange}
         onOpenVersions={() => navigate('/')}
         onSignOut={async () => {
