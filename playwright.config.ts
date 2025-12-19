@@ -9,6 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
+  globalSetup: './tests/playwright-e2e/global-setup.ts',
   use: {
     baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
@@ -17,7 +18,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        // Använd storage state för att spara login-session
+        storageState: 'playwright/.auth/user.json',
+      },
     },
   ],
 

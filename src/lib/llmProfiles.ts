@@ -50,7 +50,9 @@ const DEFAULT_PROFILES: LlmProfiles = {
   },
   feature: {
     cloud: {
-      maxTokens: 2000,
+      // OBS: Claude Sonnet 4.5 har 8K output tokens/min rate limit
+      // 6000 lämnar marginal för rate limiting och säkerställer fortfarande fullständig JSON
+      maxTokens: 6000, // Ökad från 2000 för att säkerställa fullständig JSON för komplexa Feature Goals
       temperature: 0.35,
     },
     local: {

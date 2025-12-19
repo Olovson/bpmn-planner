@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
       if (match[1] && match[1] !== match[2]) processIds.push(match[1]);
     }
 
-    // Save metadata
+    // Save or get file record
     const { data: fileData, error: dbError } = await supabase
       .from('bpmn_files')
       .upsert(
@@ -231,6 +231,98 @@ Deno.serve(async (req) => {
       .single();
 
     if (dbError) throw dbError;
+
+    // Create or get version for this file (only for BPMN files)
+    if (fileType === 'bpmn' && bpmnMeta) {
+      try {
+        // Calculate content hash
+        const encoder = new TextEncoder();
+        const normalizedContent = content.trim().replace(/\s+/g, ' ');
+        const data = encoder.encode(normalizedContent);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const contentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // Get current version to determine next version number
+        const { data: currentVersion } = await supabase
+          .from('bpmn_file_versions')
+          .select('version_number')
+          .eq('file_name', fileName)
+          .eq('is_current', true)
+          .single();
+
+        const nextVersionNumber = currentVersion ? currentVersion.version_number + 1 : 1;
+
+        // Check if this version already exists
+        const { data: existingVersion } = await supabase
+          .from('bpmn_file_versions')
+          .select('*')
+          .eq('file_name', fileName)
+          .eq('content_hash', contentHash)
+          .single();
+
+        if (!existingVersion) {
+          // Unset all current versions for this file
+          await supabase
+            .from('bpmn_file_versions')
+            .update({ is_current: false })
+            .eq('file_name', fileName)
+            .eq('is_current', true);
+
+          // Create new version
+          const { error: versionError } = await supabase
+            .from('bpmn_file_versions')
+            .insert({
+              bpmn_file_id: fileData.id,
+              file_name: fileName,
+              content_hash: contentHash,
+              content: content,
+              meta: bpmnMeta,
+              is_current: true,
+              version_number: nextVersionNumber,
+            });
+
+          if (versionError) {
+            console.error('Error creating version:', versionError);
+            // Don't fail upload if version creation fails
+          } else {
+            // Update bpmn_files to point to current version
+            await supabase
+              .from('bpmn_files')
+              .update({
+                current_version_hash: contentHash,
+                current_version_number: nextVersionNumber,
+              })
+              .eq('id', fileData.id);
+          }
+        } else {
+          // Version already exists - just set it as current if it's not already
+          if (!existingVersion.is_current) {
+            await supabase
+              .from('bpmn_file_versions')
+              .update({ is_current: false })
+              .eq('file_name', fileName)
+              .eq('is_current', true);
+
+            await supabase
+              .from('bpmn_file_versions')
+              .update({ is_current: true })
+              .eq('id', existingVersion.id);
+
+            await supabase
+              .from('bpmn_files')
+              .update({
+                current_version_hash: contentHash,
+                current_version_number: existingVersion.version_number,
+              })
+              .eq('id', fileData.id);
+          }
+        }
+      } catch (versionError) {
+        console.error('Error handling versioning:', versionError);
+        // Don't fail upload if versioning fails
+      }
+    }
 
     // Check if this file resolves any missing dependencies
     if (processIds.length > 0 && fileType === 'bpmn') {

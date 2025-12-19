@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Search, Filter } from 'lucide-react';
+import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Search, Filter, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -69,8 +69,12 @@ import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { buildDocStoragePaths, buildTestStoragePaths } from '@/lib/artifactPaths';
+import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 import { isPGRST204Error, getSchemaErrorMessage } from '@/lib/schemaVerification';
 import { useLlmHealth } from '@/hooks/useLlmHealth';
+import { getAllUnresolvedDiffs } from '@/lib/bpmnDiffRegeneration';
+import { VersionSelector } from '@/components/VersionSelector';
+import { useVersionSelection } from '@/hooks/useVersionSelection';
 
 /**
  * Creates a summary from ProcessGraph and ProcessTree
@@ -153,6 +157,7 @@ export default function BpmnFileManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
+  const { selection, setSelection, getVersionHashForFile } = useVersionSelection();
   const { hasTests } = useArtifactAvailability();
   const { data: llmHealth, isLoading: llmHealthLoading } = useLlmHealth();
   const [dragActive, setDragActive] = useState(false);
@@ -161,6 +166,7 @@ export default function BpmnFileManager() {
   const [showSyncReport, setShowSyncReport] = useState(false);
   const [generatingFile, setGeneratingFile] = useState<string | null>(null);
   const [activeOperation, setActiveOperation] = useState<'llm' | 'local' | 'hierarchy' | null>(null);
+  const [bpmnMapValidation, setBpmnMapValidation] = useState<{ valid: boolean; error?: string; details?: string; source?: string } | null>(null);
   
   interface DetailedGenerationResult {
     fileName: string;
@@ -257,21 +263,53 @@ export default function BpmnFileManager() {
   const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<string>>(new Set());
 
   // Load unresolved diffs count
+  const loadUnresolvedDiffsCount = useCallback(async () => {
+    try {
+      const unresolvedDiffs = await getAllUnresolvedDiffs();
+      const totalCount = Array.from(unresolvedDiffs.values()).reduce((sum, set) => sum + set.size, 0);
+      setUnresolvedDiffsCount(totalCount);
+    } catch (error) {
+      console.warn('[BpmnFileManager] Error loading unresolved diffs count:', error);
+    }
+  }, []);
+
   useEffect(() => {
-    const loadUnresolvedDiffsCount = async () => {
-      try {
-        const unresolvedDiffs = await getAllUnresolvedDiffs();
-        const totalCount = Array.from(unresolvedDiffs.values()).reduce((sum, set) => sum + set.size, 0);
-        setUnresolvedDiffsCount(totalCount);
-      } catch (error) {
-        console.warn('[BpmnFileManager] Error loading unresolved diffs count:', error);
-      }
-    };
     loadUnresolvedDiffsCount();
     // Refresh when files change
+  }, [files, loadUnresolvedDiffsCount]);
+
+  // Validera bpmn-map.json när komponenten mountar eller när filer laddas
+  // OBS: Vi validerar även när det inte finns filer, men visar bara varningar om det finns filer
+  useEffect(() => {
+    const validateBpmnMap = async () => {
+      try {
+        const { loadBpmnMapFromStorage } = await import('@/lib/bpmn/bpmnMapStorage');
+        const result = await loadBpmnMapFromStorage();
+        setBpmnMapValidation({
+          valid: result.valid,
+          error: result.error,
+          details: result.details,
+          source: result.source,
+        });
+        
+        // Visa bara felmeddelanden om det finns filer (annars är det inte relevant)
+        if (!result.valid && files.length > 0) {
+          // Visa tydligt felmeddelande om filen är korrupt
+          toast({
+            title: '⚠️ bpmn-map.json har problem',
+            description: result.error || 'Filen kan inte användas för generering',
+            variant: 'destructive',
+            duration: 10000, // Visa längre tid för viktiga meddelanden
+          });
+        }
+      } catch (error) {
+        console.error('[BpmnFileManager] Error validating bpmn-map:', error);
+      }
+    };
+    validateBpmnMap();
     const interval = setInterval(loadUnresolvedDiffsCount, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
-  }, [files]);
+  }, [files, loadUnresolvedDiffsCount]);
 
   // Check if hierarchy has been built when files or rootFileName changes
   useEffect(() => {
@@ -539,7 +577,8 @@ export default function BpmnFileManager() {
       }
 
       const files = filesData ?? [];
-      const currentMap = await loadBpmnMapFromStorage();
+      const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+      const currentMap = await loadBpmnMapFromStorageSimple();
       const mapProcesses = currentMap.processes;
 
       const bpmnFilesSet = new Set<string>(files.map((f: any) => f.file_name));
@@ -1232,6 +1271,9 @@ export default function BpmnFileManager() {
         // Fallback: regenerera allt om diff-logik failar
       }
       
+      // Claude använder alltid v2, oavsett vad användaren har valt
+      const effectiveTemplateVersion = !isLocalMode ? 'v2' : featureGoalTemplateVersion;
+      
       const result = await generateAllFromBpmnWithGraph(
         file.file_name,
         graphFiles,
@@ -1242,7 +1284,9 @@ export default function BpmnFileManager() {
         generationSourceLabel,
         !isLocalMode ? llmProvider : undefined,
         localAvailable,
-        featureGoalTemplateVersion,
+        effectiveTemplateVersion,
+        nodeFilter,
+        getVersionHashForFile, // Pass version selection function
         nodeFilter
       );
       checkCancellation();
@@ -1833,13 +1877,18 @@ export default function BpmnFileManager() {
       );
       checkCancellation();
 
+      // Get version hash for the BPMN file (uses selected version if available)
+      const versionHash = await getVersionHashForFile(file.file_name);
+
       if (result.docs.size > 0) {
         for (const [docFileName, docContent] of result.docs.entries()) {
           checkCancellation();
           const { modePath: docPath, legacyPath: legacyDocPath } = buildDocStoragePaths(
             docFileName,
             effectiveLlmMode ?? (isLocalMode ? 'local' : null),
-            isLocalMode ? 'fallback' : llmProvider
+            isLocalMode ? 'fallback' : llmProvider,
+            file.file_name, // bpmnFileName
+            versionHash // versionHash
           );
           const htmlBlob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
           const { error: uploadError } = await supabase.storage
@@ -2772,7 +2821,8 @@ export default function BpmnFileManager() {
       
       if (error) throw error;
       
-      const currentMap = await loadBpmnMapFromStorage();
+      const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+      const currentMap = await loadBpmnMapFromStorageSimple();
       const suggestions = await suggestBpmnMapUpdates(currentMap, filesData || []);
       
       // Separera matchningar: hög konfidens (matched) vs tvetydiga/låg konfidens
@@ -2849,7 +2899,8 @@ export default function BpmnFileManager() {
   
   const handleSaveUpdatedMap = async (syncToGitHub: boolean = false) => {
     try {
-      const currentMap = await loadBpmnMapFromStorage();
+      const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+      const currentMap = await loadBpmnMapFromStorageSimple();
       const updatedMap = generateUpdatedBpmnMap(currentMap, mapSuggestions, acceptedSuggestions, undefined);
       
       const result = await saveBpmnMapToStorage(updatedMap, syncToGitHub);
@@ -3053,6 +3104,30 @@ export default function BpmnFileManager() {
             )}
           </div>
 
+          {/* Version Selector - Global version selection for all BPMN files */}
+          <Card className="p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Versionsval</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Välj vilken version av BPMN-filer som ska användas i hela appen
+                  </p>
+                </div>
+              </div>
+              <VersionSelector
+                selectedFileName={selection.selectedFileName}
+                onVersionChange={(versionHash, fileName) => {
+                  setSelection({
+                    selectedVersionHash: versionHash,
+                    selectedFileName: fileName,
+                  });
+                  console.log('[BpmnFileManager] Version changed:', { versionHash, fileName });
+                }}
+              />
+            </div>
+          </Card>
+
       {/* Upload Area */}
       <Card className="p-8 mb-8">
         <div className="flex items-center justify-between mb-6">
@@ -3156,6 +3231,24 @@ export default function BpmnFileManager() {
           )}
         </div>
       </Card>
+
+      {/* Varning om bpmn-map.json har problem - visa bara om det finns filer */}
+      {bpmnMapValidation && !bpmnMapValidation.valid && files.length > 0 && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>⚠️ bpmn-map.json har problem</AlertTitle>
+          <AlertDescription className="mt-2">
+            <p className="font-medium mb-1">{bpmnMapValidation.error}</p>
+            {bpmnMapValidation.details && (
+              <p className="text-sm mb-2">{bpmnMapValidation.details}</p>
+            )}
+            <p className="text-sm">
+              <strong>Viktigt:</strong> Generering kan misslyckas eller ge felaktiga resultat om filen är korrupt.
+              Kontrollera filen i storage eller använd projektfilen som fallback.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
       
       <Card className="p-6 mb-8 border-dashed border-muted-foreground/40 bg-muted/10">
         <div className="flex flex-col gap-4">
@@ -3346,48 +3439,65 @@ export default function BpmnFileManager() {
           </div>
           
           {/* Feature Goal Template Version Selection */}
-          <div className="mt-4 p-3 bg-muted/30 rounded-lg border">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Feature Goal Template Version</label>
+          {/* Dölj template-version-väljaren när Claude är valt - Claude använder alltid v2 */}
+          {generationMode === 'local' && (
+            <div className="mt-4 p-3 bg-muted/30 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Feature Goal Template Version</label>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={featureGoalTemplateVersion === 'v1' ? 'default' : 'outline'}
+                  className={`gap-2 ${
+                    featureGoalTemplateVersion === 'v1'
+                      ? 'ring-2 ring-primary shadow-sm'
+                      : 'opacity-80'
+                  }`}
+                  onClick={() => {
+                    setFeatureGoalTemplateVersion('v1');
+                    localStorage.setItem('featureGoalTemplateVersion', 'v1');
+                  }}
+                  aria-pressed={featureGoalTemplateVersion === 'v1'}
+                >
+                  Template v1
+                </Button>
+                <Button
+                  size="sm"
+                  variant={featureGoalTemplateVersion === 'v2' ? 'default' : 'outline'}
+                  className={`gap-2 ${
+                    featureGoalTemplateVersion === 'v2'
+                      ? 'ring-2 ring-primary shadow-sm'
+                      : 'opacity-80'
+                  }`}
+                  onClick={() => {
+                    setFeatureGoalTemplateVersion('v2');
+                    localStorage.setItem('featureGoalTemplateVersion', 'v2');
+                  }}
+                  aria-pressed={featureGoalTemplateVersion === 'v2'}
+                >
+                  Template v2
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Välj vilken template-version som ska användas för Feature Goal-dokumentation. Epic-template påverkas inte.
+              </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={featureGoalTemplateVersion === 'v1' ? 'default' : 'outline'}
-                className={`gap-2 ${
-                  featureGoalTemplateVersion === 'v1'
-                    ? 'ring-2 ring-primary shadow-sm'
-                    : 'opacity-80'
-                }`}
-                onClick={() => {
-                  setFeatureGoalTemplateVersion('v1');
-                  localStorage.setItem('featureGoalTemplateVersion', 'v1');
-                }}
-                aria-pressed={featureGoalTemplateVersion === 'v1'}
-              >
-                Template v1
-              </Button>
-              <Button
-                size="sm"
-                variant={featureGoalTemplateVersion === 'v2' ? 'default' : 'outline'}
-                className={`gap-2 ${
-                  featureGoalTemplateVersion === 'v2'
-                    ? 'ring-2 ring-primary shadow-sm'
-                    : 'opacity-80'
-                }`}
-                onClick={() => {
-                  setFeatureGoalTemplateVersion('v2');
-                  localStorage.setItem('featureGoalTemplateVersion', 'v2');
-                }}
-                aria-pressed={featureGoalTemplateVersion === 'v2'}
-              >
-                Template v2
-              </Button>
+          )}
+          {generationMode === 'slow' && (
+            <div className="mt-4 p-3 bg-muted/30 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Feature Goal Template Version</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Template v2</span>
+                <span className="text-xs text-muted-foreground">(Claude använder alltid v2)</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Claude-generering använder alltid Template v2 för Feature Goal-dokumentation.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Välj vilken template-version som ska användas för Feature Goal-dokumentation. Epic-template påverkas inte.
-            </p>
-          </div>
+          )}
           
           <div className="flex flex-wrap gap-2 mt-3">
             <Button
@@ -3975,6 +4085,20 @@ export default function BpmnFileManager() {
                           </div>
                         </div>
                       )}
+                      {file.file_type === 'bpmn' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/bpmn-versions/${file.file_name}`);
+                          }}
+                          title="Visa versionshistorik"
+                        >
+                          <History className="w-3 h-3" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -4183,6 +4307,19 @@ export default function BpmnFileManager() {
                             <Sparkles className="w-4 h-4" />
                           )}
                           <span className="hidden sm:inline ml-1">Docs/Test</span>
+                        </Button>
+                      )}
+                      {file.file_type === 'bpmn' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/bpmn-versions/${file.file_name}`);
+                          }}
+                          title="Visa versionshistorik"
+                        >
+                          <History className="w-4 h-4" />
                         </Button>
                       )}
                       <Button

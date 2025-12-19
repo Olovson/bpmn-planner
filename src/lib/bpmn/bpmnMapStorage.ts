@@ -14,27 +14,232 @@ import rawBpmnMap from '../../../bpmn-map.json';
 
 const BPMN_MAP_STORAGE_PATH = 'bpmn-map.json';
 
+// Mutex för att förhindra race conditions när flera anrop försöker skapa filen samtidigt
+let isCreatingMap = false;
+let createMapPromise: Promise<void> | null = null;
+
+export interface BpmnMapValidationResult {
+  valid: boolean;
+  map: BpmnMap | null;
+  error?: string;
+  details?: string;
+  source: 'storage' | 'project' | 'created';
+}
+
 /**
- * Ladda bpmn-map.json från Supabase storage, med fallback till projektfilen
+ * Validera bpmn-map.json struktur
  */
-export async function loadBpmnMapFromStorage(): Promise<BpmnMap> {
+function validateBpmnMapStructure(raw: unknown): { valid: boolean; error?: string; details?: string } {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      valid: false,
+      error: 'bpmn-map.json är inte ett giltigt JSON-objekt',
+      details: 'Filen är tom eller innehåller ogiltig JSON',
+    };
+  }
+
+  const map = raw as any;
+  
+  if (!Array.isArray(map.processes)) {
+    return {
+      valid: false,
+      error: 'bpmn-map.json saknar "processes"-array',
+      details: 'Filen måste innehålla en "processes"-array med process-definitioner',
+    };
+  }
+
+  // Validera att varje process har nödvändiga fält
+  for (let i = 0; i < map.processes.length; i++) {
+    const proc = map.processes[i];
+    if (!proc || typeof proc !== 'object') {
+      return {
+        valid: false,
+        error: `Process ${i} är ogiltig`,
+        details: `processes[${i}] måste vara ett objekt`,
+      };
+    }
+    if (!proc.bpmn_file || typeof proc.bpmn_file !== 'string') {
+      return {
+        valid: false,
+        error: `Process ${i} saknar "bpmn_file"`,
+        details: `processes[${i}].bpmn_file måste vara en sträng`,
+      };
+    }
+    if (!Array.isArray(proc.call_activities)) {
+      return {
+        valid: false,
+        error: `Process ${i} har ogiltig "call_activities"`,
+        details: `processes[${i}].call_activities måste vara en array`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Ladda bpmn-map.json från Supabase storage, med validering och tydlig felhantering
+ * 
+ * VIKTIGT: Om filen i storage är korrupt eller har problem, kommunicerar vi detta tydligt
+ * och använder projektfilen. Vi skapar bara filen från projektfilen om den VERKLIGEN saknas.
+ */
+export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult> {
   try {
     // Försök ladda från storage
     const { data, error } = await supabase.storage
       .from('bpmn-files')
       .download(BPMN_MAP_STORAGE_PATH);
 
+    // Log error details för debugging (endast i dev)
+    if (error && import.meta.env.DEV) {
+      console.log('[bpmnMapStorage] Storage error details:', {
+        statusCode: error.statusCode,
+        status: (error as any)?.status,
+        message: error.message,
+        name: error.name,
+        error: error,
+      });
+    }
+
+    // Om filen finns i storage, validera den tydligt
     if (!error && data) {
-      const content = await data.text();
-      const mapJson = JSON.parse(content);
-      return loadBpmnMap(mapJson);
+      try {
+        const content = await data.text();
+        const mapJson = JSON.parse(content);
+        
+        // Validera strukturen tydligt
+        const validation = validateBpmnMapStructure(mapJson);
+        if (!validation.valid) {
+          // Filen är korrupt eller har problem - kommunicera detta tydligt
+          return {
+            valid: false,
+            map: null,
+            error: validation.error || 'bpmn-map.json i storage är ogiltig',
+            details: validation.details || 'Filen kan inte användas för generering. Kontrollera filen i storage.',
+            source: 'storage',
+          };
+        }
+        
+        // Filen är giltig, ladda den
+        const map = loadBpmnMap(mapJson);
+        return {
+          valid: true,
+          map,
+          source: 'storage',
+        };
+      } catch (parseError) {
+        // JSON-parse misslyckades
+        return {
+          valid: false,
+          map: null,
+          error: 'bpmn-map.json i storage är korrupt',
+          details: `JSON-parse misslyckades: ${parseError instanceof Error ? parseError.message : String(parseError)}. Filen kan inte användas för generering.`,
+          source: 'storage',
+        };
+      }
+    }
+    
+    // Om filen VERKLIGEN saknas (400, 404, eller "not found" i meddelandet), skapa den automatiskt från projektfilen
+    // Supabase Storage kan returnera StorageUnknownError med statusCode undefined men HTTP 400
+    const errorStatus = error?.statusCode || (error as any)?.status;
+    const errorName = error?.name || '';
+    const errorMessage = error?.message || '';
+    
+    // Om vi får ett fel OCH (det är 400/404 ELLER det är StorageUnknownError), anta att filen saknas
+    // StorageUnknownError med tom message och undefined statusCode är ofta ett tecken på att filen saknas
+    const isFileNotFound = error && (
+      errorStatus === 400 || 
+      errorStatus === 404 || 
+      (errorName === 'StorageUnknownError' && (!errorMessage || errorMessage === '{}')) || // Supabase kan returnera detta för saknade filer
+      errorMessage?.toLowerCase().includes('not found') ||
+      errorMessage?.toLowerCase().includes('does not exist') ||
+      errorMessage?.toLowerCase().includes('bad request')
+    );
+    
+    if (isFileNotFound) {
+      // Använd mutex för att förhindra race conditions när flera anrop försöker skapa filen samtidigt
+      if (!isCreatingMap) {
+        isCreatingMap = true;
+        createMapPromise = (async () => {
+          try {
+            console.log('[bpmnMapStorage] bpmn-map.json saknas helt i storage, skapar från projektfil...');
+            
+            // Skapa filen i storage från projektfilen (endast om den verkligen saknas)
+            const jsonStr = JSON.stringify(rawBpmnMap, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            
+            const { error: uploadError } = await supabase.storage
+              .from('bpmn-files')
+              .upload(BPMN_MAP_STORAGE_PATH, blob, {
+                upsert: false, // VIKTIGT: upsert: false så vi INTE skriver över befintlig fil
+                contentType: 'application/json',
+                cacheControl: '3600',
+              });
+
+            if (!uploadError) {
+              console.log('[bpmnMapStorage] ✓ bpmn-map.json skapad i storage från projektfil');
+            } else {
+              // Om upload misslyckas (t.ex. filen finns redan), logga varning men fortsätt
+              console.warn('[bpmnMapStorage] Kunde inte skapa bpmn-map.json i storage (kan bero på att den redan finns):', uploadError.message);
+            }
+          } catch (createError) {
+            console.warn('[bpmnMapStorage] Kunde inte skapa bpmn-map.json i storage:', createError);
+          } finally {
+            isCreatingMap = false;
+            createMapPromise = null;
+          }
+        })();
+      }
+      
+      // Vänta på att skapandet är klart (eller om det redan pågår, vänta på det)
+      if (createMapPromise) {
+        await createMapPromise;
+      }
+      
+      // Returnera projektfilen (används första gången när filen saknas)
+      const map = loadBpmnMap(rawBpmnMap);
+      return {
+        valid: true,
+        map,
+        source: 'created',
+      };
     }
   } catch (error) {
-    console.warn('[bpmnMapStorage] Could not load from storage, using project file:', error);
+    // För andra fel, returnera felmeddelande
+    return {
+      valid: false,
+      map: null,
+      error: 'Kunde inte ladda bpmn-map.json från storage',
+      details: error instanceof Error ? error.message : String(error),
+      source: 'storage',
+    };
   }
 
-  // Fallback till projektfilen
-  return loadBpmnMap(rawBpmnMap);
+  // Fallback till projektfilen (används om allt annat misslyckas)
+  const map = loadBpmnMap(rawBpmnMap);
+  return {
+    valid: true,
+    map,
+    source: 'project',
+  };
+}
+
+/**
+ * Ladda bpmn-map.json från storage (enkelt API för bakåtkompatibilitet)
+ * Kasta fel om filen i storage är korrupt - användaren måste veta om problem
+ */
+export async function loadBpmnMapFromStorageSimple(): Promise<BpmnMap> {
+  const result = await loadBpmnMapFromStorage();
+  
+  if (!result.valid || !result.map) {
+    // Om filen i storage är korrupt, kasta ett tydligt fel
+    throw new Error(
+      result.error || 'bpmn-map.json är ogiltig' + 
+      (result.details ? `: ${result.details}` : '')
+    );
+  }
+  
+  return result.map;
 }
 
 /**

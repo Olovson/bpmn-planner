@@ -1,0 +1,103 @@
+-- Create artifact_versions table for per-node/subprocess artifact versioning
+-- This allows users to generate new documentation/tests for specific nodes or subprocesses (CallActivities)
+-- independently of the BPMN file version
+--
+-- Two-layer versioning:
+-- 1. BPMN file versioning (bpmn_file_versions table) - tracks versions of BPMN files
+-- 2. Per-element artifact versioning (this table) - tracks versions of artifacts (docs/tests) 
+--    for specific nodes (UserTask, ServiceTask, etc.) or subprocesses (CallActivity)
+--
+-- Example:
+-- - BPMN file "application.bpmn" has version 1, 2, 3 (in bpmn_file_versions)
+-- - Node "Object-information" in "application.bpmn" can have artifact versions 1, 2, 3 (in this table)
+-- - CallActivity "Validate-application" in "application.bpmn" can have artifact versions 1, 2, 3 (in this table)
+
+CREATE TABLE public.artifact_versions (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  bpmn_file TEXT NOT NULL,
+  element_id TEXT NOT NULL,
+  artifact_type TEXT NOT NULL CHECK (artifact_type IN ('doc', 'test')),
+  content_hash TEXT NOT NULL, -- SHA-256 hash of artifact content
+  content TEXT NOT NULL, -- HTML (for docs) or test code (for tests)
+  version_number INTEGER NOT NULL,
+  bpmn_version_hash TEXT, -- BPMN file version when artifact was generated
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  generated_by UUID REFERENCES auth.users(id),
+  is_current BOOLEAN NOT NULL DEFAULT false,
+  change_summary TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Constraints
+  UNIQUE(bpmn_file, element_id, artifact_type, content_hash), -- Same content = same version (deduplication)
+  UNIQUE(bpmn_file, element_id, artifact_type, version_number), -- Sequential number per node+type
+  FOREIGN KEY (bpmn_file, bpmn_version_hash) REFERENCES public.bpmn_file_versions(file_name, content_hash) ON DELETE SET NULL
+);
+
+-- Indexes for performance
+CREATE INDEX idx_artifact_versions_file_element ON public.artifact_versions(bpmn_file, element_id);
+CREATE INDEX idx_artifact_versions_type ON public.artifact_versions(artifact_type);
+CREATE INDEX idx_artifact_versions_current ON public.artifact_versions(bpmn_file, element_id, artifact_type, is_current) WHERE is_current = true;
+CREATE INDEX idx_artifact_versions_bpmn_version ON public.artifact_versions(bpmn_version_hash);
+CREATE INDEX idx_artifact_versions_generated_at ON public.artifact_versions(generated_at DESC);
+
+-- Enable RLS
+ALTER TABLE public.artifact_versions ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Anyone can view artifact versions"
+  ON public.artifact_versions FOR SELECT
+  USING (true);
+
+CREATE POLICY "Authenticated users can insert artifact versions"
+  ON public.artifact_versions FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Authenticated users can update artifact versions"
+  ON public.artifact_versions FOR UPDATE
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Authenticated users can delete artifact versions"
+  ON public.artifact_versions FOR DELETE
+  USING (auth.uid() IS NOT NULL);
+
+-- Trigger to automatically set version_number and manage is_current
+CREATE OR REPLACE FUNCTION set_artifact_version_number()
+RETURNS TRIGGER AS $$
+DECLARE
+  next_version INTEGER;
+BEGIN
+  -- Get next version number for this node+type
+  SELECT COALESCE(MAX(version_number), 0) + 1
+  INTO next_version
+  FROM public.artifact_versions
+  WHERE bpmn_file = NEW.bpmn_file
+    AND element_id = NEW.element_id
+    AND artifact_type = NEW.artifact_type;
+  
+  NEW.version_number := next_version;
+  
+  -- Set all other versions of this node+type to not current
+  UPDATE public.artifact_versions
+  SET is_current = false
+  WHERE bpmn_file = NEW.bpmn_file
+    AND element_id = NEW.element_id
+    AND artifact_type = NEW.artifact_type
+    AND id != NEW.id;
+  
+  -- Set this version as current
+  NEW.is_current := true;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER artifact_version_number_trigger
+  BEFORE INSERT ON public.artifact_versions
+  FOR EACH ROW
+  EXECUTE FUNCTION set_artifact_version_number();
+
+-- Comments
+COMMENT ON TABLE public.artifact_versions IS 'Tracks versions of artifacts (docs/tests) per BPMN element (nodes or subprocesses/CallActivities), independent of BPMN file versioning. Provides second layer of versioning on top of BPMN file versions.';
+COMMENT ON COLUMN public.artifact_versions.element_id IS 'BPMN element ID - can be a node (UserTask, ServiceTask, etc.) or a CallActivity/subprocess';
+COMMENT ON COLUMN public.artifact_versions.bpmn_version_hash IS 'The BPMN file version hash when this artifact was generated. Links artifact version to BPMN file version.';
+

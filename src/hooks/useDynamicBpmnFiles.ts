@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getVersionByHash } from '@/lib/bpmnVersioning';
 
 export interface DynamicBpmnFile {
   file_name: string;
@@ -50,10 +51,39 @@ export const useDynamicBpmnFiles = () => {
 };
 
 /**
+ * Get BPMN XML content from a specific version (by hash)
+ * Returns the XML content directly, not a URL
+ */
+export const getBpmnXmlFromVersion = async (fileName: string, versionHash: string): Promise<string | null> => {
+  const { data, error } = await supabase
+    .from('bpmn_file_versions')
+    .select('content')
+    .eq('file_name', fileName)
+    .eq('content_hash', versionHash)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data.content;
+};
+
+/**
  * Get the full storage URL for a BPMN file
  * This is async to check if file exists in storage before returning URL
+ * If versionHash is provided, returns a data URL with the versioned content
  */
-export const getBpmnFileUrl = async (fileName: string): Promise<string> => {
+export const getBpmnFileUrl = async (fileName: string, versionHash?: string | null): Promise<string> => {
+  // If a specific version is requested, return XML content as data URL
+  if (versionHash) {
+    const xml = await getBpmnXmlFromVersion(fileName, versionHash);
+    if (xml) {
+      return `data:text/xml;base64,${btoa(xml)}`;
+    }
+    // Fall through to current version if specific version not found
+  }
+
   const storageUrl = await fetchFileRecord(fileName, 'bpmn');
   if (storageUrl) return storageUrl;
 

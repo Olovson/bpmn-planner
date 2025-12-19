@@ -190,12 +190,17 @@ export async function generateWithFallback(
         const altProfile = getLlmProfile(docType, alternativeProvider);
         const altSystemPrompt = buildSystemPrompt(systemPrompt, altProfile.extraSystemPrefix);
 
+        // Local LLM (Ollama) stödjer inte json_schema direkt, så ta bort responseFormat vid fallback till local
+        // Cloud LLM stödjer json_schema, så behåll responseFormat vid fallback till cloud
+        const shouldIncludeResponseFormat = 
+          alternativeProvider === 'cloud' && options.responseFormat;
+
         const altResponse = await altClient.generateText({
           systemPrompt: altSystemPrompt,
           userPrompt,
           maxTokens: altProfile.maxTokens,
           temperature: altProfile.temperature,
-          responseFormat: options.responseFormat,
+          ...(shouldIncludeResponseFormat ? { responseFormat: options.responseFormat } : {}),
         });
 
         if (!altResponse) {

@@ -4,11 +4,15 @@ import { buildProcessGraph } from '@/lib/bpmn/processGraphBuilder';
 import { parseBpmnFile } from '@/lib/bpmnParser';
 import { loadBpmnMap } from '@/lib/bpmn/bpmnMapLoader';
 import type { ProcessGraph } from '@/lib/bpmn/processGraph';
+import { useVersionSelection } from './useVersionSelection';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore – Vite/ts-node hanterar JSON-import enligt bundler-konfigurationen.
 import rawBpmnMap from '../../bpmn-map.json';
 
-async function buildClientProcessGraph(rootFile: string): Promise<ProcessGraph | null> {
+async function buildClientProcessGraph(
+  rootFile: string,
+  getVersionHashForFile?: (fileName: string) => Promise<string | null>
+): Promise<ProcessGraph | null> {
   const { data: bpmnFiles, error } = await supabase
     .from('bpmn_files')
     .select('file_name')
@@ -27,11 +31,26 @@ async function buildClientProcessGraph(rootFile: string): Promise<ProcessGraph |
     effectiveRootFile = fallback;
   }
 
-  // Parse all BPMN files
+  // Get version hashes for all files
+  const versionHashes = new Map<string, string | null>();
+  if (getVersionHashForFile) {
+    for (const fileName of existingFiles) {
+      try {
+        const versionHash = await getVersionHashForFile(fileName);
+        versionHashes.set(fileName, versionHash);
+      } catch (error) {
+        console.warn(`[useProcessGraph] Failed to get version hash for ${fileName}:`, error);
+        versionHashes.set(fileName, null);
+      }
+    }
+  }
+
+  // Parse all BPMN files with version hashes
   const parseResults = new Map();
   for (const fileName of existingFiles) {
     try {
-      const parsed = await parseBpmnFile(fileName);
+      const versionHash = versionHashes.get(fileName) || null;
+      const parsed = await parseBpmnFile(fileName, versionHash);
       parseResults.set(fileName, parsed);
     } catch (parseError) {
       console.error(`[useProcessGraph] Error parsing ${fileName}:`, parseError);
@@ -45,8 +64,8 @@ async function buildClientProcessGraph(rootFile: string): Promise<ProcessGraph |
   }
 
   // Load bpmn-map (from storage or project file)
-  const { loadBpmnMapFromStorage } = await import('@/lib/bpmn/bpmnMapStorage');
-  const bpmnMap = await loadBpmnMapFromStorage();
+  const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+  const bpmnMap = await loadBpmnMapFromStorageSimple();
 
   // Build ProcessGraph
   const graph = buildProcessGraph(parseResults, {
@@ -58,10 +77,12 @@ async function buildClientProcessGraph(rootFile: string): Promise<ProcessGraph |
 }
 
 export const useProcessGraph = (rootFile: string = 'mortgage.bpmn') => {
+  const { getVersionHashForFile } = useVersionSelection();
+  
   return useQuery<ProcessGraph | null>({
-    queryKey: ['process-graph', rootFile],
+    queryKey: ['process-graph', rootFile, 'version-aware'],
     queryFn: async () => {
-      const graph = await buildClientProcessGraph(rootFile);
+      const graph = await buildClientProcessGraph(rootFile, getVersionHashForFile);
       if (graph) return graph;
       throw new Error('Ingen BPMN-fil finns i registret.');
     },

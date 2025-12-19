@@ -6,6 +6,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { LlmClient } from '../llmClientAbstraction';
+import { waitIfNeeded, recordRequest } from './rateLimiter';
 
 const USE_LLM =
   String(import.meta.env.VITE_USE_LLM ?? '').trim().toLowerCase() === 'true';
@@ -31,6 +32,9 @@ if (shouldEnableLlm) {
   anthropicClient = new Anthropic({
     apiKey: API_KEY,
     ...(IS_BROWSER ? { dangerouslyAllowBrowser: true } : {}),
+    defaultHeaders: {
+      'anthropic-beta': 'structured-outputs-2025-11-13',
+    },
   });
 }
 
@@ -98,23 +102,73 @@ export class CloudLlmClient implements LlmClient {
 
     // Claude stödjer structured outputs via response_format
     // Format: { type: 'json_schema', json_schema: { name, strict, schema } }
-    const responseFormat: Anthropic.MessageCreateParams.ResponseFormat | undefined =
-      args.responseFormat
-        ? {
-            type: 'json_schema',
-            json_schema: args.responseFormat.json_schema,
-          }
-        : undefined;
+    // Viktigt: json_schema får bara innehålla name, strict, och schema - inga extra fält
+    // OBS: response_format objektet på toppnivån får bara innehålla type och json_schema
+    let cleanJsonSchema: { name: string; strict: boolean; schema: any } | undefined = undefined;
+    
+    if (args.responseFormat) {
+      const inputSchema = args.responseFormat.json_schema;
+      
+      // Extrahera bara de tillåtna fälten - Claude accepterar bara name, strict, schema
+      // Om inputSchema innehåller extra fält, ignorera dem
+      // Skapa ett helt nytt objekt för att säkerställa inga extra fält
+      cleanJsonSchema = {
+        name: String(inputSchema?.name || ''),
+        strict: Boolean(inputSchema?.strict ?? true),
+        schema: inputSchema?.schema || {},
+      };
+      
+      // Debug: logga vad vi skickar (endast i dev)
+      if (import.meta.env.DEV) {
+        console.log('[Cloud LLM] cleanJsonSchema keys:', Object.keys(cleanJsonSchema));
+        console.log('[Cloud LLM] cleanJsonSchema structure:', JSON.stringify(cleanJsonSchema, null, 2));
+      }
+    }
 
     try {
-      const response = await anthropicClient.messages.create({
+      // Bygg request-objektet som ett helt nytt objekt för att undvika extra fält från SDK-typer
+      // Skapa ett minimalt objekt med bara de fält som behövs
+      const requestBody: any = {
         model: this.modelName,
         temperature: args.temperature ?? 0.35,
         max_tokens: args.maxTokens ?? 1800,
-        system: args.systemPrompt,
         messages,
-        ...(responseFormat ? { response_format: responseFormat } : {}),
-      });
+      };
+      
+      // Lägg till system prompt om det finns
+      if (args.systemPrompt) {
+        requestBody.system = args.systemPrompt;
+      }
+      
+      // OBS: response_format används INTE - Claude returnerar JSON i texten istället
+      // Den robusta JSON-parsingen i llmDocumentation.ts hanterar detta
+      // Detta undviker "Extra inputs are not permitted" fel från API:et
+      
+      // Debug: logga vad som skickas
+      if (import.meta.env.DEV) {
+        console.log('[Cloud LLM] Request body keys:', Object.keys(requestBody));
+        if (cleanJsonSchema) {
+          console.log('[Cloud LLM] JSON schema requested (men används INTE i response_format - Claude får instruktioner i prompten istället)');
+        }
+      }
+      
+      // Rate limiting: vänta om nödvändigt för att undvika rate limits
+      // Uppskatta output tokens baserat på max_tokens (Claude kan använda upp till max_tokens)
+      const estimatedOutputTokens = requestBody.max_tokens;
+      await waitIfNeeded(estimatedOutputTokens);
+      
+      // Använd SDK:ets create-metod - INGEN response_format
+      const response = await anthropicClient.messages.create({
+        model: requestBody.model,
+        max_tokens: requestBody.max_tokens,
+        temperature: requestBody.temperature,
+        messages: requestBody.messages,
+        ...(requestBody.system && { system: requestBody.system }),
+      } as Anthropic.MessageCreateParams);
+
+      // Registrera request för rate limiting
+      const actualOutputTokens = response.usage?.output_tokens || estimatedOutputTokens;
+      recordRequest(actualOutputTokens);
 
       // Claude returnerar content som en array, första elementet är text
       const content = response.content[0];
@@ -150,6 +204,14 @@ export class CloudLlmClient implements LlmClient {
           false,
           retryAfter ? parseInt(retryAfter, 10) : undefined
         );
+      }
+      
+      // Hantera response_format-fel specifikt
+      if (error?.status === 400 && error?.error?.message?.includes('response_format')) {
+        const errorMessage = error?.error?.message || 'Invalid response_format';
+        console.error('[Cloud LLM] response_format error:', errorMessage);
+        // Kasta fel istället för att returnera null, så att fallback kan hantera det korrekt
+        throw new Error(`Cloud LLM response_format error: ${errorMessage}`);
       }
       
       // Hantera andra fel

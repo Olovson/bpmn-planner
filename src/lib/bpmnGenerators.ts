@@ -1187,6 +1187,11 @@ export async function generateAllFromBpmnWithGraph(
    * If not provided, all nodes are generated (default behavior).
    */
   nodeFilter?: (node: BpmnProcessNode) => boolean,
+  /**
+   * Optional function to get version hash for a BPMN file.
+   * If provided, uses selected version instead of current version.
+   */
+  getVersionHashForFile?: (fileName: string) => Promise<string | null>,
 ): Promise<GenerationResult> {
   const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
     if (progressCallback) {
@@ -1201,7 +1206,20 @@ export async function generateAllFromBpmnWithGraph(
     await reportProgress('graph:start', 'Analyserar BPMN-struktur', bpmnFileName);
     
     console.log(`Building process graph for ${bpmnFileName}...`);
-    const graph = await buildBpmnProcessGraph(bpmnFileName, graphFileScope);
+    // Get version hashes for all files in scope
+    const versionHashes = new Map<string, string | null>();
+    if (getVersionHashForFile) {
+      for (const fileName of graphFileScope) {
+        try {
+          const versionHash = await getVersionHashForFile(fileName);
+          versionHashes.set(fileName, versionHash);
+        } catch (error) {
+          console.warn(`[generateAllFromBpmnWithGraph] Failed to get version hash for ${fileName}:`, error);
+          versionHashes.set(fileName, null);
+        }
+      }
+    }
+    const graph = await buildBpmnProcessGraph(bpmnFileName, graphFileScope, versionHashes);
     const summary = createGraphSummary(graph);
     const analyzedFiles =
       useHierarchy && summary.filesIncluded.length > 0

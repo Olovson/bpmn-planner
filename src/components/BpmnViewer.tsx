@@ -11,6 +11,7 @@ import { BpmnMapping } from '@/hooks/useBpmnMappings';
 import { useTestResults } from '@/hooks/useTestResults';
 import { useBpmnSelection } from '@/contexts/BpmnSelectionContext';
 import { useDynamicBpmnFiles, getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
+import { useVersionSelection } from '@/hooks/useVersionSelection';
 import { supabase } from '@/integrations/supabase/client';
 import { useProcessTree } from '@/hooks/useProcessTree';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
@@ -73,6 +74,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
   const { getTestResultByNodeId } = useTestResults();
   const { setSelectedElementId } = useBpmnSelection();
   const { data: bpmnFiles, isLoading: isLoadingFiles } = useDynamicBpmnFiles();
+  const { getVersionHashForFile } = useVersionSelection();
   const { data: rootBpmnFile } = useRootBpmnFile();
   const hierarchyRootFile = rootBpmnFile || initialFileName || 'mortgage.bpmn';
   const { data: processTree, isLoading: processTreeLoading } = useProcessTree(hierarchyRootFile);
@@ -182,8 +184,10 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     const navigationVersion = clickControllerRef.current.currentDiagramVersion;
     
     try {
-      const url = await getBpmnFileUrl(bpmnFileName);
-      console.log('[BpmnViewer] Loading subprocess:', bpmnFileName, url);
+      // Get version hash for this file (uses selected version if available)
+      const versionHash = await getVersionHashForFile(bpmnFileName);
+      const url = await getBpmnFileUrl(bpmnFileName, versionHash);
+      console.log('[BpmnViewer] Loading subprocess:', bpmnFileName, versionHash ? `(version: ${versionHash.substring(0, 8)}...)` : '(current version)', url);
 
       let response = await fetch(url);
       if (!response.ok) {
@@ -405,8 +409,10 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
 
       try {
         lastLoadedInitialFileRef.current = fileToLoad;
-        const url = await getBpmnFileUrl(fileToLoad);
-        console.log('[BpmnViewer] Loading BPMN from initialFileName:', fileToLoad, url);
+        // Get version hash for this file (uses selected version if available)
+        const versionHash = await getVersionHashForFile(fileToLoad);
+        const url = await getBpmnFileUrl(fileToLoad, versionHash);
+        console.log('[BpmnViewer] Loading BPMN from initialFileName:', fileToLoad, versionHash ? `(version: ${versionHash.substring(0, 8)}...)` : '(current version)', url);
 
         // Nollställ navigationen när vi aktivt byter fil via route
         if (fileToLoad !== fileName) {
@@ -451,7 +457,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
     };
     
     loadBpmn();
-  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage, setSelectedElementId]);
+  }, [bpmnFiles, isLoadingFiles, initialFileName, toast, downloadFromStorage, setSelectedElementId, getVersionHashForFile]);
 
   // Initialize viewer when container becomes available (after loading UI is gone)
   useEffect(() => {

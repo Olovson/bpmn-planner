@@ -10,6 +10,12 @@ import type { BpmnProcessNode } from './bpmn/processGraph';
 import { parseBpmnFile, type BpmnParseResult } from './bpmnParser';
 import { calculateBpmnDiff, diffResultToDbFormat } from './bpmnDiff';
 import type { BpmnMeta } from '@/types/bpmnMeta';
+import { 
+  calculateContentHash, 
+  getCurrentVersion, 
+  getPreviousVersion,
+  createOrGetVersion 
+} from './bpmnVersioning';
 
 export interface DiffRegenerationConfig {
   /**
@@ -168,7 +174,7 @@ export async function calculateAndSaveDiff(
     // Get file record
     const { data: fileData, error: fileError } = await supabase
       .from('bpmn_files')
-      .select('id, previous_version_content, previous_version_meta')
+      .select('id')
       .eq('file_name', fileName)
       .single();
 
@@ -179,11 +185,29 @@ export async function calculateAndSaveDiff(
     }
 
     const bpmnFileId = fileData.id;
-    const oldContent = fileData.previous_version_content;
-    const oldMeta = fileData.previous_version_meta;
+
+    // Calculate hash for new content
+    const newContentHash = await calculateContentHash(newContent);
+
+    // Get current version (if any)
+    const currentVersion = await getCurrentVersion(fileName);
+    const previousVersion = currentVersion ? await getPreviousVersion(fileName) : null;
+
+    // Create or get version for new content
+    const { version: newVersion, isNew } = await createOrGetVersion(
+      bpmnFileId,
+      fileName,
+      newContent,
+      newMeta
+    );
+
+    // If this is not a new version (same content), no diff to calculate
+    if (!isNew) {
+      return { diffCount: 0, added: 0, removed: 0, modified: 0 };
+    }
 
     // If no previous version, this is a new file - mark all nodes as "added"
-    if (!oldContent || !oldMeta) {
+    if (!currentVersion || !previousVersion) {
       // Parse new file to get all nodes
       const newParseResult = await parseBpmnFile(fileName);
       
@@ -199,7 +223,15 @@ export async function calculateAndSaveDiff(
         unchanged: [],
       };
 
-      const dbRows = diffResultToDbFormat(diffResult, bpmnFileId, fileName);
+      const dbRows = diffResultToDbFormat(
+        diffResult, 
+        bpmnFileId, 
+        fileName,
+        null, // from_version_hash (no previous version)
+        newVersion.content_hash, // to_version_hash
+        null, // from_version_number
+        newVersion.version_number // to_version_number
+      );
       
       if (dbRows.length > 0) {
         const { error: insertError } = await supabase
@@ -211,16 +243,6 @@ export async function calculateAndSaveDiff(
         }
       }
 
-      // Update previous_version for next time
-      await supabase
-        .from('bpmn_files')
-        .update({
-          previous_version_content: newContent,
-          previous_version_meta: newMeta,
-          last_diff_calculated_at: new Date().toISOString(),
-        })
-        .eq('id', bpmnFileId);
-
       return {
         diffCount: dbRows.length,
         added: dbRows.length,
@@ -229,27 +251,9 @@ export async function calculateAndSaveDiff(
       };
     }
 
-    // Parse both old and new versions
-    // Note: We need to parse from content, not from file
-    // For now, we'll use the meta data if available
-    // TODO: Parse oldContent if needed
-
-    // For now, if we have oldMeta, use it
-    // Otherwise, skip diff calculation (fallback: regenerate all)
-    if (!oldMeta) {
-      console.warn(`No previous_version_meta for ${fileName}, skipping diff calculation`);
-      // Fallback: update previous_version and return (will regenerate all)
-      await supabase
-        .from('bpmn_files')
-        .update({
-          previous_version_content: newContent,
-          previous_version_meta: newMeta,
-          last_diff_calculated_at: new Date().toISOString(),
-        })
-        .eq('id', bpmnFileId);
-
-      return { diffCount: 0, added: 0, removed: 0, modified: 0 };
-    }
+    // We have a previous version - calculate diff between versions
+    const oldMeta = previousVersion.meta;
+    const oldContent = previousVersion.content;
 
     // Parse new version
     const newParseResult = await parseBpmnFile(fileName);
@@ -265,8 +269,16 @@ export async function calculateAndSaveDiff(
     const { calculateBpmnDiff, diffResultToDbFormat } = await import('./bpmnDiff');
     const diffResult = calculateBpmnDiff(oldParseResult, enrichedNewParseResult, fileName);
 
-    // Save diff to database
-    const dbRows = diffResultToDbFormat(diffResult, bpmnFileId, fileName);
+    // Save diff to database with version information
+    const dbRows = diffResultToDbFormat(
+      diffResult, 
+      bpmnFileId, 
+      fileName,
+      previousVersion.content_hash, // from_version_hash
+      newVersion.content_hash, // to_version_hash
+      previousVersion.version_number, // from_version_number
+      newVersion.version_number // to_version_number
+    );
     
     if (dbRows.length > 0) {
       // Delete old unresolved diffs for this file (they're now outdated)
@@ -285,16 +297,6 @@ export async function calculateAndSaveDiff(
         console.error('Error inserting diffs:', insertError);
       }
     }
-
-    // Update previous_version for next time
-    await supabase
-      .from('bpmn_files')
-      .update({
-        previous_version_content: newContent,
-        previous_version_meta: newMeta,
-        last_diff_calculated_at: new Date().toISOString(),
-      })
-      .eq('id', bpmnFileId);
 
     return {
       diffCount: dbRows.length,
@@ -389,7 +391,8 @@ async function enrichCallActivitiesWithMapping(
   const { collectProcessDefinitionsFromMeta } = await import('./bpmn/processDefinition');
   
   // Load bpmn-map
-  const bpmnMap = await loadBpmnMapFromStorage();
+  const { loadBpmnMapFromStorageSimple } = await import('./bpmn/bpmnMapStorage');
+  const bpmnMap = await loadBpmnMapFromStorageSimple();
   
   // Get all process definitions for matching
   const { data: allFiles } = await supabase

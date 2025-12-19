@@ -123,8 +123,8 @@ export async function loadAllBpmnParseResults(): Promise<
 export async function loadBpmnMap(): Promise<BpmnMap | undefined> {
   try {
     // Försök ladda från storage först, fallback till projektfilen
-    const { loadBpmnMapFromStorage } = await import('./bpmnMapStorage');
-    return await loadBpmnMapFromStorage();
+    const { loadBpmnMapFromStorageSimple } = await import('./bpmnMapStorage');
+    return await loadBpmnMapFromStorageSimple();
   } catch {
     // Fallback till projektfilen om storage-laddning misslyckas
     try {

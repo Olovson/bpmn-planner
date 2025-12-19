@@ -223,7 +223,11 @@ export function calculateBpmnDiff(
 export function diffResultToDbFormat(
   diffResult: BpmnDiffResult,
   bpmnFileId: string,
-  fileName: string
+  fileName: string,
+  fromVersionHash?: string | null,
+  toVersionHash?: string | null,
+  fromVersionNumber?: number | null,
+  toVersionNumber?: number | null
 ): Array<{
   bpmn_file_id: string;
   file_name: string;
@@ -234,6 +238,10 @@ export function diffResultToDbFormat(
   old_content: any;
   new_content: any;
   diff_details: any;
+  from_version_hash?: string | null;
+  to_version_hash?: string | null;
+  from_version_number?: number | null;
+  to_version_number?: number | null;
 }> {
   const dbRows: Array<{
     bpmn_file_id: string;
@@ -245,6 +253,10 @@ export function diffResultToDbFormat(
     old_content: any;
     new_content: any;
     diff_details: any;
+    from_version_hash?: string | null;
+    to_version_hash?: string | null;
+    from_version_number?: number | null;
+    to_version_number?: number | null;
   }> = [];
 
   // Added nodes
@@ -259,6 +271,10 @@ export function diffResultToDbFormat(
       old_content: null,
       new_content: node.metadata,
       diff_details: null,
+      from_version_hash: fromVersionHash || null,
+      to_version_hash: toVersionHash || null,
+      from_version_number: fromVersionNumber || null,
+      to_version_number: toVersionNumber || null,
     });
   }
 
@@ -274,6 +290,10 @@ export function diffResultToDbFormat(
       old_content: node.metadata,
       new_content: null,
       diff_details: null,
+      from_version_hash: fromVersionHash || null,
+      to_version_hash: toVersionHash || null,
+      from_version_number: fromVersionNumber || null,
+      to_version_number: toVersionNumber || null,
     });
   }
 
@@ -289,6 +309,10 @@ export function diffResultToDbFormat(
       old_content: oldNode.metadata,
       new_content: node.metadata,
       diff_details: changes,
+      from_version_hash: fromVersionHash || null,
+      to_version_hash: toVersionHash || null,
+      from_version_number: fromVersionNumber || null,
+      to_version_number: toVersionNumber || null,
     });
   }
 

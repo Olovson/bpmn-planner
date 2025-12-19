@@ -3,6 +3,7 @@ import { LogOut, History, GitBranch, Network, List, FileText, Folder, Calendar, 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { VersionIndicator } from '@/components/VersionIndicator';
 
 export type ViewKey =
   | 'diagram'
@@ -232,6 +233,10 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
             {displayEmail}
           </span>
         )}
+        {/* Version Indicator */}
+        <div className="rotate-90 whitespace-nowrap mb-1">
+          <VersionIndicator />
+        </div>
         <Tooltip>
           <TooltipTrigger asChild>
             <button

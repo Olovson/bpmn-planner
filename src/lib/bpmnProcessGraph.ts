@@ -53,9 +53,10 @@ export interface BpmnProcessGraph {
  */
 export async function buildBpmnProcessGraph(
   rootFile: string,
-  existingBpmnFiles: string[]
+  existingBpmnFiles: string[],
+  versionHashes?: Map<string, string | null>
 ): Promise<BpmnProcessGraph> {
-  const parseResults = await parseAllBpmnFiles(existingBpmnFiles);
+  const parseResults = await parseAllBpmnFiles(existingBpmnFiles, versionHashes);
   const inputFiles = buildProcessModelInputFiles(parseResults);
   const model = buildProcessModelFromDefinitions(inputFiles, {
     preferredRootFile: rootFile,
@@ -111,11 +112,13 @@ export async function buildBpmnProcessGraph(
 
 async function parseAllBpmnFiles(
   fileNames: string[],
+  versionHashes?: Map<string, string | null>
 ): Promise<Map<string, BpmnParseResult>> {
   const results = new Map<string, BpmnParseResult>();
   for (const file of fileNames) {
     try {
-      const result = await parseBpmnFile(`/bpmn/${file}`);
+      const versionHash = versionHashes?.get(file) || null;
+      const result = await parseBpmnFile(`/bpmn/${file}`, versionHash);
       results.set(file, result);
     } catch (error) {
       console.error(`Kunde inte parsa ${file}:`, error);

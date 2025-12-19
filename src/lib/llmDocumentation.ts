@@ -103,45 +103,40 @@ export async function generateDocumentationWithLlm(
     try {
       let jsonText = response.trim();
 
-      // Om structured outputs används (cloud provider), JSON:en är redan korrekt
-      // Men vi behöver fortfarande hantera fallback-scenarier (local provider, eller om structured outputs misslyckas)
-      if (resolution.chosen === 'cloud' && responseFormat) {
-        // Med structured outputs är JSON:en garanterat korrekt - direkt parse
-        const parsed = JSON.parse(jsonText);
-      } else {
-        // För local provider eller fallback: använd robust parsing
-        // Steg 1: Ta bort markdown-code blocks (```json ... ``` eller ``` ... ```)
-        jsonText = jsonText.replace(/```(?:json|javascript)?/gi, '').replace(/```/g, '').trim();
+      // OBS: response_format används INTE längre - Claude returnerar JSON i texten
+      // Använd alltid robust parsing för att hantera markdown-code blocks och extra text
+      
+      // Steg 1: Ta bort markdown-code blocks (```json ... ``` eller ``` ... ```)
+      jsonText = jsonText.replace(/```(?:json|javascript)?/gi, '').replace(/```/g, '').trim();
 
-        // Steg 2: Hitta första JSON-struktur ({ eller [)
-        const firstBrace = jsonText.indexOf('{');
-        const firstBracket = jsonText.indexOf('[');
-        const startCandidates = [firstBrace, firstBracket].filter((idx) => idx >= 0);
-        
-        if (startCandidates.length === 0) {
-          throw new Error('No JSON structure found (no { or [)');
-        }
-
-        const start = Math.min(...startCandidates);
-        if (start > 0) {
-          jsonText = jsonText.slice(start);
-        }
-
-        // Steg 3: Hitta sista matchande avslutning
-        let end = -1;
-        if (firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)) {
-          end = jsonText.lastIndexOf('}');
-        } else if (firstBracket >= 0) {
-          end = jsonText.lastIndexOf(']');
-        }
-
-        if (end >= 0 && end + 1 < jsonText.length) {
-          jsonText = jsonText.slice(0, end + 1);
-        }
-
-        jsonText = jsonText.trim();
-        jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1'); // Fix trailing commas
+      // Steg 2: Hitta första JSON-struktur ({ eller [)
+      const firstBrace = jsonText.indexOf('{');
+      const firstBracket = jsonText.indexOf('[');
+      const startCandidates = [firstBrace, firstBracket].filter((idx) => idx >= 0);
+      
+      if (startCandidates.length === 0) {
+        throw new Error('No JSON structure found (no { or [)');
       }
+
+      const start = Math.min(...startCandidates);
+      if (start > 0) {
+        jsonText = jsonText.slice(start);
+      }
+
+      // Steg 3: Hitta sista matchande avslutning
+      let end = -1;
+      if (firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)) {
+        end = jsonText.lastIndexOf('}');
+      } else if (firstBracket >= 0) {
+        end = jsonText.lastIndexOf(']');
+      }
+
+      if (end >= 0 && end + 1 < jsonText.length) {
+        jsonText = jsonText.slice(0, end + 1);
+      }
+
+      jsonText = jsonText.trim();
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1'); // Fix trailing commas
 
       const parsed = JSON.parse(jsonText);
       let validationResult;
@@ -192,16 +187,9 @@ export async function generateDocumentationWithLlm(
     docType === 'epic' ? buildEpicJsonSchema() :
     buildBusinessRuleJsonSchema();
 
-  // Använd structured outputs för cloud provider (Claude garanterar korrekt JSON)
-  // Claude's json_schema format: { name, strict, schema }
-  const responseFormat = resolution.chosen === 'cloud' ? {
-    type: 'json_schema' as const,
-    json_schema: {
-      name: jsonSchemaObj.name,
-      strict: jsonSchemaObj.strict,
-      schema: jsonSchemaObj.schema,
-    },
-  } : undefined;
+  // OBS: response_format används INTE längre - Claude returnerar JSON i texten
+  // JSON-schemat används fortfarande för att validera svaret, men skickas inte till API:et
+  const responseFormat = undefined; // Alltid undefined - använd robust parsing istället
 
   try {
     // Använd hybrid/fallback-strategi

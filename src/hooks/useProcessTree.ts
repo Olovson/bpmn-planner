@@ -6,6 +6,7 @@ import { buildProcessGraph } from '@/lib/bpmn/processGraphBuilder';
 import { buildProcessTreeFromGraph } from '@/lib/bpmn/processTreeBuilder';
 import { parseBpmnFile } from '@/lib/bpmnParser';
 import { loadBpmnMap } from '@/lib/bpmn/bpmnMapLoader';
+import { useVersionSelection } from './useVersionSelection';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore – Vite/ts-node hanterar JSON-import enligt bundler-konfigurationen.
 import rawBpmnMap from '../../bpmn-map.json';
@@ -72,14 +73,29 @@ async function buildClientProcessTree(rootFile: string): Promise<LegacyProcessTr
     effectiveRootFile = fallback;
   }
 
+  // Get version hashes for all files
+  const versionHashes = new Map<string, string | null>();
+  if (getVersionHashForFile) {
+    for (const fileName of existingFiles) {
+      try {
+        const versionHash = await getVersionHashForFile(fileName);
+        versionHashes.set(fileName, versionHash);
+      } catch (error) {
+        console.warn(`[useProcessTree] Failed to get version hash for ${fileName}:`, error);
+        versionHashes.set(fileName, null);
+      }
+    }
+  }
+
   // Parse all BPMN files (parseBpmnFile now handles loading from Supabase Storage)
   const parseResults = new Map();
   for (const fileName of existingFiles) {
     try {
-      const parsed = await parseBpmnFile(fileName);
+      const versionHash = versionHashes.get(fileName) || null;
+      const parsed = await parseBpmnFile(fileName, versionHash);
       parseResults.set(fileName, parsed);
       if (import.meta.env.DEV) {
-        console.log(`[useProcessTree] ✓ Parsed ${fileName}`);
+        console.log(`[useProcessTree] ✓ Parsed ${fileName}${versionHash ? ` (version: ${versionHash.substring(0, 8)}...)` : ''}`);
       }
     } catch (parseError) {
       console.error(`[useProcessTree] Error parsing ${fileName}:`, parseError);
@@ -141,10 +157,12 @@ async function buildClientProcessTree(rootFile: string): Promise<LegacyProcessTr
 }
 
 export const useProcessTree = (rootFile: string = 'mortgage.bpmn') => {
+  const { getVersionHashForFile } = useVersionSelection();
+  
   return useQuery<LegacyProcessTreeNode | null>({
-    queryKey: ['process-tree', rootFile],
+    queryKey: ['process-tree', rootFile, 'version-aware'],
     queryFn: async () => {
-      const fallbackTree = await buildClientProcessTree(rootFile);
+      const fallbackTree = await buildClientProcessTree(rootFile, getVersionHashForFile);
       if (fallbackTree) return fallbackTree;
       throw new Error('Ingen BPMN-fil finns i registret.');
     },

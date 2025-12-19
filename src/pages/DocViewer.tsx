@@ -14,6 +14,9 @@ import { useDynamicBpmnFiles } from '@/hooks/useDynamicBpmnFiles';
 import type { FeatureGoalTemplateVersion } from '@/lib/documentationTemplates';
 import { matchCallActivityUsingMap, loadBpmnMap } from '@/lib/bpmn/bpmnMapLoader';
 import { getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
+import { useVersionSelection } from '@/hooks/useVersionSelection';
+import { getCurrentVersion } from '@/lib/bpmnVersioning';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import bpmnMapData from '../../bpmn-map.json';
 
 const DocViewer = () => {
@@ -21,6 +24,7 @@ const DocViewer = () => {
   const { hasTests } = useArtifactAvailability();
   const { docId } = useParams<{ docId: string }>();
   const navigate = useNavigate();
+  const { getVersionHashForFile } = useVersionSelection();
   const blobUrlRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +189,11 @@ const DocViewer = () => {
             } else {
               // Fallback: Try to resolve from BPMN process graph
               console.log('[DocViewer] No match in bpmn-map.json, trying process graph...');
-              const graph = await buildBpmnProcessGraph(baseName + '.bpmn', bpmnFiles);
+              // Get version hash for the file
+              const versionHash = await getVersionHashForFile(baseName + '.bpmn');
+              const versionHashes = new Map<string, string | null>();
+              versionHashes.set(baseName + '.bpmn', versionHash);
+              const graph = await buildBpmnProcessGraph(baseName + '.bpmn', bpmnFiles, versionHashes);
               const nodeId = `${baseName}.bpmn::${elementSegment}`;
               const nodeContext = buildNodeDocumentationContext(graph, nodeId);
               
@@ -246,6 +254,41 @@ const DocViewer = () => {
           
           console.log('[DocViewer] All tryPaths for Feature Goal:', tryPaths);
           
+          // Try versioned paths first (new structure with version hash)
+          try {
+            const parentBpmnFile = baseName + '.bpmn';
+            // Use selected version if available, otherwise current version
+            const versionHash = await getVersionHashForFile(parentBpmnFile);
+            
+            if (versionHash) {
+              // Try versioned paths with hierarchical naming
+              const hierarchicalDocFileName = hierarchicalPath.replace('feature-goals/', '');
+              const legacyDocFileName = legacyPath.replace('feature-goals/', '');
+              
+              // Determine provider from modeFolder (chatgpt = cloud, ollama = local)
+              const provider = modeFolder?.includes('chatgpt') ? 'chatgpt' : modeFolder?.includes('ollama') ? 'ollama' : null;
+              
+              if (modeFolder && modeFolder.startsWith('slow/')) {
+                if (provider === 'chatgpt') {
+                  // Versioned path: docs/slow/chatgpt/{bpmnFileName}/{versionHash}/{docFileName}
+                  tryPaths.unshift(`docs/slow/chatgpt/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${hierarchicalDocFileName}`);
+                  tryPaths.unshift(`docs/slow/chatgpt/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${legacyDocFileName}`);
+                } else if (provider === 'ollama') {
+                  tryPaths.unshift(`docs/slow/ollama/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${hierarchicalDocFileName}`);
+                  tryPaths.unshift(`docs/slow/ollama/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${legacyDocFileName}`);
+                } else {
+                  // Generic slow path
+                  tryPaths.unshift(`docs/slow/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${hierarchicalDocFileName}`);
+                  tryPaths.unshift(`docs/slow/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${legacyDocFileName}`);
+                }
+              }
+              
+              console.log('[DocViewer] ✓ Added versioned paths with hash:', versionHash);
+            }
+          } catch (error) {
+            console.warn('[DocViewer] Could not get version hash, skipping versioned paths:', error);
+          }
+          
           if (modeFolder) {
             // Try hierarchical naming first (matches Jira names)
             tryPaths.push(`docs/${modeFolder}/${hierarchicalPath}`);
@@ -269,6 +312,34 @@ const DocViewer = () => {
         }
         
         // Standard node doc paths
+        // Try versioned paths first for node docs too
+        if (isNodeDoc && baseName) {
+          try {
+            const bpmnFile = baseName + '.bpmn';
+            // Use selected version if available, otherwise current version
+            const versionHash = await getVersionHashForFile(bpmnFile);
+            
+            if (versionHash) {
+              const docFileName = `${safeDocId}.html`;
+              const provider = modeFolder?.includes('chatgpt') ? 'chatgpt' : modeFolder?.includes('ollama') ? 'ollama' : null;
+              
+              if (modeFolder && modeFolder.startsWith('slow/')) {
+                if (provider === 'chatgpt') {
+                  tryPaths.unshift(`docs/slow/chatgpt/${baseName}/${currentVersionHash}/${docFileName}`);
+                } else if (provider === 'ollama') {
+                  tryPaths.unshift(`docs/slow/ollama/${baseName}/${currentVersionHash}/${docFileName}`);
+                } else {
+                  tryPaths.unshift(`docs/slow/${baseName}/${currentVersionHash}/${docFileName}`);
+                }
+              }
+              
+              console.log('[DocViewer] ✓ Added versioned paths for node doc with hash:', versionHash);
+            }
+          } catch (error) {
+            console.warn('[DocViewer] Could not get version hash for node doc, skipping versioned paths:', error);
+          }
+        }
+        
         if (modeFolder) {
           tryPaths.push(`docs/${modeFolder}/${safeDocId}.html`);
           // Fallback till generiska LLM-/legacy-sökvägar
@@ -466,9 +537,26 @@ const DocViewer = () => {
               {prettySubtitle && (
                 <p className="text-sm text-muted-foreground mt-1">{prettySubtitle}</p>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Genereringskälla: {formatGenerationSource()}
-              </p>
+              <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                <p>
+                  Genereringskälla: {formatGenerationSource()}
+                </p>
+                {artifactVersionInfo && (
+                  <div className="space-y-1">
+                    <p className="text-xs">
+                      BPMN-version: {artifactVersionInfo.bpmnFileName?.replace('.bpmn', '')} (hash: {artifactVersionInfo.versionHash?.substring(0, 8)}...)
+                    </p>
+                    {artifactVersionInfo.isOutdated && (
+                      <Alert variant="destructive" className="mt-2 py-2">
+                        <AlertDescription className="text-xs">
+                          ⚠️ Denna artefakt är genererad från en äldre version av BPMN-filen. 
+                          Överväg att regenerera dokumentationen för att få den senaste versionen.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex flex-wrap gap-2 text-xs">

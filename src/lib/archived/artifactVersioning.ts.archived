@@ -1,0 +1,216 @@
+/**
+ * Per-element artifact versioning utilities
+ * 
+ * Two-layer versioning system:
+ * 1. BPMN file versioning (bpmn_file_versions) - tracks versions of BPMN files
+ * 2. Per-element artifact versioning (this module) - tracks versions of artifacts (docs/tests)
+ *    for specific elements (nodes like UserTask, ServiceTask, or subprocesses like CallActivity)
+ * 
+ * This allows users to:
+ * - Generate new documentation/tests for a specific node/subprocess independently of BPMN file version
+ * - Keep multiple versions of documentation for the same node/subprocess
+ * - Track which BPMN file version was used when generating each artifact version
+ * 
+ * Example:
+ * - BPMN file "application.bpmn" has versions 1, 2, 3
+ * - Node "Object-information" can have artifact versions 1, 2, 3 (each potentially generated from different BPMN versions)
+ * - CallActivity "Validate-application" can have artifact versions 1, 2, 3 (each potentially generated from different BPMN versions)
+ */
+
+import { supabase } from '@/integrations/supabase/client';
+import { calculateContentHash } from './bpmnVersioning';
+
+export interface ArtifactVersion {
+  id: string;
+  bpmn_file: string;
+  element_id: string; // Can be a node ID (UserTask, ServiceTask, etc.) or CallActivity ID
+  artifact_type: 'doc' | 'test';
+  content_hash: string;
+  content: string;
+  version_number: number;
+  bpmn_version_hash: string | null; // Links to BPMN file version
+  generated_at: string;
+  generated_by: string | null;
+  is_current: boolean;
+  change_summary: string | null;
+  created_at: string;
+}
+
+/**
+ * Get current artifact version for an element (node or subprocess/CallActivity)
+ * 
+ * @param bpmnFile - The BPMN file name (e.g., "application.bpmn")
+ * @param elementId - The element ID (can be a node ID like "UserTask-123" or a CallActivity ID like "CallActivity-456")
+ * @param artifactType - Type of artifact ('doc' or 'test')
+ */
+export async function getCurrentArtifactVersion(
+  bpmnFile: string,
+  elementId: string,
+  artifactType: 'doc' | 'test'
+): Promise<ArtifactVersion | null> {
+  const { data, error } = await supabase
+    .from('artifact_versions')
+    .select('*')
+    .eq('bpmn_file', bpmnFile)
+    .eq('element_id', elementId)
+    .eq('artifact_type', artifactType)
+    .eq('is_current', true)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as ArtifactVersion;
+}
+
+/**
+ * Get all artifact versions for an element (node or subprocess/CallActivity)
+ * 
+ * @param bpmnFile - The BPMN file name
+ * @param elementId - The element ID (node or CallActivity)
+ * @param artifactType - Type of artifact ('doc' or 'test')
+ */
+export async function getAllArtifactVersions(
+  bpmnFile: string,
+  elementId: string,
+  artifactType: 'doc' | 'test'
+): Promise<ArtifactVersion[]> {
+  const { data, error } = await supabase
+    .from('artifact_versions')
+    .select('*')
+    .eq('bpmn_file', bpmnFile)
+    .eq('element_id', elementId)
+    .eq('artifact_type', artifactType)
+    .order('version_number', { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as ArtifactVersion[];
+}
+
+/**
+ * Create or get existing artifact version for an element (node or subprocess/CallActivity)
+ * 
+ * This function:
+ * - Calculates content hash to detect duplicates (deduplication)
+ * - Creates new version if content is new
+ * - Returns existing version if content already exists
+ * - Automatically manages version numbers and is_current flag via database trigger
+ * 
+ * @param bpmnFile - The BPMN file name
+ * @param elementId - The element ID (node or CallActivity)
+ * @param artifactType - Type of artifact ('doc' or 'test')
+ * @param content - The artifact content (HTML for docs, test code for tests)
+ * @param bpmnVersionHash - The BPMN file version hash when this artifact was generated
+ * @param changeSummary - Optional description of what changed in this version
+ * @param generatedBy - Optional user ID who generated this version
+ */
+export async function createOrGetArtifactVersion(
+  bpmnFile: string,
+  elementId: string,
+  artifactType: 'doc' | 'test',
+  content: string,
+  bpmnVersionHash: string | null,
+  changeSummary?: string,
+  generatedBy?: string
+): Promise<{ version: ArtifactVersion; isNew: boolean }> {
+  // Calculate content hash
+  const contentHash = await calculateContentHash(content);
+
+  // Check if this version already exists
+  const { data: existingVersion, error: checkError } = await supabase
+    .from('artifact_versions')
+    .select('*')
+    .eq('bpmn_file', bpmnFile)
+    .eq('element_id', elementId)
+    .eq('artifact_type', artifactType)
+    .eq('content_hash', contentHash)
+    .maybeSingle();
+
+  if (!checkError && existingVersion) {
+    // Version already exists - return it
+    return { version: existingVersion as ArtifactVersion, isNew: false };
+  }
+
+  // Get current version to determine next version number
+  const currentVersion = await getCurrentArtifactVersion(bpmnFile, elementId, artifactType);
+  const nextVersionNumber = currentVersion ? currentVersion.version_number + 1 : 1;
+
+  // Create new version (trigger will handle version_number and is_current)
+  const { data, error } = await supabase
+    .from('artifact_versions')
+    .insert({
+      bpmn_file: bpmnFile,
+      element_id: elementId,
+      artifact_type: artifactType,
+      content_hash: contentHash,
+      content: content,
+      bpmn_version_hash: bpmnVersionHash,
+      generated_by: generatedBy || null,
+      change_summary: changeSummary || null,
+      is_current: true, // Trigger will handle setting previous version to false
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create artifact version: ${error.message}`);
+  }
+
+  return { version: data as ArtifactVersion, isNew: true };
+}
+
+/**
+ * Get artifact version by hash
+ */
+export async function getArtifactVersionByHash(
+  bpmnFile: string,
+  elementId: string,
+  artifactType: 'doc' | 'test',
+  contentHash: string
+): Promise<ArtifactVersion | null> {
+  const { data, error } = await supabase
+    .from('artifact_versions')
+    .select('*')
+    .eq('bpmn_file', bpmnFile)
+    .eq('element_id', elementId)
+    .eq('artifact_type', artifactType)
+    .eq('content_hash', contentHash)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as ArtifactVersion;
+}
+
+/**
+ * Get all artifact versions for a BPMN file (all elements)
+ * Useful for listing all versions across all nodes/subprocesses in a file
+ */
+export async function getAllArtifactVersionsForFile(
+  bpmnFile: string,
+  artifactType?: 'doc' | 'test'
+): Promise<ArtifactVersion[]> {
+  let query = supabase
+    .from('artifact_versions')
+    .select('*')
+    .eq('bpmn_file', bpmnFile)
+    .order('generated_at', { ascending: false });
+
+  if (artifactType) {
+    query = query.eq('artifact_type', artifactType);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as ArtifactVersion[];
+}

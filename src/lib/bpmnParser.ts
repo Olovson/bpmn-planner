@@ -310,18 +310,40 @@ export class BpmnParser {
 // Cache parsed results
 const parseCache = new Map<string, BpmnParseResult>();
 
-async function loadBpmnXml(fileUrl: string): Promise<{ xml: string; cacheKey: string }> {
+async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promise<{ xml: string; cacheKey: string }> {
   const normalized = fileUrl.split('?')[0] || fileUrl;
   const cacheKey = normalized.split('/').pop() || normalized;
 
-  const tryLocal = async () => {
-    const response = await fetch(fileUrl, { cache: 'no-store' });
-    const contentType = response.headers.get('content-type') || '';
-    if (response.ok && contentType.toLowerCase().includes('xml')) {
-      const xml = await response.text();
-      return { xml, cacheKey };
+  // If version hash is provided, try to load from version table first
+  if (versionHash) {
+    try {
+      const { getBpmnXmlFromVersion } = await import('@/hooks/useDynamicBpmnFiles');
+      const xml = await getBpmnXmlFromVersion(cacheKey, versionHash);
+      if (xml) {
+        return { xml, cacheKey };
+      }
+    } catch (error) {
+      console.warn(`[bpmnParser] Failed to load version ${versionHash.substring(0, 8)}... for ${cacheKey}, falling back to current version:`, error);
     }
-    return null;
+  }
+
+  const tryLocal = async () => {
+    try {
+      // I Node.js-miljö fungerar inte relativa URLs - hoppa över tryLocal
+      if (typeof window === 'undefined' && !fileUrl.startsWith('http') && !fileUrl.startsWith('data:')) {
+        return null;
+      }
+      const response = await fetch(fileUrl, { cache: 'no-store' });
+      const contentType = response.headers.get('content-type') || '';
+      if (response.ok && contentType.toLowerCase().includes('xml')) {
+        const xml = await response.text();
+        return { xml, cacheKey };
+      }
+      return null;
+    } catch (error) {
+      // I Node.js kastar fetch ett fel för relativa URLs - returnera null så tryStorage kan köras
+      return null;
+    }
   };
 
   const tryStorage = async () => {
@@ -357,15 +379,17 @@ async function loadBpmnXml(fileUrl: string): Promise<{ xml: string; cacheKey: st
   throw new Error(`Failed to load BPMN file: ${cacheKey}`);
 }
 
-export async function parseBpmnFile(bpmnFilePath: string): Promise<BpmnParseResult> {
-  // Check cache
+export async function parseBpmnFile(bpmnFilePath: string, versionHash?: string | null): Promise<BpmnParseResult> {
+  // Check cache (include version hash in cache key if provided)
   const cacheKey = bpmnFilePath.split('/').pop() || bpmnFilePath;
-  if (parseCache.has(cacheKey)) {
-    return parseCache.get(cacheKey)!;
+  const cacheKeyWithVersion = versionHash ? `${cacheKey}:${versionHash}` : cacheKey;
+  
+  if (parseCache.has(cacheKeyWithVersion)) {
+    return parseCache.get(cacheKeyWithVersion)!;
   }
 
   try {
-    const { xml: bpmnXml, cacheKey: key } = await loadBpmnXml(bpmnFilePath);
+    const { xml: bpmnXml, cacheKey: key } = await loadBpmnXml(bpmnFilePath, versionHash);
     const parser = new BpmnParser();
     const result = await parser.parse(bpmnXml);
     parser.destroy();
@@ -379,8 +403,8 @@ export async function parseBpmnFile(bpmnFilePath: string): Promise<BpmnParseResu
       fileName
     };
 
-    // Cache result
-    parseCache.set(key, resultWithFileName);
+    // Cache result (with version hash in key)
+    parseCache.set(cacheKeyWithVersion, resultWithFileName);
     
     return resultWithFileName;
   } catch (error) {

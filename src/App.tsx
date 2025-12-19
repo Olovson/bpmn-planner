@@ -11,6 +11,7 @@ import NodeTestsPage from "./pages/NodeTestsPage";
 import NodeTestScriptViewer from "./pages/NodeTestScriptViewer";
 import BpmnFileManager from "./pages/BpmnFileManager";
 import BpmnDiffOverviewPage from "./pages/BpmnDiffOverviewPage";
+import BpmnVersionHistoryPage from "./pages/BpmnVersionHistoryPage";
 import RegistryStatus from "./pages/RegistryStatus";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
@@ -24,6 +25,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BpmnSelectionProvider } from "./contexts/BpmnSelectionContext";
 import { IntegrationProvider } from "./contexts/IntegrationContext";
 import { GlobalProjectConfigProvider } from "./contexts/GlobalProjectConfigContext";
+import { VersionSelectionProvider } from "./hooks/useVersionSelection";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import DocViewer from "./pages/DocViewer";
 import { LlmDebugView } from "./pages/LlmDebugView";
@@ -100,10 +102,11 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
-        <BpmnSelectionProvider>
-          <IntegrationProvider>
-            <GlobalProjectConfigProvider>
-              <TooltipProvider>
+        <VersionSelectionProvider>
+          <BpmnSelectionProvider>
+            <IntegrationProvider>
+              <GlobalProjectConfigProvider>
+                <TooltipProvider>
                 <Toaster />
                 <Sonner />
                 <HashRouter>
@@ -120,6 +123,7 @@ const App = () => {
                   <Route path="/node-test-script" element={<NodeTestScriptViewer />} />
                   <Route path="/files" element={<ProtectedRoute><BpmnFileManager /></ProtectedRoute>} />
                   <Route path="/bpmn-diff" element={<ProtectedRoute><BpmnDiffOverviewPage /></ProtectedRoute>} />
+                  <Route path="/bpmn-versions/:fileName" element={<ProtectedRoute><BpmnVersionHistoryPage /></ProtectedRoute>} />
                   <Route path="/registry-status" element={<ProtectedRoute><RegistryStatus /></ProtectedRoute>} />
                   <Route path="/llm-debug" element={<ProtectedRoute><LlmDebugView /></ProtectedRoute>} />
                   <Route path="/graph-debug" element={<ProtectedRoute><ProcessGraphDebugPage /></ProtectedRoute>} />
@@ -138,6 +142,7 @@ const App = () => {
             </GlobalProjectConfigProvider>
           </IntegrationProvider>
         </BpmnSelectionProvider>
+      </VersionSelectionProvider>
       </ErrorBoundary>
     </QueryClientProvider>
   );
