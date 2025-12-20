@@ -222,7 +222,7 @@ export default function BpmnFileManager() {
   const [showTransitionOverlay, setShowTransitionOverlay] = useState(false);
   const [overlayMessage, setOverlayMessage] = useState('');
   const [overlayDescription, setOverlayDescription] = useState('');
-  const [generationProgress, setGenerationProgress] = useState<{ step: string; detail?: string } | null>(null);
+  const [currentGenerationStep, setCurrentGenerationStep] = useState<{ step: string; detail?: string } | null>(null);
   const [showAdvancedTools, setShowAdvancedTools] = useState(false);
   const [fileFilter, setFileFilter] = useState<'all' | 'bpmn' | 'dmn'>('all');
   const [fileSortBy, setFileSortBy] = useState<'name' | 'type' | 'updated'>('name');
@@ -762,7 +762,7 @@ export default function BpmnFileManager() {
   const resetGenerationState = () => {
     cancelGenerationRef.current = false;
     setCancelGeneration(false);
-    setGenerationProgress(null);
+    setCurrentGenerationStep(null);
     setGraphTotals({ files: 0, nodes: 0 });
     setDocgenProgress({ completed: 0, total: 0 });
     setDocUploadProgress({ planned: 0, completed: 0 });
@@ -781,7 +781,7 @@ export default function BpmnFileManager() {
   const logGenerationProgress = (modeLabel: string, step: string, detail?: string) => {
     const message = `[Generation][${modeLabel}] ${step}${detail ? ` – ${detail}` : ''}`;
     console.log(message);
-    setGenerationProgress({ step, detail });
+    setCurrentGenerationStep({ step, detail });
   };
 
   const createGenerationJob = async (
@@ -1025,7 +1025,7 @@ export default function BpmnFileManager() {
       setShowTransitionOverlay(false);
       setOverlayMessage('');
       setOverlayDescription('');
-      setGenerationProgress(null);
+      setCurrentGenerationStep(null);
     }
   };
 
@@ -1109,7 +1109,7 @@ export default function BpmnFileManager() {
       const progress: GenerationProgress = {
         totalProgress: totalProgressPercent,
         currentStep: overlayDescription || 'Förbereder generering',
-        currentStepDetail: generationProgress?.detail,
+        currentStepDetail: currentGenerationStep?.detail,
         docs: {
           completed: docgenCompleted,
           total: totalGraphNodes || docgenProgress.total || 0,
@@ -3699,12 +3699,12 @@ export default function BpmnFileManager() {
                 {overlayDescription || 'Vi synkar struktur och artefakter.'}
               </p>
             </div>
-            {generationProgress && (
+            {currentGenerationStep && (
               <div className="w-full text-left text-sm bg-muted/30 rounded-md p-3">
                 <p className="font-medium text-foreground">Pågående steg</p>
-                <p className="text-muted-foreground">{generationProgress.step}</p>
-                {generationProgress.detail && (
-                  <p className="text-xs text-muted-foreground/80 mt-1">{generationProgress.detail}</p>
+                <p className="text-muted-foreground">{currentGenerationStep.step}</p>
+                {currentGenerationStep.detail && (
+                  <p className="text-xs text-muted-foreground/80 mt-1">{currentGenerationStep.detail}</p>
                 )}
               </div>
             )}
@@ -4655,23 +4655,23 @@ export default function BpmnFileManager() {
             <AlertDialogTitle>Ta bort fil?</AlertDialogTitle>
             <AlertDialogDescription>
               Är du säker på att du vill ta bort <strong>{deleteFile?.file_name}</strong>?
-              {deleteFile?.usage && (deleteFile.usage.dorDodCount > 0 || deleteFile.usage.testsCount > 0) && (
-                <div className="mt-4 p-3 bg-destructive/10 rounded-md">
-                  <p className="font-medium text-destructive flex items-center gap-2">
-                    <XCircle className="w-4 h-4" />
-                    Varning: Denna fil används av:
-                  </p>
-                  <ul className="mt-2 text-sm space-y-1">
-                    {deleteFile.usage.testsCount > 0 && (
-                      <li>• {deleteFile.usage.testsCount} tester</li>
-                    )}
-                    {deleteFile.usage.dorDodCount > 0 && (
-                      <li>• {deleteFile.usage.dorDodCount} DoR/DoD-kriterier</li>
-                    )}
-                  </ul>
-                </div>
-              )}
             </AlertDialogDescription>
+            {deleteFile?.usage && (deleteFile.usage.dorDodCount > 0 || deleteFile.usage.testsCount > 0) && (
+              <div className="mt-4 p-3 bg-destructive/10 rounded-md">
+                <p className="font-medium text-destructive flex items-center gap-2">
+                  <XCircle className="w-4 h-4" />
+                  Varning: Denna fil används av:
+                </p>
+                <ul className="mt-2 text-sm space-y-1">
+                  {deleteFile.usage.testsCount > 0 && (
+                    <li>• {deleteFile.usage.testsCount} tester</li>
+                  )}
+                  {deleteFile.usage.dorDodCount > 0 && (
+                    <li>• {deleteFile.usage.dorDodCount} DoR/DoD-kriterier</li>
+                  )}
+                </ul>
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
@@ -4697,16 +4697,18 @@ export default function BpmnFileManager() {
             <AlertDialogTitle>Radera alla filer?</AlertDialogTitle>
             <AlertDialogDescription>
               Är du säker på att du vill radera <strong>alla {files.length} filer</strong>?
-              <br /><br />
-              Detta kommer att:
+            </AlertDialogDescription>
+            <div className="text-sm text-muted-foreground">
+              <p className="mb-2">Detta kommer att:</p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>Ta bort alla filer från databasen</li>
                 <li>Ta bort alla filer från Supabase Storage</li>
                 <li>Ta bort alla filer från GitHub</li>
               </ul>
-              <br />
+              <p className="mt-4">
               <strong className="text-destructive">Denna åtgärd kan inte ångras!</strong>
-            </AlertDialogDescription>
+              </p>
+            </div>
           </AlertDialogHeader>
           {deletingAll && (
             <div className="py-4">
@@ -4757,17 +4759,21 @@ export default function BpmnFileManager() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Detta rensar genererade artefakter och jobbhistorik (BPMN/DMN-källfiler behålls) och loggar ut dig.
+            </AlertDialogDescription>
+            <div className="text-sm text-muted-foreground">
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>Genererad dokumentation, tester, DoR/DoD, node references, llm-debug, testresultat</li>
                 <li>Jobbkön och jobbhistorik (generation_jobs, llm_generation_logs m.fl.)</li>
                 <li>Element-mappningar, Jira-metadata och beroenden</li>
                 <li>Cache/session rensas – du loggas ut efter reset</li>
               </ul>
-              <br />
+              <p className="mt-4">
               BPMN- och DMN-källfiler sparas. Använd “Radera alla filer” om källfiler också ska tas bort.
-              <br /><br />
-              <strong className="text-destructive">Denna åtgärd stoppar alla jobb och kan inte ångras!</strong>
-            </AlertDialogDescription>
+              </p>
+              <p className="mt-4">
+                <strong className="text-destructive">Denna åtgärd stoppar alla jobb och kan inte ångras!</strong>
+              </p>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isResetting}>Avbryt</AlertDialogCancel>
