@@ -16,7 +16,7 @@ Gemensamma regler:
 - Du får vara **generös** med innehåll inom rimliga gränser (hellre 4–7 välformulerade punkter än 1 tunn).
 - Hitta **inte på** interna systemnamn, verkliga ID:n, filpaths eller versionsnummer.
 
-Alla list-fält (t.ex. `effectGoals`, `scopeIncluded`, `scopeExcluded`, `epics`, `flowSteps`, `dependencies`, `scenarios`, `prerequisites`, `inputs`, `interactions`, `dataContracts`, `businessRulesPolicy`, `implementationNotes`, `relatedItems`) ska returneras som **EN LOGISK PUNKT PER ELEMENT** i arrayen.
+Alla list-fält (t.ex. `effectGoals`, `scopeIncluded`, `scopeExcluded`, `epics`, `flowSteps`, `dependencies`, `prerequisites`, `inputs`, `interactions`, `dataContracts`, `businessRulesPolicy`, `implementationNotes`, `relatedItems`) ska returneras som **EN LOGISK PUNKT PER ELEMENT** i arrayen.
 
 - Inga semikolon-separerade texter i samma arrayelement.
 - Skriv aldrig flera logiska punkter i samma sträng – varje punkt ska vara ett separat element i listan.
@@ -41,10 +41,6 @@ JSON-modellen är:
   ],
   "flowSteps": ["string"],
   "dependencies": ["string"],
-  "scenarios": [
-    { "id": "string", "name": "string", "type": "Happy" | "Edge" | "Error", "outcome": "string" }
-  ],
-  "testDescription": "string",
   "implementationNotes": ["string"],
   "relatedItems": ["string"]
 }
@@ -59,8 +55,6 @@ JSON-modellen är:
   - huvudmålet med Feature Goalet (t.ex. intern datainsamling, pre-screening, helhetsbedömning),
   - vilka kunder/segment som omfattas,
   - hur det stödjer bankens kreditstrategi, riskhantering och kundupplevelse.
-
-**Viktigt:** Om `currentNodeContext.childrenDocumentation` finns i inputen, använd `summary` från child epics för att skriva en mer detaljerad och realistisk summary som reflekterar vad Feature Goalet faktiskt gör baserat på dess child epics.
 
 ### effectGoals
 
@@ -98,8 +92,6 @@ JSON-modellen är:
   - `description`: 1–2 meningar om epicens roll i flödet.
   - `team`: vilket team som typiskt äger epiken (generellt namn, t.ex. `"Risk & Kredit"`).
 
-**Viktigt:** Om `currentNodeContext.childrenDocumentation` finns i inputen, använd den informationen för att skriva mer detaljerade och realistiska epic-beskrivningar. Varje child epic i `childrenDocumentation` innehåller `summary`, `flowSteps`, `inputs`, och `outputs` som hjälper dig att förstå vad epiken faktiskt gör. Använd denna information när du skriver `description` för varje epic i `epics`-arrayen.
-
 ### flowSteps
 
 **Syfte:** Beskriva Feature Goal-nivåns affärsflöde från start till slut.
@@ -109,8 +101,6 @@ JSON-modellen är:
   - kundens/handläggarens handlingar,
   - systemets respons,
   - viktiga beslutspunkter.
-
-**Viktigt:** Om `currentNodeContext.childrenDocumentation` finns i inputen, använd `flowSteps` från child epics för att skapa mer realistiska och detaljerade flowSteps. Kombinera och sammanfatta flowSteps från child epics till en logisk sekvens på Feature Goal-nivå.
 
 ### dependencies
 
@@ -125,31 +115,6 @@ Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>.
 
 Exempel (endast format, skriv egen text):
 - `Beroende: Regelmotor/DMN; Id: kreditvärdighetsbedömning; Beskrivning: används för att fatta preliminära och slutliga kreditbeslut.`
-
-### scenarios
-
-**Syfte:** Definiera affärsscenarier som Feature Goalet måste hantera.
-
-**Innehåll (`scenarios`):**
-- Minst 3 scenarier.
-- Minst 1 med `type = "Happy"`.
-- Minst 1 med `type = "Edge"`.
-- Minst 1 med `type = "Error"`.
-- Varje objekt har:
-  - `id`: kort ID (t.ex. `"S1"`).
-  - `name`: kort scenarionamn.
-  - `type`: `"Happy"`, `"Edge"` eller `"Error"`.
-  - `outcome`: 1–2 meningar om förväntat affärsutfall (t.ex. preliminärt godkänd, manuell granskning, avslag).
-
-### testDescription
-
-**Syfte:** Koppla affärsscenarierna till automatiska tester.
-
-**Innehåll (`testDescription`):**
-- 1–2 meningar som:
-  - beskriver att scenarierna ska mappas mot automatiska tester (E2E, API, etc.),
-  - uppmanar till att återanvända scenario-ID och namn i testfil/testnamn.
-- Inga filpaths eller faktiska filnamn.
 
 ### implementationNotes
 
@@ -183,22 +148,19 @@ JSON-modellen är:
   "summary": "string",
   "prerequisites": ["string"],
   "inputs": ["string"],
+  "outputs": ["string"],
   "flowSteps": ["string"],
   "interactions": ["string"],
-  "dataContracts": ["string"],
-  "businessRulesPolicy": ["string"],
-  "scenarios": [
-    { 
-      "id": "string", 
-      "name": "string", 
-      "type": "Happy" | "Edge" | "Error", 
-      "description": "string", 
-      "outcome": "string" 
+  "userStories": [
+    {
+      "id": "string",
+      "role": "string",
+      "goal": "string",
+      "value": "string",
+      "acceptanceCriteria": ["string"]
     }
   ],
-  "testDescription": "string",
-  "implementationNotes": ["string"],
-  "relatedItems": ["string"]
+  "implementationNotes": ["string"]
 }
 ```
 
@@ -217,7 +179,7 @@ JSON-modellen är:
 **Syfte:** Lista viktiga förutsättningar innan epiken kan starta.
 
 **Innehåll (`prerequisites`):**
-- 2–5 strängar, varje en full mening om:
+- 2–3 strängar, varje en full mening om:
   - data, kontroller eller beslut som måste vara uppfyllda,
   - vilken föregående process eller regel som måste ha körts.
 
@@ -226,7 +188,7 @@ JSON-modellen är:
 **Syfte:** Beskriva vilka indata epiken använder.
 
 **Innehåll (`inputs`):**
-- 3–6 strängar. Varje rad följer formatet:
+- 3–5 strängar. Varje rad följer formatet:
 
 ```text
 Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; Felhantering: ...
@@ -234,19 +196,36 @@ Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; F
 
 - Varje input ska vara ett **eget element** i `inputs`‑arrayen.
 - En input = en rad = ett fält.
-- Skriv aldrig flera “Fält: …” i samma sträng. Om det finns fyra inputfält ska `inputs` innehålla fyra separata strängar, en per rad.
+- Skriv aldrig flera "Fält: …" i samma sträng. Om det finns fyra inputfält ska `inputs` innehålla fyra separata strängar, en per rad.
 
 **Numeriska tröskelvärden:**
 - Om du anger ett numeriskt tröskelvärde (t.ex. kreditpoäng, belopp, belåningsgrad, ålder) ska du lägga till texten **"(exempelvärde)"** direkt efter värdet:
   - `belåningsgrad över 85 % (exempelvärde)`
   - `kreditvärdighet under 600 (exempelvärde)`
 
+### outputs
+
+**Syfte:** Beskriva vad epiken producerar och skickar vidare.
+
+**Innehåll (`outputs`):**
+- 2–4 strängar. Varje rad följer formatet:
+
+```text
+Outputtyp: ...; Typ: ...; Konsument: ...; Beskrivning: ...
+```
+
+- Varje output ska vara ett **eget element** i `outputs`‑arrayen.
+- En output = en rad = ett fält.
+- Exempel:
+  - `Outputtyp: Status; Typ: String; Konsument: Nästa steg i processen; Beskrivning: "approved", "rejected", eller "requires_manual_review"`
+  - `Outputtyp: Berikad data; Typ: JSON; Konsument: Kreditbedömning; Beskrivning: Kunddata med kompletterande information från externa källor`
+
 ### flowSteps
 
 **Syfte:** Beskriva epikens ansvar i processen, steg för steg.
 
 **Innehåll (`flowSteps`):**
-- 4–8 strängar, varje sträng en full mening som beskriver ett steg:
+- 4–6 strängar, varje sträng en full mening som beskriver ett steg:
   - vad användaren gör,
   - vad systemet gör,
   - hur epiken påverkar flödet (t.ex. status, beslut).
@@ -254,76 +233,65 @@ Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; F
 
 ### interactions
 
-**Syfte:** Beskriva kanal, UX och interaktionsmönster.
+**Syfte:** Beskriva kanal, UX och interaktionsmönster. **OPCIONAL** - endast för User Tasks.
 
 **Innehåll (`interactions`):**
-- 2–5 strängar om:
+- 2–3 strängar om:
   - användargränssnitt (web/app/intern klient),
   - felmeddelanden och guidning,
   - eventuella integrationer mot andra system ur UX-perspektiv.
+- **OBS:** För Service Tasks kan detta fält utelämnas eller förenklas till API-endpoints.
 
-### dataContracts
+### userStories
 
-**Syfte:** Beskriva data in/ut för epiken på en enkel kontraktsnivå.
+**Syfte:** Definiera user stories med acceptanskriterier för epiken. User stories ger användarcentrerad fokus och konkreta krav som kan användas för implementation och testning.
 
-**Innehåll (`dataContracts`):**
-- 2–5 strängar om:
-  - vilka data som tas emot (input),
-  - vilka data som skickas vidare (output),
-  - vilka konsumenter som använder data.
-
-### businessRulesPolicy
-
-**Syfte:** Koppla epiken till affärsregler och kreditpolicy.
-
-**Innehåll (`businessRulesPolicy`):**
-- 3–6 strängar som beskriver:
-  - vilka regler/policypunkter epiken stödjer,
-  - hur bedömningar eller kontroller genomförs,
-  - hur epiken förhåller sig till t.ex. skuldkvot, belåningsgrad, AML/KYC på en övergripande nivå.
-
-### scenarios
-
-**Syfte:** Definiera affärs- och användningsscenarier för epiken.
-
-**Innehåll (`scenarios`):**
+**Innehåll (`userStories`):**
 - 3–6 objekt med fälten:
-  - `id`: kort ID (t.ex. `"EPIC-S1"`).
-  - `name`: kort scenarionamn.
-  - `type`: `"Happy"`, `"Edge"` eller `"Error"`.
-  - `description`: kort beskrivning av scenariot (1–2 meningar).
-  - `outcome`: förväntat utfall (1–2 meningar).
-- Minst 1 scenario där handläggaren **överstyr** systemets rekommendation.
-- Minst 1 `Happy`, 1 `Edge` och 1 `Error`.
+  - `id`: kort ID (t.ex. `"US-1"`, `"US-2"`).
+  - `role`: vilken roll som använder epiken (t.ex. `"Kund"`, `"Handläggare"`, `"System"`).
+  - `goal`: vad rollen vill uppnå (t.ex. `"Fylla i ansökningsinformation"`).
+  - `value`: varför det är värdefullt (t.ex. `"Kunna ansöka om lån på ett enkelt sätt"`).
+  - `acceptanceCriteria`: array med 2–4 konkreta krav som måste uppfyllas.
 
-### testDescription
+**Format för user stories:**
+- Varje user story följer mönstret: "Som [role] vill jag [goal] så att [value]"
+- Acceptanskriterier ska vara konkreta och testbara
+- Varje acceptanskriterium ska börja med "Systemet ska..." eller liknande
 
-**Syfte:** Koppla scenarier till automatiska tester.
+**Exempel:**
+```json
+{
+  "id": "US-1",
+  "role": "Kund",
+  "goal": "Fylla i ansökningsinformation",
+  "value": "Kunna ansöka om lån på ett enkelt sätt",
+  "acceptanceCriteria": [
+    "Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas",
+    "Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga",
+    "Systemet ska spara utkast automatiskt så att kunden inte förlorar information"
+  ]
+}
+```
 
-**Innehåll (`testDescription`):**
-- 1–2 meningar som förklarar hur scenarierna mappas mot automatiska tester (t.ex. E2E eller API),
-- uppmana till att återanvända scenario-ID och namn i testfall och rapportering.
+**Krav:**
+- Minst 3 user stories, max 6 user stories
+- För User Tasks: Fokus på användarens behov (Kund, Handläggare, etc.)
+- För Service Tasks: Fokus på vem som drar nytta (Handläggare, System, etc.)
+- Varje user story ska ha 2–4 acceptanskriterier
+- Acceptanskriterier ska täcka både happy path, edge cases och felhantering
 
 ### implementationNotes
 
 **Syfte:** Ge tekniska riktlinjer till utvecklare/testare.
 
 **Innehåll (`implementationNotes`):**
-- 3–6 strängar om:
+- 3–5 strängar om:
   - vilka interna tjänster/komponenter epiken använder (på en generell nivå),
   - loggning och audit-spår,
   - felhantering och timeouts,
-  - viktiga kvalitets- eller prestandakrav.
-
-### relatedItems
-
-**Syfte:** Sätta epiken i sitt sammanhang.
-
-**Innehåll (`relatedItems`):**
-- 2–4 strängar om:
-  - relaterade Feature Goals,
-  - andra epics i samma flöde,
-  - Business Rules/DMN som epiken är beroende av.
+  - viktiga kvalitets- eller prestandakrav,
+  - eventuella affärsregler eller policykrav som påverkar implementationen.
 
 ---
 

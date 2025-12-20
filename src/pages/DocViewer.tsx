@@ -16,7 +16,6 @@ import { matchCallActivityUsingMap, loadBpmnMap } from '@/lib/bpmn/bpmnMapLoader
 import { getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
 import { useVersionSelection } from '@/hooks/useVersionSelection';
 import { getCurrentVersion } from '@/lib/bpmnVersioning';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import bpmnMapData from '../../bpmn-map.json';
 
 const DocViewer = () => {
@@ -541,21 +540,6 @@ const DocViewer = () => {
                 <p>
                   Genereringskälla: {formatGenerationSource()}
                 </p>
-                {artifactVersionInfo && (
-                  <div className="space-y-1">
-                    <p className="text-xs">
-                      BPMN-version: {artifactVersionInfo.bpmnFileName?.replace('.bpmn', '')} (hash: {artifactVersionInfo.versionHash?.substring(0, 8)}...)
-                    </p>
-                    {artifactVersionInfo.isOutdated && (
-                      <Alert variant="destructive" className="mt-2 py-2">
-                        <AlertDescription className="text-xs">
-                          ⚠️ Denna artefakt är genererad från en äldre version av BPMN-filen. 
-                          Överväg att regenerera dokumentationen för att få den senaste versionen.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
             <div className="flex items-center gap-2">

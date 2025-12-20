@@ -11,7 +11,7 @@ Inputen innehåller:
 Du ska:
 - använda `processContext` för att förstå **vilken fas (`phase`)** i kreditprocessen regeln stödjer (t.ex. Datainsamling, Riskbedömning, Beslut) och vilken **lane/roll (`lane`)** som är huvudaktör (t.ex. Handläggare, Regelmotor),
 - använda `currentNodeContext` för att beskriva vilka indata/utdata och beslut som hör till just denna regel i den fasen och rollen,
-- låta `summary`, `decisionLogic`, `outputs` och `scenarios` spegla rätt fas/roll i processen,
+- låta `summary`, `decisionLogic` och `outputs` spegla rätt fas/roll i processen,
 - **inte hitta på** nya faser, steg eller system utanför det som går att härleda från kontexten.
 
 JSON-modellen är:
@@ -23,18 +23,45 @@ JSON-modellen är:
   "decisionLogic": ["string"],
   "outputs": ["string"],
   "businessRulesPolicy": ["string"],
-  "scenarios": [
-    {
-      "id": "string",
-      "name": "string",
-      "type": "Happy" | "Edge" | "Error",
-      "input": "string",
-      "outcome": "string"
-    }
-  ],
-  "testDescription": "string",
   "implementationNotes": ["string"],
   "relatedItems": ["string"]
+}
+```
+
+**Exempel på korrekt JSON (observera escaping och format):**
+
+```json
+{
+  "summary": "Regeln bedömer kundens kreditvärdighet baserat på inkomst, skuldsättning och kreditpoäng. Den används i riskbedömningsfasen för att avgöra om ansökan ska godkännas, hänvisas till manuell granskning eller avslås.",
+  "inputs": [
+    "Fält: månadsinkomst; Datakälla: kundregister; Typ: decimal; Obligatoriskt: Ja; Validering: > 0; Felhantering: returnera null om saknas",
+    "Fält: totala skulder; Datakälla: kreditbyrå; Typ: decimal; Obligatoriskt: Ja; Validering: >= 0; Felhantering: använd 0 om saknas",
+    "Fält: kreditpoäng; Datakälla: UC; Typ: integer; Obligatoriskt: Ja; Validering: 300-850; Felhantering: avvisa om utanför range"
+  ],
+  "decisionLogic": [
+    "Om kreditpoäng < 600 (exempelvärde) → DECLINE",
+    "Om skuldkvot > 6.0 (exempelvärde) → REFER",
+    "Om kreditpoäng >= 700 (exempelvärde) och skuldkvot < 4.0 (exempelvärde) → APPROVE",
+    "Annars → REFER"
+  ],
+  "outputs": [
+    "Outputtyp: beslut; Typ: enum; Effekt: APPROVE/REFER/DECLINE; Loggning: beslutsgrund och värden loggas",
+    "Outputtyp: flagga; Typ: boolean; Effekt: hög_skuldsättning=true om skuldkvot > 5.0; Loggning: flaggans värde loggas"
+  ],
+  "businessRulesPolicy": [
+    "Följer bankens skuldkvotspolicy (max 6.0 för standardkunder)",
+    "Stödjer konsumentkreditlagens krav på kreditvärdighetsbedömning",
+    "Implementerar AML/KYC-principer för riskklassificering"
+  ],
+  "implementationNotes": [
+    "Regeln implementeras i DMN-motor och anropas från riskbedömningsprocessen",
+    "Kreditpoäng hämtas från UC via integration",
+    "Skuldkvot beräknas som totala skulder / månadsinkomst * 12"
+  ],
+  "relatedItems": [
+    "Riskbedömningsprocess (mortgage-se-risk-assessment.bpmn)",
+    "UC-integration (fetch-credit-score service task)"
+  ]
 }
 ```
 
@@ -42,10 +69,14 @@ JSON-modellen är:
 
 # Grundregler (gäller hela svaret)
 
-1. **Endast JSON**
+1. **Endast JSON - KRITISKT**
    - Svara med exakt **ett** JSON-objekt enligt modellen ovan.
    - Outputen ska börja direkt med `{` och avslutas med `}`. Ingen text före `{` och ingen text efter avslutande `}`.
    - Ingen fri text, ingen Markdown, inga HTML-taggar utanför JSON:et.
+   - **VIKTIGT**: Alla strängvärden MÅSTE vara korrekt escaped. Använd `\"` för citattecken inuti strängar.
+   - **VIKTIGT**: Inga radbrytningar (`\n`) inuti strängvärden - använd `\\n` om du behöver radbrytningar i texten.
+   - **VIKTIGT**: Alla property-namn MÅSTE ha dubbla citattecken: `"propertyName"` inte `propertyName`.
+   - **VIKTIGT**: Kommatecken mellan alla objekt/array-element. Inga trailing commas före `}` eller `]`.
 
 2. **Inga rubriker eller metadata i värdena**
    - Skriv inte egna rubriker inne i strängarna (t.ex. “Sammanfattning:”).
@@ -180,55 +211,7 @@ Visa hur regeln kopplar mot interna policys, riskmandat och regulatoriska krav.
 
 ---
 
-## FÄLT 6 – `scenarios` (Affärs-scenarion & testbarhet)
-
-**Syfte:**  
-Definiera ett litet antal affärsnära scenarier som kan användas som grund för automatiska tester.
-
-**Innehåll (`scenarios`):**
-- En lista med minst 3 scenarier, varje objekt med:
-  - `id`: kort scenarie-ID (t.ex. `"BR1"`),
-  - `name`: kort scenarionamn,
-  - `type`: `"Happy"`, `"Edge"` eller `"Error"`,
-  - `input`: kort beskrivning av ingångssituationen (typisk kund-/riskprofil),
-  - `outcome`: förväntat beslut/utfall.
-
-**Krav:**
-- Minst 1 `Happy`-scenario.
-- Minst 1 `Edge`-scenario.
-- Minst 1 `Error`-scenario.
-- Minst ett scenario ska visa **automatisk bedömning** (t.ex. auto-approve/auto-decline).
-- Minst ett scenario ska visa **manuell bedömning** p.g.a. kombination av riskfaktorer.
-
-Scenarierna ska vara **testbara**:
-- Utgå från verkliga kombinationer av inputs/outputs och beslutslogik som går att härleda från kontexten.
-- `type` måste vara exakt `"Happy"`, `"Edge"` eller `"Error"`.
-- Beskriv tydligt:
-  - vilka inputvärden som gäller (med "(exempelvärde)" efter tal),
-  - vilken regel/logik som triggas,
-  - vilket beslut/utfall som förväntas (automatisk vs manuell bedömning, godkänd/avslagen).
-
-**Begränsningar:**
-- Beskriv på affärsnivå, inte tekniska teststeg.
-
----
-
-## FÄLT 7 – `testDescription` (Koppling till automatiska tester)
-
-**Syfte:**  
-Förklara på affärsnivå hur scenarierna mappas mot automatiska tester.
-
-**Innehåll (`testDescription`):**
-- 1–2 meningar som:
-  - nämner att scenarierna mappas mot automatiska tester (t.ex. Playwright, API-tester),
-  - beskriver att scenario-ID och namn bör återfinnas i testfil och testnamn.
-
-**Begränsningar:**
-- Inga filnamn eller paths. Inga HTML-taggar.
-
----
-
-## FÄLT 8 – `implementationNotes` (Implementation & integrationsnoter)
+## FÄLT 6 – `implementationNotes` (Implementation & integrationsnoter)
 
 **Syfte:**  
 Ge kort vägledning till utvecklare/testare om tekniska aspekter, utan att bli en full teknisk specifikation.

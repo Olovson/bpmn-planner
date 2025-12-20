@@ -48,9 +48,24 @@ export const useAllBpmnNodes = () => {
   const [nodes, setNodes] = useState<BpmnNodeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { data: rootFile } = useRootBpmnFile();
   const root = rootFile || 'mortgage.bpmn';
   const { data: processTree, isLoading: treeLoading } = useProcessTree(root);
+
+  // Listen for artifact generation events to trigger refresh
+  useEffect(() => {
+    const handleArtifactUpdate = () => {
+      // Trigger a refresh by incrementing the trigger counter
+      // This will cause the main useEffect to re-run
+      setRefreshTrigger(prev => prev + 1);
+    };
+
+    window.addEventListener('bpmn-artifacts-updated', handleArtifactUpdate);
+    return () => {
+      window.removeEventListener('bpmn-artifacts-updated', handleArtifactUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     if (treeLoading) return;
@@ -65,7 +80,11 @@ export const useAllBpmnNodes = () => {
         const allNodes: BpmnNodeData[] = [];
 
         if (!processTree) {
+          if (import.meta.env.DEV) {
+            console.warn('[useAllBpmnNodes] processTree is null - no nodes will be displayed');
+          }
           setNodes([]);
+          setLoading(false);
           return;
         }
 
@@ -207,33 +226,45 @@ export const useAllBpmnNodes = () => {
         // Resolve storage-based artifacts (docs + test reports)
         const enriched = await Promise.all(
           allNodes.map(async (node) => {
-            const resolvedDocs = await checkDocsAvailable(
-              node.confluenceUrl,
-              docPathFromNode(node),
-              storageFileExists,
-            );
-            const resolvedTestReport = await checkTestReportAvailable(
-              node.testReportUrl,
-            );
+            try {
+              const resolvedDocs = await checkDocsAvailable(
+                node.confluenceUrl,
+                docPathFromNode(node),
+                storageFileExists,
+              );
+              const resolvedTestReport = await checkTestReportAvailable(
+                node.testReportUrl,
+              );
 
-            return {
-              ...node,
-              hasDocs: resolvedDocs,
-              hasTestReport: resolvedTestReport,
-            };
+              return {
+                ...node,
+                hasDocs: resolvedDocs,
+                hasTestReport: resolvedTestReport,
+              };
+            } catch (error) {
+              // If checking docs fails, still include the node but mark docs as unavailable
+              console.warn(`[useAllBpmnNodes] Failed to check docs for ${node.bpmnFile}:${node.elementId}:`, error);
+              return {
+                ...node,
+                hasDocs: false,
+                hasTestReport: false,
+              };
+            }
           }),
         );
 
         if (isMounted) {
+          if (import.meta.env.DEV) {
+            console.log(`[useAllBpmnNodes] Loaded ${enriched.length} nodes (${enriched.filter(n => n.hasDocs).length} with docs)`);
+          }
           setNodes(enriched);
+          setLoading(false);
         }
       } catch (err) {
-        console.error('Error fetching all BPMN nodes:', err);
+        console.error('[useAllBpmnNodes] Error fetching all BPMN nodes:', err);
         if (isMounted) {
           setError(err as Error);
-        }
-      } finally {
-        if (isMounted) {
+          setNodes([]); // Set empty array on error to avoid stale data
           setLoading(false);
         }
       }
@@ -246,7 +277,7 @@ export const useAllBpmnNodes = () => {
     return () => {
       isMounted = false;
     };
-  }, [processTree, treeLoading]);
+  }, [processTree, treeLoading, refreshTrigger]);
 
   return { nodes, loading: loading || treeLoading, error };
 };

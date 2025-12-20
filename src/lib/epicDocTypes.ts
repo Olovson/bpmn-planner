@@ -35,18 +35,23 @@ export interface EpicScenario {
   dataProfileId?: string;
 }
 
+export interface EpicUserStory {
+  id: string;
+  role: string; // "Kund", "Handläggare", "System", etc.
+  goal: string; // Vad vill rollen uppnå?
+  value: string; // Varför är det värdefullt?
+  acceptanceCriteria: string[]; // Konkreta krav (2-4 per story)
+}
+
 export interface EpicDocModel {
   summary: string;
   prerequisites: string[];
   inputs: string[];
+  outputs: string[];
   flowSteps: string[];
-  interactions: string[];
-  dataContracts: string[];
-  businessRulesPolicy: string[];
-  scenarios: EpicScenario[];
-  testDescription: string;
+  interactions?: string[]; // Optional - primarily for User Tasks
+  userStories: EpicUserStory[]; // 3-6 user stories per Epic
   implementationNotes: string[];
-  relatedItems: string[];
 }
 
 export type EpicLlmSections = EpicDocModel;

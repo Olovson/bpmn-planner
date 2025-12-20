@@ -23,8 +23,6 @@ export function buildFeatureGoalJsonSchema() {
         'epics',
         'flowSteps',
         'dependencies',
-        'scenarios',
-        'testDescription',
         'implementationNotes',
         'relatedItems',
       ],
@@ -66,23 +64,6 @@ export function buildFeatureGoalJsonSchema() {
           type: 'array',
           items: { type: 'string' },
         },
-        scenarios: {
-          type: 'array',
-          items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['id', 'name', 'type', 'outcome'],
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              type: { type: 'string', enum: ['Happy', 'Edge', 'Error'] },
-              outcome: { type: 'string' },
-            },
-          },
-        },
-        testDescription: {
-          type: 'string',
-        },
         implementationNotes: {
           type: 'array',
           items: { type: 'string' },
@@ -110,14 +91,10 @@ export function buildEpicJsonSchema() {
         'summary',
         'prerequisites',
         'inputs',
+        'outputs',
         'flowSteps',
-        'interactions',
-        'dataContracts',
-        'businessRulesPolicy',
-        'scenarios',
-        'testDescription',
+        'userStories',
         'implementationNotes',
-        'relatedItems',
       ],
       properties: {
         summary: {
@@ -131,6 +108,10 @@ export function buildEpicJsonSchema() {
           type: 'array',
           items: { type: 'string' },
         },
+        outputs: {
+          type: 'array',
+          items: { type: 'string' },
+        },
         flowSteps: {
           type: 'array',
           items: { type: 'string' },
@@ -139,37 +120,29 @@ export function buildEpicJsonSchema() {
           type: 'array',
           items: { type: 'string' },
         },
-        dataContracts: {
+        userStories: {
           type: 'array',
-          items: { type: 'string' },
-        },
-        businessRulesPolicy: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        scenarios: {
-          type: 'array',
+          minItems: 3,
+          maxItems: 6,
           items: {
             type: 'object',
             additionalProperties: false,
-            required: ['id', 'name', 'type', 'description', 'outcome'],
+            required: ['id', 'role', 'goal', 'value', 'acceptanceCriteria'],
             properties: {
               id: { type: 'string' },
-              name: { type: 'string' },
-              type: { type: 'string', enum: ['Happy', 'Edge', 'Error'] },
-              description: { type: 'string' },
-              outcome: { type: 'string' },
+              role: { type: 'string' },
+              goal: { type: 'string' },
+              value: { type: 'string' },
+              acceptanceCriteria: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 4,
+                items: { type: 'string' },
+              },
             },
           },
         },
-        testDescription: {
-          type: 'string',
-        },
         implementationNotes: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        relatedItems: {
           type: 'array',
           items: { type: 'string' },
         },
@@ -194,8 +167,6 @@ export function buildBusinessRuleJsonSchema() {
         'decisionLogic',
         'outputs',
         'businessRulesPolicy',
-        'scenarios',
-        'testDescription',
         'implementationNotes',
         'relatedItems',
       ],
@@ -217,24 +188,6 @@ export function buildBusinessRuleJsonSchema() {
         businessRulesPolicy: {
           type: 'array',
           items: { type: 'string' },
-        },
-        scenarios: {
-          type: 'array',
-          items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['id', 'name', 'type', 'description', 'outcome'],
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              type: { type: 'string', enum: ['Happy', 'Edge', 'Error'] },
-              description: { type: 'string' },
-              outcome: { type: 'string' },
-            },
-          },
-        },
-        testDescription: {
-          type: 'string',
         },
         implementationNotes: {
           type: 'array',

@@ -8,8 +8,8 @@
  */
 
 import type { FeatureGoalDocModel } from './featureGoalLlmTypes';
-import type { EpicDocModel, EpicScenario } from './epicDocTypes';
-import type { BusinessRuleDocModel, BusinessRuleScenario } from './businessRuleDocTypes';
+import type { EpicDocModel, EpicUserStory } from './epicDocTypes';
+import type { BusinessRuleDocModel } from './businessRuleDocTypes';
 import type { NodeDocumentationContext } from './documentationContext';
 import { sanitizeElementId } from './nodeArtifactPaths';
 
@@ -32,7 +32,6 @@ export type FeatureGoalDocOverrides = Partial<FeatureGoalDocModel> & {
     epics?: 'replace' | 'extend';
     flowSteps?: 'replace' | 'extend';
     dependencies?: 'replace' | 'extend';
-    scenarios?: 'replace' | 'extend';
     implementationNotes?: 'replace' | 'extend';
     relatedItems?: 'replace' | 'extend';
   };
@@ -45,13 +44,11 @@ export type EpicDocOverrides = Partial<EpicDocModel> & {
   _mergeStrategy?: {
     prerequisites?: 'replace' | 'extend';
     inputs?: 'replace' | 'extend';
+    outputs?: 'replace' | 'extend';
     flowSteps?: 'replace' | 'extend';
     interactions?: 'replace' | 'extend';
-    dataContracts?: 'replace' | 'extend';
-    businessRulesPolicy?: 'replace' | 'extend';
-    scenarios?: 'replace' | 'extend';
+    userStories?: 'replace' | 'extend';
     implementationNotes?: 'replace' | 'extend';
-    relatedItems?: 'replace' | 'extend';
   };
 };
 
@@ -64,7 +61,6 @@ export type BusinessRuleDocOverrides = Partial<BusinessRuleDocModel> & {
     decisionLogic?: 'replace' | 'extend';
     outputs?: 'replace' | 'extend';
     businessRulesPolicy?: 'replace' | 'extend';
-    scenarios?: 'replace' | 'extend';
     implementationNotes?: 'replace' | 'extend';
     relatedItems?: 'replace' | 'extend';
   };
@@ -257,10 +253,6 @@ export function mergeFeatureGoalOverrides(
   if (overrides.summary !== undefined) {
     merged.summary = overrides.summary;
   }
-  if (overrides.testDescription !== undefined) {
-    merged.testDescription = overrides.testDescription;
-  }
-
   // Array fields: check merge strategy
   const arrayFields: Array<keyof FeatureGoalDocModel> = [
     'effectGoals',
@@ -269,7 +261,6 @@ export function mergeFeatureGoalOverrides(
     'epics',
     'flowSteps',
     'dependencies',
-    'scenarios',
     'implementationNotes',
     'relatedItems',
   ];
@@ -307,21 +298,34 @@ export function mergeEpicOverrides(
   if (overrides.summary !== undefined) {
     merged.summary = overrides.summary;
   }
-  if (overrides.testDescription !== undefined) {
-    merged.testDescription = overrides.testDescription;
-  }
 
   const arrayFields: Array<keyof EpicDocModel> = [
     'prerequisites',
     'inputs',
+    'outputs',
     'flowSteps',
-    'interactions',
-    'dataContracts',
-    'businessRulesPolicy',
-    'scenarios',
     'implementationNotes',
-    'relatedItems',
   ];
+
+  // Handle userStories separately (it's an array of objects)
+  if (overrides.userStories !== undefined) {
+    const strategy = mergeStrategy.userStories || 'replace';
+    if (strategy === 'extend') {
+      merged.userStories = [...base.userStories, ...overrides.userStories];
+    } else {
+      merged.userStories = overrides.userStories;
+    }
+  }
+
+  // Handle optional interactions field
+  if (overrides.interactions !== undefined) {
+    const strategy = mergeStrategy.interactions || 'replace';
+    if (strategy === 'extend') {
+      merged.interactions = [...(base.interactions || []), ...overrides.interactions];
+    } else {
+      merged.interactions = overrides.interactions;
+    }
+  }
 
   for (const field of arrayFields) {
     if (overrides[field] === undefined) continue;
@@ -354,16 +358,11 @@ export function mergeBusinessRuleOverrides(
   if (overrides.summary !== undefined) {
     merged.summary = overrides.summary;
   }
-  if (overrides.testDescription !== undefined) {
-    merged.testDescription = overrides.testDescription;
-  }
-
   const arrayFields: Array<keyof BusinessRuleDocModel> = [
     'inputs',
     'decisionLogic',
     'outputs',
     'businessRulesPolicy',
-    'scenarios',
     'implementationNotes',
     'relatedItems',
   ];
@@ -455,9 +454,6 @@ export function mergeLlmPatch<T extends FeatureGoalDocModel | EpicDocModel | Bus
   if (llmPatch.summary !== undefined && typeof llmPatch.summary === 'string' && llmPatch.summary.trim()) {
     merged.summary = llmPatch.summary;
   }
-  if ('testDescription' in llmPatch && llmPatch.testDescription !== undefined && typeof llmPatch.testDescription === 'string') {
-    merged.testDescription = llmPatch.testDescription;
-  }
 
   // Array fields: LLM replaces if provided and non-empty (not extend - LLM is authoritative)
   const arrayFields: Array<keyof T> = Object.keys(base).filter(
@@ -507,10 +503,6 @@ export function validateFeatureGoalModelAfterMerge(
   if (!model.summary || typeof model.summary !== 'string' || !model.summary.trim()) {
     errors.push('Field "summary" is required and must be a non-empty string');
   }
-  if (!model.testDescription || typeof model.testDescription !== 'string') {
-    errors.push('Field "testDescription" is required and must be a string');
-  }
-
   // Required array fields
   const requiredArrayFields: Array<keyof FeatureGoalDocModel> = [
     'effectGoals',
@@ -519,7 +511,6 @@ export function validateFeatureGoalModelAfterMerge(
     'epics',
     'flowSteps',
     'dependencies',
-    'scenarios',
     'implementationNotes',
     'relatedItems',
   ];
@@ -545,27 +536,6 @@ export function validateFeatureGoalModelAfterMerge(
           }
         }
       });
-    } else if (field === 'scenarios') {
-      // Validate scenario objects
-      const scenarios = model[field] as FeatureGoalDocModel['scenarios'];
-      scenarios.forEach((scenario, index) => {
-        if (!scenario || typeof scenario !== 'object') {
-          errors.push(`Field "scenarios[${index}]" must be an object`);
-        } else {
-          if (!scenario.id || typeof scenario.id !== 'string') {
-            errors.push(`Field "scenarios[${index}].id" must be a non-empty string`);
-          }
-          if (!scenario.name || typeof scenario.name !== 'string') {
-            errors.push(`Field "scenarios[${index}].name" must be a non-empty string`);
-          }
-          if (!scenario.type || typeof scenario.type !== 'string') {
-            errors.push(`Field "scenarios[${index}].type" must be a non-empty string`);
-          }
-          if (!scenario.outcome || typeof scenario.outcome !== 'string') {
-            errors.push(`Field "scenarios[${index}].outcome" must be a non-empty string`);
-          }
-        }
-      });
     }
   }
 
@@ -575,9 +545,6 @@ export function validateFeatureGoalModelAfterMerge(
   }
   if (model.flowSteps.length === 0) {
     warnings.push('Field "flowSteps" is empty - consider adding flow steps');
-  }
-  if (model.scenarios.length === 0) {
-    warnings.push('Field "scenarios" is empty - consider adding scenarios');
   }
 
   return {
@@ -603,47 +570,50 @@ export function validateEpicModelAfterMerge(
   if (!model.summary || typeof model.summary !== 'string' || !model.summary.trim()) {
     errors.push('Field "summary" is required and must be a non-empty string');
   }
-  if (!model.testDescription || typeof model.testDescription !== 'string') {
-    errors.push('Field "testDescription" is required and must be a string');
-  }
 
   // Required array fields
   const requiredArrayFields: Array<keyof EpicDocModel> = [
     'prerequisites',
     'inputs',
+    'outputs',
     'flowSteps',
-    'interactions',
-    'dataContracts',
-    'businessRulesPolicy',
-    'scenarios',
+    'userStories',
     'implementationNotes',
-    'relatedItems',
   ];
 
   for (const field of requiredArrayFields) {
     if (!Array.isArray(model[field])) {
       errors.push(`Field "${field}" must be an array`);
-    } else if (field === 'scenarios') {
-      // Validate scenario objects
-      const scenarios = model[field] as EpicScenario[];
-      scenarios.forEach((scenario, index) => {
-        if (!scenario || typeof scenario !== 'object') {
-          errors.push(`Field "scenarios[${index}]" must be an object`);
+    } else if (field === 'userStories') {
+      // Validate user story objects
+      const userStories = model[field] as EpicUserStory[];
+      if (userStories.length < 3) {
+        errors.push(`Field "userStories" must have at least 3 user stories`);
+      }
+      if (userStories.length > 6) {
+        errors.push(`Field "userStories" must have at most 6 user stories`);
+      }
+      userStories.forEach((story, index) => {
+        if (!story || typeof story !== 'object') {
+          errors.push(`Field "userStories[${index}]" must be an object`);
         } else {
-          if (!scenario.id || typeof scenario.id !== 'string') {
-            errors.push(`Field "scenarios[${index}].id" must be a non-empty string`);
+          if (!story.id || typeof story.id !== 'string') {
+            errors.push(`Field "userStories[${index}].id" must be a non-empty string`);
           }
-          if (!scenario.name || typeof scenario.name !== 'string') {
-            errors.push(`Field "scenarios[${index}].name" must be a non-empty string`);
+          if (!story.role || typeof story.role !== 'string') {
+            errors.push(`Field "userStories[${index}].role" must be a non-empty string`);
           }
-          if (!scenario.type || typeof scenario.type !== 'string') {
-            errors.push(`Field "scenarios[${index}].type" must be a non-empty string`);
+          if (!story.goal || typeof story.goal !== 'string') {
+            errors.push(`Field "userStories[${index}].goal" must be a non-empty string`);
           }
-          if (!scenario.description || typeof scenario.description !== 'string') {
-            errors.push(`Field "scenarios[${index}].description" must be a non-empty string`);
+          if (!story.value || typeof story.value !== 'string') {
+            errors.push(`Field "userStories[${index}].value" must be a non-empty string`);
           }
-          if (!scenario.outcome || typeof scenario.outcome !== 'string') {
-            errors.push(`Field "scenarios[${index}].outcome" must be a non-empty string`);
+          if (!Array.isArray(story.acceptanceCriteria) || story.acceptanceCriteria.length < 2) {
+            errors.push(`Field "userStories[${index}].acceptanceCriteria" must be an array with at least 2 items`);
+          }
+          if (story.acceptanceCriteria.length > 4) {
+            errors.push(`Field "userStories[${index}].acceptanceCriteria" must have at most 4 items`);
           }
         }
       });
@@ -654,11 +624,14 @@ export function validateEpicModelAfterMerge(
   if (model.inputs.length === 0) {
     warnings.push('Field "inputs" is empty - consider adding inputs');
   }
+  if (model.outputs.length === 0) {
+    warnings.push('Field "outputs" is empty - consider adding outputs');
+  }
   if (model.flowSteps.length === 0) {
     warnings.push('Field "flowSteps" is empty - consider adding flow steps');
   }
-  if (model.scenarios.length === 0) {
-    warnings.push('Field "scenarios" is empty - consider adding scenarios');
+  if (model.userStories.length < 3) {
+    warnings.push('Field "userStories" should have at least 3 user stories');
   }
 
   return {
@@ -684,17 +657,12 @@ export function validateBusinessRuleModelAfterMerge(
   if (!model.summary || typeof model.summary !== 'string' || !model.summary.trim()) {
     errors.push('Field "summary" is required and must be a non-empty string');
   }
-  if (!model.testDescription || typeof model.testDescription !== 'string') {
-    errors.push('Field "testDescription" is required and must be a string');
-  }
-
   // Required array fields
   const requiredArrayFields: Array<keyof BusinessRuleDocModel> = [
     'inputs',
     'decisionLogic',
     'outputs',
     'businessRulesPolicy',
-    'scenarios',
     'implementationNotes',
     'relatedItems',
   ];
@@ -702,27 +670,6 @@ export function validateBusinessRuleModelAfterMerge(
   for (const field of requiredArrayFields) {
     if (!Array.isArray(model[field])) {
       errors.push(`Field "${field}" must be an array`);
-    } else if (field === 'scenarios') {
-      // Validate scenario objects
-      const scenarios = model[field] as BusinessRuleScenario[];
-      scenarios.forEach((scenario, index) => {
-        if (!scenario || typeof scenario !== 'object') {
-          errors.push(`Field "scenarios[${index}]" must be an object`);
-        } else {
-          if (!scenario.id || typeof scenario.id !== 'string') {
-            errors.push(`Field "scenarios[${index}].id" must be a non-empty string`);
-          }
-          if (!scenario.name || typeof scenario.name !== 'string') {
-            errors.push(`Field "scenarios[${index}].name" must be a non-empty string`);
-          }
-          if (!scenario.input || typeof scenario.input !== 'string') {
-            errors.push(`Field "scenarios[${index}].input" must be a non-empty string`);
-          }
-          if (!scenario.outcome || typeof scenario.outcome !== 'string') {
-            errors.push(`Field "scenarios[${index}].outcome" must be a non-empty string`);
-          }
-        }
-      });
     }
   }
 
@@ -735,9 +682,6 @@ export function validateBusinessRuleModelAfterMerge(
   }
   if (model.outputs.length === 0) {
     warnings.push('Field "outputs" is empty - consider adding outputs');
-  }
-  if (model.scenarios.length === 0) {
-    warnings.push('Field "scenarios" is empty - consider adding scenarios');
   }
 
   return {

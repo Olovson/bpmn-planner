@@ -140,15 +140,20 @@ export class CloudLlmClient implements LlmClient {
         requestBody.system = args.systemPrompt;
       }
       
-      // OBS: response_format används INTE - Claude returnerar JSON i texten istället
-      // Den robusta JSON-parsingen i llmDocumentation.ts hanterar detta
-      // Detta undviker "Extra inputs are not permitted" fel från API:et
+      // Lägg till response_format om JSON schema finns
+      // Claude stödjer structured outputs via response_format med beta-header
+      if (cleanJsonSchema) {
+        requestBody.response_format = {
+          type: 'json_schema',
+          json_schema: cleanJsonSchema,
+        };
+      }
       
       // Debug: logga vad som skickas
       if (import.meta.env.DEV) {
         console.log('[Cloud LLM] Request body keys:', Object.keys(requestBody));
         if (cleanJsonSchema) {
-          console.log('[Cloud LLM] JSON schema requested (men används INTE i response_format - Claude får instruktioner i prompten istället)');
+          console.log('[Cloud LLM] Using structured outputs with JSON schema:', cleanJsonSchema.name);
         }
       }
       
@@ -157,13 +162,14 @@ export class CloudLlmClient implements LlmClient {
       const estimatedOutputTokens = requestBody.max_tokens;
       await waitIfNeeded(estimatedOutputTokens);
       
-      // Använd SDK:ets create-metod - INGEN response_format
+      // Använd SDK:ets create-metod med response_format om det finns
       const response = await anthropicClient.messages.create({
         model: requestBody.model,
         max_tokens: requestBody.max_tokens,
         temperature: requestBody.temperature,
         messages: requestBody.messages,
         ...(requestBody.system && { system: requestBody.system }),
+        ...(requestBody.response_format && { response_format: requestBody.response_format }),
       } as Anthropic.MessageCreateParams);
 
       // Registrera request för rate limiting

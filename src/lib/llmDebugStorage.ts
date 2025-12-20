@@ -5,7 +5,7 @@ const sanitizeSegment = (value?: string | null) =>
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
-type DebugArtifactType = 'doc' | 'test';
+type DebugArtifactType = 'doc' | 'test' | 'doc-raw';
 
 export async function saveLlmDebugArtifact(
   type: DebugArtifactType,
@@ -22,11 +22,11 @@ export async function saveLlmDebugArtifact(
     const { supabase } = await import('@/integrations/supabase/client');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safeId = sanitizeSegment(identifier);
-    const prefix = type === 'doc' ? 'llm-debug/docs' : 'llm-debug/tests';
-    const extension = type === 'doc' ? 'html' : 'json';
+    const prefix = type === 'doc' ? 'llm-debug/docs' : type === 'doc-raw' ? 'llm-debug/docs-raw' : 'llm-debug/tests';
+    const extension = type === 'doc' || type === 'doc-raw' ? 'txt' : 'json';
     const path = `${prefix}/${safeId}-${timestamp}.${extension}`;
     const blob = new Blob([content], {
-      type: type === 'doc' ? 'text/html; charset=utf-8' : 'application/json',
+      type: type === 'doc' || type === 'doc-raw' ? 'text/plain; charset=utf-8' : 'application/json',
     });
 
     const { error } = await supabase.storage.from('bpmn-files').upload(path, blob, {

@@ -4,10 +4,7 @@ import { mapFeatureGoalLlmToSections } from './featureGoalLlmMapper';
 import type { FeatureGoalDocModel, FeatureGoalLlmSections } from './featureGoalLlmTypes';
 import type {
   EpicDocModel,
-  EpicScenario,
-  ScenarioAssertionType,
-  ScenarioPersona,
-  ScenarioRiskLevel,
+  EpicUserStory,
 } from './epicDocTypes';
 import { mapEpicLlmToSections } from './epicLlmMapper';
 import type { BusinessRuleDocModel } from './businessRuleDocTypes';
@@ -52,8 +49,6 @@ export type DocSectionId =
   | 'decision-logic'
   | 'outputs'
   | 'business-rules-policy'
-  | 'business-scenarios'
-  | 'test-linking'
   | 'implementation-notes'
   | 'related-items'
   | 'dependencies'
@@ -88,8 +83,6 @@ export const FEATURE_GOAL_DOC_SCHEMA: DocTemplateSchema = {
     { id: 'epics-overview', label: 'Ingående Epics', enabledByDefault: true },
     { id: 'flow', label: 'Affärsflöde', enabledByDefault: true },
     { id: 'dependencies', label: 'Kritiska beroenden', enabledByDefault: true },
-    { id: 'business-scenarios', label: 'Affärs-scenarion & testbarhet', enabledByDefault: true },
-    { id: 'test-linking', label: 'Koppling till automatiska tester', enabledByDefault: true },
     { id: 'implementation-notes', label: 'Implementation Notes (för dev)', enabledByDefault: true },
     { id: 'related-items', label: 'Relaterade regler / subprocesser', enabledByDefault: true },
   ],
@@ -104,8 +97,6 @@ export const EPIC_DOC_SCHEMA: DocTemplateSchema = {
     { id: 'flow', label: 'Funktionellt flöde', enabledByDefault: true },
     { id: 'outputs', label: 'Output', enabledByDefault: true },
     { id: 'business-rules-policy', label: 'Affärsregler & beroenden', enabledByDefault: true },
-    { id: 'business-scenarios', label: 'Affärs-scenarion & testbarhet', enabledByDefault: true },
-    { id: 'test-linking', label: 'Koppling till automatiska tester', enabledByDefault: true },
     { id: 'implementation-notes', label: 'Implementation notes', enabledByDefault: true },
     { id: 'related-items', label: 'Relaterade steg & artefakter', enabledByDefault: true },
   ],
@@ -120,8 +111,6 @@ export const BUSINESS_RULE_DOC_SCHEMA: DocTemplateSchema = {
     { id: 'decision-logic', label: 'Beslutslogik (DMN / regler)', enabledByDefault: true },
     { id: 'outputs', label: 'Output & effekter', enabledByDefault: true },
     { id: 'business-rules-policy', label: 'Affärsregler & policystöd', enabledByDefault: true },
-    { id: 'business-scenarios', label: 'Affärs-scenarion & testbarhet', enabledByDefault: true },
-    { id: 'test-linking', label: 'Koppling till automatiska tester', enabledByDefault: true },
     { id: 'implementation-notes', label: 'Implementation notes (för dev)', enabledByDefault: true },
     { id: 'related-items', label: 'Relaterade regler / subprocesser', enabledByDefault: true },
   ],
@@ -487,28 +476,12 @@ export function buildFeatureGoalDocModelFromContext(
     'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
     'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
   ];
-
-  const scenarioRows = [
-    {
-      id: 'S1',
-      name: 'Normalflöde – komplett ansökan',
-      type: 'Happy',
-      outcome: 'Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.',
-    },
-    {
-      id: 'S2',
-      name: 'Ofullständig information',
       type: 'Edge',
       outcome: 'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
     },
     {
       id: 'S3',
       name: 'Hög riskprofil',
-      type: 'Edge',
-      outcome: 'Ärendet flaggas för extra granskning eller avslag enligt policy.',
-    },
-  ];
-
   return {
     summary:
       `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet. ` +
@@ -525,8 +498,6 @@ export function buildFeatureGoalDocModelFromContext(
     epics: epicRows,
     flowSteps,
     dependencies: dependencyBullets,
-    scenarios: scenarioRows,
-    testDescription: '',
     implementationNotes: [],
     relatedItems: [],
   };
@@ -593,30 +564,6 @@ function buildFeatureGoalDocHtmlFromModel(
           'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
         ];
 
-  const scenarioRows =
-    model.scenarios.length > 0
-      ? model.scenarios
-      : [
-          {
-            id: 'S1',
-            name: 'Normalflöde – komplett ansökan',
-            type: 'Happy',
-            outcome: 'Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.',
-          },
-          {
-            id: 'S2',
-            name: 'Ofullständig information',
-            type: 'Edge',
-            outcome:
-              'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
-          },
-          {
-            id: 'S3',
-            name: 'Hög riskprofil',
-            type: 'Edge',
-            outcome: 'Ärendet flaggas för extra granskning eller avslag enligt policy.',
-          },
-        ];
 
   const summaryText =
     model.summary ||
@@ -671,10 +618,6 @@ function buildFeatureGoalDocHtmlFromModel(
             ? `Föregående noder: ${buildNodeNameList(inputNodes)}`
             : 'Föregående noder: initierande steg i processen.',
         ];
-
-  const testDescription =
-    model.testDescription ||
-    'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
 
   const dorBullets = [
     'Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.',
@@ -772,42 +715,6 @@ function buildFeatureGoalDocHtmlFromModel(
       </ol>
     </section>
 
-    <section class="doc-section">
-      <h2>Affärs-scenarion</h2>
-      <table>
-        <tr>
-          <th>Scenario</th>
-          <th>Beskrivning</th>
-          <th>Typ (Happy/Edge/Error)</th>
-          <th>Förväntat resultat</th>
-        </tr>
-        ${scenarioRows
-          .map(
-            (row) => `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.name}</td>
-          <td>${row.type}</td>
-          <td>${row.outcome}</td>
-        </tr>`,
-          )
-          .join('')}
-      </table>
-    </section>
-
-    <section class="doc-section">
-      <h2>Koppling till automatiska tester</h2>
-      <p>
-        ${testDescription}
-        ${
-          links.testLink
-            ? `<br />Testfil: <code>${links.testLink}</code>`
-            : '<br /><span class="muted">Testfil länkas via node_test_links</span>'
-        }
-        <br />
-        Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.
-      </p>
-    </section>
 
     <section class="doc-section">
       <h2>Implementation Notes (för dev)</h2>
@@ -901,30 +808,6 @@ function buildFeatureGoalDocHtmlFromModelV2(
           'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
         ];
 
-  const scenarioRows =
-    model.scenarios.length > 0
-      ? model.scenarios
-      : [
-          {
-            id: 'S1',
-            name: 'Normalflöde – komplett ansökan',
-            type: 'Happy',
-            outcome: 'Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.',
-          },
-          {
-            id: 'S2',
-            name: 'Ofullständig information',
-            type: 'Edge',
-            outcome:
-              'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
-          },
-          {
-            id: 'S3',
-            name: 'Hög riskprofil',
-            type: 'Edge',
-            outcome: 'Ärendet flaggas för extra granskning eller avslag enligt policy.',
-          },
-        ];
 
   const summaryText =
     model.summary ||
@@ -976,10 +859,6 @@ function buildFeatureGoalDocHtmlFromModelV2(
             ? `Relaterade regler/DMN: <a href="${links.dmnLink}">${links.dmnLink.split('/').pop()}</a>`
             : 'Relaterade regler/DMN dokumenteras per Business Rule.',
         ];
-
-  const testDescription =
-    model.testDescription ||
-    'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
 
   const dorBullets = [
     'Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.',
@@ -1625,33 +1504,6 @@ function buildFeatureGoalLlmDocBody(
 
   const dependenciesSource = sections.dependencies.length > 0 ? 'llm' : 'fallback';
 
-  const scenarioRows =
-    sections.scenarios.length > 0
-      ? sections.scenarios
-      : [
-          {
-            id: 'S1',
-            name: 'Normalflöde – komplett ansökan',
-            type: 'Happy',
-            outcome: 'Kunden får ett tydligt besked och flödet fortsätter utan manuell friktion.',
-          },
-          {
-            id: 'S2',
-            name: 'Ofullständig information',
-            type: 'Edge',
-            outcome:
-              'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
-          },
-          {
-            id: 'S3',
-            name: 'Hög riskprofil',
-            type: 'Edge',
-            outcome: 'Ärendet flaggas för extra granskning eller avslag enligt policy.',
-          },
-        ];
-
-  const scenariosSource = sections.scenarios.length > 0 ? 'llm' : 'fallback';
-
   const summaryText =
     sections.summary ||
     `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
@@ -1716,12 +1568,6 @@ function buildFeatureGoalLlmDocBody(
 
   const relatedItemsSource =
     sections.relatedItems.length > 0 ? 'llm' : 'fallback';
-
-  const testDescription =
-    sections.testDescription ||
-    'Scenarion ovan mappas mot automatiska tester. Testblock och scenarionamngivning bör återspegla affärs-scenariernas ID och namn.';
-
-  const testDescriptionSource = sections.testDescription ? 'llm' : 'fallback';
 
   const dorBullets = [
     'Syfte, målgrupper och affärsvärde för Feature Goalet är dokumenterat och förankrat.',
@@ -1819,45 +1665,6 @@ function buildFeatureGoalLlmDocBody(
       </ol>
     </section>
 
-    <section class="doc-section" data-source-scenarios="${scenariosSource}">
-      <h2>Affärs-scenarion</h2>
-      ${
-        scenarioRows.length
-          ? `
-      <table>
-        <tr>
-          <th>Scenario</th>
-          <th>Beskrivning</th>
-          <th>Typ (Happy/Edge/Error)</th>
-          <th>Förväntat resultat</th>
-        </tr>
-        ${scenarioRows
-          .map(
-            (row) => `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.name}</td>
-          <td>${row.type}</td>
-          <td>${row.outcome}</td>
-        </tr>`,
-          )
-          .join('')}
-      </table>`
-          : '<p class="muted">Inga affärs-scenarion identifierade ännu.</p>'
-      }
-    </section>
-
-    <section class="doc-section" data-source-test-description="${testDescriptionSource}">
-      <h2>Koppling till automatiska tester</h2>
-      <p>
-        ${testDescription}
-        ${
-          links.testLink
-            ? `<br />Testfil: <code>${links.testLink}</code>`
-            : '<br /><span class="muted">Testfil länkas via node_test_links</span>'
-        }
-      </p>
-    </section>
 
     <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
       <h2>Implementation Notes (för dev)</h2>
@@ -2026,84 +1833,109 @@ function buildEpicDocModelFromContext(
 
   const inputs = [
     isUserTask
-      ? `Input: användarens/handläggarens uppgifter och val från ${upstreamName}.`
-      : `Input: data och status från föregående systemsteg (${upstreamName}).`,
+      ? `Fält: Användarens/handläggarens uppgifter; Datakälla: ${upstreamName}; Typ: JSON; Obligatoriskt: Ja; Validering: Valideras mot affärsregler; Felhantering: Visa felmeddelande och låt användaren korrigera`
+      : `Fält: Data och status; Datakälla: ${upstreamName}; Typ: JSON; Obligatoriskt: Ja; Validering: Valideras mot schema; Felhantering: Logga fel och avbryt vid kritiska fel`,
+  ];
+
+  const outputs: string[] = [
+    `Outputtyp: Status; Typ: String; Konsument: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}; Beskrivning: Status och flaggor som vidarebefordras till nästa steg`,
+    `Outputtyp: Berikad data; Typ: JSON; Konsument: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}; Beskrivning: Data som har berikats eller validerats under epikens exekvering`,
   ];
 
   const flowSteps = (isUserTask ? highLevelStepsUser : highLevelStepsService).slice();
 
   const interactions = isUserTask ? interactionBulletsUser : interactionBulletsService;
 
-  const dataContracts: string[] = [
-    `Input: ${previousNode ? formatNodeName(previousNode) : 'Ansökningsdata'} – underlag som triggar epiken.`,
-    `Output: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'} – status, flaggor och berikad data.`,
-  ];
-
-  const businessRulesPolicy = businessRuleRefs;
-  const defaultPersona: ScenarioPersona = isServiceTask ? 'system' : isUserTask ? 'customer' : 'unknown';
-  const defaultRiskLevel: ScenarioRiskLevel = 'P1';
-  const defaultAssertionType: ScenarioAssertionType = 'functional';
-  const defaultScenarioMetadata: Pick<EpicScenario, 'persona' | 'riskLevel' | 'assertionType'> = {
-    persona: defaultPersona,
-    riskLevel: defaultRiskLevel,
-    assertionType: defaultAssertionType,
-  };
-
-  const scenarios: EpicScenario[] = [
-    {
-      ...defaultScenarioMetadata,
-      id: 'EPIC-S1',
-      name: 'Happy path',
-      type: 'Happy',
-      description: testRows[0].description,
-      outcome: isUserTask
-        ? 'Epiken slutförs utan avvikelser och processen går vidare till nästa steg.'
-        : 'Tjänsten exekverar utan fel och uppdaterar processen enligt förväntan.',
-    },
-    {
-      ...defaultScenarioMetadata,
-      id: 'EPIC-S2',
-      name: 'Valideringsfel',
-      type: 'Edge',
-      description: testRows[1].description,
-      outcome: 'Fel visas/loggas och användaren eller tjänsten kan hantera och rätta indata innan processen går vidare.',
-    },
-    {
-      ...defaultScenarioMetadata,
-      id: 'EPIC-S3',
-      name: 'Tekniskt fel / beroende nere',
-      type: 'Error',
-      description: testRows[2].description,
-      outcome: 'Ärendet hanteras enligt felstrategi utan att data tappas, och fel loggas för uppföljning.',
-    },
-  ];
-
-  const testDescription =
-    'Scenarierna ovan bör mappas till automatiska tester där scenarionas namn används i testbeskrivningar.';
+  const userStories: EpicUserStory[] = isUserTask
+    ? [
+        {
+          id: 'US-1',
+          role: 'Kund',
+          goal: 'Fylla i ansökningsinformation',
+          value: 'Kunna ansöka om lån på ett enkelt sätt',
+          acceptanceCriteria: [
+            'Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas',
+            'Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga',
+            'Systemet ska spara utkast automatiskt så att kunden inte förlorar information',
+            'Systemet ska bekräfta när informationen är sparad',
+          ],
+        },
+        {
+          id: 'US-2',
+          role: 'Handläggare',
+          goal: 'Se och granska kundens ansökningsinformation',
+          value: 'Kunna bedöma ansökan korrekt och effektivt',
+          acceptanceCriteria: [
+            'Systemet ska visa all relevant ansökningsinformation på ett överskådligt sätt',
+            'Systemet ska markera vilka fält som är obligatoriska och vilka som är valfria',
+            'Systemet ska visa status för ansökan och vilka steg som är klara',
+          ],
+        },
+        {
+          id: 'US-3',
+          role: 'Kund',
+          goal: 'Få tydlig feedback om vad som händer med ansökan',
+          value: 'Förstå processen och veta vad som förväntas',
+          acceptanceCriteria: [
+            'Systemet ska visa tydlig status för ansökan',
+            'Systemet ska ge information om nästa steg i processen',
+            'Systemet ska hantera fel på ett begripligt sätt',
+          ],
+        },
+      ]
+    : [
+        {
+          id: 'US-1',
+          role: 'Handläggare',
+          goal: 'Få systemet att automatiskt hantera processsteg',
+          value: 'Spara tid genom automatisering',
+          acceptanceCriteria: [
+            'Systemet ska automatiskt exekvera tjänsten när föregående steg är klart',
+            'Systemet ska hantera fel och timeouts på ett kontrollerat sätt',
+            'Systemet ska logga alla viktiga steg för spårbarhet',
+          ],
+        },
+        {
+          id: 'US-2',
+          role: 'System',
+          goal: 'Hämta och validera data från externa källor',
+          value: 'Säkerställa datakvalitet och kompletthet',
+          acceptanceCriteria: [
+            'Systemet ska validera att all nödvändig data finns innan exekvering',
+            'Systemet ska hantera fel från externa källor på ett robust sätt',
+            'Systemet ska logga alla datahämtningar för spårbarhet',
+          ],
+        },
+        {
+          id: 'US-3',
+          role: 'Handläggare',
+          goal: 'Få tydlig information om vad systemet har gjort',
+          value: 'Kunna följa upp och felsöka vid behov',
+          acceptanceCriteria: [
+            'Systemet ska logga alla viktiga steg och beslut',
+            'Systemet ska ge tydlig status om exekveringen',
+            'Systemet ska eskalera fel på ett begripligt sätt',
+          ],
+        },
+      ];
 
   const implementationNotes = [
     `Primära API:er/tjänster: t.ex. POST /api/${apiSlug} för exekvering.`,
     'Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll.',
     'Eventuella externa beroenden (kreditupplysning, folkbokföring, engagemangsdata) hanteras via plattformens integrationslager.',
     'Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.',
-  ];
-
-  const relatedItems = [
-    relatedList.length ? `Närliggande noder: ${relatedList.join(', ')}` : 'Inga närliggande noder identifierade.',
+    ...businessRuleRefs.map(ref => `Affärsregler: ${ref}`),
   ];
 
   return {
     summary,
     prerequisites,
     inputs,
+    outputs,
     flowSteps,
     interactions,
-    dataContracts,
-    businessRulesPolicy,
-    scenarios,
-    testDescription,
+    userStories,
     implementationNotes,
-    relatedItems,
   };
 }
 
@@ -2275,7 +2107,7 @@ function buildEpicDocHtmlFromModel(
       ];
   const flowStepsSource = model.flowSteps.length ? 'llm' : 'fallback';
 
-  const interactions = model.interactions.length
+  const interactions = model.interactions && model.interactions.length
     ? model.interactions
     : isUserTask
     ? [
@@ -2288,47 +2120,42 @@ function buildEpicDocHtmlFromModel(
         'Tjänsten ska hantera timeouts och felkoder från beroenden på ett kontrollerat sätt (retry/circuit breaker på plattformsnivå).',
         'Respons ska vara deterministisk och innehålla tydliga statusfält som går att logga och följa upp.',
       ];
-  const interactionsSource = model.interactions.length ? 'llm' : 'fallback';
+  const interactionsSource = model.interactions && model.interactions.length ? 'llm' : 'fallback';
 
-  const dataContracts = model.dataContracts.length
-    ? model.dataContracts
+  const outputs = model.outputs.length
+    ? model.outputs
     : [
-        `Input: ${previousNode ? formatNodeName(previousNode) : 'Ansökningsdata'} – underlag som triggar epiken.`,
-        `Output: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'} – status, flaggor och berikad data.`,
+        `Outputtyp: Status; Typ: String; Konsument: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}; Beskrivning: Status och flaggor som vidarebefordras till nästa steg.`,
+        `Outputtyp: Berikad data; Typ: JSON; Konsument: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}; Beskrivning: Data som har berikats eller validerats under epikens exekvering.`,
       ];
-  const dataContractsSource = model.dataContracts.length ? 'llm' : 'fallback';
+  const outputsSource = model.outputs.length ? 'llm' : 'fallback';
 
-  const businessRulesPolicy = model.businessRulesPolicy.length
-    ? model.businessRulesPolicy
+  const userStories = model.userStories.length > 0
+    ? model.userStories
     : [
-        'Regeln använder eller påverkas av relevanta Business Rule / DMN-beslut (se separat dokumentation).',
-        'Policykrav för risk, skuldsättning och produktvillkor ska vara spårbara via kopplade regler.',
-        'Eventuella AML/KYC-krav hanteras i samverkan med dedikerade kontrollnoder.',
+        {
+          id: 'US-1',
+          role: isUserTask ? 'Kund' : 'Handläggare',
+          goal: isUserTask
+            ? 'Fylla i ansökningsinformation'
+            : 'Få systemet att automatiskt hantera processsteg',
+          value: isUserTask
+            ? 'Kunna ansöka om lån på ett enkelt sätt'
+            : 'Spara tid genom automatisering',
+          acceptanceCriteria: isUserTask
+            ? [
+                'Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas',
+                'Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga',
+                'Systemet ska spara utkast automatiskt så att användaren inte förlorar information',
+              ]
+            : [
+                'Systemet ska automatiskt exekvera tjänsten när föregående steg är klart',
+                'Systemet ska hantera fel och timeouts på ett kontrollerat sätt',
+                'Systemet ska logga alla viktiga steg för spårbarhet',
+              ],
+        },
       ];
-  const businessRulesPolicySource =
-    model.businessRulesPolicy.length ? 'llm' : 'fallback';
-
-  const scenarios =
-    model.scenarios.length > 0
-      ? model.scenarios
-      : [
-          {
-            id: 'EPIC-S1',
-            name: 'Happy path',
-            type: 'Happy',
-            description: isUserTask
-              ? 'Kunden/handläggaren fyller i korrekta uppgifter och flödet går vidare utan avvikelser.'
-              : 'Tjänsten får kompletta data, alla beroenden svarar OK och flödet går vidare.',
-            outcome:
-              'Epiken slutförs utan avvikelser och processen går vidare till nästa steg.',
-          },
-        ];
-  const scenariosSource = model.scenarios.length > 0 ? 'llm' : 'fallback';
-
-  const testDescription =
-    model.testDescription ||
-    'Scenarierna ovan bör mappas till automatiska tester där scenarionas namn används i testbeskrivningar.';
-  const testDescriptionSource = model.testDescription ? 'llm' : 'fallback';
+  const userStoriesSource = model.userStories.length > 0 ? 'llm' : 'fallback';
 
   const implementationNotes =
     model.implementationNotes.length > 0
@@ -2342,22 +2169,6 @@ function buildEpicDocHtmlFromModel(
   const implementationNotesSource =
     model.implementationNotes.length > 0 ? 'llm' : 'fallback';
 
-  const relatedList = relatedNodes.length
-    ? relatedNodes.map((n) => `${formatNodeName(n)} (${n.type})`)
-    : ['Inga närliggande noder identifierade.'];
-
-  const relatedItems =
-    model.relatedItems.length > 0
-      ? model.relatedItems
-      : [
-          relatedList.length
-            ? `Närliggande noder: ${relatedList.join(', ')}`
-            : 'Inga närliggande noder identifierade.',
-          links.bpmnViewerLink
-            ? `Visa processen: <a href="${links.bpmnViewerLink}">BPMN viewer</a>`
-            : `BPMN-fil: ${node.bpmnFile}`,
-        ];
-  const relatedItemsSource = model.relatedItems.length > 0 ? 'llm' : 'fallback';
 
   const dorBullets = [
     'Syfte, effektmål och förväntat affärsvärde för epiken är beskrivet och förankrat.',
@@ -2407,56 +2218,39 @@ function buildEpicDocHtmlFromModel(
       </ol>
     </section>
 
-    <section class="doc-section" data-source-outputs="${dataContractsSource}">
-      <h2>Output</h2>
-      ${renderList(dataContracts)}
+    <section class="doc-section" data-source-outputs="${outputsSource}">
+      <h2>Outputs</h2>
+      ${renderList(outputs)}
     </section>
 
-    <section class="doc-section" data-source-business-rules="${businessRulesPolicySource}">
-      <h2>Affärsregler som triggas</h2>
-      ${renderList(businessRulesPolicy)}
+    ${interactions && interactions.length > 0 ? `
+    <section class="doc-section" data-source-interactions="${interactionsSource}">
+      <h2>Interaktioner</h2>
+      ${renderList(interactions)}
     </section>
+    ` : ''}
 
-    <section class="doc-section" data-source-scenarios="${scenariosSource}">
-      <h2>Affärs-scenarion (tabell)</h2>
-      <p class="muted">Scenarierna nedan är affärsnära och ska mappas till automatiska tester.</p>
-      <table>
-        <tr>
-          <th>Scenario-ID</th>
-          <th>Scenario</th>
-          <th>Typ</th>
-          <th>Förväntat utfall</th>
-          <th>Automatiskt test</th>
-        </tr>
-        ${scenarios
-          .map(
-            (row) => `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.name}</td>
-          <td>${row.type}</td>
-          <td>${row.outcome}</td>
-          <td>${
+    <section class="doc-section" data-source-user-stories="${userStoriesSource}">
+      <h2>User Stories</h2>
+      <p class="muted">User stories med acceptanskriterier som ska mappas till automatiska tester.</p>
+      ${userStories.map((story) => `
+        <div class="user-story" style="margin-bottom: 2rem; padding: 1rem; border-left: 3px solid #3b82f6; background: #f8fafc;">
+          <h3 style="margin-top: 0; margin-bottom: 0.5rem;">
+            <strong>${story.id}:</strong> Som <strong>${story.role}</strong> vill jag <strong>${story.goal}</strong> så att <strong>${story.value}</strong>
+          </h3>
+          <div style="margin-top: 1rem;">
+            <p style="margin-bottom: 0.5rem; font-weight: 600;">Acceptanskriterier:</p>
+            <ul style="margin-top: 0;">
+              ${story.acceptanceCriteria.map((ac) => `<li>${ac}</li>`).join('')}
+            </ul>
+          </div>
+          ${
             links.testLink
-              ? `<code>${links.testLink}</code>`
-              : '<span class="muted">Test mappas i node_test_links</span>'
-          }</td>
-        </tr>`,
-          )
-          .join('')}
-      </table>
-    </section>
-
-    <section class="doc-section" data-source-test-description="${testDescriptionSource}">
-      <h2>Koppling till automatiska tester</h2>
-      <p>
-        ${testDescription}
-        ${
-          links.testLink
-            ? `<br />Testfil: <code>${links.testLink}</code>`
-            : '<br /><span class="muted">Testfil länkas via node_test_links</span>'
-        }
-      </p>
+              ? `<p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil: <code>${links.testLink}</code></p>`
+              : '<p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil länkas via node_test_links</p>'
+          }
+        </div>
+      `).join('')}
     </section>
 
     <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
@@ -2473,11 +2267,6 @@ function buildEpicDocHtmlFromModel(
         'Påverkade komponenter i backend, frontend och integrationslager som behöver samspela.',
         'Tekniska risker och känsliga beroenden som kräver särskild övervakning eller fallback-hantering.',
       ])}
-    </section>
-
-    <section class="doc-section" data-source-related-items="${relatedItemsSource}">
-      <h2>Relaterade steg &amp; artefakter</h2>
-      ${renderList(relatedItems)}
     </section>
 
     <section class="doc-section">
@@ -2560,8 +2349,6 @@ function buildBusinessRuleDocModelFromContext(
     },
   ];
 
-  const testDescription =
-    'Affärs-scenarierna ovan ska mappas mot automatiska tester där respektive scenario-ID och namn återanvänds i testfil och testbeskrivning.';
 
   const dmnLabel = links.dmnLink ? links.dmnLink.split('/').pop() : 'Beslutstabell';
   const implementationNotes = [
@@ -2594,8 +2381,6 @@ function buildBusinessRuleDocModelFromContext(
     decisionLogic,
     outputs,
     businessRulesPolicy,
-    scenarios,
-    testDescription,
     implementationNotes,
     relatedItems,
   };
@@ -2924,27 +2709,6 @@ const renderBusinessRuleDocLegacy = async (
     'Minimerar manuell hantering genom tydliga auto-approve/auto-decline-kriterier.',
   ];
 
-  const scenariosRows = [
-    {
-      id: 'SCN-1',
-      name: 'Normalfall – stabil kund',
-      input: 'Hög kreditvärdighet, skuldkvot inom riktvärde, god säkerhet.',
-      outcome: 'Beslut = APPROVE, inga extra flaggor.',
-    },
-    {
-      id: 'SCN-2',
-      name: 'Hög skuldsättning',
-      input: 'Skuldkvot över tröskel och/eller hög belåningsgrad.',
-      outcome: 'Beslut = REFER eller DECLINE, flagga för hög skuldsättning.',
-    },
-    {
-      id: 'SCN-3',
-      name: 'Sanktions- eller fraudträff',
-      input: 'Träff på sanktions-/fraudlista eller allvarlig betalningshistorik.',
-      outcome: 'Beslut = DECLINE, markering för specialhantering.',
-    },
-  ];
-
   const body = `
     <section class="doc-section">
       <span class="doc-badge">Business Rule</span>
@@ -3035,35 +2799,6 @@ const renderBusinessRuleDocLegacy = async (
       ${renderList(policySupportBullets)}
     </section>
 
-    <section class="doc-section">
-      <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
-      <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
-      <table>
-        <tr>
-          <th>Scenario-ID</th>
-          <th>Scenario</th>
-          <th>Input (kortfattat)</th>
-          <th>Förväntat beslut/flagga</th>
-          <th>Automatiskt test</th>
-        </tr>
-        ${scenariosRows
-          .map(
-            (row) => `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.name}</td>
-          <td>${row.input}</td>
-          <td>${row.outcome}</td>
-          <td>${
-            links.testLink
-              ? `<code>${links.testLink}</code>`
-              : '<span class="muted">Test mappas i node_test_links</span>'
-          }</td>
-        </tr>`,
-          )
-          .join('')}
-      </table>
-    </section>
 
     <section class="doc-section">
       <h2>Implementation &amp; integrationsnoter</h2>
@@ -3269,22 +3004,6 @@ function buildBusinessRuleDocHtmlFromModel(
         'Tar hänsyn till regulatoriska krav (t.ex. konsumentkreditlag, AML/KYC) på en övergripande nivå.',
       ];
 
-  const scenariosRows =
-    model.scenarios.length > 0
-      ? model.scenarios
-      : [
-          {
-            id: 'BR1',
-            name: 'Standardkund med låg risk',
-            input: 'Stabil inkomst, låg skuldsättning, normal kreditdata.',
-            outcome: 'Beslut: APPROVE utan manuell granskning.',
-          },
-        ];
-  const scenariosSource = model.scenarios.length > 0 ? 'llm' : 'fallback';
-
-  const testDescription =
-    model.testDescription ||
-    'Affärs-scenarierna ovan ska mappas mot automatiska tester där respektive scenario-ID och namn återanvänds i testfil och testbeskrivning.';
 
   const implementationNotes =
     model.implementationNotes.length > 0
@@ -3557,36 +3276,6 @@ function buildBusinessRuleDocHtmlFromModel(
     }">
       <h2>Affärsregler &amp; policystöd</h2>
       ${renderList(policySupportBullets)}
-    </section>
-
-    <section class="doc-section" data-source-scenarios="${scenariosSource}">
-      <h2>Nyckelscenarier / testkriterier (affärsnivå)</h2>
-      <p class="muted">Nedan scenarier är affärsnära exempel och ska mappas mot automatiska tester.</p>
-      <table>
-        <tr>
-          <th>Scenario-ID</th>
-          <th>Scenario</th>
-          <th>Input (kortfattat)</th>
-          <th>Förväntat beslut/flagga</th>
-          <th>Automatiskt test</th>
-        </tr>
-        ${scenariosRows
-          .map(
-            (row) => `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.name}</td>
-          <td>${row.input}</td>
-          <td>${row.outcome}</td>
-          <td>${
-            links.testLink
-              ? `<code>${links.testLink}</code>`
-              : '<span class="muted">Test mappas i node_test_links</span>'
-          }</td>
-        </tr>`,
-          )
-          .join('')}
-      </table>
     </section>
 
     <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">

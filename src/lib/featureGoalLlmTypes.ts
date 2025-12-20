@@ -27,30 +27,6 @@ export interface FeatureGoalDocModel {
   flowSteps: string[];
   // Viktiga beroenden, t.ex. "Beroende: ...; Id: ...; Beskrivning: ...".
   dependencies: string[];
-  // Centrala affärsscenarier som Feature Goalet måste hantera.
-  scenarios: {
-    // Scenario-ID eller kort etikett.
-    id: string;
-    // Kort namn/beskrivning av scenariot.
-    name: string;
-    // Typ av scenario – typiskt Happy / Edge / Error.
-    type: string;
-    // Förväntat affärsutfall/resultat.
-    outcome: string;
-    // Testgenerering-fält (valfria, för manuell redigering och export/import):
-    // Persona som utför scenariot (customer, advisor, system, unknown).
-    persona?: ScenarioPersona;
-    // Risknivå för testprioritering (P0 = kritisk, P1 = hög, P2 = normal).
-    riskLevel?: ScenarioRiskLevel;
-    // Typ av testassertion (functional, regression, compliance, other).
-    assertionType?: ScenarioAssertionType;
-    // UI Flow-steg för scenariot (pageId, action, locatorId, dataProfileId).
-    uiFlow?: ScenarioUiStep[];
-    // Testdata-profil som används för scenariot.
-    dataProfileId?: string;
-  }[];
-  // Kort text som beskriver kopplingen till automatiska tester.
-  testDescription: string;
   // Implementation notes för dev/test (bullets).
   implementationNotes: string[];
   // Relaterade feature goals, epics, regler eller subprocesser (bullets).

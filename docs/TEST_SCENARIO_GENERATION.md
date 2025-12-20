@@ -100,3 +100,4 @@ function canReuseScenarios(oldBpmn: BpmnFile, newBpmn: BpmnFile, nodeId: string)
 **Rekommendation:** Fortsätt att alltid generera nya scenarion från BPMN-filerna. Det ger bäst kvalitet och säkerställer att scenarion alltid reflekterar aktuell struktur.
 
 
+

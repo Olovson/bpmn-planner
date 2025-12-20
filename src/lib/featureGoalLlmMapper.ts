@@ -29,8 +29,6 @@ function createEmptySections(): FeatureGoalLlmSections {
     epics: [],
     flowSteps: [],
     dependencies: [],
-    scenarios: [],
-    testDescription: '',
     implementationNotes: [],
     relatedItems: [],
   };
@@ -99,26 +97,6 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
 
   sections.flowSteps = coerceStringArray(obj.flowSteps);
   sections.dependencies = coerceStringArray(obj.dependencies);
-
-  if (Array.isArray(obj.scenarios)) {
-    for (const item of obj.scenarios) {
-      if (!item || typeof item !== 'object') continue;
-      const scenario = {
-        id: typeof item.id === 'string' ? item.id.trim() : '',
-        name: typeof item.name === 'string' ? item.name.trim() : '',
-        type: typeof item.type === 'string' ? item.type.trim() : '',
-        outcome: typeof item.outcome === 'string' ? item.outcome.trim() : '',
-      };
-      if (scenario.id || scenario.name || scenario.outcome) {
-        sections.scenarios.push(scenario);
-      }
-    }
-  }
-
-  if (typeof obj.testDescription === 'string') {
-    sections.testDescription = obj.testDescription.trim();
-  }
-
   sections.implementationNotes = coerceStringArray(obj.implementationNotes);
   sections.relatedItems = coerceStringArray(obj.relatedItems);
 
@@ -129,8 +107,6 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
     sections.epics.length > 0 ||
     sections.flowSteps.length > 0 ||
     sections.dependencies.length > 0 ||
-    sections.scenarios.length > 0 ||
-    sections.testDescription ||
     sections.implementationNotes.length > 0 ||
     sections.relatedItems.length > 0;
 
@@ -154,13 +130,11 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
 
   const firstScopeIndex = lowerText.search(/ingår( inte)?:/);
   const firstEpicIndex = lowerText.indexOf('epic:');
-  const firstScenarioIndex = lowerText.indexOf('scenario:');
   const firstDependencyIndex = lowerText.indexOf('beroende:');
 
   const sectionStartCandidates = [
     firstScopeIndex,
     firstEpicIndex,
-    firstScenarioIndex,
     firstDependencyIndex,
   ].filter((index) => index >= 0);
   const firstSectionIndex =
@@ -180,7 +154,6 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
       lower.startsWith('ingår:') ||
       lower.startsWith('ingår inte:') ||
       lower.startsWith('epic:') ||
-      lower.startsWith('scenario:') ||
       lower.startsWith('beroende:') ||
       lower.startsWith('relaterad') ||
       lower.startsWith('relaterade')
@@ -253,14 +226,6 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
       continue;
     }
 
-    if (
-      !sections.testDescription &&
-      /scenari/.test(lowerSentence) &&
-      (/\btest\b/.test(lowerSentence) || /playwright/.test(lowerSentence))
-    ) {
-      sections.testDescription = sentence.trim();
-      continue;
-    }
   }
 
   const dependencyRegex =
@@ -283,23 +248,6 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
     }
   }
 
-  const scenarioRegex =
-    /Scenario:\s*([^;]+);\s*Typ:\s*([^;]+);\s*Beskrivning:\s*([^;]+);\s*Förväntat utfall:\s*([^.;]+(?:\.[^A-ZÅÄÖ0-9]|$)?)/gi;
-  let scenarioMatch: RegExpExecArray | null;
-  while ((scenarioMatch = scenarioRegex.exec(body))) {
-    const id = scenarioMatch[1]?.trim();
-    const type = scenarioMatch[2]?.trim();
-    const description = scenarioMatch[3]?.trim();
-    const outcome = scenarioMatch[4]?.trim();
-    if (id || description || outcome) {
-      sections.scenarios.push({
-        id,
-        name: description,
-        type,
-        outcome,
-      });
-    }
-  }
 
   const bulletRegex = /(?:^|\s)[-•]\s+([\s\S]*?)(?=(?:\s[-•]\s)|$)/g;
   let bulletMatch: RegExpExecArray | null;
@@ -331,14 +279,6 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
       continue;
     }
 
-    if (
-      !sections.testDescription &&
-      /scenari/.test(lower) &&
-      (/\btest\b/.test(lower) || /playwright/.test(lower))
-    ) {
-      sections.testDescription = line;
-      continue;
-    }
 
     if (lower.startsWith('relaterad') || lower.startsWith('relaterade')) {
       sections.relatedItems.push(line);

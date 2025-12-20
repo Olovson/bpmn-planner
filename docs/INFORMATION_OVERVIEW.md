@@ -166,3 +166,4 @@ Claude genererar testscenarion som sparas i `node_planned_scenarios`:
 **Slutsats**: Med Claude får du **mer** information (rikare text + sparade scenarion), inte mindre. Allt som finns lokalt finns också med Claude.
 
 
+

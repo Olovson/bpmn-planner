@@ -89,6 +89,8 @@ async function buildClientProcessTree(rootFile: string): Promise<LegacyProcessTr
 
   // Parse all BPMN files (parseBpmnFile now handles loading from Supabase Storage)
   const parseResults = new Map();
+  const parseErrors: Array<{ file: string; error: string }> = [];
+  
   for (const fileName of existingFiles) {
     try {
       const versionHash = versionHashes.get(fileName) || null;
@@ -98,14 +100,23 @@ async function buildClientProcessTree(rootFile: string): Promise<LegacyProcessTr
         console.log(`[useProcessTree] ✓ Parsed ${fileName}${versionHash ? ` (version: ${versionHash.substring(0, 8)}...)` : ''}`);
       }
     } catch (parseError) {
+      const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
       console.error(`[useProcessTree] Error parsing ${fileName}:`, parseError);
-      // Continue with other files
+      parseErrors.push({ file: fileName, error: errorMsg });
+      // Continue with other files - don't fail entire tree build if one file fails
     }
   }
 
   if (parseResults.size === 0) {
-    console.warn('[useProcessTree] No files were successfully parsed');
+    console.warn('[useProcessTree] No files were successfully parsed', {
+      totalFiles: existingFiles.length,
+      errors: parseErrors,
+    });
     return null;
+  }
+  
+  if (parseErrors.length > 0 && import.meta.env.DEV) {
+    console.warn(`[useProcessTree] ${parseErrors.length} of ${existingFiles.length} files failed to parse:`, parseErrors);
   }
 
   if (import.meta.env.DEV) {
@@ -166,7 +177,7 @@ export const useProcessTree = (rootFile: string = 'mortgage.bpmn') => {
       if (fallbackTree) return fallbackTree;
       throw new Error('Ingen BPMN-fil finns i registret.');
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 30, // Cache for 30 seconds (reduced from 5 minutes to allow faster updates)
     retry: 2,
   });
 };

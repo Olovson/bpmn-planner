@@ -97,9 +97,23 @@ export async function generateDocumentationWithLlm(
 
   // Håller senaste validerade JSON-modellen (om vi lyckas parsa + validera)
   let lastValidDoc: unknown | null = null;
+  
+  // Identifier för debugging
+  const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
 
   // Valideringsfunktion för response
   const validateResponse = (response: string): { valid: boolean; errors: string[] } => {
+    // Logga rå LLM-respons INNAN sanitizering för debugging
+    saveLlmDebugArtifact('doc-raw', identifier, response).catch(err => {
+      console.warn('[LLM Debug] Failed to save raw response:', err);
+    });
+    
+    // Logga till konsol också (trunkera om för lång)
+    const preview = response.length > 2000 
+      ? response.slice(0, 1000) + '\n\n...[trunkated ' + (response.length - 2000) + ' chars]...\n\n' + response.slice(-1000)
+      : response;
+    console.log(`[LLM Raw Response] ${docType} for ${identifier}:`, preview);
+    
     try {
       let jsonText = response.trim();
 
@@ -123,12 +137,49 @@ export async function generateDocumentationWithLlm(
         jsonText = jsonText.slice(start);
       }
 
-      // Steg 3: Hitta sista matchande avslutning
+      // Steg 3: Hitta sista matchande avslutning med balanserad parsing
+      let braceCount = 0;
+      let bracketCount = 0;
       let end = -1;
-      if (firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)) {
-        end = jsonText.lastIndexOf('}');
-      } else if (firstBracket >= 0) {
-        end = jsonText.lastIndexOf(']');
+      let inStringStep3 = false;
+      let escapeNextStep3 = false;
+      
+      for (let i = 0; i < jsonText.length; i++) {
+        const char = jsonText[i];
+        
+        if (escapeNextStep3) {
+          escapeNextStep3 = false;
+          continue;
+        }
+        
+        if (char === '\\') {
+          escapeNextStep3 = true;
+          continue;
+        }
+        
+        if (char === '"' && !escapeNextStep3) {
+          inStringStep3 = !inStringStep3;
+          continue;
+        }
+        
+        if (inStringStep3) continue;
+        
+        if (char === '{') braceCount++;
+        if (char === '}') {
+          braceCount--;
+          if (braceCount === 0 && firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)) {
+            end = i;
+            break;
+          }
+        }
+        if (char === '[') bracketCount++;
+        if (char === ']') {
+          bracketCount--;
+          if (bracketCount === 0 && firstBracket >= 0 && (firstBrace < 0 || firstBracket < firstBrace)) {
+            end = i;
+            break;
+          }
+        }
       }
 
       if (end >= 0 && end + 1 < jsonText.length) {
@@ -136,9 +187,222 @@ export async function generateDocumentationWithLlm(
       }
 
       jsonText = jsonText.trim();
-      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1'); // Fix trailing commas
+      
+      // Steg 4: Fixa vanliga JSON-syntaxfel
+      // Fix trailing commas
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+      
+      // Steg 4.1: Fixa oavslutade strängar först (innan vi fixar property names)
+      // Hitta strängar som inte är avslutade korrekt och avsluta dem
+      let stringFixed = '';
+      let inStringStep4_1 = false;
+      let escapeNextStep4_1 = false;
+      let stringStartPos = -1;
+      let k = 0;
+      
+      while (k < jsonText.length) {
+        const char = jsonText[k];
+        
+        if (escapeNextStep4_1) {
+          stringFixed += char;
+          escapeNextStep4_1 = false;
+          k++;
+          continue;
+        }
+        
+        if (char === '\\') {
+          stringFixed += char;
+          escapeNextStep4_1 = true;
+          k++;
+          continue;
+        }
+        
+        if (char === '"') {
+          if (inStringStep4_1) {
+            // Avsluta sträng
+            inStringStep4_1 = false;
+            stringStartPos = -1;
+          } else {
+            // Starta sträng
+            inStringStep4_1 = true;
+            stringStartPos = k;
+          }
+          stringFixed += char;
+          k++;
+          continue;
+        }
+        
+        if (inStringStep4_1) {
+          // Vi är i en sträng - kontrollera om den är oavslutad vid slutet
+          if (k === jsonText.length - 1) {
+            // Vi är vid slutet och strängen är fortfarande öppen - avsluta den
+            stringFixed += char;
+            stringFixed += '"';
+            inStringStep4_1 = false;
+            stringStartPos = -1;
+          } else {
+            stringFixed += char;
+          }
+          k++;
+          continue;
+        }
+        
+        stringFixed += char;
+        k++;
+      }
+      
+      // Om vi fortfarande är i en sträng vid slutet, avsluta den
+      if (inStringStep4_1) {
+        stringFixed += '"';
+      }
+      
+      jsonText = stringFixed;
+      
+      // Steg 4.2: Fix unquoted property names (endast utanför strings)
+      // Använd en mer selektiv approach som inte påverkar strings
+      let fixed = '';
+      let inStringStep4 = false;
+      let escapeNextStep4 = false;
+      let i = 0;
+      
+      while (i < jsonText.length) {
+        const char = jsonText[i];
+        
+        if (escapeNextStep4) {
+          fixed += char;
+          escapeNextStep4 = false;
+          i++;
+          continue;
+        }
+        
+        if (char === '\\') {
+          fixed += char;
+          escapeNextStep4 = true;
+          i++;
+          continue;
+        }
+        
+        if (char === '"') {
+          inStringStep4 = !inStringStep4;
+          fixed += char;
+          i++;
+          continue;
+        }
+        
+        if (inStringStep4) {
+          fixed += char;
+          i++;
+          continue;
+        }
+        
+        // Utanför string: fixa unquoted property names
+        // Matcha: { eller , eller } följt av whitespace, sedan identifier, sedan :
+        // Också matcha start av objekt: { identifier :
+        if ((char === '{' || char === ',' || char === '}') && i + 1 < jsonText.length) {
+          const rest = jsonText.slice(i);
+          // Matcha både med och utan whitespace
+          const propMatch = rest.match(/^([{,}]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/);
+          if (propMatch) {
+            fixed += propMatch[1] + '"' + propMatch[2] + '":';
+            i += propMatch[0].length;
+            continue;
+          }
+        }
+        
+        // Också matcha start av objekt direkt: {identifier: (utan whitespace)
+        if (char === '{' && i + 1 < jsonText.length) {
+          const rest = jsonText.slice(i + 1);
+          const propMatchNoSpace = rest.match(/^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/);
+          if (propMatchNoSpace) {
+            fixed += '{' + '"' + propMatchNoSpace[1] + '":';
+            i += 1 + propMatchNoSpace[0].length;
+            continue;
+          }
+        }
+        
+        fixed += char;
+        i++;
+      }
+      
+      jsonText = fixed;
+      
+      // Fix missing commas between array/object elements
+      // Detta är komplext, så vi gör det selektivt för vanliga fall
+      jsonText = jsonText.replace(/\]\s*\[/g, '],[');
+      jsonText = jsonText.replace(/}\s*{/g, '},{');
+      
+      // Fix missing commas efter closing brackets/braces följt av nytt element
+      // Endast utanför strings - använd balanserad parsing för att undvika att påverka strings
+      let commaFixed = '';
+      let inString2 = false;
+      let escapeNext2 = false;
+      let j = 0;
+      
+      while (j < jsonText.length) {
+        const char = jsonText[j];
+        
+        if (escapeNext2) {
+          commaFixed += char;
+          escapeNext2 = false;
+          j++;
+          continue;
+        }
+        
+        if (char === '\\') {
+          commaFixed += char;
+          escapeNext2 = true;
+          j++;
+          continue;
+        }
+        
+        if (char === '"') {
+          inString2 = !inString2;
+          commaFixed += char;
+          j++;
+          continue;
+        }
+        
+        if (inString2) {
+          commaFixed += char;
+          j++;
+          continue;
+        }
+        
+        // Utanför string: fixa saknade kommatecken
+        // Matcha: } eller ] eller " följt av whitespace och sedan { eller [ eller "
+        if (j + 1 < jsonText.length) {
+          const nextChars = jsonText.slice(j, Math.min(j + 10, jsonText.length));
+          const commaMatch = nextChars.match(/^([}\]"])\s+(["{[])/);
+          if (commaMatch) {
+            commaFixed += commaMatch[1] + ',' + commaMatch[2];
+            j += commaMatch[0].length;
+            continue;
+          }
+        }
+        
+        commaFixed += char;
+        j++;
+      }
+      
+      jsonText = commaFixed;
 
-      const parsed = JSON.parse(jsonText);
+      // Försök parse JSON - om det misslyckas, logga för debugging
+      let parsed;
+      try {
+        parsed = JSON.parse(jsonText);
+      } catch (parseError) {
+        // Logga den råa JSON-strängen för debugging (trunkera om den är för lång)
+        const preview = jsonText.length > 1000 
+          ? jsonText.slice(0, 500) + '...\n...[trunkated]...\n' + jsonText.slice(-500)
+          : jsonText;
+        console.error(`[JSON Parse Error] Failed to parse JSON for ${docType}:`, {
+          error: parseError instanceof Error ? parseError.message : String(parseError),
+          preview,
+          length: jsonText.length,
+          nodeId: context.node.bpmnElementId,
+        });
+        throw parseError;
+      }
       let validationResult;
       if (docType === 'businessRule') {
         validationResult = validateBusinessRuleJson(parsed, resolution.chosen);
@@ -187,9 +451,12 @@ export async function generateDocumentationWithLlm(
     docType === 'epic' ? buildEpicJsonSchema() :
     buildBusinessRuleJsonSchema();
 
-  // OBS: response_format används INTE längre - Claude returnerar JSON i texten
-  // JSON-schemat används fortfarande för att validera svaret, men skickas inte till API:et
-  const responseFormat = undefined; // Alltid undefined - använd robust parsing istället
+  // Använd structured outputs för cloud provider (Claude stödjer det via beta-header)
+  // För local provider (Ollama) används robust parsing istället
+  const responseFormat = resolution.chosen === 'cloud' ? {
+    type: 'json_schema' as const,
+    json_schema: jsonSchemaObj,
+  } : undefined;
 
   try {
     // Använd hybrid/fallback-strategi

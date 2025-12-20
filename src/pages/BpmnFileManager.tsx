@@ -2083,6 +2083,10 @@ export default function BpmnFileManager() {
       ]);
       // Force immediate refetch of files list
       await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
+      
+      // Dispatch event to notify other components that artifacts have been updated
+      window.dispatchEvent(new CustomEvent('bpmn-artifacts-updated'));
+      
       await new Promise(resolve => setTimeout(resolve, 1200));
       
       return generationResult;

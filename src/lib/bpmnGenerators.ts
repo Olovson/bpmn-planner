@@ -47,7 +47,7 @@ import {
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { buildProcessTreeFromGraph } from '@/lib/bpmn/buildProcessTreeFromGraph';
 import { generateExportReadyTest } from './exportReadyTestGenerator';
-import type { EpicScenario } from './epicDocTypes';
+import type { EpicUserStory } from './epicDocTypes';
 
 export type GenerationPhaseKey =
   | 'graph:start'
@@ -132,14 +132,22 @@ function generateNodeTests(node: HierarchicalTestNode, indentLevel: number): str
 // ============= EXPORT-READY TEST GENERATOR =============
 
 /**
- * Generate export-ready test from EpicScenario
+ * Generate export-ready test from EpicUserStory
  * This creates tests ready for export to complete environment
  */
-export function generateExportReadyTestFromScenario(
+export function generateExportReadyTestFromUserStory(
   element: BpmnElement,
-  scenario: EpicScenario
+  userStory: EpicUserStory
 ): string {
-  return generateExportReadyTest(element, scenario, {
+  // Convert user story to a scenario-like format for the export generator
+  const scenarioLike = {
+    id: userStory.id,
+    name: `User Story: ${userStory.goal}`,
+    type: 'Happy', // Default, can be determined from acceptance criteria
+    description: `Som ${userStory.role} vill jag ${userStory.goal} så att ${userStory.value}`,
+    outcome: userStory.acceptanceCriteria.join('; '),
+  };
+  return generateExportReadyTest(element, scenarioLike, {
     includeBpmnMetadata: true,
     includePlaceholders: true,
     exportFormat: 'playwright',
@@ -840,52 +848,53 @@ function mapProviderToScenarioProvider(
   return null;
 }
 
-function buildScenariosFromDocJson(
-  docType: DocumentationDocType,
+/**
+ * Builds test scenarios from Epic user stories.
+ * Converts user stories with acceptance criteria to test scenarios for the database.
+ */
+function buildScenariosFromEpicUserStories(
   docJson: any,
 ): import('@/data/testMapping').TestScenario[] {
   if (!docJson || typeof docJson !== 'object') return [];
-  const rawScenarios = Array.isArray(docJson.scenarios) ? docJson.scenarios : [];
+  const rawUserStories = Array.isArray(docJson.userStories) ? docJson.userStories : [];
   const scenarios: import('@/data/testMapping').TestScenario[] = [];
 
-  for (const raw of rawScenarios) {
-    if (!raw) continue;
-    const id = typeof raw.id === 'string' && raw.id.trim().length
-      ? raw.id
-      : `${docType}-${scenarios.length + 1}`;
+  for (const userStory of rawUserStories) {
+    if (!userStory || typeof userStory !== 'object') continue;
+    
+    const storyId = typeof userStory.id === 'string' && userStory.id.trim().length
+      ? userStory.id.trim()
+      : `US-${scenarios.length + 1}`;
+    
+    const role = typeof userStory.role === 'string' ? userStory.role.trim() : '';
+    const goal = typeof userStory.goal === 'string' ? userStory.goal.trim() : '';
+    const value = typeof userStory.value === 'string' ? userStory.value.trim() : '';
+    const acceptanceCriteria = Array.isArray(userStory.acceptanceCriteria) 
+      ? userStory.acceptanceCriteria 
+      : [];
 
-    const name = typeof raw.name === 'string' && raw.name.trim().length
-      ? raw.name
-      : `Scenario ${scenarios.length + 1}`;
+    // Create one scenario per user story
+    // Description includes the user story format and acceptance criteria
+    const storyDescription = `Som ${role} vill jag ${goal} så att ${value}`;
+    const criteriaText = acceptanceCriteria.length > 0
+      ? `\n\nAcceptanskriterier:\n${acceptanceCriteria.map((ac: string, idx: number) => `${idx + 1}. ${ac}`).join('\n')}`
+      : '';
+    
+    const description = `${storyDescription}${criteriaText}`;
 
-    let description = '';
-    if (docType === 'epic') {
-      const parts: string[] = [];
-      if (typeof raw.description === 'string' && raw.description.trim().length) {
-        parts.push(raw.description.trim());
-      }
-      if (typeof raw.outcome === 'string' && raw.outcome.trim().length) {
-        parts.push(`Utfallet: ${raw.outcome.trim()}`);
-      }
-      description = parts.join(' ');
-    } else {
-      if (typeof raw.outcome === 'string' && raw.outcome.trim().length) {
-        description = raw.outcome.trim();
-      } else if (typeof raw.description === 'string' && raw.description.trim().length) {
-        description = raw.description.trim();
-      } else {
-        description = 'Scenario utan detaljerad beskrivning.';
-      }
+    // Determine category based on acceptance criteria content
+    // Happy path: positive criteria, Edge: validation/edge cases, Error: error handling
+    let category: 'happy-path' | 'edge-case' | 'error-case' = 'happy-path';
+    const criteriaTextLower = criteriaText.toLowerCase();
+    if (criteriaTextLower.includes('fel') || criteriaTextLower.includes('error') || criteriaTextLower.includes('timeout')) {
+      category = 'error-case';
+    } else if (criteriaTextLower.includes('validera') || criteriaTextLower.includes('edge') || criteriaTextLower.includes('gräns')) {
+      category = 'edge-case';
     }
 
-    const type = typeof raw.type === 'string' ? raw.type : '';
-    let category: 'happy-path' | 'edge-case' | 'error-case' = 'happy-path';
-    if (type.toLowerCase() === 'edge') category = 'edge-case';
-    else if (type.toLowerCase() === 'error') category = 'error-case';
-
     scenarios.push({
-      id,
-      name,
+      id: storyId,
+      name: `User Story: ${goal}`,
       description,
       status: 'pending',
       category,
@@ -896,9 +905,31 @@ function buildScenariosFromDocJson(
 }
 
 /**
- * Bygger enklare LLM-scenarion för test-skeletons direkt från docJson.scenarios.
+ * Builds test scenarios from docJson.
+ * For Epics: uses user stories
+ * For Feature Goals and Business Rules: returns empty array (scenarios removed)
+ */
+function buildScenariosFromDocJson(
+  docType: DocumentationDocType,
+  docJson: any,
+): import('@/data/testMapping').TestScenario[] {
+  if (!docJson || typeof docJson !== 'object') return [];
+  
+  // For epics, use user stories
+  if (docType === 'epic') {
+    return buildScenariosFromEpicUserStories(docJson);
+  }
+  
+  // Feature Goals and Business Rules no longer have scenarios
+  return [];
+}
+
+/**
+ * Bygger enklare LLM-scenarion för test-skeletons direkt från docJson.
+ * För Epics: använder userStories
+ * För Feature Goals/Business Rules: returnerar tom array (scenarios borttagna)
  * Används som första steg i pipen:
- *   docJson.scenarios → Playwright-skelett
+ *   docJson.userStories → Playwright-skelett
  * utan att göra ett separat LLM-anrop för testscript.
  */
 function buildTestSkeletonScenariosFromDocJson(
@@ -906,35 +937,47 @@ function buildTestSkeletonScenariosFromDocJson(
   docJson: any,
 ): { name: string; description: string; expectedResult?: string; steps?: string[] }[] {
   if (!docJson || typeof docJson !== 'object') return [];
-  const rawScenarios = Array.isArray(docJson.scenarios) ? docJson.scenarios : [];
-  const scenarios: { name: string; description: string; expectedResult?: string; steps?: string[] }[] = [];
+  
+  // For epics, use user stories
+  if (docType === 'epic') {
+    const rawUserStories = Array.isArray(docJson.userStories) ? docJson.userStories : [];
+    const scenarios: { name: string; description: string; expectedResult?: string; steps?: string[] }[] = [];
 
-  for (const raw of rawScenarios) {
-    if (!raw) continue;
-    const index = scenarios.length;
-    const name =
-      typeof raw.name === 'string' && raw.name.trim().length
-        ? raw.name
-        : `Scenario ${index + 1}`;
+    for (const userStory of rawUserStories) {
+      if (!userStory || typeof userStory !== 'object') continue;
+      
+      const storyId = typeof userStory.id === 'string' && userStory.id.trim().length
+        ? userStory.id.trim()
+        : `US-${scenarios.length + 1}`;
+      
+      const role = typeof userStory.role === 'string' ? userStory.role.trim() : '';
+      const goal = typeof userStory.goal === 'string' ? userStory.goal.trim() : '';
+      const value = typeof userStory.value === 'string' ? userStory.value.trim() : '';
+      const acceptanceCriteria = Array.isArray(userStory.acceptanceCriteria) 
+        ? userStory.acceptanceCriteria 
+        : [];
 
-    let description = '';
-    if (typeof raw.outcome === 'string' && raw.outcome.trim().length) {
-      description = raw.outcome.trim();
-    } else if (typeof raw.description === 'string' && raw.description.trim().length) {
-      description = raw.description.trim();
-    } else {
-      description = 'Scenario utan detaljerad beskrivning.';
+      const name = `User Story ${storyId}: ${goal}`;
+      const storyDescription = `Som ${role} vill jag ${goal} så att ${value}`;
+      const criteriaText = acceptanceCriteria.length > 0
+        ? `\n\nAcceptanskriterier:\n${acceptanceCriteria.map((ac: string) => `- ${ac}`).join('\n')}`
+        : '';
+      
+      const description = `${storyDescription}${criteriaText}`;
+
+      scenarios.push({
+        name,
+        description,
+        expectedResult: description,
+        // steps lämnas tomma så generateTestSkeleton genererar generiska TODO-kommentarer
+      });
     }
 
-    scenarios.push({
-      name,
-      description,
-      expectedResult: description,
-      // steps lämnas tomma så generateTestSkeleton genererar generiska TODO-kommentarer
-    });
+    return scenarios;
   }
-
-  return scenarios;
+  
+  // Feature Goals and Business Rules no longer have scenarios
+  return [];
 }
 
 async function renderDocWithLlmFallback(
@@ -952,7 +995,6 @@ async function renderDocWithLlmFallback(
     flowSteps: string[];
     inputs?: string[];
     outputs?: string[];
-    scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
   }>,
 ): Promise<string> {
   const llmActive = llmAllowed && isLlmEnabled();
