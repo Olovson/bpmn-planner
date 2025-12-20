@@ -4,7 +4,6 @@ export interface BusinessRuleDocModel {
   decisionLogic: string[];
   outputs: string[];
   businessRulesPolicy: string[];
-  implementationNotes: string[];
   relatedItems: string[];
 }
 

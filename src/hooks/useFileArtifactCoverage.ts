@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { parseBpmnFile } from '@/lib/bpmnParser';
 import { supabase } from '@/integrations/supabase/client';
 import { useBpmnFiles } from './useBpmnFiles';
-import { getBpmnFileUrl } from './useDynamicBpmnFiles';
 import { sanitizeElementId } from '@/lib/nodeArtifactPaths';
+import { buildBpmnProcessGraph, getTestableNodes, type BpmnProcessNode } from '@/lib/bpmnProcessGraph';
+import { collectDescendants } from '@/lib/documentationContext';
 
 export type CoverageStatus = 'none' | 'partial' | 'full' | 'noApplicableNodes';
 
@@ -28,9 +28,11 @@ const getCoverageStatus = (covered: number, total: number): CoverageStatus => {
   return 'partial';
 };
 
-const isRelevantNodeType = (type: string) => {
-  // Accept both 'UserTask' and 'bpmn:UserTask' style types
-  return /(?:^|:)(UserTask|ServiceTask|BusinessRuleTask|CallActivity)$/.test(type);
+/**
+ * Checks if a BPMN node type is relevant for coverage calculation
+ */
+const isRelevantNodeType = (node: BpmnProcessNode): boolean => {
+  return ['userTask', 'serviceTask', 'businessRuleTask', 'callActivity'].includes(node.type);
 };
 
 export const getHierarchicalTestFileName = (fileName: string) =>
@@ -59,45 +61,71 @@ export const hasHierarchicalTestsForFile = async (fileName: string): Promise<boo
 };
 
 export const useFileArtifactCoverage = (fileName: string) => {
+  const { data: files = [] } = useBpmnFiles();
+  const bpmnFiles = files.filter(f => f.file_type === 'bpmn').map(f => f.file_name);
 
   return useQuery({
-    queryKey: ['file-artifact-coverage', fileName],
+    queryKey: ['file-artifact-coverage', fileName, bpmnFiles.join(',')],
     queryFn: async (): Promise<FileArtifactCoverage> => {
-      // Parse BPMN file to get all nodes (from Supabase Storage or fallback)
-      const fileUrl = await getBpmnFileUrl(fileName);
-      const parseResult = await parseBpmnFile(fileUrl);
+      // Build process graph to get all nodes recursively (including subprocesses)
+      const graph = await buildBpmnProcessGraph(fileName, bpmnFiles);
       
-      // Filter relevant node types for coverage calculation
-      const relevantNodes = parseResult.elements.filter(
-        el => isRelevantNodeType(el.type)
-      );
-
-      const total_nodes = relevantNodes.length;
+      // Collect all descendant nodes recursively (including subprocesses and leaf nodes)
+      const allDescendants = collectDescendants(graph.root);
+      
+      // Filter to only relevant node types (userTask, serviceTask, businessRuleTask, callActivity)
+      const relevantNodes = allDescendants.filter(isRelevantNodeType);
+      
+      // Also include the root node if it's a relevant type (though it's usually 'process')
+      const rootIsRelevant = isRelevantNodeType(graph.root);
+      const total_nodes = relevantNodes.length + (rootIsRelevant ? 1 : 0);
 
       if (import.meta.env.DEV) {
         console.log(`[Coverage Debug] ${fileName}:`, {
           total_nodes,
-          relevant_node_ids: relevantNodes.map(n => n.id),
+          relevant_node_ids: relevantNodes.map(n => `${n.bpmnFile}:${n.bpmnElementId}`),
+          graph_total_nodes: graph.allNodes.size,
         });
       }
 
-      // Get DoR/DoD coverage from database
+      // Get DoR/DoD coverage from database for all nodes in the process (including subprocesses)
+      // We need to check all files that are part of this process graph
+      const allFilesInGraph = Array.from(new Set(relevantNodes.map(n => n.bpmnFile)));
       const { data: dorDodData } = await supabase
         .from('dor_dod_status')
-        .select('bpmn_element_id, subprocess_name')
-        .eq('bpmn_file', fileName);
+        .select('bpmn_file, bpmn_element_id, subprocess_name')
+        .in('bpmn_file', allFilesInGraph);
 
-      // Count unique nodes with DoR/DoD
-      const uniqueDoRDoDNodes = new Set(dorDodData?.map(d => d.bpmn_element_id).filter(Boolean));
+      // Count unique nodes with DoR/DoD that belong to this process
+      const relevantNodeIds = new Set(
+        relevantNodes.map(n => `${n.bpmnFile}:${n.bpmnElementId}`)
+      );
+      const uniqueDoRDoDNodes = new Set(
+        dorDodData
+          ?.filter(d => {
+            const nodeId = `${d.bpmn_file}:${d.bpmn_element_id}`;
+            return relevantNodeIds.has(nodeId);
+          })
+          .map(d => `${d.bpmn_file}:${d.bpmn_element_id}`)
+          .filter(Boolean) || []
+      );
       const dorDod_covered = uniqueDoRDoDNodes.size;
 
-      // Check test coverage from node_test_links
+      // Check test coverage from node_test_links for all nodes in the process
       const { data: testLinksData } = await supabase
         .from('node_test_links')
-        .select('bpmn_element_id')
-        .eq('bpmn_file', fileName);
+        .select('bpmn_file, bpmn_element_id')
+        .in('bpmn_file', allFilesInGraph);
 
-      const uniqueTestNodes = new Set(testLinksData?.map(t => t.bpmn_element_id).filter(Boolean));
+      const uniqueTestNodes = new Set(
+        testLinksData
+          ?.filter(t => {
+            const nodeId = `${t.bpmn_file}:${t.bpmn_element_id}`;
+            return relevantNodeIds.has(nodeId);
+          })
+          .map(t => `${t.bpmn_file}:${t.bpmn_element_id}`)
+          .filter(Boolean) || []
+      );
       const tests_covered = uniqueTestNodes.size;
 
       if (import.meta.env.DEV) {
@@ -112,18 +140,26 @@ export const useFileArtifactCoverage = (fileName: string) => {
       const hasHierarchyTests = await hasHierarchicalTestsForFile(fileName);
       const hierarchyCovered = hasHierarchyTests ? 1 : 0;
 
-      // Docs: one HTML per BPMN file. Consider all nodes covered if file doc exists.
+      // Docs: Check documentation for all nodes in the process (including subprocesses)
+      // We need to check all files that are part of this process graph
       let docs_covered = 0;
       try {
-        const docFolder = `docs/nodes/${fileName.replace('.bpmn', '')}`;
-        const { data: docEntries } = await supabase.storage
-          .from('bpmn-files')
-          .list(docFolder, { limit: 1000 });
-        const docNames = new Set(docEntries?.map(entry => entry.name));
-        for (const node of relevantNodes) {
-          const safeId = sanitizeElementId(node.id);
-          if (docNames.has(`${safeId}.html`)) {
-            docs_covered++;
+        // Check docs for each file in the graph
+        for (const fileInGraph of allFilesInGraph) {
+          const docFolder = `docs/nodes/${fileInGraph.replace('.bpmn', '')}`;
+          const { data: docEntries } = await supabase.storage
+            .from('bpmn-files')
+            .list(docFolder, { limit: 1000 });
+          const docNames = new Set(docEntries?.map(entry => entry.name));
+          
+          // Count docs for nodes that belong to this process
+          for (const node of relevantNodes) {
+            if (node.bpmnFile === fileInGraph) {
+              const safeId = sanitizeElementId(node.bpmnElementId);
+              if (docNames.has(`${safeId}.html`)) {
+                docs_covered++;
+              }
+            }
           }
         }
       } catch (error) {
@@ -180,41 +216,71 @@ export const useAllFilesArtifactCoverage = () => {
 
       for (const file of bpmnFiles) {
         try {
-          // Parse BPMN file to get all nodes (from Supabase Storage or fallback)
-          const fileUrl = await getBpmnFileUrl(file.file_name);
-          const parseResult = await parseBpmnFile(fileUrl);
+          // Build process graph to get all nodes recursively (including subprocesses)
+          const graph = await buildBpmnProcessGraph(file.file_name, bpmnFiles.map(f => f.file_name));
           
-          // Filter relevant node types
-          const relevantNodes = parseResult.elements.filter(
-            el => isRelevantNodeType(el.type)
+          // Collect all descendant nodes recursively (including subprocesses and leaf nodes)
+          const allDescendants = collectDescendants(graph.root);
+          
+          // Filter to only relevant node types
+          const relevantNodes = allDescendants.filter(isRelevantNodeType);
+          
+          // Also include the root node if it's a relevant type
+          const rootIsRelevant = isRelevantNodeType(graph.root);
+          const total_nodes = relevantNodes.length + (rootIsRelevant ? 1 : 0);
+          
+          // Get all files in the graph for this process
+          const allFilesInGraph = Array.from(new Set(relevantNodes.map(n => n.bpmnFile)));
+          const relevantNodeIds = new Set(
+            relevantNodes.map(n => `${n.bpmnFile}:${n.bpmnElementId}`)
           );
 
-          const total_nodes = relevantNodes.length;
-
-          // Count DoR/DoD coverage
-          const fileDoRDoD = allDorDodData?.filter(d => d.bpmn_file === file.file_name) || [];
-          const uniqueDoRDoDNodes = new Set(fileDoRDoD.map(d => d.bpmn_element_id).filter(Boolean));
+          // Count DoR/DoD coverage for all nodes in the process (including subprocesses)
+          const uniqueDoRDoDNodes = new Set(
+            allDorDodData
+              ?.filter(d => {
+                const nodeId = `${d.bpmn_file}:${d.bpmn_element_id}`;
+                return relevantNodeIds.has(nodeId);
+              })
+              .map(d => `${d.bpmn_file}:${d.bpmn_element_id}`)
+              .filter(Boolean) || []
+          );
           const dorDod_covered = uniqueDoRDoDNodes.size;
 
-          // Check test coverage
-          const fileTestLinks = allTestLinksData?.filter(t => t.bpmn_file === file.file_name) || [];
-          const uniqueTestNodes = new Set(fileTestLinks.map(t => t.bpmn_element_id).filter(Boolean));
+          // Check test coverage for all nodes in the process (including subprocesses)
+          const uniqueTestNodes = new Set(
+            allTestLinksData
+              ?.filter(t => {
+                const nodeId = `${t.bpmn_file}:${t.bpmn_element_id}`;
+                return relevantNodeIds.has(nodeId);
+              })
+              .map(t => `${t.bpmn_file}:${t.bpmn_element_id}`)
+              .filter(Boolean) || []
+          );
           const tests_covered = uniqueTestNodes.size;
 
           // Debug logging only for specific files or when explicitly needed
           // Removed verbose logging to reduce console noise
 
+          // Check documentation for all nodes in the process (including subprocesses)
           let docs_covered = 0;
           try {
-            const docFolder = `docs/nodes/${file.file_name.replace('.bpmn', '')}`;
-            const { data: docEntries } = await supabase.storage
-              .from('bpmn-files')
-              .list(docFolder, { limit: 1000 });
-            const docNames = new Set(docEntries?.map(entry => entry.name));
-            for (const node of relevantNodes) {
-              const safeId = sanitizeElementId(node.id);
-              if (docNames.has(`${safeId}.html`)) {
-                docs_covered++;
+            // Check docs for each file in the graph
+            for (const fileInGraph of allFilesInGraph) {
+              const docFolder = `docs/nodes/${fileInGraph.replace('.bpmn', '')}`;
+              const { data: docEntries } = await supabase.storage
+                .from('bpmn-files')
+                .list(docFolder, { limit: 1000 });
+              const docNames = new Set(docEntries?.map(entry => entry.name));
+              
+              // Count docs for nodes that belong to this process
+              for (const node of relevantNodes) {
+                if (node.bpmnFile === fileInGraph) {
+                  const safeId = sanitizeElementId(node.bpmnElementId);
+                  if (docNames.has(`${safeId}.html`)) {
+                    docs_covered++;
+                  }
+                }
               }
             }
           } catch (error) {

@@ -8,7 +8,7 @@ export interface NodeDocumentationContext {
   descendantNodes: BpmnProcessNode[];
 }
 
-function collectDescendants(node: BpmnProcessNode): BpmnProcessNode[] {
+export function collectDescendants(node: BpmnProcessNode): BpmnProcessNode[] {
   const result: BpmnProcessNode[] = [];
   const stack = [...node.children];
   while (stack.length) {

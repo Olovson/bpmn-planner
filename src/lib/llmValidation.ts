@@ -39,37 +39,44 @@ export function validateBusinessRuleJson(
 
   const obj = json as Record<string, unknown>;
 
-  // Obligatoriska fält enligt BusinessRuleDocModel
+  // Obligatoriska fält enligt BusinessRuleDocModel (v2.0.0 - implementationNotes borttaget)
   const requiredFields: Array<keyof BusinessRuleDocModel> = [
     'summary',
     'inputs',
     'decisionLogic',
     'outputs',
     'businessRulesPolicy',
-    'scenarios',
-    'testDescription',
-    'implementationNotes',
     'relatedItems',
   ];
 
   for (const field of requiredFields) {
     if (!(field in obj)) {
-      errors.push(`Missing required field: ${field}`);
+      errors.push(
+        `Missing required field: "${field}". This field must always be included according to the prompt.`
+      );
     }
   }
 
   // Validera datatyper
   if ('summary' in obj && typeof obj.summary !== 'string') {
-    errors.push('Field "summary" must be a string');
+    errors.push('Field "summary" must be a string (2-4 sentences describing the business rule).');
   }
 
   if ('inputs' in obj) {
     if (!Array.isArray(obj.inputs)) {
-      errors.push('Field "inputs" must be an array');
+      errors.push('Field "inputs" must be an array of strings (3+ items with exact format).');
     } else {
       obj.inputs.forEach((item, index) => {
         if (typeof item !== 'string') {
-          errors.push(`Field "inputs[${index}]" must be a string`);
+          errors.push(`Field "inputs[${index}]" must be a string.`);
+        } else {
+          // Validera inputs-format: "Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; Felhantering: ..."
+          const inputStr = item as string;
+          if (!inputStr.includes('Fält:') || !inputStr.includes('Datakälla:') || !inputStr.includes('Typ:')) {
+            errors.push(
+              `Field "inputs[${index}]" must follow the exact format: "Fält: ...; Datakälla: ...; Typ: ...; Obligatoriskt: Ja/Nej; Validering: ...; Felhantering: ..."`
+            );
+          }
         }
       });
     }
@@ -89,36 +96,18 @@ export function validateBusinessRuleJson(
 
   if ('outputs' in obj) {
     if (!Array.isArray(obj.outputs)) {
-      errors.push('Field "outputs" must be an array');
+      errors.push('Field "outputs" must be an array of strings (3-5 items with exact format).');
     } else {
       obj.outputs.forEach((item, index) => {
         if (typeof item !== 'string') {
-          errors.push(`Field "outputs[${index}]" must be a string`);
-        }
-      });
-    }
-  }
-
-  if ('scenarios' in obj) {
-    if (!Array.isArray(obj.scenarios)) {
-      errors.push('Field "scenarios" must be an array');
-    } else {
-      obj.scenarios.forEach((scenario, index) => {
-        if (!scenario || typeof scenario !== 'object') {
-          errors.push(`Field "scenarios[${index}]" must be an object`);
+          errors.push(`Field "outputs[${index}]" must be a string.`);
         } else {
-          const s = scenario as Record<string, unknown>;
-          if (!('id' in s) || typeof s.id !== 'string') {
-            errors.push(`Field "scenarios[${index}].id" must be a string`);
-          }
-          if (!('name' in s) || typeof s.name !== 'string') {
-            errors.push(`Field "scenarios[${index}].name" must be a string`);
-          }
-          if (!('input' in s) || typeof s.input !== 'string') {
-            errors.push(`Field "scenarios[${index}].input" must be a string`);
-          }
-          if (!('outcome' in s) || typeof s.outcome !== 'string') {
-            errors.push(`Field "scenarios[${index}].outcome" must be a string`);
+          // Validera outputs-format: "Outputtyp: ...; Typ: ...; Effekt: ...; Loggning: ..."
+          const outputStr = item as string;
+          if (!outputStr.includes('Outputtyp:') || !outputStr.includes('Typ:') || !outputStr.includes('Effekt:')) {
+            errors.push(
+              `Field "outputs[${index}]" must follow the exact format: "Outputtyp: ...; Typ: ...; Effekt: ...; Loggning: ..."`
+            );
           }
         }
       });
@@ -128,7 +117,6 @@ export function validateBusinessRuleJson(
   // Kontrollera att inga extra toppnivåfält finns (strikt kontrakt)
   const allowedFields = new Set([
     ...requiredFields,
-    'scenarios', // scenarios är en array av objekt
   ]);
   for (const key in obj) {
     if (!allowedFields.has(key as keyof BusinessRuleDocModel)) {
@@ -156,13 +144,18 @@ export function validateFeatureGoalJson(
   if (!json || typeof json !== 'object') {
     return {
       valid: false,
-      errors: ['Response is not a JSON object'],
+      errors: [
+        'Response is not a JSON object. Make sure your response starts with { and ends with }, with no text before or after.',
+      ],
       warnings: [],
     };
   }
 
   const obj = json as Record<string, unknown>;
 
+  // Enligt prompten (v1.5.0) är dessa obligatoriska:
+  // summary, effectGoals, scopeIncluded, scopeExcluded, flowSteps, dependencies, relatedItems
+  // epics är obligatoriskt men kan vara tom array []
   const requiredFields: Array<keyof FeatureGoalDocModel> = [
     'summary',
     'effectGoals',
@@ -171,16 +164,48 @@ export function validateFeatureGoalJson(
     'epics',
     'flowSteps',
     'dependencies',
-    'scenarios',
-    'testDescription',
-    'implementationNotes',
     'relatedItems',
   ];
 
   for (const field of requiredFields) {
     if (!(field in obj)) {
-      errors.push(`Missing required field: ${field}`);
+      errors.push(
+        `Missing required field: "${field}". This field must always be included according to the prompt.`
+      );
     }
+  }
+
+  // Validera datatyper och format
+  if ('summary' in obj && typeof obj.summary !== 'string') {
+    errors.push('Field "summary" must be a string (3-5 sentences describing the feature goal).');
+  }
+
+  if ('effectGoals' in obj) {
+    if (!Array.isArray(obj.effectGoals)) {
+      errors.push('Field "effectGoals" must be an array of strings (3-5 full sentences).');
+    } else {
+      obj.effectGoals.forEach((item, index) => {
+        if (typeof item !== 'string') {
+          errors.push(`Field "effectGoals[${index}]" must be a string (full sentence).`);
+        }
+      });
+    }
+  }
+
+  if ('dependencies' in obj && Array.isArray(obj.dependencies)) {
+    obj.dependencies.forEach((item, index) => {
+      if (typeof item !== 'string') {
+        errors.push(`Field "dependencies[${index}]" must be a string.`);
+      } else {
+        // Validera dependencies-format: "Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>."
+        const depStr = item as string;
+        if (!depStr.startsWith('Beroende:') || !depStr.includes('Id:') || !depStr.includes('Beskrivning:')) {
+          errors.push(
+            `Field "dependencies[${index}]" must follow the exact format: "Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>."`
+          );
+        }
+      }
+    });
   }
 
   // Validera epics-array
@@ -221,38 +246,103 @@ export function validateEpicJson(json: unknown, provider: LlmProvider): Validati
   if (!json || typeof json !== 'object') {
     return {
       valid: false,
-      errors: ['Response is not a JSON object'],
+      errors: [
+        'Response is not a JSON object. Make sure your response starts with { and ends with }, with no text before or after.',
+      ],
       warnings: [],
     };
   }
 
   const obj = json as Record<string, unknown>;
 
-  // EpicDocModel har liknande struktur som FeatureGoalDocModel.
-  // "technicalDependencies" används inte direkt i HTML-renderingen och
-  // saknas i många svar, så vi behandlar det som valfritt (warning istället
-  // för hard error) för att inte göra kontraktet onödigt sprött.
+  // EpicDocModel - enligt prompten (v1.4.0) är dessa obligatoriska:
+  // summary, prerequisites, flowSteps, userStories, implementationNotes
+  // interactions är valfritt (endast för User Tasks)
   const requiredFields = [
     'summary',
     'prerequisites',
     'flowSteps',
-    'interactions',
-    'dataContracts',
-    'businessRulesPolicy',
-    'scenarios',
-    'testDescription',
+    'userStories',
     'implementationNotes',
-    'relatedItems',
   ];
 
   for (const field of requiredFields) {
     if (!(field in obj)) {
-      errors.push(`Missing required field: ${field}`);
+      errors.push(
+        `Missing required field: "${field}". This field must always be included according to the prompt.`
+      );
     }
   }
 
-  if (!('technicalDependencies' in obj)) {
-    warnings.push('Missing optional field: technicalDependencies');
+  // Validera datatyper för obligatoriska fält
+  if ('summary' in obj && typeof obj.summary !== 'string') {
+    errors.push('Field "summary" must be a string (2-4 sentences describing the epic).');
+  }
+
+  if ('prerequisites' in obj) {
+    if (!Array.isArray(obj.prerequisites)) {
+      errors.push('Field "prerequisites" must be an array of strings (2-3 full sentences).');
+    } else {
+      obj.prerequisites.forEach((item, index) => {
+        if (typeof item !== 'string') {
+          errors.push(`Field "prerequisites[${index}]" must be a string (full sentence).`);
+        }
+      });
+    }
+  }
+
+  if ('flowSteps' in obj) {
+    if (!Array.isArray(obj.flowSteps)) {
+      errors.push('Field "flowSteps" must be an array of strings (4-6 full sentences).');
+    } else {
+      obj.flowSteps.forEach((item, index) => {
+        if (typeof item !== 'string') {
+          errors.push(`Field "flowSteps[${index}]" must be a string (full sentence describing a step).`);
+        }
+      });
+    }
+  }
+
+  if ('userStories' in obj) {
+    if (!Array.isArray(obj.userStories)) {
+      errors.push('Field "userStories" must be an array of objects (3-6 user stories).');
+    } else {
+      obj.userStories.forEach((story, index) => {
+        if (!story || typeof story !== 'object') {
+          errors.push(`Field "userStories[${index}]" must be an object.`);
+        } else {
+          const s = story as Record<string, unknown>;
+          const requiredStoryFields = ['id', 'role', 'goal', 'value', 'acceptanceCriteria'];
+          for (const field of requiredStoryFields) {
+            if (!(field in s)) {
+              errors.push(`Field "userStories[${index}].${field}" is required.`);
+            }
+          }
+          if ('acceptanceCriteria' in s && !Array.isArray(s.acceptanceCriteria)) {
+            errors.push(`Field "userStories[${index}].acceptanceCriteria" must be an array of strings (2-4 criteria).`);
+          }
+        }
+      });
+    }
+  }
+
+  if ('implementationNotes' in obj) {
+    if (!Array.isArray(obj.implementationNotes)) {
+      errors.push('Field "implementationNotes" must be an array of strings (3-5 items).');
+    } else {
+      obj.implementationNotes.forEach((item, index) => {
+        if (typeof item !== 'string') {
+          errors.push(`Field "implementationNotes[${index}]" must be a string.`);
+        }
+      });
+    }
+  }
+
+  // interactions är valfritt - varning om det saknas men inget fel
+  if (!('interactions' in obj)) {
+    warnings.push(
+      'Field "interactions" is optional. Include it for User Tasks (2-3 strings), omit it for Service Tasks.'
+    );
   }
 
   return {

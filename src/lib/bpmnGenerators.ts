@@ -1505,7 +1505,7 @@ export async function generateAllFromBpmnWithGraph(
     // Pass 2: Parent nodes (lägst depth) - genererar Feature Goals med kunskap om child epics
     // NOTE: Dokumentation använder fortfarande testableNodes från grafen för LLM-generering,
     // men ProcessTree kan användas för strukturell dokumentation om önskat
-    await reportProgress('docgen:start', 'Genererar dokumentation/testinstruktioner', `${filesToGenerate.length} filer`);
+    await reportProgress('docgen:start', 'Genererar dokumentation', `${filesToGenerate.length} filer`);
     const buildMatchWarning = (node: typeof testableNodes[number]) => {
       const reasons: string[] = [];
       if (node.subprocessMatchStatus && node.subprocessMatchStatus !== 'matched') {
@@ -1622,7 +1622,7 @@ export async function generateAllFromBpmnWithGraph(
           
           await reportProgress(
             'docgen:file',
-            'Genererar dokumentation/testinstruktioner',
+            'Genererar dokumentation',
             `${file} → ${node.name || node.bpmnElementId}${node.type === 'callActivity' && node.subprocessFile ? ` (subprocess: ${node.subprocessFile})` : ''}`,
           );
 
@@ -2412,7 +2412,7 @@ export async function generateAllFromBpmnWithGraph(
         console.log(`Generated documentation: ${docFileName}`);
       }
     }
-    await reportProgress('docgen:complete', 'Dokumentation/testinstruktioner klara');
+    await reportProgress('docgen:complete', 'Dokumentation klara');
 
     if (result.metadata) {
       result.metadata.llmFallbackUsed = llmFallbackUsed;

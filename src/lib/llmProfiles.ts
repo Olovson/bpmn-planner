@@ -45,7 +45,7 @@ const DEFAULT_PROFILES: LlmProfiles = {
         'Svara endast med ren JSON. Inga rubriker, ingen markdown, inga code fences. ' +
         'Börja direkt med { och avsluta med }. ' +
         'Ingen text före eller efter JSON-objektet. ' +
-        'Inga extra fält utöver de som finns i JSON-modellen (summary, inputs, decisionLogic, outputs, businessRulesPolicy, scenarios, testDescription, implementationNotes, relatedItems).',
+        'Inga extra fält utöver de som finns i JSON-modellen (summary, inputs, decisionLogic, outputs, businessRulesPolicy, relatedItems).',
     },
   },
   feature: {

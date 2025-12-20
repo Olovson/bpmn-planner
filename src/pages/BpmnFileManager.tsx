@@ -4,6 +4,7 @@ import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, Al
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -39,6 +40,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
 import { pickRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { ArtifactStatusBadge } from '@/components/ArtifactStatusBadge';
+import { GenerationDialog, type GenerationPlan, type GenerationProgress, type GenerationResult } from '@/components/GenerationDialog';
+import { buildBpmnProcessGraph, createGraphSummary, getTestableNodes } from '@/lib/bpmnProcessGraph';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { generateAllFromBpmnWithGraph, type GenerationPhaseKey } from '@/lib/bpmnGenerators';
@@ -206,6 +209,10 @@ export default function BpmnFileManager() {
   
   const [generationResult, setGenerationResult] = useState<DetailedGenerationResult | null>(null);
   const [showGenerationReport, setShowGenerationReport] = useState(false);
+  const [showGenerationDialog, setShowGenerationDialog] = useState(false);
+  const [generationPlan, setGenerationPlan] = useState<GenerationPlan | null>(null);
+  const [generationProgress, setGenerationProgress] = useState<GenerationProgress | null>(null);
+  const [generationDialogResult, setGenerationDialogResult] = useState<GenerationResult | null>(null);
   const [hierarchyResult, setHierarchyResult] = useState<HierarchyBuildResult | null>(null);
   const [showHierarchyReport, setShowHierarchyReport] = useState(false);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
@@ -760,6 +767,9 @@ export default function BpmnFileManager() {
     setDocgenProgress({ completed: 0, total: 0 });
     setDocUploadProgress({ planned: 0, completed: 0 });
     setTestUploadProgress({ planned: 0, completed: 0 });
+    setGenerationPlan(null);
+    setGenerationProgress(null);
+    setGenerationDialogResult(null);
   };
 
   const checkCancellation = () => {
@@ -1062,15 +1072,9 @@ export default function BpmnFileManager() {
     }
     setGeneratingFile(file.file_name);
     setActiveOperation(isLocalMode ? 'local' : 'llm');
-    setOverlayMessage(
-      `${isLocalMode ? 'Genererar lokalt' : 'Genererar'} ${file.file_name.replace('.bpmn', '')}`
-    );
-    setOverlayDescription(
-      isLocalMode
-        ? 'Skapar dokumentation och tester med lokala mallar. Kör separat LLM-läge när du behöver förbättrad text.'
-        : `LLM-läge: ${llmModeDetails.label}. ${llmModeDetails.runHint} Vi uppdaterar dokumentation och testfiler.`
-    );
-    setShowTransitionOverlay(true);
+    
+    // Show dialog immediately (will show plan, then progress, then result)
+    setShowGenerationDialog(true);
     
     let activeJob: GenerationJob | null = null;
     let jobProgressCount = 0;
@@ -1097,31 +1101,64 @@ export default function BpmnFileManager() {
       syncOverlayProgress(label);
     };
 
+    const updateGenerationProgress = () => {
+      const totalSteps = jobTotalCount;
+      const completedSteps = jobProgressCount;
+      const totalProgressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+      
+      const progress: GenerationProgress = {
+        totalProgress: totalProgressPercent,
+        currentStep: overlayDescription || 'Förbereder generering',
+        currentStepDetail: generationProgress?.detail,
+        docs: {
+          completed: docgenCompleted,
+          total: totalGraphNodes || docgenProgress.total || 0,
+        },
+        htmlUpload: {
+          completed: docUploadsCompleted,
+          total: docUploadsPlanned || docUploadProgress.planned || 0,
+        },
+        tests: {
+          completed: testUploadsCompleted,
+          total: testUploadsPlanned || testUploadProgress.planned || 0,
+        },
+      };
+      
+      setGenerationProgress(progress);
+    };
+
     const handleGeneratorPhase = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
       logGenerationProgress(modeLabel, label, detail);
       switch (phase) {
         case 'graph:start':
           syncOverlayProgress('Analyserar BPMN-struktur');
+          updateGenerationProgress();
           break;
         case 'graph:complete':
           await incrementJobProgress('Processträd klart');
+          updateGenerationProgress();
           break;
         case 'hier-tests:start':
           syncOverlayProgress('Genererar hierarkiska tester');
+          updateGenerationProgress();
           break;
         case 'hier-tests:file':
           await incrementJobProgress(`Hierarkitest: ${detail || ''}`);
+          updateGenerationProgress();
           break;
         case 'node-analysis:start':
           syncOverlayProgress(`Analyserar noder (${detail || ''})`);
+          updateGenerationProgress();
           break;
         case 'node-analysis:node':
           // Nodanalyser används främst som förberedelse – räkna inte varje nod som ett eget framsteg,
           // utan visa bara status i overlayen.
           syncOverlayProgress(`Analyserar nod: ${detail || ''}`);
+          updateGenerationProgress();
           break;
         case 'docgen:start':
-          syncOverlayProgress('Genererar dokumentation/testinstruktioner');
+          syncOverlayProgress('Genererar dokumentation');
+          updateGenerationProgress();
           break;
         case 'docgen:file':
           // Här sker den tunga logiken (mallar/LLM per nod), så koppla framsteg till verkligt antal noder.
@@ -1137,6 +1174,7 @@ export default function BpmnFileManager() {
           } else {
             await incrementJobProgress(`Dokumentation: ${detail || ''}`);
           }
+          updateGenerationProgress();
           break;
         case 'total:init':
           if (detail) {
@@ -1152,6 +1190,7 @@ export default function BpmnFileManager() {
               // tidiga faser (graf/nodanalyser) förblir en liten del av den totala bilden.
               const extraSteps = extraFiles + extraNodes;
               await ensureJobTotal(JOB_PHASE_TOTAL + extraSteps);
+              updateGenerationProgress();
             } catch (error) {
               console.warn('Failed to parse total:init detail', detail);
             }
@@ -1162,6 +1201,51 @@ export default function BpmnFileManager() {
       }
     };
     syncOverlayProgress('Förbereder generering');
+    
+    // Build plan if not already built
+    if (!generationPlan) {
+      try {
+        const { data: allFiles } = await supabase
+          .from('bpmn_files')
+          .select('file_name, file_type, storage_path')
+          .eq('file_type', 'bpmn');
+        
+        const existingBpmnFiles = (allFiles || [])
+          .filter(f => !!f.storage_path)
+          .map(f => f.file_name);
+        
+        const isRootFile = rootFileName && file.file_name === rootFileName;
+        const useHierarchy = isRootFile;
+        
+        let plan: GenerationPlan;
+        if (useHierarchy && existingBpmnFiles.length > 0) {
+          const graph = await buildBpmnProcessGraph(file.file_name, existingBpmnFiles);
+          const summary = createGraphSummary(graph);
+          const testableNodes = getTestableNodes(graph);
+          
+          plan = {
+            files: summary.filesIncluded,
+            totalNodes: testableNodes.length,
+            totalFiles: summary.totalFiles,
+            hierarchyDepth: summary.hierarchyDepth,
+            llmMode: !isLocalMode ? llmModeDetails.label : undefined,
+            mode: isLocalMode ? 'local' : 'llm',
+          };
+        } else {
+          plan = {
+            files: [file.file_name],
+            totalNodes: 0,
+            totalFiles: 1,
+            hierarchyDepth: 1,
+            llmMode: !isLocalMode ? llmModeDetails.label : undefined,
+            mode: isLocalMode ? 'local' : 'llm',
+          };
+        }
+        setGenerationPlan(plan);
+      } catch (error) {
+        console.error('Error building generation plan:', error);
+      }
+    }
 
     try {
       // Kolla om användaren är autentiserad mot Supabase
@@ -1695,6 +1779,7 @@ export default function BpmnFileManager() {
               ? `Testfil ${testUploadsCompleted} av ${testUploadsPlanned}`
               : `Testfil: ${testFileName}`;
           await incrementJobProgress(label);
+          updateGenerationProgress();
         }
 
         if (testLinksToInsert.length > 0) {
@@ -1932,6 +2017,7 @@ export default function BpmnFileManager() {
               ? `Dokumentation ${docUploadsCompleted} av ${docUploadsPlanned} filer`
               : `Dokumentation: ${docFileName}`;
           await incrementJobProgress(label);
+          updateGenerationProgress();
         }
       }
 
@@ -1995,6 +2081,30 @@ export default function BpmnFileManager() {
         missingDependencies,
         skippedSubprocesses: skippedList,
       };
+      
+      // Convert to GenerationDialog result format
+      const dialogResult: GenerationResult = {
+        fileName: file.file_name,
+        filesAnalyzed,
+        testFiles: detailedTestFiles.map(tf => ({
+          fileName: tf.fileName,
+          elements: tf.elements.map(el => ({ name: el.name, id: el.id })),
+        })),
+        docFiles: detailedDocFiles,
+        jiraMappings: detailedJiraMappings.map(jm => ({
+          elementName: jm.elementName,
+          jiraType: jm.jiraType,
+          jiraName: jm.jiraName,
+        })),
+        subprocessMappings: detailedSubprocessMappings.map(sm => ({
+          callActivity: sm.callActivity,
+          subprocessFile: sm.subprocessFile,
+        })),
+        skippedSubprocesses: skippedList,
+      };
+      
+      setGenerationDialogResult(dialogResult);
+      setGenerationProgress(null); // Clear progress to show result
       
       if (showReport) {
         setGenerationResult(generationResult);
@@ -3559,7 +3669,27 @@ export default function BpmnFileManager() {
         </div>
       </Card>
 
-      {showTransitionOverlay && (
+      {/* Generation Dialog - Consolidated popup */}
+      <GenerationDialog
+        open={showGenerationDialog}
+        onOpenChange={setShowGenerationDialog}
+        plan={generationPlan || undefined}
+        progress={generationProgress || undefined}
+        result={generationDialogResult || undefined}
+        onStart={async () => {
+          // Start generation when user clicks "Starta Generering"
+          // This will be handled by the existing generation flow
+        }}
+        onCancel={handleCancelGeneration}
+        onClose={() => {
+          setShowGenerationDialog(false);
+          resetGenerationState();
+        }}
+        showCancel={!!generationProgress}
+      />
+
+      {/* Legacy overlay - only show if generation dialog is not open */}
+      {showTransitionOverlay && !showGenerationDialog && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-card border shadow-lg rounded-lg p-8 flex flex-col items-center gap-4 text-center max-w-sm">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -3581,29 +3711,64 @@ export default function BpmnFileManager() {
             {(graphTotals.nodes > 0 ||
               docUploadProgress.planned > 0 ||
               testUploadProgress.planned > 0) && (
-              <div className="w-full text-xs bg-muted/30 rounded-md p-3 space-y-1">
+              <div className="w-full text-xs bg-muted/30 rounded-md p-3 space-y-3">
                 {graphTotals.nodes > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Noder i process (dokumentation)</span>
-                    <span className="font-medium">
-                      {docgenProgress.completed}/{graphTotals.nodes}
-                    </span>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Dokumentation</span>
+                      <span className="font-medium">
+                        {docgenProgress.completed} av {graphTotals.nodes} noder
+                        {docgenProgress.total > 0 && (
+                          <span className="text-muted-foreground ml-1">
+                            ({Math.round((docgenProgress.completed / docgenProgress.total) * 100)}%)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    {docgenProgress.total > 0 && (
+                      <Progress 
+                        value={(docgenProgress.completed / docgenProgress.total) * 100} 
+                        className="h-2"
+                      />
+                    )}
                   </div>
                 )}
                 {docUploadProgress.planned > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Dokumentation (HTML-filer)</span>
-                    <span className="font-medium">
-                      {docUploadProgress.completed}/{docUploadProgress.planned}
-                    </span>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Dokumentation (HTML-filer)</span>
+                      <span className="font-medium">
+                        {docUploadProgress.completed}/{docUploadProgress.planned}
+                        {docUploadProgress.planned > 0 && (
+                          <span className="text-muted-foreground ml-1">
+                            ({Math.round((docUploadProgress.completed / docUploadProgress.planned) * 100)}%)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(docUploadProgress.completed / docUploadProgress.planned) * 100} 
+                      className="h-2"
+                    />
                   </div>
                 )}
                 {testUploadProgress.planned > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Testfiler</span>
-                    <span className="font-medium">
-                      {testUploadProgress.completed}/{testUploadProgress.planned}
-                    </span>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Testfiler</span>
+                      <span className="font-medium">
+                        {testUploadProgress.completed}/{testUploadProgress.planned}
+                        {testUploadProgress.planned > 0 && (
+                          <span className="text-muted-foreground ml-1">
+                            ({Math.round((testUploadProgress.completed / testUploadProgress.planned) * 100)}%)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(testUploadProgress.completed / testUploadProgress.planned) * 100} 
+                      className="h-2"
+                    />
                   </div>
                 )}
               </div>

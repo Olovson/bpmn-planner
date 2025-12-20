@@ -23,7 +23,6 @@ export function buildFeatureGoalJsonSchema() {
         'epics',
         'flowSteps',
         'dependencies',
-        'implementationNotes',
         'relatedItems',
       ],
       properties: {
@@ -61,10 +60,6 @@ export function buildFeatureGoalJsonSchema() {
           items: { type: 'string' },
         },
         dependencies: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        implementationNotes: {
           type: 'array',
           items: { type: 'string' },
         },
@@ -157,7 +152,6 @@ export function buildBusinessRuleJsonSchema() {
         'decisionLogic',
         'outputs',
         'businessRulesPolicy',
-        'implementationNotes',
         'relatedItems',
       ],
       properties: {
@@ -176,10 +170,6 @@ export function buildBusinessRuleJsonSchema() {
           items: { type: 'string' },
         },
         businessRulesPolicy: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        implementationNotes: {
           type: 'array',
           items: { type: 'string' },
         },

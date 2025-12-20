@@ -15,7 +15,6 @@ function createEmptyBusinessRuleModel(): BusinessRuleDocModel {
     decisionLogic: [],
     outputs: [],
     businessRulesPolicy: [],
-    implementationNotes: [],
     relatedItems: [],
   };
 }
@@ -63,7 +62,6 @@ function parseStructuredBusinessRule(rawContent: string): BusinessRuleDocModel |
   model.decisionLogic = coerceStringArray((obj as any).decisionLogic);
   model.outputs = coerceStringArray((obj as any).outputs);
   model.businessRulesPolicy = coerceStringArray((obj as any).businessRulesPolicy);
-  model.implementationNotes = coerceStringArray((obj as any).implementationNotes);
   model.relatedItems = coerceStringArray((obj as any).relatedItems);
 
   const hasContent =
@@ -72,7 +70,6 @@ function parseStructuredBusinessRule(rawContent: string): BusinessRuleDocModel |
     model.decisionLogic.length > 0 ||
     model.outputs.length > 0 ||
     model.businessRulesPolicy.length > 0 ||
-    model.implementationNotes.length > 0 ||
     model.relatedItems.length > 0;
 
   return hasContent ? model : null;

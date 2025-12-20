@@ -82,8 +82,7 @@ export const FEATURE_GOAL_DOC_SCHEMA: DocTemplateSchema = {
     { id: 'scope', label: 'Omfattning & avgränsningar', enabledByDefault: true },
     { id: 'epics-overview', label: 'Ingående Epics', enabledByDefault: true },
     { id: 'flow', label: 'Affärsflöde', enabledByDefault: true },
-    { id: 'dependencies', label: 'Kritiska beroenden', enabledByDefault: true },
-    { id: 'implementation-notes', label: 'Implementation Notes (för dev)', enabledByDefault: true },
+    { id: 'dependencies', label: 'Beroenden', enabledByDefault: true },
     { id: 'related-items', label: 'Relaterade regler / subprocesser', enabledByDefault: true },
   ],
 };
@@ -493,7 +492,6 @@ export function buildFeatureGoalDocModelFromContext(
     epics: epicRows,
     flowSteps,
     dependencies: dependencyBullets,
-    implementationNotes: [],
     relatedItems: [],
   };
 }
@@ -710,21 +708,11 @@ function buildFeatureGoalDocHtmlFromModel(
       </ol>
     </section>
 
-
     <section class="doc-section">
-      <h2>Implementation Notes (för dev)</h2>
-      ${renderList(implementationNotes)}
-    </section>
-
-    <section class="doc-section">
-      <h2>Tekniska &amp; externa beroenden</h2>
-      ${renderList([
-        'Regelmotor(er) och beslutsmotorer kopplade till Feature Goalet.',
-        'Datakällor (interna register, databaser och domäntjänster) som används i flödet.',
-        'Externa API:er och tjänster som tillhandahåller kredit-, person- eller objektsdata.',
-        'Integrationer och integrationslager som hanterar kommunikation mot interna/externa system.',
-        'Påverkade interna system, moduler och komponenter som behöver anpassas eller övervakas.',
-      ])}
+      <h2>Beroenden</h2>
+      ${dependencies.length > 0
+        ? renderList(dependencies)
+        : '<p class="muted">Inga beroenden identifierade ännu.</p>'}
     </section>
 
     <section class="doc-section">
@@ -1533,19 +1521,6 @@ function buildFeatureGoalLlmDocBody(
     ];
   }
 
-  const implementationNotes =
-    sections.implementationNotes.length > 0
-      ? sections.implementationNotes
-      : [
-          'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
-          'Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.',
-          'Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.',
-          'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
-        ];
-
-  const implementationNotesSource =
-    sections.implementationNotes.length > 0 ? 'llm' : 'fallback';
-
   const relatedItems =
     sections.relatedItems.length > 0
       ? sections.relatedItems
@@ -1660,21 +1635,11 @@ function buildFeatureGoalLlmDocBody(
       </ol>
     </section>
 
-
-    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
-      <h2>Implementation Notes (för dev)</h2>
-      ${renderList(implementationNotes)}
-    </section>
-
     <section class="doc-section" data-source-dependencies="${dependenciesSource}">
-      <h2>Tekniska &amp; externa beroenden</h2>
-      ${renderList([
-        'Regelmotor(er) och beslutsmotorer kopplade till Feature Goalet.',
-        'Datakällor (interna register, databaser och domäntjänster) som används i flödet.',
-        'Externa API:er och tjänster som tillhandahåller kredit-, person- eller objektsdata.',
-        'Integrationer och integrationslager som hanterar kommunikation mot interna/externa system.',
-        'Påverkade interna system, moduler och komponenter som behöver anpassas eller övervakas.',
-      ])}
+      <h2>Beroenden</h2>
+      ${dependencies.length > 0
+        ? renderList(dependencies)
+        : '<p class="muted">Inga beroenden identifierade ännu.</p>'}
     </section>
 
     <section class="doc-section" data-source-related-items="${relatedItemsSource}">
@@ -2096,21 +2061,6 @@ function buildEpicDocHtmlFromModel(
       `).join('')}
     </section>
 
-    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
-      <h2>Implementation Notes</h2>
-      ${renderList(implementationNotes)}
-    </section>
-
-    <section class="doc-section">
-      <h2>Tekniska &amp; externa beroenden</h2>
-      ${renderList([
-        'Beroende tjänster och API:er som epiken anropar eller är beroende av.',
-        'Datakällor (tabeller, domäner och register) som epiken läser eller uppdaterar.',
-        'Externa system eller tredjepartstjänster som påverkar epikens flöde och tillgänglighet.',
-        'Påverkade komponenter i backend, frontend och integrationslager som behöver samspela.',
-        'Tekniska risker och känsliga beroenden som kräver särskild övervakning eller fallback-hantering.',
-      ])}
-    </section>
   `;
 }
 
@@ -2184,17 +2134,6 @@ function buildBusinessRuleDocModelFromContext(
 
 
   const dmnLabel = links.dmnLink ? links.dmnLink.split('/').pop() : 'Beslutstabell';
-  const implementationNotes = [
-    links.dmnLink
-      ? `DMN-tabell: <a href="${links.dmnLink}">${dmnLabel}</a>`
-      : 'DMN-tabell: ej länkad – lägg till beslutstabell/DMN när den finns.',
-    `BPMN-koppling: Business Rule Task i filen ${node.bpmnFile}.`,
-    links.bpmnViewerLink
-      ? `BPMN viewer: <a href="${links.bpmnViewerLink}">Öppna noden i viewer</a>`
-      : 'BPMN viewer-länk sätts via applikationen.',
-    'API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).',
-    'Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.',
-  ];
 
   const relatedItems = [
     links.dmnLink
@@ -2214,7 +2153,6 @@ function buildBusinessRuleDocModelFromContext(
     decisionLogic,
     outputs,
     businessRulesPolicy,
-    implementationNotes,
     relatedItems,
   };
 }
@@ -2632,22 +2570,6 @@ const renderBusinessRuleDocLegacy = async (
       ${renderList(policySupportBullets)}
     </section>
 
-
-    <section class="doc-section">
-      <h2>Implementation &amp; integrationsnoter</h2>
-      ${renderList([
-        links.dmnLink
-          ? `DMN-tabell: <a href="${links.dmnLink}">${dmnLabel}</a>`
-          : 'DMN-tabell: ej länkad – lägg till beslutstabell/DMN när den finns.',
-        `BPMN-koppling: Business Rule Task i filen ${node.bpmnFile}.`,
-        links.bpmnViewerLink
-          ? `BPMN viewer: <a href="${links.bpmnViewerLink}">Öppna noden i viewer</a>`
-          : 'BPMN viewer-länk sätts via applikationen.',
-        'API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).',
-        'Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.',
-      ])}
-    </section>
-
     <section class="doc-section">
       <h2>Relaterade regler &amp; subprocesser</h2>
       ${renderList([
@@ -2838,22 +2760,6 @@ function buildBusinessRuleDocHtmlFromModel(
       ];
 
 
-  const implementationNotes =
-    model.implementationNotes.length > 0
-      ? model.implementationNotes
-      : [
-          links.dmnLink
-            ? `DMN-tabell: <a href="${links.dmnLink}">${dmnLabel}</a>`
-            : 'DMN-tabell: ej länkad – lägg till beslutstabell/DMN när den finns.',
-          `BPMN-koppling: Business Rule Task i filen ${node.bpmnFile}.`,
-          links.bpmnViewerLink
-            ? `BPMN viewer: <a href="${links.bpmnViewerLink}">Öppna noden i viewer</a>`
-            : 'BPMN viewer-länk sätts via applikationen.',
-          'API: regelmotorn exponeras normalt via intern tjänst (t.ex. /decision/evaluate).',
-          'Beroenden: kreditmotor, kunddata, engagemangsdata och sanktions-/fraudregister.',
-        ];
-  const implementationNotesSource =
-    model.implementationNotes.length > 0 ? 'llm' : 'fallback';
 
   const relatedItems =
     model.relatedItems.length > 0
@@ -3109,11 +3015,6 @@ function buildBusinessRuleDocHtmlFromModel(
     }">
       <h2>Affärsregler &amp; policystöd</h2>
       ${renderList(policySupportBullets)}
-    </section>
-
-    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
-      <h2>Implementation &amp; integrationsnoter</h2>
-      ${renderList(implementationNotes)}
     </section>
 
     <section class="doc-section" data-source-related-items="${relatedItemsSource}">

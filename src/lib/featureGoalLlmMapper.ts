@@ -29,7 +29,6 @@ function createEmptySections(): FeatureGoalLlmSections {
     epics: [],
     flowSteps: [],
     dependencies: [],
-    implementationNotes: [],
     relatedItems: [],
   };
 }
@@ -97,7 +96,6 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
 
   sections.flowSteps = coerceStringArray(obj.flowSteps);
   sections.dependencies = coerceStringArray(obj.dependencies);
-  sections.implementationNotes = coerceStringArray(obj.implementationNotes);
   sections.relatedItems = coerceStringArray(obj.relatedItems);
 
   const hasContent =
@@ -107,7 +105,6 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
     sections.epics.length > 0 ||
     sections.flowSteps.length > 0 ||
     sections.dependencies.length > 0 ||
-    sections.implementationNotes.length > 0 ||
     sections.relatedItems.length > 0;
 
   return hasContent ? sections : null;
@@ -249,15 +246,6 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
   }
 
 
-  const bulletRegex = /(?:^|\s)[-•]\s+([\s\S]*?)(?=(?:\s[-•]\s)|$)/g;
-  let bulletMatch: RegExpExecArray | null;
-  while ((bulletMatch = bulletRegex.exec(body))) {
-    const bullet = bulletMatch[1]?.trim();
-    if (bullet) {
-      sections.implementationNotes.push(bullet);
-    }
-  }
-
   const relatedRegex = /(Relaterat? [^:]+:[^.]+(?:\.)?)/gi;
   let relatedMatch: RegExpExecArray | null;
   while ((relatedMatch = relatedRegex.exec(body))) {
@@ -271,13 +259,6 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
   for (const line of bodyLines) {
     const lower = line.toLowerCase();
 
-    if (/^[-•]/.test(line)) {
-      const bullet = line.replace(/^[-•]\s*/, '').trim();
-      if (bullet) {
-        sections.implementationNotes.push(bullet);
-      }
-      continue;
-    }
 
 
     if (lower.startsWith('relaterad') || lower.startsWith('relaterade')) {

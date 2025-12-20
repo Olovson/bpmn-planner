@@ -32,7 +32,6 @@ export type FeatureGoalDocOverrides = Partial<FeatureGoalDocModel> & {
     epics?: 'replace' | 'extend';
     flowSteps?: 'replace' | 'extend';
     dependencies?: 'replace' | 'extend';
-    implementationNotes?: 'replace' | 'extend';
     relatedItems?: 'replace' | 'extend';
   };
 };
@@ -59,7 +58,6 @@ export type BusinessRuleDocOverrides = Partial<BusinessRuleDocModel> & {
     decisionLogic?: 'replace' | 'extend';
     outputs?: 'replace' | 'extend';
     businessRulesPolicy?: 'replace' | 'extend';
-    implementationNotes?: 'replace' | 'extend';
     relatedItems?: 'replace' | 'extend';
   };
 };
@@ -259,7 +257,6 @@ export function mergeFeatureGoalOverrides(
     'epics',
     'flowSteps',
     'dependencies',
-    'implementationNotes',
     'relatedItems',
   ];
 
@@ -359,7 +356,6 @@ export function mergeBusinessRuleOverrides(
     'decisionLogic',
     'outputs',
     'businessRulesPolicy',
-    'implementationNotes',
     'relatedItems',
   ];
 
@@ -507,7 +503,6 @@ export function validateFeatureGoalModelAfterMerge(
     'epics',
     'flowSteps',
     'dependencies',
-    'implementationNotes',
     'relatedItems',
   ];
 
@@ -651,7 +646,6 @@ export function validateBusinessRuleModelAfterMerge(
     'decisionLogic',
     'outputs',
     'businessRulesPolicy',
-    'implementationNotes',
     'relatedItems',
   ];
 

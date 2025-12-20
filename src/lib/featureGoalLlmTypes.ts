@@ -27,8 +27,6 @@ export interface FeatureGoalDocModel {
   flowSteps: string[];
   // Viktiga beroenden, t.ex. "Beroende: ...; Id: ...; Beskrivning: ...".
   dependencies: string[];
-  // Implementation notes för dev/test (bullets).
-  implementationNotes: string[];
   // Relaterade feature goals, epics, regler eller subprocesser (bullets).
   relatedItems: string[];
 }
