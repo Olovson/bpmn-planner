@@ -43,8 +43,6 @@ export type FeatureGoalDocOverrides = Partial<FeatureGoalDocModel> & {
 export type EpicDocOverrides = Partial<EpicDocModel> & {
   _mergeStrategy?: {
     prerequisites?: 'replace' | 'extend';
-    inputs?: 'replace' | 'extend';
-    outputs?: 'replace' | 'extend';
     flowSteps?: 'replace' | 'extend';
     interactions?: 'replace' | 'extend';
     userStories?: 'replace' | 'extend';
@@ -301,8 +299,6 @@ export function mergeEpicOverrides(
 
   const arrayFields: Array<keyof EpicDocModel> = [
     'prerequisites',
-    'inputs',
-    'outputs',
     'flowSteps',
     'implementationNotes',
   ];
@@ -574,8 +570,6 @@ export function validateEpicModelAfterMerge(
   // Required array fields
   const requiredArrayFields: Array<keyof EpicDocModel> = [
     'prerequisites',
-    'inputs',
-    'outputs',
     'flowSteps',
     'userStories',
     'implementationNotes',
@@ -621,12 +615,6 @@ export function validateEpicModelAfterMerge(
   }
 
   // Warnings for empty arrays (not errors, but might indicate incomplete data)
-  if (model.inputs.length === 0) {
-    warnings.push('Field "inputs" is empty - consider adding inputs');
-  }
-  if (model.outputs.length === 0) {
-    warnings.push('Field "outputs" is empty - consider adding outputs');
-  }
   if (model.flowSteps.length === 0) {
     warnings.push('Field "flowSteps" is empty - consider adding flow steps');
   }
@@ -674,14 +662,8 @@ export function validateBusinessRuleModelAfterMerge(
   }
 
   // Warnings for empty arrays (not errors, but might indicate incomplete data)
-  if (model.inputs.length === 0) {
-    warnings.push('Field "inputs" is empty - consider adding inputs');
-  }
   if (model.decisionLogic.length === 0) {
     warnings.push('Field "decisionLogic" is empty - consider adding decision logic');
-  }
-  if (model.outputs.length === 0) {
-    warnings.push('Field "outputs" is empty - consider adding outputs');
   }
 
   return {

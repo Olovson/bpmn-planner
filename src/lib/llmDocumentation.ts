@@ -696,23 +696,93 @@ export function buildContextPayload(
       type: node.type,
     })),
     // Inkludera dokumentation från child nodes om den finns (för Feature Goals med child epics)
+    // För Feature Goals (callActivities): inkludera dokumentation från alla descendant nodes
+    // För Epics/Tasks: inkludera bara från direkta children
+    // 
+    // BEGRÄNSNING för stora processer:
+    // - Max 40 items totalt för Feature Goals (för att undvika token overflow)
+    // - Prioriterar: 1) Direkta children (subprocesser), 2) Leaf nodes (tasks/epics), 3) Övriga
+    // - Scenarios begränsas till max 3 per node för att spara tokens
     childrenDocumentation: childrenDocumentation
-      ? context.childNodes
-          .map((child) => {
-            const childDoc = childrenDocumentation.get(child.id);
-            if (!childDoc) return null;
-            return {
-              id: child.bpmnElementId,
-              name: child.name,
-              type: child.type,
-              summary: childDoc.summary,
-              flowSteps: childDoc.flowSteps,
-              inputs: childDoc.inputs,
-              outputs: childDoc.outputs,
-              scenarios: childDoc.scenarios,
-            };
-          })
-          .filter((doc): doc is NonNullable<typeof doc> => doc !== null)
+      ? (context.node.type === 'callActivity'
+          ? // För Feature Goals: mappa mot alla descendant nodes (inklusive leaf nodes i subprocesser)
+            (() => {
+              // Skapa en Map för snabb lookup av descendant index
+              const descendantIndexMap = new Map<string, number>();
+              context.descendantNodes.forEach((desc, idx) => {
+                descendantIndexMap.set(desc.id, idx);
+              });
+              
+              const allDocs = context.descendantNodes
+                .map((descendant, index) => {
+                  const descendantDoc = childrenDocumentation.get(descendant.id);
+                  if (!descendantDoc) return null;
+                  
+                  // Begränsa scenarios till max 3 per node för att spara tokens
+                  const limitedScenarios = descendantDoc.scenarios?.slice(0, 3);
+                  
+                  return {
+                    id: descendant.bpmnElementId,
+                    name: descendant.name,
+                    type: descendant.type,
+                    summary: descendantDoc.summary,
+                    flowSteps: descendantDoc.flowSteps,
+                    inputs: descendantDoc.inputs,
+                    outputs: descendantDoc.outputs,
+                    scenarios: limitedScenarios,
+                    // Metadata för prioritetsordning
+                    _isDirectChild: context.childNodes.some(c => c.id === descendant.id),
+                    _isLeafNode: descendant.children.length === 0,
+                    _index: index,
+                  };
+                })
+                .filter((doc): doc is NonNullable<typeof doc> => doc !== null);
+              
+              // Sortera efter prioritet: direkta children först, sedan leaf nodes, sedan övriga
+              allDocs.sort((a, b) => {
+                // Direkta children först
+                if (a._isDirectChild && !b._isDirectChild) return -1;
+                if (!a._isDirectChild && b._isDirectChild) return 1;
+                // Leaf nodes näst (om båda är direkta children eller båda inte)
+                if (a._isLeafNode && !b._isLeafNode) return -1;
+                if (!a._isLeafNode && b._isLeafNode) return 1;
+                // Sedan efter index (behåller ursprunglig ordning)
+                return a._index - b._index;
+              });
+              
+              // Ta bort metadata och begränsa till max 40 items
+              const limited = allDocs.slice(0, 40).map(({ _isDirectChild, _isLeafNode, _index, ...doc }) => doc);
+              
+              if (allDocs.length > 40) {
+                console.warn(
+                  `[LLM Context] Truncated childrenDocumentation for ${context.node.bpmnElementId}: ` +
+                  `${allDocs.length} items → ${limited.length} items (max 40)`
+                );
+              }
+              
+              return limited;
+            })()
+          : // För Epics/Tasks: mappa bara mot direkta children
+            context.childNodes
+              .map((child) => {
+                const childDoc = childrenDocumentation.get(child.id);
+                if (!childDoc) return null;
+                
+                // Begränsa scenarios till max 3 per node
+                const limitedScenarios = childDoc.scenarios?.slice(0, 3);
+                
+                return {
+                  id: child.bpmnElementId,
+                  name: child.name,
+                  type: child.type,
+                  summary: childDoc.summary,
+                  flowSteps: childDoc.flowSteps,
+                  inputs: childDoc.inputs,
+                  outputs: childDoc.outputs,
+                  scenarios: limitedScenarios,
+                };
+              })
+              .filter((doc): doc is NonNullable<typeof doc> => doc !== null))
       : undefined,
     descendantHighlights: descendantPaths.slice(0, 10),
     descendantTypeCounts,

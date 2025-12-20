@@ -476,12 +476,7 @@ export function buildFeatureGoalDocModelFromContext(
     'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
     'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
   ];
-      type: 'Edge',
-      outcome: 'Kunden eller handläggaren styrs till komplettering, och beslut skjuts upp på ett kontrollerat sätt.',
-    },
-    {
-      id: 'S3',
-      name: 'Hög riskprofil',
+
   return {
     summary:
       `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet. ` +
@@ -1831,17 +1826,6 @@ function buildEpicDocModelFromContext(
 
   const prerequisites = triggerBullets;
 
-  const inputs = [
-    isUserTask
-      ? `Fält: Användarens/handläggarens uppgifter; Datakälla: ${upstreamName}; Typ: JSON; Obligatoriskt: Ja; Validering: Valideras mot affärsregler; Felhantering: Visa felmeddelande och låt användaren korrigera`
-      : `Fält: Data och status; Datakälla: ${upstreamName}; Typ: JSON; Obligatoriskt: Ja; Validering: Valideras mot schema; Felhantering: Logga fel och avbryt vid kritiska fel`,
-  ];
-
-  const outputs: string[] = [
-    `Outputtyp: Status; Typ: String; Konsument: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}; Beskrivning: Status och flaggor som vidarebefordras till nästa steg`,
-    `Outputtyp: Berikad data; Typ: JSON; Konsument: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}; Beskrivning: Data som har berikats eller validerats under epikens exekvering`,
-  ];
-
   const flowSteps = (isUserTask ? highLevelStepsUser : highLevelStepsService).slice();
 
   const interactions = isUserTask ? interactionBulletsUser : interactionBulletsService;
@@ -1930,8 +1914,6 @@ function buildEpicDocModelFromContext(
   return {
     summary,
     prerequisites,
-    inputs,
-    outputs,
     flowSteps,
     interactions,
     userStories,
@@ -1985,125 +1967,21 @@ function buildEpicDocHtmlFromModel(
       ];
   const prerequisitesSource = model.prerequisites.length ? 'llm' : 'fallback';
 
-  const inputs = model.inputs.length
-    ? model.inputs
-    : [
-      isUserTask
-        ? `Input: användarens/handläggarens uppgifter och val från ${upstreamName}.`
-        : `Input: data och status från föregående systemsteg (${upstreamName}).`,
-    ];
-  const inputsSource = model.inputs.length ? 'llm' : 'fallback';
-  const renderEpicInputsTable = () => {
-    const rowsSource = inputs;
-
-    if (!rowsSource.length) {
-      return '<p class="muted">Inga inputs specificerade ännu.</p>';
-    }
-
-    const rows = rowsSource.map((raw) => {
-      if (typeof raw !== 'string') {
-        return {
-          field: '',
-          source: '',
-          type: '',
-          required: '',
-          validation: '',
-          errorHandling: '',
-        };
-      }
-
-      const parts = raw.split(';').map((p) => p.trim());
-      const row: {
-        field: string;
-        source: string;
-        type: string;
-        required: string;
-        validation: string;
-        errorHandling: string;
-      } = {
-        field: '',
-        source: '',
-        type: '',
-        required: '',
-        validation: '',
-        errorHandling: '',
-      };
-
-      for (const part of parts) {
-        const [label, ...rest] = part.split(':');
-        const value = rest.join(':').trim();
-        if (!label || !value) continue;
-        const key = label.toLowerCase();
-        if (key.startsWith('fält')) {
-          row.field = value;
-        } else if (key.startsWith('datakälla')) {
-          row.source = value;
-        } else if (key.startsWith('typ')) {
-          row.type = value;
-        } else if (key.startsWith('obligatoriskt')) {
-          row.required = value;
-        } else if (key.startsWith('validering')) {
-          row.validation = value;
-        } else if (key.startsWith('felhantering')) {
-          row.errorHandling = value;
-        }
-      }
-
-      // Om parsing misslyckas helt – lägg hela raden i fält-kolumnen
-      if (
-        !row.field &&
-        !row.source &&
-        !row.type &&
-        !row.required &&
-        !row.validation &&
-        !row.errorHandling
-      ) {
-        row.field = raw;
-      }
-
-      return row;
-    });
-
-    return `
-      <table>
-        <tr>
-          <th>Fält</th>
-          <th>Datakälla</th>
-          <th>Typ</th>
-          <th>Obligatoriskt</th>
-          <th>Validering</th>
-          <th>Felhantering</th>
-        </tr>
-        ${rows
-          .map(
-            (r) => `
-        <tr>
-          <td>${r.field}</td>
-          <td>${r.source}</td>
-          <td>${r.type}</td>
-          <td>${r.required}</td>
-          <td>${r.validation}</td>
-          <td>${r.errorHandling}</td>
-        </tr>`,
-          )
-          .join('')}
-      </table>`;
-  };
 
   const flowSteps = model.flowSteps.length
     ? model.flowSteps
     : isUserTask
     ? [
-        'Användaren öppnar vyn och ser sammanfattad ansöknings- och kundinformation.',
-        'Formulär eller val presenteras baserat på föregående steg och riskprofil.',
-        'Användaren fyller i eller bekräftar uppgifter och skickar vidare.',
-        'Systemet validerar indata och uppdaterar processens status samt triggar nästa steg.',
+        'Kunden öppnar sidan och ser sammanfattad ansöknings- och kundinformation.',
+        'Systemet visar formulär eller val baserat på föregående steg och riskprofil.',
+        'Kunden fyller i eller bekräftar uppgifter och skickar vidare.',
+        'Systemet validerar uppgifterna och uppdaterar processen innan den fortsätter till nästa steg.',
       ]
     : [
-        'Processmotorn triggar tjänsten med relevant ansöknings- och kunddata.',
-        'Tjänsten anropar interna och/eller externa system för att hämta eller berika data.',
-        'Svar kontrolleras mot förväntade format och felkoder hanteras på övergripande nivå.',
-        'Resultatet lagras och vidarebefordras till nästa BPMN-nod.',
+        'Systemet startar automatiskt när ansökningsdata är tillgänglig.',
+        'Systemet hämtar kompletterande information från externa källor (t.ex. kreditupplysning, folkbokföring).',
+        'Systemet validerar att informationen är korrekt och komplett.',
+        'Systemet sparar resultatet och skickar vidare till nästa steg i processen.',
       ];
   const flowStepsSource = model.flowSteps.length ? 'llm' : 'fallback';
 
@@ -2122,13 +2000,6 @@ function buildEpicDocHtmlFromModel(
       ];
   const interactionsSource = model.interactions && model.interactions.length ? 'llm' : 'fallback';
 
-  const outputs = model.outputs.length
-    ? model.outputs
-    : [
-        `Outputtyp: Status; Typ: String; Konsument: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}; Beskrivning: Status och flaggor som vidarebefordras till nästa steg.`,
-        `Outputtyp: Berikad data; Typ: JSON; Konsument: ${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}; Beskrivning: Data som har berikats eller validerats under epikens exekvering.`,
-      ];
-  const outputsSource = model.outputs.length ? 'llm' : 'fallback';
 
   const userStories = model.userStories.length > 0
     ? model.userStories
@@ -2169,23 +2040,6 @@ function buildEpicDocHtmlFromModel(
   const implementationNotesSource =
     model.implementationNotes.length > 0 ? 'llm' : 'fallback';
 
-
-  const dorBullets = [
-    'Syfte, effektmål och förväntat affärsvärde för epiken är beskrivet och förankrat.',
-    'Upstream- och downstream-noder, beroenden och grundläggande affärsregler är identifierade.',
-    'Indata, gränssnitt och eventuella externa beroenden är kända och övergripande dokumenterade.',
-    'Affärs-scenarion och testkriterier är definierade på en nivå som möjliggör planering av automatiska tester.',
-    'Acceptanskriterier och icke‑funktionella krav (prestanda, robusthet, spårbarhet) är övergripande klarlagda.',
-  ];
-
-  const dodBullets = [
-    'Epiken levererar den avtalade effekten och stöder definierade affärsflöden utan kritiska gap.',
-    'Alla in- och utdataflöden fungerar, är testade och dokumenterade med spårbarhet mot beroende noder.',
-    'Affärsregler som triggas av epiken är implementerade, testade och dokumenterade.',
-    'Automatiska tester täcker huvudflöde, relevanta edge-cases och felhantering.',
-    'Monitorering/loggning är på plats och dokumentation är uppdaterad för berörda team.',
-  ];
-
   return `
     <section class="doc-section">
       <span class="doc-badge">Epic</span>
@@ -2205,22 +2059,11 @@ function buildEpicDocHtmlFromModel(
       <p>${summaryText}</p>
     </section>
 
-    <section class="doc-section" data-source-inputs="${inputsSource}">
-      <h2>Inputs</h2>
-      
-      ${renderEpicInputsTable()}
-    </section>
-
     <section class="doc-section" data-source-flow="${flowStepsSource}">
       <h2>Funktionellt flöde</h2>
       <ol>
         ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
-    </section>
-
-    <section class="doc-section" data-source-outputs="${outputsSource}">
-      <h2>Outputs</h2>
-      ${renderList(outputs)}
     </section>
 
     ${interactions && interactions.length > 0 ? `
@@ -2267,16 +2110,6 @@ function buildEpicDocHtmlFromModel(
         'Påverkade komponenter i backend, frontend och integrationslager som behöver samspela.',
         'Tekniska risker och känsliga beroenden som kräver särskild övervakning eller fallback-hantering.',
       ])}
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Ready</h2>
-      ${renderList(dorBullets)}
-    </section>
-
-    <section class="doc-section">
-      <h2>Definition of Done</h2>
-      ${renderList(dodBullets)}
     </section>
   `;
 }

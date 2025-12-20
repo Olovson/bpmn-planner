@@ -177,3 +177,4 @@
 - Test scenarios ger testbarhet och kategorisering
 - Mindre redundans, tydligare syfte
 
+

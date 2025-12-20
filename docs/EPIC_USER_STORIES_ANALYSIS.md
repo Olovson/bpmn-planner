@@ -144,3 +144,4 @@ Acceptanskriterier:
 - Redundans med scenarios - men de fyller olika syften
 - Ökad komplexitet - men opcional fält minskar risken
 
+

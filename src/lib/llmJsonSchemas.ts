@@ -90,8 +90,6 @@ export function buildEpicJsonSchema() {
       required: [
         'summary',
         'prerequisites',
-        'inputs',
-        'outputs',
         'flowSteps',
         'userStories',
         'implementationNotes',
@@ -101,14 +99,6 @@ export function buildEpicJsonSchema() {
           type: 'string',
         },
         prerequisites: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        inputs: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        outputs: {
           type: 'array',
           items: { type: 'string' },
         },

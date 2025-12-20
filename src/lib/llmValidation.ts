@@ -235,7 +235,6 @@ export function validateEpicJson(json: unknown, provider: LlmProvider): Validati
   const requiredFields = [
     'summary',
     'prerequisites',
-    'inputs',
     'flowSteps',
     'interactions',
     'dataContracts',

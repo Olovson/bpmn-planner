@@ -46,8 +46,6 @@ export interface EpicUserStory {
 export interface EpicDocModel {
   summary: string;
   prerequisites: string[];
-  inputs: string[];
-  outputs: string[];
   flowSteps: string[];
   interactions?: string[]; // Optional - primarily for User Tasks
   userStories: EpicUserStory[]; // 3-6 user stories per Epic
