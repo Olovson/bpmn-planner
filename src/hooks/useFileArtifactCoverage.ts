@@ -311,11 +311,14 @@ export const useAllFilesArtifactCoverage = () => {
             relevantNodes.forEach(n => {
               nodesByFile.set(n.bpmnFile, (nodesByFile.get(n.bpmnFile) || 0) + 1);
             });
-            console.log(`[Coverage] ${file.file_name}:`, {
-              total_nodes,
-              household_nodes_count: householdNodes.length,
-              nodes_by_file: Object.fromEntries(nodesByFile),
-            });
+            // Debug-logging endast om det finns något intressant att visa
+            if (total_nodes > 0) {
+              console.debug(`[Coverage] ${file.file_name}:`, {
+                total_nodes,
+                household_nodes_count: householdNodes.length,
+                nodes_by_file: Object.fromEntries(nodesByFile),
+              });
+            }
           }
 
           // Check documentation for all nodes in the process (including subprocesses)
@@ -364,7 +367,9 @@ export const useAllFilesArtifactCoverage = () => {
               
               if (import.meta.env.DEV && fileInGraph === file.file_name) {
                 if (!foundPath) {
-                  console.log(`[Coverage] ⚠️ No docs found for ${fileInGraph} in any path. Tried:`, pathsToTry);
+                  // Detta är normalt när filen precis laddats upp och dokumentation inte har genererats ännu
+                  // Logga bara som debug-info, inte som varning
+                  console.debug(`[Coverage] No docs found for ${fileInGraph} yet (normal if file was just uploaded). Tried:`, pathsToTry);
                 } else {
                   console.log(`[Coverage] ✓ Found docs in ${foundPath}, checking ${relevantNodes.filter(n => n.bpmnFile === fileInGraph).length} nodes from ${fileInGraph}`);
                 }

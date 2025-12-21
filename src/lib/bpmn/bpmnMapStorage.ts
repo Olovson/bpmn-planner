@@ -17,6 +17,8 @@ const BPMN_MAP_STORAGE_PATH = 'bpmn-map.json';
 // Mutex för att förhindra race conditions när flera anrop försöker skapa filen samtidigt
 let isCreatingMap = false;
 let createMapPromise: Promise<void> | null = null;
+// Cache för att undvika flera anrop till loadBpmnMapFromStorage samtidigt
+let lastLoadPromise: Promise<BpmnMapValidationResult> | null = null;
 
 export interface BpmnMapValidationResult {
   valid: boolean;
@@ -84,21 +86,35 @@ function validateBpmnMapStructure(raw: unknown): { valid: boolean; error?: strin
  * och använder projektfilen. Vi skapar bara filen från projektfilen om den VERKLIGEN saknas.
  */
 export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult> {
-  try {
-    // Försök ladda från storage
-    const { data, error } = await supabase.storage
-      .from('bpmn-files')
-      .download(BPMN_MAP_STORAGE_PATH);
+  // Om det redan finns ett pågående anrop, vänta på det istället för att skapa ett nytt
+  if (lastLoadPromise) {
+    return lastLoadPromise;
+  }
+  
+  lastLoadPromise = (async () => {
+    try {
+      // Försök ladda från storage
+      const { data, error } = await supabase.storage
+        .from('bpmn-files')
+        .download(BPMN_MAP_STORAGE_PATH);
 
-    // Log error details för debugging (endast i dev)
+    // Log error details för debugging (endast i dev och endast första gången)
+    // Undvik att logga samma fel flera gånger (race condition när flera komponenter laddar samtidigt)
     if (error && import.meta.env.DEV) {
-      console.log('[bpmnMapStorage] Storage error details:', {
-        statusCode: error.statusCode,
-        status: (error as any)?.status,
-        message: error.message,
-        name: error.name,
-        error: error,
-      });
+      const errorKey = `bpmn-map-error-${error.statusCode || error.name}`;
+      const lastErrorTime = (window as any).__lastBpmnMapErrorTime || 0;
+      const now = Date.now();
+      
+      // Logga bara om det inte är samma fel inom 2 sekunder (förhindra spam)
+      if (now - lastErrorTime > 2000) {
+        console.log('[bpmnMapStorage] Storage error details:', {
+          statusCode: error.statusCode,
+          status: (error as any)?.status,
+          message: error.message,
+          name: error.name,
+        });
+        (window as any).__lastBpmnMapErrorTime = now;
+      }
     }
 
     // Om filen finns i storage, validera den tydligt
@@ -110,25 +126,29 @@ export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult>
         // Validera strukturen tydligt
         const validation = validateBpmnMapStructure(mapJson);
         if (!validation.valid) {
-          // Filen är korrupt eller har problem - kommunicera detta tydligt
-          return {
-            valid: false,
-            map: null,
-            error: validation.error || 'bpmn-map.json i storage är ogiltig',
-            details: validation.details || 'Filen kan inte användas för generering. Kontrollera filen i storage.',
-            source: 'storage',
-          };
+        // Filen är korrupt eller har problem - kommunicera detta tydligt
+        lastLoadPromise = null; // Rensa cache vid fel
+        return {
+          valid: false,
+          map: null,
+          error: validation.error || 'bpmn-map.json i storage är ogiltig',
+          details: validation.details || 'Filen kan inte användas för generering. Kontrollera filen i storage.',
+          source: 'storage',
+        };
         }
         
         // Filen är giltig, ladda den
         const map = loadBpmnMap(mapJson);
-        return {
+        const result = {
           valid: true,
           map,
           source: 'storage',
         };
+        lastLoadPromise = null; // Rensa cache efter lyckad laddning
+        return result;
       } catch (parseError) {
         // JSON-parse misslyckades
+        lastLoadPromise = null; // Rensa cache vid fel
         return {
           valid: false,
           map: null,
@@ -170,10 +190,22 @@ export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult>
             try {
               const { generateBpmnMapFromFiles } = await import('./bpmnMapAutoGenerator');
               mapToSave = await generateBpmnMapFromFiles();
-              console.log('[bpmnMapStorage] ✓ Automatisk generering lyckades');
+              
+              // Om genererad map är tom (inga filer i databasen), använd projektfil istället
+              if (mapToSave.processes.length === 0) {
+                console.log('[bpmnMapStorage] Ingen BPMN-filer i databasen ännu, använder projektfil');
+                mapToSave = loadBpmnMap(rawBpmnMap);
+              } else {
+                console.log('[bpmnMapStorage] ✓ Automatisk generering lyckades');
+              }
             } catch (autoGenError) {
               // Fallback till projektfil om automatisk generering misslyckas
-              console.warn('[bpmnMapStorage] Automatisk generering misslyckades, använder projektfil:', autoGenError);
+              // Detta är ok om databasen är tom eller om det finns andra problem
+              const errorMessage = autoGenError instanceof Error ? autoGenError.message : String(autoGenError);
+              if (!errorMessage.includes('No BPMN files found')) {
+                // Logga bara om det inte är "no files" felet (det är förväntat)
+                console.warn('[bpmnMapStorage] Automatisk generering misslyckades, använder projektfil:', errorMessage);
+              }
               mapToSave = loadBpmnMap(rawBpmnMap);
             }
             
@@ -231,14 +263,17 @@ export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult>
       
       // Returnera projektfilen som fallback
       const map = loadBpmnMap(rawBpmnMap);
-      return {
+      const result = {
         valid: true,
         map,
         source: 'created',
       };
+      lastLoadPromise = null; // Rensa cache efter lyckad laddning
+      return result;
     }
   } catch (error) {
     // För andra fel, returnera felmeddelande
+    lastLoadPromise = null; // Rensa cache vid fel
     return {
       valid: false,
       map: null,
@@ -248,13 +283,18 @@ export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult>
     };
   }
 
-  // Fallback till projektfilen (används om allt annat misslyckas)
-  const map = loadBpmnMap(rawBpmnMap);
-  return {
-    valid: true,
-    map,
-    source: 'project',
-  };
+    // Fallback till projektfilen (används om allt annat misslyckas)
+    const map = loadBpmnMap(rawBpmnMap);
+    const result = {
+      valid: true,
+      map,
+      source: 'project',
+    };
+    lastLoadPromise = null; // Rensa cache
+    return result;
+  })();
+  
+  return lastLoadPromise;
 }
 
 /**

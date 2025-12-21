@@ -148,6 +148,18 @@ Deno.serve(async (req) => {
       await supabase.from('node_references').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       deleted.node_references = refsCount || 0;
       console.log(`Deleted ${refsCount} rows from node_references`);
+      
+      // Rensa bpmn_file_versions (version history)
+      const { count: versionsCount } = await supabase.from('bpmn_file_versions').select('*', { count: 'exact', head: true });
+      await supabase.from('bpmn_file_versions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      deleted.bpmn_file_versions = versionsCount || 0;
+      console.log(`Deleted ${versionsCount} rows from bpmn_file_versions`);
+      
+      // Rensa bpmn_file_diffs (diff tracking)
+      const { count: diffsCount } = await supabase.from('bpmn_file_diffs').select('*', { count: 'exact', head: true });
+      await supabase.from('bpmn_file_diffs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      deleted.bpmn_file_diffs = diffsCount || 0;
+      console.log(`Deleted ${diffsCount} rows from bpmn_file_diffs`);
     }
 
     // Jobbhistorik: alltid försök rensa generation_jobs och llm_generation_logs
@@ -310,6 +322,28 @@ Deno.serve(async (req) => {
       } else {
         storageDeleted += storageFileRemovals.length;
         console.log(`Deleted ${storageFileRemovals.length} BPMN/DMN source files from storage`);
+      }
+    }
+    
+    // Ta alltid bort bpmn-map.json från storage för att trigga automatisk generering
+    // (endast om vi rensar allt eller om det är en full reset)
+    if (shouldDeleteAllTables || !safeMode) {
+      try {
+        const { error: mapError } = await supabase.storage
+          .from('bpmn-files')
+          .remove(['bpmn-map.json']);
+        
+        if (!mapError) {
+          storageDeleted += 1;
+          console.log('Deleted bpmn-map.json from storage (will be auto-regenerated)');
+        } else if (mapError.message?.includes('not found')) {
+          // Filen finns inte, det är ok
+          console.log('bpmn-map.json not found in storage (already clean)');
+        } else {
+          console.error('Error deleting bpmn-map.json:', mapError);
+        }
+      } catch (err) {
+        console.error('Exception deleting bpmn-map.json:', err);
       }
     }
 

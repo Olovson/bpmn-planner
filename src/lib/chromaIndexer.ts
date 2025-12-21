@@ -30,43 +30,64 @@ export async function triggerChromaIndexing(): Promise<void> {
   if (import.meta.env.PROD) {
     return;
   }
+  
+  // Om ChromaDB är inaktiverad via environment variable, hoppa över
+  if (import.meta.env.VITE_DISABLE_CHROMA === 'true') {
+    return;
+  }
 
   // Kontrollera om Chroma DB server är tillgänglig
   // NOTERA: Om servern inte körs eller har CORS-problem kommer webbläsaren att logga fel.
   // Detta är förväntat beteende och kan ignoreras - Chroma är valfritt för indexering.
+  // 
+  // VIKTIGT: CORS-fel i konsolen är normalt om ChromaDB inte körs. De kan ignoreras.
+  // ChromaDB-indexering är valfritt och påverkar INTE appens huvudfunktionalitet.
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
     
     try {
+      // Använd mode: 'no-cors' för att undvika CORS-fel i konsolen
+      // Men detta gör att vi inte kan läsa response, så vi använder det inte
+      // Istället fångar vi felet tyst
       const response = await fetch('http://localhost:8000/api/v1/heartbeat', {
         method: 'GET',
         signal: controller.signal,
-        // Suppress CORS errors in console by catching them silently
+        // Note: CORS errors will still appear in console - this is expected and can be ignored
+        // ChromaDB is optional and doesn't affect core functionality
+      }).catch(() => {
+        // Silently catch CORS/network errors - ChromaDB is optional
+        return null;
       });
+      
       clearTimeout(timeoutId);
       
-      if (!response.ok) {
-        // Server svarar men endpoint är inte tillgänglig (t.ex. 410 Gone för deprecated v1 API)
+      if (!response || !response.ok) {
+        // Server svarar inte eller endpoint är inte tillgänglig (t.ex. 410 Gone för deprecated v1 API)
+        // Detta är ok - ChromaDB är valfritt
         return;
       }
     } catch (fetchError) {
       clearTimeout(timeoutId);
       // Fetch misslyckades (server körs inte, CORS-blockad, eller timeout)
       // Detta är förväntat - Chroma är valfritt
+      // CORS-fel loggas automatiskt av webbläsaren, men det är ok att ignorera dem
       return;
     }
   } catch (error) {
     // Chroma DB server körs inte, är inte tillgänglig, eller CORS-blockad
     // Detta är förväntat om servern inte körs - inget behöver loggas
-    // (CORS-fel loggas automatiskt av webbläsaren, vi behöver inte logga igen)
+    // (CORS-fel loggas automatiskt av webbläsaren, men de kan ignoreras)
     return;
   }
 
   // Logga att indexering behövs (endast om servern är tillgänglig)
   // En lokal process kan lyssna på dessa events och köra indexeringen automatiskt
-  console.log('[ChromaIndexer] ⚠️  Chroma DB indexering behövs för att uppdatera AI-assistentens minne.');
-  console.log('[ChromaIndexer] 💡 Kör "npm run vector:index" för att uppdatera indexeringen.');
+  // OBS: Detta loggas bara om servern faktiskt svarar - om den inte gör det har vi redan returnerat ovan
+  if (import.meta.env.DEV) {
+    console.log('[ChromaIndexer] ⚠️  Chroma DB indexering behövs för att uppdatera AI-assistentens minne.');
+    console.log('[ChromaIndexer] 💡 Kör "npm run vector:index" för att uppdatera indexeringen.');
+  }
   
   // Försök anropa en lokal webhook/API om den finns (för framtida automatisk indexering)
   try {
@@ -76,10 +97,12 @@ export async function triggerChromaIndexing(): Promise<void> {
       signal: AbortSignal.timeout(1000),
     }).catch(() => {
       // Ignorera om service inte finns - det är okej
+      // CORS-fel är förväntat och kan ignoreras
     });
   } catch (error) {
     // Ignorera fel - indexering är inte kritisk
-    // CORS-fel loggas automatiskt av webbläsaren, vi behöver inte logga igen
+    // CORS-fel loggas automatiskt av webbläsaren, men de kan ignoreras
+    // ChromaDB är valfritt och påverkar inte huvudfunktionaliteten
   }
 }
 

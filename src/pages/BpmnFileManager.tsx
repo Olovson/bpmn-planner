@@ -1893,7 +1893,18 @@ export default function BpmnFileManager() {
           });
 
         if (mappingsError) {
-          console.error('Save element mappings error:', mappingsError);
+          // Check if it's a foreign key constraint error (user_id doesn't exist)
+          // This can happen after database reset when user session is invalid
+          const isForeignKeyError = mappingsError.code === '23503' || 
+            mappingsError.message?.includes('foreign key constraint') ||
+            mappingsError.message?.includes('user_id');
+          
+          if (isForeignKeyError) {
+            console.warn('Save element mappings error (user session invalid - mappings saved but version creation skipped):', mappingsError.message);
+            // Mappings are still saved, but version creation failed - this is ok
+          } else {
+            console.error('Save element mappings error:', mappingsError);
+          }
         } else {
           console.log(`Saved ${mappingsToInsert.length} element mappings with Jira metadata`);
         }
@@ -2207,12 +2218,30 @@ export default function BpmnFileManager() {
       return generationResult;
     } catch (error) {
       const isCancelled = error instanceof Error && error.message === 'Avbrutet av användaren';
+      const isAuthError = error instanceof Error && (
+        error.message?.includes('User from sub claim in JWT does not exist') ||
+        error.message?.includes('Din session är ogiltig') ||
+        error.message?.includes('Not authenticated')
+      );
+      
       console.error('Generation error:', error);
-      toast({
-        title: isCancelled ? 'Generering avbruten' : 'Generering misslyckades',
-        description: error instanceof Error ? error.message : 'Ett okänt fel uppstod',
-        variant: isCancelled ? 'default' : 'destructive',
-      });
+      
+      if (isAuthError) {
+        // Auth error - sign out and prompt user to log in again
+        await supabase.auth.signOut();
+        toast({
+          title: 'Session ogiltig',
+          description: 'Din session är ogiltig (troligen efter databasreset). Logga in igen och försök sedan.',
+          variant: 'destructive',
+          duration: 10000,
+        });
+      } else {
+        toast({
+          title: isCancelled ? 'Generering avbruten' : 'Generering misslyckades',
+          description: error instanceof Error ? error.message : 'Ett okänt fel uppstod',
+          variant: isCancelled ? 'default' : 'destructive',
+        });
+      }
       if (activeJob) {
         await setJobStatus(activeJob.id, isCancelled ? 'cancelled' : 'failed', {
           error: error instanceof Error ? error.message : 'Okänt fel',
@@ -2364,7 +2393,18 @@ export default function BpmnFileManager() {
           });
 
         if (mappingsError) {
-          console.error('Save element mappings error:', mappingsError);
+          // Check if it's a foreign key constraint error (user_id doesn't exist)
+          // This can happen after database reset when user session is invalid
+          const isForeignKeyError = mappingsError.code === '23503' || 
+            mappingsError.message?.includes('foreign key constraint') ||
+            mappingsError.message?.includes('user_id');
+          
+          if (isForeignKeyError) {
+            console.warn('Save element mappings error (user session invalid - mappings saved but version creation skipped):', mappingsError.message);
+            // Mappings are still saved, but version creation failed - this is ok
+          } else {
+            console.error('Save element mappings error:', mappingsError);
+          }
         }
       }
 
@@ -2964,7 +3004,18 @@ export default function BpmnFileManager() {
           });
 
         if (mappingsError) {
-          console.error('Save element mappings error:', mappingsError);
+          // Check if it's a foreign key constraint error (user_id doesn't exist)
+          // This can happen after database reset when user session is invalid
+          const isForeignKeyError = mappingsError.code === '23503' || 
+            mappingsError.message?.includes('foreign key constraint') ||
+            mappingsError.message?.includes('user_id');
+          
+          if (isForeignKeyError) {
+            console.warn('Save element mappings error (user session invalid - mappings saved but version creation skipped):', mappingsError.message);
+            // Mappings are still saved, but version creation failed - this is ok
+          } else {
+            console.error('Save element mappings error:', mappingsError);
+          }
         }
       }
       if (hierarchyJob) {
@@ -3173,6 +3224,7 @@ export default function BpmnFileManager() {
       if (error) throw error;
       
       const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+      const { suggestBpmnMapUpdates, generateUpdatedBpmnMap } = await import('@/lib/bpmn/bpmnMapSuggestions');
       const currentMap = await loadBpmnMapFromStorageSimple();
       const suggestions = await suggestBpmnMapUpdates(currentMap, filesData || []);
       
@@ -3251,6 +3303,7 @@ export default function BpmnFileManager() {
   const handleSaveUpdatedMap = async (syncToGitHub: boolean = false) => {
     try {
       const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+      const { generateUpdatedBpmnMap } = await import('@/lib/bpmn/bpmnMapSuggestions');
       const currentMap = await loadBpmnMapFromStorageSimple();
       const updatedMap = generateUpdatedBpmnMap(currentMap, mapSuggestions, acceptedSuggestions, undefined);
       
@@ -3338,7 +3391,9 @@ export default function BpmnFileManager() {
 
   const handleExportUpdatedMap = async () => {
     // Fallback: exportera som fil om användaren vill ha det manuellt
-    const currentMap = await loadBpmnMapFromStorage();
+    const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+    const { generateUpdatedBpmnMap } = await import('@/lib/bpmn/bpmnMapSuggestions');
+    const currentMap = await loadBpmnMapFromStorageSimple();
     const updatedMap = generateUpdatedBpmnMap(currentMap, mapSuggestions, acceptedSuggestions, undefined);
     
     const jsonStr = JSON.stringify(updatedMap, null, 2);

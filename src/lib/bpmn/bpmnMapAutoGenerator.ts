@@ -29,7 +29,16 @@ export async function generateBpmnMapFromFiles(): Promise<BpmnMap> {
   }
 
   if (!filesData || filesData.length === 0) {
-    throw new Error('No BPMN files found in database');
+    // Detta är ok - om databasen är tom, returnera en tom map istället för att kasta fel
+    console.log('[bpmnMapAutoGenerator] No BPMN files found in database - returning empty map');
+    return {
+      generated_at: new Date().toISOString(),
+      note: 'Auto-generated empty map - no BPMN files found in database yet. Map will be populated when files are uploaded.',
+      orchestration: {
+        root_process: null,
+      },
+      processes: [],
+    };
   }
 
   console.log(`[bpmnMapAutoGenerator] Found ${filesData.length} BPMN files`);
