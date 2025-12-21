@@ -4,6 +4,7 @@ import { useBpmnFiles } from './useBpmnFiles';
 import { sanitizeElementId } from '@/lib/nodeArtifactPaths';
 import { buildBpmnProcessGraph, getTestableNodes, type BpmnProcessNode } from '@/lib/bpmnProcessGraph';
 import { collectDescendants } from '@/lib/documentationContext';
+import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 
 export type CoverageStatus = 'none' | 'partial' | 'full' | 'noApplicableNodes';
 
@@ -146,18 +147,57 @@ export const useFileArtifactCoverage = (fileName: string) => {
       try {
         // Check docs for each file in the graph
         for (const fileInGraph of allFilesInGraph) {
-          const docFolder = `docs/nodes/${fileInGraph.replace('.bpmn', '')}`;
-          const { data: docEntries } = await supabase.storage
-            .from('bpmn-files')
-            .list(docFolder, { limit: 1000 });
-          const docNames = new Set(docEntries?.map(entry => entry.name));
+          // Get version hash for the file
+          const versionHash = await getCurrentVersionHash(fileInGraph);
+          
+          // Try multiple paths: versioned path, legacy path
+          const pathsToTry = versionHash
+            ? [
+                `docs/slow/chatgpt/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                `docs/slow/ollama/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                `docs/local/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
+              ]
+            : [
+                `docs/slow/chatgpt/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                `docs/slow/ollama/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                `docs/local/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
+              ];
+          
+          let docNames = new Set<string>();
+          let foundPath: string | null = null;
+          for (const docFolder of pathsToTry) {
+            const { data: docEntries, error } = await supabase.storage
+              .from('bpmn-files')
+              .list(docFolder, { limit: 1000 });
+            
+            if (error && import.meta.env.DEV) {
+              console.debug(`[Coverage] Error listing ${docFolder}:`, error.message);
+            }
+            
+            if (docEntries && docEntries.length > 0) {
+              docNames = new Set(docEntries.map(entry => entry.name));
+              foundPath = docFolder;
+              if (import.meta.env.DEV && fileInGraph === fileName) {
+                console.log(`[Coverage] Found ${docEntries.length} docs in ${docFolder} for ${fileInGraph}:`, Array.from(docNames));
+              }
+              break; // Found docs, stop trying other paths
+            }
+          }
           
           // Count docs for nodes that belong to this process
           for (const node of relevantNodes) {
             if (node.bpmnFile === fileInGraph) {
               const safeId = sanitizeElementId(node.bpmnElementId);
-              if (docNames.has(`${safeId}.html`)) {
+              const fileName = `${safeId}.html`;
+              if (docNames.has(fileName)) {
                 docs_covered++;
+                if (import.meta.env.DEV && fileInGraph === fileName) {
+                  console.log(`[Coverage] ✓ Found doc for ${node.bpmnElementId} in ${fileInGraph}`);
+                }
+              } else if (import.meta.env.DEV && fileInGraph === fileName && foundPath) {
+                console.log(`[Coverage] ✗ Missing doc for ${node.bpmnElementId} in ${fileInGraph} (expected: ${fileName}, found: ${Array.from(docNames).join(', ')})`);
               }
             }
           }
@@ -202,6 +242,9 @@ export const useAllFilesArtifactCoverage = () => {
   return useQuery({
     queryKey: ['all-files-artifact-coverage', bpmnFiles.map(f => f.file_name).join(',')],
     queryFn: async (): Promise<Map<string, FileArtifactCoverage>> => {
+      if (import.meta.env.DEV) {
+        // Starting all-files-artifact-coverage query
+      }
       const coverageMap = new Map<string, FileArtifactCoverage>();
 
       // Get all DoR/DoD data in one query
@@ -218,6 +261,8 @@ export const useAllFilesArtifactCoverage = () => {
         try {
           // Build process graph to get all nodes recursively (including subprocesses)
           const graph = await buildBpmnProcessGraph(file.file_name, bpmnFiles.map(f => f.file_name));
+          
+          // Graph built (logged only if verbose)
           
           // Collect all descendant nodes recursively (including subprocesses and leaf nodes)
           const allDescendants = collectDescendants(graph.root);
@@ -259,26 +304,141 @@ export const useAllFilesArtifactCoverage = () => {
           );
           const tests_covered = uniqueTestNodes.size;
 
-          // Debug logging only for specific files or when explicitly needed
-          // Removed verbose logging to reduce console noise
+          // Debug logging for coverage calculation (only for Household or when issues detected)
+          if (import.meta.env.DEV && file.file_name === 'mortgage-se-household.bpmn') {
+            const householdNodes = relevantNodes.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn');
+            const nodesByFile = new Map<string, number>();
+            relevantNodes.forEach(n => {
+              nodesByFile.set(n.bpmnFile, (nodesByFile.get(n.bpmnFile) || 0) + 1);
+            });
+            console.log(`[Coverage] ${file.file_name}:`, {
+              total_nodes,
+              household_nodes_count: householdNodes.length,
+              nodes_by_file: Object.fromEntries(nodesByFile),
+            });
+          }
 
           // Check documentation for all nodes in the process (including subprocesses)
           let docs_covered = 0;
           try {
             // Check docs for each file in the graph
             for (const fileInGraph of allFilesInGraph) {
-              const docFolder = `docs/nodes/${fileInGraph.replace('.bpmn', '')}`;
-              const { data: docEntries } = await supabase.storage
-                .from('bpmn-files')
-                .list(docFolder, { limit: 1000 });
-              const docNames = new Set(docEntries?.map(entry => entry.name));
+              // Get version hash for the file
+              const versionHash = await getCurrentVersionHash(fileInGraph);
+              
+              // Try multiple paths: versioned path, legacy path
+              const pathsToTry = versionHash
+                ? [
+                    `docs/slow/chatgpt/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                    `docs/slow/ollama/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                    `docs/local/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                    `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
+                  ]
+                : [
+                    `docs/slow/chatgpt/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                    `docs/slow/ollama/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                    `docs/local/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
+                    `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
+                  ];
+              
+              let docNames = new Set<string>();
+              let foundPath: string | null = null;
+              for (const docFolder of pathsToTry) {
+                const { data: docEntries, error } = await supabase.storage
+                  .from('bpmn-files')
+                  .list(docFolder, { limit: 1000 });
+                
+                if (error && import.meta.env.DEV) {
+                  console.debug(`[Coverage] Error listing ${docFolder}:`, error.message);
+                }
+                
+                if (docEntries && docEntries.length > 0) {
+                  docNames = new Set(docEntries.map(entry => entry.name));
+                  foundPath = docFolder;
+                  if (import.meta.env.DEV && fileInGraph === file.file_name) {
+                    console.log(`[Coverage] Found ${docEntries.length} docs in ${docFolder} for ${fileInGraph}:`, Array.from(docNames));
+                  }
+                  break; // Found docs, stop trying other paths
+                }
+              }
+              
+              if (import.meta.env.DEV && fileInGraph === file.file_name) {
+                if (!foundPath) {
+                  console.log(`[Coverage] ⚠️ No docs found for ${fileInGraph} in any path. Tried:`, pathsToTry);
+                } else {
+                  console.log(`[Coverage] ✓ Found docs in ${foundPath}, checking ${relevantNodes.filter(n => n.bpmnFile === fileInGraph).length} nodes from ${fileInGraph}`);
+                }
+              }
               
               // Count docs for nodes that belong to this process
-              for (const node of relevantNodes) {
-                if (node.bpmnFile === fileInGraph) {
-                  const safeId = sanitizeElementId(node.bpmnElementId);
-                  if (docNames.has(`${safeId}.html`)) {
-                    docs_covered++;
+              // First, try to match each doc file to a node
+              const matchedDocs = new Set<string>();
+              
+              // Debug: Log nodes and docs for Household only if there's a mismatch
+              if (import.meta.env.DEV && fileInGraph === file.file_name && file.file_name === 'mortgage-se-household.bpmn' && docNames.size > 0) {
+                const householdNodes = relevantNodes.filter(n => n.bpmnFile === fileInGraph);
+                if (householdNodes.length === 0) {
+                  console.warn(`[Coverage] ⚠️ Household: Found ${docNames.size} docs but 0 nodes with bpmnFile='mortgage-se-household.bpmn'`);
+                }
+              }
+              
+              for (const docName of docNames) {
+                const docBase = docName.replace('.html', '');
+                let matched = false;
+                
+                // Try exact match first
+                for (const node of relevantNodes) {
+                  if (node.bpmnFile === fileInGraph) {
+                    const safeId = sanitizeElementId(node.bpmnElementId);
+                    if (docBase === safeId || docBase.toLowerCase() === safeId.toLowerCase()) {
+                      matchedDocs.add(docName);
+                      matched = true;
+                      docs_covered++;
+                      if (import.meta.env.DEV && fileInGraph === file.file_name) {
+                        console.log(`[Coverage] ✓ Found doc for ${node.bpmnElementId} in ${fileInGraph} (file: ${docName})`);
+                      }
+                      break;
+                    }
+                  }
+                }
+                
+                // If no exact match, try partial match (check if doc name contains elementId or vice versa)
+                if (!matched) {
+                  for (const node of relevantNodes) {
+                    if (node.bpmnFile === fileInGraph) {
+                      const safeId = sanitizeElementId(node.bpmnElementId);
+                      // Check if doc name contains elementId or vice versa
+                      if (docBase.includes(safeId) || safeId.includes(docBase) ||
+                          docBase.toLowerCase().includes(safeId.toLowerCase()) ||
+                          safeId.toLowerCase().includes(docBase.toLowerCase())) {
+                        matchedDocs.add(docName);
+                        matched = true;
+                        docs_covered++;
+                        // Doc matched with partial match (logged only if verbose)
+                        break;
+                      }
+                    }
+                  }
+                }
+                
+                // Doc file doesn't match any node (logged only if verbose)
+              }
+              
+              // Log missing docs for nodes
+              if (import.meta.env.DEV && fileInGraph === file.file_name && foundPath) {
+                for (const node of relevantNodes) {
+                  if (node.bpmnFile === fileInGraph) {
+                    const safeId = sanitizeElementId(node.bpmnElementId);
+                    const fileName = `${safeId}.html`;
+                    const isMatched = matchedDocs.has(fileName) || Array.from(matchedDocs).some(doc => {
+                      const docBase = doc.replace('.html', '');
+                      return docBase.includes(safeId) || safeId.includes(docBase) ||
+                             docBase.toLowerCase().includes(safeId.toLowerCase()) ||
+                             safeId.toLowerCase().includes(docBase.toLowerCase());
+                    });
+                    if (!isMatched) {
+                      console.log(`[Coverage] ✗ Missing doc for ${node.bpmnElementId} in ${fileInGraph} (expected: ${fileName}, found files: ${Array.from(docNames).join(', ')})`);
+                    }
                   }
                 }
               }
@@ -292,6 +452,8 @@ export const useAllFilesArtifactCoverage = () => {
 
           const hasHierarchyTests = await hasHierarchicalTestsForFile(file.file_name);
           const hierarchyCovered = hasHierarchyTests ? 1 : 0;
+
+          // Final result logged only if there are issues (see above)
 
           coverageMap.set(file.file_name, {
             bpmn_file: file.file_name,
@@ -318,10 +480,16 @@ export const useAllFilesArtifactCoverage = () => {
             },
           });
         } catch (error) {
-          console.error(`Error parsing ${file.file_name}:`, error);
+          console.error(`[Coverage Debug] Error parsing ${file.file_name}:`, error);
+          if (file.file_name === 'mortgage-se-household.bpmn') {
+            console.error(`[Coverage Debug] Full error for household:`, error);
+          }
         }
       }
 
+      if (import.meta.env.DEV) {
+        // Coverage query completed
+      }
       return coverageMap;
     },
     enabled: bpmnFiles.length > 0,

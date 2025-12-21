@@ -62,7 +62,7 @@ export function matchCallActivityToProcesses(
   }
 
   if (!bestCandidate) {
-    if (DEBUG_CALL_ACTIVITY_IDS.has(callActivity.id)) {
+    if (DEBUG_ENABLED) {
       // eslint-disable-next-line no-console
       console.log('[SubprocessMatcher][decision]', {
         callActivityId: callActivity.id,

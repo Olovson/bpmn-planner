@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
+import { getNodeDocFileKey } from '@/lib/nodeArtifactPaths';
 // Removed testMapping import - no longer using fallback logic
 
 export interface FileArtifactStatus {
@@ -32,14 +34,41 @@ export const useFileArtifactStatus = (fileName?: string) => {
       const dorDodCount = dorDodResult.data?.length || 0;
       const testCount = testResult.data?.reduce((sum, t) => sum + (t.test_count || 0), 0) || 0;
 
-      // Check if doc exists (static HTML file)
-      const elementId = fileName.replace('.bpmn', '').replace('mortgage-se-', '');
-      const docPath = `${import.meta.env.BASE_URL || '/'}docs/${elementId}.html`;
+      // Check if doc exists in Supabase Storage (node-level documentation)
+      // Documentation is stored at node level: docs/{provider}/{fileName}/{versionHash}/nodes/{fileBaseName}/*.html
       let hasDoc = false;
       try {
-        const response = await fetch(docPath, { method: 'HEAD' });
-        hasDoc = response.ok;
-      } catch {
+        const versionHash = await getCurrentVersionHash(fileName);
+        const fileBaseName = fileName.replace('.bpmn', '');
+        
+        // Try multiple paths: versioned paths with hash, then legacy paths
+        // Check for any files in the nodes/{fileBaseName}/ directory
+        const pathsToTry = versionHash
+          ? [
+              `docs/slow/chatgpt/${fileName}/${versionHash}/nodes/${fileBaseName}`,
+              `docs/slow/ollama/${fileName}/${versionHash}/nodes/${fileBaseName}`,
+              `docs/local/${fileName}/${versionHash}/nodes/${fileBaseName}`,
+              `docs/nodes/${fileBaseName}`, // Legacy
+            ]
+          : [
+              `docs/nodes/${fileBaseName}`, // Legacy
+            ];
+        
+        // Check if any files exist in the nodes directory
+        for (const path of pathsToTry) {
+          const { data, error } = await supabase.storage
+            .from('bpmn-files')
+            .list(path, {
+              limit: 1,
+            });
+          
+          if (!error && data && data.length > 0) {
+            hasDoc = true;
+            break;
+          }
+        }
+      } catch (error) {
+        console.warn(`[useFileArtifactStatus] Error checking docs for ${fileName}:`, error);
         hasDoc = false;
       }
 
@@ -92,17 +121,47 @@ export const useAllFilesArtifactStatus = () => {
         testCounts.set(bpmnFile, (testCounts.get(bpmnFile) || 0) + (row.test_count || 0));
       });
 
-      // Check docs for each BPMN file
+      // Check docs for each BPMN file in Supabase Storage (node-level documentation)
+      // Documentation is stored at node level: docs/{provider}/{fileName}/{versionHash}/nodes/{fileBaseName}/*.html
       const docChecks = await Promise.all(
         (filesResult.data || []).map(async (file) => {
-          const elementId = file.file_name.replace('.bpmn', '').replace('mortgage-se-', '');
-          const docPath = `${import.meta.env.BASE_URL || '/'}docs/${elementId}.html`;
+          let hasDoc = false;
           try {
-            const response = await fetch(docPath, { method: 'HEAD' });
-            return { fileName: file.file_name, hasDoc: response.ok };
-          } catch {
-            return { fileName: file.file_name, hasDoc: false };
+            const versionHash = await getCurrentVersionHash(file.file_name);
+            const fileBaseName = file.file_name.replace('.bpmn', '');
+            
+            // Try multiple paths: versioned paths with hash, then legacy paths
+            // Check for any files in the nodes/{fileBaseName}/ directory
+            const pathsToTry = versionHash
+              ? [
+                  `docs/slow/chatgpt/${file.file_name}/${versionHash}/nodes/${fileBaseName}`,
+                  `docs/slow/ollama/${file.file_name}/${versionHash}/nodes/${fileBaseName}`,
+                  `docs/local/${file.file_name}/${versionHash}/nodes/${fileBaseName}`,
+                  `docs/nodes/${fileBaseName}`, // Legacy
+                ]
+              : [
+                  `docs/nodes/${fileBaseName}`, // Legacy
+                ];
+            
+            // Check if any files exist in the nodes directory
+            for (const path of pathsToTry) {
+              const { data, error } = await supabase.storage
+                .from('bpmn-files')
+                .list(path, {
+                  limit: 1,
+                });
+              
+              if (!error && data && data.length > 0) {
+                hasDoc = true;
+                break;
+              }
+            }
+          } catch (error) {
+            console.warn(`[useAllFilesArtifactStatus] Error checking docs for ${file.file_name}:`, error);
+            hasDoc = false;
           }
+          
+          return { fileName: file.file_name, hasDoc };
         })
       );
 

@@ -167,12 +167,23 @@ export const useBpmnGenerator = (bpmnFilePath: string | null) => {
       console.log(`Generating for ${parseResult.fileName} (hierarchy: ${useHierarchy})`);
 
       // Generate everything using hierarchical analysis
+      // Note: isActualRootFile is undefined here - will be inferred from graphFileScope length
       const result = await generateAllFromBpmnWithGraph(
         parseResult.fileName || 'unknown.bpmn',
         bpmnFiles,
         dmnFiles,
         useHierarchy,
-        true
+        true,
+        undefined, // progressCallback
+        undefined, // generationSource
+        undefined, // llmProvider
+        false, // localAvailable
+        'v2', // featureGoalTemplateVersion
+        undefined, // nodeFilter
+        undefined, // getVersionHashForFile
+        undefined, // checkCancellation
+        undefined, // abortSignal
+        undefined, // isActualRootFile - will be inferred
       );
 
       setGenerationResult(result);

@@ -87,7 +87,7 @@ function generateNodeTests(node: HierarchicalTestNode, indentLevel: number): str
   const indent = '  '.repeat(indentLevel);
   let result = '';
 
-  if (node.children && node.children.length > 0) {
+  if (node.children && Array.isArray(node.children) && node.children.length > 0) {
     // This is a container (CallActivity/Feature Goal)
     result += `\n${indent}test.describe('${node.name}', () => {\n`;
     node.children.forEach(child => {
@@ -1274,6 +1274,11 @@ export async function generateAllFromBpmnWithGraph(
    * Used to abort ongoing fetch requests (local LLM) and check before cloud LLM calls.
    */
   abortSignal?: AbortSignal,
+  /**
+   * Optional flag to indicate if this is the actual root file of the entire hierarchy.
+   * If not provided, will be inferred from graphFileScope length.
+   */
+  isActualRootFile?: boolean,
 ): Promise<GenerationResult> {
   const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
     if (progressCallback) {
@@ -1316,13 +1321,40 @@ export async function generateAllFromBpmnWithGraph(
     // 
     // För subprocesser (t.ex. Household): generera BARA för subprocess-filen,
     // även om parent-filen inkluderas i grafen för kontext.
+    // 
+    // VIKTIGT: När en subprocess genereras isolerat, blir den första filen i summary.filesIncluded
+    // (eftersom grafen byggs med subprocess som root). Men det betyder INTE att det är root-fil-generering.
+    // Vi måste kolla om filen faktiskt är root-filen i hela hierarkin, inte bara i den isolerade grafen.
+    // 
+    // Indikatorer för root-fil-generering:
+    // 1. isActualRootFile flag är satt till true (explicit från anroparen)
+    // 2. ELLER graphFileScope innehåller många filer (hela hierarkin, typ >5 filer)
+    // 3. OCH summary.filesIncluded innehåller många filer (hela hierarkin)
+    // 4. OCH bpmnFileName är första filen i summary.filesIncluded
+    // 
+    // Om graphFileScope bara innehåller 1-4 filer (subprocess + parent + siblings), är det isolerad generering.
+    // Bestäm om detta är root-fil-generering (generera för hela hierarkin)
+    // Detta sker när:
+    // 1. useHierarchy = true (hierarki används)
+    // 2. Ingen nodeFilter (generera allt)
+    // 3. Root-filen matchar första filen i hierarkin
+    // 4. Antingen isActualRootFile = true ELLER det finns flera filer i scope (hierarkisk struktur)
     const isRootFileGeneration = useHierarchy && 
       !nodeFilter && 
       summary.filesIncluded.length > 0 &&
-      summary.filesIncluded[0] === bpmnFileName; // Första filen i hierarkin är root
+      summary.filesIncluded[0] === bpmnFileName &&
+      (isActualRootFile === true || graphFileScope.length > 1); // Root-fil-generering = flera filer i scope (hierarki)
     
+    // VIKTIGT: När isRootFileGeneration = true, vill vi generera för ALLA filer i hierarkin.
+    // Men summary.filesIncluded kan bara innehålla filer som faktiskt har noder i grafen.
+    // Om noder från subprocesserna får fel bpmnFile (t.ex. application istället för household),
+    // så kommer summary.filesIncluded bara innehålla application-filen.
+    // I så fall, använd graphFileScope (som innehåller alla filer vi byggde grafen med)
+    // för att säkerställa att vi genererar för alla subprocess-filer.
     const analyzedFiles = isRootFileGeneration
-      ? summary.filesIncluded // Fullständig generering för hela hierarkin (root-fil)
+      ? (summary.filesIncluded.length > 1 
+          ? summary.filesIncluded // Om flera filer hittades i grafen, använd dem
+          : graphFileScope) // Annars använd graphFileScope (alla filer i hierarkin)
       : [bpmnFileName]; // Generera bara för vald fil (hierarki används bara för kontext)
     
     // Debug-logging för att se vilka filer som genereras
@@ -1332,9 +1364,14 @@ export async function generateAllFromBpmnWithGraph(
         useHierarchy,
         nodeFilter: !!nodeFilter,
         isRootFileGeneration,
-        graphFileScope: graphFileScope.slice(0, 5), // Visa första 5 för att inte spamma
+        isActualRootFile,
+        graphFileScope: graphFileScope.slice(0, 10), // Visa första 10 för att se alla subprocess-filer
+        graphFileScopeLength: graphFileScope.length,
         summaryFilesIncluded: summary.filesIncluded,
+        summaryFilesIncludedLength: summary.filesIncluded.length,
+        summaryFilesIncludedFirst: summary.filesIncluded[0],
         analyzedFiles,
+        analyzedFilesLength: analyzedFiles.length,
       });
     }
     
@@ -1359,16 +1396,88 @@ export async function generateAllFromBpmnWithGraph(
     });
     const testableNodes = getTestableNodes(graph);
     
+    // Debug: Visa vilka noder som faktiskt finns och vilka filer de tillhör
+    if (import.meta.env.DEV && bpmnFileName === 'mortgage-se-household.bpmn') {
+      const nodesByFile = new Map<string, BpmnProcessNode[]>();
+      testableNodes.forEach(node => {
+        if (!nodesByFile.has(node.bpmnFile)) {
+          nodesByFile.set(node.bpmnFile, []);
+        }
+        nodesByFile.get(node.bpmnFile)!.push(node);
+      });
+      console.log(`[bpmnGenerators] Testable nodes breakdown:`, {
+        totalTestableNodes: testableNodes.length,
+        nodesByFile: Object.fromEntries(
+          Array.from(nodesByFile.entries()).map(([file, nodes]) => [
+            file,
+            nodes.map(n => ({ elementId: n.bpmnElementId, name: n.name, type: n.type }))
+          ])
+        ),
+        householdNodes: testableNodes.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn').map(n => ({
+          elementId: n.bpmnElementId,
+          name: n.name,
+          type: n.type,
+        })),
+      });
+    }
+    
     // Filtrera testableNodes till bara de som ska genereras (baserat på analyzedFiles)
     // Detta säkerställer att progress-räkningen matchar faktiskt antal noder som genereras
     const nodesToGenerate = testableNodes.filter(node => {
       // Om nodeFilter finns, använd den först
       if (nodeFilter && !nodeFilter(node)) {
+        if (import.meta.env.DEV) {
+          console.log(`[bpmnGenerators] Node ${node.bpmnElementId} filtered out by nodeFilter`);
+        }
         return false;
       }
       // Annars, inkludera bara noder från analyzedFiles
-      return analyzedFiles.includes(node.bpmnFile);
+      const included = analyzedFiles.includes(node.bpmnFile);
+      if (import.meta.env.DEV && !included) {
+        console.log(`[bpmnGenerators] Node ${node.bpmnElementId} (${node.bpmnFile}) not in analyzedFiles:`, analyzedFiles);
+      }
+      return included;
     });
+    
+    // Debug-logging för att se filtreringsresultat
+    if (import.meta.env.DEV) {
+      const nodesByFileMap = new Map<string, number>();
+      testableNodes.forEach(n => {
+        nodesByFileMap.set(n.bpmnFile, (nodesByFileMap.get(n.bpmnFile) || 0) + 1);
+      });
+      const nodesToGenerateByFileMap = new Map<string, number>();
+      nodesToGenerate.forEach(n => {
+        nodesToGenerateByFileMap.set(n.bpmnFile, (nodesToGenerateByFileMap.get(n.bpmnFile) || 0) + 1);
+      });
+      
+      // Extra debug för Household-filen (endast om det är Household)
+      if (bpmnFileName === 'mortgage-se-household.bpmn') {
+        const householdNodes = testableNodes.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn');
+        const householdNodesToGenerate = nodesToGenerate.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn');
+        const filteredOutNodes = testableNodes.filter(n => !analyzedFiles.includes(n.bpmnFile));
+        console.log(`[bpmnGenerators] Household node filtering:`, {
+          analyzedFiles,
+          totalTestableNodes: testableNodes.length,
+          householdTestableNodes: householdNodes.length,
+          householdNodesToGenerate: householdNodesToGenerate.length,
+          nodesToGenerateByFile: Object.fromEntries(nodesToGenerateByFileMap),
+          filteredOutNodes: filteredOutNodes.slice(0, 5).map(n => ({
+            elementId: n.bpmnElementId,
+            name: n.name,
+            bpmnFile: n.bpmnFile,
+            type: n.type,
+          })),
+        });
+      } else {
+        // Förenklad logg för andra filer
+        console.log(`[bpmnGenerators] Node filtering:`, {
+          bpmnFileName,
+          totalTestableNodes: testableNodes.length,
+          nodesToGenerate: nodesToGenerate.length,
+          nodesToGenerateByFile: Object.fromEntries(nodesToGenerateByFileMap),
+        });
+      }
+    }
 
     // Beräkna depth för varje nod (för hierarkisk generering: leaf nodes först)
     // OBS: Använd nodesToGenerate (filtrerade noder) för depth-beräkning
@@ -1377,7 +1486,7 @@ export async function generateAllFromBpmnWithGraph(
       if (visited.has(node.id)) return 0; // Avoid cycles
       visited.add(node.id);
       
-      if (node.children.length === 0) {
+      if (!node.children || node.children.length === 0) {
         nodeDepthMap.set(node.id, 0);
         return 0;
       }
@@ -1561,21 +1670,55 @@ export async function generateAllFromBpmnWithGraph(
       await reportProgress('docgen:file', 'Genererar dokumentation/testinstruktioner', file);
       const docFileName = file.replace('.bpmn', '.html');
       
+      // Debug-logging för household-filen
+      if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+        console.log(`[bpmnGenerators] Processing file in loop: ${file}`, {
+          analyzedFiles,
+          nodesToGenerateTotal: nodesToGenerate.length,
+          nodesToGenerateBpmnFiles: Array.from(new Set(nodesToGenerate.map(n => n.bpmnFile))),
+        });
+      }
+      
       // Samla alla noder från denna fil för dokumentation
       // OBS: Använd nodesToGenerate (redan filtrerade) istället för testableNodes
       const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
+      
+      // Debug-logging för household-filen
+      if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+        console.log(`[bpmnGenerators] Processing file: ${file}`, {
+          nodesToGenerateTotal: nodesToGenerate.length,
+          nodesInFile: nodesInFile.length,
+          nodesToGenerateForHousehold: nodesToGenerate.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn').length,
+          sampleNodes: nodesToGenerate.slice(0, 3).map(n => ({ elementId: n.bpmnElementId, bpmnFile: n.bpmnFile })),
+        });
+      }
+      
+      // Debug-logging endast om inga noder hittades (för att identifiera problem)
+      if (import.meta.env.DEV && nodesInFile.length === 0) {
+        console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file} (expected nodes from analyzedFiles: ${analyzedFiles.join(', ')})`);
+        if (file === 'mortgage-se-household.bpmn') {
+          console.warn(`[bpmnGenerators] Household debug:`, {
+            nodesToGenerate: nodesToGenerate.length,
+            nodesWithHouseholdFile: nodesToGenerate.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn').length,
+            allBpmnFiles: Array.from(new Set(nodesToGenerate.map(n => n.bpmnFile))),
+          });
+        }
+      }
       
       if (nodesInFile.length > 0) {
         // Sortera noder primärt efter depth (hierarkisk ordning: leaf nodes först)
         // Sekundärt efter orderIndex (exekveringsordning från sequence flows) inom samma depth
         // Detta säkerställer både hierarkisk ordning OCH exekveringsordning
+        // VIKTIGT: Sortera så att subprocesser (lägre depth) genereras FÖRE parent processer (högre depth)
+        // Detta säkerställer att child documentation finns tillgänglig när parent Feature Goal genereras
         const sortedNodesInFile = [...nodesInFile].sort((a, b) => {
           const depthA = nodeDepthMap.get(a.id) ?? 0;
           const depthB = nodeDepthMap.get(b.id) ?? 0;
           
-          // Primär sortering: högre depth först (leaf nodes före parent nodes)
+          // Primär sortering: lägre depth först (subprocesser före parent nodes)
+          // Detta säkerställer att child documentation sparas i generatedChildDocs innan parent genereras
           if (depthA !== depthB) {
-            return depthB - depthA;
+            return depthA - depthB; // LÄGRE DEPTH FÖRST (inverterat från tidigare)
           }
           
           // Sekundär sortering: orderIndex (exekveringsordning) inom samma depth
@@ -1600,8 +1743,9 @@ export async function generateAllFromBpmnWithGraph(
         // Men vi använder globalProcessedDocNodes för att avgöra om dokumentation ska genereras
         const processedDocNodesInFile = new Set<string>();
         
-        // PASS 1: Generera leaf nodes först (högst depth)
-        // Spara dokumentation från child nodes för att använda i Pass 2
+        // PASS 1: Generera subprocesser först (lägre depth), sedan parent nodes (högre depth)
+        // Detta säkerställer att child documentation sparas i generatedChildDocs innan parent Feature Goal genereras
+        // Spara dokumentation från child nodes för att använda när parent nodes genereras
         // För callActivities: använd subprocessFile som key för att undvika duplicering av återkommande subprocesser
         for (const node of sortedNodesInFile) {
           if (!node.element || !node.bpmnElementId) continue;
@@ -1635,12 +1779,7 @@ export async function generateAllFromBpmnWithGraph(
           // Men vi genererar fortfarande instans-specifik dokumentation för återkommande noder
           const skipDocGeneration = alreadyProcessedGlobally || subprocessAlreadyGenerated;
           
-          if (skipDocGeneration) {
-            // För återkommande noder: generera instans-specifik dokumentation
-            // eftersom kontexten kan vara annorlunda för varje användning
-            console.log(`[bpmnGenerators] Generating instance-specific documentation for reused node ${docKey} (instance: ${nodeKey})`);
-            // Fortsätt med dokumentationsgenerering (inte continue)
-          }
+          // (Instance-specific documentation generation continues silently)
           
           // Bygg ett tydligt meddelande med nodtyp och namn
           const nodeTypeLabel = 
@@ -1669,6 +1808,21 @@ export async function generateAllFromBpmnWithGraph(
           const dorDodKey = `${node.bpmnFile}:${node.bpmnElementId}`;
           const dorDodForNode = result.dorDod.get(dorDodKey) || [];
 
+          // Debug logging för household-filen
+          if (import.meta.env.DEV && node.bpmnFile === 'mortgage-se-household.bpmn') {
+            console.log(`[bpmnGenerators] Processing node:`, {
+              elementId: node.bpmnElementId,
+              name: node.name,
+              type: node.type,
+              docKey,
+              alreadyProcessedGlobally,
+              subprocessAlreadyGenerated,
+              skipDocGeneration,
+              docFileKey,
+              hasContext: !!nodeContext,
+            });
+          }
+
           let nodeDocContent: string;
           let lastDocJson: unknown | undefined;
 
@@ -1686,21 +1840,23 @@ export async function generateAllFromBpmnWithGraph(
             
             // Rekursiv funktion för att samla dokumentation från alla descendant nodes
             const collectChildDocsRecursively = (currentNode: BpmnProcessNode) => {
-              for (const child of currentNode.children) {
-                // För callActivities, använd subprocessFile som key för att hitta dokumentation
-                // även om child är en annan instans av samma subprocess
-                const childDocKey = child.type === 'callActivity' && child.subprocessFile
-                  ? `subprocess:${child.subprocessFile}`
-                  : `${child.bpmnFile}::${child.bpmnElementId}`;
-                
-                const childDoc = generatedChildDocs.get(childDocKey);
-                if (childDoc) {
-                  childDocsForNode.set(child.id, childDoc);
-                }
-                
-                // Rekursivt samla från nested children (för nested subprocesser)
-                if (child.children && child.children.length > 0) {
-                  collectChildDocsRecursively(child);
+              if (currentNode.children && Array.isArray(currentNode.children) && currentNode.children.length > 0) {
+                for (const child of currentNode.children) {
+                  // För callActivities, använd subprocessFile som key för att hitta dokumentation
+                  // även om child är en annan instans av samma subprocess
+                  const childDocKey = child.type === 'callActivity' && child.subprocessFile
+                    ? `subprocess:${child.subprocessFile}`
+                    : `${child.bpmnFile}::${child.bpmnElementId}`;
+                  
+                  const childDoc = generatedChildDocs.get(childDocKey);
+                  if (childDoc) {
+                    childDocsForNode.set(child.id, childDoc);
+                  }
+                  
+                  // Rekursivt samla från nested children (för nested subprocesser)
+                  if (child.children && Array.isArray(child.children) && child.children.length > 0) {
+                    collectChildDocsRecursively(child);
+                  }
                 }
               }
             };
@@ -1711,14 +1867,16 @@ export async function generateAllFromBpmnWithGraph(
               collectChildDocsRecursively(node);
             } else {
               // För tasks/epics: samla bara från direkta children (de har normalt inga children)
-              for (const child of node.children) {
-                const childDocKey = child.type === 'callActivity' && child.subprocessFile
-                  ? `subprocess:${child.subprocessFile}`
-                  : `${child.bpmnFile}::${child.bpmnElementId}`;
-                
-                const childDoc = generatedChildDocs.get(childDocKey);
-                if (childDoc) {
-                  childDocsForNode.set(child.id, childDoc);
+              if (node.children && node.children.length > 0) {
+                for (const child of node.children) {
+                  const childDocKey = child.type === 'callActivity' && child.subprocessFile
+                    ? `subprocess:${child.subprocessFile}`
+                    : `${child.bpmnFile}::${child.bpmnElementId}`;
+                  
+                  const childDoc = generatedChildDocs.get(childDocKey);
+                  if (childDoc) {
+                    childDocsForNode.set(child.id, childDoc);
+                  }
                 }
               }
             }
@@ -1735,8 +1893,6 @@ export async function generateAllFromBpmnWithGraph(
                 // Generera instans-specifik dokumentation med parent-kontext
                 const existingDoc = generatedChildDocs.get(docKey);
                 if (existingDoc) {
-                  console.log(`[bpmnGenerators] Generating instance-specific documentation for reused subprocess ${node.subprocessFile} (instance: ${nodeKey})`);
-                  
                   // Generera instans-specifik dokumentation med LLM
                   // Detta skapar en separat Feature Goal-sida med parent-fil i namnet
                   nodeDocContent = await renderDocWithLlmFallback(
@@ -1856,12 +2012,24 @@ export async function generateAllFromBpmnWithGraph(
               
               // Skapa Feature Goal-sida endast om den inte redan finns (förhindra dubbelgenerering)
               if (!result.docs.has(featureDocPath)) {
+                if (import.meta.env.DEV && node.bpmnFile === 'mortgage-se-household.bpmn') {
+                  console.log(`[bpmnGenerators] ✓ Adding Feature Goal doc:`, {
+                    featureDocPath,
+                    elementId: node.bpmnElementId,
+                    name: node.name,
+                    subprocessFile: node.subprocessFile,
+                  });
+                }
                 result.docs.set(
                   featureDocPath,
                   insertGenerationMeta(nodeDocContent, generationSourceLabel, featureGoalTemplateVersion),
                 );
               } else {
-                console.log(`[bpmnGenerators] Feature Goal page already exists: ${featureDocPath}, skipping duplicate`);
+                if (import.meta.env.DEV && node.bpmnFile === 'mortgage-se-household.bpmn') {
+                  console.log(`[bpmnGenerators] ⚠️ Feature Goal page already exists: ${featureDocPath}, skipping duplicate`);
+                } else {
+                  console.log(`[bpmnGenerators] Feature Goal page already exists: ${featureDocPath}, skipping duplicate`);
+                }
               }
               // Lägg till diagnostiksektion om subprocess-matchen inte är bekräftad
               if (
@@ -1988,10 +2156,26 @@ export async function generateAllFromBpmnWithGraph(
             nodeDocContent = generateDocumentationHTML(node.element, undefined, undefined, dorDodForNode);
           }
 
-          result.docs.set(
-            docFileKey,
-            insertGenerationMeta(nodeDocContent, generationSourceLabel),
-          );
+          // VIKTIGT: callActivities har redan lagts till med Feature Goal-path (rad 2006-2009)
+          // Så vi ska INTE lägga till dem igen med Epic-path här
+          // Endast userTasks, serviceTasks och businessRuleTasks ska läggas till här
+          if (node.type !== 'callActivity') {
+            // Debug logging för household-filen
+            if (import.meta.env.DEV && node.bpmnFile === 'mortgage-se-household.bpmn') {
+              console.log(`[bpmnGenerators] ✓ Adding doc to result.docs:`, {
+                docFileKey,
+                nodeType: node.type,
+                elementId: node.bpmnElementId,
+                name: node.name,
+                contentLength: nodeDocContent.length,
+              });
+            }
+
+            result.docs.set(
+              docFileKey,
+              insertGenerationMeta(nodeDocContent, generationSourceLabel),
+            );
+          }
 
           // === TESTGENERERING HAR FLYTTATS TILL SEPARAT STEG ===
           // Testfiler och testscenarion genereras inte längre i dokumentationssteget.
@@ -2029,15 +2213,35 @@ export async function generateAllFromBpmnWithGraph(
         // och generera Feature Goal-dokumentation för subprocessen själv
         // STRATEGI: Alltid generera Feature Goal för subprocess-filen, även om callActivity redan genererat
         // Detta säkerställer konsekvent resultat oavsett filordning
-        const isSubprocessFile = Array.from(testableNodes.values()).some(
+        // En fil är en subprocess-fil om:
+        // 1. Det finns en callActivity som pekar på den (när hierarki används), ELLER
+        // 2. Det finns en process-nod med bpmnFile === file (när filen genereras isolerat)
+        const hasCallActivityPointingToFile = Array.from(testableNodes.values()).some(
           node => node.type === 'callActivity' && node.subprocessFile === file
         );
+        const processNodeForFile = Array.from(graph.allNodes.values()).find(
+          node => node.type === 'process' && node.bpmnFile === file
+        );
+        const isSubprocessFile = hasCallActivityPointingToFile || !!processNodeForFile;
         
-        if (isSubprocessFile && nodesInFile.length > 0) {
-          // Hitta root-processen för denna fil
-          const processNodeForFile = Array.from(graph.allNodes.values()).find(
-            node => node.type === 'process' && node.bpmnFile === file
-          );
+        // Debug logging för household-filen
+        if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+          console.log(`[bpmnGenerators] Subprocess file check:`, {
+            file,
+            hasCallActivityPointingToFile,
+            processNodeForFile: !!processNodeForFile,
+            processNodeId: processNodeForFile?.id,
+            processNodeBpmnFile: processNodeForFile?.bpmnFile,
+            isSubprocessFile,
+            nodesInFile: nodesInFile.length,
+            allProcessNodes: Array.from(graph.allNodes.values())
+              .filter(n => n.type === 'process')
+              .map(n => ({ id: n.id, bpmnFile: n.bpmnFile, bpmnElementId: n.bpmnElementId })),
+          });
+        }
+        
+        if (isSubprocessFile && nodesInFile.length > 0 && processNodeForFile) {
+          // Hitta root-processen för denna fil (redan hittad ovan)
           
           if (processNodeForFile) {
             const subprocessDocKey = `subprocess:${file}`;
@@ -2218,7 +2422,7 @@ export async function generateAllFromBpmnWithGraph(
                   insertGenerationMeta(subprocessDocContent, generationSourceLabel, featureGoalTemplateVersion),
                 );
                 
-                console.log(`Generated Feature Goal documentation for subprocess: ${subprocessFeatureDocPath}`);
+                // Feature Goal documentation generated for subprocess
               }
             }
           }
@@ -2228,8 +2432,30 @@ export async function generateAllFromBpmnWithGraph(
           wrapLlmContentAsDocument(combinedBody, `Dokumentation - ${file}`),
           generationSourceLabel,
         );
+        if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+          console.log(`[bpmnGenerators] ✓ Adding combined file-level doc: ${docFileName} (${result.docs.size} total docs before)`);
+        }
         result.docs.set(docFileName, wrappedCombined);
-        console.log(`Generated documentation: ${docFileName}`);
+        if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+          console.log(`[bpmnGenerators] Total docs after adding combined: ${result.docs.size}`);
+          console.log(`[bpmnGenerators] All doc keys:`, Array.from(result.docs.keys()));
+        }
+      } else {
+        // Om inga noder hittades, skapa en tom dokumentationsfil för att indikera att filen analyserades
+        // Detta säkerställer att filen visas i resultatet även om den inte har några genererbara noder
+        const emptyDoc = insertGenerationMeta(
+          wrapLlmContentAsDocument(
+            `<h1>Dokumentation för ${file}</h1><p>Inga genererbara noder hittades i denna fil.</p>`,
+            `Dokumentation - ${file}`
+          ),
+          generationSourceLabel,
+        );
+        result.docs.set(docFileName, emptyDoc);
+        if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+          console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file}, created empty documentation file`);
+        } else {
+          console.log(`[bpmnGenerators] No nodes found for ${file}, created empty documentation file`);
+        }
       }
     }
     await reportProgress('docgen:complete', 'Dokumentation klara');
@@ -2507,18 +2733,22 @@ function generateNodeTestsFromProcessTree(
 
   if (node.type === 'process') {
     // Process node - generate children only
-    node.children.forEach(child => {
-      result += generateNodeTestsFromProcessTree(child, initiative, indentLevel);
-    });
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach(child => {
+        result += generateNodeTestsFromProcessTree(child, initiative, indentLevel);
+      });
+    }
   } else if (node.type === 'callActivity') {
     // Feature goal - create describe block
     const orderPrefix = typeof node.orderIndex === 'number' ? `[#${node.orderIndex}] ` : '';
     result += `\n${indent}test.describe('${orderPrefix}${node.label}', () => {\n`;
-    
+
     // Generate tests for children
-    node.children.forEach(child => {
-      result += generateNodeTestsFromProcessTree(child, initiative, indentLevel + 1);
-    });
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach(child => {
+        result += generateNodeTestsFromProcessTree(child, initiative, indentLevel + 1);
+      });
+    }
     
     result += `${indent}});\n`;
   } else if (node.type === 'userTask' || node.type === 'serviceTask' || node.type === 'businessRuleTask') {
@@ -2773,9 +3003,11 @@ function generateNodeDocumentation(
   }
 
   // Recursively process children
-  node.children.forEach(child => {
-    html += generateNodeDocumentation(child, includeOrderIndex, includeScenarioPath, depth + 1);
-  });
+  if (node.children && Array.isArray(node.children)) {
+    node.children.forEach(child => {
+      html += generateNodeDocumentation(child, includeOrderIndex, includeScenarioPath, depth + 1);
+    });
+  }
 
   return html;
 }

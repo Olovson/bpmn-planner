@@ -162,10 +162,23 @@ export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult>
         isCreatingMap = true;
         createMapPromise = (async () => {
           try {
-            console.log('[bpmnMapStorage] bpmn-map.json saknas helt i storage, skapar från projektfil...');
+            console.log('[bpmnMapStorage] bpmn-map.json saknas helt i storage, försöker generera automatiskt från BPMN-filer...');
             
-            // Skapa filen i storage från projektfilen (endast om den verkligen saknas)
-            const jsonStr = JSON.stringify(rawBpmnMap, null, 2);
+            let mapToSave: BpmnMap;
+            
+            // Försök generera automatiskt från alla BPMN-filer
+            try {
+              const { generateBpmnMapFromFiles } = await import('./bpmnMapAutoGenerator');
+              mapToSave = await generateBpmnMapFromFiles();
+              console.log('[bpmnMapStorage] ✓ Automatisk generering lyckades');
+            } catch (autoGenError) {
+              // Fallback till projektfil om automatisk generering misslyckas
+              console.warn('[bpmnMapStorage] Automatisk generering misslyckades, använder projektfil:', autoGenError);
+              mapToSave = loadBpmnMap(rawBpmnMap);
+            }
+            
+            // Spara den genererade map:en till storage
+            const jsonStr = JSON.stringify(mapToSave, null, 2);
             const blob = new Blob([jsonStr], { type: 'application/json' });
             
             const { error: uploadError } = await supabase.storage
@@ -177,7 +190,7 @@ export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult>
               });
 
             if (!uploadError) {
-              console.log('[bpmnMapStorage] ✓ bpmn-map.json skapad i storage från projektfil');
+              console.log('[bpmnMapStorage] ✓ bpmn-map.json skapad i storage');
             } else {
               // Om upload misslyckas (t.ex. filen finns redan), logga varning men fortsätt
               console.warn('[bpmnMapStorage] Kunde inte skapa bpmn-map.json i storage (kan bero på att den redan finns):', uploadError.message);
@@ -196,7 +209,27 @@ export async function loadBpmnMapFromStorage(): Promise<BpmnMapValidationResult>
         await createMapPromise;
       }
       
-      // Returnera projektfilen (används första gången när filen saknas)
+      // Försök ladda den nyss skapade filen, annars använd projektfilen
+      try {
+        const { data: newData, error: newError } = await supabase.storage
+          .from('bpmn-files')
+          .download(BPMN_MAP_STORAGE_PATH);
+        
+        if (!newError && newData) {
+          const content = await newData.text();
+          const mapJson = JSON.parse(content);
+          const map = loadBpmnMap(mapJson);
+          return {
+            valid: true,
+            map,
+            source: 'created',
+          };
+        }
+      } catch {
+        // Fallback till projektfilen
+      }
+      
+      // Returnera projektfilen som fallback
       const map = loadBpmnMap(rawBpmnMap);
       return {
         valid: true,

@@ -32,17 +32,28 @@ export async function triggerChromaIndexing(): Promise<void> {
   }
 
   // Kontrollera om Chroma DB server är tillgänglig
-  // NOTERA: Om servern inte körs kommer webbläsaren att logga CORS-fel.
-  // Detta är förväntat beteende och kan ignoreras.
+  // NOTERA: Om servern inte körs eller har CORS-problem kommer webbläsaren att logga fel.
+  // Detta är förväntat beteende och kan ignoreras - Chroma är valfritt för indexering.
   try {
-    const response = await fetch('http://localhost:8000/api/v1/heartbeat', {
-      method: 'GET',
-      signal: AbortSignal.timeout(2000), // 2 sekunder timeout
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     
-    if (!response.ok) {
-      // Server svarar men endpoint är inte tillgänglig (t.ex. 410 Gone för deprecated v1 API)
-      // Detta är okej - vi hoppar bara över indexering
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/heartbeat', {
+        method: 'GET',
+        signal: controller.signal,
+        // Suppress CORS errors in console by catching them silently
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        // Server svarar men endpoint är inte tillgänglig (t.ex. 410 Gone för deprecated v1 API)
+        return;
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      // Fetch misslyckades (server körs inte, CORS-blockad, eller timeout)
+      // Detta är förväntat - Chroma är valfritt
       return;
     }
   } catch (error) {

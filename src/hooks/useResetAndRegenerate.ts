@@ -171,12 +171,23 @@ export const useResetAndRegenerate = () => {
           console.log(`Generating ${file.file_name} (hierarchy: ${useHierarchy})`);
           
           // Generate all artifacts (med eller utan hierarki)
+          // Note: isActualRootFile is undefined here - will be inferred from graphFileScope length
           const result = await generateAllFromBpmnWithGraph(
             file.file_name,
             allBpmnFiles,
             dmnFiles,
             useHierarchy,
-            true
+            true,
+            undefined, // progressCallback
+            undefined, // generationSource
+            undefined, // llmProvider
+            false, // localAvailable
+            'v2', // featureGoalTemplateVersion
+            undefined, // nodeFilter
+            undefined, // getVersionHashForFile
+            undefined, // checkCancellation
+            undefined, // abortSignal
+            undefined, // isActualRootFile - will be inferred
           );
 
           // Save DoR/DoD

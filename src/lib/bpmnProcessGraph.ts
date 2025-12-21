@@ -70,22 +70,31 @@ export async function buildBpmnProcessGraph(
     model.hierarchyRoots.find((proc) => proc.bpmnFile === rootFile) ??
     model.hierarchyRoots[0];
 
-  const rootFileName = rootProcess.bpmnFile || rootFile;
+  // VIKTIGT: Använd alltid rootFile som rootFileName, inte rootProcess.bpmnFile.
+  // rootProcess.bpmnFile kan vara från parent-processen om Household är en subprocess,
+  // men vi vill alltid använda rootFile när vi bygger grafen för en specifik fil.
+  const rootFileName = rootFile;
 
   const elementsByFile = buildElementIndex(parseResults);
   const allNodes = new Map<string, BpmnProcessNode>();
   const fileNodes = new Map<string, BpmnProcessNode[]>();
   const missingDependencies: { parent: string; childProcess: string }[] = [];
 
+  // VIKTIGT: När vi bygger grafen för en specifik fil (t.ex. Household),
+  // så ska alla noder som tillhör den processen ha bpmnFile = rootFileName,
+  // även om ProcessNodeModel säger något annat (t.ex. från parent-processen).
+  // Detta säkerställer att coverage-kontrollen kan hitta dokumentationen korrekt.
   const rootChildren = convertProcessModelChildren(
     rootProcess,
     model,
     {
       currentFile: rootFileName,
+      rootFile: rootFileName, // Lägg till rootFile i context för att kunna override bpmnFile
       elementsByFile,
       allNodes,
       fileNodes,
       missingDependencies,
+      visitedProcesses: new Set<string>(), // Initialize visited processes set
     },
   );
 
@@ -98,8 +107,17 @@ export async function buildBpmnProcessGraph(
     children: rootChildren,
   };
 
+  // VIKTIGT: Lägg till root-noden i allNodes så att den kan hittas när vi letar efter process-noder
+  // Detta säkerställer att Feature Goal kan genereras för subprocess-filer även när de genereras isolerat
+  allNodes.set(root.id, root);
+  if (!fileNodes.has(rootFileName)) {
+    fileNodes.set(rootFileName, []);
+  }
+  fileNodes.get(rootFileName)!.push(root);
+
   // Assign sequence-flow based ordering per file to all graph nodes.
   assignExecutionOrder(parseResults, fileNodes);
+
 
   return {
     rootFile: rootFileName,
@@ -157,10 +175,12 @@ function buildElementIndex(parseResults: Map<string, BpmnParseResult>) {
 
 interface ConversionContext {
   currentFile: string;
+  rootFile?: string; // Root file for the graph being built - used to override bpmnFile for root process nodes
   elementsByFile: Map<string, Map<string, BpmnElement>>;
   allNodes: Map<string, BpmnProcessNode>;
   fileNodes: Map<string, BpmnProcessNode[]>;
   missingDependencies: { parent: string; childProcess: string }[];
+  visitedProcesses?: Set<string>; // Track visited process nodes to avoid infinite recursion
 }
 
 function convertProcessModelChildren(
@@ -177,10 +197,20 @@ function convertProcessModelChildren(
     if (node.kind === 'process') {
       // Flatten process nodes beneath the current parent, mirroring the
       // behaviour used in the client-side ProcessTree.
+      // VIKTIGT: Om vi bygger grafen för en specifik rootFile (t.ex. Household),
+      // och vi är i root-processen eller dess children, så använd rootFile.
+      // Men VIKTIGT: Om node.bpmnFile inte matchar rootFile, betyder det att
+      // detta är en process från en annan fil (t.ex. parent-processen), och vi
+      // ska INTE använda rootFile för den.
+      const nextFile = context.rootFile && 
+                       context.currentFile === context.rootFile &&
+                       node.bpmnFile === context.rootFile
+        ? context.rootFile  // Vi är fortfarande i root-processen OCH noden tillhör root-filen
+        : (node.bpmnFile || context.currentFile);
       result.push(
         ...convertProcessModelChildren(node, model, {
           ...context,
-          currentFile: node.bpmnFile || context.currentFile,
+          currentFile: nextFile,
         }),
       );
       return;
@@ -193,6 +223,7 @@ function convertProcessModelChildren(
         ? resolveSubprocessFileFromModel(node, model)
         : undefined;
 
+
       if (!subprocessFile || node.subprocessLink?.matchStatus !== 'matched') {
         context.missingDependencies.push({
           parent: context.currentFile,
@@ -200,16 +231,58 @@ function convertProcessModelChildren(
         });
       }
 
-      const children = convertProcessModelChildren(node, model, {
-        ...context,
-        currentFile: subprocessFile ?? context.currentFile,
-      });
+      // För callActivity: om vi är i root-processen (currentFile === rootFile),
+      // OCH callActivity-elementet faktiskt finns i root-filen, så använd rootFile.
+      // Annars använd currentFile (som kan vara från parent-processen).
+      const elementExistsInRootFile = context.rootFile && 
+        context.elementsByFile.get(context.rootFile)?.has(elementId);
+      const callActivityBpmnFile = context.rootFile && 
+                                    context.currentFile === context.rootFile &&
+                                    elementExistsInRootFile
+        ? context.rootFile
+        : context.currentFile;
+      
+      // VIKTIGT: När en callActivity har en matchad subprocess, behöver vi bearbeta
+      // children från target-processen, inte bara callActivity-nodens children.
+      // Detta görs genom att hitta target-processen via subprocess edge och bearbeta dess children.
+      // VIKTIGT: Vi måste också undvika oändlig rekursion genom att tracka besökta processer.
+      let children: BpmnProcessNode[] = [];
+      
+      if (subprocessFile && node.subprocessLink?.matchedProcessId) {
+        // Hitta target-processen via subprocess edge
+        const subprocessEdge = model.edges.find(
+          (e) => e.kind === 'subprocess' && e.fromId === node.id,
+        );
+        if (subprocessEdge) {
+          const targetProcess = model.nodesById.get(subprocessEdge.toId);
+          if (targetProcess) {
+            // Undvik oändlig rekursion genom att kolla om vi redan besökt denna process
+            const visitedProcesses = context.visitedProcesses ?? new Set<string>();
+            if (!visitedProcesses.has(targetProcess.id)) {
+              visitedProcesses.add(targetProcess.id);
+              // Bearbeta children från target-processen med currentFile = subprocessFile
+              children = convertProcessModelChildren(targetProcess, model, {
+                ...context,
+                currentFile: subprocessFile,
+                visitedProcesses,
+              });
+              visitedProcesses.delete(targetProcess.id); // Remove after processing to allow reuse in different branches
+            }
+          }
+        }
+      } else {
+        // Om ingen subprocess matchad, bearbeta callActivity-nodens children som vanligt
+        children = convertProcessModelChildren(node, model, {
+          ...context,
+          currentFile: subprocessFile ?? context.currentFile,
+        });
+      }
 
       const graphNode: BpmnProcessNode = {
-        id: `${context.currentFile}:${elementId}`,
+        id: `${callActivityBpmnFile}:${elementId}`,
         name: node.name,
         type: 'callActivity',
-        bpmnFile: context.currentFile,
+        bpmnFile: callActivityBpmnFile,
         bpmnElementId: elementId,
         children,
         element,
@@ -243,11 +316,29 @@ function convertProcessModelChildren(
         businessRuleTask: 'businessRuleTask',
       };
 
+      // VIKTIGT: Om vi är i root-processen (currentFile === rootFile),
+      // OCH elementet faktiskt finns i root-filen, så använd rootFile för bpmnFile.
+      // Annars använd context.currentFile (som kan vara från parent-processen eller subprocess-filen).
+      // Detta säkerställer att noder i root-processen alltid har rätt bpmnFile,
+      // oavsett vad ProcessModel säger (som kan ha fel bpmnFile från parent-processen).
+      // 
+      // När vi är i en subprocess (currentFile !== rootFile), ska vi alltid använda currentFile
+      // (som är subprocess-filen), inte rootFile. Detta säkerställer att noder från subprocesser
+      // får rätt bpmnFile när vi genererar för root-filen med hierarki.
+      const elementExistsInRootFile = context.rootFile && 
+        context.elementsByFile.get(context.rootFile)?.has(elementId);
+      const nodeBpmnFile = context.rootFile && 
+                           context.currentFile === context.rootFile &&
+                           elementExistsInRootFile
+        ? context.rootFile
+        : context.currentFile;
+      
+      
       const graphNode: BpmnProcessNode = {
-        id: `${context.currentFile}:${elementId}`,
+        id: `${nodeBpmnFile}:${elementId}`,
         name: node.name,
         type: typeMap[node.kind] ?? 'userTask',
-        bpmnFile: context.currentFile,
+        bpmnFile: nodeBpmnFile,
         bpmnElementId: elementId,
         children: [],
         element,
@@ -360,6 +451,20 @@ function resolveSubprocessFileFromModel(
 ): string | undefined {
   const link = node.subprocessLink;
   if (!link?.matchedProcessId) return undefined;
+  
+  // VIKTIGT: matchedProcessId är en internalId från hierarchy.processes,
+  // men model.nodesById använder id som nyckel (t.ex. "file:elementId").
+  // Vi måste använda subprocess edge för att hitta target-processen,
+  // precis som resolveSubprocessFile gör i processModelToProcessTree.ts.
+  const edge = model.edges.find(
+    (e) => e.kind === 'subprocess' && e.fromId === node.id,
+  );
+  if (edge) {
+    const target = model.nodesById.get(edge.toId);
+    return target?.bpmnFile;
+  }
+  
+  // Fallback: försök hitta direkt med matchedProcessId (kan fungera om det är samma som id)
   const target = model.nodesById.get(link.matchedProcessId);
   return target?.bpmnFile;
 }
@@ -420,16 +525,29 @@ export function createGraphSummary(graph: BpmnProcessGraph): GraphSummary {
 
   // Beräkna hierarki-djup (antal nivåer, inkl. rot)
   function calculateDepth(node: BpmnProcessNode): number {
-    if (node.children.length === 0) return 1;
+    if (!node.children || node.children.length === 0) return 1;
     const childDepths = node.children.map((child) => calculateDepth(child));
     return 1 + Math.max(...childDepths);
   }
+
+  const allFiles = Array.from(graph.fileNodes.keys());
+  
+  // VIKTIGT: Sortera filer så att root-filen kommer först.
+  // Map.keys() returnerar nycklar i insertion order, men när vi registrerar noder,
+  // så registreras noder från subprocesserna först (eftersom de bearbetas först när vi går in i callActivities),
+  // och sedan registreras noder från root-filen. Vi behöver sortera så att root-filen kommer först.
+  const filesIncluded = allFiles.sort((a, b) => {
+    if (a === graph.rootFile) return -1;
+    if (b === graph.rootFile) return 1;
+    return a.localeCompare(b);
+  });
+  
 
   return {
     totalFiles: graph.fileNodes.size,
     totalNodes: graph.allNodes.size,
     nodesByType,
-    filesIncluded: Array.from(graph.fileNodes.keys()),
+    filesIncluded,
     hierarchyDepth: calculateDepth(graph.root),
   };
 }

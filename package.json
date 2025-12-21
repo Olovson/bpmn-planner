@@ -25,6 +25,7 @@
     "check:db": "npm run check:db-schema",
     "supabase:ensure-schema": "node scripts/ensure-supabase-schema.mjs",
     "supabase:reset": "node scripts/reset-supabase.mjs",
+    "clean:database": "node scripts/clean-database.mjs",
     "create:seed-user": "node scripts/create-seed-user.mjs",
     "check:supabase-status": "node scripts/check-supabase-status.mjs",
     "fix:supabase-profile": "node scripts/fix-supabase-profile.mjs",

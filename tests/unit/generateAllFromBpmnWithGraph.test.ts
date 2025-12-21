@@ -202,7 +202,7 @@ describe('generateAllFromBpmnWithGraph', () => {
     vi.unstubAllGlobals();
   });
 
-  it('produces docs, tests and DoR/DoD output when hierarchy succeeds', async () => {
+  it('produces docs and DoR/DoD output when hierarchy succeeds', async () => {
     const result = await generateAllFromBpmnWithGraph(
       'mortgage.bpmn',
       ['mortgage.bpmn'],
@@ -214,7 +214,8 @@ describe('generateAllFromBpmnWithGraph', () => {
     expect(mockBuildBpmnProcessGraph).toHaveBeenCalledTimes(1);
     expect(result.metadata?.hierarchyUsed).toBe(true);
     expect(result.metadata?.totalFilesAnalyzed).toBe(1);
-    expect(result.tests.size).toBeGreaterThanOrEqual(2); // hierarchical + node test
+    // NOTE: Test generation has been moved to a separate function (generateTestsForFile)
+    // so result.tests will be empty. Tests are now generated separately.
     expect(result.docs.size).toBeGreaterThanOrEqual(1);
     expect(result.dorDod.size).toBeGreaterThanOrEqual(1);
     expect(result.nodeArtifacts?.length).toBeGreaterThanOrEqual(1);
@@ -245,11 +246,9 @@ describe('generateAllFromBpmnWithGraph', () => {
     expect(unresolvedDocKey).toBeDefined();
     const unresolvedDoc = unresolvedDocKey ? result.docs.get(unresolvedDocKey) : '';
     expect(unresolvedDoc).toBeDefined();
-    // Per-node test should still be created for the unresolved subprocess
-    const unresolvedTestKey = Array.from(result.tests.keys()).find((key) =>
-      key.includes('Call_Sub'),
-    );
-    expect(unresolvedTestKey).toBeDefined();
+    // NOTE: Test generation has been moved to a separate function (generateTestsForFile)
+    // so result.tests will be empty. Tests are now generated separately.
+    // The unresolved subprocess documentation should still be created though
   });
 
   it('adds DMN placeholder information for business rule tasks without DMN links', async () => {

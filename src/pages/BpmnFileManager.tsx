@@ -171,6 +171,7 @@ export default function BpmnFileManager() {
   const [generatingFile, setGeneratingFile] = useState<string | null>(null);
   const [activeOperation, setActiveOperation] = useState<'llm' | 'local' | 'hierarchy' | null>(null);
   const [bpmnMapValidation, setBpmnMapValidation] = useState<{ valid: boolean; error?: string; details?: string; source?: string } | null>(null);
+  const [regeneratingMap, setRegeneratingMap] = useState(false);
   
   interface DetailedGenerationResult {
     fileName: string;
@@ -1604,6 +1605,7 @@ export default function BpmnFileManager() {
         getVersionHashForFile, // Pass version selection function
         checkCancellation, // Pass cancellation check function
         abortSignal, // Pass abort signal for LLM calls
+        isRootFile, // Pass flag indicating if this is the actual root file
       );
       checkCancellation();
 
@@ -1925,6 +1927,9 @@ export default function BpmnFileManager() {
       const versionHash = await getVersionHashForFile(file.file_name);
 
       if (result.docs.size > 0) {
+        if (import.meta.env.DEV) {
+          console.log(`[BpmnFileManager] Uploading ${result.docs.size} docs for ${file.file_name}, versionHash: ${versionHash}`);
+        }
         for (const [docFileName, docContent] of result.docs.entries()) {
           checkCancellation();
           const { modePath: docPath, legacyPath: legacyDocPath } = buildDocStoragePaths(
@@ -1934,6 +1939,9 @@ export default function BpmnFileManager() {
             file.file_name, // bpmnFileName
             versionHash // versionHash
           );
+          if (import.meta.env.DEV) {
+            console.log(`[BpmnFileManager] Uploading doc: ${docFileName} -> ${docPath}`);
+          }
           const htmlBlob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
           const { error: uploadError } = await supabase.storage
             .from('bpmn-files')
@@ -1944,8 +1952,11 @@ export default function BpmnFileManager() {
             });
 
           if (uploadError) {
-            console.error(`Error uploading ${docFileName}:`, uploadError);
+            console.error(`[BpmnFileManager] Error uploading ${docFileName} to ${docPath}:`, uploadError);
           } else {
+            if (import.meta.env.DEV) {
+              console.log(`[BpmnFileManager] ✓ Successfully uploaded ${docFileName} to ${docPath}`);
+            }
             docsCount++;
             detailedDocFiles.push(docFileName);
             if (legacyDocPath !== docPath) {
@@ -2001,6 +2012,8 @@ export default function BpmnFileManager() {
       const skippedList = Array.from(skippedSubprocesses);
       const nodeDocCount = nodeArtifacts.filter(a => a.docFileName).length;
       const totalDocCount = nodeDocCount || docsCount;
+      // Testgenerering sker i separat steg, så totalTestCount är alltid 0 här
+      const totalTestCount = 0;
 
       const resultMessage: string[] = [];
       if (isLocalMode) {
@@ -2110,10 +2123,7 @@ export default function BpmnFileManager() {
       // innan vi fortsätter med resten av async-operationerna
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      if (showReport) {
-        setGenerationResult(generationResult);
-        setShowGenerationReport(true);
-      }
+      // GenerationDialog visar redan resultatet i sin result-vy
       syncOverlayProgress('Generering klar');
       
       // Mark diffs as resolved for all successfully generated nodes
@@ -2484,9 +2494,17 @@ export default function BpmnFileManager() {
         skippedSubprocesses: Array.from(aggregatedResult.allSkippedSubprocesses),
       };
 
-      // Visa sammanfattning när alla filer är klara
-      setGenerationResult(summaryResult);
-      setShowGenerationReport(true);
+      // GenerationDialog visar redan resultatet i sin result-vy
+      setGenerationDialogResult({
+        fileName: summaryResult.fileName,
+        filesAnalyzed: summaryResult.filesAnalyzed,
+        testFiles: summaryResult.testFiles,
+        docFiles: summaryResult.docFiles,
+        jiraMappings: summaryResult.jiraMappings,
+        subprocessMappings: summaryResult.subprocessMappings,
+        skippedSubprocesses: summaryResult.skippedSubprocesses,
+      });
+      setGenerationProgress(null); // Clear progress to show result
     }
   };
 
@@ -3269,6 +3287,55 @@ export default function BpmnFileManager() {
     }
   };
   
+  const handleRegenerateBpmnMap = async () => {
+    try {
+      setRegeneratingMap(true);
+      
+      const { generateBpmnMapFromFiles } = await import('@/lib/bpmn/bpmnMapAutoGenerator');
+      const generatedMap = await generateBpmnMapFromFiles();
+      
+      const { saveBpmnMapToStorage } = await import('@/lib/bpmn/bpmnMapStorage');
+      const result = await saveBpmnMapToStorage(generatedMap, false);
+      
+      if (result.success) {
+        toast({
+          title: 'bpmn-map.json genererad',
+          description: `Map genererad från ${generatedMap.processes.length} processer. ${generatedMap.processes.reduce((sum, p) => sum + (p.call_activities?.filter(ca => ca.needs_manual_review).length || 0), 0)} matchningar behöver granskning.`,
+        });
+        
+        // Invalidera queries och validera map igen
+        invalidateStructureQueries(queryClient);
+        await queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+        await queryClient.invalidateQueries({ queryKey: ['process-graph'] });
+        
+        // Validera map igen
+        const { loadBpmnMapFromStorage } = await import('@/lib/bpmn/bpmnMapStorage');
+        const validationResult = await loadBpmnMapFromStorage();
+        setBpmnMapValidation({
+          valid: validationResult.valid,
+          error: validationResult.error,
+          details: validationResult.details,
+          source: validationResult.source,
+        });
+      } else {
+        toast({
+          title: 'Generering misslyckades',
+          description: result.error || 'Kunde inte spara den genererade map:en',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('[BpmnFileManager] Error regenerating map:', error);
+      toast({
+        title: 'Generering misslyckades',
+        description: error instanceof Error ? error.message : 'Okänt fel',
+        variant: 'destructive',
+      });
+    } finally {
+      setRegeneratingMap(false);
+    }
+  };
+
   const handleExportUpdatedMap = async () => {
     // Fallback: exportera som fil om användaren vill ha det manuellt
     const currentMap = await loadBpmnMapFromStorage();
@@ -3575,10 +3642,18 @@ export default function BpmnFileManager() {
             {bpmnMapValidation.details && (
               <p className="text-sm mb-2">{bpmnMapValidation.details}</p>
             )}
-            <p className="text-sm">
+            <p className="text-sm mb-3">
               <strong>Viktigt:</strong> Generering kan misslyckas eller ge felaktiga resultat om filen är korrupt.
               Kontrollera filen i storage eller använd projektfilen som fallback.
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRegenerateBpmnMap}
+              disabled={regeneratingMap}
+            >
+              {regeneratingMap ? 'Genererar...' : 'Generera bpmn-map.json automatiskt'}
+            </Button>
           </AlertDescription>
         </Alert>
       )}
@@ -4139,186 +4214,7 @@ export default function BpmnFileManager() {
         </Card>
       )}
 
-      {/* Generation Report Dialog */}
-      <Dialog open={showGenerationReport} onOpenChange={setShowGenerationReport}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              Genereringsrapport - {generationResult?.fileName}
-              {generationResult?.fileName?.includes('Alla filer') && (
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                  (Sammanfattning)
-                </span>
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              {generationResult?.fileName?.includes('Alla filer')
-                ? 'Sammanfattning över alla genererade artefakter för alla filer'
-                : 'Detaljerad översikt över alla genererade artefakter'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 mt-4">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="border rounded-lg p-4 bg-card">
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="h-5 w-5 text-blue-500" />
-                  <h4 className="font-semibold text-sm">Filer</h4>
-                </div>
-                <div className="text-2xl font-bold">{generationResult?.filesAnalyzed.length || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Analyserade BPMN-filer</p>
-              </div>
-
-              <div className="border rounded-lg p-4 bg-card">
-                <div className="flex items-center gap-2 mb-2">
-                  <FileCode className="h-5 w-5 text-green-500" />
-                  <h4 className="font-semibold text-sm">Tester</h4>
-                </div>
-                <div className="text-2xl font-bold">{generationResult?.testFiles.length || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Testfiler skapade</p>
-              </div>
-
-              <div className="border rounded-lg p-4 bg-card">
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="h-5 w-5 text-orange-500" />
-                  <h4 className="font-semibold text-sm">Dokumentation</h4>
-                </div>
-                <div className="text-2xl font-bold">{generationResult?.docFiles.length || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">HTML-filer skapade</p>
-              </div>
-            </div>
-
-            {/* Analyzed Files */}
-            {generationResult && generationResult.filesAnalyzed.length > 0 && (
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Analyserade BPMN-filer ({generationResult.filesAnalyzed.length})
-                </h3>
-                <ul className="text-sm space-y-1 text-muted-foreground">
-                  {generationResult.filesAnalyzed.map((file, i) => (
-                    <li key={i}>• {file}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {generationResult?.skippedSubprocesses && generationResult.skippedSubprocesses.length > 0 && (
-              <div className="border rounded-lg p-4 bg-amber-50">
-                <h3 className="font-semibold mb-2 flex items-center gap-2 text-amber-700">
-                  <AlertTriangle className="h-4 w-4" />
-                  Saknade subprocesser ({generationResult.skippedSubprocesses.length})
-                </h3>
-                <p className="text-sm text-amber-800 mb-2">
-                  Dessa Call Activities saknar BPMN-fil. Dokumentation och tester genererades inte för dem.
-                </p>
-                <ul className="text-sm space-y-1 text-amber-800">
-                  {generationResult.skippedSubprocesses.slice(0, 15).map((subprocess, i) => (
-                    <li key={i}>• {subprocess}</li>
-                  ))}
-                </ul>
-                {generationResult.skippedSubprocesses.length > 15 && (
-                  <p className="text-xs text-amber-700 mt-1">
-                    ...och {generationResult.skippedSubprocesses.length - 15} till
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Test Files */}
-            {generationResult && generationResult.testFiles.length > 0 && (
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <FileCode className="h-4 w-4" />
-                  Testfiler ({generationResult.testFiles.length})
-                </h3>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {generationResult.testFiles.map((testFile, i) => (
-                    <div key={i} className="text-sm p-2 bg-muted/30 rounded">
-                      <div className="font-medium mb-1">{testFile.fileName}</div>
-                      {testFile.elements.length > 0 && (
-                        <ul className="text-xs text-muted-foreground pl-4 space-y-0.5">
-                          {testFile.elements.slice(0, 5).map((el, j) => (
-                            <li key={j}>• {el.name} ({el.id})</li>
-                          ))}
-                          {testFile.elements.length > 5 && (
-                            <li className="italic">...och {testFile.elements.length - 5} fler element</li>
-                          )}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Documentation Files */}
-            {generationResult && generationResult.docFiles.length > 0 && (
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Dokumentationsfiler ({generationResult.docFiles.length})
-                </h3>
-                <ul className="text-sm space-y-1 text-muted-foreground">
-                  {generationResult.docFiles.map((doc, i) => (
-                    <li key={i}>• {doc}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Jira Mappings */}
-            {generationResult && generationResult.jiraMappings.length > 0 && (
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Jira-mappningar ({generationResult.jiraMappings.length})
-                </h3>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {generationResult.jiraMappings.slice(0, 15).map((mapping, i) => (
-                    <div key={i} className="text-sm p-2 bg-muted/30 rounded">
-                      <div className="font-medium">{mapping.elementName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        Type: {mapping.jiraType} | Jira: {mapping.jiraName}
-                      </div>
-                    </div>
-                  ))}
-                  {generationResult.jiraMappings.length > 15 && (
-                    <p className="text-xs text-muted-foreground italic">
-                      ...och {generationResult.jiraMappings.length - 15} fler
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Subprocess Mappings */}
-            {generationResult && generationResult.subprocessMappings.length > 0 && (
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <GitBranch className="h-4 w-4" />
-                  Subprocess-mappningar ({generationResult.subprocessMappings.length})
-                </h3>
-                <ul className="text-sm space-y-1 text-muted-foreground">
-                  {generationResult.subprocessMappings.map((mapping, i) => (
-                    <li key={i}>
-                      • {mapping.callActivity} → {mapping.subprocessFile}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Success Message */}
-            <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <p className="text-sm text-green-800 dark:text-green-200 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Alla artefakter har genererats och sparats!
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Generation Report Dialog - REMOVED: GenerationDialog visar redan resultatet */}
 
       {/* Hierarchy Report Dialog */}
       <Dialog open={showHierarchyReport} onOpenChange={setShowHierarchyReport}>
