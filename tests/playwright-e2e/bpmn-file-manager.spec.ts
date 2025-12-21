@@ -128,66 +128,7 @@ test.describe('BpmnFileManager', () => {
     }
   });
 
-  test('should be able to generate documentation (local mode)', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
-
-    // Look for "Generate" or "Generera" button
-    const generateButton = page.locator(
-      'button:has-text("Generera"), button:has-text("Generate"), button:has-text("artifacts")'
-    ).first();
-
-    const buttonCount = await generateButton.count();
-    
-    if (buttonCount > 0) {
-      const isVisible = await generateButton.isVisible().catch(() => false);
-      
-      if (isVisible) {
-        // Before clicking, look for mode selector (local/LLM)
-        const localModeButton = page.locator(
-          'button:has-text("Local"), button:has-text("Lokal"), input[value="local"]'
-        ).first();
-        
-        // Try to select local mode if available
-        if (await localModeButton.count() > 0) {
-          await localModeButton.click().catch(() => {});
-          await page.waitForTimeout(500);
-        }
-
-        // Click generate button
-        await generateButton.click();
-        
-        // Wait for generation dialog or progress indicator
-        await Promise.race([
-          page.waitForSelector('[role="dialog"], .generation-dialog, text=/generating/i, text=/genererar/i', { timeout: 10000 }),
-          page.waitForTimeout(2000),
-        ]).catch(() => {
-          // If no dialog appears, that's ok - might be inline
-        });
-
-        // Wait a bit for generation to start
-        await page.waitForTimeout(2000);
-        
-        // Check for progress or completion
-        const progressIndicator = page.locator(
-          'text=/progress/i, text=/completed/i, text=/klar/i, [role="progressbar"]'
-        ).first();
-        
-        if (await progressIndicator.count() > 0) {
-          // Wait for completion (with timeout)
-          await Promise.race([
-            page.waitForSelector('text=/completed/i, text=/klar/i, text=/success/i', { timeout: 60000 }),
-            page.waitForTimeout(10000), // Max 10 seconds wait
-          ]).catch(() => {
-            // Timeout is ok - generation might take longer
-          });
-        }
-      }
-    } else {
-      // If no generate button, test passes (feature might not be available)
-      test.skip();
-    }
-  });
+  // Local mode removed - all generation now uses LLM (cloud or ollama)
 
   test('should display generation dialog when generating', async ({ page }) => {
     await page.waitForLoadState('networkidle');

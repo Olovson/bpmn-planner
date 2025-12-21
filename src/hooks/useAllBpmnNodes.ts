@@ -3,9 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRootBpmnFile } from './useRootBpmnFile';
 import { useProcessTree } from './useProcessTree';
 import { ProcessTreeNode } from '@/lib/processTree';
-import { getDocumentationUrl, storageFileExists, getNodeDocStoragePath, getTestFileUrl } from '@/lib/artifactUrls';
+import { getDocumentationUrl, storageFileExists, getNodeDocStoragePath, getTestFileUrl, getFeatureGoalDocStoragePaths } from '@/lib/artifactUrls';
 import { getNodeDocFileKey } from '@/lib/nodeArtifactPaths';
 import { checkDocsAvailable, checkDorDodAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
+import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 // Removed buildJiraName import - no longer using fallback logic
 
 export interface BpmnNodeData {
@@ -34,6 +35,7 @@ export interface BpmnNodeData {
   scenarioPath?: string[];
   staccIntegrationSource?: string | null;
   replaceWithBankIntegrationSource?: boolean;
+  subprocessFile?: string; // ✅ För call activities: subprocess BPMN file
 }
 
 type FlattenedProcessNode = ProcessTreeNode & { 
@@ -101,6 +103,18 @@ export const useAllBpmnNodes = () => {
           .from('dor_dod_status')
           .select('bpmn_file, bpmn_element_id, subprocess_name');
 
+        // Helper function to get all BPMN files from process tree
+        const getAllFilesFromTree = (node: ProcessTreeNode): string[] => {
+          const files = new Set<string>();
+          if (node.bpmnFile) {
+            files.add(node.bpmnFile);
+          }
+          node.children.forEach(child => {
+            getAllFilesFromTree(child).forEach(file => files.add(file));
+          });
+          return Array.from(files);
+        };
+        
         const flattenTree = (node: ProcessTreeNode, parents: Array<{ label: string; type: string }> = []): FlattenedProcessNode[] => {
           // Only include non-process nodes in parent labels (for Jira naming)
           const parentLabels = parents
@@ -183,7 +197,11 @@ export const useAllBpmnNodes = () => {
             node.label,
           );
 
-          const docPath = getNodeDocStoragePath(bpmnFile, elementId);
+          // För call activities, använd Feature Goal-sökvägar istället för vanliga node-sökvägar
+          const docPath = node.type === 'callActivity' 
+            ? null // Använd inte getNodeDocStoragePath för call activities
+            : getNodeDocStoragePath(bpmnFile, elementId);
+          
           const docUrl = getDocumentationUrl(bpmnFile, elementId);
 
           const nodeData: BpmnNodeData = {
@@ -215,6 +233,8 @@ export const useAllBpmnNodes = () => {
               typeof mapping?.replace_with_bank_integration_source === 'boolean'
                 ? mapping.replace_with_bank_integration_source
                 : true,
+            // ✅ Spara subprocessFile för call activities så vi kan använda det senare
+            subprocessFile: node.subprocessFile,
           };
 
           nodeMap.set(nodeKey, nodeData);
@@ -224,14 +244,94 @@ export const useAllBpmnNodes = () => {
         allNodes.push(...Array.from(nodeMap.values()));
 
         // Resolve storage-based artifacts (docs + test reports)
+        // Get version hashes for all unique BPMN files (cache to avoid duplicate queries)
+        const versionHashCache = new Map<string, string | null>();
+        const getVersionHash = async (fileName: string): Promise<string | null> => {
+          if (versionHashCache.has(fileName)) {
+            return versionHashCache.get(fileName) || null;
+          }
+          try {
+            const hash = await getCurrentVersionHash(fileName);
+            versionHashCache.set(fileName, hash);
+            return hash;
+          } catch (error) {
+            console.warn(`[useAllBpmnNodes] Failed to get version hash for ${fileName}:`, error);
+            versionHashCache.set(fileName, null);
+            return null;
+          }
+        };
+        
         const enriched = await Promise.all(
           allNodes.map(async (node) => {
             try {
+              // För call activities, använd Feature Goal-sökvägar med version hash
+              let featureGoalPaths: string[] | undefined = undefined;
+              if (node.nodeType === 'CallActivity') {
+                if (!node.subprocessFile) {
+                  if (import.meta.env.DEV) {
+                    console.warn(`[useAllBpmnNodes] CallActivity ${node.bpmnFile}:${node.elementId} has no subprocessFile - trying to infer from elementId`);
+                  }
+                  // Fallback: Försök inferera subprocessFile från elementId om det matchar ett filnamn
+                  // T.ex. elementId "household" → "mortgage-se-household.bpmn"
+                  const possibleSubprocessFile = `mortgage-se-${node.elementId}.bpmn`;
+                  // Kolla om filen finns i processTree
+                  const allFiles = processTree ? getAllFilesFromTree(processTree) : [];
+                  if (allFiles.includes(possibleSubprocessFile)) {
+                    node.subprocessFile = possibleSubprocessFile;
+                    if (import.meta.env.DEV) {
+                      console.log(`[useAllBpmnNodes] Inferred subprocessFile: ${possibleSubprocessFile}`);
+                    }
+                  }
+                }
+                
+                if (node.subprocessFile) {
+                  // Normalize subprocessFile (ensure it has .bpmn extension)
+                  const subprocessFile = node.subprocessFile.endsWith('.bpmn')
+                    ? node.subprocessFile
+                    : `${node.subprocessFile}.bpmn`;
+                  
+                  // Get version hash for the parent BPMN file (where call activity is defined)
+                  const parentBpmnFileName = node.bpmnFile.endsWith('.bpmn') 
+                    ? node.bpmnFile 
+                    : `${node.bpmnFile}.bpmn`;
+                  const versionHash = await getVersionHash(parentBpmnFileName);
+                  
+                  featureGoalPaths = getFeatureGoalDocStoragePaths(
+                    subprocessFile.replace('.bpmn', ''), // subprocess BPMN file (without .bpmn for getFeatureGoalDocFileKey)
+                    node.elementId,       // call activity element ID
+                    node.bpmnFile,       // parent BPMN file (där call activity är definierad)
+                    versionHash,         // version hash for versioned paths
+                    parentBpmnFileName,  // BPMN file name for versioned paths
+                  );
+                }
+              }
+              
+              // Debug logging for ALL nodes (to see what we're checking)
+              if (import.meta.env.DEV) {
+                console.log(`[useAllBpmnNodes] Checking docs for ${node.nodeType} ${node.bpmnFile}:${node.elementId}`, {
+                  nodeType: node.nodeType,
+                  subprocessFile: node.subprocessFile,
+                  confluenceUrl: node.confluenceUrl,
+                  hasFeatureGoalPaths: !!featureGoalPaths,
+                  featureGoalPathsCount: featureGoalPaths?.length || 0,
+                  featureGoalPaths: featureGoalPaths?.slice(0, 3), // First 3 paths
+                });
+              }
+              
               const resolvedDocs = await checkDocsAvailable(
                 node.confluenceUrl,
                 docPathFromNode(node),
                 storageFileExists,
+                featureGoalPaths, // ✅ Skicka med Feature Goal-sökvägar för call activities (inkl. versioned paths)
               );
+              
+              // Debug logging for ALL nodes
+              if (import.meta.env.DEV) {
+                console.log(`[useAllBpmnNodes] Result for ${node.nodeType} ${node.bpmnFile}:${node.elementId}:`, {
+                  hasDocs: resolvedDocs,
+                  confluenceUrl: node.confluenceUrl,
+                });
+              }
               const resolvedTestReport = await checkTestReportAvailable(
                 node.testReportUrl,
               );

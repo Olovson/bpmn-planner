@@ -26,13 +26,11 @@ import { sanitizeElementId } from './nodeArtifactPaths';
  */
 export type FeatureGoalDocOverrides = Partial<FeatureGoalDocModel> & {
   _mergeStrategy?: {
-    effectGoals?: 'replace' | 'extend';
-    scopeIncluded?: 'replace' | 'extend';
-    scopeExcluded?: 'replace' | 'extend';
-    epics?: 'replace' | 'extend';
+    prerequisites?: 'replace' | 'extend';
     flowSteps?: 'replace' | 'extend';
     dependencies?: 'replace' | 'extend';
-    relatedItems?: 'replace' | 'extend';
+    userStories?: 'replace' | 'extend';
+    implementationNotes?: 'replace' | 'extend';
   };
 };
 
@@ -251,13 +249,11 @@ export function mergeFeatureGoalOverrides(
   }
   // Array fields: check merge strategy
   const arrayFields: Array<keyof FeatureGoalDocModel> = [
-    'effectGoals',
-    'scopeIncluded',
-    'scopeExcluded',
-    'epics',
+    'prerequisites',
     'flowSteps',
     'dependencies',
-    'relatedItems',
+    'userStories',
+    'implementationNotes',
   ];
 
   for (const field of arrayFields) {
@@ -416,13 +412,13 @@ export function mergeBusinessRuleOverrides(
  * 
  * ```typescript
  * // Base model
- * const base = { summary: "Base summary", effectGoals: ["Goal 1"] };
+ * const base = { summary: "Base summary", prerequisites: ["Prereq 1"] };
  * 
  * // LLM patch
- * const llmPatch = { summary: "LLM summary", effectGoals: ["Goal 2", "Goal 3"] };
+ * const llmPatch = { summary: "LLM summary", prerequisites: ["Prereq 2", "Prereq 3"] };
  * 
  * // Result
- * const merged = { summary: "LLM summary", effectGoals: ["Goal 2", "Goal 3"] };
+ * const merged = { summary: "LLM summary", prerequisites: ["Prereq 2", "Prereq 3"] };
  * // LLM's values replace base values completely
  * ```
  * 
@@ -497,42 +493,50 @@ export function validateFeatureGoalModelAfterMerge(
   }
   // Required array fields
   const requiredArrayFields: Array<keyof FeatureGoalDocModel> = [
-    'effectGoals',
-    'scopeIncluded',
-    'scopeExcluded',
-    'epics',
+    'prerequisites',
     'flowSteps',
-    'dependencies',
-    'relatedItems',
+    'userStories',
+    'implementationNotes',
   ];
 
   for (const field of requiredArrayFields) {
     if (!Array.isArray(model[field])) {
       errors.push(`Field "${field}" must be an array`);
-    } else if (field === 'epics') {
-      // Validate epic objects
-      const epics = model[field] as FeatureGoalDocModel['epics'];
-      epics.forEach((epic, index) => {
-        if (!epic || typeof epic !== 'object') {
-          errors.push(`Field "epics[${index}]" must be an object`);
+    } else if (field === 'userStories') {
+      // Validate user story objects
+      const userStories = model[field] as FeatureGoalDocModel['userStories'];
+      userStories.forEach((story, index) => {
+        if (!story || typeof story !== 'object') {
+          errors.push(`Field "userStories[${index}]" must be an object`);
         } else {
-          if (!epic.id || typeof epic.id !== 'string') {
-            errors.push(`Field "epics[${index}].id" must be a non-empty string`);
+          if (!story.id || typeof story.id !== 'string') {
+            errors.push(`Field "userStories[${index}].id" must be a non-empty string`);
           }
-          if (!epic.name || typeof epic.name !== 'string') {
-            errors.push(`Field "epics[${index}].name" must be a non-empty string`);
+          if (!story.role || typeof story.role !== 'string') {
+            errors.push(`Field "userStories[${index}].role" must be a non-empty string`);
           }
-          if (!epic.description || typeof epic.description !== 'string') {
-            errors.push(`Field "epics[${index}].description" must be a non-empty string`);
+          if (!story.goal || typeof story.goal !== 'string') {
+            errors.push(`Field "userStories[${index}].goal" must be a non-empty string`);
+          }
+          if (!story.value || typeof story.value !== 'string') {
+            errors.push(`Field "userStories[${index}].value" must be a non-empty string`);
+          }
+          if (!Array.isArray(story.acceptanceCriteria)) {
+            errors.push(`Field "userStories[${index}].acceptanceCriteria" must be an array`);
           }
         }
       });
     }
   }
 
+  // Optional array fields
+  if (model.dependencies && !Array.isArray(model.dependencies)) {
+    errors.push('Field "dependencies" must be an array if provided');
+  }
+
   // Warnings for empty arrays (not errors, but might indicate incomplete data)
-  if (model.effectGoals.length === 0) {
-    warnings.push('Field "effectGoals" is empty - consider adding effect goals');
+  if (model.prerequisites && model.prerequisites.length === 0) {
+    warnings.push('Field "prerequisites" is empty - consider adding prerequisites');
   }
   if (model.flowSteps.length === 0) {
     warnings.push('Field "flowSteps" is empty - consider adding flow steps');

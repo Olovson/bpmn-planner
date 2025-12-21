@@ -135,17 +135,7 @@ async function buildClientProcessTree(
     preferredRootProcessId: effectiveRootFile.replace('.bpmn', ''),
   });
 
-  // Enkel debug-logik i dev-läge för att felsöka graf/treestruktur
-  if (import.meta.env.MODE === 'development') {
-    // eslint-disable-next-line no-console
-    console.log('[ProcessExplorer] Graph stats', {
-      roots: graph.roots,
-      totalNodes: graph.nodes.size,
-      totalEdges: graph.edges.size,
-      missingDependencies: graph.missingDependencies.length,
-      cycles: graph.cycles.length,
-    });
-  }
+  // Debug logging disabled for cleaner output
 
   // Build ProcessTree from graph
   const newTree = buildProcessTreeFromGraph(graph, {
@@ -157,15 +147,7 @@ async function buildClientProcessTree(
   // Convert to legacy format for compatibility with existing UI components
   const tree = convertProcessTreeNode(newTree);
 
-  if (import.meta.env.MODE === 'development') {
-    // eslint-disable-next-line no-console
-    console.log('[ProcessExplorer] ProcessTree root', {
-      label: tree.label,
-      type: tree.type,
-      childCount: tree.children.length,
-      children: tree.children.map((c) => ({ label: c.label, type: c.type })),
-    });
-  }
+  // Debug logging disabled for cleaner output
 
   return tree;
 }

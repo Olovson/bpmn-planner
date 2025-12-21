@@ -41,9 +41,9 @@ describe('LlmClient Abstraction', () => {
     });
   });
 
-  describe('LocalLlmClient', () => {
+  describe('LocalLlmClient (Ollama)', () => {
     it('should have correct provider and model name', () => {
-      expect(localLlmClientInstance.provider).toBe('local');
+      expect(localLlmClientInstance.provider).toBe('ollama');
       expect(localLlmClientInstance.modelName).toBeTruthy();
     });
 
@@ -203,8 +203,8 @@ describe('LlmClient Abstraction', () => {
     });
 
     it('should return LocalLlmClient for local provider', () => {
-      const client = getLlmClient('local');
-      expect(client.provider).toBe('local');
+      const client = getLlmClient('ollama');
+      expect(client.provider).toBe('ollama');
     });
   });
 

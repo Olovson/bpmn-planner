@@ -80,7 +80,6 @@ export async function generateDocumentationWithLlm(
   const resolution = resolveLlmProvider({
     userChoice: llmProvider,
     globalDefault,
-    localAvailable,
     allowFallback,
   });
 
@@ -728,10 +727,14 @@ export function buildContextPayload(
                   
                   // OBS: scenarios har tagits bort - testinformation genereras i separat steg
                   
+                  // Inkludera lane-information för att Claude ska kunna identifiera om det är kund eller handläggare
+                  const lane = inferLane(descendant);
+                  
                   return {
                     id: descendant.bpmnElementId,
                     name: descendant.name,
                     type: descendant.type,
+                    lane: lane, // ✅ Lägg till lane-information för att Claude ska kunna identifiera användare korrekt
                     summary: descendantDoc.summary,
                     flowSteps: descendantDoc.flowSteps,
                     inputs: descendantDoc.inputs,
@@ -949,32 +952,188 @@ function inferPhase(node: BpmnProcessNode): string {
 }
 
 /**
+ * Extraherar lane/swimlane-namn från BPMN-element om det finns.
+ * I BPMN kan en task tillhöra en lane via process -> laneSet -> lane -> flowNodeRef.
+ * Vi letar efter lane-information i businessObject-hierarkin.
+ */
+function extractLaneFromBpmnElement(node: BpmnProcessNode): string | null {
+  if (!node.element?.businessObject) {
+    return null;
+  }
+
+  const bo = node.element.businessObject;
+  const taskId = node.bpmnElementId;
+  
+  // Gå uppåt i hierarkin för att hitta processen
+  let current: any = bo;
+  while (current) {
+    if (current.$type === 'bpmn:Process') {
+      // Hitta laneSet i processen
+      // laneSets kan vara en array eller ett enskilt objekt
+      const laneSets = current.laneSets 
+        ? (Array.isArray(current.laneSets) ? current.laneSets : [current.laneSets])
+        : [];
+      
+      // Sök igenom alla laneSets och deras lanes
+      for (const laneSet of laneSets) {
+        if (laneSet.lanes) {
+          const lanes = Array.isArray(laneSet.lanes) ? laneSet.lanes : [laneSet.lanes];
+          
+          // Sök igenom alla lanes för att hitta den som innehåller denna task
+          for (const lane of lanes) {
+            if (lane.flowNodeRef) {
+              // flowNodeRef kan vara en array eller en enskild referens
+              const flowNodeRefs = Array.isArray(lane.flowNodeRef) 
+                ? lane.flowNodeRef 
+                : [lane.flowNodeRef];
+              
+              // Kolla om denna task finns i lane:ns flowNodeRef
+              // flowNodeRef kan vara en ID-sträng eller ett objekt med id
+              for (const ref of flowNodeRefs) {
+                const refId = typeof ref === 'string' ? ref : (ref?.id || ref);
+                if (refId === taskId) {
+                  // Hittade lane! Returnera lane-namnet
+                  return lane.name || null;
+                }
+              }
+            }
+          }
+        }
+      }
+      break;
+    }
+    current = current.$parent;
+  }
+  
+  return null;
+}
+
+/**
+ * Mappar BPMN lane-namn till våra interna lane-kategorier.
+ * Baserat på vanliga lane-namn i kreditprocesser.
+ */
+function mapBpmnLaneToInternalLane(bpmnLaneName: string | null): string | null {
+  if (!bpmnLaneName) return null;
+  
+  const laneName = bpmnLaneName.toLowerCase();
+  
+  // Kund/stakeholder-lanes
+  if (
+    laneName.includes('kund') ||
+    laneName.includes('customer') ||
+    laneName.includes('stakeholder') ||
+    laneName.includes('applicant') ||
+    laneName.includes('sökande') ||
+    laneName.includes('application') // ⚠️ OBS: "application" kan vara både kund och processnamn
+  ) {
+    // ⚠️ SPECIALFALL: Om lane heter "application" men task-namnet innehåller interna nyckelord,
+    // kan det vara en handläggare-uppgift i application-lanen
+    // Vi hanterar detta i inferLane() genom att kolla task-namnet också
+    return 'Kund';
+  }
+  
+  // Handläggare/anställd-lanes
+  if (
+    laneName.includes('handläggare') ||
+    laneName.includes('caseworker') ||
+    laneName.includes('valuator') ||
+    laneName.includes('employee') ||
+    laneName.includes('anställd') ||
+    laneName.includes('credit evaluator') ||
+    laneName.includes('evaluator')
+  ) {
+    return 'Handläggare';
+  }
+  
+  // System/regelmotor-lanes
+  if (
+    laneName.includes('system') ||
+    laneName.includes('regelmotor') ||
+    laneName.includes('backend') ||
+    laneName.includes('integration')
+  ) {
+    return 'Regelmotor';
+  }
+  
+  return null;
+}
+
+/**
  * Enkel heuristik för att mappa noder till "lane"/roll i kreditprocessen.
  * Vi skiljer grovt på Kund, Handläggare och Regelmotor.
+ * 
+ * För User Tasks:
+ * 1. Först: Försök extrahera faktisk BPMN lane/swimlane från elementet
+ * 2. Om lane finns: Mappa lane-namnet till våra interna kategorier
+ * 3. Om lane saknas eller är otydlig: Använd heuristik baserat på task-namn
+ *    - Default = Kund/stakeholder (t.ex. "register ...", "consent ...")
+ *    - Om namnet innehåller interna nyckelord ("review", "assess", "evaluate", etc.) = Handläggare
  */
 function inferLane(node: BpmnProcessNode): string {
   const name = (node.name || '').toLowerCase();
-
-  // Kund-centrerade aktiviteter
-  if (
-    name.includes('kund') ||
-    name.includes('customer') ||
-    name.includes('applicant') ||
-    name.includes('ansökan') ||
-    name.includes('stakeholder') ||
-    name.includes('household')
-  ) {
-    return 'Kund';
-  }
 
   // Regelmotor / system
   if (node.type === 'businessRuleTask' || node.type === 'serviceTask' || node.type === 'dmnDecision') {
     return 'Regelmotor';
   }
 
-  // Användaruppgifter hamnar normalt hos handläggare
+  // User Tasks: försök först använda faktisk BPMN lane
   if (node.type === 'userTask') {
-    return 'Handläggare';
+    // 1. Extrahera faktisk BPMN lane om den finns
+    const bpmnLaneName = extractLaneFromBpmnElement(node);
+    const mappedLane = mapBpmnLaneToInternalLane(bpmnLaneName);
+    
+    // 2. Om vi hittade en tydlig lane-mappning, använd den
+    // Men ⚠️ SPECIALFALL: Om lane heter "application" men task-namnet innehåller interna nyckelord,
+    // kan det vara en handläggare-uppgift i application-lanen
+    if (mappedLane) {
+      // Om lane är "Kund" men task-namnet innehåller interna nyckelord, 
+      // kan det vara en handläggare-uppgift (t.ex. "evaluate application" i application-lanen)
+      const internalKeywords = [
+        'review', 'granska', 'assess', 'utvärdera', 'evaluate',
+        'advanced-underwriting', 'board', 'committee',
+        'four eyes', 'four-eyes', 'manual', 'distribute',
+        'distribuera', 'archive', 'arkivera', 'verify', 'handläggare',
+      ];
+      
+      if (mappedLane === 'Kund' && internalKeywords.some((keyword) => name.includes(keyword))) {
+        // Task-namnet indikerar handläggare trots att lane är "Kund"
+        // Detta kan hända om lane heter "application" men task är "evaluate application"
+        return 'Handläggare';
+      }
+      
+      return mappedLane;
+    }
+    
+    // 3. Fallback: använd heuristik baserat på task-namn (samma logik som process-explorer)
+    const internalKeywords = [
+      'review',
+      'granska',
+      'assess',
+      'utvärdera',
+      'evaluate', // ✅ Inkludera "evaluate" för evaluate-application-* i credit decision
+      'advanced-underwriting',
+      'board',
+      'committee',
+      'four eyes',
+      'four-eyes',
+      'manual',
+      'distribute',
+      'distribuera',
+      'archive',
+      'arkivera',
+      'verify',
+      'handläggare',
+    ];
+
+    // Om den matchar interna ord → behandla som intern/backoffice (Handläggare)
+    if (internalKeywords.some((keyword) => name.includes(keyword))) {
+      return 'Handläggare';
+    }
+
+    // Default: kund- eller stakeholder-interaktion (t.ex. "register ...", "consent to credit check" osv.)
+    // Detta inkluderar "register-source-of-equity" som ska göras av primary stakeholder
+    return 'Kund';
   }
 
   // Call activities utan tydlig signal behandlas som system/regelmotor

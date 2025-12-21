@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type GenerationOperation = 'hierarchy' | 'generation' | 'local_generation' | 'llm_generation';
+export type GenerationOperation = 'hierarchy' | 'generation' | 'llm_generation';
 export type GenerationStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
 export interface GenerationJob {
@@ -9,7 +9,7 @@ export interface GenerationJob {
   file_name: string;
   operation: GenerationOperation;
   // Mode sätts antingen via egen kolumn i generation_jobs eller via result.mode
-  mode?: 'local' | 'slow' | null;
+  mode?: 'slow' | null;
   status: GenerationStatus;
   progress: number | null;
   total: number | null;
@@ -34,14 +34,14 @@ export const useGenerationJobs = () => {
       if (error) throw error;
 
       const rows = (data || []) as Array<
-        GenerationJob & { result?: { mode?: 'local' | 'slow'; llmProvider?: 'cloud' | 'local' | 'fallback' } }
+        GenerationJob & { result?: { mode?: 'slow'; llmProvider?: 'cloud' | 'ollama' } }
       >;
 
       return rows.map((row) => {
         const derivedMode =
           row.mode ??
           (row.result && typeof row.result === 'object'
-            ? (row.result.mode as 'local' | 'slow' | undefined)
+            ? (row.result.mode as 'slow' | undefined)
             : undefined);
         return {
           ...row,

@@ -178,7 +178,6 @@ export const useBpmnGenerator = (bpmnFilePath: string | null) => {
         undefined, // generationSource
         undefined, // llmProvider
         false, // localAvailable
-        'v2', // featureGoalTemplateVersion
         undefined, // nodeFilter
         undefined, // getVersionHashForFile
         undefined, // checkCancellation

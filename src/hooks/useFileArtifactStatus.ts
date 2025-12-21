@@ -45,8 +45,8 @@ export const useFileArtifactStatus = (fileName?: string) => {
         // Check for any files in the nodes/{fileBaseName}/ directory
         const pathsToTry = versionHash
           ? [
-              `docs/slow/chatgpt/${fileName}/${versionHash}/nodes/${fileBaseName}`,
-              `docs/slow/ollama/${fileName}/${versionHash}/nodes/${fileBaseName}`,
+              `docs/claude/${fileName}/${versionHash}/nodes/${fileBaseName}`,
+              `docs/ollama/${fileName}/${versionHash}/nodes/${fileBaseName}`,
               `docs/local/${fileName}/${versionHash}/nodes/${fileBaseName}`,
               `docs/nodes/${fileBaseName}`, // Legacy
             ]
@@ -134,8 +134,8 @@ export const useAllFilesArtifactStatus = () => {
             // Check for any files in the nodes/{fileBaseName}/ directory
             const pathsToTry = versionHash
               ? [
-                  `docs/slow/chatgpt/${file.file_name}/${versionHash}/nodes/${fileBaseName}`,
-                  `docs/slow/ollama/${file.file_name}/${versionHash}/nodes/${fileBaseName}`,
+                  `docs/claude/${file.file_name}/${versionHash}/nodes/${fileBaseName}`,
+                  `docs/ollama/${file.file_name}/${versionHash}/nodes/${fileBaseName}`,
                   `docs/local/${file.file_name}/${versionHash}/nodes/${fileBaseName}`,
                   `docs/nodes/${fileBaseName}`, // Legacy
                 ]

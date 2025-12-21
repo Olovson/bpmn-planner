@@ -27,7 +27,7 @@ interface TestResult {
 }
 
 type ScriptMode = 'local' | 'slow' | null
-type ScriptProvider = 'local-fallback' | 'chatgpt' | 'ollama' | null
+type ScriptProvider = 'local-fallback' | 'claude' | 'chatgpt' | 'ollama' | null
 
 function inferScriptModeFromPath(testFile: string): ScriptMode {
   if (testFile.startsWith('tests/local/')) return 'local'
@@ -41,8 +41,12 @@ function normalizeProvider(raw: string | null): ScriptProvider {
   if (value === 'local-fallback' || value === 'fallback' || value === 'local_fallback') {
     return 'local-fallback'
   }
-  if (value === 'chatgpt' || value === 'cloud') {
-    return 'chatgpt'
+  // Map 'cloud' to 'claude' (new), but also accept 'chatgpt' for backward compatibility
+  if (value === 'claude' || value === 'cloud') {
+    return 'claude'
+  }
+  if (value === 'chatgpt') {
+    return 'chatgpt' // Legacy support
   }
   if (value === 'ollama' || value === 'local') {
     return 'ollama'

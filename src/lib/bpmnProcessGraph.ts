@@ -95,6 +95,7 @@ export async function buildBpmnProcessGraph(
       fileNodes,
       missingDependencies,
       visitedProcesses: new Set<string>(), // Initialize visited processes set
+      existingBpmnFiles, // Lägg till existingBpmnFiles för att kunna verifiera om subprocess-filer finns
     },
   );
 
@@ -181,6 +182,7 @@ interface ConversionContext {
   fileNodes: Map<string, BpmnProcessNode[]>;
   missingDependencies: { parent: string; childProcess: string }[];
   visitedProcesses?: Set<string>; // Track visited process nodes to avoid infinite recursion
+  existingBpmnFiles?: string[]; // Available BPMN files - used to verify if subprocess files actually exist
 }
 
 function convertProcessModelChildren(
@@ -219,10 +221,15 @@ function convertProcessModelChildren(
     if (node.kind === 'callActivity') {
       const elementId = node.bpmnElementId || node.id.split(':').pop()!;
       const element = context.elementsByFile.get(context.currentFile)?.get(elementId);
-      const subprocessFile = node.subprocessLink?.matchedProcessId
+      const resolvedSubprocessFile = node.subprocessLink?.matchedProcessId
         ? resolveSubprocessFileFromModel(node, model)
         : undefined;
 
+      // VIKTIGT: Verifiera att subprocess-filen faktiskt finns i existingBpmnFiles
+      // Om filen saknas, sätt subprocessFile till undefined så att missingDefinition blir true
+      const subprocessFile = resolvedSubprocessFile && context.existingBpmnFiles?.includes(resolvedSubprocessFile)
+        ? resolvedSubprocessFile
+        : undefined;
 
       if (!subprocessFile || node.subprocessLink?.matchStatus !== 'matched') {
         context.missingDependencies.push({
@@ -278,6 +285,14 @@ function convertProcessModelChildren(
         });
       }
 
+      // VIKTIGT: missingDefinition ska vara true om:
+      // 1. subprocessFile är undefined/null, ELLER
+      // 2. subprocessFile finns men filen saknas i existingBpmnFiles
+      // Detta säkerställer att vi korrekt identifierar saknade subprocess-filer
+      const subprocessFileExists = subprocessFile && 
+        context.existingBpmnFiles?.includes(subprocessFile);
+      const missingDefinition = !subprocessFile || !subprocessFileExists;
+      
       const graphNode: BpmnProcessNode = {
         id: `${callActivityBpmnFile}:${elementId}`,
         name: node.name,
@@ -287,7 +302,7 @@ function convertProcessModelChildren(
         children,
         element,
         subprocessFile,
-        missingDefinition: !subprocessFile,
+        missingDefinition,
         subprocessMatchStatus: node.subprocessLink?.matchStatus,
         subprocessDiagnostics: node.subprocessLink?.diagnostics
           ?.map((d) => d.message)

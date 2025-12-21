@@ -51,11 +51,29 @@ const NodeMatrix = () => {
   // Merge fetched nodes with local optimistic updates
   const mergedNodes = useMemo(() => {
     if (!nodes) return [];
-    return nodes.map(node => {
+    const merged = nodes.map(node => {
       const nodeKey = `${node.bpmnFile}:${node.elementId}`;
       const updates = localNodeUpdates[nodeKey];
       return updates ? { ...node, ...updates } : node;
     });
+    
+    // Debug logging
+    if (import.meta.env.DEV) {
+      console.log('[NodeMatrix] Merged nodes:', {
+        total: merged.length,
+        withDocs: merged.filter(n => n.hasDocs).length,
+        callActivities: merged.filter(n => n.nodeType === 'CallActivity').length,
+        callActivitiesWithDocs: merged.filter(n => n.nodeType === 'CallActivity' && n.hasDocs).length,
+        sampleNodes: merged.slice(0, 3).map(n => ({
+          type: n.nodeType,
+          elementId: n.elementId,
+          hasDocs: n.hasDocs,
+          subprocessFile: n.subprocessFile,
+        })),
+      });
+    }
+    
+    return merged;
   }, [nodes, localNodeUpdates]);
 
   // Sorterade noder (ofiltrerade; filter appliceras vid render)

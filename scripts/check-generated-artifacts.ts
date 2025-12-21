@@ -207,3 +207,6 @@ checkArtifacts(bpmnFileName)
     process.exit(1);
   });
 
+
+
+

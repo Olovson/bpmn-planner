@@ -46,23 +46,28 @@ describe('Mortgage documentation - Expected vs Actual Analysis', () => {
     
     // NOTE: Embedded subProcesses are treated as callActivities in the hierarchy
     // So they also generate Feature Goals
-    const totalFeatureGoalNodes = callActivities.length + embeddedSubProcesses.length;
-    const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + callActivities + embedded subProcesses
+    // VIKTIGT: CallActivities med saknade subprocess-filer genererar INTE Feature Goals
+    // För isolerad generering (bara mortgage.bpmn, inga subprocess-filer), kommer callActivities
+    // att ha missingDefinition = true och hoppas över
+    const totalFeatureGoalNodes = embeddedSubProcesses.length; // Bara embedded subProcesses (de har ingen subprocessFile)
+    // CallActivities genererar INTE Feature Goals när subprocess-filerna saknas
+    const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + embedded subProcesses (callActivities hoppas över)
     // For isolated generation, only top-level tasks generate Epics (not tasks inside embedded subProcesses)
     const expectedEpics = userTasks.length + serviceTasks.length + businessRuleTasks.length;
     const expectedCombined = 1;
     const expectedTotal = expectedFeatureGoals + expectedEpics + expectedCombined;
     
-    console.log('\n=== Expected Documentation (Isolated Generation) ===');
-    console.log(`Feature Goals: ${expectedFeatureGoals} (1 process + ${callActivities.length} callActivities + ${embeddedSubProcesses.length} embedded subProcesses)`);
+    console.log('\n=== Expected Documentation (Isolated Generation - NO subprocess files) ===');
+    console.log(`Feature Goals: ${expectedFeatureGoals} (1 process + ${embeddedSubProcesses.length} embedded subProcesses, ${callActivities.length} callActivities SKIPPED - subprocess files missing)`);
     console.log(`Epics: ${expectedEpics} (${userTasks.length} userTasks + ${serviceTasks.length} serviceTasks + ${businessRuleTasks.length} businessRuleTasks - top-level only)`);
     console.log(`Combined doc: ${expectedCombined}`);
     console.log(`Total expected: ${expectedTotal}`);
+    console.log('\nNOTE: CallActivities are skipped when subprocess files are missing (correct behavior)');
     
     // 2. Generate documentation (isolated)
     const result = await generateAllFromBpmnWithGraph(
       'mortgage.bpmn',
-      ['mortgage.bpmn'],
+      ['mortgage.bpmn'], // Only mortgage file, NO subprocess files
       [],
       false, // useHierarchy = false (isolated generation)
       false, // useLlm = false (use templates, not LLM)
@@ -144,22 +149,25 @@ describe('Mortgage documentation - Expected vs Actual Analysis', () => {
     // - mortgage-se-manual-credit-evaluation.bpmn
     // And potentially more...
     
-    // For now, let's just verify that with hierarchy, we get Feature Goals for all callActivities
-    // and Epics for all tasks in mortgage.bpmn itself (not subprocess tasks, those are in their own files)
-    const totalFeatureGoalNodes = callActivities.length + embeddedSubProcesses.length;
-    const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + callActivities + embedded subProcesses
+    // VIKTIGT: Med hierarchy men BARA mortgage.bpmn i scope (inga subprocess-filer),
+    // kommer callActivities att ha missingDefinition = true och hoppas över
+    // Bara embedded subProcesses genererar Feature Goals (de har ingen subprocessFile)
+    const totalFeatureGoalNodes = embeddedSubProcesses.length; // Bara embedded subProcesses
+    // CallActivities genererar INTE Feature Goals när subprocess-filerna saknas
+    const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + embedded subProcesses (callActivities hoppas över)
     // With hierarchy, we still only get top-level tasks in mortgage.bpmn as Epics
     // Tasks in subprocess files generate their own Epics in those files
     const expectedEpics = userTasks.length + serviceTasks.length + businessRuleTasks.length;
     const expectedCombined = 1;
     const expectedTotal = expectedFeatureGoals + expectedEpics + expectedCombined;
     
-    console.log('\n=== Expected Documentation (With Hierarchy - mortgage.bpmn only) ===');
-    console.log(`Feature Goals: ${expectedFeatureGoals} (1 process + ${callActivities.length} callActivities + ${embeddedSubProcesses.length} embedded subProcesses)`);
+    console.log('\n=== Expected Documentation (With Hierarchy - mortgage.bpmn only, NO subprocess files) ===');
+    console.log(`Feature Goals: ${expectedFeatureGoals} (1 process + ${embeddedSubProcesses.length} embedded subProcesses, ${callActivities.length} callActivities SKIPPED - subprocess files missing)`);
     console.log(`Epics: ${expectedEpics} (${userTasks.length} userTasks + ${serviceTasks.length} serviceTasks + ${businessRuleTasks.length} businessRuleTasks - top-level only)`);
     console.log(`Combined doc: ${expectedCombined}`);
     console.log(`Total expected: ${expectedTotal}`);
-    console.log('\nNOTE: With hierarchy, subprocess files generate their own documentation separately.');
+    console.log('\nNOTE: CallActivities are skipped when subprocess files are missing (correct behavior)');
+    console.log('With hierarchy, subprocess files generate their own documentation separately.');
     console.log('This test only verifies documentation for mortgage.bpmn itself.');
     
     // 2. Generate documentation (with hierarchy, but only mortgage.bpmn in scope)

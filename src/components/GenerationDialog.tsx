@@ -13,7 +13,7 @@ export interface GenerationPlan {
   totalFiles: number;
   hierarchyDepth: number;
   llmMode?: string;
-  mode: 'local' | 'llm';
+  mode: 'llm';
 }
 
 export interface GenerationProgress {
@@ -24,6 +24,10 @@ export interface GenerationProgress {
   htmlUpload: { completed: number; total: number };
   tests: { completed: number; total: number };
   dorDod?: { completed: number; total: number };
+  // Time estimation
+  startTime?: number; // Timestamp when generation started
+  estimatedTotalTime?: number; // Estimated total time in seconds
+  estimatedTimeRemaining?: number; // Estimated time remaining in seconds
 }
 
 export interface GenerationResult {
@@ -63,6 +67,21 @@ export function GenerationDialog({
 
   // Determine which view to show
   const view = result ? 'result' : progress ? 'progress' : plan ? 'plan' : 'plan';
+
+  // Format time in seconds to human-readable string
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${Math.round(seconds)} sek`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    if (minutes < 60) {
+      return remainingSeconds > 0 ? `${minutes} min ${remainingSeconds} sek` : `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours} tim ${remainingMinutes} min` : `${hours} tim`;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,6 +204,29 @@ export function GenerationDialog({
                       {progress.currentStepDetail}
                     </div>
                   )}
+                  
+                  {/* Time estimation */}
+                  {(progress.estimatedTimeRemaining !== undefined || progress.estimatedTotalTime !== undefined) && (
+                    <div className="mt-3 pt-3 border-t space-y-1.5">
+                      {progress.estimatedTotalTime !== undefined && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Förväntad total tid</span>
+                          <span className="font-medium">
+                            {formatTime(progress.estimatedTotalTime)}
+                          </span>
+                        </div>
+                      )}
+                      {progress.estimatedTimeRemaining !== undefined && progress.estimatedTimeRemaining > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Återstående tid</span>
+                          <span className="font-medium text-blue-600">
+                            {formatTime(progress.estimatedTimeRemaining)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   {/* Visa snabb översikt om det finns progress-data */}
                   {(progress.docs.total > 0 || progress.htmlUpload.total > 0) && (
                     <div className="mt-3 pt-3 border-t space-y-1.5">
@@ -192,10 +234,10 @@ export function GenerationDialog({
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">Dokumentation</span>
                           <span className="font-medium">
-                            {progress.docs.completed}/{Math.max(progress.docs.total, progress.docs.completed)} noder
-                            {progress.docs.total > 0 && (
+                            {progress.docs.completed}/{progress.docs.total} noder
+                            {progress.docs.total > 0 && progress.docs.completed <= progress.docs.total && (
                               <span className="text-muted-foreground ml-1">
-                                ({Math.round((progress.docs.completed / Math.max(progress.docs.total, progress.docs.completed)) * 100)}%)
+                                ({Math.round((progress.docs.completed / progress.docs.total) * 100)}%)
                               </span>
                             )}
                           </span>
@@ -226,14 +268,18 @@ export function GenerationDialog({
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Dokumentation</span>
                         <span className="font-medium">
-                          {progress.docs.completed} av {Math.max(progress.docs.total, progress.docs.completed)} noder
-                          <span className="text-muted-foreground ml-1">
-                            ({Math.round((progress.docs.completed / Math.max(progress.docs.total, progress.docs.completed)) * 100)}%)
-                          </span>
+                          {progress.docs.completed} av {progress.docs.total} noder
+                          {progress.docs.completed <= progress.docs.total && (
+                            <span className="text-muted-foreground ml-1">
+                              ({Math.round((progress.docs.completed / progress.docs.total) * 100)}%)
+                            </span>
+                          )}
                         </span>
                       </div>
                       <Progress
-                        value={(progress.docs.completed / Math.max(progress.docs.total, progress.docs.completed)) * 100}
+                        value={progress.docs.total > 0 && progress.docs.completed <= progress.docs.total 
+                          ? (progress.docs.completed / progress.docs.total) * 100 
+                          : 0}
                         className="h-2"
                       />
                     </div>

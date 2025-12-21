@@ -23,13 +23,11 @@ const splitSentences = (value: string): string[] =>
 function createEmptySections(): FeatureGoalLlmSections {
   return {
     summary: '',
-    effectGoals: [],
-    scopeIncluded: [],
-    scopeExcluded: [],
-    epics: [],
+    prerequisites: [],
     flowSteps: [],
     dependencies: [],
-    relatedItems: [],
+    userStories: [],
+    implementationNotes: [],
   };
 }
 
@@ -71,41 +69,37 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
     sections.summary = obj.summary.trim();
   }
 
-  sections.effectGoals = coerceStringArray(obj.effectGoals);
-  sections.scopeIncluded = coerceStringArray(obj.scopeIncluded);
-  sections.scopeExcluded = coerceStringArray(obj.scopeExcluded);
+  sections.prerequisites = coerceStringArray(obj.prerequisites);
+  sections.flowSteps = coerceStringArray(obj.flowSteps);
+  sections.dependencies = coerceStringArray(obj.dependencies);
+  sections.implementationNotes = coerceStringArray(obj.implementationNotes);
 
-  if (Array.isArray(obj.epics)) {
-    for (const item of obj.epics) {
+  // Handle userStories
+  if (Array.isArray(obj.userStories)) {
+    sections.userStories = [];
+    for (const item of obj.userStories) {
       if (!item || typeof item !== 'object') continue;
-      const epic = {
-        id:
-          typeof item.id === 'string' && item.id.trim()
-            ? item.id.trim()
-            : `E${sections.epics.length + 1}`,
-        name: typeof item.name === 'string' ? item.name.trim() : '',
-        description:
-          typeof item.description === 'string' ? item.description.trim() : '',
-        team: typeof item.team === 'string' ? item.team.trim() : '',
+      const story = {
+        id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : `US-${sections.userStories.length + 1}`,
+        role: typeof item.role === 'string' ? item.role.trim() : '',
+        goal: typeof item.goal === 'string' ? item.goal.trim() : '',
+        value: typeof item.value === 'string' ? item.value.trim() : '',
+        acceptanceCriteria: coerceStringArray(item.acceptanceCriteria),
       };
-      if (epic.name || epic.description || epic.team) {
-        sections.epics.push(epic);
+      if (story.role || story.goal || story.value || story.acceptanceCriteria.length > 0) {
+        sections.userStories = sections.userStories || [];
+        sections.userStories.push(story);
       }
     }
   }
 
-  sections.flowSteps = coerceStringArray(obj.flowSteps);
-  sections.dependencies = coerceStringArray(obj.dependencies);
-  sections.relatedItems = coerceStringArray(obj.relatedItems);
-
   const hasContent =
     sections.summary ||
-    sections.scopeIncluded.length > 0 ||
-    sections.scopeExcluded.length > 0 ||
-    sections.epics.length > 0 ||
+    (sections.prerequisites && sections.prerequisites.length > 0) ||
     sections.flowSteps.length > 0 ||
-    sections.dependencies.length > 0 ||
-    sections.relatedItems.length > 0;
+    (sections.dependencies && sections.dependencies.length > 0) ||
+    (sections.userStories && sections.userStories.length > 0) ||
+    (sections.implementationNotes && sections.implementationNotes.length > 0);
 
   return hasContent ? sections : null;
 }
@@ -148,67 +142,17 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
   const summaryLines = splitLines(summaryPart).filter((line) => {
     const lower = line.toLowerCase();
     return !(
-      lower.startsWith('ingår:') ||
-      lower.startsWith('ingår inte:') ||
-      lower.startsWith('epic:') ||
       lower.startsWith('beroende:') ||
-      lower.startsWith('relaterad') ||
-      lower.startsWith('relaterade')
+      lower.startsWith('prerequisites') ||
+      lower.startsWith('förutsättningar')
     );
   });
   sections.summary = summaryLines.join(' ');
-
-  // Derivera enkla effektmål från sammanfattningen om LLM inte levererat egna.
-  if (!sections.effectGoals || sections.effectGoals.length === 0) {
-    const summarySentences = splitSentences(sections.summary);
-    const effectCandidates = summarySentences.filter((s) => s.length > 0);
-    if (effectCandidates.length) {
-      sections.effectGoals = effectCandidates.slice(0, 3);
-    }
-  }
 
   const body = bodyPart || '';
 
   if (!body) {
     return sections;
-  }
-
-  const scopeRegex = /(Ingår(?: inte)?):\s*([^.;]+(?:\.[^A-ZÅÄÖ0-9]|$)?)/gi;
-  let scopeMatch: RegExpExecArray | null;
-  while ((scopeMatch = scopeRegex.exec(body))) {
-    const label = scopeMatch[1].toLowerCase();
-    const value = scopeMatch[2].trim().replace(/\s+/g, ' ').replace(/\.$/, '');
-    if (!value) continue;
-    if (label.startsWith('ingår inte')) {
-      sections.scopeExcluded.push(value);
-    } else {
-      sections.scopeIncluded.push(value);
-    }
-  }
-
-  if (body.toLowerCase().includes('endast digital ansökan via webbplattformen')) {
-    sections.scopeIncluded.push('Endast digital ansökan via webbplattformen.');
-  }
-
-  const epicRegex =
-    /Epic:\s*([^;]+);\s*Syfte:\s*([^.;]+)(?:;\s*Team:\s*([^.;]+))?(?:;\s*(?:Id|Epic-Id):\s*([^.;]+))?/gi;
-  let epicMatch: RegExpExecArray | null;
-  while ((epicMatch = epicRegex.exec(body))) {
-    const name = epicMatch[1]?.trim();
-    const description = epicMatch[2]?.trim();
-    const team = epicMatch[3]?.trim() ?? '';
-    const idFromText = epicMatch[4]?.trim();
-
-    if (!name && !description && !team) continue;
-
-    const epic = {
-      id: idFromText || `E${sections.epics.length + 1}`,
-      name,
-      description,
-      team,
-    };
-
-    sections.epics.push(epic);
   }
 
   const sentences = splitSentences(body);
@@ -246,25 +190,6 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
   }
 
 
-  const relatedRegex = /(Relaterat? [^:]+:[^.]+(?:\.)?)/gi;
-  let relatedMatch: RegExpExecArray | null;
-  while ((relatedMatch = relatedRegex.exec(body))) {
-    const related = relatedMatch[1]?.trim();
-    if (related) {
-      sections.relatedItems.push(related);
-    }
-  }
-
-  const bodyLines = splitLines(body);
-  for (const line of bodyLines) {
-    const lower = line.toLowerCase();
-
-
-
-    if (lower.startsWith('relaterad') || lower.startsWith('relaterade')) {
-      sections.relatedItems.push(line);
-    }
-  }
 
   return sections;
 }

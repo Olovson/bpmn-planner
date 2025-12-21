@@ -82,7 +82,7 @@ test.describe('Full Generation Flow', () => {
       }
     }
 
-    // Step 4: Generate documentation (local mode)
+    // Step 4: Generate documentation (LLM mode - cloud or ollama)
     const generateButton = page.locator(
       'button:has-text("Generera"), button:has-text("Generate"), button:has-text("artifacts")'
     ).first();
@@ -98,17 +98,7 @@ test.describe('Full Generation Flow', () => {
       return;
     }
 
-    // Select local mode if available
-    const localModeButton = page.locator(
-      'button:has-text("Local"), button:has-text("Lokal"), input[value="local"], [data-mode="local"]'
-    ).first();
-    
-    if (await localModeButton.count() > 0) {
-      await localModeButton.click().catch(() => {});
-      await page.waitForTimeout(500);
-    }
-
-    // Click generate
+    // Click generate (local mode removed - all generation uses LLM)
     await generateButton.click();
     
     // Wait for generation dialog

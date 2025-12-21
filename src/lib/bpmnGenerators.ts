@@ -15,6 +15,8 @@ import { generateTestSpecWithLlm } from '@/lib/llmTests';
 import type { LlmProvider } from './llmClientAbstraction';
 import { getLlmClient, getDefaultLlmProvider } from './llmClients';
 import { supabase } from '@/integrations/supabase/client';
+import { storageFileExists } from '@/lib/artifactUrls';
+import { buildDocStoragePaths } from '@/lib/artifactPaths';
 import { isLlmEnabled } from '@/lib/llmClient';
 import { logLlmFallback } from '@/lib/llmMonitoring';
 import { saveLlmDebugArtifact } from '@/lib/llmDebugStorage';
@@ -823,11 +825,12 @@ export interface GenerationResult {
   };
 }
 
-type PlannedScenarioProvider = 'local-fallback' | 'chatgpt' | 'ollama';
+type PlannedScenarioProvider = 'local-fallback' | 'claude' | 'chatgpt' | 'ollama';
 type PlannedScenarioMap = Map<string, Map<PlannedScenarioProvider, TestScenario[]>>;
 const FALLBACK_PROVIDER_ORDER: PlannedScenarioProvider[] = [
+  'claude',
+  'chatgpt', // Legacy
   'local-fallback',
-  'chatgpt',
   'ollama',
 ];
 const mapTestScenarioToSkeleton = (scenario: TestScenario) => ({
@@ -842,7 +845,7 @@ function mapProviderToScenarioProvider(
   provider: LlmProvider,
   fallbackUsed: boolean,
 ): PlannedScenarioProvider | null {
-  if (provider === 'cloud') return 'chatgpt';
+  if (provider === 'cloud') return 'claude';
   if (provider === 'local' && !fallbackUsed) return 'ollama';
   if (provider === 'local' && fallbackUsed) return 'local-fallback';
   return null;
@@ -987,9 +990,7 @@ async function renderDocWithLlmFallback(
   fallback: () => string | Promise<string>,
   llmAllowed: boolean,
   llmProvider?: LlmProvider,
-  localAvailable: boolean = false,
   onLlmResult?: (provider: LlmProvider, fallbackUsed: boolean, docJson?: unknown) => void,
-  featureGoalTemplateVersion?: 'v1' | 'v2',
   childrenDocumentation?: Map<string, {
     summary: string;
     flowSteps: string[];
@@ -1024,7 +1025,6 @@ async function renderDocWithLlmFallback(
       context,
       links,
       llmProvider,
-      localAvailable,
       true, // allowFallback
       childrenDocumentation,
       abortSignal, // Pass abort signal for LLM calls
@@ -1045,7 +1045,7 @@ async function renderDocWithLlmFallback(
 
       // Use unified render functions - they handle base + overrides + LLM patch
       if (docType === 'feature') {
-        return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata, featureGoalTemplateVersion || 'v2');
+        return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata);
       }
 
       if (docType === 'epic') {
@@ -1209,15 +1209,14 @@ async function parseDmnSummary(fileName: string): Promise<SubprocessSummary | nu
  */
 type ProgressReporter = (phase: GenerationPhaseKey, label: string, detail?: string) => void | Promise<void>;
 
-const insertGenerationMeta = (html: string, source: string, templateVersion?: 'v1' | 'v2'): string => {
+const insertGenerationMeta = (html: string, source: string): string => {
   if (!source) return html;
   if (html.includes('x-generation-source')) return html;
   const metaTag = `<meta name="x-generation-source" content="${source}" />`;
-  const templateVersionTag = templateVersion ? `\n  <meta name="x-feature-goal-template-version" content="${templateVersion}" />` : '';
   if (html.includes('<head>')) {
-    return html.replace('<head>', `<head>\n  ${metaTag}${templateVersionTag}`);
+    return html.replace('<head>', `<head>\n  ${metaTag}`);
   }
-  return `<!-- generation-source:${source} -->${templateVersion ? `\n<!-- feature-goal-template-version:${templateVersion} -->` : ''}\n${html}`;
+  return `<!-- generation-source:${source} -->\n${html}`;
 };
 
 /**
@@ -1242,6 +1241,107 @@ function extractDocInfoFromJson(docJson: unknown): {
   };
 }
 
+/**
+ * Försöker ladda child documentation från befintlig dokumentation i Storage
+ * Detta används när leaf nodes hoppas över för att fortfarande kunna samla
+ * child documentation för Feature Goals.
+ */
+async function loadChildDocFromStorage(
+  bpmnFile: string,
+  elementId: string,
+  docFileKey: string,
+  versionHash: string | null,
+  generationSourceLabel: string
+): Promise<{
+  summary: string;
+  flowSteps: string[];
+  inputs?: string[];
+  outputs?: string[];
+  scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+} | null> {
+  try {
+    // Försök ladda JSON från llm-debug/docs-raw/ först (snabbast och mest komplett)
+    const identifier = `${bpmnFile}-${elementId}`;
+    const safeId = identifier.toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    
+    const { data: rawFiles, error: rawError } = await supabase.storage
+      .from('bpmn-files')
+      .list('llm-debug/docs-raw', {
+        search: safeId,
+        limit: 100,
+      });
+    
+    if (!rawError && rawFiles && rawFiles.length > 0) {
+      // Sortera manuellt efter created_at (nyaste först)
+      rawFiles.sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      const latestRawFile = rawFiles[0];
+      const { data: rawData, error: downloadError } = await supabase.storage
+        .from('bpmn-files')
+        .download(`llm-debug/docs-raw/${latestRawFile.name}`);
+      
+      if (!downloadError && rawData) {
+        const rawText = await rawData.text();
+        try {
+          // Parse JSON från raw text (använd samma logik som i llmDocumentation.ts)
+          let jsonText = rawText.trim();
+          jsonText = jsonText.replace(/```(?:json|javascript)?/gi, '').replace(/```/g, '').trim();
+          jsonText = jsonText.replace(/\/\/.*$/gm, '');
+          jsonText = jsonText.replace(/\/\*[\s\S]*?\*\//g, '');
+          
+          const firstBrace = jsonText.indexOf('{');
+          if (firstBrace >= 0) {
+            jsonText = jsonText.slice(firstBrace);
+            let braceCount = 0;
+            let end = -1;
+            for (let i = 0; i < jsonText.length; i++) {
+              if (jsonText[i] === '{') braceCount++;
+              if (jsonText[i] === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  end = i + 1;
+                  break;
+                }
+              }
+            }
+            if (end > 0) {
+              jsonText = jsonText.slice(0, end);
+            }
+          }
+          
+          const docJson = JSON.parse(jsonText);
+          const docInfo = extractDocInfoFromJson(docJson);
+          if (docInfo) {
+            if (import.meta.env.DEV) {
+              console.log(`[bpmnGenerators] ✅ Loaded child doc from llm-debug/docs-raw for ${elementId}`);
+            }
+            return docInfo;
+          }
+        } catch (parseError) {
+          // Ignorera parse-fel, försök nästa metod
+          if (import.meta.env.DEV) {
+            console.warn(`[bpmnGenerators] Could not parse JSON from llm-debug/docs-raw for ${elementId}:`, parseError);
+          }
+        }
+      }
+    }
+    
+    // Fallback: Försök ladda HTML och extrahera information (mer komplext, görs senare om behövs)
+    // För nu, returnera null så att Feature Goals samlar från andra noder som faktiskt genereras
+    
+    return null;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn(`[bpmnGenerators] Error loading child doc from Storage for ${elementId}:`, error);
+    }
+    return null;
+  }
+}
+
 export async function generateAllFromBpmnWithGraph(
   bpmnFileName: string,
   existingBpmnFiles: string[],
@@ -1251,8 +1351,6 @@ export async function generateAllFromBpmnWithGraph(
   progressCallback?: ProgressReporter,
   generationSource?: string,
   llmProvider?: LlmProvider,
-  localAvailable: boolean = false,
-  featureGoalTemplateVersion: 'v1' | 'v2' = 'v2',
   /**
    * Optional filter function to determine which nodes should be generated.
    * Returns true if node should be generated, false to skip.
@@ -1292,7 +1390,6 @@ export async function generateAllFromBpmnWithGraph(
   try {
     await reportProgress('graph:start', 'Analyserar BPMN-struktur', bpmnFileName);
     
-    console.log(`Building process graph for ${bpmnFileName}...`);
     // Get version hashes for all files in scope
     const versionHashes = new Map<string, string | null>();
     if (getVersionHashForFile) {
@@ -1371,21 +1468,14 @@ export async function generateAllFromBpmnWithGraph(
           : graphFileScope) // Annars använd graphFileScope (alla filer i hierarkin)
       : [bpmnFileName]; // Generera bara för vald fil (hierarki används bara för kontext)
     
-    // Debug-logging för att se vilka filer som genereras
+    // Debug logging for analyzedFiles
     if (import.meta.env.DEV) {
-      console.log(`[bpmnGenerators] Generation scope:`, {
-        bpmnFileName,
-        useHierarchy,
-        nodeFilter: !!nodeFilter,
+      console.log(`[bpmnGenerators] analyzedFiles determined:`, {
         isRootFileGeneration,
-        isActualRootFile,
-        graphFileScope: graphFileScope.slice(0, 10), // Visa första 10 för att se alla subprocess-filer
-        graphFileScopeLength: graphFileScope.length,
         summaryFilesIncluded: summary.filesIncluded,
-        summaryFilesIncludedLength: summary.filesIncluded.length,
-        summaryFilesIncludedFirst: summary.filesIncluded[0],
+        graphFileScopeLength: graphFileScope.length,
         analyzedFiles,
-        analyzedFilesLength: analyzedFiles.length,
+        bpmnFileName,
       });
     }
     
@@ -1402,96 +1492,55 @@ export async function generateAllFromBpmnWithGraph(
       `${totalAnalyzed} filer · djup ${summary.hierarchyDepth}`,
     );
     
-    console.log('Process graph built:', {
-      totalFiles: totalAnalyzed,
-      totalNodes: summary.totalNodes,
-      filesIncluded: analyzedFiles,
-      hierarchyDepth: summary.hierarchyDepth,
-    });
     const testableNodes = getTestableNodes(graph);
-    
-    // Debug: Visa vilka noder som faktiskt finns och vilka filer de tillhör
-    if (import.meta.env.DEV && bpmnFileName === 'mortgage-se-household.bpmn') {
-      const nodesByFile = new Map<string, BpmnProcessNode[]>();
-      testableNodes.forEach(node => {
-        if (!nodesByFile.has(node.bpmnFile)) {
-          nodesByFile.set(node.bpmnFile, []);
-        }
-        nodesByFile.get(node.bpmnFile)!.push(node);
-      });
-      console.log(`[bpmnGenerators] Testable nodes breakdown:`, {
-        totalTestableNodes: testableNodes.length,
-        nodesByFile: Object.fromEntries(
-          Array.from(nodesByFile.entries()).map(([file, nodes]) => [
-            file,
-            nodes.map(n => ({ elementId: n.bpmnElementId, name: n.name, type: n.type }))
-          ])
-        ),
-        householdNodes: testableNodes.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn').map(n => ({
-          elementId: n.bpmnElementId,
-          name: n.name,
-          type: n.type,
-        })),
-      });
-    }
     
     // Filtrera testableNodes till bara de som ska genereras (baserat på analyzedFiles)
     // Detta säkerställer att progress-räkningen matchar faktiskt antal noder som genereras
+    // VIKTIGT: För callActivities, inkludera dem BARA om:
+    // 1. CallActivity-filen är med i analyzedFiles
+    // 2. Subprocess-filen finns (node.missingDefinition = false)
+    // 3. Subprocess-filen finns i existingBpmnFiles (extra säkerhet)
+    // Om subprocess-filen saknas, hoppa över callActivity (kan inte generera korrekt dokumentation)
     const nodesToGenerate = testableNodes.filter(node => {
       // Om nodeFilter finns, använd den först
       if (nodeFilter && !nodeFilter(node)) {
-        if (import.meta.env.DEV) {
-          console.log(`[bpmnGenerators] Node ${node.bpmnElementId} filtered out by nodeFilter`);
-        }
         return false;
       }
-      // Annars, inkludera bara noder från analyzedFiles
-      const included = analyzedFiles.includes(node.bpmnFile);
-      if (import.meta.env.DEV && !included) {
-        console.log(`[bpmnGenerators] Node ${node.bpmnElementId} (${node.bpmnFile}) not in analyzedFiles:`, analyzedFiles);
-      }
-      return included;
-    });
-    
-    // Debug-logging för att se filtreringsresultat
-    if (import.meta.env.DEV) {
-      const nodesByFileMap = new Map<string, number>();
-      testableNodes.forEach(n => {
-        nodesByFileMap.set(n.bpmnFile, (nodesByFileMap.get(n.bpmnFile) || 0) + 1);
-      });
-      const nodesToGenerateByFileMap = new Map<string, number>();
-      nodesToGenerate.forEach(n => {
-        nodesToGenerateByFileMap.set(n.bpmnFile, (nodesToGenerateByFileMap.get(n.bpmnFile) || 0) + 1);
-      });
       
-      // Extra debug för Household-filen (endast om det är Household)
-      if (bpmnFileName === 'mortgage-se-household.bpmn') {
-        const householdNodes = testableNodes.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn');
-        const householdNodesToGenerate = nodesToGenerate.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn');
-        const filteredOutNodes = testableNodes.filter(n => !analyzedFiles.includes(n.bpmnFile));
-        console.log(`[bpmnGenerators] Household node filtering:`, {
-          analyzedFiles,
-          totalTestableNodes: testableNodes.length,
-          householdTestableNodes: householdNodes.length,
-          householdNodesToGenerate: householdNodesToGenerate.length,
-          nodesToGenerateByFile: Object.fromEntries(nodesToGenerateByFileMap),
-          filteredOutNodes: filteredOutNodes.slice(0, 5).map(n => ({
-            elementId: n.bpmnElementId,
-            name: n.name,
-            bpmnFile: n.bpmnFile,
-            type: n.type,
-          })),
-        });
-      } else {
-        // Förenklad logg för andra filer
-        console.log(`[bpmnGenerators] Node filtering:`, {
-          bpmnFileName,
-          totalTestableNodes: testableNodes.length,
-          nodesToGenerate: nodesToGenerate.length,
-          nodesToGenerateByFile: Object.fromEntries(nodesToGenerateByFileMap),
-        });
+      // För callActivities: kolla både callActivity-filen OCH om subprocess-filen finns
+      if (node.type === 'callActivity') {
+        const callActivityFileIncluded = analyzedFiles.includes(node.bpmnFile);
+        
+        // VIKTIGT: Om subprocess-filen saknas (missingDefinition = true), hoppa över callActivity
+        // Detta säkerställer att vi bara genererar Feature Goals när subprocess-filen faktiskt finns
+        if (node.missingDefinition) {
+          // Subprocess-filen saknas - hoppa över callActivity
+          if (import.meta.env.DEV) {
+            console.warn(
+              `[bpmnGenerators] ⚠️ Skipping callActivity ${node.bpmnElementId} ` +
+              `(subprocess file ${node.subprocessFile || 'unknown'} not found)`
+            );
+          }
+          return false;
+        }
+        
+        // Verifiera också att subprocess-filen finns i existingBpmnFiles (extra säkerhet)
+        if (node.subprocessFile && !existingBpmnFiles.includes(node.subprocessFile)) {
+          if (import.meta.env.DEV) {
+            console.warn(
+              `[bpmnGenerators] ⚠️ Skipping callActivity ${node.bpmnElementId} ` +
+              `(subprocess file ${node.subprocessFile} not in existingBpmnFiles)`
+            );
+          }
+          return false;
+        }
+        
+        return callActivityFileIncluded;
       }
-    }
+      
+      // För tasks/epics: inkludera bara om filen är med i analyzedFiles
+      return analyzedFiles.includes(node.bpmnFile);
+    });
 
     // Beräkna depth för varje nod (för hierarkisk generering: leaf nodes först)
     // OBS: Använd nodesToGenerate (filtrerade noder) för depth-beräkning
@@ -1684,39 +1733,13 @@ export async function generateAllFromBpmnWithGraph(
       await reportProgress('docgen:file', 'Genererar dokumentation/testinstruktioner', file);
       const docFileName = file.replace('.bpmn', '.html');
       
-      // Debug-logging för household-filen
-      if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-        console.log(`[bpmnGenerators] Processing file in loop: ${file}`, {
-          analyzedFiles,
-          nodesToGenerateTotal: nodesToGenerate.length,
-          nodesToGenerateBpmnFiles: Array.from(new Set(nodesToGenerate.map(n => n.bpmnFile))),
-        });
-      }
-      
       // Samla alla noder från denna fil för dokumentation
       // OBS: Använd nodesToGenerate (redan filtrerade) istället för testableNodes
       const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
       
-      // Debug-logging för household-filen
-      if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-        console.log(`[bpmnGenerators] Processing file: ${file}`, {
-          nodesToGenerateTotal: nodesToGenerate.length,
-          nodesInFile: nodesInFile.length,
-          nodesToGenerateForHousehold: nodesToGenerate.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn').length,
-          sampleNodes: nodesToGenerate.slice(0, 3).map(n => ({ elementId: n.bpmnElementId, bpmnFile: n.bpmnFile })),
-        });
-      }
-      
       // Debug-logging endast om inga noder hittades (för att identifiera problem)
-      if (import.meta.env.DEV && nodesInFile.length === 0) {
-        console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file} (expected nodes from analyzedFiles: ${analyzedFiles.join(', ')})`);
-        if (file === 'mortgage-se-household.bpmn') {
-          console.warn(`[bpmnGenerators] Household debug:`, {
-            nodesToGenerate: nodesToGenerate.length,
-            nodesWithHouseholdFile: nodesToGenerate.filter(n => n.bpmnFile === 'mortgage-se-household.bpmn').length,
-            allBpmnFiles: Array.from(new Set(nodesToGenerate.map(n => n.bpmnFile))),
-          });
-        }
+      if (nodesInFile.length === 0) {
+        console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file}`);
       }
       
       if (nodesInFile.length > 0) {
@@ -1766,9 +1789,9 @@ export async function generateAllFromBpmnWithGraph(
           
           // Apply node filter if provided (for selective regeneration based on diff)
           if (nodeFilter && !nodeFilter(node)) {
-            console.log(`[bpmnGenerators] Skipping node ${node.bpmnElementId} (filtered out by diff)`);
             continue;
           }
+          
           
           // För callActivities, använd subprocessFile som key (unik per subprocess-fil)
           // För tasks/epics, använd nodeKey (unik per instans)
@@ -1789,9 +1812,13 @@ export async function generateAllFromBpmnWithGraph(
             ? generatedSubprocessFeatureGoals.has(node.subprocessFile)
             : false;
           
-          // skipDocGeneration = true om noden redan processats globalt ELLER om subprocess Feature Goal redan genererats
-          // Men vi genererar fortfarande instans-specifik dokumentation för återkommande noder
-          const skipDocGeneration = alreadyProcessedGlobally || subprocessAlreadyGenerated;
+          // VIKTIGT: För callActivities måste vi ALLTID generera Feature Goal-dokumentation,
+          // även om subprocess-filen redan har genererat sin egen Feature Goal.
+          // skipDocGeneration används bara för att avgöra om vi ska generera base eller instans-specifik.
+          // För tasks/epics: skipDocGeneration = true betyder att vi hoppar över generering helt.
+          const skipDocGeneration = node.type === 'callActivity'
+            ? subprocessAlreadyGenerated // För callActivities: bara kolla om subprocess redan genererats (vi genererar ändå instans-specifik)
+            : (alreadyProcessedGlobally || subprocessAlreadyGenerated); // För tasks/epics: hoppa över om redan processad
           
           // (Instance-specific documentation generation continues silently)
           
@@ -1822,23 +1849,74 @@ export async function generateAllFromBpmnWithGraph(
           const dorDodKey = `${node.bpmnFile}:${node.bpmnElementId}`;
           const dorDodForNode = result.dorDod.get(dorDodKey) || [];
 
-          // Debug logging för household-filen
-          if (import.meta.env.DEV && node.bpmnFile === 'mortgage-se-household.bpmn') {
-            console.log(`[bpmnGenerators] Processing node:`, {
-              elementId: node.bpmnElementId,
-              name: node.name,
-              type: node.type,
-              docKey,
-              alreadyProcessedGlobally,
-              subprocessAlreadyGenerated,
-              skipDocGeneration,
-              docFileKey,
-              hasContext: !!nodeContext,
-            });
-          }
-
           let nodeDocContent: string;
           let lastDocJson: unknown | undefined;
+
+          // VIKTIGT: För callActivities måste vi ALLTID generera Feature Goal-dokumentation,
+          // även om noden redan har processats globalt. Detta säkerställer att alla callActivities får dokumentation.
+          // För tasks/epics: hoppa över om redan processad (för att undvika dubbelgenerering).
+          if (!nodeContext) {
+            console.warn(`[bpmnGenerators] ⚠️ No nodeContext found for ${node.bpmnElementId} (${node.type}), skipping`);
+            continue;
+          }
+          
+          // För callActivities: generera alltid Feature Goal, även om alreadyProcessedGlobally är true
+          // För tasks/epics: hoppa över om alreadyProcessedGlobally är true (för att undvika dubbelgenerering)
+          if (node.type !== 'callActivity' && alreadyProcessedGlobally) {
+            continue; // Hoppa över tasks/epics som redan processats
+          }
+
+          // VIKTIGT: Kolla om dokumentation redan finns i Storage för leaf nodes (tasks/epics)
+          // Om den finns, hoppa över regenerering för att spara tid och pengar
+          // Men för callActivities genererar vi alltid (de behöver uppdateras när subprocesser ändras)
+          if (node.type !== 'callActivity') {
+            const versionHash = versionHashes.get(node.bpmnFile) || null;
+            const { modePath } = buildDocStoragePaths(
+              docFileKey,
+              generationSourceLabel === 'local-fallback' ? 'local' : generationSourceLabel?.includes('slow') ? 'slow' : null,
+              generationSourceLabel?.includes('chatgpt') || generationSourceLabel?.includes('claude') ? 'cloud' : generationSourceLabel?.includes('ollama') ? 'local' : 'fallback',
+              node.bpmnFile,
+              versionHash
+            );
+            
+            const docExists = await storageFileExists(modePath);
+            if (docExists) {
+              if (import.meta.env.DEV) {
+                console.log(`[bpmnGenerators] ⏭️  Skipping regeneration for ${node.bpmnElementId} (${node.type}) - documentation already exists in Storage: ${modePath}`);
+              }
+              
+              // VIKTIGT: Även om vi hoppar över regenerering, behöver vi fortfarande
+              // ladda in child documentation för Feature Goals. Försök ladda från Storage.
+              const existingDocInfo = await loadChildDocFromStorage(
+                node.bpmnFile,
+                node.bpmnElementId,
+                docFileKey,
+                versionHash,
+                generationSourceLabel
+              );
+              
+              if (existingDocInfo) {
+                // Spara i generatedChildDocs så att Feature Goals kan använda den
+                generatedChildDocs.set(docKey, existingDocInfo);
+                if (import.meta.env.DEV) {
+                  console.log(`[bpmnGenerators] ✅ Loaded existing child doc for ${node.bpmnElementId} from Storage`);
+                }
+              } else {
+                if (import.meta.env.DEV) {
+                  console.log(`[bpmnGenerators] ⚠️  Could not load child doc for ${node.bpmnElementId} from Storage - Feature Goals may have incomplete child documentation`);
+                }
+              }
+              
+              // Markera som processad så att den inte genereras igen
+              processedDocNodesInFile.add(docKey);
+              if (!subprocessAlreadyGenerated || node.type !== 'callActivity') {
+                globalProcessedDocNodes.add(docKey);
+              }
+              
+              // Fortsätt till nästa nod
+              continue;
+            }
+          }
 
           if (nodeContext) {
             // Samla dokumentation från child nodes rekursivt (för Feature Goals behöver vi alla descendant nodes)
@@ -1896,12 +1974,42 @@ export async function generateAllFromBpmnWithGraph(
             }
             
             if (node.type === 'callActivity') {
+              // VIKTIGT: Verifiera att subprocess-filen faktiskt finns innan vi genererar Feature Goal
+              // Om subprocess-filen saknas, hoppa över (borde redan filtrerats bort i nodesToGenerate,
+              // men dubbelkolla här också för säkerhets skull)
+              if (node.missingDefinition) {
+                if (import.meta.env.DEV) {
+                  console.warn(
+                    `[bpmnGenerators] ⚠️ Skipping Feature Goal generation for ${node.bpmnElementId} ` +
+                    `(subprocess file ${node.subprocessFile || 'unknown'} is missing)`
+                  );
+                }
+                continue;
+              }
+              
+              if (node.subprocessFile && !existingBpmnFiles.includes(node.subprocessFile)) {
+                if (import.meta.env.DEV) {
+                  console.warn(
+                    `[bpmnGenerators] ⚠️ Skipping Feature Goal generation for ${node.bpmnElementId} ` +
+                    `(subprocess file ${node.subprocessFile} not in existingBpmnFiles)`
+                  );
+                }
+                continue;
+              }
+              
               // STRATEGI: För callActivities som pekar på subprocesser:
               // - Om subprocess-filen redan genererat Feature Goal → skapa instans-specifik dokumentation
               //   med parent-fil i namnet (hierarkisk naming)
               // - Om subprocess-filen inte genererat än → generera base Feature Goal och spara
               //   (subprocess-filen kommer senare använda denna base doc)
               
+              // VIKTIGT: För callActivities måste vi ALLTID generera Feature Goal-dokumentation,
+              // även om subprocess-filen redan har genererat sin egen Feature Goal.
+              // Detta säkerställer att alla callActivity-instanser får dokumentation.
+              // skipDocGeneration för callActivities betyder bara att subprocess redan genererats,
+              // men vi genererar ändå instans-specifik dokumentation.
+              
+              // För callActivities: generera alltid Feature Goal (skipDocGeneration används bara för att avgöra base vs instans-specifik)
               if (skipDocGeneration && node.subprocessFile) {
                 // Återkommande callActivity: subprocess-filen har redan genererat base Feature Goal
                 // Generera instans-specifik dokumentation med parent-kontext
@@ -1913,12 +2021,10 @@ export async function generateAllFromBpmnWithGraph(
                     'feature',
                     nodeContext,
                     docLinks,
-                    async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined, featureGoalTemplateVersion),
+                    async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined),
                     useLlm,
                     llmProvider,
-                    localAvailable,
                     undefined,
-                    featureGoalTemplateVersion,
                     childDocsForNode.size > 0 ? childDocsForNode : undefined,
                     async (provider, fallbackUsed, docJson) => {
                       if (fallbackUsed) {
@@ -1940,13 +2046,37 @@ export async function generateAllFromBpmnWithGraph(
                     abortSignal,
                   );
                 } else {
-                  // Ingen dokumentation att hämta - detta borde inte hända, men fallback
-                  nodeDocContent = await renderFeatureGoalDoc(
+                  // Ingen dokumentation att hämta - detta kan hända om subprocess-filen inte är med i analyzedFiles
+                  // Generera Feature Goal ändå med LLM (inte bara fallback)
+                  nodeDocContent = await renderDocWithLlmFallback(
+                    'feature',
                     nodeContext,
                     docLinks,
+                    async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined),
+                    useLlm,
+                    llmProvider,
                     undefined,
-                    undefined,
-                    featureGoalTemplateVersion,
+                    childDocsForNode.size > 0 ? childDocsForNode : undefined,
+                    async (provider, fallbackUsed, docJson) => {
+                      if (fallbackUsed) {
+                        llmFallbackUsed = true;
+                        llmFinalProvider = provider;
+                      }
+                      if (docJson) {
+                        lastDocJson = docJson;
+                        // Spara dokumentation för framtida referens
+                        const docInfo = extractDocInfoFromJson(docJson);
+                        if (docInfo) {
+                          const subprocessDocKey = `subprocess:${node.subprocessFile}`;
+                          if (!generatedChildDocs.has(subprocessDocKey)) {
+                            generatedChildDocs.set(subprocessDocKey, docInfo);
+                            generatedSubprocessFeatureGoals.add(node.subprocessFile);
+                          }
+                        }
+                      }
+                    },
+                    checkCancellation,
+                    abortSignal,
                   );
                 }
               } else {
@@ -1955,12 +2085,11 @@ export async function generateAllFromBpmnWithGraph(
                   'feature',
                   nodeContext,
                   docLinks,
-                  async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined, featureGoalTemplateVersion),
+                  async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined),
                   useLlm,
                   llmProvider,
-                  localAvailable,
                   undefined,
-                  featureGoalTemplateVersion,
+                  undefined, // no version suffix
                   childDocsForNode.size > 0 ? childDocsForNode : undefined,
                   async (provider, fallbackUsed, docJson) => {
                     if (fallbackUsed) {
@@ -2008,7 +2137,6 @@ export async function generateAllFromBpmnWithGraph(
                 ? getFeatureGoalDocFileKey(
                     node.subprocessFile,
                     node.bpmnElementId,
-                    featureGoalTemplateVersion,
                     undefined, // Subprocess-filens egen sida har ingen parent
                   )
                 : null;
@@ -2020,30 +2148,16 @@ export async function generateAllFromBpmnWithGraph(
               const featureDocPath = getFeatureGoalDocFileKey(
                 bpmnFileForFeatureGoal,
                 node.bpmnElementId,
-                featureGoalTemplateVersion,
+                undefined, // no version suffix
                 subprocessPageExists ? parentBpmnFile : undefined, // Inkludera parent endast om subprocess-sida redan finns
               );
               
               // Skapa Feature Goal-sida endast om den inte redan finns (förhindra dubbelgenerering)
               if (!result.docs.has(featureDocPath)) {
-                if (import.meta.env.DEV && node.bpmnFile === 'mortgage-se-household.bpmn') {
-                  console.log(`[bpmnGenerators] ✓ Adding Feature Goal doc:`, {
-                    featureDocPath,
-                    elementId: node.bpmnElementId,
-                    name: node.name,
-                    subprocessFile: node.subprocessFile,
-                  });
-                }
                 result.docs.set(
                   featureDocPath,
-                  insertGenerationMeta(nodeDocContent, generationSourceLabel, featureGoalTemplateVersion),
+                  insertGenerationMeta(nodeDocContent, generationSourceLabel),
                 );
-              } else {
-                if (import.meta.env.DEV && node.bpmnFile === 'mortgage-se-household.bpmn') {
-                  console.log(`[bpmnGenerators] ⚠️ Feature Goal page already exists: ${featureDocPath}, skipping duplicate`);
-                } else {
-                  console.log(`[bpmnGenerators] Feature Goal page already exists: ${featureDocPath}, skipping duplicate`);
-                }
               }
               // Lägg till diagnostiksektion om subprocess-matchen inte är bekräftad
               if (
@@ -2069,7 +2183,6 @@ export async function generateAllFromBpmnWithGraph(
                 async () => await renderBusinessRuleDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
-                localAvailable,
                 async (provider, fallbackUsed, docJson) => {
                   if (fallbackUsed) {
                     llmFallbackUsed = true;
@@ -2108,7 +2221,6 @@ export async function generateAllFromBpmnWithGraph(
                   // OBS: Testscenarion (scenarios) genereras inte längre i dokumentationssteget.
                   // Testinformation genereras i ett separat steg och ska inte sparas här.
                 },
-                undefined, // featureGoalTemplateVersion (not applicable)
                 undefined, // childrenDocumentation (not applicable for businessRule/epic)
                 checkCancellation,
                 abortSignal,
@@ -2125,7 +2237,6 @@ export async function generateAllFromBpmnWithGraph(
                 async () => await renderEpicDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
-                localAvailable,
                 async (provider, fallbackUsed, docJson) => {
                   if (fallbackUsed) {
                     llmFallbackUsed = true;
@@ -2174,16 +2285,6 @@ export async function generateAllFromBpmnWithGraph(
           // Så vi ska INTE lägga till dem igen med Epic-path här
           // Endast userTasks, serviceTasks och businessRuleTasks ska läggas till här
           if (node.type !== 'callActivity') {
-            // Debug logging för household-filen
-            if (import.meta.env.DEV && node.bpmnFile === 'mortgage-se-household.bpmn') {
-              console.log(`[bpmnGenerators] ✓ Adding doc to result.docs:`, {
-                docFileKey,
-                nodeType: node.type,
-                elementId: node.bpmnElementId,
-                name: node.name,
-                contentLength: nodeDocContent.length,
-              });
-            }
 
             result.docs.set(
               docFileKey,
@@ -2242,24 +2343,6 @@ export async function generateAllFromBpmnWithGraph(
         // En fil är en subprocess-fil om det finns en process-nod OCH filen är INTE root-processen
         const isSubprocessFile = (hasCallActivityPointingToFile || !!processNodeForFile) && !isRootProcessFromMap;
         
-        // Debug logging för household-filen
-        if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-          console.log(`[bpmnGenerators] Subprocess file check:`, {
-            file,
-            hasCallActivityPointingToFile,
-            processNodeForFile: !!processNodeForFile,
-            processNodeId: processNodeForFile?.id,
-            processNodeBpmnFile: processNodeForFile?.bpmnFile,
-            isSubprocessFile,
-            rootProcessId,
-            isRootProcessFromMap,
-            nodesInFile: nodesInFile.length,
-            allProcessNodes: Array.from(graph.allNodes.values())
-              .filter(n => n.type === 'process')
-              .map(n => ({ id: n.id, bpmnFile: n.bpmnFile, bpmnElementId: n.bpmnElementId })),
-          });
-        }
-        
         if (isSubprocessFile && nodesInFile.length > 0 && processNodeForFile) {
           // Hitta root-processen för denna fil (redan hittad ovan)
           
@@ -2271,13 +2354,22 @@ export async function generateAllFromBpmnWithGraph(
             const subprocessFeatureDocPath = getFeatureGoalDocFileKey(
               file,
               processNodeForFile.bpmnElementId,
-              featureGoalTemplateVersion,
+              undefined, // no version suffix
               undefined, // Ingen parent-fil eftersom detta är subprocessens egen dokumentation
             );
             const featureGoalPageExists = result.docs.has(subprocessFeatureDocPath);
             
             // Alltid generera Feature Goal för subprocess-filen om sidan inte redan finns
             // Om base doc redan finns, använd den; annars generera ny
+            if (import.meta.env.DEV) {
+              console.log(`[bpmnGenerators] Feature Goal generation conditions met for ${file}:`, {
+                featureGoalPageExists,
+                subprocessDocKey,
+                subprocessFeatureDocPath,
+                willGenerate: !featureGoalPageExists,
+              });
+            }
+            
             if (!featureGoalPageExists) {
               // Samla alla child node-dokumentationer rekursivt från alla descendant nodes
               const childDocsForSubprocess = new Map<string, {
@@ -2357,9 +2449,7 @@ export async function generateAllFromBpmnWithGraph(
                       subprocessDocLinks,
                       undefined,
                       undefined,
-                      featureGoalTemplateVersion,
                     );
-                    console.log(`[bpmnGenerators] Using existing base documentation for subprocess ${file}, generating HTML page`);
                   } else {
                     // Fallback: generera ny dokumentation
                     subprocessDocContent = await renderDocWithLlmFallback(
@@ -2371,13 +2461,10 @@ export async function generateAllFromBpmnWithGraph(
                         subprocessDocLinks,
                         undefined,
                         undefined,
-                        featureGoalTemplateVersion,
                       ),
                       useLlm,
                       llmProvider,
-                      localAvailable,
                       undefined,
-                      featureGoalTemplateVersion,
                       childDocsForSubprocess.size > 0 ? childDocsForSubprocess : undefined,
                       async (provider, fallbackUsed, docJson) => {
                         if (fallbackUsed) {
@@ -2408,13 +2495,10 @@ export async function generateAllFromBpmnWithGraph(
                       subprocessDocLinks,
                       undefined,
                       undefined,
-                      featureGoalTemplateVersion,
                     ),
                     useLlm,
                     llmProvider,
-                    localAvailable,
                     undefined,
-                    featureGoalTemplateVersion,
                     childDocsForSubprocess.size > 0 ? childDocsForSubprocess : undefined,
                     async (provider, fallbackUsed, docJson) => {
                       if (fallbackUsed) {
@@ -2439,12 +2523,47 @@ export async function generateAllFromBpmnWithGraph(
                 // Skapa Feature Goal-sida för subprocessen (alltid, även om base doc redan finns)
                 result.docs.set(
                   subprocessFeatureDocPath,
-                  insertGenerationMeta(subprocessDocContent, generationSourceLabel, featureGoalTemplateVersion),
+                  insertGenerationMeta(subprocessDocContent, generationSourceLabel),
                 );
                 
+                if (import.meta.env.DEV) {
+                  console.log(`[bpmnGenerators] ✅ Feature Goal generated for subprocess ${file}:`, {
+                    subprocessFeatureDocPath,
+                    contentLength: subprocessDocContent.length,
+                    hasContent: subprocessDocContent.length > 0,
+                  });
+                }
+                
                 // Feature Goal documentation generated for subprocess
+              } else {
+                if (import.meta.env.DEV) {
+                  console.log(`[bpmnGenerators] ⚠️ Feature Goal page already exists for ${file}, skipping:`, {
+                    subprocessFeatureDocPath,
+                  });
+                }
+              }
+            } else {
+              if (import.meta.env.DEV) {
+                console.log(`[bpmnGenerators] ⚠️ Feature Goal NOT generated for ${file} - missing subprocessContext`);
               }
             }
+          } else {
+            if (import.meta.env.DEV) {
+              console.log(`[bpmnGenerators] ⚠️ Feature Goal NOT generated for ${file} - conditions not met:`, {
+                isSubprocessFile,
+                nodesInFileCount: nodesInFile.length,
+                hasProcessNode: !!processNodeForFile,
+              });
+            }
+          }
+        } else {
+          if (import.meta.env.DEV && processNodeForFile) {
+            console.log(`[bpmnGenerators] ⚠️ File ${file} has process node but is NOT identified as subprocess file:`, {
+              hasCallActivityPointingToFile,
+              hasProcessNode: !!processNodeForFile,
+              isRootProcessFromMap,
+              rootProcessId,
+            });
           }
         }
         
@@ -2457,35 +2576,12 @@ export async function generateAllFromBpmnWithGraph(
         //    Om bpmn-map inte kan laddas, använd fallback: filen är root om den INTE är en subprocess-fil
         const isRootFile = isRootProcessFromMap || (isRootFileGeneration && file === bpmnFileName) || (!isSubprocessFile && !rootProcessId);
         
-        if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-          console.log(`[bpmnGenerators] Combined doc decision:`, {
-            file,
-            isRootProcessFromMap,
-            isRootFileGeneration,
-            bpmnFileName,
-            fileMatchesBpmnFileName: file === bpmnFileName,
-            isSubprocessFile,
-            rootProcessId,
-            isRootFile,
-            combinedBodyLength: combinedBody.trim().length,
-          });
-        }
-        
         if (isRootFile && combinedBody.trim().length > 0) {
           const wrappedCombined = insertGenerationMeta(
             wrapLlmContentAsDocument(combinedBody, `Dokumentation - ${file}`),
             generationSourceLabel,
           );
-          if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-            console.log(`[bpmnGenerators] ✓ Adding combined file-level doc for root file: ${docFileName} (${result.docs.size} total docs before)`);
-          }
           result.docs.set(docFileName, wrappedCombined);
-          if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-            console.log(`[bpmnGenerators] Total docs after adding combined: ${result.docs.size}`);
-            console.log(`[bpmnGenerators] All doc keys:`, Array.from(result.docs.keys()));
-          }
-        } else if (isSubprocessFile && import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-          console.log(`[bpmnGenerators] ⏭️ Skipping combined file-level doc for subprocess: ${file} (Feature Goal already covers the process)`);
         }
       } else {
         // Om inga noder hittades, skapa en tom dokumentationsfil ENDAST för root-processer
@@ -2511,13 +2607,7 @@ export async function generateAllFromBpmnWithGraph(
             generationSourceLabel,
           );
           result.docs.set(docFileName, emptyDoc);
-          if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-            console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file}, created empty documentation file`);
-          } else {
-            console.log(`[bpmnGenerators] No nodes found for ${file}, created empty documentation file`);
-          }
-        } else if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-          console.log(`[bpmnGenerators] ⏭️ Skipping empty doc for subprocess: ${file} (no nodes found, but subprocesses don't need empty docs)`);
+          console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file}, created empty documentation file`);
         }
       }
     }

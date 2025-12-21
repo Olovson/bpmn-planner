@@ -4,7 +4,6 @@ import { getDocVariantPaths } from '@/lib/artifactUrls';
 
 interface DocVariantAvailability {
   isLoading: boolean;
-  hasLocal: boolean;
   hasChatgpt: boolean;
   hasOllama: boolean;
 }
@@ -36,24 +35,21 @@ export function useDocVariantAvailability(docId?: string | null): DocVariantAvai
     queryFn: async () => {
       if (!docId) {
         return {
-          hasLocal: false,
           hasChatgpt: false,
           hasOllama: false,
         };
       }
       const paths = getDocVariantPaths(docId);
-      const [hasLocal, hasChatgpt, hasOllama] = await Promise.all([
-        checkVariantExists(paths.local),
+      const [hasChatgpt, hasOllama] = await Promise.all([
         checkVariantExists(paths.chatgpt),
         checkVariantExists(paths.ollama),
       ]);
-      return { hasLocal, hasChatgpt, hasOllama };
+      return { hasChatgpt, hasOllama };
     },
   });
 
   return {
     isLoading,
-    hasLocal: data?.hasLocal ?? false,
     hasChatgpt: data?.hasChatgpt ?? false,
     hasOllama: data?.hasOllama ?? false,
   };

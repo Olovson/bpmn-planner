@@ -60,6 +60,11 @@ export async function suggestBpmnMapUpdates(
     );
     processDefs.push(...defs);
   }
+  
+  // VIKTIGT: Om det finns för få filer i databasen, kan matching-algoritmen ge felaktiga resultat
+  // eftersom den bara kan matcha mot de filer som finns. Hoppa över matchningar med mycket låg konfidens
+  // när det finns för få filer (mindre än 5 filer = risk för felaktiga matchningar)
+  const hasEnoughFilesForReliableMatching = allFiles.length >= 5;
 
   // Identifiera nya filer (finns inte i bpmn-map.json)
   const mapFiles = new Set(bpmnMap.processes.map(p => p.bpmn_file));
@@ -96,17 +101,24 @@ export async function suggestBpmnMapUpdates(
           processDefs
         );
 
+        // Hoppa över matchningar med mycket låg konfidens när det finns för få filer
+        // (risk för felaktiga matchningar när algoritmen bara kan välja mellan få alternativ)
         if (matchResult.matchedFileName && matchResult.matchStatus !== 'unresolved') {
-          suggestions.push({
-            bpmn_file: mapProcess.bpmn_file,
-            bpmn_id: ca.id,
-            name: ca.name || ca.id,
-            called_element: ca.calledElement,
-            suggested_subprocess_bpmn_file: matchResult.matchedFileName,
-            confidence: matchResult.confidence,
-            matchStatus: matchResult.matchStatus,
-            reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
-          });
+          const isVeryLowConfidence = matchResult.confidence < 0.1; // Mindre än 10% konfidens
+          const shouldSkip = !hasEnoughFilesForReliableMatching && isVeryLowConfidence;
+          
+          if (!shouldSkip) {
+            suggestions.push({
+              bpmn_file: mapProcess.bpmn_file,
+              bpmn_id: ca.id,
+              name: ca.name || ca.id,
+              called_element: ca.calledElement,
+              suggested_subprocess_bpmn_file: matchResult.matchedFileName,
+              confidence: matchResult.confidence,
+              matchStatus: matchResult.matchStatus,
+              reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
+            });
+          }
         }
       }
     }
@@ -127,18 +139,24 @@ export async function suggestBpmnMapUpdates(
             processDefs
           );
 
+          // Hoppa över matchningar med mycket låg konfidens när det finns för få filer
           if (matchResult.matchedFileName && matchResult.matchStatus !== 'unresolved') {
-            suggestions.push({
-              bpmn_file: mapProcess.bpmn_file,
-              bpmn_id: mapCA.bpmn_id,
-              name: mapCA.name || mapCA.bpmn_id,
-              called_element: mapCA.called_element,
-              suggested_subprocess_bpmn_file: matchResult.matchedFileName,
-              confidence: matchResult.confidence,
-              matchStatus: matchResult.matchStatus,
-              reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
-              existing_mapping: mapCA,
-            });
+            const isVeryLowConfidence = matchResult.confidence < 0.1; // Mindre än 10% konfidens
+            const shouldSkip = !hasEnoughFilesForReliableMatching && isVeryLowConfidence;
+            
+            if (!shouldSkip) {
+              suggestions.push({
+                bpmn_file: mapProcess.bpmn_file,
+                bpmn_id: mapCA.bpmn_id,
+                name: mapCA.name || mapCA.bpmn_id,
+                called_element: mapCA.called_element,
+                suggested_subprocess_bpmn_file: matchResult.matchedFileName,
+                confidence: matchResult.confidence,
+                matchStatus: matchResult.matchStatus,
+                reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
+                existing_mapping: mapCA,
+              });
+            }
           }
         }
       }
@@ -166,17 +184,23 @@ export async function suggestBpmnMapUpdates(
         processDefs
       );
 
+      // Hoppa över matchningar med mycket låg konfidens när det finns för få filer
       if (matchResult.matchedFileName && matchResult.matchStatus !== 'unresolved') {
-        suggestions.push({
-          bpmn_file: fileName,
-          bpmn_id: ca.id,
-          name: ca.name || ca.id,
-          called_element: ca.calledElement,
-          suggested_subprocess_bpmn_file: matchResult.matchedFileName,
-          confidence: matchResult.confidence,
-          matchStatus: matchResult.matchStatus,
-          reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
-        });
+        const isVeryLowConfidence = matchResult.confidence < 0.1; // Mindre än 10% konfidens
+        const shouldSkip = !hasEnoughFilesForReliableMatching && isVeryLowConfidence;
+        
+        if (!shouldSkip) {
+          suggestions.push({
+            bpmn_file: fileName,
+            bpmn_id: ca.id,
+            name: ca.name || ca.id,
+            called_element: ca.calledElement,
+            suggested_subprocess_bpmn_file: matchResult.matchedFileName,
+            confidence: matchResult.confidence,
+            matchStatus: matchResult.matchStatus,
+            reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
+          });
+        }
       }
     }
     

@@ -65,6 +65,7 @@ const isCustomerFacingUserTask = (node: ProcessTreeNode): boolean => {
     'granska',
     'assess',
     'utvärdera',
+    'evaluate', // ✅ För evaluate-application-* i credit decision
     'advanced-underwriting',
     'board',
     'committee',

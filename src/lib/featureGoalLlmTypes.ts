@@ -3,36 +3,24 @@
 // för strukturerad LLM-output.
 import type { ScenarioPersona, ScenarioRiskLevel, ScenarioAssertionType, ScenarioUiStep } from './epicDocTypes';
 
+/**
+ * Feature Goal dokumentation modell - kopierad från EpicDocModel för konsistens.
+ * 
+ * Feature Goals använder nu samma struktur som Epics.
+ */
 export interface FeatureGoalDocModel {
-  // Kort, ren sammanfattning av Feature Goalet – 2–5 meningar om syfte, värde och kontext.
   summary: string;
-  // Effektmål på affärsnivå – vilka beteenden/värden som ska förbättras (t.ex. automatisering, kvalitet, kundupplevelse).
-  effectGoals: string[];
-  // Lista med "Ingår:"-punkter (omfattning, vad som täcks).
-  scopeIncluded: string[];
-  // Lista med "Ingår inte:"-punkter och explicita avgränsningar.
-  scopeExcluded: string[];
-  // Ingående epics som stödjer Feature Goalet.
-  epics: {
-    // Valfritt ID eller etikett för epiken (kan vara genererat).
-    id: string;
-    // Namn på epiken.
-    name: string;
-    // Kort beskrivning av epikens syfte/roll i flödet.
-    description: string;
-    // Ägande team eller ansvarig funktion (kan lämnas tomt).
-    team: string;
-  }[];
-  // Översiktliga flödessteg på Feature Goal-nivå (kund/system/handläggare).
+  prerequisites: string[];
   flowSteps: string[];
-  // Viktiga beroenden, t.ex. "Beroende: ...; Id: ...; Beskrivning: ...".
-  dependencies: string[];
-  // Relaterade feature goals, epics, regler eller subprocesser (bullets).
-  relatedItems: string[];
-  // Förutsättningar för att Feature Goalet kan starta (optional).
-  prerequisites?: string[];
-  // Implementation notes - tekniska noteringar om implementation (optional).
-  implementationNotes?: string[];
+  dependencies?: string[]; // Optional - dependencies for the Feature Goal
+  userStories: Array<{
+    id: string;
+    role: string;
+    goal: string;
+    value: string;
+    acceptanceCriteria: string[]; // 2-4 acceptanskriterier per user story
+  }>;
+  implementationNotes: string[];
 }
 
 export type FeatureGoalLlmSections = FeatureGoalDocModel;

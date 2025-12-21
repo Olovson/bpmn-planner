@@ -113,8 +113,8 @@ export default function BpmnVersionHistoryPage() {
       try {
         // Check for docs in storage
         const docPaths = [
-          `docs/slow/chatgpt/${fileName}/${version.content_hash}`,
-          `docs/slow/ollama/${fileName}/${version.content_hash}`,
+          `docs/claude/${fileName}/${version.content_hash}`,
+          `docs/ollama/${fileName}/${version.content_hash}`,
           `docs/local/${fileName}/${version.content_hash}`,
         ];
         

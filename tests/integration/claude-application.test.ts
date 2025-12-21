@@ -70,12 +70,9 @@ describe('Claude-generering för application-processen', () => {
     const generationSourceLabel = 'Claude (moln-LLM)';
     const llmProvider: LlmProvider = 'cloud';
     const localAvailable = false;
-    const featureGoalTemplateVersion = 'v2' as const;
-
     console.log('\n🚀 Startar generering med Claude...');
     console.log(`   Fil: ${fileName}`);
-    console.log(`   LLM Provider: ${llmProvider}`);
-    console.log(`   Template Version: ${featureGoalTemplateVersion}\n`);
+    console.log(`   LLM Provider: ${llmProvider}\n`);
 
     // 3. Kör generering
     const result = await generateAllFromBpmnWithGraph(
@@ -87,8 +84,7 @@ describe('Claude-generering för application-processen', () => {
       handleGeneratorPhase,
       generationSourceLabel,
       llmProvider,
-      localAvailable,
-      featureGoalTemplateVersion
+      localAvailable
     );
 
     // 4. Verifiera resultat

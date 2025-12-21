@@ -7,8 +7,10 @@ export type ArtifactProvider = 'cloud' | 'local' | 'fallback' | null | undefined
  * Build storage paths for documentation HTML with BPMN file version support.
  * 
  * Format: 
- * - BPMN versioned: docs/{mode}/{provider}/{bpmnFileName}/{bpmnVersionHash}/{docFileName}
- * Legacy: docs/{docFileName} (for backward compatibility)
+ * - BPMN versioned: docs/{provider}/{bpmnFileName}/{bpmnVersionHash}/{docFileName}
+ *   - provider: 'claude' (cloud LLM), 'ollama' (local LLM), 'local' (fallback)
+ * - Legacy (no version): docs/{provider}/{docFileName}
+ * - Older legacy: docs/{docFileName}
  * 
  * Note: We use only BPMN file versioning, not per-element artifact versioning.
  * For manual improvements to specific nodes, use node-docs overrides instead.
@@ -27,15 +29,16 @@ export const buildDocStoragePaths = (
     return { modePath: legacyPath, legacyPath };
   }
 
+  // Map provider to storage path name
+  const providerName = provider === 'cloud' 
+    ? 'claude' 
+    : provider === 'local' && normalized === 'slow'
+    ? 'ollama'
+    : 'local';
+
   // If BPMN version hash is provided, include it in the path
   if (bpmnVersionHash && bpmnFileName) {
-    const basePath = normalized === 'local' || provider === 'fallback'
-      ? `docs/local/${bpmnFileName}/${bpmnVersionHash}`
-      : provider === 'cloud'
-      ? `docs/slow/chatgpt/${bpmnFileName}/${bpmnVersionHash}`
-      : provider === 'local'
-      ? `docs/slow/ollama/${bpmnFileName}/${bpmnVersionHash}`
-      : `docs/slow/${bpmnFileName}/${bpmnVersionHash}`;
+    const basePath = `docs/${providerName}/${bpmnFileName}/${bpmnVersionHash}`;
     
     return { 
       modePath: `${basePath}/${docFileName}`, 
@@ -44,20 +47,11 @@ export const buildDocStoragePaths = (
   }
 
   // Fallback to old structure if no version hash
-  if (normalized === 'local' || provider === 'fallback') {
-    return { modePath: `docs/local/${docFileName}`, legacyPath };
-  }
-
-  // normalized === 'slow' (LLM-läge)
-  if (provider === 'cloud') {
-    return { modePath: `docs/slow/chatgpt/${docFileName}`, legacyPath };
-  }
-  if (provider === 'local') {
-    return { modePath: `docs/slow/ollama/${docFileName}`, legacyPath };
-  }
-
-  // Generisk LLM-slow (t.ex. äldre körningar utan provider-info)
-  return { modePath: `docs/slow/${docFileName}`, legacyPath };
+  // Legacy paths for backward compatibility
+  return { 
+    modePath: `docs/${providerName}/${docFileName}`, 
+    legacyPath 
+  };
 };
 
 const normalizeMode = (mode: ArtifactMode): 'local' | 'slow' | null => {

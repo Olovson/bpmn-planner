@@ -41,7 +41,6 @@ export interface TestGenerationProgress {
 export async function generateTestsForFile(
   bpmnFileName: string,
   llmProvider?: LlmProvider,
-  localAvailable: boolean = false,
   progressCallback?: (progress: TestGenerationProgress) => void,
   checkCancellation?: () => void,
   abortSignal?: AbortSignal,
@@ -111,7 +110,6 @@ export async function generateTestsForFile(
           const scenarios = await generateTestSpecWithLlm(
             element,
             llmProvider,
-            localAvailable,
             checkCancellation,
             abortSignal,
           );
@@ -202,7 +200,6 @@ export async function generateTestsForFile(
 export async function generateTestsForAllFiles(
   bpmnFileNames: string[],
   llmProvider?: LlmProvider,
-  localAvailable: boolean = false,
   progressCallback?: (progress: TestGenerationProgress & { currentFile?: string; totalFiles: number }) => void,
   checkCancellation?: () => void,
   abortSignal?: AbortSignal,
@@ -237,7 +234,6 @@ export async function generateTestsForAllFiles(
       const fileResult = await generateTestsForFile(
         fileName,
         llmProvider,
-        localAvailable,
         (progress) => {
           progressCallback?.({
             ...progress,
@@ -265,4 +261,7 @@ export async function generateTestsForAllFiles(
 
   return aggregatedResult;
 }
+
+
+
 

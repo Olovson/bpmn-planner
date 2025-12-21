@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
-type NormalizedMode = 'local' | 'full';
+type NormalizedMode = 'full';
 
 interface NormalizedVariant {
   mode: NormalizedMode;
@@ -18,7 +18,7 @@ interface NormalizedVariant {
 }
 
 const modeLabel = (mode: NormalizedMode) =>
-  mode === 'local' ? 'Lokal fallback (ingen LLM)' : 'LLM (Claude/Ollama)';
+  'LLM (Claude/Ollama)';
 
 const NodeTestScriptViewer = () => {
   const navigate = useNavigate();
@@ -73,18 +73,6 @@ const NodeTestScriptViewer = () => {
 
     const variants: NormalizedVariant[] = [];
 
-    // Local / legacy - prioritera 'local' mode, annars fallback till null (legacy)
-    const localCandidate =
-      entry.variants.find((v) => v.mode === 'local') ||
-      entry.variants.find((v) => v.mode === null);
-    if (localCandidate) {
-      variants.push({
-        mode: 'local',
-        testFilePath: localCandidate.testFilePath,
-        fileUrl: localCandidate.fileUrl,
-      });
-    }
-
     // Full LLM (lagras som 'slow' i mode-kolumnen)
     const fullCandidate = entry.variants.find((v) => v.mode === 'slow');
     if (fullCandidate) {
@@ -137,9 +125,7 @@ const NodeTestScriptViewer = () => {
     return variants;
   }, [linkEntries, bpmnFile, elementId]);
 
-  const [activeMode, setActiveMode] = useState<NormalizedMode>(
-    variantParam === 'llm' ? 'full' : 'local',
-  );
+  const [activeMode, setActiveMode] = useState<NormalizedMode>('full');
   const [iframeUrl, setIframeUrl] = useState<string>('');
   const [loadingScript, setLoadingScript] = useState(true);
   const blobUrlRef = useRef<string | null>(null);
@@ -300,14 +286,6 @@ const NodeTestScriptViewer = () => {
                 </CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant={activeMode === 'local' ? 'default' : 'outline'}
-                  onClick={() => setActiveMode('local')}
-                  disabled={!hasLocalVariant}
-                >
-                  Lokal fallback
-                </Button>
                 <Button
                   size="sm"
                   variant={activeMode === 'full' ? 'default' : 'outline'}

@@ -222,11 +222,6 @@ function matchSubprocesses(
   const matches: SubprocessMatch[] = [];
   const missing: MissingDependency[] = [];
 
-  // Log available process definitions for debugging
-  if (import.meta.env.DEV) {
-    const availableFiles = new Set(processDefs.map(p => p.fileName));
-    console.log('[matchSubprocesses] Available process files:', Array.from(availableFiles).sort());
-  }
 
   for (const ca of callActivities) {
     let match: SubprocessMatch | undefined;
@@ -280,9 +275,6 @@ function matchSubprocesses(
     matches.push(match);
   }
 
-  if (import.meta.env.DEV) {
-    console.log(`[matchSubprocesses] Matched ${matches.filter(m => m.targetProcessDef).length} subprocesses, ${missing.length} missing`);
-  }
 
   return { matches, missing };
 }
@@ -447,19 +439,7 @@ function assignLocalOrderForFile(
       sequenceRelevant.add(flow.targetRef);
     });
     const relevantCount = sequenceRelevant.size;
-    const visualOnly = total - relevantCount;
-    console.log(
-      `[Sequence Order Debug] ${fileName}: ${relevantCount} sequence-relevant elements, ${visualOnly} visual-only nodes`,
-    );
-    const sequenceRelevantNodes = nodes.filter((n) => 
-      n.bpmnElementId && sequenceRelevant.has(n.bpmnElementId)
-    );
-    const sample = sequenceRelevantNodes.slice(0, 5).map((n) => ({
-      id: n.bpmnElementId ?? n.id,
-      label: n.name,
-      hasOrder: nodeOrderMap.has(n.id),
-    }));
-    console.log('[Sequence Order Debug] Sample relevant nodes:', sample);
+    // Debug logging disabled for cleaner output
   }
 
   return nodeOrderMap;
@@ -579,21 +559,7 @@ export function buildProcessGraph(
           nodeElementIds,
         );
         
-        // Debug logging for visual ordering (development only)
-        if (import.meta.env.DEV && fileName === 'mortgage.bpmn') {
-          console.log(`[Visual Ordering Debug] ${fileName} - ${nodesWithCoords.length} nodes with coordinates:`);
-          const sorted = [...nodesWithCoords].sort((a, b) => {
-            const aIndex = visualOrderMap.get(a.bpmnElementId ?? '') ?? Number.MAX_SAFE_INTEGER;
-            const bIndex = visualOrderMap.get(b.bpmnElementId ?? '') ?? Number.MAX_SAFE_INTEGER;
-            return aIndex - bIndex;
-          });
-          sorted.forEach((node, index) => {
-            const x = (node.metadata.x as number) ?? 0;
-            const y = (node.metadata.y as number) ?? 0;
-            const orderIndex = node.metadata.orderIndex as number | undefined;
-            console.log(`  ${index}: ${node.name} (${node.bpmnElementId}) - x:${x}, y:${y}, orderIndex:${orderIndex ?? 'N/A'}, visualOrderIndex:${visualOrderMap.get(node.bpmnElementId ?? '') ?? 'N/A'}`);
-          });
-        }
+        // Debug logging disabled for cleaner output
         
         // Assign visualOrderIndex to ALL nodes with coordinates
         nodesWithCoords.forEach((node) => {

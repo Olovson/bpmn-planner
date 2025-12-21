@@ -73,6 +73,10 @@ function parseStructuredEpic(rawContent: string): EpicDocModel | null {
   if ((obj as any).interactions !== undefined) {
     model.interactions = coerceStringArray((obj as any).interactions);
   }
+  // dependencies is optional - only include if present
+  if ((obj as any).dependencies !== undefined) {
+    model.dependencies = coerceStringArray((obj as any).dependencies);
+  }
 
   if (Array.isArray((obj as any).userStories)) {
     for (const item of (obj as any).userStories) {
@@ -98,6 +102,7 @@ function parseStructuredEpic(rawContent: string): EpicDocModel | null {
     model.prerequisites.length > 0 ||
     model.flowSteps.length > 0 ||
     (model.interactions && model.interactions.length > 0) ||
+    (model.dependencies && model.dependencies.length > 0) ||
     model.userStories.length > 0 ||
     model.implementationNotes.length > 0;
 

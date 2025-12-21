@@ -10,7 +10,7 @@ export interface FilePlannedScenarioSummary {
     elementId: string;
     totalScenarios: number;
     byProvider: {
-      provider: 'local-fallback' | 'chatgpt' | 'ollama';
+      provider: 'local-fallback' | 'claude' | 'chatgpt' | 'ollama';
       origin: 'design' | 'llm-doc' | 'spec-parsed';
       scenarios: TestScenario[];
     }[];
@@ -50,7 +50,7 @@ export const useFilePlannedScenarios = (bpmnFile?: string | null) => {
           elementId: string;
           totalScenarios: number;
           byProvider: {
-            provider: 'local-fallback' | 'chatgpt' | 'ollama';
+            provider: 'local-fallback' | 'claude' | 'chatgpt' | 'ollama';
             origin: 'design' | 'llm-doc' | 'spec-parsed';
             scenarios: TestScenario[];
           }[];

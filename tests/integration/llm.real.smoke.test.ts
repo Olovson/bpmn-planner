@@ -31,7 +31,7 @@ import { LlmValidationError } from '@/lib/llmFallback';
 // VITE_USE_LLM=true, VITE_ALLOW_LLM_IN_TESTS=true och VITE_OPENAI_API_KEY är satt.
 // Om LLM inte är aktiverat i test-miljö, markeras hela describe-blocket som skip.
 //
-const PROVIDERS: LlmProvider[] = ['cloud', 'local'];
+const PROVIDERS: LlmProvider[] = ['cloud', 'ollama'];
 const STRICT_SMOKE = process.env.LLM_SMOKE_STRICT === 'true';
 
 if (!isLlmEnabled()) {
@@ -65,7 +65,7 @@ if (!isLlmEnabled()) {
     <section class="doc-section">
       <h2>ChatGPT (moln-LLM) kunde inte nås</h2>
       <p>ChatGPT-genereringen misslyckades p.g.a. nätverksfel eller anslutningsproblem.</p>
-      <p>Detta dokument är endast en placeholder. Se Ollama-varianten (lokal LLM) för faktisk output.</p>
+      <p>Detta dokument är endast en placeholder. Se Ollama-varianten för faktisk output.</p>
     </section>
     `;
 
@@ -110,7 +110,7 @@ if (!isLlmEnabled()) {
     writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf8');
   };
 
-  describe('Real LLM smoke tests (cloud + local)', () => {
+  describe('Real LLM smoke tests (cloud + ollama)', () => {
     const outputDir = join(process.cwd(), 'tests', 'llm-output');
 
     const ensureOutputDir = () => {
@@ -207,7 +207,7 @@ if (!isLlmEnabled()) {
             context,
             links,
             provider,
-            provider === 'local',
+            provider === 'ollama',
             false,
           );
           const wallElapsed = Date.now() - wallStart;
@@ -261,7 +261,7 @@ if (!isLlmEnabled()) {
           const errorHtml =
             provider === 'cloud'
               ? buildCloudErrorHtml(title, error)
-              : buildLocalErrorHtml(title, error);
+              : buildOllamaErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
           if (provider === 'local' && error instanceof LlmValidationError) {
@@ -283,7 +283,7 @@ if (!isLlmEnabled()) {
       }
 
       // Lokalt genererad dokumentation (utan LLM) för diff jämförelse – samma för alla providers
-      const localHtml = await renderFeatureGoalDoc(context, links);
+      const ollamaHtml = await renderFeatureGoalDoc(context, links);
       writeFileSync(
         join(dir, 'html', 'llm-feature-goal-fallback.html'),
         localHtml,
@@ -291,7 +291,7 @@ if (!isLlmEnabled()) {
       );
     }, 720000);
 
-    it('genererar Epic-dokumentation med riktig LLM (cloud & local)', async () => {
+    it('genererar Epic-dokumentation med riktig LLM (cloud & ollama)', async () => {
       const context: NodeDocumentationContext = {
         node: epicNode,
         parentChain: [],
@@ -323,7 +323,7 @@ if (!isLlmEnabled()) {
             context,
             links,
             provider,
-            provider === 'local',
+            provider === 'ollama',
             false,
           );
           const wallElapsed = Date.now() - wallStart;
@@ -377,7 +377,7 @@ if (!isLlmEnabled()) {
           const errorHtml =
             provider === 'cloud'
               ? buildCloudErrorHtml(title, error)
-              : buildLocalErrorHtml(title, error);
+              : buildOllamaErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
           if (provider === 'local' && error instanceof LlmValidationError) {
@@ -438,7 +438,7 @@ if (!isLlmEnabled()) {
             context,
             links,
             provider,
-            provider === 'local',
+            provider === 'ollama',
             false,
           );
           const wallElapsed = Date.now() - wallStart;
@@ -488,7 +488,7 @@ if (!isLlmEnabled()) {
           const errorHtml =
             provider === 'cloud'
               ? buildCloudErrorHtml(title, error)
-              : buildLocalErrorHtml(title, error);
+              : buildOllamaErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
           if (provider === 'local' && error instanceof LlmValidationError) {

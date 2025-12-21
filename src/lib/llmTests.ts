@@ -82,7 +82,6 @@ export async function generateTestSpecWithLlm(
   const resolution = resolveLlmProvider({
     userChoice: llmProvider,
     globalDefault,
-    localAvailable,
   });
 
   // Bygg test scenario schema (använder standardvärden för nu)

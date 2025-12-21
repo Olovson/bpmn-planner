@@ -7,6 +7,9 @@
 
 /**
  * JSON Schema för Feature Goal dokumentation
+ * 
+ * Kopierad från Epic JSON Schema för att matcha Epic-strukturen.
+ * OBS: Feature Goals har INTE interactions (endast Epic har det).
  */
 export function buildFeatureGoalJsonSchema() {
   return {
@@ -17,43 +20,18 @@ export function buildFeatureGoalJsonSchema() {
       additionalProperties: false,
       required: [
         'summary',
-        'effectGoals',
-        'scopeIncluded',
-        'scopeExcluded',
-        'epics',
+        'prerequisites',
         'flowSteps',
-        'dependencies',
-        'relatedItems',
+        'userStories',
+        'implementationNotes',
       ],
       properties: {
         summary: {
           type: 'string',
         },
-        effectGoals: {
+        prerequisites: {
           type: 'array',
           items: { type: 'string' },
-        },
-        scopeIncluded: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        scopeExcluded: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        epics: {
-          type: 'array',
-          items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['id', 'name', 'description', 'team'],
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              description: { type: 'string' },
-              team: { type: 'string' },
-            },
-          },
         },
         flowSteps: {
           type: 'array',
@@ -63,7 +41,29 @@ export function buildFeatureGoalJsonSchema() {
           type: 'array',
           items: { type: 'string' },
         },
-        relatedItems: {
+        userStories: {
+          type: 'array',
+          // OBS: minItems och maxItems stöds inte av Anthropic API - tas bort
+          // LLM instrueras via prompt att generera 3-6 user stories
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['id', 'role', 'goal', 'value', 'acceptanceCriteria'],
+            properties: {
+              id: { type: 'string' },
+              role: { type: 'string' },
+              goal: { type: 'string' },
+              value: { type: 'string' },
+              acceptanceCriteria: {
+                type: 'array',
+                // OBS: minItems och maxItems stöds inte av Anthropic API - tas bort
+                // LLM instrueras via prompt att generera 2-4 acceptance criteria per user story
+                items: { type: 'string' },
+              },
+            },
+          },
+        },
+        implementationNotes: {
           type: 'array',
           items: { type: 'string' },
         },
@@ -102,6 +102,10 @@ export function buildEpicJsonSchema() {
           items: { type: 'string' },
         },
         interactions: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+        dependencies: {
           type: 'array',
           items: { type: 'string' },
         },

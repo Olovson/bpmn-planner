@@ -1,0 +1,212 @@
+[
+  {
+    "bpmnFile": "mortgage-se-appeal.bpmn",
+    "elementId": "screen-appeal",
+    "nodeName": "Screen appeal",
+    "storagePath": "docs/nodes/mortgage-se-appeal/screen-appeal.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-appeal.bpmn",
+    "elementId": "submit-appeal",
+    "nodeName": "Submit appeal",
+    "storagePath": "docs/nodes/mortgage-se-appeal/submit-appeal.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-application.bpmn",
+    "elementId": "confirm-application",
+    "nodeName": "Confirm application",
+    "storagePath": "docs/nodes/mortgage-se-application/confirm-application.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-collateral-registration.bpmn",
+    "elementId": "distribute-ansokan-till-inskrivningsmyndigheten",
+    "nodeName": "Distribute Ansökan till inskrivningsmyndigheten",
+    "storagePath": "docs/nodes/mortgage-se-collateral-registration/distribute-ansokan-till-inskrivningsmyndigheten.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-collateral-registration.bpmn",
+    "elementId": "distribute-notice-of-pledge-to-brf",
+    "nodeName": "Distribute notice of pledge to BRF",
+    "storagePath": "docs/nodes/mortgage-se-collateral-registration/distribute-notice-of-pledge-to-brf.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-collateral-registration.bpmn",
+    "elementId": "verify",
+    "nodeName": "Verify",
+    "storagePath": "docs/nodes/mortgage-se-collateral-registration/verify.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-credit-decision.bpmn",
+    "elementId": "evaluate-application-board",
+    "nodeName": "Evaluate application",
+    "storagePath": "docs/nodes/mortgage-se-credit-decision/evaluate-application-board.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-credit-decision.bpmn",
+    "elementId": "evaluate-application-committee",
+    "nodeName": "Evaluate application",
+    "storagePath": "docs/nodes/mortgage-se-credit-decision/evaluate-application-committee.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-credit-decision.bpmn",
+    "elementId": "evaluate-application-four-eyes",
+    "nodeName": "Evaluate application",
+    "storagePath": "docs/nodes/mortgage-se-credit-decision/evaluate-application-four-eyes.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-documentation-assessment.bpmn",
+    "elementId": "assess-documentation",
+    "nodeName": "Assess documentation",
+    "storagePath": "docs/nodes/mortgage-se-documentation-assessment/assess-documentation.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-documentation-assessment.bpmn",
+    "elementId": "review-changes",
+    "nodeName": "Review changes",
+    "storagePath": "docs/nodes/mortgage-se-documentation-assessment/review-changes.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-household.bpmn",
+    "elementId": "register-household-economy-information",
+    "nodeName": "Register household economy infomation",
+    "storagePath": "docs/nodes/mortgage-se-household/register-household-economy-information.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-kyc.bpmn",
+    "elementId": "review-kyc",
+    "nodeName": "Review KYC",
+    "storagePath": "docs/nodes/mortgage-se-kyc/review-kyc.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-kyc.bpmn",
+    "elementId": "submit-self-declaration",
+    "nodeName": "Submit self declaration",
+    "storagePath": "docs/nodes/mortgage-se-kyc/submit-self-declaration.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-manual-credit-evaluation.bpmn",
+    "elementId": "advanced-underwriting",
+    "nodeName": "Perform advanced underwriting",
+    "storagePath": "docs/nodes/mortgage-se-manual-credit-evaluation/advanced-underwriting.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-manual-credit-evaluation.bpmn",
+    "elementId": "auw-upload-documentation",
+    "nodeName": "Upload documentation",
+    "storagePath": "docs/nodes/mortgage-se-manual-credit-evaluation/auw-upload-documentation.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-manual-credit-evaluation.bpmn",
+    "elementId": "upload-documentation",
+    "nodeName": "Upload documentation",
+    "storagePath": "docs/nodes/mortgage-se-manual-credit-evaluation/upload-documentation.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-mortgage-commitment.bpmn",
+    "elementId": "decide-mortgage-commitment",
+    "nodeName": "Decide on mortgage commitment",
+    "storagePath": "docs/nodes/mortgage-se-mortgage-commitment/decide-mortgage-commitment.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object-control.bpmn",
+    "elementId": "control-lagenhetsutdrag",
+    "nodeName": "Control lägenhets-utdrag",
+    "storagePath": "docs/nodes/mortgage-se-object-control/control-lagenhetsutdrag.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object-control.bpmn",
+    "elementId": "determine-object-value",
+    "nodeName": "Determine object value",
+    "storagePath": "docs/nodes/mortgage-se-object-control/determine-object-value.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object-control.bpmn",
+    "elementId": "register-brf-information",
+    "nodeName": "Register BRF information",
+    "storagePath": "docs/nodes/mortgage-se-object-control/register-brf-information.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object-control.bpmn",
+    "elementId": "review-brf",
+    "nodeName": "Review BRF",
+    "storagePath": "docs/nodes/mortgage-se-object-control/review-brf.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object-control.bpmn",
+    "elementId": "review-changes",
+    "nodeName": "Review changes",
+    "storagePath": "docs/nodes/mortgage-se-object-control/review-changes.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object-control.bpmn",
+    "elementId": "upload-documentation",
+    "nodeName": "Upload documentation",
+    "storagePath": "docs/nodes/mortgage-se-object-control/upload-documentation.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object-control.bpmn",
+    "elementId": "upload-object-valuation-document",
+    "nodeName": "Upload object valuation documentation",
+    "storagePath": "docs/nodes/mortgage-se-object-control/upload-object-valuation-document.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object.bpmn",
+    "elementId": "register-loan-details",
+    "nodeName": "Register loan details",
+    "storagePath": "docs/nodes/mortgage-se-object/register-loan-details.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-object.bpmn",
+    "elementId": "register-source-of-equity",
+    "nodeName": "Register source of equity",
+    "storagePath": "docs/nodes/mortgage-se-object/register-source-of-equity.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-offer.bpmn",
+    "elementId": "advanced-underwriting",
+    "nodeName": "Perform advanced underwriting",
+    "storagePath": "docs/nodes/mortgage-se-offer/advanced-underwriting.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-offer.bpmn",
+    "elementId": "decide-offer",
+    "nodeName": "Decide on offer",
+    "storagePath": "docs/nodes/mortgage-se-offer/decide-offer.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-offer.bpmn",
+    "elementId": "sales-contract-advanced-underwriting",
+    "nodeName": "Perform advanced underwriting",
+    "storagePath": "docs/nodes/mortgage-se-offer/sales-contract-advanced-underwriting.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-offer.bpmn",
+    "elementId": "upload-sales-contract",
+    "nodeName": "Upload sales contract",
+    "storagePath": "docs/nodes/mortgage-se-offer/upload-sales-contract.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-signing.bpmn",
+    "elementId": "distribute-manual-documents",
+    "nodeName": "Distribute documents",
+    "storagePath": "docs/nodes/mortgage-se-signing/distribute-manual-documents.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-signing.bpmn",
+    "elementId": "upload-manual-document",
+    "nodeName": "Upload document",
+    "storagePath": "docs/nodes/mortgage-se-signing/upload-manual-document.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-stakeholder.bpmn",
+    "elementId": "consent-to-credit-check",
+    "nodeName": "Consent to credit check",
+    "storagePath": "docs/nodes/mortgage-se-stakeholder/consent-to-credit-check.html"
+  },
+  {
+    "bpmnFile": "mortgage-se-stakeholder.bpmn",
+    "elementId": "register-personal-economy-information",
+    "nodeName": "Register personal economy information",
+    "storagePath": "docs/nodes/mortgage-se-stakeholder/register-personal-economy-information.html"
+  }
+]

@@ -79,6 +79,10 @@ import { useLlmHealth } from '@/hooks/useLlmHealth';
 import { getAllUnresolvedDiffs } from '@/lib/bpmnDiffRegeneration';
 import { VersionSelector } from '@/components/VersionSelector';
 import { useVersionSelection } from '@/hooks/useVersionSelection';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore – Vite hanterar JSON-import enligt bundler-konfigurationen.
+import userTaskEpicsList from '../../user-task-epics-list.json';
+import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
 
 /**
  * Creates a summary from ProcessGraph and ProcessTree
@@ -169,7 +173,7 @@ export default function BpmnFileManager() {
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [showSyncReport, setShowSyncReport] = useState(false);
   const [generatingFile, setGeneratingFile] = useState<string | null>(null);
-  const [activeOperation, setActiveOperation] = useState<'llm' | 'local' | 'hierarchy' | null>(null);
+  const [activeOperation, setActiveOperation] = useState<'llm' | 'hierarchy' | null>(null);
   const [bpmnMapValidation, setBpmnMapValidation] = useState<{ valid: boolean; error?: string; details?: string; source?: string } | null>(null);
   const [regeneratingMap, setRegeneratingMap] = useState(false);
   
@@ -255,17 +259,12 @@ export default function BpmnFileManager() {
   const hasGenerationResultRef = useRef(false); // Track if result was set
   const [llmMode, setLlmMode] = useState<LlmGenerationMode>(() => getLlmGenerationMode());
   const llmModeDetails = getLlmModeConfig(llmMode);
-  type GenerationMode = 'local' | LlmGenerationMode; // 'local' | 'slow'
-  const [generationMode, setGenerationMode] = useState<GenerationMode>('local');
+  type GenerationMode = LlmGenerationMode; // 'slow'
+  const [generationMode, setGenerationMode] = useState<GenerationMode>('slow');
   const [llmProvider, setLlmProvider] = useState<LlmProvider>(() => {
     // Läs från localStorage om det finns, annars default till 'cloud'
     const stored = localStorage.getItem('llmProvider');
-    return (stored === 'local' || stored === 'cloud') ? stored : 'cloud';
-  });
-  const [featureGoalTemplateVersion, setFeatureGoalTemplateVersion] = useState<'v1' | 'v2'>(() => {
-    // Läs från localStorage om det finns, annars default till 'v1'
-    const stored = localStorage.getItem('featureGoalTemplateVersion');
-    return (stored === 'v2' ? 'v2' : 'v1') as 'v1' | 'v2';
+    return (stored === 'cloud' || stored === 'ollama') ? stored : 'cloud';
   });
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<BpmnFile | null>(null);
@@ -456,7 +455,7 @@ export default function BpmnFileManager() {
       const list = jobsByFile.get(fileName);
       if (!list || list.length === 0) return null;
       const candidates = list.filter((job) =>
-        job.operation === 'local_generation' || job.operation === 'llm_generation'
+        job.operation === 'llm_generation'
       );
       if (candidates.length === 0) return null;
       return candidates.reduce((latest, job) => {
@@ -799,7 +798,7 @@ export default function BpmnFileManager() {
   const createGenerationJob = async (
     fileName: string,
     operation: GenerationOperation,
-    mode?: 'local' | 'slow',
+    mode?: 'slow',
   ) => {
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
@@ -982,8 +981,6 @@ export default function BpmnFileManager() {
     switch (operation) {
       case 'hierarchy':
         return 'Hierarki';
-      case 'local_generation':
-        return 'Dok/Test (lokal)';
       case 'llm_generation':
       case 'generation':
         return 'Dok/Test (LLM)';
@@ -1054,6 +1051,7 @@ export default function BpmnFileManager() {
     mode: GenerationMode = 'slow',
     scope: GenerationScope = 'file',
     showReport: boolean = true,
+    customNodeFilter?: (node: BpmnProcessNode) => boolean,
   ): Promise<DetailedGenerationResult | null> => {
     if (file.file_type !== 'bpmn') {
       toast({
@@ -1072,9 +1070,8 @@ export default function BpmnFileManager() {
       return;
     }
 
-    const isLocalMode = mode === 'local';
     const generationScope: GenerationScope = scope;
-    const modeLabel = isLocalMode ? 'local' : mode;
+    const modeLabel = mode;
     // Progress model bookkeeping for this run
     let totalGraphFiles = 0;
     let totalGraphNodes = 0;
@@ -1085,15 +1082,14 @@ export default function BpmnFileManager() {
     let testUploadsCompleted = 0;
     let docUploadsPlanned = 0;
     let docUploadsCompleted = 0;
+    // Time tracking for estimation
+    const generationStartTime = Date.now();
+    let lastEstimationUpdate = 0;
     resetGenerationState();
-    const effectiveLlmMode: LlmGenerationMode | null = !isLocalMode
-      ? 'slow'
-      : null;
-    if (!isLocalMode && effectiveLlmMode) {
-      persistLlmGenerationMode(effectiveLlmMode);
-    }
+    const effectiveLlmMode: LlmGenerationMode = 'slow';
+    persistLlmGenerationMode(effectiveLlmMode);
     setGeneratingFile(file.file_name);
-    setActiveOperation(isLocalMode ? 'local' : 'llm');
+    setActiveOperation('llm');
     
     // Show dialog immediately (will show plan, then progress, then result)
     setShowGenerationDialog(true);
@@ -1123,6 +1119,33 @@ export default function BpmnFileManager() {
       syncOverlayProgress(label);
     };
 
+    // Helper för att beräkna tidsestimat
+    const calculateTimeEstimate = (): { estimatedTotalTime?: number; estimatedTimeRemaining?: number } => {
+      const now = Date.now();
+      const elapsedSeconds = (now - generationStartTime) / 1000;
+      
+      // Beräkna tidsestimat baserat på dokumentationsprogress (den tunga delen)
+      if (docgenCompleted > 0 && totalGraphNodes > 0) {
+        // Beräkna genomsnittlig tid per nod
+        const avgTimePerNode = elapsedSeconds / docgenCompleted;
+        // Beräkna förväntad total tid
+        const estimatedTotal = avgTimePerNode * totalGraphNodes;
+        // Beräkna återstående tid
+        const remaining = Math.max(0, estimatedTotal - elapsedSeconds);
+        
+        // Uppdatera estimatet max var 5:e sekund för att undvika för mycket uppdateringar
+        if (now - lastEstimationUpdate > 5000 || lastEstimationUpdate === 0) {
+          lastEstimationUpdate = now;
+          return {
+            estimatedTotalTime: estimatedTotal,
+            estimatedTimeRemaining: remaining,
+          };
+        }
+      }
+      
+      return {};
+    };
+
     // Helper för att uppdatera progress med explicit step/detail (undviker state-delay)
     const updateGenerationProgressWithStep = (step: string, detail?: string) => {
       const totalSteps = jobTotalCount;
@@ -1150,15 +1173,17 @@ export default function BpmnFileManager() {
         }
       }
       
+      // Beräkna tidsestimat
+      const timeEstimate = calculateTimeEstimate();
+      
       const progress: GenerationProgress = {
         totalProgress: totalProgressPercent,
         currentStep: step,
         currentStepDetail: stepDetail,
         docs: {
           completed: docgenCompleted,
-          // Säkerställ att total alltid är >= completed
-          total: Math.max(
-            totalGraphNodes || 0,
+          // Använd faktisk totalGraphNodes om den är satt, annars fallback
+          total: totalGraphNodes > 0 ? totalGraphNodes : Math.max(
             docgenCompleted,
             docgenProgress.total || 0
           ),
@@ -1171,6 +1196,8 @@ export default function BpmnFileManager() {
           completed: testUploadsCompleted,
           total: testUploadsPlanned || testUploadProgress.planned || 0,
         },
+        startTime: generationStartTime,
+        ...timeEstimate,
       };
       
       setGenerationProgress(progress);
@@ -1208,15 +1235,17 @@ export default function BpmnFileManager() {
         }
       }
       
+      // Beräkna tidsestimat
+      const timeEstimate = calculateTimeEstimate();
+      
       const progress: GenerationProgress = {
         totalProgress: totalProgressPercent,
         currentStep: currentStepText,
         currentStepDetail: stepDetail,
         docs: {
           completed: docgenCompleted,
-          // Säkerställ att total alltid är >= completed
-          total: Math.max(
-            totalGraphNodes || 0,
+          // Använd faktisk totalGraphNodes om den är satt, annars fallback
+          total: totalGraphNodes > 0 ? totalGraphNodes : Math.max(
             docgenCompleted,
             docgenProgress.total || 0
           ),
@@ -1229,6 +1258,8 @@ export default function BpmnFileManager() {
           completed: testUploadsCompleted,
           total: testUploadsPlanned || testUploadProgress.planned || 0,
         },
+        startTime: generationStartTime,
+        ...timeEstimate,
       };
       
       setGenerationProgress(progress);
@@ -1444,8 +1475,8 @@ export default function BpmnFileManager() {
             totalNodes: testableNodes.length,
             totalFiles: summary.totalFiles,
             hierarchyDepth: summary.hierarchyDepth,
-            llmMode: !isLocalMode ? llmModeDetails.label : undefined,
-            mode: isLocalMode ? 'local' : 'llm',
+            llmMode: llmModeDetails.label,
+            mode: 'llm',
           };
         } else {
           plan = {
@@ -1453,8 +1484,8 @@ export default function BpmnFileManager() {
             totalNodes: 0,
             totalFiles: 1,
             hierarchyDepth: 1,
-            llmMode: !isLocalMode ? llmModeDetails.label : undefined,
-            mode: isLocalMode ? 'local' : 'llm',
+            llmMode: llmModeDetails.label,
+            mode: 'llm',
           };
         }
         setGenerationPlan(plan);
@@ -1553,12 +1584,9 @@ export default function BpmnFileManager() {
       checkCancellation();
 
       // Generera alla artefakter med hierarkisk analys
-      const generationSourceLabel = isLocalMode
-        ? 'local-fallback'
-        : llmProvider === 'cloud'
+      const generationSourceLabel = llmProvider === 'cloud'
         ? 'llm-slow-chatgpt'
         : 'llm-slow-ollama';
-      const localAvailable = llmHealth?.local.available ?? false;
       
       // Bestäm vilka filer som ska inkluderas i grafen:
       // - Om root: alla filer (hierarki)
@@ -1589,44 +1617,47 @@ export default function BpmnFileManager() {
       }
       // Automatisk diff-baserad regenerering: skapa filter baserat på olösta diff:er
       // Fallback-strategi: om vi är osäkra (ingen diff-data), regenerera allt
-      let nodeFilter: ((node: any) => boolean) | undefined = undefined;
-      try {
-        const { getAllUnresolvedDiffs, createDiffBasedNodeFilter } = await import('@/lib/bpmnDiffRegeneration');
-        const unresolvedDiffs = await getAllUnresolvedDiffs();
-        
-        if (unresolvedDiffs.size > 0) {
-          // Skapa filter som endast inkluderar noder med olösta diff:er (added/modified)
-          // Fallback: om ingen diff-data finns för en fil, regenerera allt (säkrast)
-          nodeFilter = createDiffBasedNodeFilter(unresolvedDiffs, {
-            autoRegenerateChanges: true, // Regenerera added/modified
-            autoRegenerateUnchanged: false, // Inte regenerera unchanged (sparar kostnad)
-            autoRegenerateRemoved: false, // Inte regenerera removed (de finns inte längre)
-          });
-          
-          console.log(`[BpmnFileManager] Using diff-based filter: ${unresolvedDiffs.size} files with unresolved diffs`);
-        } else {
-          // Ingen diff-data: fallback till att regenerera allt (säkrast)
-          console.log(`[BpmnFileManager] No diff data found, regenerating all nodes (fallback)`);
-        }
-      } catch (error) {
-        console.warn('[BpmnFileManager] Error setting up diff filter, falling back to regenerate all:', error);
-        // Fallback: regenerera allt om diff-logik failar
-      }
+      // Om customNodeFilter finns, använd den istället (t.ex. för User Task epics)
+      let nodeFilter: ((node: any) => boolean) | undefined = customNodeFilter;
       
-      // Claude använder alltid v2, oavsett vad användaren har valt
-      const effectiveTemplateVersion = !isLocalMode ? 'v2' : featureGoalTemplateVersion;
+      // Only set up diff-based filter if no custom filter is provided
+      if (!customNodeFilter) {
+        try {
+          const { getAllUnresolvedDiffs, createDiffBasedNodeFilter } = await import('@/lib/bpmnDiffRegeneration');
+          const unresolvedDiffs = await getAllUnresolvedDiffs();
+          
+          if (unresolvedDiffs.size > 0) {
+            // Skapa filter som endast inkluderar noder med olösta diff:er (added/modified)
+            // Fallback: om ingen diff-data finns för en fil, regenerera allt (säkrast)
+            nodeFilter = createDiffBasedNodeFilter(unresolvedDiffs, {
+              autoRegenerateChanges: true, // Regenerera added/modified
+              autoRegenerateUnchanged: false, // Inte regenerera unchanged (sparar kostnad)
+              autoRegenerateRemoved: false, // Inte regenerera removed (de finns inte längre)
+            });
+            
+            console.log(`[BpmnFileManager] Using diff-based filter: ${unresolvedDiffs.size} files with unresolved diffs`);
+          } else {
+            // Ingen diff-data: fallback till att regenerera allt (säkrast)
+            console.log(`[BpmnFileManager] No diff data found, regenerating all nodes (fallback)`);
+          }
+        } catch (error) {
+          console.warn('[BpmnFileManager] Error setting up diff filter, falling back to regenerate all:', error);
+          // Fallback: regenerera allt om diff-logik failar
+        }
+      } else {
+        console.log(`[BpmnFileManager] Using custom nodeFilter (e.g., User Task epics)`);
+      }
       
       const result = await generateAllFromBpmnWithGraph(
         file.file_name,
         graphFiles,
         existingDmnFiles,
         useHierarchy,
-        !isLocalMode,
+        true, // useLlm
         handleGeneratorPhase,
         generationSourceLabel,
-        !isLocalMode ? llmProvider : undefined,
-        localAvailable,
-        effectiveTemplateVersion,
+        llmProvider,
+        undefined, // No template version - always use default (no version suffix)
         nodeFilter,
         getVersionHashForFile, // Pass version selection function
         checkCancellation, // Pass cancellation check function
@@ -1971,8 +2002,8 @@ export default function BpmnFileManager() {
           checkCancellation();
           const { modePath: docPath, legacyPath: legacyDocPath } = buildDocStoragePaths(
             docFileName,
-            effectiveLlmMode ?? (isLocalMode ? 'local' : null),
-            isLocalMode ? 'fallback' : llmProvider,
+            effectiveLlmMode ?? null,
+            llmProvider,
             file.file_name, // bpmnFileName
             versionHash // versionHash
           );
@@ -2053,9 +2084,7 @@ export default function BpmnFileManager() {
       const totalTestCount = 0;
 
       const resultMessage: string[] = [];
-      if (isLocalMode) {
-        resultMessage.push('Lokal körning (ingen LLM)');
-      } else {
+      {
           resultMessage.push(
             `LLM-provider: ${
               llmProvider === 'cloud'
@@ -2202,8 +2231,8 @@ export default function BpmnFileManager() {
               tests: totalTestCount,
               docs: totalDocCount,
               filesAnalyzed,
-              mode: isLocalMode ? 'local' : 'slow',
-              llmProvider: isLocalMode ? 'fallback' : llmProvider,
+              mode: 'slow',
+              llmProvider: llmProvider,
               missingDependencies,
               skippedSubprocesses: skippedList,
             },
@@ -2595,7 +2624,7 @@ export default function BpmnFileManager() {
 
     toast({
       title: 'Startar generering',
-      description: `Genererar dokumentation för ${selectedFile.file_name} med ${generationMode === 'local' ? 'Local' : 'Slow LLM'} läge.`,
+      description: `Genererar dokumentation för ${selectedFile.file_name} med Slow LLM läge.`,
     });
 
     await handleGenerateArtifacts(selectedFile, generationMode, 'file');
@@ -2649,19 +2678,17 @@ export default function BpmnFileManager() {
     }
 
     setGeneratingFile(selectedFile.file_name);
-    const isLocalMode = generationMode === 'local';
-    const llmProvider = isLocalMode ? undefined : getLlmModeConfig(generationMode).provider;
+    const llmProvider = getLlmModeConfig(generationMode).provider;
 
     try {
       toast({
         title: 'Startar testgenerering',
-        description: `Genererar tester för ${selectedFile.file_name} med ${isLocalMode ? 'Local' : 'LLM'} läge.`,
+        description: `Genererar tester för ${selectedFile.file_name} med LLM läge.`,
       });
 
       const result = await generateTestsForFile(
         selectedFile.file_name,
         llmProvider,
-        false, // localAvailable
         (progress) => {
           setCurrentGenerationStep({
             step: `Genererar tester: ${progress.currentElement || '...'}`,
@@ -2698,6 +2725,122 @@ export default function BpmnFileManager() {
     }
   };
 
+  // Create nodeFilter for User Task epics from the list
+  const createUserTaskEpicFilter = (): ((node: BpmnProcessNode) => boolean) => {
+    // Create a Set for fast lookup: "bpmnFile:elementId"
+    const epicKeys = new Set(
+      (userTaskEpicsList as Array<{ bpmnFile: string; elementId: string }>).map(
+        epic => `${epic.bpmnFile}:${epic.elementId}`
+      )
+    );
+
+    return (node: BpmnProcessNode): boolean => {
+      // Only process User Tasks
+      if (node.type !== 'userTask') {
+        return false;
+      }
+      
+      // Check if this epic is in our list
+      const key = `${node.bpmnFile}:${node.bpmnElementId}`;
+      return epicKeys.has(key);
+    };
+  };
+
+  const handleRegenerateUserTaskEpics = async () => {
+    const rootFile = await resolveRootBpmnFile();
+    const allBpmnFiles = files.filter((f) => f.file_type === 'bpmn');
+
+    if (!allBpmnFiles.length) {
+      toast({
+        title: 'Inga BPMN-filer',
+        description: 'Ladda upp minst en BPMN-fil innan du regenererar User Task epics.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check if list exists
+    if (!userTaskEpicsList || (userTaskEpicsList as any[]).length === 0) {
+      toast({
+        title: 'Lista saknas',
+        description: 'Kör "node scripts/list-all-user-task-epics.mjs" först för att skapa listan.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const userTaskEpics = userTaskEpicsList as Array<{ bpmnFile: string; elementId: string; nodeName: string }>;
+    const epicCount = userTaskEpics.length;
+    const filesWithUserTasks = new Set(userTaskEpics.map(epic => epic.bpmnFile));
+
+    // Automatisk hierarki-byggning
+    const hierarchyFile = rootFile || allBpmnFiles[0];
+    if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
+      try {
+        await buildHierarchySilently(hierarchyFile);
+        queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+        queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
+      } catch (error) {
+        console.warn('[handleRegenerateUserTaskEpics] Failed to build hierarchy automatically, continuing anyway:', error);
+      }
+    }
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Regenerera ${epicCount} User Task epics från ${filesWithUserTasks.size} BPMN-filer?\n\n` +
+      `Detta kommer att regenerera dokumentationen för endast User Tasks med uppdaterad lane inference-logik.\n\n` +
+      `Uppskattad kostnad: ~$${(epicCount * 0.015).toFixed(2)}-${(epicCount * 0.02).toFixed(2)}\n` +
+      `Uppskattad tid: ~${Math.ceil(epicCount * 3 / 60)} minuter`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setGeneratingFile('user-task-epics');
+    const llmProvider = getLlmModeConfig(generationMode).provider;
+
+    toast({
+      title: 'Startar regenerering av User Task epics',
+      description: `Regenererar ${epicCount} User Task epics från ${filesWithUserTasks.size} BPMN-filer.`,
+    });
+
+    try {
+      // Create nodeFilter for User Task epics
+      const nodeFilter = createUserTaskEpicFilter();
+
+      // If we have a root file, generate for the whole hierarchy with filter
+      if (rootFile) {
+        await handleGenerateArtifacts(rootFile, generationMode, 'file', true, nodeFilter);
+      } else {
+        // Otherwise, generate for each file that has User Tasks
+        const filesToProcess = allBpmnFiles.filter(f => filesWithUserTasks.has(f.file_name));
+        
+        for (const file of filesToProcess) {
+          try {
+            await handleGenerateArtifacts(file, generationMode, 'file', false, nodeFilter);
+          } catch (error) {
+            console.error(`Error processing ${file.file_name}:`, error);
+          }
+        }
+      }
+
+      toast({
+        title: 'Regenerering klar',
+        description: `Har regenererat ${epicCount} User Task epics.`,
+      });
+    } catch (error) {
+      console.error('Error regenerating User Task epics:', error);
+      toast({
+        title: 'Fel vid regenerering',
+        description: error instanceof Error ? error.message : 'Okänt fel',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingFile(null);
+    }
+  };
+
   const handleGenerateTestsForAllFiles = async () => {
     const allBpmnFiles = files.filter((f) => f.file_type === 'bpmn');
 
@@ -2729,8 +2872,7 @@ export default function BpmnFileManager() {
     }
 
     setGeneratingFile('all');
-    const isLocalMode = generationMode === 'local';
-    const llmProvider = isLocalMode ? undefined : getLlmModeConfig(generationMode).provider;
+    const llmProvider = getLlmModeConfig(generationMode).provider;
 
     try {
       // För "alla filer": Generera EN gång för hela hierarkin istället för att loopa
@@ -2770,7 +2912,7 @@ export default function BpmnFileManager() {
         // Om ingen root-fil finns, loopa över alla filer (fallback)
         toast({
           title: 'Startar testgenerering för alla filer',
-          description: `Genererar tester för ${allBpmnFiles.length} BPMN-filer med ${isLocalMode ? 'Local' : 'LLM'} läge.`,
+          description: `Genererar tester för ${allBpmnFiles.length} BPMN-filer med LLM läge.`,
         });
 
         const fileNames = allBpmnFiles.map((f) => f.file_name);
@@ -3284,6 +3426,7 @@ export default function BpmnFileManager() {
         );
         
         // Spara automatiskt (utan GitHub-sync som standard)
+        const { saveBpmnMapToStorage } = await import('@/lib/bpmn/bpmnMapStorage');
         const result = await saveBpmnMapToStorage(updatedMap, false);
         
         if (result.success) {
@@ -3328,7 +3471,7 @@ export default function BpmnFileManager() {
   
   const handleSaveUpdatedMap = async (syncToGitHub: boolean = false) => {
     try {
-      const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+      const { loadBpmnMapFromStorageSimple, saveBpmnMapToStorage } = await import('@/lib/bpmn/bpmnMapStorage');
       const { generateUpdatedBpmnMap } = await import('@/lib/bpmn/bpmnMapSuggestions');
       const currentMap = await loadBpmnMapFromStorageSimple();
       const updatedMap = generateUpdatedBpmnMap(currentMap, mapSuggestions, acceptedSuggestions, undefined);
@@ -3540,9 +3683,7 @@ export default function BpmnFileManager() {
   };
 
   const currentGenerationLabel =
-    generationMode === 'local'
-      ? 'Lokal fallback (ingen LLM)'
-      : llmProvider === 'cloud'
+    llmProvider === 'cloud'
       ? 'Claude (moln-LLM)'
       : 'Ollama (lokal LLM)';
 
@@ -3860,20 +4001,6 @@ export default function BpmnFileManager() {
           <div className="flex flex-wrap gap-2 mt-4">
             <Button
               size="sm"
-              variant={generationMode === 'local' ? 'default' : 'outline'}
-              className={`gap-2 ${
-                generationMode === 'local'
-                  ? 'ring-2 ring-primary shadow-sm'
-                  : 'opacity-80'
-              }`}
-              onClick={() => setGenerationMode('local')}
-              aria-pressed={generationMode === 'local'}
-            >
-              <FileText className="w-4 h-4" />
-              Local (ingen LLM)
-            </Button>
-            <Button
-              size="sm"
               variant={generationMode === 'slow' && llmProvider === 'cloud' ? 'default' : 'outline'}
               className={`gap-2 ${
                 generationMode === 'slow' && llmProvider === 'cloud'
@@ -3892,18 +4019,18 @@ export default function BpmnFileManager() {
             </Button>
             <Button
               size="sm"
-              variant={generationMode === 'slow' && llmProvider === 'local' ? 'default' : 'outline'}
+              variant={generationMode === 'slow' && llmProvider === 'ollama' ? 'default' : 'outline'}
               className={`gap-2 ${
-                generationMode === 'slow' && llmProvider === 'local'
+                generationMode === 'slow' && llmProvider === 'ollama'
                   ? 'ring-2 ring-primary shadow-sm'
                   : 'opacity-80'
               }`}
               onClick={() => {
                 setLlmMode('slow');
                 setGenerationMode('slow');
-                setLlmProvider('local');
+                setLlmProvider('ollama');
               }}
-              aria-pressed={generationMode === 'slow' && llmProvider === 'local'}
+              aria-pressed={generationMode === 'slow' && llmProvider === 'ollama'}
               title={
                 !llmHealth?.local.available
                   ? `Kan inte nå lokal LLM-motor – kontrollera att Ollama körs. ${llmHealth?.local.error ? `Fel: ${llmHealth.local.error}` : ''}`
@@ -3926,67 +4053,6 @@ export default function BpmnFileManager() {
               )}
             </Button>
           </div>
-          
-          {/* Feature Goal Template Version Selection */}
-          {/* Dölj template-version-väljaren när Claude är valt - Claude använder alltid v2 */}
-          {generationMode === 'local' && (
-            <div className="mt-4 p-3 bg-muted/30 rounded-lg border">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Feature Goal Template Version</label>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant={featureGoalTemplateVersion === 'v1' ? 'default' : 'outline'}
-                  className={`gap-2 ${
-                    featureGoalTemplateVersion === 'v1'
-                      ? 'ring-2 ring-primary shadow-sm'
-                      : 'opacity-80'
-                  }`}
-                  onClick={() => {
-                    setFeatureGoalTemplateVersion('v1');
-                    localStorage.setItem('featureGoalTemplateVersion', 'v1');
-                  }}
-                  aria-pressed={featureGoalTemplateVersion === 'v1'}
-                >
-                  Template v1
-                </Button>
-                <Button
-                  size="sm"
-                  variant={featureGoalTemplateVersion === 'v2' ? 'default' : 'outline'}
-                  className={`gap-2 ${
-                    featureGoalTemplateVersion === 'v2'
-                      ? 'ring-2 ring-primary shadow-sm'
-                      : 'opacity-80'
-                  }`}
-                  onClick={() => {
-                    setFeatureGoalTemplateVersion('v2');
-                    localStorage.setItem('featureGoalTemplateVersion', 'v2');
-                  }}
-                  aria-pressed={featureGoalTemplateVersion === 'v2'}
-                >
-                  Template v2
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Välj vilken template-version som ska användas för Feature Goal-dokumentation. Epic-template påverkas inte.
-              </p>
-            </div>
-          )}
-          {generationMode === 'slow' && (
-            <div className="mt-4 p-3 bg-muted/30 rounded-lg border">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Feature Goal Template Version</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Template v2</span>
-                <span className="text-xs text-muted-foreground">(Claude använder alltid v2)</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Claude-generering använder alltid Template v2 för Feature Goal-dokumentation.
-              </p>
-            </div>
-          )}
           
           <div className="flex flex-wrap gap-2 mt-3">
             <Button
@@ -4016,11 +4082,7 @@ export default function BpmnFileManager() {
                 </>
               ) : (
                 <>
-                  {generationMode === 'local' ? (
-                    <FileText className="w-3 h-3" />
-                  ) : (
-                    <Sparkles className="w-3 h-3" />
-                  )}
+                  <Sparkles className="w-3 h-3" />
                   Generera information för vald fil
                 </>
               )}
@@ -4033,12 +4095,43 @@ export default function BpmnFileManager() {
               className="gap-2"
               title="Generera dokumentation och DoR/DoD för alla BPMN-filer. Hierarkin byggs automatiskt först. Testgenerering sker i separat steg."
             >
-              {generationMode === 'local' ? (
-                <FileText className="w-4 h-4" />
-              ) : (
-                <Sparkles className="w-4 h-4" />
-              )}
+              <Sparkles className="w-4 h-4" />
               Generera information (alla filer)
+            </Button>
+          </div>
+          
+          {/* User Task Epic Regeneration Button */}
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={
+                generatingFile !== null ||
+                isLoading ||
+                files.length === 0 ||
+                !rootFileName ||
+                !userTaskEpicsList ||
+                (userTaskEpicsList as any[]).length === 0
+              }
+              onClick={handleRegenerateUserTaskEpics}
+              className="gap-2"
+              title={
+                !userTaskEpicsList || (userTaskEpicsList as any[]).length === 0
+                  ? 'Kör "node scripts/list-all-user-task-epics.mjs" först för att skapa listan'
+                  : `Regenerera ${(userTaskEpicsList as any[]).length} User Task epics med uppdaterad lane inference-logik. Detta genererar endast User Tasks, inte alla noder.`
+              }
+            >
+              {generatingFile === 'user-task-epics' ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Regenererar User Task epics…
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3 h-3" />
+                  Regenerera User Task epics
+                </>
+              )}
             </Button>
           </div>
           
@@ -4675,11 +4768,7 @@ export default function BpmnFileManager() {
                           disabled={generatingFile !== null || isLoading}
                           title="Generera dokumentation för denna fil (testgenerering sker i separat steg)"
                         >
-                          {generationMode === 'local' ? (
-                            <FileText className="w-4 h-4" />
-                          ) : (
-                            <Sparkles className="w-4 h-4" />
-                          )}
+                          <Sparkles className="w-4 h-4" />
                           <span className="hidden sm:inline ml-1">Dokumentation</span>
                         </Button>
                       )}
@@ -4744,18 +4833,14 @@ export default function BpmnFileManager() {
                       const providerLabel =
                         jobResult.llmProvider === 'cloud'
                           ? 'Claude'
-                          : jobResult.llmProvider === 'local'
+                          : jobResult.llmProvider === 'ollama'
                           ? 'Ollama'
-                          : jobResult.llmProvider === 'fallback' || job.mode === 'local'
-                          ? 'Lokal fallback'
                           : undefined;
                       const modeLabel =
                         job.mode === 'slow'
                           ? providerLabel
                             ? `LLM (${providerLabel})`
                             : 'Slow LLM'
-                          : job.mode === 'local'
-                          ? 'Lokal fallback'
                           : 'Okänt';
                       const statusLabel = formatStatusLabel(job.status);
                       const durationMs =

@@ -8,7 +8,7 @@
  * - VITE_LLM_LOCAL_MODEL (t.ex. llama3.1:8b-instruct)
  */
 
-export type LlmProvider = 'cloud' | 'local';
+export type LlmProvider = 'cloud' | 'ollama';
 
 const LOCAL_BASE_URL =
   import.meta.env.VITE_LLM_LOCAL_BASE_URL?.trim() || 'http://localhost:11434';
@@ -31,7 +31,7 @@ export class LocalLlmUnavailableError extends Error {
 
 export class LocalLlmClient implements LlmClient {
   readonly modelName = LOCAL_MODEL;
-  readonly provider: 'local' = 'local';
+  readonly provider: 'ollama' = 'ollama';
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
 

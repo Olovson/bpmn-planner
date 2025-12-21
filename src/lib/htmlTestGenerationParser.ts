@@ -1,5 +1,5 @@
 /**
- * Parser for extracting test generation information from v2 Feature Goal HTML files
+ * Parser for extracting test generation information from Feature Goal HTML files
  * 
  * This parser reads the "Testgenerering" section from HTML and converts it
  * into structured data that can be used for test generation and export.
@@ -365,13 +365,12 @@ function parseAssertionType(value: string): ScenarioAssertionType {
 export async function fetchFeatureGoalHtml(
   bpmnFile: string,
   elementId: string,
-  templateVersion: 'v1' | 'v2' = 'v2'
 ): Promise<string | null> {
-  const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, templateVersion);
+  const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, undefined); // no version suffix
   const filename = fileKey.replace('feature-goals/', '');
 
-  // Try local-content first for v2
-  if (templateVersion === 'v2') {
+  // Try local-content first
+  {
     try {
       const localPath = `/local-content/feature-goals/${filename}`;
       const response = await fetch(localPath, { cache: 'no-store' });
@@ -387,10 +386,8 @@ export async function fetchFeatureGoalHtml(
   try {
     // Try different possible paths
     const possiblePaths = [
-      `docs/local/${fileKey}`,
-      `docs/slow/chatgpt/${fileKey}`,
-      `docs/slow/ollama/${fileKey}`,
-      `docs/slow/${fileKey}`,
+      `docs/claude/${fileKey}`,
+      `docs/ollama/${fileKey}`,
       `docs/${fileKey}`,
       fileKey,
     ];
@@ -419,9 +416,8 @@ export async function fetchFeatureGoalHtml(
 export async function getTestScenariosFromHtml(
   bpmnFile: string,
   elementId: string,
-  templateVersion: 'v1' | 'v2' = 'v2'
 ): Promise<EpicScenario[] | null> {
-  const html = await fetchFeatureGoalHtml(bpmnFile, elementId, templateVersion);
+  const html = await fetchFeatureGoalHtml(bpmnFile, elementId);
   if (!html) {
     return null;
   }

@@ -32,7 +32,7 @@ export interface ExportSummary {
  * Export tests for use in complete environment
  * 
  * This function will:
- * 1. Try to get scenarios from HTML (v2 Feature Goal documents) first
+ * 1. Try to get scenarios from HTML (Feature Goal documents) first
  * 2. Fall back to provided scenarios map if HTML is not available
  * 
  * @param elements - BPMN elements to export tests for
@@ -65,7 +65,7 @@ export async function exportTestsForCompleteEnvironment(
         const htmlScenarios = await getTestScenariosFromHtml(
           element.bpmnFile,
           element.id,
-          'v2'
+          undefined // no version suffix
         );
         
         if (htmlScenarios && htmlScenarios.length > 0) {
@@ -170,7 +170,7 @@ export async function generateTestFilesForExport(
         const htmlScenarios = await getTestScenariosFromHtml(
           element.bpmnFile,
           element.id,
-          'v2'
+          undefined // no version suffix
         );
         
         if (htmlScenarios && htmlScenarios.length > 0) {

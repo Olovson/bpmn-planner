@@ -224,3 +224,6 @@ checkRawJson(bpmnFile, elementId)
     process.exit(1);
   });
 
+
+
+

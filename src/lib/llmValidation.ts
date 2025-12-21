@@ -209,18 +209,15 @@ export function validateFeatureGoalJson(
 
   const obj = json as Record<string, unknown>;
 
-  // Enligt prompten (v1.5.0) är dessa obligatoriska:
-  // summary, effectGoals, scopeIncluded, scopeExcluded, flowSteps, dependencies, relatedItems
-  // epics är obligatoriskt men kan vara tom array []
+  // Enligt prompten är dessa obligatoriska:
+  // summary, prerequisites, flowSteps, userStories, implementationNotes
+  // dependencies är optional
   const requiredFields: Array<keyof FeatureGoalDocModel> = [
     'summary',
-    'effectGoals',
-    'scopeIncluded',
-    'scopeExcluded',
-    'epics',
+    'prerequisites',
     'flowSteps',
-    'dependencies',
-    'relatedItems',
+    'userStories',
+    'implementationNotes',
   ];
 
   for (const field of requiredFields) {
@@ -236,13 +233,13 @@ export function validateFeatureGoalJson(
     errors.push('Field "summary" must be a string (3-5 sentences describing the feature goal).');
   }
 
-  if ('effectGoals' in obj) {
-    if (!Array.isArray(obj.effectGoals)) {
-      errors.push('Field "effectGoals" must be an array of strings (3-5 full sentences).');
+  if ('prerequisites' in obj) {
+    if (!Array.isArray(obj.prerequisites)) {
+      errors.push('Field "prerequisites" must be an array of strings (2-3 full sentences).');
     } else {
-      obj.effectGoals.forEach((item, index) => {
+      obj.prerequisites.forEach((item, index) => {
         if (typeof item !== 'string') {
-          errors.push(`Field "effectGoals[${index}]" must be a string (full sentence).`);
+          errors.push(`Field "prerequisites[${index}]" must be a string (full sentence).`);
         }
       });
     }
@@ -264,22 +261,44 @@ export function validateFeatureGoalJson(
     });
   }
 
-  // Validera epics-array
-  if ('epics' in obj) {
-    if (!Array.isArray(obj.epics)) {
-      errors.push('Field "epics" must be an array');
+  // Validera userStories-array
+  if ('userStories' in obj) {
+    if (!Array.isArray(obj.userStories)) {
+      errors.push('Field "userStories" must be an array');
     } else {
-      obj.epics.forEach((epic, index) => {
-        if (!epic || typeof epic !== 'object') {
-          errors.push(`Field "epics[${index}]" must be an object`);
+      obj.userStories.forEach((story, index) => {
+        if (!story || typeof story !== 'object') {
+          errors.push(`Field "userStories[${index}]" must be an object`);
         } else {
-          const e = epic as Record<string, unknown>;
-          if (!('id' in e) || typeof e.id !== 'string') {
-            errors.push(`Field "epics[${index}].id" must be a string`);
+          const s = story as Record<string, unknown>;
+          if (!('id' in s) || typeof s.id !== 'string') {
+            errors.push(`Field "userStories[${index}].id" must be a string`);
           }
-          if (!('name' in e) || typeof e.name !== 'string') {
-            errors.push(`Field "epics[${index}].name" must be a string`);
+          if (!('role' in s) || typeof s.role !== 'string') {
+            errors.push(`Field "userStories[${index}].role" must be a string`);
           }
+          if (!('goal' in s) || typeof s.goal !== 'string') {
+            errors.push(`Field "userStories[${index}].goal" must be a string`);
+          }
+          if (!('value' in s) || typeof s.value !== 'string') {
+            errors.push(`Field "userStories[${index}].value" must be a string`);
+          }
+          if (!('acceptanceCriteria' in s) || !Array.isArray(s.acceptanceCriteria)) {
+            errors.push(`Field "userStories[${index}].acceptanceCriteria" must be an array of strings`);
+          }
+        }
+      });
+    }
+  }
+
+  // Validera implementationNotes
+  if ('implementationNotes' in obj) {
+    if (!Array.isArray(obj.implementationNotes)) {
+      errors.push('Field "implementationNotes" must be an array of strings (3-5 full sentences).');
+    } else {
+      obj.implementationNotes.forEach((item, index) => {
+        if (typeof item !== 'string') {
+          errors.push(`Field "implementationNotes[${index}]" must be a string (full sentence).`);
         }
       });
     }

@@ -20,16 +20,16 @@ export const getFileDocViewerPath = (bpmnFile: string) =>
  * 
  * When parentBpmnFile is provided, generates hierarchical filenames that match Jira naming:
  * - Example: parent="mortgage-se-application.bpmn", elementId="internal-data-gathering"
- *   → "feature-goals/mortgage-se-application-internal-data-gathering-v2.html"
+ *   → "feature-goals/mortgage-se-application-internal-data-gathering.html"
  *   (matches Jira name: "Application - Internal data gathering")
  * 
  * When parentBpmnFile is not provided, falls back to legacy naming based on subprocess BPMN file.
  * 
  * @param bpmnFile - The subprocess BPMN file (e.g., "mortgage-se-internal-data-gathering.bpmn")
  * @param elementId - The call activity element ID (e.g., "internal-data-gathering")
- * @param templateVersion - Optional template version ('v1' or 'v2')
+ * @param templateVersion - Optional template version for backward compatibility with old files ('v1' or 'v2')
  * @param parentBpmnFile - Optional parent BPMN file for hierarchical naming (e.g., "mortgage-se-application.bpmn")
- * @returns The file key path (e.g., "feature-goals/mortgage-se-application-internal-data-gathering-v2.html")
+ * @returns The file key path (e.g., "feature-goals/mortgage-se-application-internal-data-gathering.html")
  */
 export const getFeatureGoalDocFileKey = (
   bpmnFile: string,

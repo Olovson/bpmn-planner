@@ -31,7 +31,7 @@ export function getDocumentationUrl(bpmnFile: string, elementId?: string): strin
     // This is likely a subprocess - link to Feature Goal documentation instead of combined doc
     // We use the base name as elementId (most BPMN files have a process with id matching the file base name)
     const processElementId = baseName;
-    const featureGoalPath = getFeatureGoalDocFileKey(bpmnFile, processElementId, 'v2');
+    const featureGoalPath = getFeatureGoalDocFileKey(bpmnFile, processElementId);
     // Convert feature-goals/... to viewer path format (remove .html extension)
     const viewerPath = featureGoalPath.replace('feature-goals/', '').replace('.html', '');
     return `#/doc-viewer/${encodeURIComponent(viewerPath)}`;
@@ -60,32 +60,133 @@ export async function storageFileExists(filePath: string): Promise<boolean> {
   const dir = parts.join('/');
   if (!fileName) return false;
 
+  // Try direct download first (more reliable than list + search)
+  try {
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('bpmn-files')
+      .download(filePath);
+    
+    if (!downloadError && fileData) {
+      return true;
+    }
+  } catch (error) {
+    // Fall through to list method
+  }
+
+  // Fallback to list method
   const { data, error } = await supabase.storage
     .from('bpmn-files')
     .list(dir || undefined, { search: fileName, limit: 1 });
 
   if (error) {
-    console.warn('[storageFileExists] list error for', filePath, error);
+    if (import.meta.env.DEV) {
+      console.debug('[storageFileExists] list error for', filePath, error);
+    }
     return false;
   }
 
-  return Boolean((data ?? []).find((entry) => entry.name === fileName));
+  const exists = Boolean((data ?? []).find((entry) => entry.name === fileName));
+  if (import.meta.env.DEV && exists) {
+    console.debug(`[storageFileExists] ✓ Found: ${filePath}`);
+  }
+  return exists;
 }
 
 export const getNodeDocStoragePath = (bpmnFile: string, elementId: string) =>
   // Docs lagras i Supabase Storage under 'docs/<node-doc-key>'
   `docs/${getNodeDocFileKey(bpmnFile, elementId)}`;
 
+/**
+ * Get all possible storage paths for Feature Goal documentation (call activities).
+ * Returns an array of paths to check, ordered by priority (most specific first).
+ * 
+ * @param subprocessBpmnFile - The subprocess BPMN file (e.g., "mortgage-se-internal-data-gathering.bpmn")
+ * @param elementId - The call activity element ID (e.g., "internal-data-gathering")
+ * @param parentBpmnFile - The parent BPMN file where call activity is defined (e.g., "mortgage-se-application.bpmn")
+ * @param versionHash - Optional version hash for the BPMN file (for versioned paths)
+ * @param bpmnFileForVersion - Optional BPMN file name to use for versioned paths (defaults to parentBpmnFile or subprocessBpmnFile)
+ * @returns Array of storage paths to check
+ */
+export function getFeatureGoalDocStoragePaths(
+  subprocessBpmnFile: string,
+  elementId: string,
+  parentBpmnFile?: string,
+  versionHash?: string | null,
+  bpmnFileForVersion?: string,
+): string[] {
+  const paths: string[] = [];
+  
+  // Determine which BPMN file to use for versioned paths
+  // For call activities: use parent file (where call activity is defined)
+  // For process nodes: use subprocess file
+  const fileForVersion = bpmnFileForVersion || parentBpmnFile || subprocessBpmnFile;
+  const bpmnFileName = fileForVersion.endsWith('.bpmn') ? fileForVersion : `${fileForVersion}.bpmn`;
+  // VIKTIGT: Filen är sparad MED .bpmn i sökvägen, så vi behåller .bpmn för versioned paths
+  const bpmnFileBaseName = bpmnFileName.replace('.bpmn', ''); // För non-versioned paths
+  const bpmnFileNameForVersionedPath = bpmnFileName; // För versioned paths, behåll .bpmn
+  
+  // 1. Hierarkisk naming (med parent) - prioriteras
+  if (parentBpmnFile) {
+    const hierarchicalKey = getFeatureGoalDocFileKey(
+      subprocessBpmnFile,
+      elementId,
+      undefined, // no version suffix
+      parentBpmnFile,
+    );
+    
+    // Versioned paths (if version hash is provided)
+    if (versionHash) {
+      // Versioned paths: docs/{provider}/{bpmnFileName}/{versionHash}/feature-goals/...
+      // VIKTIGT: Behåll .bpmn i filnamnet eftersom filen är sparad så
+      paths.push(`docs/claude/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
+      paths.push(`docs/local/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
+      paths.push(`docs/ollama/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
+    }
+    
+    // Non-versioned paths (fallback)
+    paths.push(`docs/claude/${hierarchicalKey}`);
+    paths.push(`docs/local/${hierarchicalKey}`);
+    paths.push(`docs/ollama/${hierarchicalKey}`);
+    paths.push(`docs/${hierarchicalKey}`);
+  }
+  
+  // 2. Legacy naming (utan parent) - fallback
+  const legacyKey = getFeatureGoalDocFileKey(
+    subprocessBpmnFile,
+    elementId,
+    undefined, // no version suffix
+    undefined, // Ingen parent
+  );
+  
+  // Versioned paths for legacy naming (if version hash is provided)
+  if (versionHash) {
+    // For legacy naming, use subprocess file for version hash
+    const subprocessBpmnFileName = subprocessBpmnFile.endsWith('.bpmn') 
+      ? subprocessBpmnFile 
+      : `${subprocessBpmnFile}.bpmn`;
+    // VIKTIGT: Behåll .bpmn i filnamnet eftersom filen är sparad så
+    paths.push(`docs/claude/${subprocessBpmnFileName}/${versionHash}/${legacyKey}`);
+    paths.push(`docs/local/${subprocessBpmnFileName}/${versionHash}/${legacyKey}`);
+    paths.push(`docs/ollama/${subprocessBpmnFileName}/${versionHash}/${legacyKey}`);
+  }
+  
+  // Non-versioned paths for legacy naming
+  paths.push(`docs/claude/${legacyKey}`);
+  paths.push(`docs/local/${legacyKey}`);
+  paths.push(`docs/ollama/${legacyKey}`);
+  paths.push(`docs/${legacyKey}`);
+  
+  return paths;
+}
+
 export function getDocVariantPaths(docId: string): {
-  local: string;
-  chatgpt: string;
+  claude: string;
   ollama: string;
 } {
   const safe = docId.replace(/^\/+/, '');
   return {
-    local: `docs/local/${safe}.html`,
-    chatgpt: `docs/slow/chatgpt/${safe}.html`,
-    ollama: `docs/slow/ollama/${safe}.html`,
+    claude: `docs/claude/${safe}.html`,
+    ollama: `docs/ollama/${safe}.html`,
   };
 }
 

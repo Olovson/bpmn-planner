@@ -11,11 +11,11 @@ import { localLlmClientInstance } from './localLlmClient';
 /**
  * Hämtar rätt LLM-klient baserat på provider.
  * 
- * @param provider - 'cloud' för Claude/Anthropic, 'local' för lokal Llama-instans
+ * @param provider - 'cloud' för Claude/Anthropic, 'ollama' för lokal Llama-instans via Ollama
  * @returns LlmClient-instans
  */
 export function getLlmClient(provider: LlmProvider): LlmClient {
-  return provider === 'local' ? localLlmClientInstance : cloudLlmClientInstance;
+  return provider === 'ollama' ? localLlmClientInstance : cloudLlmClientInstance;
 }
 
 /**
@@ -23,7 +23,7 @@ export function getLlmClient(provider: LlmProvider): LlmClient {
  */
 export function getDefaultLlmProvider(): LlmProvider {
   const envProvider = import.meta.env.VITE_LLM_DEFAULT_PROVIDER?.trim().toLowerCase();
-  if (envProvider === 'local' || envProvider === 'cloud') {
+  if (envProvider === 'ollama' || envProvider === 'cloud') {
     return envProvider;
   }
   return 'cloud';

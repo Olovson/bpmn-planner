@@ -673,7 +673,7 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       return;
     }
     
-    console.log('Importing XML, length:', currentXml.length);
+    // Debug logging disabled for cleaner output
 
     let clickListener: any = null;
     let dblclickListener: any = null;

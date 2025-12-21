@@ -44,7 +44,7 @@
 - Internt används providers som `'cloud'` och `'local'`, men i loggar/UI visas alltid:
   - `Claude` (cloud),
   - `Ollama` (local),
-  - `Local-fallback` (local när den tagit över efter ett misslyckat ChatGPT-försök).
+  - `Ollama` (lokal LLM via Ollama).
 - `generateDocumentationWithLlm` bygger JSON-input (processContext/currentNodeContext), använder `generateWithFallback` per docType/provider och loggar LLM-events (inkl. latency, tokenbudget-varningar) som kan inspekteras i LLM Debug-vyn.
 - HTML-dokument får metadata om LLM-användning och visar en diskret banner när lokal LLM används som fallback istället för Claude.
 

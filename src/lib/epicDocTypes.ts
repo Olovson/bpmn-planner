@@ -48,6 +48,7 @@ export interface EpicDocModel {
   prerequisites: string[];
   flowSteps: string[];
   interactions?: string[]; // Optional - primarily for User Tasks
+  dependencies?: string[]; // Optional - dependencies for the Epic
   userStories: EpicUserStory[]; // 3-6 user stories per Epic
   implementationNotes: string[];
 }

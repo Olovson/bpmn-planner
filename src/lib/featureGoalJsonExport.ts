@@ -52,32 +52,13 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 async function fetchExistingModel(
   bpmnFile: string,
   elementId: string,
-  templateVersion: 'v1' | 'v2' = 'v2'
 ): Promise<FeatureGoalDocModel | null> {
-  const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, templateVersion);
-  const filename = fileKey.replace('feature-goals/', '');
-
-  // Try local-content first for v2
-  if (templateVersion === 'v2') {
-    try {
-      const localPath = `/local-content/feature-goals/${filename}`;
-      const response = await fetch(localPath, { cache: 'no-store' });
-      if (response.ok) {
-        const html = await response.text();
-        // TODO: Parse HTML to extract model (or use existing parser if available)
-        // For now, return null to generate from context
-      }
-    } catch (error) {
-      // Continue to Supabase Storage
-    }
-  }
+  const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, undefined); // no version suffix
 
   // Try Supabase Storage
   const possiblePaths = [
-    `docs/local/${fileKey}`,
-    `docs/slow/chatgpt/${fileKey}`,
-    `docs/slow/ollama/${fileKey}`,
-    `docs/slow/${fileKey}`,
+    `docs/claude/${fileKey}`,
+    `docs/ollama/${fileKey}`,
     `docs/${fileKey}`,
     fileKey,
   ];
@@ -108,17 +89,15 @@ async function fetchExistingModel(
  * @param bpmnFile - BPMN file name (e.g., "mortgage-se-application.bpmn")
  * @param elementId - BPMN element ID (e.g., "application")
  * @param outputDir - Output directory (default: "exports/feature-goals")
- * @param templateVersion - Template version to use (default: "v2")
  * @returns Path to exported JSON file
  */
 export async function exportFeatureGoalToJson(
   bpmnFile: string,
   elementId: string,
   outputDir: string = 'exports/feature-goals',
-  templateVersion: 'v1' | 'v2' = 'v2'
 ): Promise<string> {
   // Try to fetch existing model from HTML
-  let model = await fetchExistingModel(bpmnFile, elementId, templateVersion);
+  let model = await fetchExistingModel(bpmnFile, elementId);
 
   // If no existing model, generate from context
   if (!model) {

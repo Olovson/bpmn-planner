@@ -3,7 +3,7 @@
  * Batch improve Feature Goal HTML files using LLM
  * 
  * Usage:
- *   npm run improve:feature-goals:batch [v1|v2|all] [--dry-run] [--resume] [--file <filename>]
+ *   npm run improve:feature-goals:batch [--dry-run] [--resume] [--file <filename>]
  * 
  * This test file can be run as a script to improve Feature Goal HTML files.
  * It's structured as a test to avoid path-intersection module resolution issues.
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'url';
 import { BpmnProcessGraph } from '../../src/lib/bpmnProcessGraph';
 import { buildBpmnProcessGraph } from '../../src/lib/bpmnProcessGraph';
 import { buildNodeDocumentationContext, type NodeDocumentationContext } from '../../src/lib/documentationContext';
-import { renderFeatureGoalDoc, type FeatureGoalTemplateVersion } from '../../src/lib/documentationTemplates';
+import { renderFeatureGoalDoc } from '../../src/lib/documentationTemplates';
 import type { TemplateLinks } from '../../src/lib/documentationTemplates';
 import { getLlmClient, getDefaultLlmProvider, type LlmProvider } from '../../src/lib/llmClients';
 import { resolveLlmProvider } from '../../src/lib/llmProviderResolver';
@@ -49,7 +49,6 @@ const METADATA_FILE = join(IMPROVED_DIR, 'metadata.json');
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-const versionFilter = args.find(arg => ['v1', 'v2', 'all'].includes(arg.toLowerCase())) || 'all';
 const dryRun = args.includes('--dry-run');
 const resume = args.includes('--resume');
 const fileIndex = args.indexOf('--file');
@@ -59,7 +58,6 @@ interface ImprovementMetadata {
   file: string;
   bpmnFile: string;
   elementId: string;
-  templateVersion: 'v1' | 'v2';
   improvedAt: string;
   improvedBy: string;
   llmPromptVersion: string;
@@ -570,8 +568,7 @@ async function improveFile(
     return false;
   }
   
-  const { bpmnFile, elementId, version } = parsed;
-  const templateVersion: FeatureGoalTemplateVersion = version || 'v1';
+  const { bpmnFile, elementId } = parsed;
   
   if (resume && isAlreadyImproved(filename, metadata)) {
     console.log(`⏭️  Skipping ${filename} (already improved)`);
@@ -579,7 +576,7 @@ async function improveFile(
   }
   
   console.log(`\n📝 Processing: ${filename}`);
-  console.log(`   BPMN: ${bpmnFile}, Element: ${elementId}, Version: ${templateVersion}`);
+  console.log(`   BPMN: ${bpmnFile}, Element: ${elementId}`);
   
   const nodeId = findNodeInGraph(graph, bpmnFile, elementId);
   if (!nodeId) {
@@ -605,7 +602,7 @@ async function improveFile(
     return true;
   }
   
-  console.log(`   🤖 Generating improved content with LLM (same prompt for v1/v2)...`);
+  console.log(`   🤖 Generating improved content with LLM...`);
   
   const basePrompt = await getFeaturePrompt();
   const { processContext, currentNodeContext } = buildContextPayload(context, links);
@@ -658,7 +655,7 @@ async function improveFile(
     return false;
   }
   
-  console.log(`   🎨 Rendering to HTML (${templateVersion})...`);
+  console.log(`   🎨 Rendering to HTML...`);
   const llmMetadata = {
     llmMetadata: {
       provider: llmClient.provider,
@@ -672,8 +669,7 @@ async function improveFile(
     context,
     links,
     JSON.stringify(docJson),
-    llmMetadata,
-    templateVersion
+    llmMetadata
   );
   
   const improvedFilename = filename;
@@ -692,7 +688,6 @@ async function improveFile(
     file: improvedFilename,
     bpmnFile,
     elementId,
-    templateVersion,
     improvedAt: new Date().toISOString(),
     improvedBy: 'AI Assistant (Batch)',
     llmPromptVersion: '1.0.0',
@@ -741,12 +736,6 @@ describe('Improve Feature Goals Batch', () => {
     const htmlFiles = allFiles.filter(f => f.endsWith('.html') && !f.includes('README'));
     
     let filesToProcess = htmlFiles;
-    if (versionFilter !== 'all') {
-      filesToProcess = htmlFiles.filter(f => {
-        const parsed = parseFilename(f);
-        return parsed?.version === versionFilter;
-      });
-    }
     
     if (specificFile) {
       const matchingFile = filesToProcess.find(f => f === specificFile || f.endsWith(specificFile));

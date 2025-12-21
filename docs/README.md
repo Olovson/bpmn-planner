@@ -86,7 +86,7 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - **Planerade scenarier i `node_planned_scenarios`**  
   Alla "planerade scenarion" i UI kommer från tabellen `node_planned_scenarios`:
   - LLM‑flöden (ChatGPT/Ollama) skriver in scenarier per nod/provider när dokumentation/testunderlag genereras.
-  - Den hierarkiska generatorn seedar även bas‑scenarion för `local-fallback` per nod (antingen från `testMapping` eller ett auto‑genererat happy‑path).
+  - Den hierarkiska generatorn seedar även bas‑scenarion för test-scenarion per nod (antingen från `testMapping` eller ett auto‑genererat happy‑path).
 
 - **Lokala mallar vs. genererad dokumentation**  
   Mallarna i `templates/html/` är referensmallar för manuell dokumentation. Den dokumentation som slutanvändaren ser i appen genereras och lagras som HTML i Supabase Storage och visas via `DocViewer`.

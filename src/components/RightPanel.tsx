@@ -12,9 +12,10 @@ import type { BpmnMapping } from '@/hooks/useBpmnMappings';
 import { useDynamicBpmnFiles, useDynamicDmnFiles } from '@/hooks/useDynamicBpmnFiles';
 import { matchDmnFile } from '@/lib/dmnParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getDocumentationUrl, getTestFileUrl, getNodeDocStoragePath, getNodeTestReportUrl } from '@/lib/artifactUrls';
+import { getDocumentationUrl, getTestFileUrl, getNodeDocStoragePath, getNodeTestReportUrl, getFeatureGoalDocStoragePaths } from '@/lib/artifactUrls';
 import { supabase } from '@/integrations/supabase/client';
 import { checkDocsAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
+import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 import { useNodeTests } from '@/hooks/useNodeTests';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NodeSummaryCard } from '@/components/NodeSummaryCard';
@@ -344,12 +345,38 @@ export const RightPanel = ({
       }
 
       try {
-        const docStoragePath = getNodeDocStoragePath(bpmnFile, selectedElement);
+        // För call activities, använd Feature Goal-sökvägar istället för vanliga node-sökvägar
+        const isCallActivity = selectedElementType === 'bpmn:CallActivity';
+        const subprocessFile = mapping?.subprocess_bpmn_file || displaySubprocessFile;
+        
+        const docStoragePath = isCallActivity 
+          ? null // Använd inte getNodeDocStoragePath för call activities
+          : getNodeDocStoragePath(bpmnFile, selectedElement);
+        
+        // Bygg Feature Goal-sökvägar för call activities (inkl. versioned paths)
+        let featureGoalPaths: string[] | undefined = undefined;
+        if (isCallActivity && subprocessFile) {
+          // Get version hash for the parent BPMN file (where call activity is defined)
+          const parentBpmnFileName = bpmnFile.endsWith('.bpmn') ? bpmnFile : `${bpmnFile}.bpmn`;
+          const versionHash = await getCurrentVersionHash(parentBpmnFileName);
+          
+          featureGoalPaths = getFeatureGoalDocStoragePaths(
+            subprocessFile,    // subprocess BPMN file
+            selectedElement,   // call activity element ID
+            bpmnFile,          // parent BPMN file (där call activity är definierad)
+            versionHash,       // version hash for versioned paths
+            parentBpmnFileName, // BPMN file name for versioned paths
+          );
+        }
+        
         console.debug('[RightPanel] loadArtifacts: start', {
           bpmnFile,
           selectedElement,
           selectedElementName,
           docStoragePath,
+          isCallActivity,
+          subprocessFile,
+          featureGoalPaths: featureGoalPaths?.slice(0, 3), // Logga bara första 3 för debug
           hasMapping: Boolean(mapping),
         });
 
@@ -357,6 +384,8 @@ export const RightPanel = ({
           checkDocsAvailable(
             mapping?.confluence_url,
             docStoragePath,
+            undefined, // storageFileExists (default)
+            featureGoalPaths, // ✅ Skicka med Feature Goal-sökvägar för call activities
           ),
           checkTestReportAvailable(mapping?.test_report_url),
         ]);

@@ -12,7 +12,6 @@ import { Badge } from '@/components/ui/badge';
 import { FileCode, ExternalLink } from 'lucide-react';
 
 const modeLabel = (mode: TestMode) => {
-  if (mode === 'local') return 'Lokal fallback (ingen LLM)';
   if (mode === 'slow') return 'LLM (Claude/Ollama)';
   return 'Legacy';
 };
@@ -55,7 +54,7 @@ const TestScriptsPage = () => {
       const filteredVariants =
         viewMode === 'all'
           ? variants
-          : variants.filter((v) => v.mode === viewMode || (viewMode === 'local' && v.mode === null));
+          : variants.filter((v) => v.mode === viewMode);
 
       if (filteredVariants.length === 0) continue;
 
@@ -92,7 +91,7 @@ const TestScriptsPage = () => {
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-2">Testscript‑varianter</h1>
             <p className="text-muted-foreground text-sm">
-              Översikt över genererade testscripts per nod, med varianter för lokal fallback (utan LLM) och LLM (Claude/Ollama) när de finns.
+              Översikt över genererade testscripts per nod, med varianter för LLM (Claude/Ollama) när de finns.
             </p>
           </div>
 

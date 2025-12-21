@@ -11,7 +11,6 @@ import { buildBpmnProcessGraph } from '@/lib/bpmnProcessGraph';
 import { buildNodeDocumentationContext } from '@/lib/documentationContext';
 import { renderFeatureGoalDoc } from '@/lib/documentationTemplates';
 import { useDynamicBpmnFiles } from '@/hooks/useDynamicBpmnFiles';
-import type { FeatureGoalTemplateVersion } from '@/lib/documentationTemplates';
 import { matchCallActivityUsingMap, loadBpmnMap } from '@/lib/bpmn/bpmnMapLoader';
 import { getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
 import { useVersionSelection } from '@/hooks/useVersionSelection';
@@ -29,10 +28,8 @@ const DocViewer = () => {
   const [error, setError] = useState<string | null>(null);
   const [generationSource, setGenerationSource] = useState<string>('');
   const [viewMode, setViewMode] = useState<'local' | 'chatgpt' | 'ollama' | 'auto'>('auto');
-  const [templateVersion, setTemplateVersion] = useState<'v1' | 'v2'>('v1');
   const [isFeatureGoal, setIsFeatureGoal] = useState(false);
   const [rawHtmlContent, setRawHtmlContent] = useState<string | null>(null);
-  const [userSelectedVersion, setUserSelectedVersion] = useState<'v1' | 'v2' | null>(null);
   const [loadedFromPath, setLoadedFromPath] = useState<string | null>(null);
   const decoded = docId ? decodeURIComponent(docId) : '';
   const sanitizeDocId = (value: string) => value.replace(/[^a-zA-Z0-9/_-]/g, '');
@@ -53,35 +50,14 @@ const DocViewer = () => {
   const formatGenerationSource = () => {
     if (!generationSource) return 'Okänt (äldre dokument)';
     
-    // Use userSelectedVersion if available, otherwise fall back to templateVersion
-    // This ensures we show the correct label even if templateVersion hasn't updated yet
-    const effectiveVersion = userSelectedVersion || templateVersion;
-    
-    // Check if this is a local-content v2 file
-    // We check both loadedFromPath (if available) and if userSelectedVersion is v2
-    // This handles the case where loadedFromPath might not be updated yet during render
-    const isLocalContentV2 = 
+    // Check if this is a local-content file
+    const isLocalContent = 
       generationSource === 'local-fallback' && 
-      effectiveVersion === 'v2' && 
-      (loadedFromPath?.includes('/local-content/') || userSelectedVersion === 'v2');
+      loadedFromPath?.includes('/local-content/');
     
-    // Debug logging
-    console.log('[DocViewer] formatGenerationSource:', {
-      generationSource,
-      templateVersion,
-      userSelectedVersion,
-      effectiveVersion,
-      loadedFromPath,
-      isLocalContentV2,
-      check1: generationSource === 'local-fallback',
-      check2: effectiveVersion === 'v2',
-      check3: loadedFromPath?.includes('/local-content/'),
-      check4: userSelectedVersion === 'v2',
-    });
-    
-    // For local-content v2 files, show a more descriptive label
-    if (isLocalContentV2) {
-      return 'Lokalt förbättrat innehåll (v2)';
+    // For local-content files, show a more descriptive label
+    if (isLocalContent) {
+      return 'Lokalt förbättrat innehåll';
     }
     if (generationSource === 'local' || generationSource === 'local-fallback') {
       return 'Lokal generering';
@@ -98,9 +74,9 @@ const DocViewer = () => {
     return generationSource;
   };
 
-  const { isLoading: variantsLoading, hasLocal, hasChatgpt, hasOllama } =
+  const { isLoading: variantsLoading, hasChatgpt, hasOllama } =
     useDocVariantAvailability(safeDocId);
-  const anyVariant = hasLocal || hasChatgpt || hasOllama;
+  const anyVariant = hasChatgpt || hasOllama;
   const { data: bpmnFiles = [] } = useDynamicBpmnFiles();
 
   useEffect(() => {
@@ -109,32 +85,28 @@ const DocViewer = () => {
     if (anyVariant) {
       if (hasChatgpt) {
         setViewMode('chatgpt');
-      } else if (hasLocal) {
-        setViewMode('local');
       } else if (hasOllama) {
         setViewMode('ollama');
       }
     }
-  }, [viewMode, variantsLoading, anyVariant, hasChatgpt, hasLocal, hasOllama]);
+  }, [viewMode, variantsLoading, anyVariant, hasChatgpt, hasOllama]);
 
-  const activeMode: 'local' | 'chatgpt' | 'ollama' =
-    viewMode === 'auto' ? 'local' : viewMode;
+  const activeMode: 'local' | 'claude' | 'ollama' =
+    viewMode === 'auto' ? 'local' : viewMode === 'chatgpt' ? 'claude' : viewMode;
 
   const resolveModeFolder = () => {
     if (viewMode === 'auto') {
       // Auto-läge används endast innan vi vet vilka varianter som finns.
       // Tills dess: försök med legacy-sökning.
       if (!generationSource) return null;
-      if (generationSource === 'local' || generationSource === 'local-fallback') return 'local';
-      if (generationSource === 'llm-slow-chatgpt') return 'slow/chatgpt';
-      if (generationSource === 'llm-slow-ollama') return 'slow/ollama';
-      if (generationSource.startsWith('llm-slow')) return 'slow';
-      if (generationSource.startsWith('llm-fast')) return 'slow';
+      if (generationSource === 'llm-slow-chatgpt' || generationSource === 'llm-slow-claude') return 'claude';
+      if (generationSource === 'llm-slow-ollama') return 'ollama';
+      if (generationSource.startsWith('llm-slow')) return 'claude'; // Default to claude for legacy
+      if (generationSource.startsWith('llm-fast')) return 'claude'; // Default to claude for legacy
       return null;
     }
-    if (viewMode === 'local') return 'local';
-    if (viewMode === 'chatgpt') return 'slow/chatgpt';
-    if (viewMode === 'ollama') return 'slow/ollama';
+    if (viewMode === 'chatgpt' || viewMode === 'claude') return 'claude';
+    if (viewMode === 'ollama') return 'ollama';
     return null;
   };
 
@@ -145,7 +117,7 @@ const DocViewer = () => {
       setRawHtmlContent(null);
       setLoadedFromPath(null);
       // Don't reset isFeatureGoal here - let it be determined from the loaded content
-      // This ensures template selection stays visible when switching between v1 and v2
+      // Template selection is no longer available - only one version is used
 
       try {
         if (!docId) {
@@ -161,190 +133,219 @@ const DocViewer = () => {
         const modeFolder = resolveModeFolder();
         const tryPaths: string[] = [];
         
-        // For Feature Goals (callActivity nodes), use version-specific filename if user selected a version
-        // Feature Goals are stored as: feature-goals/bpmnFile-elementId-v1.html or -v2.html
-        // We'll detect if it's a Feature Goal from the HTML content later, but for now try both paths
-        const versionToUse = userSelectedVersion || templateVersion;
+        // For node docs that are Feature Goals (process nodes or callActivities)
+        // Build Feature Goal path directly based on docId
+        let isCallActivity = false;
+        let nodeContext: ReturnType<typeof buildNodeDocumentationContext> | null = null;
         
-        // Try Feature Goal paths first (if this is a node doc, it might be a Feature Goal)
         if (isNodeDoc && baseName && elementSegment) {
+          // First, check if this is a callActivity or process by resolving from BPMN process graph
+          try {
+            // Get version hash for the file
+            const versionHash = await getVersionHashForFile(baseName + '.bpmn');
+            const versionHashes = new Map<string, string | null>();
+            versionHashes.set(baseName + '.bpmn', versionHash);
+            const graph = await buildBpmnProcessGraph(baseName + '.bpmn', bpmnFiles, versionHashes);
+            
+            // Try to find the node - first try as element node, then as root process node
+            let nodeId = `${baseName}.bpmn::${elementSegment}`;
+            nodeContext = buildNodeDocumentationContext(graph, nodeId);
+            
+            // If not found, try as root process node (for subprocess files, the root process node has ID "root:filename")
+            if (!nodeContext) {
+              const rootNodeId = `root:${baseName}.bpmn`;
+              nodeContext = buildNodeDocumentationContext(graph, rootNodeId);
+            }
+            
+            if (nodeContext?.node.type === 'callActivity') {
+              isCallActivity = true;
+            } else if (nodeContext?.node.type === 'process') {
+              isCallActivity = true;
+            }
+          } catch (error) {
+            // If we can't check from process graph, try bpmn-map.json as fallback
+            try {
+              const bpmnMap = loadBpmnMap(bpmnMapData);
+              const matchResult = matchCallActivityUsingMap(
+                { id: elementSegment, name: undefined, calledElement: undefined },
+                baseName + '.bpmn',
+                bpmnMap
+              );
+              if (matchResult.matchedFileName) {
+                isCallActivity = true;
+              }
+            } catch (mapError) {
+              // Silent fail
+            }
+          }
+        }
+        
+        // For node docs that are Feature Goals (process nodes or callActivities)
+        // Check if this is a process node or callActivity
+        const isProcessNode = nodeContext?.node.type === 'process';
+        const shouldTryFeatureGoal = isNodeDoc && baseName && elementSegment && (isCallActivity || isProcessNode);
+        
+        if (shouldTryFeatureGoal) {
+          
           // For call activities, we need to resolve the subprocessFile (the actual BPMN file for the subprocess)
+          // For process nodes in subprocess files, the subprocessFile is the file itself
           // This matches how bpmnGenerators.ts creates Feature Goal filenames
           let featureGoalBpmnFile = baseName;
+          let parentBpmnFile: string | undefined = undefined;
           
-          // Try to resolve subprocessFile from bpmn-map.json first (fastest and most reliable)
-          try {
-            console.log('[DocViewer] 🔍 Resolving subprocessFile for:', baseName, elementSegment);
-            const bpmnMap = loadBpmnMap(bpmnMapData);
-            const matchResult = matchCallActivityUsingMap(
-              { id: elementSegment, name: undefined, calledElement: undefined },
-              baseName + '.bpmn',
-              bpmnMap
-            );
-            
-            if (matchResult.matchedFileName) {
-              featureGoalBpmnFile = matchResult.matchedFileName.replace('.bpmn', '');
-              console.log('[DocViewer] ✓ Found subprocessFile from bpmn-map.json:', featureGoalBpmnFile);
+          if (isProcessNode) {
+            // For process nodes: nodeContext.node.bpmnFile should be the subprocess file
+            // e.g., mortgage-se-internal-data-gathering.bpmn (not mortgage-se-application.bpmn)
+            if (nodeContext?.node.bpmnFile && nodeContext.node.bpmnFile !== baseName + '.bpmn') {
+              // nodeContext.node.bpmnFile is the subprocess file
+              featureGoalBpmnFile = nodeContext.node.bpmnFile.replace('.bpmn', '');
             } else {
-              // Fallback: Try to resolve from BPMN process graph
-              console.log('[DocViewer] No match in bpmn-map.json, trying process graph...');
-              // Get version hash for the file
-              const versionHash = await getVersionHashForFile(baseName + '.bpmn');
-              const versionHashes = new Map<string, string | null>();
-              versionHashes.set(baseName + '.bpmn', versionHash);
-              const graph = await buildBpmnProcessGraph(baseName + '.bpmn', bpmnFiles, versionHashes);
-              const nodeId = `${baseName}.bpmn::${elementSegment}`;
-              const nodeContext = buildNodeDocumentationContext(graph, nodeId);
-              
-              if (nodeContext?.node.type === 'callActivity' && nodeContext.node.subprocessFile) {
-                featureGoalBpmnFile = nodeContext.node.subprocessFile.replace('.bpmn', '');
-                console.log('[DocViewer] ✓ Found subprocessFile from process graph:', featureGoalBpmnFile);
-              } else {
-                console.log('[DocViewer] Using baseName (not a call activity or no subprocessFile):', featureGoalBpmnFile);
-              }
+              // Fallback: construct subprocess file name from baseName and elementSegment
+              // For mortgage-se-application/internal-data-gathering:
+              // subprocess file = mortgage-se-internal-data-gathering
+              featureGoalBpmnFile = `${baseName}-${elementSegment}`;
             }
-          } catch (error) {
-            // If we can't resolve subprocessFile, fall back to using baseName
-            console.warn('[DocViewer] Could not resolve subprocessFile, using baseName:', error);
+            parentBpmnFile = baseName + '.bpmn'; // Parent is where the process is referenced (for version hash)
+          } else {
+            // For call activities, try to resolve subprocessFile from bpmn-map.json first (fastest and most reliable)
+            try {
+              console.log('[DocViewer] 🔍 Resolving subprocessFile for callActivity:', baseName, elementSegment);
+              const bpmnMap = loadBpmnMap(bpmnMapData);
+              const matchResult = matchCallActivityUsingMap(
+                { id: elementSegment, name: undefined, calledElement: undefined },
+                baseName + '.bpmn',
+                bpmnMap
+              );
+              
+              if (matchResult.matchedFileName) {
+                featureGoalBpmnFile = matchResult.matchedFileName.replace('.bpmn', '');
+                parentBpmnFile = baseName + '.bpmn'; // Parent is where call activity is defined
+                console.log('[DocViewer] ✓ Found subprocessFile from bpmn-map.json:', featureGoalBpmnFile);
+              } else {
+                // Fallback: Use nodeContext we already have from above (if available)
+                if (nodeContext?.node.type === 'callActivity' && nodeContext.node.subprocessFile) {
+                  featureGoalBpmnFile = nodeContext.node.subprocessFile.replace('.bpmn', '');
+                  parentBpmnFile = baseName + '.bpmn'; // Parent is where call activity is defined
+                  console.log('[DocViewer] ✓ Found subprocessFile from process graph (reused):', featureGoalBpmnFile);
+                } else {
+                  parentBpmnFile = baseName + '.bpmn'; // Still use baseName as parent
+                  console.log('[DocViewer] Using baseName (no subprocessFile found):', featureGoalBpmnFile);
+                }
+              }
+            } catch (error) {
+              // If we can't resolve subprocessFile, fall back to using baseName
+              parentBpmnFile = baseName + '.bpmn';
+              console.warn('[DocViewer] Could not resolve subprocessFile, using baseName:', error);
+            }
           }
           
-          // Build Feature Goal path using getFeatureGoalDocFileKey with hierarchical naming
-          // Use hierarchical naming (parent-elementId) to match Jira names
-          // baseName is the parent BPMN file (where call activity is defined)
-          const hierarchicalPath = getFeatureGoalDocFileKey(
+          // Build Feature Goal path using getFeatureGoalDocFileKey
+          // For process nodes: NO parent (getFeatureGoalDocFileKey will use subprocess file name directly)
+          // For call activities: use parent for hierarchical naming
+          const featureGoalPath = getFeatureGoalDocFileKey(
             featureGoalBpmnFile, // subprocess BPMN file
             elementSegment, // elementId
-            versionToUse as 'v1' | 'v2',
-            baseName + '.bpmn' // parent BPMN file for hierarchical naming
+            undefined, // no version suffix
+            isProcessNode ? undefined : parentBpmnFile // NO parent for process nodes, use parent for call activities
           );
-          
-          // Also try with legacy naming (subprocess-elementId) for backward compatibility
-          const legacyPath = getFeatureGoalDocFileKey(
-            featureGoalBpmnFile, // subprocess BPMN file
-            elementSegment, // elementId
-            versionToUse as 'v1' | 'v2'
-            // No parent = legacy naming
-          );
-          
-          // Also try with original baseName for backward compatibility
-          const featureGoalPathWithVersionOriginal = `feature-goals/${baseName}-${elementSegment}-${versionToUse}.html`;
-          const featureGoalPathNoVersionOriginal = `feature-goals/${baseName}-${elementSegment}.html`;
-          
-          // For v2 Feature Goals, try local content first (from public/local-content/feature-goals/)
-          if (versionToUse === 'v2') {
-            // Try hierarchical naming first (matches Jira names)
-            const hierarchicalFilename = hierarchicalPath.replace('feature-goals/', '');
-            const hierarchicalLocalPath = `/local-content/feature-goals/${hierarchicalFilename}`;
-            console.log('[DocViewer] 📁 Adding local content path (hierarchical):', hierarchicalLocalPath);
-            tryPaths.push(hierarchicalLocalPath);
-            
-            // Also try legacy naming for backward compatibility
-            const legacyFilename = legacyPath.replace('feature-goals/', '');
-            const legacyLocalPath = `/local-content/feature-goals/${legacyFilename}`;
-            console.log('[DocViewer] 📁 Adding local content path (legacy):', legacyLocalPath);
-            tryPaths.push(legacyLocalPath);
-            
-            // Also try with original baseName for backward compatibility
-            const localContentFilenameOriginal = featureGoalPathWithVersionOriginal.replace('feature-goals/', '');
-            const localContentPathOriginal = `/local-content/feature-goals/${localContentFilenameOriginal}`;
-            console.log('[DocViewer] 📁 Adding local content path (with baseName):', localContentPathOriginal);
-            tryPaths.push(localContentPathOriginal);
-          }
-          
-          console.log('[DocViewer] All tryPaths for Feature Goal:', tryPaths);
           
           // Try versioned paths first (new structure with version hash)
+          // For process nodes: use subprocess file (featureGoalBpmnFile)
+          // For call activities: use parent file (where call activity is defined)
           try {
-            const parentBpmnFile = baseName + '.bpmn';
+            // VIKTIGT: För process nodes ska vi använda PARENT filen (mortgage-se-application.bpmn), 
+            // inte subprocess filen (mortgage-se-internal-data-gathering.bpmn)!
+            // Eftersom filen är sparad under mortgage-se-application.bpmn/versionHash/feature-goals/...
+            const bpmnFileForVersion = isProcessNode 
+              ? (baseName + '.bpmn') // For process nodes, use the PARENT file (where the process is referenced)
+              : (parentBpmnFile || baseName + '.bpmn'); // For call activities, use parent file
             // Use selected version if available, otherwise current version
-            const versionHash = await getVersionHashForFile(parentBpmnFile);
+            const versionHash = await getVersionHashForFile(bpmnFileForVersion);
             
             if (versionHash) {
-              // Try versioned paths with hierarchical naming
-              const hierarchicalDocFileName = hierarchicalPath.replace('feature-goals/', '');
-              const legacyDocFileName = legacyPath.replace('feature-goals/', '');
+              // NOTE: When saving, buildDocStoragePaths uses the full path including 'feature-goals/'
+              // So we need to keep 'feature-goals/' in the path when using version hash
+              const docFileName = featureGoalPath; // Keep 'feature-goals/' prefix
               
-              // Determine provider from modeFolder (chatgpt = cloud, ollama = local)
-              const provider = modeFolder?.includes('chatgpt') ? 'chatgpt' : modeFolder?.includes('ollama') ? 'ollama' : null;
+              // Determine provider from modeFolder (claude = cloud, ollama = local LLM)
+              const provider = modeFolder === 'claude' ? 'claude' : modeFolder === 'ollama' ? 'ollama' : null;
               
-              if (modeFolder && modeFolder.startsWith('slow/')) {
-                if (provider === 'chatgpt') {
-                  // Versioned path: docs/slow/chatgpt/{bpmnFileName}/{versionHash}/{docFileName}
-                  tryPaths.unshift(`docs/slow/chatgpt/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${hierarchicalDocFileName}`);
-                  tryPaths.unshift(`docs/slow/chatgpt/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${legacyDocFileName}`);
+              // VIKTIGT: Filen är sparad MED .bpmn i sökvägen, så vi behåller .bpmn
+              const bpmnFileNameForPath = bpmnFileForVersion.endsWith('.bpmn') ? bpmnFileForVersion : `${bpmnFileForVersion}.bpmn`;
+              
+              if (modeFolder && (modeFolder === 'claude' || modeFolder === 'ollama')) {
+                if (provider === 'claude') {
+                  tryPaths.unshift(`docs/claude/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
                 } else if (provider === 'ollama') {
-                  tryPaths.unshift(`docs/slow/ollama/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${hierarchicalDocFileName}`);
-                  tryPaths.unshift(`docs/slow/ollama/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${legacyDocFileName}`);
-                } else {
-                  // Generic slow path
-                  tryPaths.unshift(`docs/slow/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${hierarchicalDocFileName}`);
-                  tryPaths.unshift(`docs/slow/${parentBpmnFile.replace('.bpmn', '')}/${versionHash}/${legacyDocFileName}`);
+                  tryPaths.unshift(`docs/ollama/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
                 }
+              } else {
+                // Auto mode: try all providers, prioritize claude
+                tryPaths.unshift(`docs/claude/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
+                tryPaths.unshift(`docs/ollama/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
               }
-              
-              console.log('[DocViewer] ✓ Added versioned paths with hash:', versionHash);
+            } else {
+              console.log('[DocViewer] ⚠️ No version hash found for', bpmnFileForVersion);
             }
           } catch (error) {
-            console.warn('[DocViewer] Could not get version hash, skipping versioned paths:', error);
+            // Silent fail
           }
           
+          // Always add non-versioned Feature Goal paths (even if modeFolder is null)
           if (modeFolder) {
-            // Try hierarchical naming first (matches Jira names)
-            tryPaths.push(`docs/${modeFolder}/${hierarchicalPath}`);
-            // Then try legacy naming
-            tryPaths.push(`docs/${modeFolder}/${legacyPath}`);
-            // Also try with original baseName for backward compatibility
-            tryPaths.push(`docs/${modeFolder}/${featureGoalPathWithVersionOriginal}`);
-            tryPaths.push(`docs/${modeFolder}/${featureGoalPathNoVersionOriginal}`);
-            if (modeFolder.startsWith('slow/')) {
-              tryPaths.push(`docs/slow/${hierarchicalPath}`);
-              tryPaths.push(`docs/slow/${legacyPath}`);
-              tryPaths.push(`docs/slow/${featureGoalPathWithVersionOriginal}`);
-              tryPaths.push(`docs/slow/${featureGoalPathNoVersionOriginal}`);
-            }
+            tryPaths.push(`docs/${modeFolder}/${featureGoalPath}`);
+          } else {
+            // If modeFolder is null (auto mode), try all possible paths
+            // Prioritize claude (most common), then local, then ollama
+            tryPaths.push(`docs/claude/${featureGoalPath}`);
+            tryPaths.push(`docs/local/${featureGoalPath}`);
+            tryPaths.push(`docs/ollama/${featureGoalPath}`);
           }
-          // Also try legacy paths
-          tryPaths.push(`docs/${hierarchicalPath}`);
-          tryPaths.push(`docs/${legacyPath}`);
-          tryPaths.push(`docs/${featureGoalPathWithVersionOriginal}`);
-          tryPaths.push(`docs/${featureGoalPathNoVersionOriginal}`);
-        }
-        
-        // Standard node doc paths
-        // Try versioned paths first for node docs too
-        if (isNodeDoc && baseName) {
-          try {
-            const bpmnFile = baseName + '.bpmn';
-            // Use selected version if available, otherwise current version
-            const versionHash = await getVersionHashForFile(bpmnFile);
-            
-            if (versionHash) {
+          // Also try without mode folder
+          tryPaths.push(`docs/${featureGoalPath}`);
+          
+          console.log('[DocViewer] 🎯 Feature Goal paths:', tryPaths.slice(0, 5).join(', '), '... (total:', tryPaths.length, ')');
+        } else {
+          // Standard node doc paths (only if NOT a Feature Goal)
+          // Feature Goals should ONLY use Feature Goal paths above
+          if (isNodeDoc && baseName) {
+            try {
+              const bpmnFile = baseName + '.bpmn';
               const docFileName = `${safeDocId}.html`;
-              const provider = modeFolder?.includes('chatgpt') ? 'chatgpt' : modeFolder?.includes('ollama') ? 'ollama' : null;
               
-              if (modeFolder && modeFolder.startsWith('slow/')) {
-                if (provider === 'chatgpt') {
-                  tryPaths.unshift(`docs/slow/chatgpt/${baseName}/${versionHash}/${docFileName}`);
-                } else if (provider === 'ollama') {
-                  tryPaths.unshift(`docs/slow/ollama/${baseName}/${versionHash}/${docFileName}`);
-                } else {
-                  tryPaths.unshift(`docs/slow/${baseName}/${versionHash}/${docFileName}`);
+              // Use selected version if available, otherwise current version
+              const versionHash = await getVersionHashForFile(bpmnFile);
+              
+              if (versionHash) {
+                // VIKTIGT: buildDocStoragePaths använder bpmnFileName MED .bpmn extension
+                // Så vi måste använda bpmnFile (med .bpmn) istället för baseName (utan .bpmn)
+                // Try all providers if modeFolder is null (auto mode)
+                if (!modeFolder || modeFolder === 'claude' || modeFolder === 'ollama') {
+                  // Prioritize claude (most common), then ollama
+                  tryPaths.unshift(`docs/claude/${bpmnFile}/${versionHash}/${docFileName}`);
+                  tryPaths.unshift(`docs/ollama/${bpmnFile}/${versionHash}/${docFileName}`);
+                } else if (modeFolder) {
+                  if (modeFolder === 'claude') {
+                    tryPaths.unshift(`docs/claude/${bpmnFile}/${versionHash}/${docFileName}`);
+                  } else if (modeFolder === 'ollama') {
+                    tryPaths.unshift(`docs/ollama/${bpmnFile}/${versionHash}/${docFileName}`);
+                  }
                 }
               }
-              
-              console.log('[DocViewer] ✓ Added versioned paths for node doc with hash:', versionHash);
+            } catch (error) {
+              // Silent fail
             }
-          } catch (error) {
-            console.warn('[DocViewer] Could not get version hash for node doc, skipping versioned paths:', error);
           }
         }
         
+        // Add non-versioned paths
         if (modeFolder) {
           tryPaths.push(`docs/${modeFolder}/${safeDocId}.html`);
-          // Fallback till generiska LLM-/legacy-sökvägar
-          if (modeFolder.startsWith('slow/')) {
-            tryPaths.push(`docs/slow/${safeDocId}.html`);
-          }
+        } else {
+          // If modeFolder is null (auto mode), try all possible paths
+          // Prioritize claude (most common), then ollama
+          tryPaths.push(`docs/claude/${safeDocId}.html`);
+          tryPaths.push(`docs/ollama/${safeDocId}.html`);
         }
         // Sista fallback: legacy utan modesubkatalog
         tryPaths.push(`docs/${safeDocId}.html`);
@@ -352,54 +353,123 @@ const DocViewer = () => {
         let rawHtml: string | null = null;
         let currentLoadedFromPath: string | null = null;
         for (const path of tryPaths) {
-          // Check if this is a local content path (starts with /local-content/)
-          if (path.startsWith('/local-content/')) {
-            // Try to fetch from public directory
-            try {
-              console.log('[DocViewer] 🔍 Attempting to fetch from local-content:', path);
-              const response = await fetch(path, { cache: 'no-store' });
-              console.log('[DocViewer] Response status:', response.status, 'OK:', response.ok);
-              if (response.ok) {
-                const contentLength = response.headers.get('content-length');
-                console.log('[DocViewer] Content-Length header:', contentLength || 'not set');
-                rawHtml = await response.text();
-                currentLoadedFromPath = path;
-                setLoadedFromPath(path);
-                console.log('[DocViewer] ✓ Loaded from local-content:', path, `(${rawHtml.length} bytes)`);
-                console.log('[DocViewer] First 300 chars:', rawHtml.substring(0, 300));
-                if (rawHtml.length < 1000) {
-                  console.error('[DocViewer] ⚠️ HTML seems too small! Expected ~37KB but got', rawHtml.length, 'bytes');
-                  console.error('[DocViewer] Full response (first 1000 chars):', rawHtml.substring(0, 1000));
-                }
-                break;
-              } else {
-                const errorText = await response.text().catch(() => '');
-                console.warn('[DocViewer] ✗ Failed to fetch from local-content:', path, 'Status:', response.status);
-                console.warn('[DocViewer] Error response (first 200 chars):', errorText.substring(0, 200));
-              }
-            } catch (error) {
-              console.error('[DocViewer] ❌ Error fetching from local-content:', path, error);
-              // Continue to next path if local content fetch fails
-              continue;
-            }
-          } else {
-            // Try Supabase Storage
-            const { data } = supabase.storage.from('bpmn-files').getPublicUrl(path);
-            if (!data?.publicUrl) continue;
-            const versionedUrl = `${data.publicUrl}?t=${Date.now()}`;
-            const response = await fetch(versionedUrl, { cache: 'no-store' });
-            if (!response.ok) continue;
-            rawHtml = await response.text();
-            currentLoadedFromPath = path;
-            setLoadedFromPath(path);
-            console.log('[DocViewer] ✓ Loaded from Supabase:', path, `(${rawHtml.length} bytes)`);
-            break;
+          // Try Supabase Storage
+          const { data } = supabase.storage.from('bpmn-files').getPublicUrl(path);
+          if (!data?.publicUrl) {
+            continue;
           }
+          const versionedUrl = `${data.publicUrl}?t=${Date.now()}`;
+          const response = await fetch(versionedUrl, { cache: 'no-store' });
+          if (!response.ok) {
+            continue;
+          }
+          rawHtml = await response.text();
+          currentLoadedFromPath = path;
+          setLoadedFromPath(path);
+          if (path.includes('feature-goals')) {
+            console.log('[DocViewer] ✅ Feature Goal loaded from:', path);
+          }
+          break;
         }
 
         if (!rawHtml) {
           console.error('[DocViewer] ✗ Failed to load HTML from any path. Tried:', tryPaths);
-          throw new Error('Kunde inte hämta dokumentationen i valt läge eller legacy-läge.');
+          console.error('[DocViewer] Debug info:', {
+            docId,
+            decoded,
+            safeDocId,
+            isNodeDoc,
+            baseName,
+            elementSegment,
+            isCallActivity,
+            modeFolder,
+            viewMode,
+            generationSource,
+            featureGoalPath: isCallActivity ? featureGoalPath : undefined,
+            featureGoalBpmnFile: isCallActivity ? featureGoalBpmnFile : undefined,
+            parentBpmnFile: isCallActivity ? parentBpmnFile : undefined,
+          });
+          
+          // Log all tried paths with their public URLs for debugging
+          if (import.meta.env.DEV && tryPaths.length > 0) {
+            console.log('[DocViewer] Checking public URLs for first 5 paths:');
+            for (let i = 0; i < Math.min(5, tryPaths.length); i++) {
+              const path = tryPaths[i];
+              const { data } = supabase.storage.from('bpmn-files').getPublicUrl(path);
+              console.log(`  [${i + 1}] ${path}`);
+              console.log(`      Public URL: ${data?.publicUrl || 'N/A'}`);
+            }
+          }
+          
+          // Check if BPMN file exists in database
+          let bpmnFileExists = false;
+          let versionHashStatus = 'unknown';
+          if (baseName) {
+            try {
+              const bpmnFileName = baseName + '.bpmn';
+              const { data: fileData, error: fileError } = await supabase
+                .from('bpmn_files')
+                .select('file_name, current_version_hash')
+                .eq('file_name', bpmnFileName)
+                .maybeSingle();
+              
+              if (fileError) {
+                console.warn('[DocViewer] Could not check if BPMN file exists:', fileError);
+              } else if (fileData) {
+                bpmnFileExists = true;
+                versionHashStatus = fileData.current_version_hash ? 'exists' : 'missing';
+                console.log('[DocViewer] BPMN file status:', {
+                  fileName: bpmnFileName,
+                  exists: true,
+                  hasVersionHash: !!fileData.current_version_hash,
+                });
+              } else {
+                bpmnFileExists = false;
+                console.warn('[DocViewer] BPMN file not found in database:', bpmnFileName);
+              }
+            } catch (error) {
+              console.warn('[DocViewer] Error checking BPMN file:', error);
+            }
+          }
+          
+          // Build a more helpful error message
+          let errorMessage = `Kunde inte hämta dokumentationen för "${elementSegment || docId}".\n\n`;
+          errorMessage += `Försökte ${tryPaths.length} olika sökvägar:\n`;
+          errorMessage += tryPaths.slice(0, 5).map(p => `  • ${p}`).join('\n');
+          if (tryPaths.length > 5) {
+            errorMessage += `\n  ...och ${tryPaths.length - 5} fler`;
+          }
+          errorMessage += `\n\n`;
+          
+          // Add diagnostic information
+          if (baseName) {
+            const bpmnFileName = baseName + '.bpmn';
+            if (!bpmnFileExists) {
+              errorMessage += `⚠️ BPMN-filen "${bpmnFileName}" hittades inte i databasen.\n`;
+              errorMessage += `   Detta kan betyda att filen inte har laddats upp korrekt.\n\n`;
+            } else if (versionHashStatus === 'missing') {
+              errorMessage += `⚠️ BPMN-filen "${bpmnFileName}" finns i databasen men saknar version hash.\n`;
+              errorMessage += `   Detta kan betyda att filen behöver laddas upp igen eller att versionering inte är aktiverad.\n\n`;
+            }
+          }
+          
+          if (isCallActivity) {
+            errorMessage += `Detta verkar vara en Call Activity eller Process-nod (Feature Goal). `;
+            errorMessage += `Kontrollera att Feature Goal-dokumentationen har genererats.\n\n`;
+          } else {
+            errorMessage += `Detta verkar vara en vanlig nod. `;
+            errorMessage += `Kontrollera att dokumentationen har genererats för denna nod.\n\n`;
+          }
+          
+          errorMessage += `Tips:\n`;
+          errorMessage += `  • Generera dokumentation för denna nod via BPMN File Manager\n`;
+          errorMessage += `  • Kontrollera att noden finns i BPMN-filen "${baseName}.bpmn"\n`;
+          if (isCallActivity) {
+            errorMessage += `  • För Call Activities/Process-noder, kontrollera att subprocess-filen finns och att dokumentation har genererats\n`;
+            errorMessage += `  • Om filen är en subprocess-fil, se till att generera dokumentation för den specifika filen\n`;
+          }
+          
+          throw new Error(errorMessage);
         }
 
         console.log('[DocViewer] ✓ HTML loaded successfully from:', currentLoadedFromPath || 'unknown', `(${rawHtml.length} bytes)`);
@@ -435,15 +505,9 @@ const DocViewer = () => {
           setGenerationSource('');
         }
         
-        // Read template version from HTML metadata
-        const templateVersionMatch = sanitizedHtml.match(/<meta[^>]+name=["']x-feature-goal-template-version["'][^>]*content=["']([^"']+)/i) || sanitizedHtml.match(/<!--\s*feature-goal-template-version:([v12]+)\s*-->/i);
-        const detectedVersion = templateVersionMatch ? (templateVersionMatch[1] === 'v2' ? 'v2' : 'v1') : 'v1'; // Default to v1 if not found
-        setTemplateVersion(detectedVersion);
-        
         // Check if this is a Feature Goal (callActivity)
         // Feature Goals have docId format: nodes/bpmnFile/elementId
         // We can check HTML for Feature Goal badge, or check if this is a call activity node
-        // For v2 files, we also check if the path includes feature-goals
         const hasFeatureGoalBadge = sanitizedHtml.includes('doc-badge">Feature Goal') || sanitizedHtml.includes('Feature Goal');
         // Use currentLoadedFromPath (local variable) if available, otherwise use loadedFromPath state
         // This ensures we check the path of the file we just loaded
@@ -465,18 +529,6 @@ const DocViewer = () => {
         console.log('[DocViewer] Setting rawHtmlContent, length:', sanitizedHtml.length);
         setRawHtmlContent(sanitizedHtml);
         
-        // Only reset user selection when loading a different document (not when switching versions)
-        // Check if docId changed by comparing with previous docId
-        if (userSelectedVersion && detectedVersion === userSelectedVersion) {
-          // User selected version matches detected version, keep the selection
-          // This means we successfully loaded the version the user wanted
-        } else if (!userSelectedVersion) {
-          // No user selection, set to detected version
-          // This happens on initial load or when docId changes
-        }
-        // If userSelectedVersion is set and differs from detected, it means user wants a different version
-        // Don't reset it, let the next fetch (triggered by dependency) load the correct file
-        
         // HTML content is stored in rawHtmlContent state and used directly in iframe srcdoc
         // This avoids sandbox security warnings (no need for allow-same-origin) and React Refresh issues
       } catch (err) {
@@ -495,15 +547,7 @@ const DocViewer = () => {
         blobUrlRef.current = null;
       }
     };
-  }, [docId, decoded, viewMode, variantsLoading, userSelectedVersion, templateVersion, bpmnFiles]);
-
-  // Reset userSelectedVersion when docId changes (user navigates to different document)
-  useEffect(() => {
-    setUserSelectedVersion(null);
-  }, [docId]);
-
-  // Note: Re-rendering is no longer needed since we now read different files for v1 and v2
-  // The fetchDoc useEffect will reload the document when userSelectedVersion changes
+  }, [docId, decoded, viewMode, variantsLoading, bpmnFiles]);
 
   return (
     <div className="flex min-h-screen bg-background overflow-hidden pl-16">
@@ -582,34 +626,6 @@ const DocViewer = () => {
                 </Button>
               </div>
               
-              {/* Feature Goal Template Version Selection */}
-              {isFeatureGoal && (
-                <div className="flex flex-wrap gap-2 text-xs ml-2 pl-2 border-l">
-                  <span className="text-xs text-muted-foreground self-center">Template:</span>
-                  <Button
-                    size="sm"
-                    variant={templateVersion === 'v1' ? 'default' : 'outline'}
-                    onClick={() => {
-                      // Only set userSelectedVersion, let useEffect handle the re-render and templateVersion update
-                      setUserSelectedVersion('v1');
-                    }}
-                    aria-pressed={templateVersion === 'v1'}
-                  >
-                    v1
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={templateVersion === 'v2' ? 'default' : 'outline'}
-                    onClick={() => {
-                      // Only set userSelectedVersion, let useEffect handle the re-render and templateVersion update
-                      setUserSelectedVersion('v2');
-                    }}
-                    aria-pressed={templateVersion === 'v2'}
-                  >
-                    v2
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
 
@@ -635,7 +651,7 @@ const DocViewer = () => {
           {!loading && !error && rawHtmlContent ? (
             <div className="rounded-lg border overflow-hidden bg-card">
               <iframe
-                key={`${docId}-${templateVersion}`}
+                key={docId}
                 srcDoc={rawHtmlContent}
                 className="w-full min-h-[80vh] bg-white"
                 title={prettyTitle || 'Dokumentation'}

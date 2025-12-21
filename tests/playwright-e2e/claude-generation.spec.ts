@@ -110,15 +110,10 @@ test.describe('Claude-generering för Application', () => {
       }
     }
 
-    // 5. Verifiera att template-version-väljaren är dold (Claude använder alltid v2)
+    // 5. Verifiera att template-version-väljaren är borttagen (ingen version selector längre)
     const templateVersionSection = page.locator('text=Feature Goal Template Version').locator('..');
     const templateSectionVisible = await templateVersionSection.isVisible().catch(() => false);
-    
-    if (templateSectionVisible) {
-      // Om den är synlig, kontrollera att det står "Template v2 (Claude använder alltid v2)"
-      const claudeTemplateText = page.locator('text=Claude använder alltid v2');
-      await expect(claudeTemplateText).toBeVisible({ timeout: 2000 });
-    }
+    expect(templateSectionVisible).toBe(false);
 
     // 6. Klicka på "Generera artefakter för vald fil"
     const generateButton = page.locator('button:has-text("Generera artefakter"), button:has-text("Generera")').first();
@@ -185,7 +180,7 @@ test.describe('Claude-generering för Application', () => {
     console.log('✅ Test slutfört - Claude-generering fungerar!');
   });
 
-  test('Verifiera att template-version-väljaren döljs för Claude', async ({ page }) => {
+  test('Verifiera att template-version-väljaren är borttagen', async ({ page }) => {
     // Login hanteras i beforeEach
     await loginIfNeeded(page);
     
@@ -193,43 +188,21 @@ test.describe('Claude-generering för Application', () => {
     await page.goto('/files');
     await page.waitForLoadState('networkidle');
 
-    // 2. Välj Claude som genereringsläge
-    const claudeButton = page.locator('button:has-text("Claude (moln-LLM)"), button:has-text("Claude"), [aria-label*="Claude"]').first();
-    await claudeButton.waitFor({ state: 'visible', timeout: 10000 });
-    
-    const isActive = await claudeButton.evaluate((el) => {
-      return el.classList.contains('ring-2') || 
-             el.classList.contains('ring-primary') ||
-             el.getAttribute('aria-pressed') === 'true' ||
-             el.getAttribute('data-state') === 'active';
-    });
-    
-    if (!isActive) {
-      await claudeButton.click();
-      await page.waitForTimeout(500);
-    }
-
-    // 3. Verifiera att template-version-väljaren antingen är dold eller visar "Template v2 (Claude använder alltid v2)"
+    // Verifiera att template-version-väljaren inte finns längre
+    const templateVersionSection = page.locator('text=Feature Goal Template Version').locator('..');
     const templateV1Button = page.locator('button:has-text("Template v1")');
     const templateV2Button = page.locator('button:has-text("Template v2")');
-    const claudeTemplateText = page.locator('text=Claude använder alltid v2');
 
+    const sectionVisible = await templateVersionSection.isVisible().catch(() => false);
     const v1Visible = await templateV1Button.isVisible().catch(() => false);
     const v2Visible = await templateV2Button.isVisible().catch(() => false);
-    const claudeTextVisible = await claudeTemplateText.isVisible().catch(() => false);
 
-    // Antingen ska v1/v2-knapparna vara dolda, eller så ska det stå "Claude använder alltid v2"
-    expect(v1Visible || claudeTextVisible).toBeTruthy();
+    // Alla ska vara dolda/borttagna
+    expect(sectionVisible).toBe(false);
+    expect(v1Visible).toBe(false);
+    expect(v2Visible).toBe(false);
     
-    if (v1Visible) {
-      // Om v1-knappen är synlig, ska det betyda att vi är i lokal-läge, inte Claude
-      // Detta är ett fel - Claude ska inte visa v1-knappen
-      throw new Error('Template v1-knappen ska inte vara synlig när Claude är valt');
-    }
-
-    if (claudeTextVisible) {
-      console.log('✅ Template-version-väljaren visar korrekt information för Claude');
-    }
+    console.log('✅ Template-version-väljaren är korrekt borttagen');
   });
 });
 

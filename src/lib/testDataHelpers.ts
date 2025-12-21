@@ -8,7 +8,7 @@ import type { TestScenario } from '@/data/testMapping';
 import { scenarios as e2eScenarios } from '@/pages/E2eTestsOverviewPage';
 import type { E2eScenario, BankProjectTestStep } from '@/pages/E2eTestsOverviewPage';
 
-export type ScenarioProvider = 'local-fallback' | 'cloud' | 'ollama' | 'chatgpt';
+export type ScenarioProvider = 'local-fallback' | 'cloud' | 'claude' | 'ollama' | 'chatgpt';
 
 export interface TestScenarioData {
   provider: ScenarioProvider;
@@ -65,7 +65,7 @@ export async function fetchPlannedScenarios(
     }
 
     // Otherwise, prefer cloud/chatgpt > local-fallback > ollama
-    const priority: ScenarioProvider[] = ['cloud', 'chatgpt', 'local-fallback', 'ollama'];
+    const priority: ScenarioProvider[] = ['cloud', 'claude', 'chatgpt', 'local-fallback', 'ollama'];
     for (const provider of priority) {
       const match = data.find((row) => row.provider === provider);
       if (match) {

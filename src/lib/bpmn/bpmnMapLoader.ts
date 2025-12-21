@@ -75,17 +75,6 @@ export function matchCallActivityUsingMap(
   );
 
   if (entry?.subprocess_bpmn_file) {
-    if (import.meta.env.DEV) {
-      const matchReason = 
-        entry.bpmn_id === callActivity.id ? 'bpmn_id' :
-        (entry.name && entry.name === callActivity.name) ? 'name' :
-        'called_element';
-      console.log(`[matchCallActivityUsingMap] ✓ Matched:`, {
-        callActivityId: callActivity.id,
-        matchedFileName: entry.subprocess_bpmn_file,
-        matchReason,
-      });
-    }
     return { matchedFileName: entry.subprocess_bpmn_file, matchSource: 'bpmn-map' };
   }
 

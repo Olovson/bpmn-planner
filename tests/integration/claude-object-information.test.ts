@@ -172,7 +172,6 @@ describe('Claude-generering för Object information-noden', () => {
 
     const llmProvider: LlmProvider = 'cloud';
     const localAvailable = false;
-    const featureGoalTemplateVersion = 'v2' as const;
 
     // Använd generateDocumentationWithLlm precis som appen gör
     const llmResult = await generateDocumentationWithLlm(
@@ -203,8 +202,7 @@ describe('Claude-generering för Object information-noden', () => {
       nodeContext,
       docLinks,
       llmResult.text,
-      llmMetadata,
-      featureGoalTemplateVersion
+      llmMetadata
     );
 
     // 7. Verifiera resultat
