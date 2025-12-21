@@ -1136,12 +1136,17 @@ export default function BpmnFileManager() {
       let stepDetail = detail;
       if (!stepDetail) {
         // Försök bygga detaljer från progress
-        if (docgenCompleted > 0 && totalGraphNodes > 0) {
-          stepDetail = `Dokumentation: ${docgenCompleted}/${totalGraphNodes} noder`;
+        const effectiveTotalForDetail = Math.max(
+          totalGraphNodes || 0,
+          docgenCompleted,
+          docgenProgress.total || 0
+        );
+        if (docgenCompleted > 0 && effectiveTotalForDetail > 0) {
+          stepDetail = `Dokumentation: ${docgenCompleted}/${effectiveTotalForDetail} noder`;
         } else if (docUploadsCompleted > 0 && docUploadsPlanned > 0) {
           stepDetail = `Laddar upp: ${docUploadsCompleted}/${docUploadsPlanned} filer`;
-        } else if (totalGraphNodes > 0) {
-          stepDetail = `Förbereder ${totalGraphNodes} noder`;
+        } else if (effectiveTotalForDetail > 0) {
+          stepDetail = `Förbereder ${effectiveTotalForDetail} noder`;
         }
       }
       
@@ -1151,7 +1156,12 @@ export default function BpmnFileManager() {
         currentStepDetail: stepDetail,
         docs: {
           completed: docgenCompleted,
-          total: totalGraphNodes || docgenProgress.total || 0,
+          // Säkerställ att total alltid är >= completed
+          total: Math.max(
+            totalGraphNodes || 0,
+            docgenCompleted,
+            docgenProgress.total || 0
+          ),
         },
         htmlUpload: {
           completed: docUploadsCompleted,
@@ -1184,12 +1194,17 @@ export default function BpmnFileManager() {
       let stepDetail = currentGenerationStep?.detail;
       if (!stepDetail) {
         // Försök bygga detaljer från progress
-        if (docgenCompleted > 0 && totalGraphNodes > 0) {
-          stepDetail = `Dokumentation: ${docgenCompleted}/${totalGraphNodes} noder`;
+        const effectiveTotalForDetail = Math.max(
+          totalGraphNodes || 0,
+          docgenCompleted,
+          docgenProgress.total || 0
+        );
+        if (docgenCompleted > 0 && effectiveTotalForDetail > 0) {
+          stepDetail = `Dokumentation: ${docgenCompleted}/${effectiveTotalForDetail} noder`;
         } else if (docUploadsCompleted > 0 && docUploadsPlanned > 0) {
           stepDetail = `Laddar upp: ${docUploadsCompleted}/${docUploadsPlanned} filer`;
-        } else if (totalGraphNodes > 0) {
-          stepDetail = `Förbereder ${totalGraphNodes} noder`;
+        } else if (effectiveTotalForDetail > 0) {
+          stepDetail = `Förbereder ${effectiveTotalForDetail} noder`;
         }
       }
       
@@ -1199,7 +1214,12 @@ export default function BpmnFileManager() {
         currentStepDetail: stepDetail,
         docs: {
           completed: docgenCompleted,
-          total: totalGraphNodes || docgenProgress.total || 0,
+          // Säkerställ att total alltid är >= completed
+          total: Math.max(
+            totalGraphNodes || 0,
+            docgenCompleted,
+            docgenProgress.total || 0
+          ),
         },
         htmlUpload: {
           completed: docUploadsCompleted,
@@ -1277,9 +1297,15 @@ export default function BpmnFileManager() {
         case 'docgen:file':
           // Här sker den tunga logiken (mallar/LLM per nod), så koppla framsteg till verkligt antal noder.
           docgenCompleted += 1;
+          // Säkerställ att total alltid är >= completed för att undvika "3/1 noder"
+          const effectiveTotalForFile = Math.max(
+            totalGraphNodes || 0,
+            docgenCompleted,
+            docgenProgress.total || 0
+          );
           setDocgenProgress((prev) => ({
             completed: docgenCompleted,
-            total: totalGraphNodes || prev.total || docgenCompleted,
+            total: effectiveTotalForFile,
           }));
           stepText = 'Genererar dokumentation';
           // Använd detail om det finns (innehåller nodtyp och namn direkt från reportProgress)
@@ -1287,15 +1313,15 @@ export default function BpmnFileManager() {
           if (detail) {
             // Detail är redan formaterat som "service tasken: nodeName" eller liknande
             stepDetail = `Genererar information för ${detail}`;
-          } else if (totalGraphNodes > 0) {
-            stepDetail = `${docgenCompleted} av ${totalGraphNodes} noder`;
+          } else if (effectiveTotalForFile > 0) {
+            stepDetail = `${docgenCompleted} av ${effectiveTotalForFile} noder`;
           } else {
             stepDetail = `Bearbetar nod ${docgenCompleted}`;
           }
           setCurrentGenerationStep({ step: stepText, detail: stepDetail });
-          if (totalGraphNodes > 0) {
+          if (effectiveTotalForFile > 0) {
             await incrementJobProgress(
-              `Dokumentation ${docgenCompleted} av ${totalGraphNodes} noder`
+              `Dokumentation ${docgenCompleted} av ${effectiveTotalForFile} noder`
             );
           } else {
             await incrementJobProgress(`Dokumentation: ${detail || ''}`);

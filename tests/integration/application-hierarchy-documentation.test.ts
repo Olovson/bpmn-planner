@@ -71,7 +71,7 @@ describe('Application documentation with hierarchy', () => {
     // With hierarchy, we should have:
     // - Feature Goals for application process + all callActivities/subProcesses
     // - Epics for ALL tasks in application AND in subprocess files
-    // - Combined docs for each file
+    // - NO Combined docs for subprocesses (only root processes get combined docs)
     
     // At minimum, we should have epics from household (register-household-economy-information)
     const householdEpics = epicKeys.filter(key => key.includes('household'));

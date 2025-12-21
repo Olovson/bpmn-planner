@@ -49,7 +49,7 @@ describe('Application documentation - Expected vs Actual Analysis', () => {
     const totalFeatureGoalNodes = callActivities.length + embeddedSubProcesses.length;
     const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + callActivities + embedded subProcesses
     const expectedEpics = userTasks.length + serviceTasks.length + businessRuleTasks.length;
-    const expectedCombined = 1;
+    const expectedCombined = 0; // Subprocesser genererar INTE combined docs (bara root-processer)
     const expectedTotal = expectedFeatureGoals + expectedEpics + expectedCombined;
     
     console.log('\n=== Expected Documentation ===');

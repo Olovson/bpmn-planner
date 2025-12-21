@@ -7,7 +7,7 @@
  * Expected output:
  * - 1 Feature Goal for the process itself (mortgage-se-application)
  * - Multiple Epics for userTasks/serviceTasks within the process
- * - 1 Combined file-level doc
+ * - NO Combined file-level doc (subprocesser genererar inte combined docs, bara root-processer)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -58,11 +58,11 @@ describe('Application documentation generation', () => {
     // mortgage-se-application.bpmn should have multiple tasks
     expect(epicKeys.length).toBeGreaterThanOrEqual(1);
     
-    // - Exactly 1 Combined doc (file-level)
-    expect(combinedDocKeys.length).toBe(1);
+    // - NO Combined doc for subprocesses (only root processes get combined docs)
+    expect(combinedDocKeys.length).toBe(0);
     
-    // Total should be at least: 1 Feature Goal + 1 Epic + 1 Combined = 3
-    expect(result.docs.size).toBeGreaterThanOrEqual(3);
+    // Total should be at least: 1 Feature Goal + 1 Epic = 2 (no Combined for subprocesses)
+    expect(result.docs.size).toBeGreaterThanOrEqual(2);
     
     // Verify Feature Goal is for the application process
     const applicationFeatureGoal = featureGoalKeys.find(key => 

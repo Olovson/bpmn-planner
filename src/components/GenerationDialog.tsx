@@ -192,7 +192,12 @@ export function GenerationDialog({
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">Dokumentation</span>
                           <span className="font-medium">
-                            {progress.docs.completed}/{progress.docs.total} noder
+                            {progress.docs.completed}/{Math.max(progress.docs.total, progress.docs.completed)} noder
+                            {progress.docs.total > 0 && (
+                              <span className="text-muted-foreground ml-1">
+                                ({Math.round((progress.docs.completed / Math.max(progress.docs.total, progress.docs.completed)) * 100)}%)
+                              </span>
+                            )}
                           </span>
                         </div>
                       )}
@@ -221,14 +226,14 @@ export function GenerationDialog({
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Dokumentation</span>
                         <span className="font-medium">
-                          {progress.docs.completed} av {progress.docs.total} noder
+                          {progress.docs.completed} av {Math.max(progress.docs.total, progress.docs.completed)} noder
                           <span className="text-muted-foreground ml-1">
-                            ({Math.round((progress.docs.completed / progress.docs.total) * 100)}%)
+                            ({Math.round((progress.docs.completed / Math.max(progress.docs.total, progress.docs.completed)) * 100)}%)
                           </span>
                         </span>
                       </div>
                       <Progress
-                        value={(progress.docs.completed / progress.docs.total) * 100}
+                        value={(progress.docs.completed / Math.max(progress.docs.total, progress.docs.completed)) * 100}
                         className="h-2"
                       />
                     </div>

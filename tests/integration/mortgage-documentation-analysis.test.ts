@@ -265,7 +265,7 @@ describe('Mortgage documentation - Expected vs Actual Analysis', () => {
     console.log(`Feature Goals from mortgage.bpmn: ${expectedFeatureGoalsMortgage}`);
     console.log(`Epics from mortgage.bpmn: ${expectedEpicsMortgage}`);
     console.log(`Plus Feature Goals and Epics from ${allSubprocessFiles.length} subprocess files`);
-    console.log(`Plus ${allSubprocessFiles.length + 1} Combined docs (1 per file)`);
+    console.log(`Plus 1 Combined doc (only for root file: mortgage.bpmn, not for subprocesses)`);
     
     // 2. Generate documentation (with full hierarchy)
     const result = await generateAllFromBpmnWithGraph(
@@ -312,7 +312,7 @@ describe('Mortgage documentation - Expected vs Actual Analysis', () => {
     // 5. Assertions - verify we have at least the mortgage.bpmn documentation
     expect(featureGoalKeys.length).toBeGreaterThanOrEqual(expectedFeatureGoalsMortgage);
     expect(epicKeys.length).toBeGreaterThanOrEqual(expectedEpicsMortgage);
-    expect(combinedDocKeys.length).toBe(allSubprocessFiles.length + 1); // One per file
+    expect(combinedDocKeys.length).toBe(1); // Only root file (mortgage.bpmn), not subprocesses
     expect(result.docs.size).toBeGreaterThan(expectedFeatureGoalsMortgage + expectedEpicsMortgage + 1); // More than just mortgage.bpmn
     
     console.log('\n✓ All assertions passed for full hierarchy generation!');

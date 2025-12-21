@@ -50,7 +50,7 @@ describe('Signing documentation - Expected vs Actual Analysis', () => {
     const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + callActivities + embedded subProcesses
     // For isolated generation, only top-level tasks generate Epics (not tasks inside embedded subProcesses)
     const expectedEpics = userTasks.length + serviceTasks.length + businessRuleTasks.length;
-    const expectedCombined = 1;
+    const expectedCombined = 0; // Subprocesser genererar INTE combined docs (bara root-processer)
     const expectedTotal = expectedFeatureGoals + expectedEpics + expectedCombined;
     
     console.log('\n=== Expected Documentation (Isolated Generation) ===');
@@ -136,7 +136,7 @@ describe('Signing documentation - Expected vs Actual Analysis', () => {
     const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + callActivities + embedded subProcesses
     // With hierarchy, we still only get top-level tasks as Epics (tasks inside embedded subProcesses are not separate files)
     const expectedEpics = userTasks.length + serviceTasks.length + businessRuleTasks.length;
-    const expectedCombined = 1;
+    const expectedCombined = 0; // Subprocesser genererar INTE combined docs (bara root-processer)
     const expectedTotal = expectedFeatureGoals + expectedEpics + expectedCombined;
     
     console.log('\n=== Expected Documentation (With Hierarchy) ===');

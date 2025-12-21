@@ -101,12 +101,12 @@ describe('Generation Order Scenarios', () => {
       );
       console.log(`Internal data gathering Epics in parent result: ${internalDataGatheringEpics.length}`);
       
-      // Verify: Should have Combined doc for internal-data-gathering
+      // Verify: Should NOT have Combined doc for internal-data-gathering (subprocesses don't get combined docs)
       const internalDataGatheringCombined = parentCombined.filter(key =>
         key.includes('internal-data-gathering')
       );
       console.log(`Internal data gathering Combined docs in parent result: ${internalDataGatheringCombined.length}`);
-      expect(internalDataGatheringCombined.length).toBeGreaterThan(0);
+      expect(internalDataGatheringCombined.length).toBe(0); // Subprocesses don't get combined docs
 
       console.log('\n✅ Scenario 1 passed: Subprocess first, then parent');
     }, 60000);
@@ -356,12 +356,12 @@ describe('Generation Order Scenarios', () => {
       );
       console.log(`Signing Epics: ${signingEpics.length}`);
 
-      // Verify: Should have Combined doc for signing
+      // Verify: Should NOT have Combined doc for signing (subprocesses don't get combined docs)
       const signingCombined = Array.from(result.docs.keys()).filter(key =>
         key.includes('signing') && key.endsWith('.html') && !key.includes('feature-goal') && !key.includes('nodes')
       );
       console.log(`Signing Combined docs: ${signingCombined.length}`);
-      expect(signingCombined.length).toBeGreaterThan(0);
+      expect(signingCombined.length).toBe(0); // Subprocesses don't get combined docs
 
       console.log('\n✅ Recurring subprocess test passed');
     }, 60000);
@@ -479,7 +479,9 @@ describe('Generation Order Scenarios', () => {
         
         console.log(`  ${subprocess}: FG=${hasFeatureGoal}, Combined=${hasCombined}`);
         
-        expect(hasFeatureGoal || hasCombined).toBe(true);
+        // Subprocesses should have Feature Goal, but NOT combined doc
+        expect(hasFeatureGoal).toBe(true);
+        expect(hasCombined).toBe(false); // Subprocesses don't get combined docs
       }
 
       // Verify: Should have Feature Goal for application itself
@@ -488,9 +490,9 @@ describe('Generation Order Scenarios', () => {
       );
       expect(hasApplicationFeatureGoal).toBe(true);
 
-      // Verify: Should have Combined doc for application
+      // Verify: Should NOT have Combined doc for application (it's a subprocess, not root)
       const hasApplicationCombined = combined.some(key => key.includes('application'));
-      expect(hasApplicationCombined).toBe(true);
+      expect(hasApplicationCombined).toBe(false); // Application is a subprocess, not root
 
       console.log('\n✅ All required documentation generated');
     }, 60000);

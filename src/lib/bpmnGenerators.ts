@@ -1308,6 +1308,20 @@ export async function generateAllFromBpmnWithGraph(
     }
     const graph = await buildBpmnProcessGraph(bpmnFileName, graphFileScope, versionHashes);
     const summary = createGraphSummary(graph);
+    
+    // Ladda bpmn-map för att avgöra om en fil är root-process
+    let rootProcessId: string | null = null;
+    try {
+      const { loadBpmnMap } = await import('@/lib/bpmn/bpmnMapLoader');
+      const { loadBpmnMapFromStorage } = await import('@/lib/bpmn/bpmnMapStorage');
+      const bpmnMapResult = await loadBpmnMapFromStorage();
+      if (bpmnMapResult.valid && bpmnMapResult.map) {
+        rootProcessId = bpmnMapResult.map.orchestration?.root_process || null;
+      }
+    } catch (error) {
+      // Om bpmn-map inte kan laddas, använd fallback-logik
+      console.warn('[bpmnGenerators] Could not load bpmn-map.json, using fallback root detection:', error);
+    }
     // OBS: Om nodeFilter finns, betyder det att vi bara vill generera för specifika noder.
     // I så fall, begränsa analyzedFiles till bara den fil som användaren valde,
     // även om useHierarchy = true (hierarki används för kontext, men vi genererar bara för vald fil).
@@ -2216,13 +2230,17 @@ export async function generateAllFromBpmnWithGraph(
         // En fil är en subprocess-fil om:
         // 1. Det finns en callActivity som pekar på den (när hierarki används), ELLER
         // 2. Det finns en process-nod med bpmnFile === file (när filen genereras isolerat)
+        //    OCH filen är INTE root-processen enligt bpmn-map.json
         const hasCallActivityPointingToFile = Array.from(testableNodes.values()).some(
           node => node.type === 'callActivity' && node.subprocessFile === file
         );
         const processNodeForFile = Array.from(graph.allNodes.values()).find(
           node => node.type === 'process' && node.bpmnFile === file
         );
-        const isSubprocessFile = hasCallActivityPointingToFile || !!processNodeForFile;
+        const fileBaseName = file.replace('.bpmn', '');
+        const isRootProcessFromMap = rootProcessId && (fileBaseName === rootProcessId || file === `${rootProcessId}.bpmn`);
+        // En fil är en subprocess-fil om det finns en process-nod OCH filen är INTE root-processen
+        const isSubprocessFile = (hasCallActivityPointingToFile || !!processNodeForFile) && !isRootProcessFromMap;
         
         // Debug logging för household-filen
         if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
@@ -2233,6 +2251,8 @@ export async function generateAllFromBpmnWithGraph(
             processNodeId: processNodeForFile?.id,
             processNodeBpmnFile: processNodeForFile?.bpmnFile,
             isSubprocessFile,
+            rootProcessId,
+            isRootProcessFromMap,
             nodesInFile: nodesInFile.length,
             allProcessNodes: Array.from(graph.allNodes.values())
               .filter(n => n.type === 'process')
@@ -2428,33 +2448,76 @@ export async function generateAllFromBpmnWithGraph(
           }
         }
         
-        const wrappedCombined = insertGenerationMeta(
-          wrapLlmContentAsDocument(combinedBody, `Dokumentation - ${file}`),
-          generationSourceLabel,
-        );
+        // Generera combined file-level documentation ENDAST för root-processer (inte för subprocesser)
+        // Subprocesser har redan Feature Goal-dokumentation som täcker processen
+        // Root-processer behöver combined doc som en samlad översikt över alla noder
+        // En fil är en root-fil om:
+        // 1. Den är den faktiska root-filen i hierarkin (bpmnFileName === file OCH isRootFileGeneration = true), ELLER
+        // 2. Den är root-processen enligt bpmn-map.json (orchestration.root_process)
+        //    Om bpmn-map inte kan laddas, använd fallback: filen är root om den INTE är en subprocess-fil
+        const isRootFile = isRootProcessFromMap || (isRootFileGeneration && file === bpmnFileName) || (!isSubprocessFile && !rootProcessId);
+        
         if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-          console.log(`[bpmnGenerators] ✓ Adding combined file-level doc: ${docFileName} (${result.docs.size} total docs before)`);
+          console.log(`[bpmnGenerators] Combined doc decision:`, {
+            file,
+            isRootProcessFromMap,
+            isRootFileGeneration,
+            bpmnFileName,
+            fileMatchesBpmnFileName: file === bpmnFileName,
+            isSubprocessFile,
+            rootProcessId,
+            isRootFile,
+            combinedBodyLength: combinedBody.trim().length,
+          });
         }
-        result.docs.set(docFileName, wrappedCombined);
-        if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-          console.log(`[bpmnGenerators] Total docs after adding combined: ${result.docs.size}`);
-          console.log(`[bpmnGenerators] All doc keys:`, Array.from(result.docs.keys()));
+        
+        if (isRootFile && combinedBody.trim().length > 0) {
+          const wrappedCombined = insertGenerationMeta(
+            wrapLlmContentAsDocument(combinedBody, `Dokumentation - ${file}`),
+            generationSourceLabel,
+          );
+          if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+            console.log(`[bpmnGenerators] ✓ Adding combined file-level doc for root file: ${docFileName} (${result.docs.size} total docs before)`);
+          }
+          result.docs.set(docFileName, wrappedCombined);
+          if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+            console.log(`[bpmnGenerators] Total docs after adding combined: ${result.docs.size}`);
+            console.log(`[bpmnGenerators] All doc keys:`, Array.from(result.docs.keys()));
+          }
+        } else if (isSubprocessFile && import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+          console.log(`[bpmnGenerators] ⏭️ Skipping combined file-level doc for subprocess: ${file} (Feature Goal already covers the process)`);
         }
       } else {
-        // Om inga noder hittades, skapa en tom dokumentationsfil för att indikera att filen analyserades
-        // Detta säkerställer att filen visas i resultatet även om den inte har några genererbara noder
-        const emptyDoc = insertGenerationMeta(
-          wrapLlmContentAsDocument(
-            `<h1>Dokumentation för ${file}</h1><p>Inga genererbara noder hittades i denna fil.</p>`,
-            `Dokumentation - ${file}`
-          ),
-          generationSourceLabel,
+        // Om inga noder hittades, skapa en tom dokumentationsfil ENDAST för root-processer
+        // Subprocesser ska INTE få tom dokumentation (de har redan Feature Goal)
+        const fileBaseNameForEmpty = file.replace('.bpmn', '');
+        const isRootProcessFromMapForEmpty = rootProcessId && (fileBaseNameForEmpty === rootProcessId || file === `${rootProcessId}.bpmn`);
+        const processNodeForFileForEmpty = Array.from(graph.allNodes.values()).find(
+          node => node.type === 'process' && node.bpmnFile === file
         );
-        result.docs.set(docFileName, emptyDoc);
-        if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
-          console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file}, created empty documentation file`);
-        } else {
-          console.log(`[bpmnGenerators] No nodes found for ${file}, created empty documentation file`);
+        const hasCallActivityPointingToFileForEmpty = Array.from(testableNodes.values()).some(
+          node => node.type === 'callActivity' && node.subprocessFile === file
+        );
+        const isSubprocessFileForEmpty = (hasCallActivityPointingToFileForEmpty || !!processNodeForFileForEmpty) && !isRootProcessFromMapForEmpty;
+        const isRootFileForEmpty = isRootProcessFromMapForEmpty || (isRootFileGeneration && file === bpmnFileName) || (!isSubprocessFileForEmpty && !rootProcessId);
+        
+        if (isRootFileForEmpty) {
+          // Skapa tom dokumentation endast för root-processer
+          const emptyDoc = insertGenerationMeta(
+            wrapLlmContentAsDocument(
+              `<h1>Dokumentation för ${file}</h1><p>Inga genererbara noder hittades i denna fil.</p>`,
+              `Dokumentation - ${file}`
+            ),
+            generationSourceLabel,
+          );
+          result.docs.set(docFileName, emptyDoc);
+          if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+            console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file}, created empty documentation file`);
+          } else {
+            console.log(`[bpmnGenerators] No nodes found for ${file}, created empty documentation file`);
+          }
+        } else if (import.meta.env.DEV && file === 'mortgage-se-household.bpmn') {
+          console.log(`[bpmnGenerators] ⏭️ Skipping empty doc for subprocess: ${file} (no nodes found, but subprocesses don't need empty docs)`);
         }
       }
     }

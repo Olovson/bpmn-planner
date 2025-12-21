@@ -68,7 +68,7 @@ describe('Household Generation Analysis', () => {
     const totalFeatureGoalNodes = callActivities.length + embeddedSubProcesses.length;
     const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + callActivities + embedded subProcesses
     const expectedEpics = userTasks.length + serviceTasks.length + businessRuleTasks.length;
-    const expectedCombined = 1;
+    const expectedCombined = 0; // Subprocesser genererar INTE combined docs (bara root-processer)
     const expectedTotal = expectedFeatureGoals + expectedEpics + expectedCombined;
 
     console.log('\n=== Expected vs Actual ===');
@@ -124,7 +124,8 @@ describe('Household Generation Analysis', () => {
     // Verify household documentation exists
     expect(householdFeatureGoals.length).toBeGreaterThan(0);
     expect(householdEpics.length).toBeGreaterThan(0);
-    expect(householdCombined.length).toBeGreaterThan(0);
+    // Subprocesser genererar INTE combined docs (bara root-processer)
+    expect(householdCombined.length).toBe(0);
 
     console.log('\n✅ Hierarchy generation analysis complete');
   }, 30000);
@@ -229,7 +230,8 @@ describe('Household Generation Analysis', () => {
     expect(allHouseholdDocKeys.size).toBeGreaterThan(0);
     expect(featureGoals.length).toBeGreaterThan(0);
     expect(epics.length).toBeGreaterThan(0);
-    expect(combined.length).toBeGreaterThan(0);
+    // Subprocesses don't get combined docs (only root processes)
+    expect(combined.length).toBe(0);
 
     console.log('\n✅ Generation count analysis complete');
   }, 90000);

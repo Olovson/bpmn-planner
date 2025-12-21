@@ -54,7 +54,10 @@ function convertProcessTreeNode(node: NewProcessTreeNode): LegacyProcessTreeNode
   };
 }
 
-async function buildClientProcessTree(rootFile: string): Promise<LegacyProcessTreeNode | null> {
+async function buildClientProcessTree(
+  rootFile: string,
+  getVersionHashForFile?: (fileName: string) => Promise<string | null>
+): Promise<LegacyProcessTreeNode | null> {
   const { data: bpmnFiles, error } = await supabase
     .from('bpmn_files')
     .select('file_name')
