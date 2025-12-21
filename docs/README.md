@@ -6,7 +6,8 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 ## Viktiga Guider
 
 ### Batch-generering & Overrides
-- **`CODEX_BATCH_AUTO.md`** - Batch-generera dokumentation med Codex för många noder
+- **`BATCH_GENERATION.md`** - Batch-generering av dokumentation (Codex, prompt-versionering, override-filer)
+- **`CODEX_BATCH_AUTO.md`** - Detaljerad guide för Codex batch-generering
 - **`PROMPT_VERSIONING.md`** - Hantera prompt-versioner och re-generera innehåll
 - **`FALLBACK_SAFETY.md`** - Säkerhet och debugging för fallback-resultat
 
@@ -14,13 +15,18 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - **`FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`** - Komplett översikt över appens funktionalitet, logik och arkitektur
 - **`FUNCTIONALITY_ANALYSIS_SUMMARY.md`** - Kort sammanfattning av funktionalitetsanalysen
 - **`DATAFLOW_OVERVIEW.md`** - Dataflödesöversikt med diagram och beskrivningar
+- **`ARCHITECTURE_OVERVIEW.md`** - Översikt över hierarki, dokumentation och LLM
+- **`FEATURES_AND_FUNCTIONALITY.md`** - Detaljerad beskrivning av funktioner och arbetsflöde
+- **`QUICKSTART_AND_DEVELOPMENT.md`** - Snabbstart och utvecklingsguide
 
 ### Testing
 - **`TESTING.md`** - Testguide, best practices och test-isolering
 - **`TEST_OVERVIEW_AND_GAPS.md`** - Översikt över tester, gap-analys och teststrategi (baserat på funktionalitetsöversikten)
 - **`TEST_IMPLEMENTATION_PLAN.md`** - Konkret implementeringsplan för att förbättra testtäckningen
+- **`TEST_EXPORT.md`** - Guide för export-ready test scripts
+- **`TEST_SCENARIOS.md`** - Test-scenarion och design-scenarion
 
-### Arkitektur
+### Arkitektur (Detaljerad)
 - **`bpmn-hierarchy-architecture.md`**  
   Detaljerad arkitektur‑ och implementationsbeskrivning av hur vi bygger BPMN‑hierarkin:
   - parser → meta → processdefinitioner → hierarki → processgraf,
@@ -44,12 +50,9 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
   - implementation av Gantt-chart för visualisering av subprocesser,
   - redigering av start/end datum baserat på orderIndex.
 
+- **`JIRA_NAMING.md`** - Jira-namngivning (namngivningsregler, exempel, implementation)
 - `JIRA_NAMING_UPDATE_SUMMARY.md` & `JIRA_NAMING_CONSOLIDATION_COMPLETE.md`  
-  Dokumentation för Jira-namngivning:
-  - namngivningsregler för feature goals (callActivity) och epics (tasks),
-  - top-level subprocess-baserad namngivning för feature goals,
-  - path-baserad namngivning för epics (endast callActivity-noder i pathen),
-  - konsolidering av namngivningslogik över hela applikationen.
+  Historisk dokumentation för Jira-namngivning (se `JIRA_NAMING.md` för aktuell info)
 
 - `confluence/`  
   Confluence‑orienterad dokumentation och mallar:
@@ -95,25 +98,14 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - Du ska **skriva/uppdatera Confluence‑sidor** → använd `confluence/template.md` och `confluence/README.md`.
 - Du ska **förstå varför hierarkin infördes** → läs `confluence/REFACTORING_SUMMARY.md`.
 
-## Praktiska npm‑kommandon (snabböversikt)
+## Praktiska npm‑kommandon
 
-För dagligt arbete räcker det i princip med dessa:
+> 📋 **För komplett lista med alla kommandon och detaljerad guide, se [`QUICKSTART_AND_DEVELOPMENT.md`](./QUICKSTART_AND_DEVELOPMENT.md)**
 
-- **Utveckling & bygg**  
-  - `npm run dev` – startar Vite‑devservern.  
-  - `npm run build` – bygger produktion.  
-  - `npm run preview` – testar byggd version lokalt.
-
-- **Tester (Vitest)**  
-  - `npm test` – kör alla Vitest‑tester (unit + integration).  
-  - `npm run test:watch` – Vitest i watch‑läge.  
-  - `npm run test:llm:smoke` – minimal smoke‑test mot LLM (cloud‑läge).
-
-- **Playwright / E2E**  
-  - `npx playwright test` – kör alla Playwright‑tester i `tests/playwright-e2e/`.  
-  - `npx playwright test tests/playwright-e2e/scenarios/happy-path/mortgage-credit-decision-happy.spec.ts`  
-    – endast mortgage credit decision happy‑path (pilot).
-
-Övriga skript i `package.json` är mer avancerade/engångsverktyg. De finns kvar för behovsanvändning,
-men behövs normalt inte i det dagliga flödet.
+**Snabböversikt:**
+- `npm run dev` – startar Vite‑devservern
+- `npm run start:supabase` – starta Supabase (guidad)
+- `npm test` – kör alla Vitest‑tester
+- `npx playwright test` – kör Playwright E2E-tester
+- `npm run print:bpmn-tree` – exportera BPMN-träd
 
