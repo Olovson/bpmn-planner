@@ -1303,10 +1303,40 @@ export async function generateAllFromBpmnWithGraph(
     }
     const graph = await buildBpmnProcessGraph(bpmnFileName, graphFileScope, versionHashes);
     const summary = createGraphSummary(graph);
-    const analyzedFiles =
-      useHierarchy && summary.filesIncluded.length > 0
-        ? summary.filesIncluded
-        : [bpmnFileName];
+    // OBS: Om nodeFilter finns, betyder det att vi bara vill generera för specifika noder.
+    // I så fall, begränsa analyzedFiles till bara den fil som användaren valde,
+    // även om useHierarchy = true (hierarki används för kontext, men vi genererar bara för vald fil).
+    // VIKTIGT: analyzedFiles bestämmer vilka filer som får dokumentation genererad.
+    // Om useHierarchy = true, används hierarkin för att bygga graf med kontext,
+    // men dokumentation ska bara genereras för den valda filen (bpmnFileName),
+    // inte för alla filer i hierarkin.
+    // 
+    // Undantag: Om nodeFilter saknas OCH useHierarchy = true OCH bpmnFileName är root-fil,
+    // då kan vi generera för alla filer i hierarkin (fullständig generering).
+    // 
+    // För subprocesser (t.ex. Household): generera BARA för subprocess-filen,
+    // även om parent-filen inkluderas i grafen för kontext.
+    const isRootFileGeneration = useHierarchy && 
+      !nodeFilter && 
+      summary.filesIncluded.length > 0 &&
+      summary.filesIncluded[0] === bpmnFileName; // Första filen i hierarkin är root
+    
+    const analyzedFiles = isRootFileGeneration
+      ? summary.filesIncluded // Fullständig generering för hela hierarkin (root-fil)
+      : [bpmnFileName]; // Generera bara för vald fil (hierarki används bara för kontext)
+    
+    // Debug-logging för att se vilka filer som genereras
+    if (import.meta.env.DEV) {
+      console.log(`[bpmnGenerators] Generation scope:`, {
+        bpmnFileName,
+        useHierarchy,
+        nodeFilter: !!nodeFilter,
+        isRootFileGeneration,
+        graphFileScope: graphFileScope.slice(0, 5), // Visa första 5 för att inte spamma
+        summaryFilesIncluded: summary.filesIncluded,
+        analyzedFiles,
+      });
+    }
     
     // Logga varning om hierarki används men inga filer hittades
     if (useHierarchy && summary.filesIncluded.length === 0) {
@@ -1328,8 +1358,20 @@ export async function generateAllFromBpmnWithGraph(
       hierarchyDepth: summary.hierarchyDepth,
     });
     const testableNodes = getTestableNodes(graph);
+    
+    // Filtrera testableNodes till bara de som ska genereras (baserat på analyzedFiles)
+    // Detta säkerställer att progress-räkningen matchar faktiskt antal noder som genereras
+    const nodesToGenerate = testableNodes.filter(node => {
+      // Om nodeFilter finns, använd den först
+      if (nodeFilter && !nodeFilter(node)) {
+        return false;
+      }
+      // Annars, inkludera bara noder från analyzedFiles
+      return analyzedFiles.includes(node.bpmnFile);
+    });
 
     // Beräkna depth för varje nod (för hierarkisk generering: leaf nodes först)
+    // OBS: Använd nodesToGenerate (filtrerade noder) för depth-beräkning
     const nodeDepthMap = new Map<string, number>();
     const calculateNodeDepth = (node: BpmnProcessNode, visited = new Set<string>()): number => {
       if (visited.has(node.id)) return 0; // Avoid cycles
@@ -1348,8 +1390,8 @@ export async function generateAllFromBpmnWithGraph(
       return depth;
     };
     
-    // Beräkna depth för alla noder
-    for (const node of testableNodes) {
+    // Beräkna depth för alla noder som ska genereras
+    for (const node of nodesToGenerate) {
       if (!nodeDepthMap.has(node.id)) {
         calculateNodeDepth(node);
       }
@@ -1445,13 +1487,15 @@ export async function generateAllFromBpmnWithGraph(
         }
       }
     }
-    await reportProgress('node-analysis:complete', 'Nodanalyser klara', `${testableNodes.length} noder`);
+    // Använd nodesToGenerate.length för att visa korrekt antal noder som ska genereras
+    await reportProgress('node-analysis:complete', 'Nodanalyser klara', `${nodesToGenerate.length} noder`);
 
     // Seed node_planned_scenarios med bas-scenarion för Lokal fallback
     // OBS: Dessa är endast fallback-scenarion. Nya scenarion genereras från BPMN-filerna
     // via LLM eller från dokumentationen, och prioriteras över dessa.
+    // OBS: Använd nodesToGenerate (filtrerade noder) för att bara skapa scenarion för noder som genereras
     try {
-      const rows = createPlannedScenariosFromGraph(testableNodes);
+      const rows = createPlannedScenariosFromGraph(nodesToGenerate);
       // Lägg till i map för fallback, men prioritera inte dessa över LLM-genererade
       hydrateScenarioMapFromRows(rows);
       // Spara endast om det inte redan finns scenarion i databasen (för att inte skriva över manuellt skapade)
@@ -1466,12 +1510,22 @@ export async function generateAllFromBpmnWithGraph(
       );
     }
 
+    // Skicka total:init med korrekt antal filer och noder för progress-räkning
+    // OBS: Använd nodesToGenerate.length (filtrerade noder) för korrekt progress-räkning
+    await reportProgress(
+      'total:init',
+      'Initierar generering',
+      JSON.stringify({
+        files: analyzedFiles.length,
+        nodes: nodesToGenerate.length, // Bara noder som faktiskt ska genereras
+      }),
+    );
+
     // Generera dokumentation per fil (inte per element)
     // STRATEGI: Två-pass generering för bättre kontext
     // Pass 1: Leaf nodes först (högst depth) - genererar dokumentation för epics/tasks
     // Pass 2: Parent nodes (lägst depth) - genererar Feature Goals med kunskap om child epics
-    // NOTE: Dokumentation använder fortfarande testableNodes från grafen för LLM-generering,
-    // men ProcessTree kan användas för strukturell dokumentation om önskat
+    // NOTE: Dokumentation använder nodesToGenerate (filtrerade noder) för korrekt progress-räkning
     await reportProgress('docgen:start', 'Genererar dokumentation', `${analyzedFiles.length} filer`);
     const buildMatchWarning = (node: typeof testableNodes[number]) => {
       const reasons: string[] = [];
@@ -1508,7 +1562,8 @@ export async function generateAllFromBpmnWithGraph(
       const docFileName = file.replace('.bpmn', '.html');
       
       // Samla alla noder från denna fil för dokumentation
-      const nodesInFile = testableNodes.filter(node => node.bpmnFile === file);
+      // OBS: Använd nodesToGenerate (redan filtrerade) istället för testableNodes
+      const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
       
       if (nodesInFile.length > 0) {
         // Sortera noder primärt efter depth (hierarkisk ordning: leaf nodes först)

@@ -2095,13 +2095,20 @@ export default function BpmnFileManager() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Nu visa resultatet - detta kommer automatiskt växla dialogen till result-vyn
-      // Sätt result FÖRE vi rensar progress för att säkerställa att växlingen fungerar
+      // Sätt result och rensa progress samtidigt för att säkerställa korrekt växling
       hasGenerationResultRef.current = true; // Markera att result finns
-      setGenerationDialogResult(dialogResult);
-      // Använd en kort delay för att säkerställa att React hinner uppdatera med result
-      // innan progress rensas, så att dialogen växlar korrekt
-      await new Promise(resolve => setTimeout(resolve, 50));
-      setGenerationProgress(null); // Clear progress to show result
+      
+      // Använd React 18 flushSync för att tvinga omedelbar uppdatering
+      // Detta säkerställer att dialogen växlar till result-vyn omedelbart
+      const { flushSync } = await import('react-dom');
+      flushSync(() => {
+        setGenerationDialogResult(dialogResult);
+        setGenerationProgress(null); // Clear progress to show result
+      });
+      
+      // Vänta lite extra för att säkerställa att UI hinner uppdatera och visa result-vyn
+      // innan vi fortsätter med resten av async-operationerna
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       if (showReport) {
         setGenerationResult(generationResult);
