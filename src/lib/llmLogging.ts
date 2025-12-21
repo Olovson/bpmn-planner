@@ -44,9 +44,8 @@ const recentLlmEvents: LlmLogEvent[] = [];
 export function getProviderLabel(
   finalProvider: LlmProvider,
   fallbackUsed: boolean
-): 'Claude' | 'Ollama' | 'Local-fallback' {
+): 'Claude' | 'Ollama' {
   if (finalProvider === 'cloud') return 'Claude';
-  if (fallbackUsed) return 'Local-fallback';
   return 'Ollama';
 }
 

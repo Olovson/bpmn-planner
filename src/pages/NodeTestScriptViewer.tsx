@@ -130,11 +130,6 @@ const NodeTestScriptViewer = () => {
   const [loadingScript, setLoadingScript] = useState(true);
   const blobUrlRef = useRef<string | null>(null);
 
-  const hasLocalVariant = useMemo(
-    () => normalizedVariants.some((v) => v.mode === 'local'),
-    [normalizedVariants],
-  );
-
   const hasFullVariant = useMemo(
     () => normalizedVariants.some((v) => v.mode === 'full'),
     [normalizedVariants],
@@ -143,15 +138,11 @@ const NodeTestScriptViewer = () => {
   useEffect(() => {
     if (!normalizedVariants.length) return;
 
-    // Om bara en variant finns, se till att vi visar den som aktiv.
-    if (!hasLocalVariant && hasFullVariant && activeMode !== 'full') {
+    // Always use 'full' mode (LLM-generated tests)
+    if (hasFullVariant && activeMode !== 'full') {
       setActiveMode('full');
     }
-    if (hasLocalVariant && !hasFullVariant && activeMode !== 'local') {
-      setActiveMode('local');
-    }
-    // Om båda finns behåller vi explicit valt läge (default är 'local').
-  }, [normalizedVariants, hasLocalVariant, hasFullVariant, activeMode]);
+  }, [normalizedVariants, hasFullVariant, activeMode]);
 
   const activeVariant = useMemo(() => {
     if (normalizedVariants.length === 0) return null;

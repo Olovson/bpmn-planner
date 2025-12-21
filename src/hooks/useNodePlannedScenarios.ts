@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { TestScenario } from '@/data/testMapping';
 
-export type ScenarioProvider = 'local-fallback' | 'claude' | 'chatgpt' | 'ollama';
+export type ScenarioProvider = 'claude' | 'chatgpt' | 'ollama';
 
 export interface ProviderScenarioSet {
   provider: ScenarioProvider;

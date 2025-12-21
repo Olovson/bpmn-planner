@@ -15,7 +15,7 @@ export interface NodeTestCase {
   bpmnFile?: string;
   bpmnElementId?: string;
   variant?: NodeTestVariant;
-   scriptProvider?: 'local-fallback' | 'chatgpt' | 'ollama' | null;
+   scriptProvider?: 'chatgpt' | 'ollama' | 'claude' | null;
 }
 
 export interface NodeInfo {
@@ -31,7 +31,7 @@ interface UseNodeTestsParams {
   elementId?: string;
 }
 
-type NodeTestVariant = 'local-fallback' | 'llm' | 'unknown';
+type NodeTestVariant = 'llm' | 'unknown';
 
 // Alias-mappning mellan BPMN-element-id och testMapping-nycklar.
 // Används när nodens id inte matchar direkt mot testMapping men vi vet
@@ -95,19 +95,7 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
       plannedSets.push(v);
     }
 
-    // 2) Fallback: om vi har testMapping, se till att local-fallback alltid finns
-    if (template) {
-      const hasLocalFallback = plannedSets.some(
-        (v) => v.provider === 'local-fallback',
-      );
-      if (!hasLocalFallback && template.scenarios?.length) {
-        plannedSets.push({
-          provider: 'local-fallback',
-          origin: 'design',
-          scenarios: template.scenarios,
-        });
-      }
-    }
+    // Note: local-fallback provider is no longer supported
     
     if (dbTests.length > 0) {
       const firstTest = dbTests[0];
@@ -123,9 +111,7 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
         let variant: NodeTestVariant = 'unknown';
 
         // Försök först använda script_provider/script_mode från test_results
-        if (test.script_provider === 'local-fallback') {
-          variant = 'local-fallback';
-        } else if (test.script_provider === 'chatgpt' || test.script_provider === 'ollama') {
+        if (test.script_provider === 'chatgpt' || test.script_provider === 'ollama' || test.script_provider === 'claude') {
           variant = 'llm';
         } else {
           // Fallback till node_test_links.mode -> variantByTestFile
@@ -141,7 +127,7 @@ export const useNodeTests = ({ nodeId, bpmnFile, elementId }: UseNodeTestsParams
           bpmnElementId: effectiveNodeId,
           bpmnFile: bpmnFile,
           variant,
-          scriptProvider: (test.script_provider as 'local-fallback' | 'chatgpt' | 'ollama' | null) ?? null,
+          scriptProvider: (test.script_provider as 'chatgpt' | 'ollama' | 'claude' | null) ?? null,
         };
       });
 

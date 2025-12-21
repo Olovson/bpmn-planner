@@ -384,10 +384,9 @@ export async function fetchFeatureGoalHtml(
 
   // Try Supabase Storage
   try {
-    // Try different possible paths
+    // Try different possible paths (Claude-only)
     const possiblePaths = [
       `docs/claude/${fileKey}`,
-      `docs/ollama/${fileKey}`,
       `docs/${fileKey}`,
       fileKey,
     ];

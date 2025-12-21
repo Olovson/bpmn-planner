@@ -57,7 +57,7 @@ export const useGlobalPlannedScenarios = () => {
 
         const provider =
           ((row as any).provider as ScenarioProvider | null) ??
-          'local-fallback';
+          'claude';
         const origin =
           ((row as any).origin as 'design' | 'llm-doc' | 'spec-parsed' | null) ??
           'design';

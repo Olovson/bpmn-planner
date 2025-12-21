@@ -825,12 +825,11 @@ export interface GenerationResult {
   };
 }
 
-type PlannedScenarioProvider = 'local-fallback' | 'claude' | 'chatgpt' | 'ollama';
+type PlannedScenarioProvider = 'claude' | 'chatgpt' | 'ollama';
 type PlannedScenarioMap = Map<string, Map<PlannedScenarioProvider, TestScenario[]>>;
 const FALLBACK_PROVIDER_ORDER: PlannedScenarioProvider[] = [
   'claude',
   'chatgpt', // Legacy
-  'local-fallback',
   'ollama',
 ];
 const mapTestScenarioToSkeleton = (scenario: TestScenario) => ({
@@ -846,8 +845,7 @@ function mapProviderToScenarioProvider(
   fallbackUsed: boolean,
 ): PlannedScenarioProvider | null {
   if (provider === 'cloud') return 'claude';
-  if (provider === 'local' && !fallbackUsed) return 'ollama';
-  if (provider === 'local' && fallbackUsed) return 'local-fallback';
+  if (provider === 'local') return 'ollama';
   return null;
 }
 
@@ -1377,6 +1375,12 @@ export async function generateAllFromBpmnWithGraph(
    * If not provided, will be inferred from graphFileScope length.
    */
   isActualRootFile?: boolean,
+  /**
+   * Optional flag to force regeneration even if documentation already exists in Storage.
+   * When true, Storage existence checks are bypassed and all nodes matching nodeFilter are regenerated.
+   * Default: false (respects Storage existence checks).
+   */
+  forceRegenerate?: boolean,
 ): Promise<GenerationResult> {
   const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
     if (progressCallback) {
@@ -1662,7 +1666,7 @@ export async function generateAllFromBpmnWithGraph(
     // Använd nodesToGenerate.length för att visa korrekt antal noder som ska genereras
     await reportProgress('node-analysis:complete', 'Nodanalyser klara', `${nodesToGenerate.length} noder`);
 
-    // Seed node_planned_scenarios med bas-scenarion för Lokal fallback
+    // Seed node_planned_scenarios med bas-scenarion (legacy - används inte längre)
     // OBS: Dessa är endast fallback-scenarion. Nya scenarion genereras från BPMN-filerna
     // via LLM eller från dokumentationen, och prioriteras över dessa.
     // OBS: Använd nodesToGenerate (filtrerade noder) för att bara skapa scenarion för noder som genereras
@@ -1675,7 +1679,7 @@ export async function generateAllFromBpmnWithGraph(
       await savePlannedScenarios(rows, 'bpmnGenerators');
     } catch (e) {
       console.error(
-        '[bpmnGenerators] Failed to seed local-fallback scenarios from hierarchy',
+        '[bpmnGenerators] Failed to seed planned scenarios from hierarchy',
         e,
         'Testable nodes:',
         testableNodes.length,
@@ -1788,7 +1792,10 @@ export async function generateAllFromBpmnWithGraph(
           if (!node.element || !node.bpmnElementId) continue;
           
           // Apply node filter if provided (for selective regeneration based on diff)
-          if (nodeFilter && !nodeFilter(node)) {
+          // NOTE: nodeFilter result is also checked in Storage existence check below
+          // If nodeFilter says to generate, we override Storage check
+          const shouldGenerateByFilter = nodeFilter ? nodeFilter(node) : true;
+          if (!shouldGenerateByFilter) {
             continue;
           }
           
@@ -1869,18 +1876,42 @@ export async function generateAllFromBpmnWithGraph(
           // VIKTIGT: Kolla om dokumentation redan finns i Storage för leaf nodes (tasks/epics)
           // Om den finns, hoppa över regenerering för att spara tid och pengar
           // Men för callActivities genererar vi alltid (de behöver uppdateras när subprocesser ändras)
-          if (node.type !== 'callActivity') {
+          // 
+          // Storage-check respekterar:
+          // 1. forceRegenerate flag (om true, hoppa över check)
+          // 2. nodeFilter resultat (om nodeFilter säger generera, generera även om fil finns)
+          if (node.type !== 'callActivity' && !forceRegenerate) {
             const versionHash = versionHashes.get(node.bpmnFile) || null;
+            // Claude-only: Always use 'cloud' provider (maps to 'claude' in storage paths)
             const { modePath } = buildDocStoragePaths(
               docFileKey,
-              generationSourceLabel === 'local-fallback' ? 'local' : generationSourceLabel?.includes('slow') ? 'slow' : null,
-              generationSourceLabel?.includes('chatgpt') || generationSourceLabel?.includes('claude') ? 'cloud' : generationSourceLabel?.includes('ollama') ? 'local' : 'fallback',
+              generationSourceLabel?.includes('slow') ? 'slow' : null,
+              'cloud', // Claude-only: always use cloud provider
               node.bpmnFile,
               versionHash
             );
             
-            const docExists = await storageFileExists(modePath);
-            if (docExists) {
+            // Check both versioned and non-versioned paths for better reliability
+            const versionedExists = versionHash ? await storageFileExists(modePath) : false;
+            let docExists = versionedExists;
+            
+            // If versioned path doesn't exist, check non-versioned path
+            if (!versionedExists && versionHash) {
+              const { modePath: nonVersionedPath } = buildDocStoragePaths(
+                docFileKey,
+                generationSourceLabel?.includes('slow') ? 'slow' : null,
+                'cloud',
+                node.bpmnFile,
+                null // No version hash
+              );
+              docExists = await storageFileExists(nonVersionedPath);
+            } else if (!versionHash) {
+              docExists = await storageFileExists(modePath);
+            }
+            
+            // If nodeFilter says to generate this node, override Storage check
+            // (shouldGenerateByFilter is already computed above)
+            if (docExists && !shouldGenerateByFilter) {
               if (import.meta.env.DEV) {
                 console.log(`[bpmnGenerators] ⏭️  Skipping regeneration for ${node.bpmnElementId} (${node.type}) - documentation already exists in Storage: ${modePath}`);
               }
@@ -2124,32 +2155,24 @@ export async function generateAllFromBpmnWithGraph(
                 );
               }
               // Skapa Feature Goal-sida för callActivity
-              // STRATEGI: 
-              // - Om subprocess-filen redan genererat Feature Goal → skapa instans-specifik sida med parent i namnet
-              // - Om subprocess-filen inte genererat än → skapa base Feature Goal-sida
-              //   (subprocess-filen kommer senare skapa sin egen sida utan parent)
+              // VIKTIGT: För call activities använder vi ALLTID hierarchical naming (med parent)
+              // eftersom filen alltid sparas under parent-filens version hash.
+              // Subprocess-filen kommer senare generera sin egen Feature Goal-sida (utan parent)
+              // när subprocess-filen genereras separat.
               const bpmnFileForFeatureGoal = node.type === 'callActivity' && node.subprocessFile
                 ? node.subprocessFile
                 : node.bpmnFile;
               
-              // Kolla om subprocess-filen redan genererat Feature Goal-sida
-              const subprocessFeatureDocPath = node.subprocessFile
-                ? getFeatureGoalDocFileKey(
-                    node.subprocessFile,
-                    node.bpmnElementId,
-                    undefined, // Subprocess-filens egen sida har ingen parent
-                  )
-                : null;
-              const subprocessPageExists = subprocessFeatureDocPath ? result.docs.has(subprocessFeatureDocPath) : false;
-              
               // Use hierarchical naming: parent BPMN file (where call activity is defined) + elementId
               // This matches Jira naming (e.g., "Application - Internal data gathering")
+              // VIKTIGT: För call activities använder vi ALLTID parent för hierarchical naming,
+              // eftersom filen sparas under parent-filens version hash i storage.
               const parentBpmnFile = node.type === 'callActivity' ? node.bpmnFile : undefined;
               const featureDocPath = getFeatureGoalDocFileKey(
                 bpmnFileForFeatureGoal,
                 node.bpmnElementId,
                 undefined, // no version suffix
-                subprocessPageExists ? parentBpmnFile : undefined, // Inkludera parent endast om subprocess-sida redan finns
+                parentBpmnFile, // ALLTID använd parent för call activities (hierarchical naming)
               );
               
               // Skapa Feature Goal-sida endast om den inte redan finns (förhindra dubbelgenerering)

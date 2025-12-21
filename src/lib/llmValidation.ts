@@ -210,14 +210,13 @@ export function validateFeatureGoalJson(
   const obj = json as Record<string, unknown>;
 
   // Enligt prompten är dessa obligatoriska:
-  // summary, prerequisites, flowSteps, userStories, implementationNotes
+  // summary, prerequisites, flowSteps, userStories
   // dependencies är optional
   const requiredFields: Array<keyof FeatureGoalDocModel> = [
     'summary',
     'prerequisites',
     'flowSteps',
     'userStories',
-    'implementationNotes',
   ];
 
   for (const field of requiredFields) {
@@ -291,18 +290,6 @@ export function validateFeatureGoalJson(
     }
   }
 
-  // Validera implementationNotes
-  if ('implementationNotes' in obj) {
-    if (!Array.isArray(obj.implementationNotes)) {
-      errors.push('Field "implementationNotes" must be an array of strings (3-5 full sentences).');
-    } else {
-      obj.implementationNotes.forEach((item, index) => {
-        if (typeof item !== 'string') {
-          errors.push(`Field "implementationNotes[${index}]" must be a string (full sentence).`);
-        }
-      });
-    }
-  }
 
   return {
     valid: errors.length === 0,
@@ -331,14 +318,13 @@ export function validateEpicJson(json: unknown, provider: LlmProvider): Validati
   const obj = json as Record<string, unknown>;
 
   // EpicDocModel - enligt prompten (v1.4.0) är dessa obligatoriska:
-  // summary, prerequisites, flowSteps, userStories, implementationNotes
+  // summary, prerequisites, flowSteps, userStories
   // interactions är valfritt (endast för User Tasks)
   const requiredFields = [
     'summary',
     'prerequisites',
     'flowSteps',
     'userStories',
-    'implementationNotes',
   ];
 
   for (const field of requiredFields) {
@@ -401,17 +387,6 @@ export function validateEpicJson(json: unknown, provider: LlmProvider): Validati
     }
   }
 
-  if ('implementationNotes' in obj) {
-    if (!Array.isArray(obj.implementationNotes)) {
-      errors.push('Field "implementationNotes" must be an array of strings (3-5 items).');
-    } else {
-      obj.implementationNotes.forEach((item, index) => {
-        if (typeof item !== 'string') {
-          errors.push(`Field "implementationNotes[${index}]" must be a string.`);
-        }
-      });
-    }
-  }
 
   // interactions är valfritt - varning om det saknas men inget fel
   if (!('interactions' in obj)) {

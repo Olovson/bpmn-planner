@@ -1,4 +1,4 @@
-<!-- PROMPT VERSION: 1.9.0 -->
+<!-- PROMPT VERSION: 1.11.0 -->
 Du är en erfaren processanalytiker och kreditexpert inom nordiska banker.  
 Du ska generera **ett enda JSON-objekt** på **svenska** som antingen beskriver ett **Feature Goal** eller ett **Epic** beroende på vilket `type` som anges i inputen.
 
@@ -68,7 +68,7 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 
 - **summary**: Aggregera vad child nodes gör för att skapa en mer precis sammanfattning. Om child nodes t.ex. automatiskt hämtar data och validerar den, kan sammanfattningen beskriva "automatisk datainsamling och validering" istället för generiska termer. **Viktigt**: Om det finns många child nodes, fokusera på huvudfunktionalitet och gruppera liknande funktionalitet. T.ex. om det finns flera Service Tasks som hämtar data, aggregera till "Systemet hämtar data från externa källor" istället för att lista alla.
 
-- **userStories**: Identifiera user stories baserat på vem som drar nytta av Feature Goalet. Om child nodes automatiskt hämtar data, kan en user story vara för "System" som vill automatisera datainsamling. Om child nodes validerar data, kan en user story vara för "Kreditevaluator" som vill få kvalitetssäkrad data. **Viktigt**: Fokusera på huvudroller och värde, inte alla detaljer.
+- **userStories**: Identifiera user stories baserat på vem som drar nytta av Feature Goalet. **VIKTIGT**: Använd ALDRIG "System" som roll - systemet är verktyget, inte användaren. För automatiserade processer (Service Tasks), tänk på vem som drar nytta av automatiseringen. T.ex. om child nodes automatiskt hämtar data, kan en user story vara för "Handläggare" som vill spara tid genom automatisering. Om child nodes validerar data, kan en user story vara för "Kreditevaluator" som vill få kvalitetssäkrad data. **Viktigt**: Fokusera på huvudroller och värde, inte alla detaljer.
 
 - **flowSteps**: Skapa mer precisa flowSteps som reflekterar det faktiska flödet genom child nodes. Använd child nodes flowSteps som inspiration, men aggregera dem till Feature Goal-nivå. T.ex. om child nodes har steg för "hämta data" och "validera data", kan Feature Goal flowSteps vara "Systemet hämtar och validerar data automatiskt". **Viktigt**: Om det finns många child nodes, aggregera liknande steg. T.ex. om det finns flera Service Tasks som alla hämtar data, aggregera till ett steg "Systemet hämtar data från externa källor" istället för att lista alla.
 
@@ -108,7 +108,7 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 - Använd istället affärstermer som "processen", "systemet", "kunden", "handläggaren", "nästa steg", "data sparas", "ansökan", "beslut".
 - För Service Tasks: Beskriv vad systemet gör automatiskt (t.ex. "Systemet hämtar kunddata från externa källor") istället för tekniska detaljer (t.ex. "ServiceTask anropar API-endpoint").
 - För Business Rule Tasks: Beskriv vad regeln bedömer (t.ex. "Systemet utvärderar kundens kreditvärdighet") istället för tekniska detaljer (t.ex. "DMN-motorn kör beslutslogik").
-- Detta gäller för **alla fält** i dokumentationen: summary, flowSteps, prerequisites, interactions, userStories, dependencies, implementationNotes, etc.
+- Detta gäller för **alla fält** i dokumentationen: summary, flowSteps, prerequisites, interactions, userStories, dependencies, etc.
 
 **Exempel på affärsspråk för olika fält:**
 
@@ -127,7 +127,7 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 ## Format och struktur
 
 **List-fält:**
-- Alla list-fält (t.ex. `flowSteps`, `dependencies`, `prerequisites`, `interactions`, `userStories`, `implementationNotes`, `dataContracts`, `businessRulesPolicy`) ska returneras som **EN LOGISK PUNKT PER ELEMENT** i arrayen.
+- Alla list-fält (t.ex. `flowSteps`, `dependencies`, `prerequisites`, `interactions`, `userStories`, `dataContracts`, `businessRulesPolicy`) ska returneras som **EN LOGISK PUNKT PER ELEMENT** i arrayen.
 - Inga semikolon-separerade texter i samma arrayelement.
 - Skriv aldrig flera logiska punkter i samma sträng – varje punkt ska vara ett separat element i listan.
 - List-fält ska vara **strängar**, inte objekt. Skriv alltid hela raden i strängen, inte som ett inre JSON-objekt.
@@ -156,15 +156,13 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 ## Obligatoriska vs Valfria Fält
 
 **Obligatoriska fält (måste ALLTID inkluderas - dessa fält är kritiska och får INTE saknas):**
-- **Feature Goal**: `summary`, `prerequisites`, `flowSteps`, `dependencies`, `userStories`, `implementationNotes`
-  - ⚠️ **VIKTIGT**: `prerequisites` och `implementationNotes` är OBLIGATORISKA och måste alltid inkluderas, även om de är korta.
+- **Feature Goal**: `summary`, `prerequisites`, `flowSteps`, `dependencies`, `userStories`
+  - ⚠️ **VIKTIGT**: `prerequisites` är OBLIGATORISKT och måste alltid inkluderas, även om det är kort.
   - För `prerequisites`: Minst 2-3 punkter om vad som måste vara klart innan Feature Goalet kan starta.
-  - För `implementationNotes`: Minst 3-5 punkter om tekniska riktlinjer för utvecklare.
   - För `userStories`: Minst 3-6 user stories med acceptanskriterier.
-- **Epic**: `summary`, `prerequisites`, `flowSteps`, `userStories`, `implementationNotes`
-  - ⚠️ **VIKTIGT**: `prerequisites` och `implementationNotes` är OBLIGATORISKA och måste alltid inkluderas, även om de är korta.
+- **Epic**: `summary`, `prerequisites`, `flowSteps`, `userStories`
+  - ⚠️ **VIKTIGT**: `prerequisites` är OBLIGATORISKT och måste alltid inkluderas, även om det är kort.
   - För `prerequisites`: Minst 2-3 punkter om vad som måste vara klart innan epiken kan starta.
-  - För `implementationNotes`: Minst 3-5 punkter om tekniska riktlinjer för utvecklare.
 
 **Valfria fält (inkludera endast om relevant):**
 - **Feature Goal**: Inga valfria fält - alla fält är obligatoriska
@@ -212,21 +210,15 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
     },
     {
       "id": "US-2",
-      "role": "System",
-      "goal": "Automatiskt hantera datainsamling och kvalitetssäkring",
-      "value": "Minska manuellt arbete och säkerställa datakvalitet",
+      "role": "Handläggare",
+      "goal": "Få systemet att automatiskt hantera datainsamling och kvalitetssäkring",
+      "value": "Spara tid genom automatisering så att jag kan fokusera på komplexa bedömningar istället för manuell datainsamling",
       "acceptanceCriteria": [
         "Systemet ska automatiskt initiera datainsamling när en ansökan registreras",
         "Systemet ska hantera fel och timeouts på ett kontrollerat sätt",
         "Systemet ska logga alla viktiga steg för spårbarhet"
       ]
     }
-  ],
-  "implementationNotes": [
-    "API- och integrationskontrakt ska vara dokumenterade per epic och nod.",
-    "Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.",
-    "Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.",
-    "DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation."
   ]
 }
 ```
@@ -278,21 +270,15 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
     },
     {
       "id": "US-3",
-      "role": "System",
-      "goal": "Automatiskt hantera riskbedömning för standardfall",
-      "value": "Minska manuellt arbete och påskynda kreditprocessen",
+      "role": "Kreditevaluator",
+      "goal": "Få automatisk riskbedömning för standardfall",
+      "value": "Kunna fokusera min tid på komplexa bedömningar som kräver expertis istället för rutinuppgifter",
       "acceptanceCriteria": [
         "Systemet ska automatiskt initiera riskbedömning när data är tillgänglig",
         "Systemet ska hantera fel och edge cases på ett kontrollerat sätt",
         "Systemet ska logga alla viktiga steg för spårbarhet"
       ]
     }
-  ],
-  "implementationNotes": [
-    "API- och integrationskontrakt ska vara dokumenterade per epic och nod.",
-    "Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.",
-    "Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.",
-    "DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation."
   ]
 }
 ```
@@ -353,12 +339,6 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
         "Systemet ska logga när informationen fylldes i för spårbarhet"
       ]
     }
-  ],
-  "implementationNotes": [
-    "Formuläret måste vara responsivt och fungera bra på både desktop och mobil enheter.",
-    "All validering måste ske både på klientsidan (för snabb feedback) och serversidan (för säkerhet).",
-    "Utkast måste sparas automatiskt med jämna mellanrum för att undvika dataförlust.",
-    "All användarinteraktion måste loggas för spårbarhet och regelefterlevnad."
   ]
 }
 ```
@@ -394,9 +374,9 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
     },
     {
       "id": "US-2",
-      "role": "System",
-      "goal": "Validera hämtad data",
-      "value": "Säkerställa att data är korrekt innan den används för kreditbeslut",
+      "role": "Handläggare",
+      "goal": "Få validerad och kvalitetssäkrad data automatiskt",
+      "value": "Kunna lita på att datan är korrekt och komplett utan att behöva manuellt kontrollera grundläggande fel",
       "acceptanceCriteria": [
         "Systemet ska validera att hämtad data matchar förväntat format",
         "Systemet ska flagga avvikelser eller saknad data",
@@ -414,12 +394,6 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
         "Systemet ska ge tydlig status om datainsamlingens framsteg"
       ]
     }
-  ],
-  "implementationNotes": [
-    "Systemet behöver hantera stora volymer av externa API-anrop effektivt.",
-    "All kommunikation med externa system måste loggas för spårbarhet och felsökning.",
-    "Felhantering måste vara robust för att hantera timeouts, nätverksfel och ogiltiga svar.",
-    "Data måste valideras innan den sparas för att säkerställa kvalitet."
   ]
 }
 ```
@@ -454,8 +428,7 @@ JSON-modellen är (matchar Epic-strukturen):
       "value": "string",
       "acceptanceCriteria": ["string"]
     }
-  ],
-  "implementationNotes": ["string"]
+  ]
 }
 ```
 
@@ -532,7 +505,7 @@ Exempel (endast format, skriv egen text):
 **Innehåll (`userStories`):**
 - 3–6 objekt med fälten:
   - `id`: kort ID (t.ex. `"US-1"`, `"US-2"`).
-  - `role`: vilken roll som drar nytta av Feature Goalet (t.ex. `"Kund"`, `"Handläggare"`, `"Kreditevaluator"`, `"System"`).
+  - `role`: vilken roll som drar nytta av Feature Goalet (t.ex. `"Kund"`, `"Handläggare"`, `"Kreditevaluator"`, `"Processägare"`). **VIKTIGT**: Använd ALDRIG "System" som roll - systemet är verktyget, inte användaren. För automatiserade processer, tänk på vem som drar nytta (t.ex. "Handläggare" som spara tid, "Kreditevaluator" som får bättre data).
   - `goal`: vad rollen vill uppnå (t.ex. `"Få automatiskt kreditbeslut"`).
   - `value`: varför det är värdefullt (t.ex. `"Kunna få snabbt besked om min ansökan"`).
   - `acceptanceCriteria`: array med 2–4 konkreta krav som måste uppfyllas.
@@ -569,31 +542,6 @@ Exempel (endast format, skriv egen text):
   - ✅ Bra: "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"
   - ❌ Dåligt: "ServiceTask ska anropa validateForm API-endpoint"
 
-### implementationNotes
-
-**Syfte:** Tekniska noteringar om implementation som är relevanta för Feature Goalet.
-
-**⚠️ OBLIGATORISKT FÄLT - Måste alltid inkluderas!**
-
-**Innehåll (`implementationNotes`):**
-- **Minst 3–5 strängar** (helst 4-5), varje en full mening om:
-  - vilka interna tjänster/komponenter Feature Goalet använder (på en generell nivå),
-  - loggning och audit-spår,
-  - felhantering och timeouts,
-  - viktiga kvalitets- eller prestandakrav,
-  - eventuella affärsregler eller policykrav som påverkar implementationen,
-  - validering och datakvalitet,
-  - säkerhet och regelefterlevnad.
-- Om `currentNodeContext.childrenDocumentation` finns, identifiera implementation notes baserat på vad child nodes behöver. Agregera implementation notes från child nodes och ta bort dupliceringar.
-
-**Viktigt:**
-- Skriv på hög nivå, fokusera på principer och mönster, INTE specifika implementationdetaljer.
-- Använd affärsspråk där möjligt, men tekniska termer är okej när de är nödvändiga (t.ex. "API", "loggning", "audit-spår").
-- Fokusera på VAD som behöver implementeras, INTE HUR det ska implementeras.
-- Exempel på bra: "Systemet behöver logga alla kreditbeslut för spårbarhet och regelefterlevnad."
-- Exempel på dåligt: "Implementera en ServiceTask som anropar audit-service med POST-request till /api/audit/log."
-- **Om du inte hittar specifika implementation notes i kontexten, använd generiska men relevanta tekniska riktlinjer baserat på nodens typ och position i processen.**
-
 ---
 
 ## När `type = "Epic"` (EpicDocModel)
@@ -615,8 +563,7 @@ JSON-modellen är:
       "value": "string",
       "acceptanceCriteria": ["string"]
     }
-  ],
-  "implementationNotes": ["string"]
+  ]
 }
 ```
 
@@ -700,7 +647,7 @@ JSON-modellen är:
 **Innehåll (`userStories`):**
 - 3–6 objekt med fälten:
   - `id`: kort ID (t.ex. `"US-1"`, `"US-2"`).
-  - `role`: vilken roll som använder epiken (t.ex. `"Kund"`, `"Handläggare"`, `"System"`).
+  - `role`: vilken roll som använder epiken (t.ex. `"Kund"`, `"Handläggare"`, `"Kreditevaluator"`, `"Processägare"`). **VIKTIGT**: Använd ALDRIG "System" som roll - systemet är verktyget, inte användaren. För Service Tasks, tänk på vem som drar nytta av automatiseringen (t.ex. "Handläggare" som spara tid, "Processägare" som får snabbare processer).
   - `goal`: vad rollen vill uppnå (t.ex. `"Fylla i ansökningsinformation"`).
   - `value`: varför det är värdefullt (t.ex. `"Kunna ansöka om lån på ett enkelt sätt"`).
   - `acceptanceCriteria`: array med 2–4 konkreta krav som måste uppfyllas.
@@ -730,36 +677,12 @@ JSON-modellen är:
 - **För User Tasks**: Fokus på användarens behov. **⚠️ VIKTIGT**: Evaluera själv om det är "Kund" eller "Handläggare" baserat på task-namnet och funktionalitet. Använd `processContext.lane` endast som hint. Se instruktioner ovan om hur man evaluerar detta.
   - **Kund-uppgifter**: Använd roll "Kund" (t.ex. "Register source of equity", "Upload documentation")
   - **Handläggare-uppgifter**: Använd roll "Handläggare" eller "Anställd" (t.ex. "Evaluate application", "Review KYC")
-- **För Service Tasks**: Fokus på vem som drar nytta. Använd roller som "Handläggare", "Systemadministratör", "Processägare" - fokusera på vem som drar nytta
+- **För Service Tasks**: Fokus på vem som drar nytta av automatiseringen. Använd roller som "Handläggare", "Kreditevaluator", "Processägare" - fokusera på vem som drar nytta. **VIKTIGT**: Använd ALDRIG "System" som roll. Tänk istället: "Vem drar nytta av att denna process körs automatiskt?" T.ex. "Handläggare" som spara tid, "Kreditevaluator" som får bättre data, "Processägare" som får snabbare processer.
 - Varje user story ska ha 2–4 acceptanskriterier
 - Acceptanskriterier ska täcka både happy path, edge cases och felhantering
 - **Acceptanskriterier ska vara affärsnära och testbara, INTE tekniska implementationdetaljer**
   - ✅ Bra: "Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas"
   - ❌ Dåligt: "ServiceTask ska anropa validateForm API-endpoint"
-
-### implementationNotes
-
-**Syfte:** Ge tekniska riktlinjer till utvecklare/testare.
-
-**⚠️ OBLIGATORISKT FÄLT - Måste alltid inkluderas!**
-
-**Innehåll (`implementationNotes`):**
-- **Minst 3–5 strängar** (helst 4-5), varje en full mening om:
-  - vilka interna tjänster/komponenter epiken använder (på en generell nivå),
-  - loggning och audit-spår,
-  - felhantering och timeouts,
-  - viktiga kvalitets- eller prestandakrav,
-  - eventuella affärsregler eller policykrav som påverkar implementationen,
-  - validering och datakvalitet,
-  - säkerhet och regelefterlevnad.
-
-**Viktigt:**
-- Skriv på hög nivå, fokusera på principer och mönster, INTE specifika implementationdetaljer.
-- Använd affärsspråk där möjligt, men tekniska termer är okej när de är nödvändiga (t.ex. "API", "loggning", "audit-spår").
-- Fokusera på VAD som behöver implementeras, INTE HUR det ska implementeras.
-- Exempel på bra: "Systemet behöver logga alla kreditbeslut för spårbarhet och regelefterlevnad."
-- Exempel på dåligt: "Implementera en ServiceTask som anropar audit-service med POST-request till /api/audit/log."
-- **Om du inte hittar specifika implementation notes i kontexten, använd generiska men relevanta tekniska riktlinjer baserat på nodens typ (User Task vs Service Task).**
 
 ---
 

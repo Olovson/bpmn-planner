@@ -55,10 +55,9 @@ async function fetchExistingModel(
 ): Promise<FeatureGoalDocModel | null> {
   const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, undefined); // no version suffix
 
-  // Try Supabase Storage
+  // Try Supabase Storage (Claude-only)
   const possiblePaths = [
     `docs/claude/${fileKey}`,
-    `docs/ollama/${fileKey}`,
     `docs/${fileKey}`,
     fileKey,
   ];

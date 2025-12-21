@@ -55,41 +55,47 @@ export function getTestFileUrl(testFilePath: string): string {
 }
 
 export async function storageFileExists(filePath: string): Promise<boolean> {
+  if (!filePath) return false;
+
+  // Use list() method - it's the most reliable and doesn't cause 400 errors
+  // Split path into directory and filename
   const parts = filePath.split('/');
   const fileName = parts.pop();
   const dir = parts.join('/');
+  
   if (!fileName) return false;
 
-  // Try direct download first (more reliable than list + search)
   try {
-    const { data: fileData, error: downloadError } = await supabase.storage
+    // List files in directory and search for the filename
+    // This method doesn't use v1 object API and won't cause 400 errors
+    const { data, error } = await supabase.storage
       .from('bpmn-files')
-      .download(filePath);
-    
-    if (!downloadError && fileData) {
-      return true;
+      .list(dir || undefined, { 
+        search: fileName, 
+        limit: 1 
+      });
+
+    if (error) {
+      // Only log unexpected errors (not expected errors for missing files)
+      if (import.meta.env.DEV) {
+        // List errors are usually about permissions or invalid paths, not 400/404
+        console.debug('[storageFileExists] list error for', filePath, error);
+      }
+      return false;
     }
+
+    const exists = Boolean(data?.find((entry) => entry.name === fileName));
+    if (exists && import.meta.env.DEV) {
+      console.debug(`[storageFileExists] ✓ Found: ${filePath}`);
+    }
+    return exists;
   } catch (error) {
-    // Fall through to list method
-  }
-
-  // Fallback to list method
-  const { data, error } = await supabase.storage
-    .from('bpmn-files')
-    .list(dir || undefined, { search: fileName, limit: 1 });
-
-  if (error) {
+    // Network errors or other exceptions - return false silently
     if (import.meta.env.DEV) {
-      console.debug('[storageFileExists] list error for', filePath, error);
+      console.debug('[storageFileExists] exception for', filePath, error);
     }
     return false;
   }
-
-  const exists = Boolean((data ?? []).find((entry) => entry.name === fileName));
-  if (import.meta.env.DEV && exists) {
-    console.debug(`[storageFileExists] ✓ Found: ${filePath}`);
-  }
-  return exists;
 }
 
 export const getNodeDocStoragePath = (bpmnFile: string, elementId: string) =>
@@ -125,7 +131,9 @@ export function getFeatureGoalDocStoragePaths(
   const bpmnFileBaseName = bpmnFileName.replace('.bpmn', ''); // För non-versioned paths
   const bpmnFileNameForVersionedPath = bpmnFileName; // För versioned paths, behåll .bpmn
   
-  // 1. Hierarkisk naming (med parent) - prioriteras
+  // VIKTIGT: För call activities använder vi ALLTID hierarchical naming (med parent)
+  // eftersom filen alltid sparas under parent-filens version hash.
+  // Legacy naming (utan parent) har tagits bort - alla filer måste genereras om med hierarchical naming.
   if (parentBpmnFile) {
     const hierarchicalKey = getFeatureGoalDocFileKey(
       subprocessBpmnFile,
@@ -136,57 +144,45 @@ export function getFeatureGoalDocStoragePaths(
     
     // Versioned paths (if version hash is provided)
     if (versionHash) {
-      // Versioned paths: docs/{provider}/{bpmnFileName}/{versionHash}/feature-goals/...
+      // Versioned paths: docs/claude/{bpmnFileName}/{versionHash}/feature-goals/...
       // VIKTIGT: Behåll .bpmn i filnamnet eftersom filen är sparad så
       paths.push(`docs/claude/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
-      paths.push(`docs/local/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
-      paths.push(`docs/ollama/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
     }
     
-    // Non-versioned paths (fallback)
+    // Non-versioned paths (fallback when version hash is not available)
     paths.push(`docs/claude/${hierarchicalKey}`);
-    paths.push(`docs/local/${hierarchicalKey}`);
-    paths.push(`docs/ollama/${hierarchicalKey}`);
-    paths.push(`docs/${hierarchicalKey}`);
+  } else {
+    // För process nodes (inte call activities): använd subprocess-filen direkt (ingen parent)
+    // Detta är för när subprocess-filen genereras separat och skapar sin egen Feature Goal-sida
+    const processNodeKey = getFeatureGoalDocFileKey(
+      subprocessBpmnFile,
+      elementId,
+      undefined, // no version suffix
+      undefined, // Ingen parent för process nodes
+    );
+    
+    // Versioned paths (if version hash is provided)
+    if (versionHash) {
+      // For process nodes, use subprocess file for version hash
+      const subprocessBpmnFileName = subprocessBpmnFile.endsWith('.bpmn') 
+        ? subprocessBpmnFile 
+        : `${subprocessBpmnFile}.bpmn`;
+      paths.push(`docs/claude/${subprocessBpmnFileName}/${versionHash}/${processNodeKey}`);
+    }
+    
+    // Non-versioned paths (fallback when version hash is not available)
+    paths.push(`docs/claude/${processNodeKey}`);
   }
-  
-  // 2. Legacy naming (utan parent) - fallback
-  const legacyKey = getFeatureGoalDocFileKey(
-    subprocessBpmnFile,
-    elementId,
-    undefined, // no version suffix
-    undefined, // Ingen parent
-  );
-  
-  // Versioned paths for legacy naming (if version hash is provided)
-  if (versionHash) {
-    // For legacy naming, use subprocess file for version hash
-    const subprocessBpmnFileName = subprocessBpmnFile.endsWith('.bpmn') 
-      ? subprocessBpmnFile 
-      : `${subprocessBpmnFile}.bpmn`;
-    // VIKTIGT: Behåll .bpmn i filnamnet eftersom filen är sparad så
-    paths.push(`docs/claude/${subprocessBpmnFileName}/${versionHash}/${legacyKey}`);
-    paths.push(`docs/local/${subprocessBpmnFileName}/${versionHash}/${legacyKey}`);
-    paths.push(`docs/ollama/${subprocessBpmnFileName}/${versionHash}/${legacyKey}`);
-  }
-  
-  // Non-versioned paths for legacy naming
-  paths.push(`docs/claude/${legacyKey}`);
-  paths.push(`docs/local/${legacyKey}`);
-  paths.push(`docs/ollama/${legacyKey}`);
-  paths.push(`docs/${legacyKey}`);
   
   return paths;
 }
 
 export function getDocVariantPaths(docId: string): {
   claude: string;
-  ollama: string;
 } {
   const safe = docId.replace(/^\/+/, '');
   return {
     claude: `docs/claude/${safe}.html`,
-    ollama: `docs/ollama/${safe}.html`,
   };
 }
 

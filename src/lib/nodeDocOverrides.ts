@@ -30,7 +30,6 @@ export type FeatureGoalDocOverrides = Partial<FeatureGoalDocModel> & {
     flowSteps?: 'replace' | 'extend';
     dependencies?: 'replace' | 'extend';
     userStories?: 'replace' | 'extend';
-    implementationNotes?: 'replace' | 'extend';
   };
 };
 
@@ -43,7 +42,6 @@ export type EpicDocOverrides = Partial<EpicDocModel> & {
     flowSteps?: 'replace' | 'extend';
     interactions?: 'replace' | 'extend';
     userStories?: 'replace' | 'extend';
-    implementationNotes?: 'replace' | 'extend';
   };
 };
 
@@ -253,7 +251,6 @@ export function mergeFeatureGoalOverrides(
     'flowSteps',
     'dependencies',
     'userStories',
-    'implementationNotes',
   ];
 
   for (const field of arrayFields) {
@@ -293,7 +290,6 @@ export function mergeEpicOverrides(
   const arrayFields: Array<keyof EpicDocModel> = [
     'prerequisites',
     'flowSteps',
-    'implementationNotes',
   ];
 
   // Handle userStories separately (it's an array of objects)
@@ -496,7 +492,6 @@ export function validateFeatureGoalModelAfterMerge(
     'prerequisites',
     'flowSteps',
     'userStories',
-    'implementationNotes',
   ];
 
   for (const field of requiredArrayFields) {
@@ -571,7 +566,6 @@ export function validateEpicModelAfterMerge(
     'prerequisites',
     'flowSteps',
     'userStories',
-    'implementationNotes',
   ];
 
   for (const field of requiredArrayFields) {

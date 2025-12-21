@@ -20,7 +20,6 @@ export interface FeatureGoalDocModel {
     value: string;
     acceptanceCriteria: string[]; // 2-4 acceptanskriterier per user story
   }>;
-  implementationNotes: string[];
 }
 
 export type FeatureGoalLlmSections = FeatureGoalDocModel;

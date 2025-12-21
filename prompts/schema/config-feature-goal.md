@@ -15,6 +15,5 @@ Aktuella sektioner:
 - dependencies
 - business-scenarios
 - test-linking
-- implementation-notes
 - related-items
 

@@ -11,8 +11,8 @@ import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
 export interface PlannedScenarioRow {
   bpmn_file: string;
   bpmn_element_id: string;
-  provider: 'local-fallback';
-  origin: 'design';
+  provider: 'claude' | 'chatgpt' | 'ollama';
+  origin: 'design' | 'llm-doc' | 'spec-parsed';
   scenarios: TestScenario[];
 }
 
@@ -76,13 +76,8 @@ export function createPlannedScenariosFromTree(
         ];
       }
 
-      rows.push({
-        bpmn_file: node.bpmnFile,
-        bpmn_element_id: node.bpmnElementId,
-        provider: 'local-fallback',
-        origin: 'design',
-        scenarios,
-      });
+      // Note: Design scenarios are no longer automatically created
+      // They should be generated via LLM instead
     }
 
     // Recursively process children
@@ -148,13 +143,8 @@ export function createPlannedScenariosFromGraph(
       ];
     }
 
-    rows.push({
-      bpmn_file: node.bpmnFile,
-      bpmn_element_id: node.bpmnElementId,
-      provider: 'local-fallback',
-      origin: 'design',
-      scenarios,
-    });
+    // Note: Design scenarios are no longer automatically created
+    // They should be generated via LLM instead
   }
 
   return rows;

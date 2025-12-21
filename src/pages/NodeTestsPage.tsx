@@ -31,16 +31,13 @@ const NodeTestsPage = () => {
   });
   const [implementedTestFile, setImplementedTestFile] = useState<string | null>(null);
   // Gemensamt läge för provider (matchar dokumentationsvyerna: Lokal fallback / Claude / Ollama)
-  const [providerMode, setProviderMode] = useState<'local-fallback' | 'chatgpt' | 'ollama'>('local-fallback');
+  const [providerMode, setProviderMode] = useState<'chatgpt' | 'ollama' | 'claude'>('chatgpt');
 
   const filteredTests = useMemo(
     () =>
       tests.filter((test) => {
-        if (providerMode === 'local-fallback') {
-          return test.variant === 'local-fallback' || test.scriptProvider === 'local-fallback';
-        }
-        if (providerMode === 'chatgpt') {
-          return test.scriptProvider === 'chatgpt';
+        if (providerMode === 'chatgpt' || providerMode === 'claude') {
+          return test.scriptProvider === 'chatgpt' || test.scriptProvider === 'claude';
         }
         if (providerMode === 'ollama') {
           return test.scriptProvider === 'ollama';
@@ -196,13 +193,6 @@ const NodeTestsPage = () => {
               <div className="flex flex-wrap gap-2 text-xs">
                 <Button
                   size="sm"
-                  variant={providerMode === 'local-fallback' ? 'default' : 'outline'}
-                  onClick={() => setProviderMode('local-fallback')}
-                >
-                  Lokal fallback
-                </Button>
-                <Button
-                  size="sm"
                   variant={providerMode === 'chatgpt' ? 'default' : 'outline'}
                   onClick={() => setProviderMode('chatgpt')}
                 >
@@ -350,14 +340,10 @@ const NodeTestsPage = () => {
                         {test.title}
                         {test.variant && (
                           <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide bg-muted text-muted-foreground">
-                            {test.scriptProvider === 'local-fallback'
-                              ? 'Lokal fallback'
-                              : test.scriptProvider === 'chatgpt'
+                            {test.scriptProvider === 'chatgpt' || test.scriptProvider === 'claude'
                               ? 'Claude'
                               : test.scriptProvider === 'ollama'
                               ? 'Ollama'
-                              : test.variant === 'local-fallback'
-                              ? 'Lokal fallback'
                               : test.variant === 'llm'
                               ? 'LLM'
                               : 'Okänd'}
@@ -374,9 +360,7 @@ const NodeTestsPage = () => {
                             const element = test.bpmnElementId || elementId;
                             if (file && element) {
                               const variantParam =
-                                test.variant === 'local-fallback'
-                                  ? 'local'
-                                  : test.variant === 'llm'
+                                test.variant === 'llm'
                                   ? 'llm'
                                   : undefined;
                               const baseUrl = `/node-test-script?bpmnFile=${encodeURIComponent(
@@ -414,9 +398,7 @@ const NodeTestsPage = () => {
                             const element = test.bpmnElementId || elementId;
                             if (file && element) {
                               const variantParam =
-                                test.variant === 'local-fallback'
-                                  ? 'local'
-                                  : test.variant === 'llm'
+                                test.variant === 'llm'
                                   ? 'llm'
                                   : undefined;
                               const baseUrl = `/node-test-script?bpmnFile=${encodeURIComponent(
@@ -467,9 +449,7 @@ const NodeTestsPage = () => {
                     return (
                       <div className="text-xs text-muted-foreground py-4">
                         Inga planerade scenarion lagrade för{' '}
-                        {providerMode === 'local-fallback'
-                          ? 'Lokal fallback'
-                          : providerMode === 'chatgpt'
+                        {providerMode === 'chatgpt' || providerMode === 'claude'
                           ? 'Claude'
                           : 'Ollama'}
                         . Generera dokumentation/tester med denna provider för att fylla dem.

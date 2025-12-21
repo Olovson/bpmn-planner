@@ -14,6 +14,5 @@ Aktuella sektioner:
 - business-rules-policy
 - business-scenarios
 - test-linking
-- implementation-notes
 - related-items
 

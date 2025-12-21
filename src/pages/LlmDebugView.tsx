@@ -126,8 +126,6 @@ export function LlmDebugView() {
                             variant={
                               providerLabel === 'Claude'
                                 ? 'default'
-                                : providerLabel === 'Local-fallback'
-                                ? 'destructive'
                                 : 'secondary'
                             }
                           >

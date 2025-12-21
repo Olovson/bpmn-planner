@@ -95,7 +95,6 @@ export const EPIC_DOC_SCHEMA: DocTemplateSchema = {
     { id: 'flow', label: 'Funktionellt flöde', enabledByDefault: true },
     { id: 'outputs', label: 'Output', enabledByDefault: true },
     { id: 'business-rules-policy', label: 'Affärsregler & beroenden', enabledByDefault: true },
-    { id: 'implementation-notes', label: 'Implementation notes', enabledByDefault: true },
     { id: 'related-items', label: 'Relaterade steg & artefakter', enabledByDefault: true },
   ],
 };
@@ -513,13 +512,6 @@ export function buildFeatureGoalDocModelFromContext(
     },
   ];
 
-  const implementationNotes = [
-    'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
-    'Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.',
-    'Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.',
-    'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
-  ];
-
   return {
     summary:
       `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet. ` +
@@ -528,7 +520,6 @@ export function buildFeatureGoalDocModelFromContext(
     flowSteps,
     dependencies: dependencyBullets,
     userStories,
-    implementationNotes,
   };
 }
 
@@ -747,14 +738,6 @@ function buildEpicDocModelFromContext(
     'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
   ];
 
-  const implementationNotes = [
-    `Primära API:er/tjänster: t.ex. POST /api/${apiSlug} för exekvering.`,
-    'Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll.',
-    'Eventuella externa beroenden (kreditupplysning, folkbokföring, engagemangsdata) hanteras via plattformens integrationslager.',
-    'Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.',
-    ...businessRuleRefs.map(ref => `Affärsregler: ${ref}`),
-  ];
-
   return {
     summary,
     prerequisites,
@@ -762,7 +745,6 @@ function buildEpicDocModelFromContext(
     interactions,
     dependencies,
     userStories,
-    implementationNotes,
   };
 }
 
@@ -881,17 +863,6 @@ function buildEpicDocHtmlFromModel(
       ];
   const userStoriesSource = model.userStories.length > 0 ? 'llm' : 'fallback';
 
-  const implementationNotes =
-    model.implementationNotes && model.implementationNotes.length > 0
-      ? model.implementationNotes
-      : [
-          `Primära API:er/tjänster: t.ex. POST /api/${apiSlug} för exekvering.`,
-          'Viktiga fält och beslut bör loggas för att möjliggöra felsökning och efterkontroll.',
-          'Eventuella externa beroenden (kreditupplysning, folkbokföring, engagemangsdata) hanteras via plattformens integrationslager.',
-          'Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.',
-        ];
-  const implementationNotesSource =
-    model.implementationNotes && model.implementationNotes.length > 0 ? 'llm' : 'fallback';
 
   return `
     <section class="doc-section">
@@ -958,11 +929,6 @@ function buildEpicDocHtmlFromModel(
       `).join('')}
     </section>
 
-    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
-      <h2>Implementation Notes</h2>
-      ${renderList(implementationNotes)}
-    </section>
-
   `;
 }
 
@@ -978,7 +944,6 @@ function buildEpicDocHtmlFromModel(
  * - Funktionellt flöde
  * - Beroenden
  * - User Stories
- * - Implementation Notes
  */
 function buildFeatureGoalDocHtmlFromModel(
   context: NodeDocumentationContext,
@@ -1054,17 +1019,6 @@ function buildFeatureGoalDocHtmlFromModel(
       ];
   const userStoriesSource = model.userStories && model.userStories.length > 0 ? 'llm' : 'fallback';
 
-  const implementationNotes =
-    model.implementationNotes && model.implementationNotes.length > 0
-      ? model.implementationNotes
-      : [
-          'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
-          'Viktiga datafält bör speglas i loggar och domän-events för spårbarhet.',
-          'Edge-cases (t.ex. avbrutna flöden eller externa tjänstefel) ska hanteras konsekvent över epics.',
-          'DMN-kopplingar för risk, skuldsättning och produktvillkor dokumenteras i respektive Business Rule-dokumentation.',
-        ];
-  const implementationNotesSource =
-    model.implementationNotes && model.implementationNotes.length > 0 ? 'llm' : 'fallback';
 
   return `
     <section class="doc-section">
@@ -1122,11 +1076,6 @@ function buildFeatureGoalDocHtmlFromModel(
           }
         </div>
       `).join('')}
-    </section>
-
-    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
-      <h2>Implementation Notes</h2>
-      ${renderList(implementationNotes)}
     </section>
 
   `;
@@ -1339,8 +1288,8 @@ export async function renderFeatureGoalDoc(
     let e2eTestInfo: Map<string, E2eTestStepInfo[]> | undefined = undefined;
 
     {
-      // Determine preferred provider: use cloud if LLM was used, otherwise local-fallback
-      const preferredProvider = scenarioProvider || (llmContent ? 'cloud' : 'local-fallback');
+      // Determine preferred provider: use cloud if LLM was used, otherwise claude
+      const preferredProvider = scenarioProvider || (llmContent ? 'cloud' : 'claude');
       
       // Fetch planned scenarios from database
       if (context.node.bpmnFile && context.node.bpmnElementId) {

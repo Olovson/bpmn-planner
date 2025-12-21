@@ -181,7 +181,13 @@ export const useResetAndRegenerate = () => {
             undefined, // progressCallback
             undefined, // generationSource
             undefined, // llmProvider
-            false, // localAvailable
+            undefined, // nodeFilter
+            undefined, // getVersionHashForFile
+            undefined, // checkCancellation
+            undefined, // abortSignal
+            undefined, // isActualRootFile
+            true, // forceRegenerate: Always regenerate when resetting
+          );
             undefined, // nodeFilter
             undefined, // getVersionHashForFile
             undefined, // checkCancellation

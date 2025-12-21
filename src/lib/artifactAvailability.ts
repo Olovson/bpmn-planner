@@ -6,13 +6,21 @@ type UrlExistsFn = (url: string) => Promise<boolean>;
 const isSupabaseStorageUrl = (url: string) =>
   url.includes('/storage/v1/object/public/');
 
-const defaultUrlExists: UrlExistsFn = async (url: string) => {
+/**
+ * Extract storage path from Supabase Storage public URL
+ * Example: http://127.0.0.1:54321/storage/v1/object/public/bpmn-files/docs/test.html
+ * Returns: docs/test.html
+ */
+const extractStoragePathFromUrl = (url: string): string | null => {
   try {
-    const response = await fetch(url, { method: 'HEAD' });
-    return response.ok;
-  } catch (error) {
-    console.warn('[artifactAvailability] HEAD check failed', url, error);
-    return false;
+    // Match pattern: /storage/v1/object/public/bpmn-files/<path>
+    const match = url.match(/\/storage\/v1\/object\/public\/bpmn-files\/(.+?)(?:\?|$)/);
+    if (match && match[1]) {
+      return decodeURIComponent(match[1]);
+    }
+    return null;
+  } catch {
+    return null;
   }
 };
 
@@ -35,26 +43,22 @@ export const checkDocsAvailable = async (
   
   // Kolla ytterligare sökvägar (för call activities/Feature Goals)
   if (additionalPaths && additionalPaths.length > 0) {
-    if (import.meta.env.DEV) {
-      console.debug(`[checkDocsAvailable] Checking ${additionalPaths.length} additional paths...`);
-    }
     for (let i = 0; i < additionalPaths.length; i++) {
       const path = additionalPaths[i];
       const exists = await storageExists(path);
-      if (import.meta.env.DEV) {
-        console.debug(`[checkDocsAvailable] Path ${i + 1}/${additionalPaths.length}: ${exists ? '✓ FOUND' : '✗'} ${path}`);
-      }
       if (exists) {
         if (import.meta.env.DEV) {
-          console.log(`[checkDocsAvailable] ✓ Found documentation at: ${path}`);
+          console.debug(`[checkDocsAvailable] ✓ Found documentation at: ${path}`);
         }
         return true;
       }
+      // Don't log every missing path - only log when found or if all paths fail
     }
-  }
-  
-  if (import.meta.env.DEV && additionalPaths && additionalPaths.length > 0) {
-    console.warn(`[checkDocsAvailable] ✗ No documentation found in ${additionalPaths.length} paths`);
+    
+    // Only log warning if we checked multiple paths and none were found
+    if (import.meta.env.DEV && additionalPaths.length > 1) {
+      console.debug(`[checkDocsAvailable] No documentation found in ${additionalPaths.length} paths`);
+    }
   }
   
   return false;
@@ -62,13 +66,22 @@ export const checkDocsAvailable = async (
 
 export const checkTestReportAvailable = async (
   testReportUrl?: string | null,
-  urlExists: UrlExistsFn = defaultUrlExists,
+  storageExists: StorageExistsFn = storageFileExists,
 ) => {
   if (!testReportUrl) return false;
-  // Only run a HEAD request for Supabase hosted URLs to keep things lightweight
+  
+  // For Supabase Storage URLs, extract path and use list() method instead of HEAD requests
+  // This avoids v1 API endpoints and 400 errors
   if (isSupabaseStorageUrl(testReportUrl)) {
-    return urlExists(testReportUrl);
+    const storagePath = extractStoragePathFromUrl(testReportUrl);
+    if (storagePath) {
+      return await storageExists(storagePath);
+    }
+    // If we can't extract path, fall back to assuming it exists (for external URLs)
+    return true;
   }
+  
+  // For non-Supabase URLs, assume they exist (external test reports)
   return true;
 };
 

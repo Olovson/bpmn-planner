@@ -23,7 +23,6 @@ export function buildFeatureGoalJsonSchema() {
         'prerequisites',
         'flowSteps',
         'userStories',
-        'implementationNotes',
       ],
       properties: {
         summary: {
@@ -63,10 +62,6 @@ export function buildFeatureGoalJsonSchema() {
             },
           },
         },
-        implementationNotes: {
-          type: 'array',
-          items: { type: 'string' },
-        },
       },
     },
   };
@@ -87,7 +82,6 @@ export function buildEpicJsonSchema() {
         'prerequisites',
         'flowSteps',
         'userStories',
-        'implementationNotes',
       ],
       properties: {
         summary: {
@@ -130,10 +124,6 @@ export function buildEpicJsonSchema() {
               },
             },
           },
-        },
-        implementationNotes: {
-          type: 'array',
-          items: { type: 'string' },
         },
       },
     },

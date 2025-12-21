@@ -27,7 +27,6 @@ function createEmptySections(): FeatureGoalLlmSections {
     flowSteps: [],
     dependencies: [],
     userStories: [],
-    implementationNotes: [],
   };
 }
 
@@ -72,7 +71,6 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
   sections.prerequisites = coerceStringArray(obj.prerequisites);
   sections.flowSteps = coerceStringArray(obj.flowSteps);
   sections.dependencies = coerceStringArray(obj.dependencies);
-  sections.implementationNotes = coerceStringArray(obj.implementationNotes);
 
   // Handle userStories
   if (Array.isArray(obj.userStories)) {
@@ -98,8 +96,7 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
     (sections.prerequisites && sections.prerequisites.length > 0) ||
     sections.flowSteps.length > 0 ||
     (sections.dependencies && sections.dependencies.length > 0) ||
-    (sections.userStories && sections.userStories.length > 0) ||
-    (sections.implementationNotes && sections.implementationNotes.length > 0);
+    (sections.userStories && sections.userStories.length > 0);
 
   return hasContent ? sections : null;
 }

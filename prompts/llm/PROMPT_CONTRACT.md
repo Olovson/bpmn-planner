@@ -50,8 +50,7 @@ DocSectionId-ordning:
 6. `dependencies`
 7. `business-scenarios`
 8. `test-linking`
-9. `implementation-notes`
-10. `related-items`
+9. `related-items`
 
 Feature-prompten i `feature_epic_prompt.md` fyller **endast** sektion 2–10, i denna ordning.
 
@@ -66,8 +65,7 @@ DocSectionId-ordning:
 6. `business-rules-policy`
 7. `business-scenarios`
 8. `test-linking`
-9. `implementation-notes`
-10. `related-items`
+9. `related-items`
 
 Epic-prompten i `feature_epic_prompt.md` fyller **endast** sektion 2–10, i denna ordning.
 
@@ -82,8 +80,7 @@ DocSectionId-ordning:
 6. `business-rules-policy`
 7. `business-scenarios`
 8. `test-linking`
-9. `implementation-notes`
-10. `related-items`
+9. `related-items`
 
 Business Rule-prompten i `dmn_businessrule_prompt.md` fyller **endast** sektion 2–10, i denna ordning.
 

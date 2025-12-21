@@ -24,7 +24,6 @@ function createEmptyEpicModel(): EpicDocModel {
     prerequisites: [],
     flowSteps: [],
     userStories: [],
-    implementationNotes: [],
   };
 }
 
@@ -95,16 +94,13 @@ function parseStructuredEpic(rawContent: string): EpicDocModel | null {
     }
   }
 
-  model.implementationNotes = coerceStringArray((obj as any).implementationNotes);
-
   const hasContent =
     model.summary ||
     model.prerequisites.length > 0 ||
     model.flowSteps.length > 0 ||
     (model.interactions && model.interactions.length > 0) ||
     (model.dependencies && model.dependencies.length > 0) ||
-    model.userStories.length > 0 ||
-    model.implementationNotes.length > 0;
+    model.userStories.length > 0;
 
   return hasContent ? model : null;
 }

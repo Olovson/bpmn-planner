@@ -177,12 +177,12 @@ export const useBpmnGenerator = (bpmnFilePath: string | null) => {
         undefined, // progressCallback
         undefined, // generationSource
         undefined, // llmProvider
-        false, // localAvailable
         undefined, // nodeFilter
         undefined, // getVersionHashForFile
         undefined, // checkCancellation
         undefined, // abortSignal
         undefined, // isActualRootFile - will be inferred
+        false, // forceRegenerate: Default to false (respect Storage checks)
       );
 
       setGenerationResult(result);

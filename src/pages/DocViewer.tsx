@@ -15,6 +15,7 @@ import { matchCallActivityUsingMap, loadBpmnMap } from '@/lib/bpmn/bpmnMapLoader
 import { getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
 import { useVersionSelection } from '@/hooks/useVersionSelection';
 import { getCurrentVersion } from '@/lib/bpmnVersioning';
+import { storageFileExists } from '@/lib/artifactUrls';
 import bpmnMapData from '../../bpmn-map.json';
 
 const DocViewer = () => {
@@ -27,7 +28,7 @@ const DocViewer = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generationSource, setGenerationSource] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'local' | 'chatgpt' | 'ollama' | 'auto'>('auto');
+  const [viewMode, setViewMode] = useState<'chatgpt' | 'ollama' | 'auto'>('auto');
   const [isFeatureGoal, setIsFeatureGoal] = useState(false);
   const [rawHtmlContent, setRawHtmlContent] = useState<string | null>(null);
   const [loadedFromPath, setLoadedFromPath] = useState<string | null>(null);
@@ -50,17 +51,9 @@ const DocViewer = () => {
   const formatGenerationSource = () => {
     if (!generationSource) return 'Okänt (äldre dokument)';
     
-    // Check if this is a local-content file
-    const isLocalContent = 
-      generationSource === 'local-fallback' && 
-      loadedFromPath?.includes('/local-content/');
-    
-    // For local-content files, show a more descriptive label
-    if (isLocalContent) {
-      return 'Lokalt förbättrat innehåll';
-    }
+    // Legacy local generation sources - treat as unknown
     if (generationSource === 'local' || generationSource === 'local-fallback') {
-      return 'Lokal generering';
+      return 'Okänt (äldre dokument)';
     }
     if (generationSource === 'llm-slow-chatgpt') {
       return 'LLM (Claude)';
@@ -74,25 +67,21 @@ const DocViewer = () => {
     return generationSource;
   };
 
-  const { isLoading: variantsLoading, hasChatgpt, hasOllama } =
+  const { isLoading: variantsLoading, hasClaude } =
     useDocVariantAvailability(safeDocId);
-  const anyVariant = hasChatgpt || hasOllama;
+  const anyVariant = hasClaude;
   const { data: bpmnFiles = [] } = useDynamicBpmnFiles();
 
   useEffect(() => {
     if (viewMode !== 'auto' || variantsLoading) return;
-    // Om vi vet att minst en variant finns, välj den i prioriterad ordning.
-    if (anyVariant) {
-      if (hasChatgpt) {
-        setViewMode('chatgpt');
-      } else if (hasOllama) {
-        setViewMode('ollama');
-      }
+    // Om vi vet att Claude-variant finns, välj den.
+    if (anyVariant && hasClaude) {
+      setViewMode('chatgpt');
     }
-  }, [viewMode, variantsLoading, anyVariant, hasChatgpt, hasOllama]);
+  }, [viewMode, variantsLoading, anyVariant, hasClaude]);
 
-  const activeMode: 'local' | 'claude' | 'ollama' =
-    viewMode === 'auto' ? 'local' : viewMode === 'chatgpt' ? 'claude' : viewMode;
+  const activeMode: 'claude' | 'ollama' =
+    viewMode === 'auto' ? 'claude' : viewMode === 'chatgpt' ? 'claude' : viewMode;
 
   const resolveModeFolder = () => {
     if (viewMode === 'auto') {
@@ -137,6 +126,9 @@ const DocViewer = () => {
         // Build Feature Goal path directly based on docId
         let isCallActivity = false;
         let nodeContext: ReturnType<typeof buildNodeDocumentationContext> | null = null;
+        let featureGoalPath: string | undefined = undefined;
+        let featureGoalBpmnFile: string | undefined = undefined;
+        let parentBpmnFile: string | undefined = undefined;
         
         if (isNodeDoc && baseName && elementSegment) {
           // First, check if this is a callActivity or process by resolving from BPMN process graph
@@ -190,8 +182,8 @@ const DocViewer = () => {
           // For call activities, we need to resolve the subprocessFile (the actual BPMN file for the subprocess)
           // For process nodes in subprocess files, the subprocessFile is the file itself
           // This matches how bpmnGenerators.ts creates Feature Goal filenames
-          let featureGoalBpmnFile = baseName;
-          let parentBpmnFile: string | undefined = undefined;
+          featureGoalBpmnFile = baseName;
+          parentBpmnFile = undefined;
           
           if (isProcessNode) {
             // For process nodes: nodeContext.node.bpmnFile should be the subprocess file
@@ -242,7 +234,7 @@ const DocViewer = () => {
           // Build Feature Goal path using getFeatureGoalDocFileKey
           // For process nodes: NO parent (getFeatureGoalDocFileKey will use subprocess file name directly)
           // For call activities: use parent for hierarchical naming
-          const featureGoalPath = getFeatureGoalDocFileKey(
+          featureGoalPath = getFeatureGoalDocFileKey(
             featureGoalBpmnFile, // subprocess BPMN file
             elementSegment, // elementId
             undefined, // no version suffix
@@ -265,7 +257,7 @@ const DocViewer = () => {
             if (versionHash) {
               // NOTE: When saving, buildDocStoragePaths uses the full path including 'feature-goals/'
               // So we need to keep 'feature-goals/' in the path when using version hash
-              const docFileName = featureGoalPath; // Keep 'feature-goals/' prefix
+              const docFileName = featureGoalPath; // Keep 'feature-goals/' prefix (hierarchical naming with parent)
               
               // Determine provider from modeFolder (claude = cloud, ollama = local LLM)
               const provider = modeFolder === 'claude' ? 'claude' : modeFolder === 'ollama' ? 'ollama' : null;
@@ -296,9 +288,8 @@ const DocViewer = () => {
             tryPaths.push(`docs/${modeFolder}/${featureGoalPath}`);
           } else {
             // If modeFolder is null (auto mode), try all possible paths
-            // Prioritize claude (most common), then local, then ollama
+            // Prioritize claude (most common), then ollama
             tryPaths.push(`docs/claude/${featureGoalPath}`);
-            tryPaths.push(`docs/local/${featureGoalPath}`);
             tryPaths.push(`docs/ollama/${featureGoalPath}`);
           }
           // Also try without mode folder
@@ -352,24 +343,41 @@ const DocViewer = () => {
 
         let rawHtml: string | null = null;
         let currentLoadedFromPath: string | null = null;
+        
+        // First, filter paths to only check those that actually exist
+        // This avoids unnecessary fetch requests that cause 400 errors
+        const existingPaths: string[] = [];
         for (const path of tryPaths) {
-          // Try Supabase Storage
-          const { data } = supabase.storage.from('bpmn-files').getPublicUrl(path);
-          if (!data?.publicUrl) {
+          const exists = await storageFileExists(path);
+          if (exists) {
+            existingPaths.push(path);
+          }
+        }
+        
+        // Now try to load from existing paths only
+        for (const path of existingPaths) {
+          try {
+            // Use download() directly instead of getPublicUrl() + fetch() to avoid v1 API issues
+            const { data: fileData, error: downloadError } = await supabase.storage
+              .from('bpmn-files')
+              .download(path);
+            
+            if (!downloadError && fileData) {
+              rawHtml = await fileData.text();
+              currentLoadedFromPath = path;
+              setLoadedFromPath(path);
+              if (path.includes('feature-goals')) {
+                console.log('[DocViewer] ✅ Feature Goal loaded from:', path);
+              }
+              break;
+            }
+          } catch (error) {
+            // Continue to next path if this one fails
+            if (import.meta.env.DEV) {
+              console.debug('[DocViewer] Failed to load from', path, error);
+            }
             continue;
           }
-          const versionedUrl = `${data.publicUrl}?t=${Date.now()}`;
-          const response = await fetch(versionedUrl, { cache: 'no-store' });
-          if (!response.ok) {
-            continue;
-          }
-          rawHtml = await response.text();
-          currentLoadedFromPath = path;
-          setLoadedFromPath(path);
-          if (path.includes('feature-goals')) {
-            console.log('[DocViewer] ✅ Feature Goal loaded from:', path);
-          }
-          break;
         }
 
         if (!rawHtml) {
@@ -590,39 +598,15 @@ const DocViewer = () => {
               <div className="flex flex-wrap gap-2 text-xs">
                 <Button
                   size="sm"
-                  variant={activeMode === 'local' ? 'default' : 'outline'}
-                  disabled={anyVariant && !hasLocal}
+                  variant={activeMode === 'claude' ? 'default' : 'outline'}
+                  disabled={anyVariant && !hasClaude}
                   onClick={() => {
-                    if (!anyVariant || hasLocal) {
-                      setViewMode('local');
-                    }
-                  }}
-                >
-                  Lokal
-                </Button>
-                <Button
-                  size="sm"
-                  variant={activeMode === 'chatgpt' ? 'default' : 'outline'}
-                  disabled={anyVariant && !hasChatgpt}
-                  onClick={() => {
-                    if (!anyVariant || hasChatgpt) {
+                    if (!anyVariant || hasClaude) {
                       setViewMode('chatgpt');
                     }
                   }}
                 >
                   Claude
-                </Button>
-                <Button
-                  size="sm"
-                  variant={activeMode === 'ollama' ? 'default' : 'outline'}
-                  disabled={anyVariant && !hasOllama}
-                  onClick={() => {
-                    if (!anyVariant || hasOllama) {
-                      setViewMode('ollama');
-                    }
-                  }}
-                >
-                  Ollama
                 </Button>
               </div>
               

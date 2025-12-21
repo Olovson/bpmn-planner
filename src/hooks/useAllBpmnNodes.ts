@@ -306,16 +306,9 @@ export const useAllBpmnNodes = () => {
                 }
               }
               
-              // Debug logging for ALL nodes (to see what we're checking)
-              if (import.meta.env.DEV) {
-                console.log(`[useAllBpmnNodes] Checking docs for ${node.nodeType} ${node.bpmnFile}:${node.elementId}`, {
-                  nodeType: node.nodeType,
-                  subprocessFile: node.subprocessFile,
-                  confluenceUrl: node.confluenceUrl,
-                  hasFeatureGoalPaths: !!featureGoalPaths,
-                  featureGoalPathsCount: featureGoalPaths?.length || 0,
-                  featureGoalPaths: featureGoalPaths?.slice(0, 3), // First 3 paths
-                });
+              // Only log for call activities with feature goal paths (most verbose case)
+              if (import.meta.env.DEV && node.nodeType === 'CallActivity' && featureGoalPaths && featureGoalPaths.length > 0) {
+                console.debug(`[useAllBpmnNodes] Checking ${featureGoalPaths.length} paths for CallActivity ${node.bpmnFile}:${node.elementId}`);
               }
               
               const resolvedDocs = await checkDocsAvailable(
@@ -325,12 +318,9 @@ export const useAllBpmnNodes = () => {
                 featureGoalPaths, // ✅ Skicka med Feature Goal-sökvägar för call activities (inkl. versioned paths)
               );
               
-              // Debug logging for ALL nodes
-              if (import.meta.env.DEV) {
-                console.log(`[useAllBpmnNodes] Result for ${node.nodeType} ${node.bpmnFile}:${node.elementId}:`, {
-                  hasDocs: resolvedDocs,
-                  confluenceUrl: node.confluenceUrl,
-                });
+              // Only log when docs are found (success case)
+              if (import.meta.env.DEV && resolvedDocs && node.nodeType === 'CallActivity') {
+                console.debug(`[useAllBpmnNodes] ✓ Found docs for CallActivity ${node.bpmnFile}:${node.elementId}`);
               }
               const resolvedTestReport = await checkTestReportAvailable(
                 node.testReportUrl,

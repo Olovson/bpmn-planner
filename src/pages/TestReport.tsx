@@ -21,7 +21,7 @@ import { useGlobalPlannedScenarios } from '@/hooks/useGlobalPlannedScenarios';
 import { useAllBpmnNodes } from '@/hooks/useAllBpmnNodes';
 
 type UiScenario = TestScenario & { _source?: string };
-type ProviderScope = 'local-fallback' | 'chatgpt' | 'ollama';
+type ProviderScope = 'chatgpt' | 'ollama' | 'claude';
 import {
   TestReportFilters,
   type TestDocTypeFilter,
@@ -43,7 +43,7 @@ const TestReport = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlProvider = searchParams.get('provider') as ProviderScope | null;
 
-  const providerScope: ProviderScope = urlProvider || 'local-fallback';
+  const providerScope: ProviderScope = urlProvider || 'chatgpt';
 
   const [statusFilter, setStatusFilter] = useState<TestStatusFilter>('all');
   const [processFilter, setProcessFilter] = useState<string>('all');
@@ -76,7 +76,6 @@ const TestReport = () => {
   // Används för att aktivera/inaktivera provider-knappar baserat på om det finns data
   const providerHasData = useMemo(() => {
     const flags: Record<ProviderScope, boolean> = {
-      'local-fallback': false,
       chatgpt: false,
       ollama: false,
     };
@@ -245,7 +244,6 @@ const TestReport = () => {
     return base.filter((t) => {
       if (!('script_provider' in t)) return false;
       const provider = (t as any).script_provider as
-        | 'local-fallback'
         | 'chatgpt'
         | 'ollama'
         | null
@@ -478,17 +476,6 @@ const TestReport = () => {
                 <button
                   type="button"
                   className={`px-2 py-1 rounded border ${
-                    providerScope === 'local-fallback'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border'
-                  }`}
-                  onClick={() => setProviderScope('local-fallback')}
-                >
-                  Lokal fallback
-                </button>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded border ${
                     providerScope === 'chatgpt'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border'
@@ -718,7 +705,7 @@ const TestReport = () => {
                                 ) : node.hasPlannedForOtherProviders ? (
                                   <div className="flex flex-col gap-1">
                                     <span className="text-xs text-muted-foreground">
-                                      Inga scenarion för {providerScope === 'local-fallback' ? 'Lokal fallback' : providerScope === 'chatgpt' ? 'Claude' : 'Ollama'}
+                                      Inga scenarion för {providerScope === 'chatgpt' ? 'Claude' : providerScope === 'ollama' ? 'Ollama' : 'Claude'}
                                     </span>
                                     <span className="text-[10px] text-amber-600">
                                       Finns för: {node.availableProviders.join(', ')}
@@ -906,13 +893,12 @@ const TestReport = () => {
                         <TableCell className="text-sm">
                           {(() => {
                             const provider = (result as any).script_provider as
-                              | 'local-fallback'
                               | 'chatgpt'
                               | 'ollama'
+                              | 'claude'
                               | null
                               | undefined;
-                            if (provider === 'local-fallback') return 'Lokal fallback';
-                            if (provider === 'chatgpt') return 'Claude';
+                            if (provider === 'chatgpt' || provider === 'claude') return 'Claude';
                             if (provider === 'ollama') return 'Ollama';
                             return '–';
                           })()}

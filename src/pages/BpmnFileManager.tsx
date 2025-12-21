@@ -411,7 +411,7 @@ export default function BpmnFileManager() {
   type ArtifactStatus = 'missing' | 'complete' | 'partial' | 'error';
   interface ArtifactSnapshot {
     status: ArtifactStatus;
-    mode: 'local' | 'slow' | null;
+    mode: 'slow' | null;
     generatedAt: string | null;
     jobId: string | null;
     outdated: boolean;
@@ -424,7 +424,7 @@ export default function BpmnFileManager() {
     hierarchy: ArtifactSnapshot;
     latestJob: {
       jobId: string;
-      mode: 'local' | 'slow' | null;
+      mode: 'slow' | null;
       status: GenerationStatus;
       finishedAt: string | null;
       startedAt: string | null;
@@ -1014,7 +1014,7 @@ export default function BpmnFileManager() {
         const runningJob = generationJobs.find(
           (job) =>
             job.status === 'running' &&
-            (job.operation === 'local_generation' || job.operation === 'llm_generation') &&
+            job.operation === 'llm_generation' &&
             job.file_name === generatingFile,
         );
         if (runningJob) {
@@ -1520,7 +1520,8 @@ export default function BpmnFileManager() {
         return;
       }
       checkCancellation();
-      const jobOperation: GenerationOperation = isLocalMode ? 'local_generation' : 'llm_generation';
+      // Alltid använd 'llm_generation' eftersom vi har tagit bort local generation
+      const jobOperation: GenerationOperation = 'llm_generation';
       activeJob = await createGenerationJob(file.file_name, jobOperation, mode);
       checkCancellation();
       await setJobStatus(activeJob.id, 'running', {
@@ -1657,12 +1658,12 @@ export default function BpmnFileManager() {
         handleGeneratorPhase,
         generationSourceLabel,
         llmProvider,
-        undefined, // No template version - always use default (no version suffix)
         nodeFilter,
         getVersionHashForFile, // Pass version selection function
         checkCancellation, // Pass cancellation check function
         abortSignal, // Pass abort signal for LLM calls
         isRootFile, // Pass flag indicating if this is the actual root file
+        true, // forceRegenerate: Always regenerate when user explicitly triggers generation
       );
       checkCancellation();
 
@@ -1692,14 +1693,14 @@ export default function BpmnFileManager() {
       checkCancellation();
 
       if (result.dorDod.size > 0) {
-        console.log('[Local generation] DoR/DoD: bearbetar', result.dorDod.size, 'subprocesser');
+        console.log('[Generation] DoR/DoD: bearbetar', result.dorDod.size, 'subprocesser');
         const criteriaToInsert: any[] = [];
         
         result.dorDod.forEach((criteria, subprocessName) => {
           checkCancellation();
           if (missingDependencies.some(dep => dep.childProcess === subprocessName)) {
             skippedSubprocesses.add(subprocessName);
-            console.warn('[Local generation] Hoppar över DoR/DoD för', subprocessName, '- saknar BPMN-fil');
+            console.warn('[Generation] Hoppar över DoR/DoD för', subprocessName, '- saknar BPMN-fil');
             return;
           }
           criteria.forEach(criterion => {
@@ -1728,11 +1729,11 @@ export default function BpmnFileManager() {
           console.error('Auto-save DoR/DoD error:', dbError);
         } else {
           dorDodCount = criteriaToInsert.length;
-          console.log('[Local generation] DoR/DoD klart:', dorDodCount);
+          console.log('[Generation] DoR/DoD klart:', dorDodCount);
         }
         checkCancellation();
       } else {
-        console.log('[Local generation] DoR/DoD: inga kriterier skapades');
+        console.log('[Generation] DoR/DoD: inga kriterier skapades');
       }
       await incrementJobProgress('Skapar DoR/DoD-kriterier');
 
@@ -2000,7 +2001,7 @@ export default function BpmnFileManager() {
         }
         for (const [docFileName, docContent] of result.docs.entries()) {
           checkCancellation();
-          const { modePath: docPath, legacyPath: legacyDocPath } = buildDocStoragePaths(
+          const { modePath: docPath } = buildDocStoragePaths(
             docFileName,
             effectiveLlmMode ?? null,
             llmProvider,
@@ -2027,22 +2028,6 @@ export default function BpmnFileManager() {
             }
             docsCount++;
             detailedDocFiles.push(docFileName);
-            if (legacyDocPath !== docPath) {
-              const { error: legacyUploadError } = await supabase.storage
-                .from('bpmn-files')
-                .upload(legacyDocPath, htmlBlob, {
-                  upsert: true,
-                  contentType: 'text/html; charset=utf-8',
-                  cacheControl: '3600',
-                });
-              if (legacyUploadError) {
-                console.warn(
-                  'Kunde inte skriva legacy-dokumentation för bakåtkompatibilitet:',
-                  legacyDocPath,
-                  legacyUploadError
-                );
-              }
-            }
           }
           checkCancellation();
           docUploadsCompleted += 1;
@@ -4670,16 +4655,12 @@ export default function BpmnFileManager() {
                                   ? 'Claude'
                                   : (snap as any).llmProvider === 'local'
                                   ? 'Ollama'
-                                  : (snap as any).llmProvider === 'fallback' || snap.mode === 'local'
-                                  ? 'Lokal fallback'
                                   : undefined;
                               const modeLabel =
                                 snap.mode === 'slow'
                                   ? providerLabel
                                     ? `LLM (${providerLabel})`
                                     : 'Slow LLM'
-                                  : snap.mode === 'local'
-                                  ? 'Lokal fallback'
                                   : 'Okänt läge';
                               const timeStr = snap.generatedAt
                                 ? new Date(snap.generatedAt).toLocaleString('sv-SE')
@@ -4714,16 +4695,12 @@ export default function BpmnFileManager() {
                                   ? 'Claude'
                                   : (snap as any).llmProvider === 'local'
                                   ? 'Ollama'
-                                  : (snap as any).llmProvider === 'fallback' || snap.mode === 'local'
-                                  ? 'Lokal fallback'
                                   : undefined;
                               const modeLabel =
                                 snap.mode === 'slow'
                                   ? providerLabel
                                     ? `LLM (${providerLabel})`
                                     : 'Slow LLM'
-                                  : snap.mode === 'local'
-                                  ? 'Lokal fallback'
                                   : 'Okänt läge';
                               const timeStr = snap.generatedAt
                                 ? new Date(snap.generatedAt).toLocaleString('sv-SE')
@@ -4828,7 +4805,7 @@ export default function BpmnFileManager() {
                         filesAnalyzed?: string[];
                         mode?: string;
                         skippedSubprocesses?: string[];
-                        llmProvider?: 'cloud' | 'local' | 'fallback';
+                        llmProvider?: 'cloud' | 'local';
                       };
                       const providerLabel =
                         jobResult.llmProvider === 'cloud'
