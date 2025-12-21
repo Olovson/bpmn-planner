@@ -2,12 +2,16 @@
 
 **BPMN Planner** tar BPMN-/DMN-filer, bygger en deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar dokumentation, testunderlag och metadata för produkt- och utvecklingsteamet. Supabase används som backend och innehåll kan genereras både via mallar (utan LLM) och via LLM (Claude/Ollama).
 
+> **📚 Dokumentation**: `docs/README.md` - Översikt över all dokumentation  
 > Arkitektur & hierarki: `docs/bpmn-hierarchy-architecture.md`  
+> **🏗️ Funktionalitet & Arkitektur**: `docs/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md` - Komplett översikt över appens funktionalitet, logik och arkitektur  
+> **🔄 Dataflöden**: `docs/DATAFLOW_OVERVIEW.md` - Dataflödesöversikt med diagram och beskrivningar  
 > LLM-kontrakt & prompts: `prompts/llm/*`  
 > Test-scenarion & design-scenarion: `docs/TEST_MAPPING_DESIGN_SCENARIOS.md`  
 > **👨‍💼 För Test Lead**: `docs/README_FOR_TESTLEAD.md` - Guide om hur BPMN Planner fungerar och hur du tar test scripts vidare till ditt reella projekt  
 > **📋 Projektorganisation**: `docs/project-organization/` - Ways of working, teststrategi, roller och projektstruktur  
 > **🧪 E2E Test Coverage**: `docs/TEST_COVERAGE_USER_GUIDE.md` - Guide för test coverage-visualisering och validering  
+> **🧪 Teststrategi**: `docs/TEST_OVERVIEW_AND_GAPS.md` - Översikt över tester, gap-analys och teststrategi | `docs/TEST_IMPLEMENTATION_PLAN.md` - Implementeringsplan för testförbättringar  
 > **🔍 API Reference**: `docs/API_REFERENCE.md` - Teknisk dokumentation för komponenter och hooks
 >
 > **Not om subprocesser (callActivity vs subProcess)**  

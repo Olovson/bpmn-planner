@@ -1,6 +1,23 @@
 # BPMN Test Suite
 
-This directory contains Playwright tests generated from BPMN process models. Tests are organized hierarchically to match the BPMN and Jira structure:
+## Översikt
+
+Detta test-suite innehåller tester för BPMN Planner-applikationen, organiserade i fyra huvudkategorier:
+
+1. **Unit Tests** (`tests/unit/`) - ~43 filer - Isolerade funktioner och komponenter
+2. **Integration Tests** (`tests/integration/`) - ~40 filer - Flöden mellan komponenter
+3. **E2E Tests** (`tests/e2e/`) - 1 fil - UI-komponenter i isolerad miljö
+4. **Playwright E2E Tests** (`tests/playwright-e2e/`) - 7 filer - Fullständiga användarflöden
+
+> 📋 **För en detaljerad analys av testtäckning och gaps, se:**
+> - [`docs/TEST_OVERVIEW_AND_GAPS.md`](../docs/TEST_OVERVIEW_AND_GAPS.md) - Omfattande analys av testtäckning och identifierade gaps
+> - [`docs/TEST_IMPLEMENTATION_PLAN.md`](../docs/TEST_IMPLEMENTATION_PLAN.md) - Konkret implementeringsplan för att förbättra testtäckningen
+
+## Teststruktur
+
+### Playwright Tests (Generated from BPMN)
+
+Playwright-tester genereras från BPMN-processmodeller och är organiserade hierarkiskt för att matcha BPMN- och Jira-strukturen:
 
 - **Initiative** (top-level BPMN process, e.g., "Application")
 - **Feature Goals** (CallActivity nodes)
@@ -144,3 +161,45 @@ Test results are integrated into the app's Test Report dashboard:
 ## CI/CD Integration
 
 Tests run automatically on GitHub Actions. Results are submitted to the app's test dashboard for tracking. See `.github/workflows/tests.yml` for workflow configuration.
+
+---
+
+## Test Coverage och Gaps
+
+### Nuvarande Status
+
+- ✅ **Unit Tests:** Bra täckning (~43 filer)
+- ✅ **Integration Tests:** Bra täckning (~40 filer) + 2 nya (template-versioning, per-node-overrides)
+- ⚠️ **E2E Tests:** Begränsad täckning (1 smoke test)
+- ✅ **Playwright E2E:** Förbättrad täckning (11 filer totalt, inkl. nya UI-tester)
+
+### Implementeringsstatus
+
+**Fas 1: Kritiska UI-flöden** ✅ **KLART**
+- ✅ BpmnFileManager UI-test
+- ✅ ProcessExplorer UI-test
+- ✅ DocViewer UI-test
+- ✅ Fullständigt genereringsflöde
+
+**Fas 2: Viktiga funktioner** ✅ **KLART**
+- ✅ Template versioning (integration test)
+- ✅ Per-node overrides (integration test)
+- ✅ NodeMatrix UI-test
+- ✅ TimelinePage UI-test
+
+**Fas 3: Mindre gaps** ⏳ **PENDING**
+- ⏳ TestCoverageExplorerPage
+- ⏳ E2eQualityValidationPage
+- ⏳ GitHub-synkronisering
+- ⏳ Jira-namngivning
+
+### Identifierade Gaps (Återstående)
+
+**Mindre gaps (låg prioritet):**
+- TestCoverageExplorerPage UI-test
+- E2eQualityValidationPage UI-test
+- GitHub-synkronisering integration test
+- Jira-namngivning unit test
+- DoR/DoD i UI
+
+Se [`docs/TEST_OVERVIEW_AND_GAPS.md`](../docs/TEST_OVERVIEW_AND_GAPS.md) för detaljerad analys och [`docs/TEST_IMPLEMENTATION_PLAN.md`](../docs/TEST_IMPLEMENTATION_PLAN.md) för implementeringsplan.

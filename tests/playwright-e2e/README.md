@@ -1,8 +1,27 @@
 # Playwright E2E-tester
 
-## Claude-generering Test
+## Översikt
 
-Testet `claude-generation.spec.ts` verifierar att Claude-generering fungerar korrekt för application-processen.
+Detta katalog innehåller Playwright E2E-tester för BPMN Planner-applikationen. Testerna täcker kritiska användarflöden och UI-komponenter.
+
+## Testfiler
+
+### Kritiska UI-tester (Fas 1)
+
+- **`bpmn-file-manager.spec.ts`** - Testar BpmnFileManager-sidan (filhantering, hierarki-byggnad, generering)
+- **`process-explorer.spec.ts`** - Testar Process Explorer-sidan (trädvisualisering, nod-interaktion)
+- **`doc-viewer.spec.ts`** - Testar Doc Viewer-sidan (dokumentationsvisning, länkar, version selection)
+- **`full-generation-flow.spec.ts`** - Testar komplett genereringsflöde (upload → hierarki → generering)
+
+### Viktiga funktioner (Fas 2)
+
+- **`node-matrix.spec.ts`** - Testar Node Matrix-sidan (listvy, filter, sortering)
+- **`timeline-page.spec.ts`** - Testar Timeline-sidan (Gantt-chart, filter, datum-redigering)
+
+### Befintliga tester
+
+- **`file-upload-versioning.spec.ts`** - Testar fil-upload och versioning
+- **`claude-generation.spec.ts`** - Testar Claude-generering för application-processen
 
 ### Kör testet
 

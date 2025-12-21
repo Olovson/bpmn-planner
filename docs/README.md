@@ -10,8 +10,15 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - **`PROMPT_VERSIONING.md`** - Hantera prompt-versioner och re-generera innehåll
 - **`FALLBACK_SAFETY.md`** - Säkerhet och debugging för fallback-resultat
 
+### Funktionalitet och Arkitektur
+- **`FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`** - Komplett översikt över appens funktionalitet, logik och arkitektur
+- **`FUNCTIONALITY_ANALYSIS_SUMMARY.md`** - Kort sammanfattning av funktionalitetsanalysen
+- **`DATAFLOW_OVERVIEW.md`** - Dataflödesöversikt med diagram och beskrivningar
+
 ### Testing
 - **`TESTING.md`** - Testguide, best practices och test-isolering
+- **`TEST_OVERVIEW_AND_GAPS.md`** - Översikt över tester, gap-analys och teststrategi (baserat på funktionalitetsöversikten)
+- **`TEST_IMPLEMENTATION_PLAN.md`** - Konkret implementeringsplan för att förbättra testtäckningen
 
 ### Arkitektur
 - **`bpmn-hierarchy-architecture.md`**  
