@@ -1374,6 +1374,11 @@ export async function generateAllFromBpmnWithGraph(
     };
     const hierarchicalNodeArtifacts: NodeArtifactEntry[] = [];
     result.nodeArtifacts = hierarchicalNodeArtifacts;
+    // Track LLM provider fallback usage (when first provider fails and alternative provider is used)
+    // Note: This is NOT the same as template fallback (fallback() function) which is used when ALL LLM fails
+    // llmFallbackUsed = true means: LLM worked but had to fallback from one provider to another (e.g. local → cloud)
+    let llmFallbackUsed = false;
+    let llmFinalProvider: LlmProvider | undefined = undefined;
     const plannedScenarioMap: PlannedScenarioMap = new Map();
     const setScenarioEntry = (
       key: string,

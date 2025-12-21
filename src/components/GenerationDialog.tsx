@@ -149,13 +149,13 @@ export function GenerationDialog({
               )}
 
               <div className="flex gap-2 pt-4">
-                <Button onClick={onStart} className="flex-1">
-                  Starta Generering
-                </Button>
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Avbryt
+                <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">
+                  Stäng
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Generering startar automatiskt när planen är klar.
+              </p>
             </div>
           )}
 

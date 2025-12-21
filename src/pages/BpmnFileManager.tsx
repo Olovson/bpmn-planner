@@ -251,6 +251,7 @@ export default function BpmnFileManager() {
   const [cancelGeneration, setCancelGeneration] = useState(false);
   // Global AbortController för att avbryta pågående LLM-anrop
   const abortControllerRef = useRef<AbortController | null>(null);
+  const hasGenerationResultRef = useRef(false); // Track if result was set
   const [llmMode, setLlmMode] = useState<LlmGenerationMode>(() => getLlmGenerationMode());
   const llmModeDetails = getLlmModeConfig(llmMode);
   type GenerationMode = 'local' | LlmGenerationMode; // 'local' | 'slow'
@@ -768,6 +769,8 @@ export default function BpmnFileManager() {
   const resetGenerationState = () => {
     cancelGenerationRef.current = false;
     setCancelGeneration(false);
+    cancelGenerationRef.current = false;
+    hasGenerationResultRef.current = false; // Reset result ref
     setCurrentGenerationStep(null);
     setGraphTotals({ files: 0, nodes: 0 });
     setDocgenProgress({ completed: 0, total: 0 });
@@ -2092,7 +2095,12 @@ export default function BpmnFileManager() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Nu visa resultatet - detta kommer automatiskt växla dialogen till result-vyn
+      // Sätt result FÖRE vi rensar progress för att säkerställa att växlingen fungerar
+      hasGenerationResultRef.current = true; // Markera att result finns
       setGenerationDialogResult(dialogResult);
+      // Använd en kort delay för att säkerställa att React hinner uppdatera med result
+      // innan progress rensas, så att dialogen växlar korrekt
+      await new Promise(resolve => setTimeout(resolve, 50));
       setGenerationProgress(null); // Clear progress to show result
       
       if (showReport) {
@@ -2210,10 +2218,17 @@ export default function BpmnFileManager() {
         setGeneratingFile(null);
         setActiveOperation(null);
         setShowTransitionOverlay(false);
-        setShowGenerationDialog(false); // Säkerställ att dialogen stängs
+        // Stäng INTE dialogen om result finns - låt användaren se resultatet
+        // Dialogen stängs när användaren klickar på "Stäng" i result-vyn
+        // Använd ref för att kolla om result faktiskt sattes
+        if (!hasGenerationResultRef.current) {
+          setShowGenerationDialog(false);
+          resetGenerationState();
+        }
+        // Reset ref för nästa generering
+        hasGenerationResultRef.current = false;
         setOverlayMessage('');
         setOverlayDescription('');
-        resetGenerationState();
       }, 200);
     }
   };
@@ -3913,14 +3928,13 @@ export default function BpmnFileManager() {
         plan={generationPlan || undefined}
         progress={generationProgress || undefined}
         result={generationDialogResult || undefined}
-        onStart={async () => {
-          // Start generation when user clicks "Starta Generering"
-          // This will be handled by the existing generation flow
-        }}
+        onStart={undefined}
         onCancel={handleCancelGeneration}
         onClose={() => {
           setShowGenerationDialog(false);
           resetGenerationState();
+          // Rensa också result när dialogen stängs
+          setGenerationDialogResult(null);
         }}
         showCancel={!!generationProgress}
       />

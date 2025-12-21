@@ -22,6 +22,23 @@ export interface ValidationResult {
  * 
  * Kontrakt: Se prompts/llm/dmn_businessrule_prompt.md och PROMPT_CONTRACT.md
  */
+/**
+ * Normaliserar ett värde till en array av strängar (används för att hantera LLM-variationer).
+ * Omvänt från coerceStringArray i businessRuleLlmMapper.ts men används här för validering.
+ */
+function normalizeToStringArray(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === 'string' ? v.trim() : ''))
+      .filter((v) => v.length > 0);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+}
+
 export function validateBusinessRuleJson(
   json: unknown,
   provider: LlmProvider
@@ -38,6 +55,45 @@ export function validateBusinessRuleJson(
   }
 
   const obj = json as Record<string, unknown>;
+
+  // Normalisera array-fält innan validering (hantera fall där LLM returnerar strängar istället för arrays)
+  // Detta gör valideringen mer tolerant och matchar hur mappningen fungerar
+  if ('decisionLogic' in obj && !Array.isArray(obj.decisionLogic)) {
+    const normalized = normalizeToStringArray(obj.decisionLogic);
+    if (normalized.length > 0) {
+      // Om det kan normaliseras till en array, gör det (men logga en varning)
+      obj.decisionLogic = normalized;
+      warnings.push('Field "decisionLogic" was normalized from non-array to array format');
+    }
+  }
+  if ('inputs' in obj && !Array.isArray(obj.inputs)) {
+    const normalized = normalizeToStringArray(obj.inputs);
+    if (normalized.length > 0) {
+      obj.inputs = normalized;
+      warnings.push('Field "inputs" was normalized from non-array to array format');
+    }
+  }
+  if ('outputs' in obj && !Array.isArray(obj.outputs)) {
+    const normalized = normalizeToStringArray(obj.outputs);
+    if (normalized.length > 0) {
+      obj.outputs = normalized;
+      warnings.push('Field "outputs" was normalized from non-array to array format');
+    }
+  }
+  if ('businessRulesPolicy' in obj && !Array.isArray(obj.businessRulesPolicy)) {
+    const normalized = normalizeToStringArray(obj.businessRulesPolicy);
+    if (normalized.length > 0) {
+      obj.businessRulesPolicy = normalized;
+      warnings.push('Field "businessRulesPolicy" was normalized from non-array to array format');
+    }
+  }
+  if ('relatedItems' in obj && !Array.isArray(obj.relatedItems)) {
+    const normalized = normalizeToStringArray(obj.relatedItems);
+    if (normalized.length > 0) {
+      obj.relatedItems = normalized;
+      warnings.push('Field "relatedItems" was normalized from non-array to array format');
+    }
+  }
 
   // Obligatoriska fält enligt BusinessRuleDocModel (v2.0.0 - implementationNotes borttaget)
   const requiredFields: Array<keyof BusinessRuleDocModel> = [
@@ -84,7 +140,7 @@ export function validateBusinessRuleJson(
 
   if ('decisionLogic' in obj) {
     if (!Array.isArray(obj.decisionLogic)) {
-      errors.push('Field "decisionLogic" must be an array');
+      errors.push('Field "decisionLogic" must be an array (or a string that can be normalized to an array)');
     } else {
       obj.decisionLogic.forEach((item, index) => {
         if (typeof item !== 'string') {

@@ -1,7 +1,13 @@
 /**
  * LLM Fallback Strategy
  * 
- * Hanterar fallback från local till cloud när local LLM failar.
+ * Hanterar LLM-generering med provider-fallback (för närvarande INAKTIVERAT).
+ * 
+ * VIKTIGT: 
+ * - Detta är ENDAST för LLM-generering (useLlm = true).
+ * - I local mode (useLlm = false) ska INTE LLM anropas alls - använd template-fallback istället.
+ * - Provider-fallback (local ↔ cloud) är INAKTIVERAT för tillfället för enklare debugging.
+ * - Om LLM misslyckas, använd template-fallback direkt istället för att försöka med annan provider.
  */
 
 import type { LlmProvider } from './llmClientAbstraction';
@@ -25,15 +31,13 @@ import type { LlmResolution } from './llmProviderResolver';
 import { estimatePromptTokens } from './tokenUtils';
 import { getProviderLabel, logLlmEvent } from './llmLogging';
 
-const FALLBACK_TO_CLOUD_ENABLED =
-  String(import.meta.env.VITE_LLM_FALLBACK_TO_CLOUD_ON_LOCAL_ERROR ?? 'true')
-    .trim()
-    .toLowerCase() === 'true';
-
-const FALLBACK_TO_LOCAL_ENABLED =
-  String(import.meta.env.VITE_LLM_FALLBACK_TO_LOCAL_ON_CLOUD_ERROR ?? 'true')
-    .trim()
-    .toLowerCase() === 'true';
+// OBS: LLM provider-fallback är INAKTIVERAT för tillfället.
+// Om LLM misslyckas, använd template-fallback direkt istället.
+// Detta gör det lättare att debugga LLM-problem utan att förvirra med fallback-mellan-providers.
+// 
+// Deprecated - inte längre använd:
+// const FALLBACK_TO_CLOUD_ENABLED = ... (always false)
+// const FALLBACK_TO_LOCAL_ENABLED = ... (always false)
 
 export interface GenerateWithFallbackOptions {
   docType: DocType;
@@ -168,15 +172,18 @@ export async function generateWithFallback(
     const alternativeProvider =
       resolution.attempted.find((p) => p !== chosenProvider) ?? null;
 
-    const shouldFallbackToCloud =
-      chosenProvider === 'local' &&
-      alternativeProvider === 'cloud' &&
-      FALLBACK_TO_CLOUD_ENABLED;
-
-    const shouldFallbackToLocal =
-      chosenProvider === 'cloud' &&
-      alternativeProvider === 'local' &&
-      FALLBACK_TO_LOCAL_ENABLED;
+    // VIKTIGT: Ingen LLM provider-fallback för tillfället.
+    // Om LLM misslyckas, använd template-fallback direkt istället.
+    // Detta gör det lättare att debugga LLM-problem utan att förvirra med fallback-mellan-providers.
+    //
+    // OBS: Detta gäller ENDAST när useLlm = true (LLM-läge).
+    // I local mode (useLlm = false) anropas INTE LLM alls - använd template-fallback direkt.
+    //
+    // Om local fallback ska aktiveras igen i framtiden:
+    // - shouldFallbackToLocal = true betyder: cloud LLM → local LLM fallback (när useLlm = true)
+    // - Detta är INTE samma sak som "local mode" (useLlm = false) som inte använder LLM alls
+    const shouldFallbackToCloud = false; // ALDRIG fallback från local LLM till cloud LLM (när useLlm = true)
+    const shouldFallbackToLocal = false; // ALDRIG fallback från cloud LLM till local LLM (när useLlm = true)
 
     if (alternativeProvider && (shouldFallbackToCloud || shouldFallbackToLocal)) {
       // Om vi försöker fallback till cloud men kontot är inaktivt, hoppa över
