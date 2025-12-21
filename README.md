@@ -3,9 +3,9 @@
 **BPMN Planner** tar BPMN-/DMN-filer, bygger en deterministisk processhierarki, visualiserar processen (diagram, strukturträd, listvy) och genererar dokumentation, testunderlag och metadata för produkt- och utvecklingsteamet. Supabase används som backend och innehåll kan genereras både via mallar (utan LLM) och via LLM (Claude/Ollama).
 
 > **📚 Dokumentation**: [`docs/README.md`](docs/README.md) - Översikt över all dokumentation  
-> **🏗️ Funktionalitet & Arkitektur**: [`docs/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`](docs/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md) - Komplett översikt  
-> **🔄 Dataflöden**: [`docs/DATAFLOW_OVERVIEW.md`](docs/DATAFLOW_OVERVIEW.md) - Dataflödesöversikt  
-> **⚙️ Snabbstart**: [`docs/QUICKSTART_AND_DEVELOPMENT.md`](docs/QUICKSTART_AND_DEVELOPMENT.md) - Detaljerad utvecklingsguide
+> **🏗️ Funktionalitet & Arkitektur**: [`docs/architecture/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`](docs/architecture/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md) - Komplett översikt  
+> **🔄 Dataflöden**: [`docs/architecture/DATAFLOW_OVERVIEW.md`](docs/architecture/DATAFLOW_OVERVIEW.md) - Dataflödesöversikt  
+> **⚙️ Snabbstart**: [`docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md`](docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md) - Detaljerad utvecklingsguide
 
 ---
 
@@ -21,34 +21,34 @@ npm run dev              # Starta dev-server (http://localhost:8080/)
 
 **Inloggning:** `seed-bot@local.test / Passw0rd!`
 
-> 📋 **För detaljerad snabbstart och utvecklingsguide, se [`docs/QUICKSTART_AND_DEVELOPMENT.md`](docs/QUICKSTART_AND_DEVELOPMENT.md)**
+> 📋 **För detaljerad snabbstart och utvecklingsguide, se [`docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md`](docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md)**
 
 ---
 
 ## 📚 Viktiga Länkar
 
 ### För Utvecklare
-- **Snabbstart & Utveckling**: [`docs/QUICKSTART_AND_DEVELOPMENT.md`](docs/QUICKSTART_AND_DEVELOPMENT.md)
-- **Funktionalitet & Arkitektur**: [`docs/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`](docs/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md)
-- **Dataflöden**: [`docs/DATAFLOW_OVERVIEW.md`](docs/DATAFLOW_OVERVIEW.md)
-- **Arkitektur**: [`docs/bpmn-hierarchy-architecture.md`](docs/bpmn-hierarchy-architecture.md)
-- **API Reference**: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
+- **Snabbstart & Utveckling**: [`docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md`](docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md)
+- **Funktionalitet & Arkitektur**: [`docs/architecture/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`](docs/architecture/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md)
+- **Dataflöden**: [`docs/architecture/DATAFLOW_OVERVIEW.md`](docs/architecture/DATAFLOW_OVERVIEW.md)
+- **Arkitektur**: [`docs/architecture/bpmn-hierarchy-architecture.md`](docs/architecture/bpmn-hierarchy-architecture.md)
+- **API Reference**: [`docs/architecture/guides/API_REFERENCE.md`](docs/architecture/guides/API_REFERENCE.md)
 
 ### För Test Lead
-- **Test Lead Guide**: [`docs/README_FOR_TESTLEAD.md`](docs/README_FOR_TESTLEAD.md)
-- **Test Export**: [`docs/TEST_EXPORT.md`](docs/TEST_EXPORT.md)
-- **Test Coverage Guide**: [`docs/TEST_COVERAGE_USER_GUIDE.md`](docs/TEST_COVERAGE_USER_GUIDE.md)
+- **Test Lead Guide**: [`docs/guides/user/README_FOR_TESTLEAD.md`](docs/guides/user/README_FOR_TESTLEAD.md)
+- **Test Export**: [`docs/testing/TEST_EXPORT.md`](docs/testing/TEST_EXPORT.md)
+- **Test Coverage Guide**: [`docs/guides/user/TEST_COVERAGE_USER_GUIDE.md`](docs/guides/user/TEST_COVERAGE_USER_GUIDE.md)
 
 ### Funktioner & Funktionalitet
-- **Funktioner**: [`docs/FEATURES_AND_FUNCTIONALITY.md`](docs/FEATURES_AND_FUNCTIONALITY.md)
-- **Jira-namngivning**: [`docs/JIRA_NAMING.md`](docs/JIRA_NAMING.md)
-- **Integrationer**: [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md)
-- **Test-scenarion**: [`docs/TEST_SCENARIOS.md`](docs/TEST_SCENARIOS.md)
-- **Batch-generering**: [`docs/BATCH_GENERATION.md`](docs/BATCH_GENERATION.md)
+- **Funktioner**: [`docs/features/FEATURES_AND_FUNCTIONALITY.md`](docs/features/FEATURES_AND_FUNCTIONALITY.md)
+- **Jira-namngivning**: [`docs/features/JIRA_NAMING.md`](docs/features/JIRA_NAMING.md)
+- **Integrationer**: [`docs/features/INTEGRATIONS.md`](docs/features/INTEGRATIONS.md)
+- **Test-scenarion**: [`docs/testing/TEST_SCENARIOS.md`](docs/testing/TEST_SCENARIOS.md)
+- **Batch-generering**: [`docs/templates/BATCH_GENERATION.md`](docs/templates/BATCH_GENERATION.md)
 
 ### Testing
-- **Teststrategi**: [`docs/TEST_OVERVIEW_AND_GAPS.md`](docs/TEST_OVERVIEW_AND_GAPS.md) | [`docs/TEST_IMPLEMENTATION_PLAN.md`](docs/TEST_IMPLEMENTATION_PLAN.md)
-- **Testguide**: [`docs/TESTING.md`](docs/TESTING.md)
+- **Teststrategi**: [`docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md`](docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md) | [`docs/testing/strategy/TEST_IMPLEMENTATION_PLAN.md`](docs/testing/strategy/TEST_IMPLEMENTATION_PLAN.md)
+- **Testguide**: [`docs/testing/TESTING.md`](docs/testing/TESTING.md)
 - **Test Suite**: [`tests/README.md`](tests/README.md)
 
 ### Projektorganisation
@@ -76,7 +76,7 @@ npm run print:bpmn-tree  # Exportera BPMN-träd
 npm run check:db-schema  # Verifiera databas-schema
 ```
 
-> 📋 **För alla kommandon, se [`docs/QUICKSTART_AND_DEVELOPMENT.md`](docs/QUICKSTART_AND_DEVELOPMENT.md)**
+> 📋 **För alla kommandon, se [`docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md`](docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md)**
 
 ---
 
@@ -89,7 +89,7 @@ npm run check:db-schema  # Verifiera databas-schema
 - LLM-integration (Claude/Ollama)
 - Versioning och historik
 
-> 📋 **För komplett lista, se [`docs/FEATURES_AND_FUNCTIONALITY.md`](docs/FEATURES_AND_FUNCTIONALITY.md)**
+> 📋 **För komplett lista, se [`docs/features/FEATURES_AND_FUNCTIONALITY.md`](docs/features/FEATURES_AND_FUNCTIONALITY.md)**
 
 ---
 
@@ -102,7 +102,7 @@ npm run check:db-schema  # Verifiera databas-schema
 
 Se [TODO.md](TODO.md) för en detaljerad, prioriterad lista över uppgifter och förbättringar.
 
-Se [Feature Roadmap](docs/FEATURE_ROADMAP.md) för strategiska funktioner och långsiktiga visioner.
+Se [Feature Roadmap](docs/features/FEATURE_ROADMAP.md) för strategiska funktioner och långsiktiga visioner.
 
 ---
 

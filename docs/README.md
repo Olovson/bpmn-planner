@@ -3,72 +3,74 @@
 Det här `docs/`‑trädet samlar den interna dokumentation som kompletterar koden.  
 Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BPMN Planner.
 
-## Viktiga Guider
+> 📋 **Struktur:** Se [`architecture/STRUCTURE.md`](./architecture/STRUCTURE.md) för dokumentationsstrukturen
 
-### Batch-generering & Overrides
-- **`BATCH_GENERATION.md`** - Batch-generering av dokumentation (Codex, prompt-versionering, override-filer)
-- **`CODEX_BATCH_AUTO.md`** - Detaljerad guide för Codex batch-generering
-- **`PROMPT_VERSIONING.md`** - Hantera prompt-versioner och re-generera innehåll
-- **`FALLBACK_SAFETY.md`** - Säkerhet och debugging för fallback-resultat
+---
 
-### Funktionalitet och Arkitektur
-- **`FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`** - Komplett översikt över appens funktionalitet, logik och arkitektur
-- **`FUNCTIONALITY_ANALYSIS_SUMMARY.md`** - Kort sammanfattning av funktionalitetsanalysen
-- **`DATAFLOW_OVERVIEW.md`** - Dataflödesöversikt med diagram och beskrivningar
-- **`ARCHITECTURE_OVERVIEW.md`** - Översikt över hierarki, dokumentation och LLM
-- **`FEATURES_AND_FUNCTIONALITY.md`** - Detaljerad beskrivning av funktioner och arbetsflöde
+## 🚀 Snabbstart
+
+**Nya användare bör börja här:**
+- **Snabbstart & Utveckling**: [`guides/user/QUICKSTART_AND_DEVELOPMENT.md`](./guides/user/QUICKSTART_AND_DEVELOPMENT.md)
+- **Funktionalitet & Arkitektur**: [`architecture/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`](./architecture/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md)
+- **Dataflöden**: [`architecture/DATAFLOW_OVERVIEW.md`](./architecture/DATAFLOW_OVERVIEW.md)
+
+---
+
+## 📚 Dokumentationskategorier
+
+### 🎯 Användarguider (`guides/user/`)
 - **`QUICKSTART_AND_DEVELOPMENT.md`** - Snabbstart och utvecklingsguide
+- **`README_FOR_TESTLEAD.md`** - Guide för test lead
+- **`TEST_COVERAGE_USER_GUIDE.md`** - Test coverage guide
 
-### Testing
-- **`TESTING.md`** - Testguide, best practices och test-isolering
-- **`TEST_OVERVIEW_AND_GAPS.md`** - Översikt över tester, gap-analys och teststrategi (baserat på funktionalitetsöversikten)
-- **`TEST_IMPLEMENTATION_PLAN.md`** - Konkret implementeringsplan för att förbättra testtäckningen
-- **`TEST_EXPORT.md`** - Guide för export-ready test scripts
+### 🏗️ Arkitektur (`architecture/`)
+- **`bpmn-hierarchy-architecture.md`** - Detaljerad hierarki-arkitektur
+- **`ARCHITECTURE_OVERVIEW.md`** - Översikt över hierarki, dokumentation och LLM
+- **`DATAFLOW_OVERVIEW.md`** - Dataflödesöversikt
+- **`FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`** - Komplett funktionalitetsöversikt
+- **`BPMN_VERSIONING_STRATEGY.md`** - BPMN-versionering strategi
+- **`VERSIONING_FINAL_DECISION.md`** - Versionslösning - slutgiltigt beslut
+- **`VERSIONING_IMPLEMENTATION_COMPLETE.md`** - Versionslösning - implementeringsstatus
+- **`guides/API_REFERENCE.md`** - API-referens
+
+### ✨ Funktioner (`features/`)
+- **`FEATURES_AND_FUNCTIONALITY.md`** - Funktioner och arbetsflöde
+- **`JIRA_NAMING.md`** - Jira-namngivning
+- **`INTEGRATIONS.md`** - Integrationer
+- **`FEATURE_ROADMAP.md`** - Feature roadmap
+
+### 🧪 Testing (`testing/`)
+- **`TESTING.md`** - Testguide, best practices
+- **`TEST_EXPORT.md`** - Test export guide
 - **`TEST_SCENARIOS.md`** - Test-scenarion och design-scenarion
+- **`test-report-views.md`** - Testrapportvyer
+- **`TEST_SCENARIO_GENERATION.md`** - Test scenario generation
+- **`TEST_MAPPING_DESIGN_SCENARIOS.md`** - Test mapping design scenarios
+- **`strategy/TEST_OVERVIEW_AND_GAPS.md`** - Testanalys och gaps
+- **`strategy/TEST_IMPLEMENTATION_PLAN.md`** - Test implementeringsplan
 
-### Arkitektur (Detaljerad)
-- **`bpmn-hierarchy-architecture.md`**  
-  Detaljerad arkitektur‑ och implementationsbeskrivning av hur vi bygger BPMN‑hierarkin:
-  - parser → meta → processdefinitioner → hierarki → processgraf,
-  - hur CallActivities matchas mot subprocesser,
-  - hur samma modell återanvänds i UI, dokumentations‑ och testgeneratorerna.
+### 📝 Templates (`templates/`)
+- **`BATCH_GENERATION.md`** - Batch-generering
+- **`CODEX_BATCH_AUTO.md`** - Codex batch-generering (detaljerad)
+- **`PROMPT_VERSIONING.md`** - Prompt-versionering
+- **`FALLBACK_SAFETY.md`** - Fallback-säkerhet
+- **`BUSINESS_RULE_TEMPLATE_CONTENT.md`** - Business Rule template content
+- **`EPIC_TEMPLATE_CONTENT.md`** - Epic template content
+- **`FEATURE_GOAL_TEMPLATE_CONTENT.md`** - Feature Goal template content
+- **`html/`** - HTML-mallar (feature-goals, epics, rules)
 
-- **`hierarchy-overview.md`**  
-  Kortare, mer UI‑orienterad översikt:
-  - hur hierarkin används i Process Explorer,
-  - flattening av subprocesser,
-  - hur lokalgenerering/LLM bygger på samma graf.
+### 📋 Confluence (`confluence/`)
+- **`README.md`** - Confluence-dokumentation översikt
+- **`template.md`** - Mall för Confluence-sidor
+- **`application.md`** - Exempel på Confluence-dokumentation
 
-- **`test-report-views.md`**  
-  Beskriver de två testrapportvyerna:
-  - `#/test-report` – global vy per provider (local‑fallback, ChatGPT, Ollama) och BPMN‑fil,
-  - `#/node-tests` – nodspecifik vy med planerade scenarier och körda tester.
+### 📊 Projektorganisation (`project-organization/`)
+- Ways of working, teststrategi, roller, projektstruktur
 
-- **`GANTT_TIMELINE_ANALYSIS.md`** & **`GANTT_TIMELINE_IMPLEMENTATION_SUMMARY.md`**  
-  Dokumentation för Timeline / Planning View:
-  - analys av befintliga strukturer och tidsordning,
-  - implementation av Gantt-chart för visualisering av subprocesser,
-  - redigering av start/end datum baserat på orderIndex.
+### 📁 Analysis (`analysis/`)
+- **`historical/`** - Historiska analyser och temporära dokument (43 filer arkiverade)
 
-- **`JIRA_NAMING.md`** - Jira-namngivning (namngivningsregler, exempel, implementation)
-- `JIRA_NAMING_UPDATE_SUMMARY.md` & `JIRA_NAMING_CONSOLIDATION_COMPLETE.md`  
-  Historisk dokumentation för Jira-namngivning (se `JIRA_NAMING.md` för aktuell info)
-
-- `confluence/`  
-  Confluence‑orienterad dokumentation och mallar:
-  - `README.md` – hur Confluence‑strukturen hänger ihop med BPMN‑noderna,
-  - `template.md` – mall för nodspecifika Confluence‑sidor (call activities, tasks etc.),
-  - `application.md` – exempel på en ifylld noddokumentation,
-  - `REFACTORING_SUMMARY.md` – bakgrund och motiv till hierarki‑refaktoreringen.
-
-- `feature-goals/feature-goal-template.html`  
-  HTML‑mall för Feature Goal‑dokumentation. Används som referens när man skriver manuella övergripande dokument.
-
-- `epics/epic-template.html`  
-  HTML‑mall för Epic‑dokumentation kopplad till en eller flera BPMN‑noder.
-
-- `rules/business-rule-task-template.html`  
-  HTML‑mall för Business Rule Task‑dokumentation, med fokus på DMN‑logik.
+---
 
 ## Nyckelidéer att ha i huvudet
 
@@ -82,25 +84,28 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
   - samt Jira‑namngivning och DoR/DoD.
 
 - **Planerade scenarier i `node_planned_scenarios`**  
-  Alla “planerade scenarion” i UI kommer från tabellen `node_planned_scenarios`:
+  Alla "planerade scenarion" i UI kommer från tabellen `node_planned_scenarios`:
   - LLM‑flöden (ChatGPT/Ollama) skriver in scenarier per nod/provider när dokumentation/testunderlag genereras.
   - Den hierarkiska generatorn seedar även bas‑scenarion för `local-fallback` per nod (antingen från `testMapping` eller ett auto‑genererat happy‑path).
 
 - **Lokala mallar vs. genererad dokumentation**  
-  Mallarna i `docs/feature-goals`, `docs/epics` och `docs/rules` är referensmallar
-  för manuell dokumentation. Den dokumentation som slutanvändaren ser i appen
-  genereras och lagras som HTML i Supabase Storage och visas via `DocViewer`.
+  Mallarna i `templates/html/` är referensmallar för manuell dokumentation. Den dokumentation som slutanvändaren ser i appen genereras och lagras som HTML i Supabase Storage och visas via `DocViewer`.
+
+---
 
 ## När ska du läsa vad?
 
-- Du ska **förstå hur hierarkin fungerar** → börja med `bpmn-hierarchy-architecture.md` och `hierarchy-overview.md`.
-- Du ska **förstå testrapporten** → läs `test-report-views.md`.
-- Du ska **skriva/uppdatera Confluence‑sidor** → använd `confluence/template.md` och `confluence/README.md`.
-- Du ska **förstå varför hierarkin infördes** → läs `confluence/REFACTORING_SUMMARY.md`.
+- Du ska **komma igång** → börja med `guides/user/QUICKSTART_AND_DEVELOPMENT.md`
+- Du ska **förstå hur hierarkin fungerar** → börja med `architecture/bpmn-hierarchy-architecture.md`
+- Du ska **förstå testrapporten** → läs `testing/test-report-views.md`
+- Du ska **skriva/uppdatera Confluence‑sidor** → använd `confluence/template.md` och `confluence/README.md`
+- Du ska **förstå teststrategi** → läs `testing/strategy/TEST_OVERVIEW_AND_GAPS.md`
+
+---
 
 ## Praktiska npm‑kommandon
 
-> 📋 **För komplett lista med alla kommandon och detaljerad guide, se [`QUICKSTART_AND_DEVELOPMENT.md`](./QUICKSTART_AND_DEVELOPMENT.md)**
+> 📋 **För komplett lista med alla kommandon och detaljerad guide, se [`guides/user/QUICKSTART_AND_DEVELOPMENT.md`](./guides/user/QUICKSTART_AND_DEVELOPMENT.md)**
 
 **Snabböversikt:**
 - `npm run dev` – startar Vite‑devservern
@@ -108,4 +113,3 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - `npm test` – kör alla Vitest‑tester
 - `npx playwright test` – kör Playwright E2E-tester
 - `npm run print:bpmn-tree` – exportera BPMN-träd
-

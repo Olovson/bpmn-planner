@@ -10,8 +10,8 @@ Detta test-suite innehåller tester för BPMN Planner-applikationen, organiserad
 4. **Playwright E2E Tests** (`tests/playwright-e2e/`) - 7 filer - Fullständiga användarflöden
 
 > 📋 **För en detaljerad analys av testtäckning och gaps, se:**
-> - [`docs/TEST_OVERVIEW_AND_GAPS.md`](../docs/TEST_OVERVIEW_AND_GAPS.md) - Omfattande analys av testtäckning och identifierade gaps
-> - [`docs/TEST_IMPLEMENTATION_PLAN.md`](../docs/TEST_IMPLEMENTATION_PLAN.md) - Konkret implementeringsplan för att förbättra testtäckningen
+> - [`docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md`](../docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md) - Omfattande analys av testtäckning och identifierade gaps
+> - [`docs/testing/strategy/TEST_IMPLEMENTATION_PLAN.md`](../docs/testing/strategy/TEST_IMPLEMENTATION_PLAN.md) - Konkret implementeringsplan för att förbättra testtäckningen
 
 ## Teststruktur
 
@@ -202,4 +202,4 @@ Tests run automatically on GitHub Actions. Results are submitted to the app's te
 - Jira-namngivning unit test
 - DoR/DoD i UI
 
-Se [`docs/TEST_OVERVIEW_AND_GAPS.md`](../docs/TEST_OVERVIEW_AND_GAPS.md) för detaljerad analys och [`docs/TEST_IMPLEMENTATION_PLAN.md`](../docs/TEST_IMPLEMENTATION_PLAN.md) för implementeringsplan.
+Se [`docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md`](../docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md) för detaljerad analys och [`docs/testing/strategy/TEST_IMPLEMENTATION_PLAN.md`](../docs/testing/strategy/TEST_IMPLEMENTATION_PLAN.md) för implementeringsplan.

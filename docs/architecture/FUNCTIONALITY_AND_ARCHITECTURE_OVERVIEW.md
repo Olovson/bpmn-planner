@@ -467,7 +467,7 @@ BpmnProcessGraph → generateAllFromBpmnWithGraph
 1. **Funktionalitetsöversikt** - ✅ Skapad (detta dokument)
 2. **Arkitekturöversikt** - Delvis finns (`bpmn-hierarchy-architecture.md`)
 3. **Dataflödesdiagram** - ✅ Skapad (`DATAFLOW_OVERVIEW.md`)
-4. **Komponentöversikt** - Delvis finns (`API_REFERENCE.md`)
+4. **Komponentöversikt** - Delvis finns (`guides/API_REFERENCE.md`)
 5. **Hook-översikt** - Saknas
 6. **Backend-översikt** - Delvis finns (migrations, functions)
 

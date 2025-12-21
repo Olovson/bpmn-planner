@@ -187,7 +187,7 @@ Detta script:
 npm run export:feature-goals    # Exporterar alla Feature Goal HTML-filer till exports/feature-goals/
 npm run import:feature-goals    # Importerar förbättrade HTML-filer tillbaka till Supabase Storage
 ```
-- Se `docs/IMPROVE_FEATURE_GOALS_WITH_AI.md` för komplett workflow: Export → Förbättra med AI → Import
+- Se `templates/CODEX_BATCH_AUTO.md` för komplett workflow: Export → Förbättra med AI → Import
 
 **Andra scripts:**
 ```bash
@@ -217,7 +217,7 @@ npx vitest run \
 
 **Fallback-säkerhet i tester:**
 - Tester använder INTE LLM som standard (`isLlmEnabled() === false` i test-miljö).
-- Fallback-resultat är tydligt markerade med metadata. Se `docs/FALLBACK_SAFETY.md` för detaljer.
+- Fallback-resultat är tydligt markerade med metadata. Se `templates/FALLBACK_SAFETY.md` för detaljer.
 
 **Riktiga LLM-smoke-tester (opt-in):**
 
