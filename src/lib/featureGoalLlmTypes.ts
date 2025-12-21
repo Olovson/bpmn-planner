@@ -29,6 +29,10 @@ export interface FeatureGoalDocModel {
   dependencies: string[];
   // Relaterade feature goals, epics, regler eller subprocesser (bullets).
   relatedItems: string[];
+  // Förutsättningar för att Feature Goalet kan starta (optional).
+  prerequisites?: string[];
+  // Implementation notes - tekniska noteringar om implementation (optional).
+  implementationNotes?: string[];
 }
 
 export type FeatureGoalLlmSections = FeatureGoalDocModel;

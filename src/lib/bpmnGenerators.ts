@@ -1307,6 +1307,13 @@ export async function generateAllFromBpmnWithGraph(
       useHierarchy && summary.filesIncluded.length > 0
         ? summary.filesIncluded
         : [bpmnFileName];
+    
+    // Logga varning om hierarki används men inga filer hittades
+    if (useHierarchy && summary.filesIncluded.length === 0) {
+      console.warn(
+        `[generateAllFromBpmnWithGraph] useHierarchy=true but no files found in summary.filesIncluded. Falling back to [${bpmnFileName}]`
+      );
+    }
     const totalAnalyzed = useHierarchy ? summary.totalFiles : analyzedFiles.length;
     await reportProgress(
       'graph:complete',
@@ -1385,72 +1392,9 @@ export async function generateAllFromBpmnWithGraph(
       });
     };
 
-    // === HIERARKISKA TESTER MED JIRA-META ===
-    // Generera hierarkiska tester direkt från processgrafen
-    console.log('Generating hierarchical tests with Jira metadata...');
-    
-    // Sortera filer hierarkiskt: subprocess-filer före parent-filer
-    // Detta säkerställer att child documentation finns tillgänglig när parent-filer genereras
-    // Inom varje kategori (subprocess vs root) sorteras alfabetiskt för determinism
-    const allFiles = analyzedFiles.length > 0 ? analyzedFiles : [bpmnFileName];
-    
-    // Identifiera vilka filer som är subprocesser (anropas av callActivities)
-    const subprocessFiles = new Set<string>();
-    for (const node of testableNodes) {
-      if (node.type === 'callActivity' && node.subprocessFile) {
-        subprocessFiles.add(node.subprocessFile);
-      }
-    }
-    
-    // Separera filer i subprocess-filer och root-filer
-    const subprocessFilesList = allFiles.filter(file => subprocessFiles.has(file));
-    const rootFilesList = allFiles.filter(file => !subprocessFiles.has(file));
-    
-    // Sortera varje kategori alfabetiskt för determinism
-    subprocessFilesList.sort((a, b) => a.localeCompare(b));
-    rootFilesList.sort((a, b) => a.localeCompare(b));
-    
-    // Subprocess-filer först, sedan root-filer
-    // Detta säkerställer hierarkisk ordning: children genereras före parents
-    const filesToGenerate = [...subprocessFilesList, ...rootFilesList];
-    await reportProgress('total:init', 'Init totals', JSON.stringify({
-      files: filesToGenerate.length,
-      nodes: testableNodes.length,
-    }));
-    await reportProgress('hier-tests:start', 'Genererar hierarkiska tester', `${filesToGenerate.length} filer`);
-
-    // Build ProcessTree from graph
-    const buildArtifacts = (bpmnFile: string, elementId?: string) => {
-      // Return empty artifacts for now - can be enhanced later
-      return undefined;
-    };
-    
-    const tree = buildProcessTreeFromGraph(graph, bpmnFileName, buildArtifacts);
-    const hierarchyRootName = tree.label;
-
-    let llmFallbackUsed = false;
-    let llmFinalProvider: LlmProvider | undefined;
-
-    for (const file of filesToGenerate) {
-      try {
-        await reportProgress('hier-tests:file', 'Hierarkitest', file);
-        
-        // Use ProcessTree-based generator
-        const hierarchicalTestContent = generateHierarchicalTestFileFromTree(
-          tree,
-          file
-        );
-
-        // Döp filen så att det syns att detta är hierarkiska tester
-        const testFileName = file.replace('.bpmn', '.hierarchical.spec.ts');
-        result.tests.set(testFileName, hierarchicalTestContent);
-        
-        console.log(`Generated hierarchical test: ${testFileName}`);
-      } catch (error) {
-        console.error(`Error generating hierarchical test for ${file}:`, error);
-      }
-    }
-    await reportProgress('hier-tests:complete', 'Hierarkiska tester klara');
+    // === TESTGENERERING HAR FLYTTATS TILL SEPARAT STEG ===
+    // Testfiler och testscenarion genereras inte längre i dokumentationssteget.
+    // Använd separat testgenereringsfunktion istället.
 
     // === DOR/DOD OCH SUBPROCESS MAPPINGS ===
     // Testbara noder från hela grafen (för DoR/DoD och subprocess mappings)
@@ -1523,7 +1467,7 @@ export async function generateAllFromBpmnWithGraph(
     // Pass 2: Parent nodes (lägst depth) - genererar Feature Goals med kunskap om child epics
     // NOTE: Dokumentation använder fortfarande testableNodes från grafen för LLM-generering,
     // men ProcessTree kan användas för strukturell dokumentation om önskat
-    await reportProgress('docgen:start', 'Genererar dokumentation', `${filesToGenerate.length} filer`);
+    await reportProgress('docgen:start', 'Genererar dokumentation', `${analyzedFiles.length} filer`);
     const buildMatchWarning = (node: typeof testableNodes[number]) => {
       const reasons: string[] = [];
       if (node.subprocessMatchStatus && node.subprocessMatchStatus !== 'matched') {
@@ -1554,7 +1498,7 @@ export async function generateAllFromBpmnWithGraph(
     // Key format: för callActivities: `subprocess:${subprocessFile}`, för tasks/epics: `${bpmnFile}::${bpmnElementId}`
     const globalProcessedDocNodes = new Set<string>();
 
-    for (const file of filesToGenerate) {
+    for (const file of analyzedFiles) {
       await reportProgress('docgen:file', 'Genererar dokumentation/testinstruktioner', file);
       const docFileName = file.replace('.bpmn', '.html');
       
@@ -1638,19 +1582,28 @@ export async function generateAllFromBpmnWithGraph(
             // Fortsätt med dokumentationsgenerering (inte continue)
           }
           
+          // Bygg ett tydligt meddelande med nodtyp och namn
+          const nodeTypeLabel = 
+            node.type === 'serviceTask' ? 'service tasken' :
+            node.type === 'userTask' ? 'user tasken' :
+            node.type === 'businessRuleTask' ? 'business rule tasken' :
+            node.type === 'callActivity' ? 'call activityn' :
+            'noden';
+          const nodeName = node.name || node.bpmnElementId || 'Okänd nod';
+          const detailMessage = `${nodeTypeLabel}: ${nodeName}${node.type === 'callActivity' && node.subprocessFile ? ` (subprocess: ${node.subprocessFile})` : ''}`;
+          
           await reportProgress(
             'docgen:file',
             'Genererar dokumentation',
-            `${file} → ${node.name || node.bpmnElementId}${node.type === 'callActivity' && node.subprocessFile ? ` (subprocess: ${node.subprocessFile})` : ''}`,
+            detailMessage,
           );
 
           const docFileKey = getNodeDocFileKey(node.bpmnFile, node.bpmnElementId);
-          const testFileKey = getNodeTestFileKey(node.bpmnFile, node.bpmnElementId);
           const nodeContext = buildNodeDocumentationContext(graph, node.id);
           const docLinks = {
             bpmnViewerLink: `#/bpmn/${node.bpmnFile}`,
             dorLink: undefined,
-            testLink: `tests/${testFileKey}`,
+            testLink: undefined, // Testfiler genereras inte längre i dokumentationssteget
           };
 
           const dorDodKey = `${node.bpmnFile}:${node.bpmnElementId}`;
@@ -1805,38 +1758,8 @@ export async function generateAllFromBpmnWithGraph(
                         }
                       }
                     }
-                    if (
-                      useLlm &&
-                      !fallbackUsed &&
-                      scenarioProvider &&
-                      docJson &&
-                      node.bpmnFile &&
-                      node.bpmnElementId
-                    ) {
-                      const scenarios = buildScenariosFromDocJson('feature', docJson);
-                      if (scenarios.length) {
-                        try {
-                          await supabase.from('node_planned_scenarios').upsert(
-                            {
-                              bpmn_file: node.bpmnFile,
-                              bpmn_element_id: node.bpmnElementId,
-                              provider: scenarioProvider,
-                              origin: 'llm-doc',
-                              scenarios,
-                            },
-                            {
-                              onConflict: 'bpmn_file,bpmn_element_id,provider',
-                            },
-                          );
-                          setScenarioEntry(nodeKey, scenarioProvider, scenarios);
-                        } catch (e) {
-                          console.warn(
-                            '[bpmnGenerators] Failed to upsert node_planned_scenarios for feature',
-                            e,
-                          );
-                        }
-                      }
-                    }
+                    // OBS: Testscenarion (scenarios) genereras inte längre i dokumentationssteget.
+                    // Testinformation genereras i ett separat steg och ska inte sparas här.
                   },
                   checkCancellation,
                 );
@@ -1940,46 +1863,8 @@ export async function generateAllFromBpmnWithGraph(
                       }
                     }
                   }
-                  if (
-                    useLlm &&
-                    !fallbackUsed &&
-                    scenarioProvider &&
-                    docJson &&
-                    node.bpmnFile &&
-                    node.bpmnElementId
-                  ) {
-                    const scenarios = buildScenariosFromDocJson(
-                      'businessRule',
-                      docJson,
-                    );
-                    if (scenarios.length) {
-                      try {
-                        // För återkommande noder: markera som instans-specifik
-                        const origin = skipDocGeneration
-                          ? 'llm-spec' // Instans-specifik för återkommande noder
-                          : 'llm-doc'; // Första gången noden genereras
-                        
-                        await supabase.from('node_planned_scenarios').upsert(
-                          {
-                            bpmn_file: node.bpmnFile,
-                            bpmn_element_id: node.bpmnElementId,
-                            provider: scenarioProvider,
-                            origin,
-                            scenarios,
-                          },
-                          {
-                            onConflict: 'bpmn_file,bpmn_element_id,provider',
-                          },
-                        );
-                        setScenarioEntry(nodeKey, scenarioProvider, scenarios);
-                      } catch (e) {
-                        console.warn(
-                          '[bpmnGenerators] Failed to upsert node_planned_scenarios for businessRule',
-                          e,
-                        );
-                      }
-                    }
-                  }
+                  // OBS: Testscenarion (scenarios) genereras inte längre i dokumentationssteget.
+                  // Testinformation genereras i ett separat steg och ska inte sparas här.
                 },
                 undefined, // featureGoalTemplateVersion (not applicable)
                 undefined, // childrenDocumentation (not applicable for businessRule/epic)
@@ -2034,43 +1919,8 @@ export async function generateAllFromBpmnWithGraph(
                       }
                     }
                   }
-                  if (
-                    useLlm &&
-                    !fallbackUsed &&
-                    scenarioProvider &&
-                    docJson &&
-                    node.bpmnFile &&
-                    node.bpmnElementId
-                  ) {
-                    const scenarios = buildScenariosFromDocJson('epic', docJson);
-                    if (scenarios.length) {
-                      try {
-                        // För återkommande noder: markera som instans-specifik
-                        const origin = skipDocGeneration
-                          ? 'llm-spec' // Instans-specifik för återkommande noder
-                          : 'llm-doc'; // Första gången noden genereras
-                        
-                        await supabase.from('node_planned_scenarios').upsert(
-                          {
-                            bpmn_file: node.bpmnFile,
-                            bpmn_element_id: node.bpmnElementId,
-                            provider: scenarioProvider,
-                            origin,
-                            scenarios,
-                          },
-                          {
-                            onConflict: 'bpmn_file,bpmn_element_id,provider',
-                          },
-                        );
-                        setScenarioEntry(nodeKey, scenarioProvider, scenarios);
-                      } catch (e) {
-                        console.warn(
-                          '[bpmnGenerators] Failed to upsert node_planned_scenarios for epic',
-                          e,
-                        );
-                      }
-                    }
-                  }
+                  // OBS: Testscenarion (scenarios) genereras inte längre i dokumentationssteget.
+                  // Testinformation genereras i ett separat steg och ska inte sparas här.
                 },
               );
             }
@@ -2083,136 +1933,17 @@ export async function generateAllFromBpmnWithGraph(
             insertGenerationMeta(nodeDocContent, generationSourceLabel),
           );
 
-          // Bygg testskelett. Försök först använda docJson.scenarios (om de finns),
-          // annars fall back till separat LLM-anrop för testscript.
-          // VIKTIGT: För återkommande subprocesser genereras testscenarion PER INSTANS
-          // eftersom kontexten kan vara annorlunda (t.ex. första gången vs re-verifiering)
-          let llmScenarios: { name: string; description: string; expectedResult?: string; steps?: string[] }[] | null =
-            null;
-
-          // För återkommande subprocesser: hoppa över docJson.scenarios och generera alltid nya per instans
-          const shouldGenerateInstanceSpecificScenarios = skipDocGeneration && node.type === 'callActivity' && node.subprocessFile;
-          
-          if (useLlm && lastDocJson && !shouldGenerateInstanceSpecificScenarios) {
-            const docTypeForNode: DocumentationDocType =
-              node.type === 'callActivity'
-                ? 'feature'
-                : node.type === 'businessRuleTask'
-                ? 'businessRule'
-                : 'epic';
-            llmScenarios = buildTestSkeletonScenariosFromDocJson(
-              docTypeForNode,
-              lastDocJson,
-            );
-          }
-
-          // Prioritera alltid att generera nya scenarion från BPMN-filerna
-          // För återkommande noder: generera alltid instans-specifika scenarion
-          // eftersom kontexten kan vara annorlunda för varje användning
-          if (useLlm && (!llmScenarios || llmScenarios.length === 0 || shouldGenerateInstanceSpecificScenarios)) {
-            if (shouldGenerateInstanceSpecificScenarios) {
-              const nodeTypeLabel = node.type === 'callActivity' && node.subprocessFile
-                ? `subprocess ${node.subprocessFile}`
-                : `${node.type} ${node.bpmnElementId}`;
-              console.log(`[bpmnGenerators] Generating instance-specific test scenarios for reused ${nodeTypeLabel} (instance: ${nodeKey})`);
-            }
-            
-            const generated = await generateTestSpecWithLlm(
-              node.element,
-              llmProvider,
-              localAvailable,
-              checkCancellation,
-              abortSignal,
-            );
-            if (generated && generated.length) {
-              llmScenarios = generated.map((s) => ({
-                name: s.name,
-                description: s.description,
-                expectedResult: s.expectedResult,
-                steps: s.steps,
-              }));
-              
-              // För återkommande noder, spara scenarion med origin 'llm-spec' (instans-specifik)
-              // För första gången, sparas scenarion redan i renderDocWithLlmFallback callback
-              if (shouldGenerateInstanceSpecificScenarios) {
-                const scenarioProvider = mapProviderToScenarioProvider(
-                  llmProvider || 'cloud',
-                  false,
-                );
-                try {
-                  await supabase.from('node_planned_scenarios').upsert(
-                    {
-                      bpmn_file: node.bpmnFile,
-                      bpmn_element_id: node.bpmnElementId,
-                      provider: scenarioProvider,
-                      origin: 'llm-spec', // Markera som instans-specifik
-                      scenarios: generated.map(s => {
-                        const category = s.type === 'edge-case' ? 'edge-case' as const
-                          : s.type === 'error-case' ? 'error-case' as const
-                          : 'happy-path' as const;
-                        return {
-                          id: s.id || `${node.bpmnElementId}-${generated.indexOf(s)}`,
-                          name: s.name,
-                          description: s.description,
-                          status: 'pending' as const,
-                          category,
-                        };
-                      }),
-                    },
-                    {
-                      onConflict: 'bpmn_file,bpmn_element_id,provider',
-                    },
-                  );
-                  setScenarioEntry(nodeKey, scenarioProvider, generated.map(s => ({
-                    id: s.id || `${node.bpmnElementId}-${generated.indexOf(s)}`,
-                    name: s.name,
-                    description: s.description,
-                    status: 'pending' as const,
-                    category: s.type || 'happy-path',
-                  })));
-                } catch (e) {
-                  console.warn(
-                    '[bpmnGenerators] Failed to upsert node_planned_scenarios for reused subprocess',
-                    e,
-                  );
-                }
-              }
-            }
-          }
-
-          let scenarioInputs =
-            llmScenarios && llmScenarios.length ? llmScenarios : null;
-
-          // Sista fallback: använd gamla scenarion från databasen endast om LLM-generering misslyckades
-          // Detta säkerställer att nya BPMN-filer alltid får nya scenarion genererade från filerna
-          if (!scenarioInputs || scenarioInputs.length === 0) {
-            const providerEntries = plannedScenarioMap.get(nodeKey);
-            if (providerEntries) {
-              for (const provider of FALLBACK_PROVIDER_ORDER) {
-                const providerScenarios = providerEntries.get(provider);
-                if (providerScenarios && providerScenarios.length > 0) {
-                  console.log(
-                    `[bpmnGenerators] Using fallback scenarios from database for ${nodeKey} (provider: ${provider}). ` +
-                    `Consider regenerating with LLM to get scenarios based on current BPMN structure.`
-                  );
-                  scenarioInputs = providerScenarios.map(mapTestScenarioToSkeleton);
-                  break;
-                }
-              }
-            }
-          }
-
-          result.tests.set(
-            testFileKey,
-            generateTestSkeleton(node.element, scenarioInputs || undefined),
-          );
+          // === TESTGENERERING HAR FLYTTATS TILL SEPARAT STEG ===
+          // Testfiler och testscenarion genereras inte längre i dokumentationssteget.
+          // Scenarion från dokumentationen sparas fortfarande i node_planned_scenarios
+          // (se renderDocWithLlmFallback callback ovan) eftersom de är del av dokumentationen.
 
           hierarchicalNodeArtifacts.push({
             bpmnFile: node.bpmnFile,
             elementId: node.bpmnElementId,
             elementName: node.name || node.bpmnElementId,
             docFileName: docFileKey,
-            testFileName: testFileKey,
+            testFileName: undefined, // Testfiler genereras inte längre här
           });
           // Markera som processad både lokalt (för combinedBody) och globalt (för dubbelgenerering)
           processedDocNodesInFile.add(docKey);
@@ -2466,6 +2197,7 @@ export async function generateAllFromBpmnWithGraph(
         bpmnFileName,
         useLlm,
         generationSourceLabel,
+        llmProvider,
       );
     }
     throw error;
@@ -2479,7 +2211,8 @@ export async function generateAllFromBpmn(
   existingDmnFiles: string[] = [],
   bpmnFileName?: string,
   useLlm: boolean = true,
-  generationSourceLabel?: string
+  generationSourceLabel?: string,
+  llmProvider?: LlmProvider
 ): Promise<GenerationResult> {
   const result: GenerationResult = {
     tests: new Map(),
@@ -2524,51 +2257,34 @@ export async function generateAllFromBpmn(
       continue;
     }
 
-    // Generate test skeleton
-    if (['UserTask', 'ServiceTask', 'BusinessRuleTask', 'CallActivity'].includes(nodeType)) {
-      let scenarioInputs:
-        | { name: string; description: string; expectedResult?: string; steps?: string[] }[]
-        | undefined;
-
-      if (useLlm) {
-        const llmScenarios = await generateTestSpecWithLlm(element, llmProvider, false);
-        scenarioInputs = llmScenarios || undefined;
-      } else {
-        // Lokal generering: använd design-scenarion från testMapping när de finns
-        scenarioInputs = getDesignScenariosForElement(element);
-      }
-
-      const testContent = generateTestSkeleton(element, scenarioInputs);
-      const testFileKey = bpmnFileName
-        ? getNodeTestFileKey(bpmnFileName, element.id)
-        : `${element.id}.spec.ts`;
-      result.tests.set(testFileKey, testContent);
-      nodeTestFileKey = testFileKey;
+    // === TESTGENERERING HAR FLYTTATS TILL SEPARAT STEG ===
+    // Testfiler och testscenarion genereras inte längre i dokumentationssteget.
+    // Använd separat testgenereringsfunktion istället.
+    nodeTestFileKey = undefined;
       
-      // Generate DoR/DoD criteria for individual elements
-      // Use hyphen for normalization (consistent with subprocess IDs)
-      const normalizedName = (element.name || element.id)
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-]/g, '');
-        
-      if (nodeType === 'ServiceTask' || nodeType === 'UserTask' || nodeType === 'BusinessRuleTask' || nodeType === 'CallActivity') {
-        const criteria = generateDorDodForNodeType(
-          nodeType as 'ServiceTask' | 'UserTask' | 'BusinessRuleTask' | 'CallActivity',
-          normalizedName
-        );
-        
-        // Add node metadata to each criterion
-        const enrichedCriteria = criteria.map(c => ({
-          ...c,
-          node_type: nodeType,
-          bpmn_element_id: element.id,
-          bpmn_file: bpmnFileName
-        }));
-        
-        result.dorDod.set(normalizedName, enrichedCriteria);
-      }
+    // Generate DoR/DoD criteria for individual elements
+    // Use hyphen for normalization (consistent with subprocess IDs)
+    const normalizedName = (element.name || element.id)
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+      
+    if (nodeType === 'ServiceTask' || nodeType === 'UserTask' || nodeType === 'BusinessRuleTask' || nodeType === 'CallActivity') {
+      const criteria = generateDorDodForNodeType(
+        nodeType as 'ServiceTask' | 'UserTask' | 'BusinessRuleTask' | 'CallActivity',
+        normalizedName
+      );
+      
+      // Add node metadata to each criterion
+      const enrichedCriteria = criteria.map(c => ({
+        ...c,
+        node_type: nodeType,
+        bpmn_element_id: element.id,
+        bpmn_file: bpmnFileName
+      }));
+      
+      result.dorDod.set(normalizedName, enrichedCriteria);
     }
 
     // Generate documentation with subprocess/DMN info

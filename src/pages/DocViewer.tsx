@@ -324,11 +324,11 @@ const DocViewer = () => {
               
               if (modeFolder && modeFolder.startsWith('slow/')) {
                 if (provider === 'chatgpt') {
-                  tryPaths.unshift(`docs/slow/chatgpt/${baseName}/${currentVersionHash}/${docFileName}`);
+                  tryPaths.unshift(`docs/slow/chatgpt/${baseName}/${versionHash}/${docFileName}`);
                 } else if (provider === 'ollama') {
-                  tryPaths.unshift(`docs/slow/ollama/${baseName}/${currentVersionHash}/${docFileName}`);
+                  tryPaths.unshift(`docs/slow/ollama/${baseName}/${versionHash}/${docFileName}`);
                 } else {
-                  tryPaths.unshift(`docs/slow/${baseName}/${currentVersionHash}/${docFileName}`);
+                  tryPaths.unshift(`docs/slow/${baseName}/${versionHash}/${docFileName}`);
                 }
               }
               

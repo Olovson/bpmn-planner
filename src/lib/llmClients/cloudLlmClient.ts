@@ -17,7 +17,7 @@ const ALLOW_LLM_IN_TESTS =
     .trim()
     .toLowerCase() === 'true';
 
-const FULL_MODEL = 'claude-sonnet-4-20250514'; // Claude Sonnet 4.5
+const FULL_MODEL = 'claude-sonnet-4-5-20250929'; // Claude Sonnet 4.5 (stödjer structured outputs)
 const IS_BROWSER = typeof window !== 'undefined';
 
 // Normalfall: LLM är aktiverat i dev/prod när VITE_USE_LLM=true och vi har API-nyckel.
@@ -161,13 +161,13 @@ export class CloudLlmClient implements LlmClient {
       
       // Lägg till output_format om JSON schema finns
       // Claude stödjer structured outputs via output_format med beta-header
-      // Viktigt: output_format objektet ska ha strukturen { type: 'json_schema', schema: <schema> }
+      // Strukturen: { type: 'json_schema', schema: <schema> } - INTE json_schema wrapper
       if (cleanJsonSchema) {
         // Skapa ett helt nytt objekt för att säkerställa inga extra fält
         const cleanSchema = cleanJsonSchema.schema ? JSON.parse(JSON.stringify(cleanJsonSchema.schema)) : {};
         requestBody.output_format = {
           type: 'json_schema',
-          schema: cleanSchema,
+          schema: cleanSchema, // Schema direkt - INTE json_schema wrapper
         };
         
         // Debug: verifiera att output_format bara innehåller tillåtna fält
@@ -208,9 +208,8 @@ export class CloudLlmClient implements LlmClient {
       }
       
       // Lägg till output_format om JSON schema finns
-      // OBS: API:et använder output_format, INTE response_format!
-      // Strukturen är: { type: 'json_schema', schema: <schema> }
-      // INTE: { type: 'json_schema', json_schema: { name, strict, schema } }
+      // Strukturen enligt dokumentation: { type: 'json_schema', schema: <schema> }
+      // INTE json_schema wrapper - bara schema direkt
       if (cleanJsonSchema) {
         // Skapa schema-objektet först genom att serialisera och deserialisera
         const cleanSchema = cleanJsonSchema.schema ? JSON.parse(JSON.stringify(cleanJsonSchema.schema)) : {};
@@ -219,7 +218,7 @@ export class CloudLlmClient implements LlmClient {
         // Detta förhindrar att SDK:et eller TypeScript lägger till extra fält
         createParams.output_format = {
           type: 'json_schema',
-          schema: cleanSchema,
+          schema: cleanSchema, // Schema direkt - INTE json_schema wrapper
         };
         
         // Debug: Verifiera exakt struktur INNAN SDK-anrop
@@ -241,6 +240,7 @@ export class CloudLlmClient implements LlmClient {
           // Kontrollera om det finns några extra fält i createParams
           const createParamsKeys = Object.keys(createParams);
           const allowedCreateParamsKeys = ['model', 'max_tokens', 'temperature', 'messages', 'system', 'output_format'];
+          console.log('[Cloud LLM] Final output_format structure:', JSON.stringify(createParams.output_format, null, 2));
           const extraCreateParamsKeys = createParamsKeys.filter(k => !allowedCreateParamsKeys.includes(k));
           if (extraCreateParamsKeys.length > 0) {
             console.warn('[Cloud LLM] WARNING: Extra keys in createParams:', extraCreateParamsKeys);

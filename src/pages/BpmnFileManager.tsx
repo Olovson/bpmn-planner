@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Search, Filter, History } from 'lucide-react';
+import { FileText, FileCode, Upload, Trash2, Download, CheckCircle2, XCircle, AlertCircle, GitBranch, Loader2, Sparkles, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Search, Filter, History, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +45,7 @@ import { buildBpmnProcessGraph, createGraphSummary, getTestableNodes } from '@/l
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { generateAllFromBpmnWithGraph, type GenerationPhaseKey } from '@/lib/bpmnGenerators';
+import { generateTestsForFile, generateTestsForAllFiles, type TestGenerationProgress } from '@/lib/testGenerators';
 import { parseBpmnFile } from '@/lib/bpmnParser';
 import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
 import { invalidateArtifactQueries, invalidateStructureQueries } from '@/lib/queryInvalidation';
@@ -225,7 +226,10 @@ export default function BpmnFileManager() {
   const [currentGenerationStep, setCurrentGenerationStep] = useState<{ step: string; detail?: string } | null>(null);
   const [showAdvancedTools, setShowAdvancedTools] = useState(false);
   const [fileFilter, setFileFilter] = useState<'all' | 'bpmn' | 'dmn'>('all');
-  const [fileSortBy, setFileSortBy] = useState<'name' | 'type' | 'updated'>('name');
+  const [fileSortBy, setFileSortBy] = useState<{
+    column: 'name' | 'size' | 'updated' | 'artifacts';
+    direction: 'asc' | 'desc';
+  }>({ column: 'name', direction: 'asc' });
   const [hierarchyBuilt, setHierarchyBuilt] = useState(false);
   const [graphTotals, setGraphTotals] = useState<{ files: number; nodes: number }>({
     files: 0,
@@ -1071,6 +1075,8 @@ export default function BpmnFileManager() {
     let totalGraphFiles = 0;
     let totalGraphNodes = 0;
     let docgenCompleted = 0;
+    // OBS: testUploadsPlanned och testUploadsCompleted används inte längre - testgenerering sker i separat steg
+    // De behövs fortfarande för progress-tracking (sätts till 0 eftersom vi inte genererar tester här)
     let testUploadsPlanned = 0;
     let testUploadsCompleted = 0;
     let docUploadsPlanned = 0;
@@ -1113,15 +1119,80 @@ export default function BpmnFileManager() {
       syncOverlayProgress(label);
     };
 
-    const updateGenerationProgress = () => {
+    // Helper för att uppdatera progress med explicit step/detail (undviker state-delay)
+    const updateGenerationProgressWithStep = (step: string, detail?: string) => {
       const totalSteps = jobTotalCount;
       const completedSteps = jobProgressCount;
-      const totalProgressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+      // Säkerställ att progress inte överstiger 100%
+      const totalProgressPercent = totalSteps > 0 
+        ? Math.min(100, Math.round((completedSteps / totalSteps) * 100))
+        : 0;
+      
+      // Bygg detaljer om de inte finns
+      let stepDetail = detail;
+      if (!stepDetail) {
+        // Försök bygga detaljer från progress
+        if (docgenCompleted > 0 && totalGraphNodes > 0) {
+          stepDetail = `Dokumentation: ${docgenCompleted}/${totalGraphNodes} noder`;
+        } else if (docUploadsCompleted > 0 && docUploadsPlanned > 0) {
+          stepDetail = `Laddar upp: ${docUploadsCompleted}/${docUploadsPlanned} filer`;
+        } else if (totalGraphNodes > 0) {
+          stepDetail = `Förbereder ${totalGraphNodes} noder`;
+        }
+      }
       
       const progress: GenerationProgress = {
         totalProgress: totalProgressPercent,
-        currentStep: overlayDescription || 'Förbereder generering',
-        currentStepDetail: currentGenerationStep?.detail,
+        currentStep: step,
+        currentStepDetail: stepDetail,
+        docs: {
+          completed: docgenCompleted,
+          total: totalGraphNodes || docgenProgress.total || 0,
+        },
+        htmlUpload: {
+          completed: docUploadsCompleted,
+          total: docUploadsPlanned || docUploadProgress.planned || 0,
+        },
+        tests: {
+          completed: testUploadsCompleted,
+          total: testUploadsPlanned || testUploadProgress.planned || 0,
+        },
+      };
+      
+      setGenerationProgress(progress);
+    };
+
+    const updateGenerationProgress = () => {
+      const totalSteps = jobTotalCount;
+      const completedSteps = jobProgressCount;
+      // Säkerställ att progress inte överstiger 100%
+      const totalProgressPercent = totalSteps > 0 
+        ? Math.min(100, Math.round((completedSteps / totalSteps) * 100))
+        : 0;
+      
+      // Bygg en mer informativ currentStep-sträng
+      let currentStepText = overlayDescription || 'Förbereder generering';
+      if (currentGenerationStep?.step) {
+        currentStepText = currentGenerationStep.step;
+      }
+      
+      // Lägg till detaljer om vad som faktiskt pågår
+      let stepDetail = currentGenerationStep?.detail;
+      if (!stepDetail) {
+        // Försök bygga detaljer från progress
+        if (docgenCompleted > 0 && totalGraphNodes > 0) {
+          stepDetail = `Dokumentation: ${docgenCompleted}/${totalGraphNodes} noder`;
+        } else if (docUploadsCompleted > 0 && docUploadsPlanned > 0) {
+          stepDetail = `Laddar upp: ${docUploadsCompleted}/${docUploadsPlanned} filer`;
+        } else if (totalGraphNodes > 0) {
+          stepDetail = `Förbereder ${totalGraphNodes} noder`;
+        }
+      }
+      
+      const progress: GenerationProgress = {
+        totalProgress: totalProgressPercent,
+        currentStep: currentStepText,
+        currentStepDetail: stepDetail,
         docs: {
           completed: docgenCompleted,
           total: totalGraphNodes || docgenProgress.total || 0,
@@ -1141,36 +1212,63 @@ export default function BpmnFileManager() {
 
     const handleGeneratorPhase = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
       logGenerationProgress(modeLabel, label, detail);
+      
+      // Uppdatera step direkt (använd en ref för att undvika state-delay)
+      let stepText = label;
+      let stepDetail = detail;
+      
       switch (phase) {
         case 'graph:start':
-          syncOverlayProgress('Analyserar BPMN-struktur');
-          updateGenerationProgress();
+          stepText = 'Analyserar BPMN-struktur';
+          stepDetail = detail;
+          syncOverlayProgress(stepText);
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
+          // Uppdatera progress direkt med step-info
+          updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'graph:complete':
-          await incrementJobProgress('Processträd klart');
-          updateGenerationProgress();
+          stepText = 'Processträd klart';
+          stepDetail = detail;
+          await incrementJobProgress(stepText);
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
+          updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'hier-tests:start':
-          syncOverlayProgress('Genererar hierarkiska tester');
-          updateGenerationProgress();
+          stepText = 'Genererar hierarkiska tester';
+          stepDetail = detail;
+          syncOverlayProgress(stepText);
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
+          updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'hier-tests:file':
+          stepText = 'Genererar hierarkiska tester';
+          stepDetail = detail;
           await incrementJobProgress(`Hierarkitest: ${detail || ''}`);
-          updateGenerationProgress();
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
+          updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'node-analysis:start':
+          stepText = 'Analyserar noder';
+          stepDetail = detail;
           syncOverlayProgress(`Analyserar noder (${detail || ''})`);
-          updateGenerationProgress();
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
+          updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'node-analysis:node':
           // Nodanalyser används främst som förberedelse – räkna inte varje nod som ett eget framsteg,
           // utan visa bara status i overlayen.
+          stepText = 'Analyserar noder';
+          stepDetail = detail;
           syncOverlayProgress(`Analyserar nod: ${detail || ''}`);
-          updateGenerationProgress();
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
+          updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'docgen:start':
-          syncOverlayProgress('Genererar dokumentation');
-          updateGenerationProgress();
+          stepText = 'Genererar dokumentation';
+          stepDetail = detail;
+          syncOverlayProgress(stepText);
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
+          updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'docgen:file':
           // Här sker den tunga logiken (mallar/LLM per nod), så koppla framsteg till verkligt antal noder.
@@ -1179,6 +1277,18 @@ export default function BpmnFileManager() {
             completed: docgenCompleted,
             total: totalGraphNodes || prev.total || docgenCompleted,
           }));
+          stepText = 'Genererar dokumentation';
+          // Använd detail om det finns (innehåller nodtyp och namn direkt från reportProgress)
+          // Detail kommer från reportProgress och innehåller format: "service tasken: nodeName" eller liknande
+          if (detail) {
+            // Detail är redan formaterat som "service tasken: nodeName" eller liknande
+            stepDetail = `Genererar information för ${detail}`;
+          } else if (totalGraphNodes > 0) {
+            stepDetail = `${docgenCompleted} av ${totalGraphNodes} noder`;
+          } else {
+            stepDetail = `Bearbetar nod ${docgenCompleted}`;
+          }
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
           if (totalGraphNodes > 0) {
             await incrementJobProgress(
               `Dokumentation ${docgenCompleted} av ${totalGraphNodes} noder`
@@ -1186,7 +1296,21 @@ export default function BpmnFileManager() {
           } else {
             await incrementJobProgress(`Dokumentation: ${detail || ''}`);
           }
-          updateGenerationProgress();
+          updateGenerationProgressWithStep(stepText, stepDetail);
+          break;
+        case 'docgen:complete':
+          stepText = 'Dokumentation klar';
+          stepDetail = detail;
+          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
+          syncOverlayProgress(stepText);
+          // Säkerställ att vi har räknat alla steg
+          if (jobProgressCount < jobTotalCount) {
+            jobProgressCount = jobTotalCount;
+            if (activeJob) {
+              await updateGenerationJob(activeJob.id, { progress: jobProgressCount });
+            }
+          }
+          updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'total:init':
           if (detail) {
@@ -1214,6 +1338,25 @@ export default function BpmnFileManager() {
     };
     syncOverlayProgress('Förbereder generering');
     
+    // Automatisk hierarki-byggning: Bygg hierarki automatiskt innan generering
+    // Använd root-fil om den finns, annars använd den valda filen
+    const hierarchyFile = rootFileName 
+      ? files.find(f => f.file_name === rootFileName) || file
+      : file;
+    
+    if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
+      // Bygg hierarki tyst i bakgrunden (transparent för användaren)
+      try {
+        await buildHierarchySilently(hierarchyFile);
+        // Invalidera queries så att UI uppdateras med ny hierarki
+        queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+        queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
+      } catch (error) {
+        // Logga felet men fortsätt med generering (hierarki är inte kritiskt)
+        console.warn('[handleGenerateArtifacts] Failed to build hierarchy automatically, continuing anyway:', error);
+      }
+    }
+    
     // Build plan if not already built
     if (!generationPlan) {
       try {
@@ -1227,11 +1370,42 @@ export default function BpmnFileManager() {
           .map(f => f.file_name);
         
         const isRootFile = rootFileName && file.file_name === rootFileName;
-        const useHierarchy = isRootFile;
+        
+        // Kolla om filen är subprocess för att inkludera i plan
+        const { data: depsForPlan } = await supabase
+          .from('bpmn_dependencies')
+          .select('parent_file, child_file')
+          .eq('child_file', file.file_name);
+        
+        const isSubprocess = depsForPlan && depsForPlan.length > 0;
+        const parentFile = isSubprocess ? depsForPlan![0].parent_file : null;
+        const useHierarchy = isRootFile || (isSubprocess && parentFile);
         
         let plan: GenerationPlan;
         if (useHierarchy && existingBpmnFiles.length > 0) {
-          const graph = await buildBpmnProcessGraph(file.file_name, existingBpmnFiles);
+          // Bestäm vilka filer som ska inkluderas
+          let planFiles: string[];
+          if (isRootFile) {
+            planFiles = existingBpmnFiles;
+          } else if (isSubprocess && parentFile) {
+            // Subprocess: inkludera parent + subprocess + siblings
+            const parentDeps = await supabase
+              .from('bpmn_dependencies')
+              .select('child_file')
+              .eq('parent_file', parentFile);
+            
+            const relatedFiles = new Set<string>([parentFile, file.file_name]);
+            if (parentDeps.data) {
+              parentDeps.data.forEach(dep => {
+                if (dep.child_file) relatedFiles.add(dep.child_file);
+              });
+            }
+            planFiles = Array.from(relatedFiles).filter(f => existingBpmnFiles.includes(f));
+          } else {
+            planFiles = [file.file_name];
+          }
+          
+          const graph = await buildBpmnProcessGraph(file.file_name, planFiles);
           const summary = createGraphSummary(graph);
           const testableNodes = getTestableNodes(graph);
           
@@ -1323,11 +1497,25 @@ export default function BpmnFileManager() {
         .map(f => f.file_name);
       const existingDmnFiles: string[] = []; // DMN files kan läggas till senare
 
-      // Använd full hierarkisk analys endast för toppfilen (root).
-      // Övriga filer genereras med enklare per-fil-analys för att undvika
-      // att browsern bygger tunga grafer för varje enskild subprocess-fil.
+      // Logik för att avgöra om hierarki ska användas:
+      // 1. Om filen är root-fil: använd hierarki (inkluderar alla subprocesser)
+      // 2. Om filen är subprocess: inkludera parent-processer för kontext
+      // 3. Annars: generera isolerat (fallback)
       const isRootFile = rootFileName && file.file_name === rootFileName;
-      const useHierarchy = isRootFile;
+      
+      // Kolla om filen är en subprocess (har parent i bpmn_dependencies)
+      const { data: dependencies } = await supabase
+        .from('bpmn_dependencies')
+        .select('parent_file, child_file')
+        .eq('child_file', file.file_name);
+      
+      const isSubprocess = dependencies && dependencies.length > 0;
+      const parentFile = isSubprocess ? dependencies![0].parent_file : null;
+      
+      // Använd hierarki om:
+      // - Filen är root-fil, ELLER
+      // - Filen är subprocess och vi vill inkludera parent-kontext
+      const useHierarchy = isRootFile || (isSubprocess && parentFile);
 
       console.log(`Generating for ${file.file_name} (hierarchy: ${useHierarchy})`);
 
@@ -1341,10 +1529,34 @@ export default function BpmnFileManager() {
         ? 'llm-slow-chatgpt'
         : 'llm-slow-ollama';
       const localAvailable = llmHealth?.local.available ?? false;
-      const graphFiles =
-        isRootFile && useHierarchy
-          ? existingBpmnFiles
-          : [file.file_name];
+      
+      // Bestäm vilka filer som ska inkluderas i grafen:
+      // - Om root: alla filer (hierarki)
+      // - Om subprocess med parent: parent + subprocess (för kontext)
+      // - Annars: bara filen själv (isolat)
+      let graphFiles: string[];
+      if (isRootFile && useHierarchy) {
+        // Root-fil: inkludera alla filer i hierarkin
+        graphFiles = existingBpmnFiles;
+      } else if (isSubprocess && parentFile && useHierarchy) {
+        // Subprocess: inkludera parent för kontext
+        // Hitta alla filer som är relaterade (parent + subprocess + eventuella siblings)
+        const parentDeps = await supabase
+          .from('bpmn_dependencies')
+          .select('child_file')
+          .eq('parent_file', parentFile);
+        
+        const relatedFiles = new Set<string>([parentFile, file.file_name]);
+        if (parentDeps.data) {
+          parentDeps.data.forEach(dep => {
+            if (dep.child_file) relatedFiles.add(dep.child_file);
+          });
+        }
+        graphFiles = Array.from(relatedFiles).filter(f => existingBpmnFiles.includes(f));
+      } else {
+        // Isolerat: bara filen själv
+        graphFiles = [file.file_name];
+      }
       // Automatisk diff-baserad regenerering: skapa filter baserat på olösta diff:er
       // Fallback-strategi: om vi är osäkra (ingen diff-data), regenerera allt
       let nodeFilter: ((node: any) => boolean) | undefined = undefined;
@@ -1541,13 +1753,13 @@ export default function BpmnFileManager() {
       const detailedJiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }> = [];
       
       // Hämta dependencies för att bygga fullständig hierarki
-      const { data: dependencies } = await supabase
+      const { data: allDependencies } = await supabase
         .from('bpmn_dependencies')
         .select('parent_file, child_process, child_file');
       
       const depsMap = new Map<string, { parentFile: string; callActivityName: string }>();
-      if (dependencies) {
-        for (const dep of dependencies) {
+      if (allDependencies) {
+        for (const dep of allDependencies) {
           if (dep.child_file) {
             depsMap.set(dep.child_file, {
               parentFile: dep.parent_file,
@@ -1683,282 +1895,9 @@ export default function BpmnFileManager() {
       }
       await incrementJobProgress('Bygger Jira-mappningar');
 
-      // Spara genererade testfiler till Supabase Storage
-      let testsCount = 0;
-      const testLinksToInsert: any[] = [];
-      const detailedTestFiles: Array<{ fileName: string; elements: Array<{ id: string; name: string }> }> = [];
-      const testArtifactMap = new Map(
-        nodeArtifacts
-          .filter(artifact => artifact.testFileName)
-          .map(artifact => [artifact.testFileName!, artifact])
-      );
+      // OBS: Testgenerering har separerats till ett eget steg (handleGenerateTestsForSelectedFile/handleGenerateTestsForAllFiles)
+      // Här genererar vi bara dokumentation, inte tester
       
-      logGenerationProgress(modeLabel, 'Genererar testfiler', file.file_name);
-      testUploadsPlanned = result.tests.size;
-      testUploadsCompleted = 0;
-      setTestUploadProgress({
-        planned: testUploadsPlanned,
-        completed: 0,
-      });
-      setOverlayDescription(
-        testUploadsPlanned > 0
-          ? `Genererar testfiler – laddar upp och mappar tester (0 av ${testUploadsPlanned})`
-          : 'Genererar testfiler – laddar upp och mappar tester'
-      );
-      checkCancellation();
-
-      await ensureJobTotal(jobTotalCount + result.tests.size);
-      if (result.tests.size > 0) {
-        for (const [testFileName, testContent] of result.tests.entries()) {
-          const { modePath: testPath, legacyPath: legacyTestPath } = buildTestStoragePaths(
-            testFileName,
-            effectiveLlmMode ?? (isLocalMode ? 'local' : null)
-          );
-          const testFileElements: Array<{ id: string; name: string }> = [];
-          
-          checkCancellation();
-
-          // Upload test file to Supabase Storage
-          const { error: uploadError } = await supabase.storage
-            .from('bpmn-files')
-            .upload(testPath, new Blob([testContent], { type: 'text/plain' }), {
-              upsert: true,
-              contentType: 'text/plain',
-            });
-
-          // Skriv även till legacy-path för bakåtkompatibilitet
-          if (!uploadError && legacyTestPath !== testPath) {
-            const { error: legacyUploadError } = await supabase.storage
-              .from('bpmn-files')
-              .upload(legacyTestPath, new Blob([testContent], { type: 'text/plain' }), {
-                upsert: true,
-                contentType: 'text/plain',
-              });
-            if (legacyUploadError) {
-              console.warn(
-                'Kunde inte skriva legacy-testfil för bakåtkompatibilitet:',
-                legacyTestPath,
-                legacyUploadError
-              );
-            }
-          }
-
-          if (uploadError) {
-            console.error(`Error uploading test file ${testFileName}:`, uploadError);
-          } else {
-            testsCount++;
-          }
-          checkCancellation();
-
-          // För noder med explicita testfiler
-          const nodeArtifact = testArtifactMap.get(testFileName);
-          if (nodeArtifact) {
-            const providerLabel =
-              isLocalMode
-                ? 'local-fallback'
-                : llmProvider === 'cloud'
-                ? 'chatgpt'
-                : llmProvider === 'local'
-                ? 'ollama'
-                : null;
-            testLinksToInsert.push({
-              bpmn_file: nodeArtifact.bpmnFile || file.file_name,
-              bpmn_element_id: nodeArtifact.elementId,
-              test_file_path: testPath,
-              test_name: `Test for ${nodeArtifact.elementName || nodeArtifact.elementId}`,
-              provider: providerLabel,
-            });
-            testFileElements.push({
-              id: nodeArtifact.elementId,
-              name: nodeArtifact.elementName || nodeArtifact.elementId,
-            });
-          } else if (testFileName.includes('.hierarchical.spec.ts')) {
-            continue;
-          } else {
-            console.warn(
-              '[Generation] Hittade ingen nodeArtifact för testfil, hoppar node_test_links:',
-              testFileName
-            );
-          }
-          if (testFileElements.length > 0) {
-            detailedTestFiles.push({
-              fileName: testFileName,
-              elements: testFileElements,
-            });
-          }
-          testUploadsCompleted += 1;
-          setTestUploadProgress((prev) => ({
-            planned: prev.planned || testUploadsPlanned,
-            completed: testUploadsCompleted,
-          }));
-          const label =
-            testUploadsPlanned > 0
-              ? `Testfil ${testUploadsCompleted} av ${testUploadsPlanned}`
-              : `Testfil: ${testFileName}`;
-          await incrementJobProgress(label);
-          updateGenerationProgress();
-        }
-
-        if (testLinksToInsert.length > 0) {
-          const linksWithMode = testLinksToInsert.map((link) => ({
-            ...link,
-            mode: effectiveLlmMode ?? (isLocalMode ? 'local' : null),
-          }));
-
-          let testLinksData: unknown = null;
-          let testError: unknown = null;
-
-          // Ta bort gamla länkar för samma noder för att undvika dubbletter med felaktiga paths
-          const uniqueNodes = new Map<string, { bpmnFile: string; elementId: string }>();
-          for (const link of linksWithMode) {
-            const key = `${link.bpmn_file}::${link.bpmn_element_id}`;
-            if (!uniqueNodes.has(key)) {
-              uniqueNodes.set(key, { bpmnFile: link.bpmn_file, elementId: link.bpmn_element_id });
-            }
-          }
-
-          for (const { bpmnFile, elementId } of uniqueNodes.values()) {
-            // Ta bort alla gamla länkar för denna nod (behåller bara de nya vi ska skapa)
-            const newPaths = new Set(
-              linksWithMode
-                .filter(l => l.bpmn_file === bpmnFile && l.bpmn_element_id === elementId)
-                .map(l => l.test_file_path)
-            );
-            
-            // Hämta befintliga länkar för denna nod
-            const { data: existingLinks } = await supabase
-              .from('node_test_links')
-              .select('id, test_file_path')
-              .eq('bpmn_file', bpmnFile)
-              .eq('bpmn_element_id', elementId);
-            
-            // Ta bort länkar som inte matchar de nya paths vi ska skapa
-            if (existingLinks) {
-              const toDelete = existingLinks
-                .filter(l => !newPaths.has(l.test_file_path))
-                .map(l => l.id);
-              
-              if (toDelete.length > 0) {
-                await supabase
-                  .from('node_test_links')
-                  .delete()
-                  .in('id', toDelete);
-              }
-            }
-          }
-
-          // Första försök: upsert med mode-kolumn (normalläget när schemat är uppdaterat)
-          const firstAttempt = await supabase
-            .from('node_test_links')
-            .upsert(linksWithMode, {
-              onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
-              ignoreDuplicates: false,
-            })
-            .select();
-
-          if (firstAttempt.error) {
-            testError = firstAttempt.error;
-
-            // Om det är ett schema-cache / saknad kolumn-fel (PGRST204) försöker vi
-            // en gång till utan mode-kolumn så att lokal utveckling kan fortsätta.
-            if (isPGRST204Error(firstAttempt.error)) {
-              console.warn(
-                '[Generation] node_test_links.mode saknas i aktivt schema eller cache – försöker fallback-upsert utan mode. ' +
-                  'För full funktionalitet, kör Supabase-migrationerna (t.ex. supabase db reset eller supabase migration up) enligt README.'
-              );
-
-              const linksWithoutMode = testLinksToInsert.map((link) => ({
-                bpmn_file: link.bpmn_file,
-                bpmn_element_id: link.bpmn_element_id,
-                test_file_path: link.test_file_path,
-                test_name: link.test_name,
-              }));
-
-              // Ta bort gamla länkar även i fallback-läget
-              for (const { bpmnFile, elementId } of uniqueNodes.values()) {
-                const newPaths = new Set(
-                  linksWithoutMode
-                    .filter(l => l.bpmn_file === bpmnFile && l.bpmn_element_id === elementId)
-                    .map(l => l.test_file_path)
-                );
-                
-                const { data: existingLinks } = await supabase
-                  .from('node_test_links')
-                  .select('id, test_file_path')
-                  .eq('bpmn_file', bpmnFile)
-                  .eq('bpmn_element_id', elementId);
-                
-                if (existingLinks) {
-                  const toDelete = existingLinks
-                    .filter(l => !newPaths.has(l.test_file_path))
-                    .map(l => l.id);
-                  
-                  if (toDelete.length > 0) {
-                    await supabase
-                      .from('node_test_links')
-                      .delete()
-                      .in('id', toDelete);
-                  }
-                }
-              }
-
-              const fallbackAttempt = await supabase
-                .from('node_test_links')
-                .upsert(linksWithoutMode, {
-                  onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
-                  ignoreDuplicates: false,
-                })
-                .select();
-
-              if (fallbackAttempt.error) {
-                testError = fallbackAttempt.error;
-              } else {
-                testLinksData = fallbackAttempt.data;
-                testError = null;
-              }
-            }
-          } else {
-            testLinksData = firstAttempt.data;
-            testError = null;
-          }
-
-          if (testError) {
-            console.error('[Generation] Save test links error:', testError);
-
-            // Only show toast warnings if showReport is true (single file generation)
-            if (showReport) {
-              if (isPGRST204Error(testError)) {
-                // Testfilerna är genererade, men länkning till databasen misslyckades på grund av schema-problem.
-                toast({
-                  title: 'Tester genererade – men länkning till DB misslyckades',
-                  description:
-                    'Testfilerna har skapats, men kunde inte kopplas i tabellen node_test_links. ' +
-                    'Om du kör lokalt och nyligen ändrat DB-schemat: kör supabase-migrationerna (t.ex. supabase db reset) enligt README.',
-                  variant: 'destructive',
-                  duration: 10000,
-                });
-              } else {
-                toast({
-                  title: 'Kunde inte spara testlänkar',
-                  description:
-                    (testError as { message?: string }).message ||
-                    'Okänt fel vid sparning av testlänkar',
-                  variant: 'destructive',
-                });
-              }
-            }
-          } else {
-            console.log(
-              `[Generation] Sparade ${(testLinksData as { length?: number } | null)?.length ?? testLinksToInsert.length
-              } testlänkar för ${file.file_name}`
-            );
-          }
-
-          // Invalidera cache oavsett om det fanns fel eller inte (för att visa aktuell status)
-          invalidateArtifactQueries(queryClient);
-          checkCancellation();
-        }
-        }
       await ensureJobTotal(jobTotalCount + result.docs.size);
 
       // Spara dokumentation till Supabase Storage
@@ -2034,7 +1973,12 @@ export default function BpmnFileManager() {
               ? `Dokumentation ${docUploadsCompleted} av ${docUploadsPlanned} filer`
               : `Dokumentation: ${docFileName}`;
           await incrementJobProgress(label);
-          updateGenerationProgress();
+          // Uppdatera progress med detaljerad information
+          const uploadDetail = docUploadsPlanned > 0
+            ? `Laddar upp: ${docUploadsCompleted}/${docUploadsPlanned} filer`
+            : `Laddar upp: ${docFileName}`;
+          setCurrentGenerationStep({ step: 'Laddar upp dokumentation', detail: uploadDetail });
+          updateGenerationProgressWithStep('Laddar upp dokumentation', uploadDetail);
         }
       }
 
@@ -2053,9 +1997,7 @@ export default function BpmnFileManager() {
       
       const skippedList = Array.from(skippedSubprocesses);
       const nodeDocCount = nodeArtifacts.filter(a => a.docFileName).length;
-      const nodeTestCount = nodeArtifacts.filter(a => a.testFileName).length;
       const totalDocCount = nodeDocCount || docsCount;
-      const totalTestCount = nodeTestCount || testsCount;
 
       const resultMessage: string[] = [];
       if (isLocalMode) {
@@ -2073,7 +2015,6 @@ export default function BpmnFileManager() {
         resultMessage.push(`Hierarkisk analys: ${result.metadata.totalFilesAnalyzed} filer`);
       }
       resultMessage.push(`${dorDodCount} DoR/DoD-kriterier`);
-      resultMessage.push(`${totalTestCount} testfiler`);
       resultMessage.push(`${totalDocCount} dokumentationsfiler`);
       if (skippedList.length) {
         resultMessage.push(`Hoppade över ${skippedList.length} saknade subprocesser`);
@@ -2090,7 +2031,7 @@ export default function BpmnFileManager() {
         fileName: file.file_name,
         filesAnalyzed,
         dorDodCriteria: detailedDorDod,
-        testFiles: detailedTestFiles,
+        testFiles: [], // Testgenerering sker i separat steg
         docFiles: detailedDocFiles,
         jiraMappings: detailedJiraMappings,
         subprocessMappings: detailedSubprocessMappings,
@@ -2103,10 +2044,7 @@ export default function BpmnFileManager() {
       const dialogResult: GenerationResult = {
         fileName: file.file_name,
         filesAnalyzed,
-        testFiles: detailedTestFiles.map(tf => ({
-          fileName: tf.fileName,
-          elements: tf.elements.map(el => ({ name: el.name, id: el.id })),
-        })),
+        testFiles: [], // Testgenerering sker i separat steg
         docFiles: detailedDocFiles,
         jiraMappings: detailedJiraMappings.map(jm => ({
           elementName: jm.elementName,
@@ -2120,13 +2058,7 @@ export default function BpmnFileManager() {
         skippedSubprocesses: skippedList,
       };
       
-      setGenerationDialogResult(dialogResult);
-      setGenerationProgress(null); // Clear progress to show result
-      
-      if (showReport) {
-        setGenerationResult(generationResult);
-        setShowGenerationReport(true);
-      }
+      // Säkerställ att progress är 100% innan vi visar resultatet
       if (jobProgressCount < jobTotalCount) {
         jobProgressCount = jobTotalCount;
         if (activeJob) {
@@ -2135,6 +2067,37 @@ export default function BpmnFileManager() {
             total: jobTotalCount,
           });
         }
+      }
+      
+      // Uppdatera progress till 100% med tydligt meddelande
+      const finalProgress: GenerationProgress = {
+        totalProgress: 100,
+        currentStep: 'Generering klar',
+        currentStepDetail: 'Alla steg slutförda',
+        docs: {
+          completed: docgenCompleted,
+          total: totalGraphNodes || docgenCompleted,
+        },
+        htmlUpload: {
+          completed: docUploadsCompleted,
+          total: docUploadsPlanned || docUploadsCompleted,
+        },
+        tests: {
+          completed: testUploadsCompleted,
+          total: testUploadsPlanned || testUploadsCompleted,
+        },
+      };
+      setGenerationProgress(finalProgress);
+      // Vänta lite så användaren ser 100%
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Nu visa resultatet - detta kommer automatiskt växla dialogen till result-vyn
+      setGenerationDialogResult(dialogResult);
+      setGenerationProgress(null); // Clear progress to show result
+      
+      if (showReport) {
+        setGenerationResult(generationResult);
+        setShowGenerationReport(true);
       }
       syncOverlayProgress('Generering klar');
       
@@ -2403,106 +2366,106 @@ export default function BpmnFileManager() {
       return;
     }
 
-    // Build hierarchy first if we have a root file
+    // Automatisk hierarki-byggning: Bygg hierarki automatiskt innan generering
+    // Använd root-fil om den finns, annars använd första filen
+    const hierarchyFile = rootFile || allBpmnFiles[0];
+    
+    if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
+      // Bygg hierarki tyst i bakgrunden (transparent för användaren)
+      try {
+        await buildHierarchySilently(hierarchyFile);
+        // Invalidera queries så att UI uppdateras med ny hierarki
+        queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+        queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
+      } catch (error) {
+        // Logga felet men fortsätt med generering (hierarki är inte kritiskt)
+        console.warn('[handleGenerateAllArtifacts] Failed to build hierarchy automatically, continuing anyway:', error);
+      }
+    }
+
+    // För "alla filer": Generera EN gång för hela hierarkin istället för att loopa
+    // Om vi har root-fil, generera bara för root med useHierarchy = true
+    // Detta inkluderar automatiskt alla subprocesser
     if (rootFile) {
       toast({
-        title: 'Bygger hierarki',
-        description: `Bygger hierarki från ${rootFile.file_name} innan generering...`,
+        title: 'Startar generering för alla filer',
+        description: `Genererar dokumentation och DoR/DoD för hela hierarkin med ${rootFile.file_name} som toppfil. Testgenerering sker i separat steg.`,
       });
       
-      const hierarchySuccess = await buildHierarchySilently(rootFile);
-      if (hierarchySuccess) {
-        setHierarchyBuilt(true);
-        toast({
-          title: 'Hierarki byggd',
-          description: 'Hierarkin är klar. Startar generering...',
-        });
-      } else {
-        toast({
-          title: 'Varning',
-          description: 'Kunde inte bygga hierarki. Fortsätter med generering ändå.',
-          variant: 'destructive',
-        });
-      }
-    }
+      // Generera EN gång för hela hierarkin
+      await handleGenerateArtifacts(rootFile, generationMode, 'file', true);
+    } else {
+      // Om ingen root-fil finns, loopa över alla filer (fallback)
+      toast({
+        title: 'Startar generering för alla BPMN-filer',
+        description: `Genererar dokumentation och DoR/DoD för ${allBpmnFiles.length} BPMN-filer. Testgenerering sker i separat steg.`,
+      });
 
-    const orderedFiles =
-      rootFile != null
-        ? [rootFile, ...allBpmnFiles.filter((f) => f.id !== rootFile.id)]
-        : allBpmnFiles;
+      // Samla resultat från alla filer
+      const aggregatedResult: AggregatedGenerationResult = {
+        totalFiles: allBpmnFiles.length,
+        allFilesAnalyzed: new Set<string>(),
+        allDorDodCriteria: [],
+        allTestFiles: [],
+        allDocFiles: [],
+        allJiraMappings: [],
+        allSubprocessMappings: [],
+        allNodeArtifacts: [],
+        allMissingDependencies: [],
+        allSkippedSubprocesses: new Set<string>(),
+        fileResults: [],
+      };
 
-    toast({
-      title: 'Startar generering för alla BPMN-filer',
-      description:
-        rootFile != null
-          ? `Genererar dokumentation, tester och DoR/DoD med ${rootFile.file_name} som toppfil (${orderedFiles.length} filer totalt).`
-          : `Genererar dokumentation, tester och DoR/DoD för ${orderedFiles.length} BPMN-filer.`,
-    });
-
-    // Samla resultat från alla filer
-    const aggregatedResult: AggregatedGenerationResult = {
-      totalFiles: orderedFiles.length,
-      allFilesAnalyzed: new Set<string>(),
-      allDorDodCriteria: [],
-      allTestFiles: [],
-      allDocFiles: [],
-      allJiraMappings: [],
-      allSubprocessMappings: [],
-      allNodeArtifacts: [],
-      allMissingDependencies: [],
-      allSkippedSubprocesses: new Set<string>(),
-      fileResults: [],
-    };
-
-    // Generera för varje fil utan att visa popup
-    for (const file of orderedFiles) {
-      try {
-        const result = await handleGenerateArtifacts(file, generationMode, 'file', false);
-        if (result) {
-          // Aggregera resultat
-          result.filesAnalyzed.forEach(f => aggregatedResult.allFilesAnalyzed.add(f));
-          aggregatedResult.allDorDodCriteria.push(...result.dorDodCriteria);
-          aggregatedResult.allTestFiles.push(...result.testFiles);
-          aggregatedResult.allDocFiles.push(...result.docFiles);
-          aggregatedResult.allJiraMappings.push(...result.jiraMappings);
-          aggregatedResult.allSubprocessMappings.push(...result.subprocessMappings);
-          if (result.nodeArtifacts) {
-            aggregatedResult.allNodeArtifacts.push(...result.nodeArtifacts);
+      // Generera för varje fil utan att visa popup
+      for (const file of allBpmnFiles) {
+        try {
+          const result = await handleGenerateArtifacts(file, generationMode, 'file', false);
+          if (result) {
+            // Aggregera resultat
+            result.filesAnalyzed.forEach(f => aggregatedResult.allFilesAnalyzed.add(f));
+            aggregatedResult.allDorDodCriteria.push(...result.dorDodCriteria);
+            aggregatedResult.allTestFiles.push(...result.testFiles);
+            aggregatedResult.allDocFiles.push(...result.docFiles);
+            aggregatedResult.allJiraMappings.push(...result.jiraMappings);
+            aggregatedResult.allSubprocessMappings.push(...result.subprocessMappings);
+            if (result.nodeArtifacts) {
+              aggregatedResult.allNodeArtifacts.push(...result.nodeArtifacts);
+            }
+            if (result.missingDependencies) {
+              aggregatedResult.allMissingDependencies.push(...result.missingDependencies);
+            }
+            if (result.skippedSubprocesses) {
+              result.skippedSubprocesses.forEach(s => aggregatedResult.allSkippedSubprocesses.add(s));
+            }
+            aggregatedResult.fileResults.push({ fileName: file.file_name, success: true });
           }
-          if (result.missingDependencies) {
-            aggregatedResult.allMissingDependencies.push(...result.missingDependencies);
-          }
-          if (result.skippedSubprocesses) {
-            result.skippedSubprocesses.forEach(s => aggregatedResult.allSkippedSubprocesses.add(s));
-          }
-          aggregatedResult.fileResults.push({ fileName: file.file_name, success: true });
+        } catch (error) {
+          aggregatedResult.fileResults.push({
+            fileName: file.file_name,
+            success: false,
+            error: error instanceof Error ? error.message : 'Okänt fel',
+          });
         }
-      } catch (error) {
-        aggregatedResult.fileResults.push({
-          fileName: file.file_name,
-          success: false,
-          error: error instanceof Error ? error.message : 'Okänt fel',
-        });
       }
+
+      // Konvertera till DetailedGenerationResult-format för visning
+      const summaryResult: DetailedGenerationResult = {
+        fileName: `Alla filer (${aggregatedResult.totalFiles})`,
+        filesAnalyzed: Array.from(aggregatedResult.allFilesAnalyzed),
+        dorDodCriteria: aggregatedResult.allDorDodCriteria,
+        testFiles: aggregatedResult.allTestFiles,
+        docFiles: aggregatedResult.allDocFiles,
+        jiraMappings: aggregatedResult.allJiraMappings,
+        subprocessMappings: aggregatedResult.allSubprocessMappings,
+        nodeArtifacts: aggregatedResult.allNodeArtifacts,
+        missingDependencies: aggregatedResult.allMissingDependencies,
+        skippedSubprocesses: Array.from(aggregatedResult.allSkippedSubprocesses),
+      };
+
+      // Visa sammanfattning när alla filer är klara
+      setGenerationResult(summaryResult);
+      setShowGenerationReport(true);
     }
-
-    // Konvertera till DetailedGenerationResult-format för visning
-    const summaryResult: DetailedGenerationResult = {
-      fileName: `Alla filer (${aggregatedResult.totalFiles})`,
-      filesAnalyzed: Array.from(aggregatedResult.allFilesAnalyzed),
-      dorDodCriteria: aggregatedResult.allDorDodCriteria,
-      testFiles: aggregatedResult.allTestFiles,
-      docFiles: aggregatedResult.allDocFiles,
-      jiraMappings: aggregatedResult.allJiraMappings,
-      subprocessMappings: aggregatedResult.allSubprocessMappings,
-      nodeArtifacts: aggregatedResult.allNodeArtifacts,
-      missingDependencies: aggregatedResult.allMissingDependencies,
-      skippedSubprocesses: Array.from(aggregatedResult.allSkippedSubprocesses),
-    };
-
-    // Visa sammanfattning när alla filer är klara
-    setGenerationResult(summaryResult);
-    setShowGenerationReport(true);
   };
 
   const handleGenerateSelectedFile = async () => {
@@ -2526,10 +2489,224 @@ export default function BpmnFileManager() {
 
     toast({
       title: 'Startar generering',
-      description: `Genererar artefakter för ${selectedFile.file_name} med ${generationMode === 'local' ? 'Local' : 'Slow LLM'} läge.`,
+      description: `Genererar dokumentation för ${selectedFile.file_name} med ${generationMode === 'local' ? 'Local' : 'Slow LLM'} läge.`,
     });
 
     await handleGenerateArtifacts(selectedFile, generationMode, 'file');
+  };
+
+  const handleGenerateTestsForSelectedFile = async () => {
+    if (!selectedFile) {
+      toast({
+        title: 'Ingen fil vald',
+        description: 'Välj en fil i tabellen först.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (selectedFile.file_type !== 'bpmn') {
+      toast({
+        title: 'Ej stödd filtyp',
+        description: 'Endast BPMN-filer stöds för testgenerering',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!selectedFile.storage_path) {
+      toast({
+        title: 'Filen är inte uppladdad än',
+        description: 'Ladda upp BPMN-filen innan du genererar tester.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Automatisk hierarki-byggning: Bygg hierarki automatiskt innan testgenerering
+    // Använd root-fil om den finns, annars använd den valda filen
+    const hierarchyFile = rootFileName 
+      ? files.find(f => f.file_name === rootFileName) || selectedFile
+      : selectedFile;
+    
+    if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
+      // Bygg hierarki tyst i bakgrunden (transparent för användaren)
+      try {
+        await buildHierarchySilently(hierarchyFile);
+        // Invalidera queries så att UI uppdateras med ny hierarki
+        queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+        queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
+      } catch (error) {
+        // Logga felet men fortsätt med testgenerering (hierarki är inte kritiskt)
+        console.warn('[handleGenerateTestsForSelectedFile] Failed to build hierarchy automatically, continuing anyway:', error);
+      }
+    }
+
+    setGeneratingFile(selectedFile.file_name);
+    const isLocalMode = generationMode === 'local';
+    const llmProvider = isLocalMode ? undefined : getLlmModeConfig(generationMode).provider;
+
+    try {
+      toast({
+        title: 'Startar testgenerering',
+        description: `Genererar tester för ${selectedFile.file_name} med ${isLocalMode ? 'Local' : 'LLM'} läge.`,
+      });
+
+      const result = await generateTestsForFile(
+        selectedFile.file_name,
+        llmProvider,
+        false, // localAvailable
+        (progress) => {
+          setCurrentGenerationStep({
+            step: `Genererar tester: ${progress.currentElement || '...'}`,
+            detail: `${progress.current}/${progress.total} noder`,
+          });
+        },
+      );
+
+      toast({
+        title: 'Testgenerering klar',
+        description: `Genererade ${result.testFiles.length} testfiler med ${result.totalScenarios} scenarion för ${selectedFile.file_name}.`,
+      });
+
+      if (result.errors.length > 0) {
+        toast({
+          title: 'Varning',
+          description: `${result.errors.length} fel uppstod under testgenereringen.`,
+          variant: 'destructive',
+        });
+      }
+
+      // Invalidate test-related queries
+      queryClient.invalidateQueries({ queryKey: ['node-test-links'] });
+      queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
+    } catch (error) {
+      toast({
+        title: 'Testgenerering misslyckades',
+        description: error instanceof Error ? error.message : 'Okänt fel',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingFile(null);
+      setCurrentGenerationStep(null);
+    }
+  };
+
+  const handleGenerateTestsForAllFiles = async () => {
+    const allBpmnFiles = files.filter((f) => f.file_type === 'bpmn');
+
+    if (allBpmnFiles.length === 0) {
+      toast({
+        title: 'Inga BPMN-filer',
+        description: 'Ladda upp minst en BPMN-fil innan du genererar tester.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Automatisk hierarki-byggning: Bygg hierarki automatiskt innan testgenerering
+    // Använd root-fil om den finns, annars använd första filen
+    const rootFile = await resolveRootBpmnFile();
+    const hierarchyFile = rootFile || allBpmnFiles[0];
+    
+    if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
+      // Bygg hierarki tyst i bakgrunden (transparent för användaren)
+      try {
+        await buildHierarchySilently(hierarchyFile);
+        // Invalidera queries så att UI uppdateras med ny hierarki
+        queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+        queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
+      } catch (error) {
+        // Logga felet men fortsätt med testgenerering (hierarki är inte kritiskt)
+        console.warn('[handleGenerateTestsForAllFiles] Failed to build hierarchy automatically, continuing anyway:', error);
+      }
+    }
+
+    setGeneratingFile('all');
+    const isLocalMode = generationMode === 'local';
+    const llmProvider = isLocalMode ? undefined : getLlmModeConfig(generationMode).provider;
+
+    try {
+      // För "alla filer": Generera EN gång för hela hierarkin istället för att loopa
+      // Om vi har root-fil, generera bara för root (hierarkin inkluderar alla subprocesser)
+      if (rootFile) {
+        toast({
+          title: 'Startar testgenerering för alla filer',
+          description: `Genererar tester för hela hierarkin med ${rootFile.file_name} som toppfil.`,
+        });
+
+        // Generera tester för root-filen (hierarkin inkluderar alla subprocesser automatiskt)
+        const result = await generateTestsForFile(
+          rootFile.file_name,
+          llmProvider,
+          false, // localAvailable
+          (progress) => {
+            setCurrentGenerationStep({
+              step: `Genererar tester: ${progress.currentElement || '...'}`,
+              detail: `${progress.current}/${progress.total} noder`,
+            });
+          },
+        );
+
+        toast({
+          title: 'Testgenerering klar',
+          description: `Genererade ${result.testFiles.length} testfiler med ${result.totalScenarios} scenarion för hela hierarkin.`,
+        });
+
+        if (result.errors.length > 0) {
+          toast({
+            title: 'Varning',
+            description: `${result.errors.length} fel uppstod under testgenereringen.`,
+            variant: 'destructive',
+          });
+        }
+      } else {
+        // Om ingen root-fil finns, loopa över alla filer (fallback)
+        toast({
+          title: 'Startar testgenerering för alla filer',
+          description: `Genererar tester för ${allBpmnFiles.length} BPMN-filer med ${isLocalMode ? 'Local' : 'LLM'} läge.`,
+        });
+
+        const fileNames = allBpmnFiles.map((f) => f.file_name);
+        const result = await generateTestsForAllFiles(
+          fileNames,
+          llmProvider,
+          false, // localAvailable
+          (progress) => {
+            setCurrentGenerationStep({
+              step: `Genererar tester: ${progress.currentFile || '...'}`,
+              detail: `Fil ${progress.current + 1}/${progress.totalFiles}: ${progress.currentElement || '...'}`,
+            });
+          },
+        );
+
+        toast({
+          title: 'Testgenerering klar',
+          description: `Genererade ${result.testFiles.length} testfiler med ${result.totalScenarios} scenarion för ${result.totalFiles} noder.`,
+        });
+
+        if (result.errors.length > 0) {
+          toast({
+            title: 'Varning',
+            description: `${result.errors.length} fel uppstod under testgenereringen.`,
+            variant: 'destructive',
+          });
+        }
+      }
+
+      // Invalidate test-related queries
+      queryClient.invalidateQueries({ queryKey: ['node-test-links'] });
+      queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
+    } catch (error) {
+      toast({
+        title: 'Testgenerering misslyckades',
+        description: error instanceof Error ? error.message : 'Okänt fel',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingFile(null);
+      setCurrentGenerationStep(null);
+    }
   };
 
   const handleBuildHierarchy = async (file: BpmnFile) => {
@@ -3652,12 +3829,12 @@ export default function BpmnFileManager() {
               }
               onClick={handleGenerateSelectedFile}
               className="gap-2"
-              title={!selectedFile ? 'Välj en BPMN-fil i listan för att generera' : undefined}
+              title={!selectedFile ? 'Välj en BPMN-fil i listan för att generera dokumentation' : 'Generera dokumentation och DoR/DoD för vald fil. Testgenerering sker i separat steg.'}
             >
               {generatingFile && selectedFile ? (
                 <>
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  Genererar artefakter…
+                  Genererar information…
                 </>
               ) : (
                 <>
@@ -3666,7 +3843,7 @@ export default function BpmnFileManager() {
                   ) : (
                     <Sparkles className="w-3 h-3" />
                   )}
-                  Generera artefakter för vald fil
+                  Generera information för vald fil
                 </>
               )}
             </Button>
@@ -3676,14 +3853,54 @@ export default function BpmnFileManager() {
               disabled={generatingFile !== null || isLoading || files.length === 0 || !rootFileName}
               onClick={handleGenerateAllArtifacts}
               className="gap-2"
-              title="Generera dokumentation, tester och DoR/DoD för alla BPMN-filer. Hierarkin byggs automatiskt först."
+              title="Generera dokumentation och DoR/DoD för alla BPMN-filer. Hierarkin byggs automatiskt först. Testgenerering sker i separat steg."
             >
               {generationMode === 'local' ? (
                 <FileText className="w-4 h-4" />
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              Generera dokumentation/tester (alla filer)
+              Generera information (alla filer)
+            </Button>
+          </div>
+          
+          {/* Test Generation Buttons */}
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={
+                generatingFile !== null ||
+                isLoading ||
+                !selectedFile ||
+                selectedFile.file_type !== 'bpmn'
+              }
+              onClick={handleGenerateTestsForSelectedFile}
+              className="gap-2"
+              title={!selectedFile ? 'Välj en BPMN-fil i listan för att generera tester' : 'Generera testfiler och testscenarion för vald fil. Kräver att dokumentation redan är genererad.'}
+            >
+              {generatingFile && selectedFile ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Genererar tester…
+                </>
+              ) : (
+                <>
+                  <FileCode className="w-3 h-3" />
+                  Generera testinformation för vald fil
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={generatingFile !== null || isLoading || files.length === 0}
+              onClick={handleGenerateTestsForAllFiles}
+              className="gap-2"
+              title="Generera testfiler och testscenarion för alla BPMN-filer. Kräver att dokumentation redan är genererad."
+            >
+              <FileCode className="w-4 h-4" />
+              Generera testinformation (alla filer)
             </Button>
           </div>
         </div>
@@ -4187,19 +4404,6 @@ export default function BpmnFileManager() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Sortera:</span>
-              <Select value={fileSortBy} onValueChange={(value: 'name' | 'type' | 'updated') => setFileSortBy(value)}>
-                <SelectTrigger className="w-40 h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Filnamn</SelectItem>
-                  <SelectItem value="type">Typ</SelectItem>
-                  <SelectItem value="updated">Senast uppdaterad</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="ml-auto text-sm text-muted-foreground">
               Visar {files.filter(f => fileFilter === 'all' || f.file_type === fileFilter).length} av {files.length} filer
             </div>
@@ -4208,27 +4412,83 @@ export default function BpmnFileManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Filnamn</TableHead>
-              <TableHead>Typ</TableHead>
-              <TableHead>Roll</TableHead>
-              <TableHead>Storlek</TableHead>
-              <TableHead>Senast uppdaterad</TableHead>
-              <TableHead>GitHub-status</TableHead>
-              <TableHead>Struktur & artefakter</TableHead>
-              <TableHead>Senaste jobb</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50 select-none"
+                onClick={() => {
+                  setFileSortBy(prev => ({
+                    column: 'name',
+                    direction: prev.column === 'name' && prev.direction === 'asc' ? 'desc' : 'asc'
+                  }));
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  Filnamn
+                  {fileSortBy.column === 'name' && (
+                    fileSortBy.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50 select-none"
+                onClick={() => {
+                  setFileSortBy(prev => ({
+                    column: 'size',
+                    direction: prev.column === 'size' && prev.direction === 'asc' ? 'desc' : 'asc'
+                  }));
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  Storlek
+                  {fileSortBy.column === 'size' && (
+                    fileSortBy.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50 select-none"
+                onClick={() => {
+                  setFileSortBy(prev => ({
+                    column: 'updated',
+                    direction: prev.column === 'updated' && prev.direction === 'asc' ? 'desc' : 'asc'
+                  }));
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  Senast uppdaterad
+                  {fileSortBy.column === 'updated' && (
+                    fileSortBy.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50 select-none"
+                onClick={() => {
+                  setFileSortBy(prev => ({
+                    column: 'artifacts',
+                    direction: prev.column === 'artifacts' && prev.direction === 'asc' ? 'desc' : 'asc'
+                  }));
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  Struktur & artefakter
+                  {fileSortBy.column === 'artifacts' && (
+                    fileSortBy.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                </div>
+              </TableHead>
               <TableHead className="text-right">Åtgärder</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8">
+                <TableCell colSpan={5} className="text-center py-8">
                   Laddar filer...
                 </TableCell>
               </TableRow>
             ) : files.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   Inga filer uppladdade ännu
                 </TableCell>
               </TableRow>
@@ -4237,16 +4497,33 @@ export default function BpmnFileManager() {
               let filteredFiles = files.filter(f => fileFilter === 'all' || f.file_type === fileFilter);
               
               filteredFiles = [...filteredFiles].sort((a, b) => {
-                switch (fileSortBy) {
+                let comparison = 0;
+                
+                switch (fileSortBy.column) {
                   case 'name':
-                    return a.file_name.localeCompare(b.file_name);
-                  case 'type':
-                    return a.file_type.localeCompare(b.file_type) || a.file_name.localeCompare(b.file_name);
+                    comparison = a.file_name.localeCompare(b.file_name);
+                    break;
+                  case 'size':
+                    comparison = (a.size_bytes || 0) - (b.size_bytes || 0);
+                    break;
                   case 'updated':
-                    return new Date(b.last_updated_at).getTime() - new Date(a.last_updated_at).getTime();
+                    comparison = new Date(a.last_updated_at).getTime() - new Date(b.last_updated_at).getTime();
+                    break;
+                  case 'artifacts': {
+                    // Sortera efter antal dokumentation + tester
+                    const aCoverage = coverageMap?.get(a.file_name);
+                    const bCoverage = coverageMap?.get(b.file_name);
+                    const aTotal = (aCoverage?.docs.covered || 0) + (aCoverage?.tests.covered || 0);
+                    const bTotal = (bCoverage?.docs.covered || 0) + (bCoverage?.tests.covered || 0);
+                    comparison = aTotal - bTotal;
+                    break;
+                  }
                   default:
                     return 0;
                 }
+                
+                // Applicera sorteringsriktning
+                return fileSortBy.direction === 'asc' ? comparison : -comparison;
               });
 
               return filteredFiles.map((file) => {
@@ -4274,59 +4551,11 @@ export default function BpmnFileManager() {
                           </div>
                         </div>
                       )}
-                      {file.file_type === 'bpmn' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/bpmn-versions/${file.file_name}`);
-                          }}
-                          title="Visa versionshistorik"
-                        >
-                          <History className="w-3 h-3" />
-                        </Button>
-                      )}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {file.file_type.toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {file.file_type === 'bpmn' ? (
-                      rootFileName && file.file_name === rootFileName ? (
-                        <Badge variant="default" className="gap-1 text-xs">
-                          <GitBranch className="w-3 h-3" />
-                          Toppnod
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          Övrig BPMN-fil
-                        </Badge>
-                      )
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
                   </TableCell>
                   <TableCell>{formatBytes(file.size_bytes)}</TableCell>
                   <TableCell className="text-sm">
                     {formatDate(file.last_updated_at)}
-                  </TableCell>
-                  <TableCell>
-                    {file.github_synced ? (
-                      <Badge variant="default" className="gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Synkad
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        Ej synkad
-                      </Badge>
-                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
@@ -4420,48 +4649,6 @@ export default function BpmnFileManager() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    {file.file_type === 'bpmn' && artifactStatusByFile.get(file.file_name)?.latestJob ? (
-                      (() => {
-                        const latest = artifactStatusByFile.get(file.file_name)!.latestJob!;
-                        const providerLabel =
-                          (latest.result as any)?.llmProvider === 'cloud'
-                            ? 'Claude'
-                            : (latest.result as any)?.llmProvider === 'local'
-                            ? 'Ollama'
-                            : (latest.result as any)?.llmProvider === 'fallback' || latest.mode === 'local'
-                            ? 'Lokal fallback'
-                            : undefined;
-                        const modeLabel =
-                          latest.mode === 'slow'
-                            ? providerLabel
-                              ? `LLM (${providerLabel})`
-                              : 'Slow LLM'
-                            : latest.mode === 'local'
-                            ? 'Lokal fallback'
-                            : 'Okänt';
-                        const statusLabel = formatStatusLabel(latest.status);
-                        const timeStr = (latest.finishedAt || latest.startedAt)
-                          ? new Date(latest.finishedAt || latest.startedAt!).toLocaleTimeString('sv-SE', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : '';
-                        return (
-                          <div className="text-xs">
-                            <Badge variant="outline" className="text-xs">
-                              {modeLabel} · {statusLabel}
-                              {timeStr ? ` · ${timeStr}` : ''}
-                            </Badge>
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">
-                        Ingen körning
-                      </Badge>
-                    )}
-                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       {file.file_type === 'bpmn' && (
@@ -4488,27 +4675,14 @@ export default function BpmnFileManager() {
                             void handleGenerateArtifacts(file, generationMode, 'file');
                           }}
                           disabled={generatingFile !== null || isLoading}
-                          title="Generera dokumentation och tester för denna fil"
+                          title="Generera dokumentation för denna fil (testgenerering sker i separat steg)"
                         >
                           {generationMode === 'local' ? (
                             <FileText className="w-4 h-4" />
                           ) : (
                             <Sparkles className="w-4 h-4" />
                           )}
-                          <span className="hidden sm:inline ml-1">Docs/Test</span>
-                        </Button>
-                      )}
-                      {file.file_type === 'bpmn' && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/bpmn-versions/${file.file_name}`);
-                          }}
-                          title="Visa versionshistorik"
-                        >
-                          <History className="w-4 h-4" />
+                          <span className="hidden sm:inline ml-1">Dokumentation</span>
                         </Button>
                       )}
                       <Button

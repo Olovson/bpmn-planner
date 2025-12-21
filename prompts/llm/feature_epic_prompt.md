@@ -64,8 +64,9 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 
 ## Gemensamma regler
 
-- Svara alltid med **exakt ett JSON-objekt** (ingen fri text före/efter, ingen Markdown, ingen HTML).
+- **VIKTIGT**: Systemet använder structured outputs med JSON Schema. Du ska returnera **exakt ett JSON-objekt** som matchar schemat - INGEN markdown, INGA code blocks (```), INGEN text före eller efter JSON.
 - Outputen ska börja direkt med `{` och avslutas med `}`. Ingen text före `{` och ingen text efter avslutande `}`.
+- **Använd INTE markdown code blocks** - returnera ren JSON direkt.
 - Använd **ren text** i alla strängfält (inga `<p>`, `<ul>`, `<li>` osv).
 - Skriv på **svenska** med formell bank-/risk-ton, men var konkret och affärsnära.
 - Du får vara **generös** med innehåll inom rimliga gränser (hellre 4–7 välformulerade punkter än 1 tunn).
@@ -124,9 +125,12 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 
 ## Obligatoriska vs Valfria Fält
 
-**Obligatoriska fält (måste alltid inkluderas):**
+**Obligatoriska fält (måste ALLTID inkluderas - dessa fält är kritiska och får INTE saknas):**
 - **Feature Goal**: `summary`, `effectGoals`, `scopeIncluded`, `scopeExcluded`, `flowSteps`, `dependencies`, `relatedItems`
 - **Epic**: `summary`, `prerequisites`, `flowSteps`, `userStories`, `implementationNotes`
+  - ⚠️ **VIKTIGT**: `prerequisites` och `implementationNotes` är OBLIGATORISKA och måste alltid inkluderas, även om de är korta.
+  - För `prerequisites`: Minst 2-3 punkter om vad som måste vara klart innan epiken kan starta.
+  - För `implementationNotes`: Minst 3-5 punkter om tekniska riktlinjer för utvecklare.
 
 **Valfria fält (inkludera endast om relevant):**
 - **Feature Goal**: `epics` (inkludera endast om det finns epics i Feature Goalet, annars använd tom array `[]`)
@@ -602,12 +606,16 @@ JSON-modellen är:
 
 **Syfte:** Lista viktiga förutsättningar innan epiken kan starta.
 
+**⚠️ OBLIGATORISKT FÄLT - Måste alltid inkluderas!**
+
 **Innehåll (`prerequisites`):**
-- 2–3 strängar, varje en full mening om:
+- **Minst 2–3 strängar** (helst 3), varje en full mening om:
   - data, kontroller eller beslut som måste vara uppfyllda,
-  - vilken föregående process eller regel som måste ha körts.
+  - vilken föregående process eller regel som måste ha körts,
+  - system- eller datakrav som måste vara uppfyllda.
 - Använd `currentNodeContext.flows.incoming` för att förstå vad som måste ha körts innan epiken.
 - Använd affärsspråk (t.ex. "Ansökan måste vara komplett" istället för "UserTask måste vara klar").
+- **Om du inte hittar specifika prerequisites i kontexten, använd generiska men relevanta förutsättningar baserat på nodens typ och position i processen.**
 
 ### flowSteps
 
@@ -683,13 +691,17 @@ JSON-modellen är:
 
 **Syfte:** Ge tekniska riktlinjer till utvecklare/testare.
 
+**⚠️ OBLIGATORISKT FÄLT - Måste alltid inkluderas!**
+
 **Innehåll (`implementationNotes`):**
-- 3–5 strängar om:
+- **Minst 3–5 strängar** (helst 4-5), varje en full mening om:
   - vilka interna tjänster/komponenter epiken använder (på en generell nivå),
   - loggning och audit-spår,
   - felhantering och timeouts,
   - viktiga kvalitets- eller prestandakrav,
-  - eventuella affärsregler eller policykrav som påverkar implementationen.
+  - eventuella affärsregler eller policykrav som påverkar implementationen,
+  - validering och datakvalitet,
+  - säkerhet och regelefterlevnad.
 
 **Viktigt:**
 - Skriv på hög nivå, fokusera på principer och mönster, INTE specifika implementationdetaljer.
@@ -697,6 +709,7 @@ JSON-modellen är:
 - Fokusera på VAD som behöver implementeras, INTE HUR det ska implementeras.
 - Exempel på bra: "Systemet behöver logga alla kreditbeslut för spårbarhet och regelefterlevnad."
 - Exempel på dåligt: "Implementera en ServiceTask som anropar audit-service med POST-request till /api/audit/log."
+- **Om du inte hittar specifika implementation notes i kontexten, använd generiska men relevanta tekniska riktlinjer baserat på nodens typ (User Task vs Service Task).**
 
 ---
 

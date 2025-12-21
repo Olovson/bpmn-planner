@@ -41,35 +41,14 @@ export function matchCallActivityToProcesses(
     .filter((candidate): candidate is MatchCandidate => candidate.score > 0)
     .sort((a, b) => b.score - a.score);
 
-  const DEBUG_CALL_ACTIVITY_IDS = new Set<string>([
-    'application',
-    'mortgage-commitment',
-    'credit-evaluation',
-    'appeal',
-    'manual-credit-evaluation',
-    'kyc',
-    'credit-decision',
-    'offer',
-    'document-generation',
-    'signing',
-    'disbursement',
-    'signing-advance',
-    'disbursement-advance',
-    'collateral-registration',
-    'internal-data-gathering',
-    'stakeholder',
-    'object',
-    'household',
-    'object-information',
-  ]);
+  // Debug-loggar har tagits bort för att minska loggbruset
+  // Om debug behövs, sätt DEBUG_SUBPROCESS_MATCHER=true i localStorage
+  const DEBUG_ENABLED = typeof window !== 'undefined' && localStorage.getItem('DEBUG_SUBPROCESS_MATCHER') === 'true';
 
   const bestCandidate = evaluatedCandidates[0];
   const diagnostics: DiagnosticsEntry[] = [];
 
-  if (DEBUG_CALL_ACTIVITY_IDS.has(callActivity.id)) {
-    // Minimal, riktad debug-logg för mortgage-hierarkin.
-    // Visar hur matchern resonerar för utvalda call activities.
-    // Syns i browserkonsolen och i testloggar.
+  if (DEBUG_ENABLED) {
     // eslint-disable-next-line no-console
     console.log('[SubprocessMatcher][debug]', {
       callActivity,
@@ -120,7 +99,7 @@ export function matchCallActivityToProcesses(
   const secondBest = evaluatedCandidates[1];
   const status = deriveStatus(bestCandidate, secondBest, mergedConfig);
 
-  if (DEBUG_CALL_ACTIVITY_IDS.has(callActivity.id)) {
+  if (DEBUG_ENABLED) {
     // eslint-disable-next-line no-console
     console.log('[SubprocessMatcher][decision]', {
       callActivityId: callActivity.id,

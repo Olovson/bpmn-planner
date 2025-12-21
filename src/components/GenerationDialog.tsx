@@ -91,6 +91,11 @@ export function GenerationDialog({
                   </div>
                   <div className="text-2xl font-bold">{plan.totalFiles}</div>
                   <p className="text-xs text-muted-foreground mt-1">BPMN-filer att analysera</p>
+                  {plan.hierarchyDepth > 1 && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Hierarki: {plan.hierarchyDepth} nivåer
+                    </p>
+                  )}
                 </Card>
 
                 <Card className="p-4">
@@ -124,16 +129,21 @@ export function GenerationDialog({
 
               {plan.files.length > 0 && (
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                    <span>Visa filer som inkluderas ({plan.files.length})</span>
                     <ChevronDown className="h-4 w-4" />
-                    Visa filer ({plan.files.length})
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2">
-                    <ul className="text-sm space-y-1 text-muted-foreground pl-6">
-                      {plan.files.map((file, i) => (
-                        <li key={i}>• {file}</li>
-                      ))}
-                    </ul>
+                    <div className="bg-muted/30 rounded-md p-3 max-h-48 overflow-y-auto">
+                      <ul className="space-y-1 text-xs">
+                        {plan.files.map((fileName, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <FileText className="h-3 w-3 text-muted-foreground" />
+                            <span className="font-mono">{fileName}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </CollapsibleContent>
                 </Collapsible>
               )}
@@ -168,11 +178,32 @@ export function GenerationDialog({
               {/* Current Step */}
               <Card className="p-4 bg-muted/30">
                 <div className="text-sm">
-                  <div className="font-medium text-foreground mb-1">Pågående steg</div>
-                  <div className="text-muted-foreground">{progress.currentStep}</div>
+                  <div className="font-medium text-foreground mb-2">Pågående steg</div>
+                  <div className="text-base font-semibold text-foreground mb-1">{progress.currentStep}</div>
                   {progress.currentStepDetail && (
-                    <div className="text-xs text-muted-foreground/80 mt-1">
+                    <div className="text-sm text-muted-foreground">
                       {progress.currentStepDetail}
+                    </div>
+                  )}
+                  {/* Visa snabb översikt om det finns progress-data */}
+                  {(progress.docs.total > 0 || progress.htmlUpload.total > 0) && (
+                    <div className="mt-3 pt-3 border-t space-y-1.5">
+                      {progress.docs.total > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Dokumentation</span>
+                          <span className="font-medium">
+                            {progress.docs.completed}/{progress.docs.total} noder
+                          </span>
+                        </div>
+                      )}
+                      {progress.htmlUpload.total > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Laddar upp filer</span>
+                          <span className="font-medium">
+                            {progress.htmlUpload.completed}/{progress.htmlUpload.total}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

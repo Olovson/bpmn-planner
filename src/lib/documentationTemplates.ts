@@ -588,7 +588,7 @@ function buildFeatureGoalDocHtmlFromModel(
   }
 
   const implementationNotes =
-    model.implementationNotes.length > 0
+    model.implementationNotes && Array.isArray(model.implementationNotes) && model.implementationNotes.length > 0
       ? model.implementationNotes
       : [
           'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
@@ -763,7 +763,7 @@ function buildFeatureGoalDocHtmlFromModelV2(
     : '1.0 (exempel) – uppdateras vid ändring';
 
   const epicRows =
-    model.epics.length > 0
+    model.epics && Array.isArray(model.epics) && model.epics.length > 0
       ? model.epics
       : descendantEpics.slice(0, 6).map((epic, index) => ({
           id: `E${index + 1}`,
@@ -773,7 +773,7 @@ function buildFeatureGoalDocHtmlFromModelV2(
         }));
 
   const flowSteps =
-    model.flowSteps.length > 0
+    model.flowSteps && Array.isArray(model.flowSteps) && model.flowSteps.length > 0
       ? model.flowSteps
       : [
           `Initiativet startar i ${upstreamName} när en kreditprocess initieras.`,
@@ -783,7 +783,7 @@ function buildFeatureGoalDocHtmlFromModelV2(
         ];
 
   const dependencies =
-    model.dependencies.length > 0
+    model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0
       ? model.dependencies
       : [
           'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
@@ -797,7 +797,7 @@ function buildFeatureGoalDocHtmlFromModelV2(
     `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
 
   const effectGoals =
-    model.effectGoals && model.effectGoals.length
+    model.effectGoals && Array.isArray(model.effectGoals) && model.effectGoals.length
       ? model.effectGoals
       : [
           'Ökad automatisering i kreditprocessen, med mindre manuellt arbete per ansökan.',
@@ -807,8 +807,8 @@ function buildFeatureGoalDocHtmlFromModelV2(
           'Högre kundnöjdhet genom snabbare och tydligare besked i tidiga steg av kundresan.',
         ];
 
-  const scopeIncluded = model.scopeIncluded.length ? model.scopeIncluded : [];
-  const scopeExcluded = model.scopeExcluded.length ? model.scopeExcluded : [];
+  const scopeIncluded = model.scopeIncluded && Array.isArray(model.scopeIncluded) && model.scopeIncluded.length ? model.scopeIncluded : [];
+  const scopeExcluded = model.scopeExcluded && Array.isArray(model.scopeExcluded) && model.scopeExcluded.length ? model.scopeExcluded : [];
   let effectiveScopeIncluded = scopeIncluded;
   let effectiveScopeExcluded = scopeExcluded;
   if (!effectiveScopeIncluded.length && !effectiveScopeExcluded.length) {
@@ -822,7 +822,7 @@ function buildFeatureGoalDocHtmlFromModelV2(
   }
 
   const implementationNotes =
-    model.implementationNotes.length > 0
+    model.implementationNotes && Array.isArray(model.implementationNotes) && model.implementationNotes.length > 0
       ? model.implementationNotes
       : [
           'API- och integrationskontrakt ska vara dokumenterade per epic och nod.',
@@ -832,7 +832,7 @@ function buildFeatureGoalDocHtmlFromModelV2(
         ];
 
   const relatedItems =
-    model.relatedItems.length > 0
+    model.relatedItems && Array.isArray(model.relatedItems) && model.relatedItems.length > 0
       ? model.relatedItems
       : [
           links.bpmnViewerLink
@@ -1994,7 +1994,7 @@ function buildEpicDocHtmlFromModel(
   const userStoriesSource = model.userStories.length > 0 ? 'llm' : 'fallback';
 
   const implementationNotes =
-    model.implementationNotes.length > 0
+    model.implementationNotes && Array.isArray(model.implementationNotes) && model.implementationNotes.length > 0
       ? model.implementationNotes
       : [
           `Primära API:er/tjänster: t.ex. POST /api/${apiSlug} för exekvering.`,
@@ -2003,7 +2003,7 @@ function buildEpicDocHtmlFromModel(
           'Prestanda- och tillgänglighetskrav hanteras på plattformsnivå men bör beaktas i designen.',
         ];
   const implementationNotesSource =
-    model.implementationNotes.length > 0 ? 'llm' : 'fallback';
+    model.implementationNotes && Array.isArray(model.implementationNotes) && model.implementationNotes.length > 0 ? 'llm' : 'fallback';
 
   return `
     <section class="doc-section">
@@ -2022,6 +2022,11 @@ function buildEpicDocHtmlFromModel(
     <section class="doc-section" data-source-summary="${summarySource}">
       <h2>Syfte &amp; Effekt</h2>
       <p>${summaryText}</p>
+    </section>
+
+    <section class="doc-section" data-source-prerequisites="${prerequisitesSource}">
+      <h2>Förutsättningar</h2>
+      ${renderList(prerequisites)}
     </section>
 
     <section class="doc-section" data-source-flow="${flowStepsSource}">
@@ -2059,6 +2064,11 @@ function buildEpicDocHtmlFromModel(
           }
         </div>
       `).join('')}
+    </section>
+
+    <section class="doc-section" data-source-implementation-notes="${implementationNotesSource}">
+      <h2>Implementation Notes</h2>
+      ${renderList(implementationNotes)}
     </section>
 
   `;

@@ -32,6 +32,8 @@ export async function triggerChromaIndexing(): Promise<void> {
   }
 
   // Kontrollera om Chroma DB server är tillgänglig
+  // NOTERA: Om servern inte körs kommer webbläsaren att logga CORS-fel.
+  // Detta är förväntat beteende och kan ignoreras.
   try {
     const response = await fetch('http://localhost:8000/api/v1/heartbeat', {
       method: 'GET',
@@ -39,16 +41,18 @@ export async function triggerChromaIndexing(): Promise<void> {
     });
     
     if (!response.ok) {
-      console.log('[ChromaIndexer] Chroma DB server är inte tillgänglig, hoppar över indexering');
+      // Server svarar men endpoint är inte tillgänglig (t.ex. 410 Gone för deprecated v1 API)
+      // Detta är okej - vi hoppar bara över indexering
       return;
     }
   } catch (error) {
-    // Chroma DB server körs inte eller är inte tillgänglig
-    console.log('[ChromaIndexer] Chroma DB server är inte tillgänglig, hoppar över indexering');
+    // Chroma DB server körs inte, är inte tillgänglig, eller CORS-blockad
+    // Detta är förväntat om servern inte körs - inget behöver loggas
+    // (CORS-fel loggas automatiskt av webbläsaren, vi behöver inte logga igen)
     return;
   }
 
-  // Logga att indexering behövs
+  // Logga att indexering behövs (endast om servern är tillgänglig)
   // En lokal process kan lyssna på dessa events och köra indexeringen automatiskt
   console.log('[ChromaIndexer] ⚠️  Chroma DB indexering behövs för att uppdatera AI-assistentens minne.');
   console.log('[ChromaIndexer] 💡 Kör "npm run vector:index" för att uppdatera indexeringen.');
@@ -64,6 +68,7 @@ export async function triggerChromaIndexing(): Promise<void> {
     });
   } catch (error) {
     // Ignorera fel - indexering är inte kritisk
+    // CORS-fel loggas automatiskt av webbläsaren, vi behöver inte logga igen
   }
 }
 

@@ -52,17 +52,18 @@ Du ska ALLTID svara med en JSON-struktur som följer detta kontrakt:
 }
 ```
 
-**Viktigt:**
+**⚠️ KRITISKT - Alla fält är obligatoriska:**
 
 - Fältet `scenarios` ska alltid finnas och vara en **array**.
 - Antalet scenarier (`scenarios.length`) ska följa intervallet som anges i instruktionen eller schemat (vanligtvis 3–5, men detta styrs av systemets `minItems`/`maxItems`).
-- Varje scenario-objekt **måste** ha fälten:
-  - `name` (string),
-  - `description` (string),
-  - `expectedResult` (string),
-  - `type` (string, exakt en av `"happy-path"`, `"error-case"`, `"edge-case"`),
-  - `steps` (array av 3–6 strängar).
+- **Varje scenario-objekt MÅSTE ha ALLA följande fält (inga fält får saknas):**
+  - `name` (string) - **OBLIGATORISKT**
+  - `description` (string) - **OBLIGATORISKT**
+  - `expectedResult` (string) - **OBLIGATORISKT**
+  - `type` (string, exakt en av `"happy-path"`, `"error-case"`, `"edge-case"`) - **OBLIGATORISKT**
+  - `steps` (array av 3–6 strängar) - **OBLIGATORISKT**
 - Inga extra fält får förekomma i scenarieobjekten.
+- **VIKTIGT**: Om du genererar flera scenarier, se till att ALLA scenarier har ALLA required fields. Inkompletta scenarier kommer att orsaka valideringsfel.
 
 Du får inte lägga till någon text före eller efter JSON-objektet, och du får inte använda ```-block eller andra markdown-markörer. Skriv bara JSON.
 

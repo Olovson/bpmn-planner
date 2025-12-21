@@ -141,7 +141,7 @@ export async function generateTestSpecWithLlm(
           ],
           {
             temperature: 0.3,
-            maxTokens: 900,
+            maxTokens: 2000, // Ökad från 900 för att säkerställa kompletta scenarier
             responseFormat: {
               type: 'json_schema',
               json_schema: scenarioSchema,
@@ -331,26 +331,82 @@ function isSchemaFormatError(error: unknown): boolean {
 
 function sanitizeJsonResponse(raw: string): string {
   let result = raw.trim();
-  result = result.replace(/```(?:json)?/gi, '').replace(/```/g, '');
+  
+  // Steg 1: Ta bort markdown-code blocks
+  result = result.replace(/```(?:json|javascript)?/gi, '').replace(/```/g, '').trim();
+  
+  // Steg 1.1: Ta bort JSON-kommentarer (// och /* */)
+  result = result.replace(/\/\/.*$/gm, '');
+  result = result.replace(/\/\*[\s\S]*?\*\//g, '');
 
-  // Remove any leading text before the first JSON character
+  // Steg 2: Hitta första JSON-struktur ({ eller [)
   const firstBrace = result.indexOf('{');
   const firstBracket = result.indexOf('[');
   const startCandidates = [firstBrace, firstBracket].filter((idx) => idx >= 0);
-  if (startCandidates.length) {
-    const start = Math.min(...startCandidates);
-    if (start > 0) {
-      result = result.slice(start);
+  
+  if (startCandidates.length === 0) {
+    throw new Error('No JSON structure found (no { or [)');
+  }
+
+  const start = Math.min(...startCandidates);
+  if (start > 0) {
+    result = result.slice(start);
+  }
+
+  // Steg 3: Hitta sista matchande avslutning med balanserad parsing
+  let braceCount = 0;
+  let bracketCount = 0;
+  let end = -1;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < result.length; i++) {
+    const char = result[i];
+    
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"' && !escapeNext) {
+      inString = !inString;
+      continue;
+    }
+    
+    if (inString) continue;
+    
+    if (char === '{') braceCount++;
+    if (char === '}') braceCount--;
+    if (char === '[') bracketCount++;
+    if (char === ']') bracketCount--;
+    
+    // Om vi har balanserat alla klammerparenteser, detta är slutet
+    if (braceCount === 0 && bracketCount === 0 && i > 0) {
+      end = i;
+      break;
     }
   }
 
-  // Trim anything after the last closing brace/bracket
-  const lastBrace = result.lastIndexOf('}');
-  const lastBracket = result.lastIndexOf(']');
-  const end = Math.max(lastBrace, lastBracket);
-  if (end >= 0 && end + 1 < result.length) {
+  if (end >= 0) {
     result = result.slice(0, end + 1);
+  } else {
+    // Fallback: använd lastIndexOf om balansering misslyckas
+    const lastBrace = result.lastIndexOf('}');
+    const lastBracket = result.lastIndexOf(']');
+    const fallbackEnd = Math.max(lastBrace, lastBracket);
+    if (fallbackEnd >= 0 && fallbackEnd + 1 < result.length) {
+      result = result.slice(0, fallbackEnd + 1);
+    }
   }
+
+  // Steg 4: Fixa vanliga JSON-problem
+  result = result.replace(/,(\s*[}\]])/g, '$1'); // Fix trailing commas
+  result = result.replace(/,\s*,/g, ','); // Fix double commas
 
   return result.trim();
 }

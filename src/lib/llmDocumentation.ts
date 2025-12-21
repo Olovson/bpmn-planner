@@ -118,11 +118,17 @@ export async function generateDocumentationWithLlm(
     try {
       let jsonText = response.trim();
 
-      // OBS: response_format används INTE längre - Claude returnerar JSON i texten
-      // Använd alltid robust parsing för att hantera markdown-code blocks och extra text
+      // OBS: Med structured outputs borde Claude returnera ren JSON, men vi hanterar fallback
+      // Använd alltid robust parsing för att hantera markdown-code blocks, kommentarer och extra text
       
       // Steg 1: Ta bort markdown-code blocks (```json ... ``` eller ``` ... ```)
       jsonText = jsonText.replace(/```(?:json|javascript)?/gi, '').replace(/```/g, '').trim();
+      
+      // Steg 1.1: Ta bort JSON-kommentarer (// och /* */)
+      // Ta bort single-line comments (// ...)
+      jsonText = jsonText.replace(/\/\/.*$/gm, '');
+      // Ta bort multi-line comments (/* ... */)
+      jsonText = jsonText.replace(/\/\*[\s\S]*?\*\//g, '');
 
       // Steg 2: Hitta första JSON-struktur ({ eller [)
       const firstBrace = jsonText.indexOf('{');
@@ -596,7 +602,7 @@ export interface ChildNodeDocumentation {
   flowSteps: string[];
   inputs?: string[];
   outputs?: string[];
-  scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+  // OBS: scenarios har tagits bort - testinformation genereras i separat steg
 }
 
 export function buildContextPayload(
@@ -720,8 +726,7 @@ export function buildContextPayload(
                   const descendantDoc = childrenDocumentation.get(descendant.id);
                   if (!descendantDoc) return null;
                   
-                  // Begränsa scenarios till max 3 per node för att spara tokens
-                  const limitedScenarios = descendantDoc.scenarios?.slice(0, 3);
+                  // OBS: scenarios har tagits bort - testinformation genereras i separat steg
                   
                   return {
                     id: descendant.bpmnElementId,
@@ -731,7 +736,6 @@ export function buildContextPayload(
                     flowSteps: descendantDoc.flowSteps,
                     inputs: descendantDoc.inputs,
                     outputs: descendantDoc.outputs,
-                    scenarios: limitedScenarios,
                     // Metadata för prioritetsordning
                     _isDirectChild: context.childNodes.some(c => c.id === descendant.id),
                     _isLeafNode: descendant.children.length === 0,
@@ -770,8 +774,7 @@ export function buildContextPayload(
                 const childDoc = childrenDocumentation.get(child.id);
                 if (!childDoc) return null;
                 
-                // Begränsa scenarios till max 3 per node
-                const limitedScenarios = childDoc.scenarios?.slice(0, 3);
+                // OBS: scenarios har tagits bort - testinformation genereras i separat steg
                 
                 return {
                   id: child.bpmnElementId,
@@ -781,7 +784,6 @@ export function buildContextPayload(
                   flowSteps: childDoc.flowSteps,
                   inputs: childDoc.inputs,
                   outputs: childDoc.outputs,
-                  scenarios: limitedScenarios,
                 };
               })
               .filter((doc): doc is NonNullable<typeof doc> => doc !== null))
@@ -894,78 +896,9 @@ function runScenarioContextChecks(
   provider: LlmProvider,
   elementId?: string,
 ) {
-  if (!docJson || typeof docJson !== 'object') return;
-  const obj = docJson as any;
-  const scenarios = Array.isArray(obj.scenarios) ? obj.scenarios : null;
-  if (!scenarios || !scenarios.length) return;
-
-  const labels = new Set<string>();
-
-  if (processContext?.processName) {
-    labels.add(String(processContext.processName).toLowerCase());
-  }
-  if (Array.isArray(processContext?.keyNodes)) {
-    processContext.keyNodes.forEach((node: any) => {
-      if (node?.name) labels.add(String(node.name).toLowerCase());
-    });
-  }
-
-  if (currentNodeContext?.node?.name) {
-    labels.add(String(currentNodeContext.node.name).toLowerCase());
-  }
-  const addRelNames = (collection?: any[]) => {
-    if (!Array.isArray(collection)) return;
-    collection.forEach((n) => {
-      if (n?.name) labels.add(String(n.name).toLowerCase());
-    });
-  };
-  addRelNames(currentNodeContext?.parents);
-  addRelNames(currentNodeContext?.siblings);
-  addRelNames(currentNodeContext?.children);
-
-  const knownLabels = Array.from(labels).filter((s) => s.length > 0);
-  if (!knownLabels.length) return;
-
-  const warnings: string[] = [];
-
-  scenarios.forEach((scenario: any, index: number) => {
-    if (!scenario || typeof scenario !== 'object') return;
-    const textParts = [
-      scenario.name,
-      scenario.description,
-      scenario.input,
-      scenario.outcome,
-    ]
-      .filter(Boolean)
-      .map((v: unknown) => String(v).toLowerCase());
-
-    if (!textParts.length) return;
-    const combined = textParts.join(' ');
-
-    const hasKnownLabel = knownLabels.some((label) =>
-      label.length > 3 ? combined.includes(label) : false,
-    );
-
-    if (!hasKnownLabel) {
-      warnings.push(
-        `scenarios[${index}] verkar inte referera till någon känd nod/processterm i processContext/currentNodeContext`,
-      );
-      // Markera scenariot i JSON som kontext-osäkert så vi kan visualisera det i UI senare.
-      (scenario as any).contextWarning = true;
-    } else {
-      // Säkerställ att vi inte lämnar kvar gammal flagga om förutsättningarna ändras
-      if ('contextWarning' in scenario) {
-        delete (scenario as any).contextWarning;
-      }
-    }
-  });
-
-  if (warnings.length) {
-    const prefix = `[LLM Scenario Validation] ${provider}/${docType}${
-      elementId ? `/${elementId}` : ''
-    }`;
-    console.warn(`${prefix} Context warnings:`, warnings);
-  }
+  // OBS: Denna funktion har tagits bort - testinformation (scenarios) genereras inte längre i dokumentationssteget
+  // Testinformation genereras i ett separat steg och ska inte valideras här
+  return;
 }
 
 /**
