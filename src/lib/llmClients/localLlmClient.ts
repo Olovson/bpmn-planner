@@ -46,6 +46,7 @@ export class LocalLlmClient implements LlmClient {
     maxTokens?: number;
     temperature?: number;
     responseFormat?: { type: 'json_schema'; json_schema: any };
+    abortSignal?: AbortSignal;
   }): Promise<string | null> {
     if (!this.baseUrl || !this.modelName) {
       console.error(
@@ -84,9 +85,22 @@ export class LocalLlmClient implements LlmClient {
     }
 
     try {
-      // Skapa AbortController för timeout
+      // Skapa AbortController för timeout och användaravbrytning
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+      
+      // Om en abort signal finns (från användaravbrytning), koppla den till vår controller
+      if (args.abortSignal) {
+        // Om abort signal redan är aborted, avbryt omedelbart
+        if (args.abortSignal.aborted) {
+          clearTimeout(timeoutId);
+          throw new Error('Avbrutet av användaren');
+        }
+        // Lyssna på abort signal och propagera till vår controller
+        args.abortSignal.addEventListener('abort', () => {
+          controller.abort();
+        });
+      }
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -138,6 +152,10 @@ export class LocalLlmClient implements LlmClient {
       }
 
       if (error instanceof Error && error.name === 'AbortError') {
+        // Kontrollera om det var användaravbrytning eller timeout
+        if (args.abortSignal?.aborted) {
+          throw new Error('Avbrutet av användaren');
+        }
         console.error('Local LLM request timeout:', this.timeoutMs, 'ms');
         throw new LocalLlmUnavailableError(
           `Lokal LLM-motor svarade inte inom ${this.timeoutMs / 1000} sekunder`

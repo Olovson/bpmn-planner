@@ -42,6 +42,7 @@ export interface GenerateWithFallbackOptions {
   userPrompt: string;
   validateResponse?: (response: string) => { valid: boolean; errors: string[] };
   responseFormat?: { type: 'json_schema'; json_schema: any };
+  abortSignal?: AbortSignal;
 }
 
 export interface GenerateWithFallbackResult {
@@ -130,6 +131,7 @@ export async function generateWithFallback(
       maxTokens: profile.maxTokens,
       temperature: profile.temperature,
       responseFormat: options.responseFormat,
+      abortSignal: options.abortSignal,
     });
 
     if (!response) {
@@ -201,6 +203,7 @@ export async function generateWithFallback(
           maxTokens: altProfile.maxTokens,
           temperature: altProfile.temperature,
           ...(shouldIncludeResponseFormat ? { responseFormat: options.responseFormat } : {}),
+          abortSignal: options.abortSignal,
         });
 
         if (!altResponse) {

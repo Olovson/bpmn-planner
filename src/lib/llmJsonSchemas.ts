@@ -107,8 +107,8 @@ export function buildEpicJsonSchema() {
         },
         userStories: {
           type: 'array',
-          minItems: 3,
-          maxItems: 6,
+          // OBS: minItems och maxItems stöds inte av Anthropic API - tas bort
+          // LLM instrueras via prompt att generera 3-6 user stories
           items: {
             type: 'object',
             additionalProperties: false,
@@ -120,8 +120,8 @@ export function buildEpicJsonSchema() {
               value: { type: 'string' },
               acceptanceCriteria: {
                 type: 'array',
-                minItems: 2,
-                maxItems: 4,
+                // OBS: minItems och maxItems stöds inte av Anthropic API - tas bort
+                // LLM instrueras via prompt att generera 2-4 acceptance criteria
                 items: { type: 'string' },
               },
             },

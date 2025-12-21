@@ -60,6 +60,7 @@ export async function generateDocumentationWithLlm(
   localAvailable: boolean = false,
   allowFallback: boolean = true,
   childrenDocumentation?: Map<string, ChildNodeDocumentation>,
+  abortSignal?: AbortSignal,
 ): Promise<DocumentationLlmResult | null> {
   if (!isLlmEnabled()) return null;
 
@@ -467,6 +468,7 @@ export async function generateDocumentationWithLlm(
       userPrompt,
       validateResponse,
       responseFormat,
+      abortSignal,
     });
 
     // Validera HTML-innehåll (om det finns HTML i svaret)

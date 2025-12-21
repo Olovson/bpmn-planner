@@ -996,6 +996,8 @@ async function renderDocWithLlmFallback(
     inputs?: string[];
     outputs?: string[];
   }>,
+  checkCancellation?: () => void,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const llmActive = llmAllowed && isLlmEnabled();
   const basePayload = {
@@ -1011,6 +1013,11 @@ async function renderDocWithLlmFallback(
     return fallbackResult instanceof Promise ? await fallbackResult : fallbackResult;
   }
 
+  // Kontrollera avbrytning INNAN LLM-anrop
+  if (checkCancellation) {
+    checkCancellation();
+  }
+
   try {
     const llmResult = await generateDocumentationWithLlm(
       docType,
@@ -1019,7 +1026,8 @@ async function renderDocWithLlmFallback(
       llmProvider,
       localAvailable,
       true, // allowFallback
-      childrenDocumentation
+      childrenDocumentation,
+      abortSignal, // Pass abort signal for LLM calls
     );
     if (llmResult && llmResult.text && llmResult.text.trim()) {
       onLlmResult?.(llmResult.provider, llmResult.fallbackUsed, llmResult.docJson);
@@ -1256,6 +1264,16 @@ export async function generateAllFromBpmnWithGraph(
    * If provided, uses selected version instead of current version.
    */
   getVersionHashForFile?: (fileName: string) => Promise<string | null>,
+  /**
+   * Optional function to check if generation should be cancelled.
+   * Should throw an error if cancellation is requested.
+   */
+  checkCancellation?: () => void,
+  /**
+   * Optional AbortSignal for cancelling LLM API calls.
+   * Used to abort ongoing fetch requests (local LLM) and check before cloud LLM calls.
+   */
+  abortSignal?: AbortSignal,
 ): Promise<GenerationResult> {
   const reportProgress = async (phase: GenerationPhaseKey, label: string, detail?: string) => {
     if (progressCallback) {
@@ -1735,6 +1753,8 @@ export async function generateAllFromBpmnWithGraph(
                         }
                       }
                     },
+                    checkCancellation,
+                    abortSignal,
                   );
                 } else {
                   // Ingen dokumentation att hämta - detta borde inte hända, men fallback
@@ -1818,6 +1838,7 @@ export async function generateAllFromBpmnWithGraph(
                       }
                     }
                   },
+                  checkCancellation,
                 );
               }
               // Skapa Feature Goal-sida för callActivity
@@ -1962,6 +1983,8 @@ export async function generateAllFromBpmnWithGraph(
                 },
                 undefined, // featureGoalTemplateVersion (not applicable)
                 undefined, // childrenDocumentation (not applicable for businessRule/epic)
+                checkCancellation,
+                abortSignal,
               );
               if (!(docLinks as any).dmnLink) {
                 nodeDocContent +=
@@ -2098,6 +2121,8 @@ export async function generateAllFromBpmnWithGraph(
               node.element,
               llmProvider,
               localAvailable,
+              checkCancellation,
+              abortSignal,
             );
             if (generated && generated.length) {
               llmScenarios = generated.map((s) => ({
@@ -2353,6 +2378,8 @@ export async function generateAllFromBpmnWithGraph(
                           }
                         }
                       },
+                      checkCancellation,
+                      abortSignal,
                     );
                   }
                 } else {
@@ -2389,6 +2416,8 @@ export async function generateAllFromBpmnWithGraph(
                         }
                       }
                     },
+                    checkCancellation,
+                    abortSignal,
                   );
                 }
                 

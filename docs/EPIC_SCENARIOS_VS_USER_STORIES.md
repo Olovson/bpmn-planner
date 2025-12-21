@@ -178,3 +178,6 @@
 - Mindre redundans, tydligare syfte
 
 
+
+
+

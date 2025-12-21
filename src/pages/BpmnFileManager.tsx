@@ -245,6 +245,8 @@ export default function BpmnFileManager() {
   });
   const cancelGenerationRef = useRef(false);
   const [cancelGeneration, setCancelGeneration] = useState(false);
+  // Global AbortController för att avbryta pågående LLM-anrop
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [llmMode, setLlmMode] = useState<LlmGenerationMode>(() => getLlmGenerationMode());
   const llmModeDetails = getLlmModeConfig(llmMode);
   type GenerationMode = 'local' | LlmGenerationMode; // 'local' | 'slow'
@@ -770,6 +772,8 @@ export default function BpmnFileManager() {
     setGenerationPlan(null);
     setGenerationProgress(null);
     setGenerationDialogResult(null);
+    // Skapa ny AbortController för nästa generering
+    abortControllerRef.current = new AbortController();
   };
 
   const checkCancellation = () => {
@@ -991,6 +995,11 @@ export default function BpmnFileManager() {
     cancelGenerationRef.current = true;
     setCancelGeneration(true);
     setOverlayDescription('Avbryter pågående körning …');
+    
+    // Abort alla pågående LLM-anrop
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
 
     try {
       // Markera aktuellt jobb som avbrutet i databasen om vi hittar det.
@@ -1017,15 +1026,18 @@ export default function BpmnFileManager() {
     } finally {
       // Oavsett om backend-jobbet hann stoppas eller inte behandlar vi
       // detta som en "avsluta väntan på resultat" i UI:t:
-      // - stäng overlay
+      // - stäng overlay och generation dialog
       // - lämna running-läget
+      // - återställ all generation state
       // Själva generatorn i bakgrunden får sedan själv hantera isCancelled.
       setGeneratingFile(null);
       setActiveOperation(null);
       setShowTransitionOverlay(false);
+      setShowGenerationDialog(false); // Stäng den nya generation dialogen
       setOverlayMessage('');
       setOverlayDescription('');
       setCurrentGenerationStep(null);
+      resetGenerationState(); // Återställ all generation state
     }
   };
 
@@ -1247,6 +1259,10 @@ export default function BpmnFileManager() {
       }
     }
 
+    // Skapa ny AbortController för denna generering
+    abortControllerRef.current = new AbortController();
+    const abortSignal = abortControllerRef.current.signal;
+
     try {
       // Kolla om användaren är autentiserad mot Supabase
       const { data: authData, error: authError } = await supabase.auth.getSession();
@@ -1371,7 +1387,8 @@ export default function BpmnFileManager() {
         effectiveTemplateVersion,
         nodeFilter,
         getVersionHashForFile, // Pass version selection function
-        nodeFilter
+        checkCancellation, // Pass cancellation check function
+        abortSignal, // Pass abort signal for LLM calls
       );
       checkCancellation();
 
@@ -2222,12 +2239,15 @@ export default function BpmnFileManager() {
         setOverlayMessage('');
         setOverlayDescription('');
       }
+      // Stäng generation dialogen oavsett om det var avbrutet eller fel
+      setShowGenerationDialog(false);
       return null;
     } finally {
       setTimeout(() => {
         setGeneratingFile(null);
         setActiveOperation(null);
         setShowTransitionOverlay(false);
+        setShowGenerationDialog(false); // Säkerställ att dialogen stängs
         setOverlayMessage('');
         setOverlayDescription('');
         resetGenerationState();

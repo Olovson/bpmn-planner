@@ -67,6 +67,7 @@
     "cipher:index": "node scripts/index-with-cipher.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@hookform/resolvers": "^3.10.0",
     "@playwright/test": "^1.56.1",
     "@radix-ui/react-accordion": "^1.2.11",

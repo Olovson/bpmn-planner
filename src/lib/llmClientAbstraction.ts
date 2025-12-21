@@ -20,6 +20,7 @@ export interface LlmClient {
     maxTokens?: number;
     temperature?: number;
     responseFormat?: { type: 'json_schema'; json_schema: any };
+    abortSignal?: AbortSignal;
   }): Promise<string | null>;
 
   /**

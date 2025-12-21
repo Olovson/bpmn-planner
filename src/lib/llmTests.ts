@@ -31,8 +31,8 @@ const buildTestScenarioSchema = (minItems: number, maxItems: number) => ({
     properties: {
       scenarios: {
         type: 'array',
-        minItems,
-        maxItems,
+        // OBS: minItems och maxItems stöds inte av Anthropic API - tas bort
+        // LLM instrueras via prompt att generera rätt antal scenarios
         items: {
           type: 'object',
           required: ['name', 'description', 'expectedResult', 'type', 'steps'],
@@ -43,8 +43,8 @@ const buildTestScenarioSchema = (minItems: number, maxItems: number) => ({
             type: { type: 'string', enum: ['happy-path', 'error-case', 'edge-case'] },
             steps: {
               type: 'array',
-              minItems: 3,
-              maxItems: 6,
+              // OBS: minItems och maxItems stöds inte av Anthropic API - tas bort
+              // LLM instrueras via prompt att generera 3-6 steps
               items: { type: 'string' },
             },
           },
@@ -59,8 +59,20 @@ export async function generateTestSpecWithLlm(
   element: BpmnElement,
   llmProvider?: LlmProvider,
   localAvailable: boolean = false,
+  checkCancellation?: () => void,
+  abortSignal?: AbortSignal,
 ): Promise<LlmTestScenario[] | null> {
   if (!isLlmEnabled()) return null;
+
+  // Kontrollera avbrytning INNAN LLM-anrop
+  if (checkCancellation) {
+    checkCancellation();
+  }
+  
+  // Kontrollera abort signal INNAN LLM-anrop
+  if (abortSignal?.aborted) {
+    throw new Error('Avbrutet av användaren');
+  }
 
   // Hämta prompt via central promptLoader
   const basePrompt = getTestscriptPrompt();
@@ -163,6 +175,7 @@ export async function generateTestSpecWithLlm(
           systemPrompt: basePrompt,
           userPrompt,
           validateResponse,
+          abortSignal,
         });
       }
     } catch (error) {
@@ -174,6 +187,7 @@ export async function generateTestSpecWithLlm(
           systemPrompt: basePrompt,
           userPrompt,
           validateResponse,
+          abortSignal,
         });
       } else {
         // Annars, använd generateWithFallback som hanterar fallback automatiskt
@@ -183,6 +197,7 @@ export async function generateTestSpecWithLlm(
           systemPrompt: basePrompt,
           userPrompt,
           validateResponse,
+          abortSignal,
         });
       }
     }
