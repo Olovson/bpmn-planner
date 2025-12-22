@@ -31,7 +31,8 @@ import {
   CheckCircle2, 
   AlertCircle,
   FileText,
-  Loader2
+  Loader2,
+  FolderOpen
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -288,6 +289,13 @@ export default function BpmnDiffOverviewPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/bpmn-folder-diff')}
+              >
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Analysera Lokal Mapp
+              </Button>
               <Button
                 variant="outline"
                 onClick={selectAllUnresolved}

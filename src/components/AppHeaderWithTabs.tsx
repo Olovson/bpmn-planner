@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { LogOut, History, GitBranch, Network, List, FileText, Folder, Calendar, Settings, Palette, PlayCircle, BarChart3 } from 'lucide-react';
+import { LogOut, History, GitBranch, Network, List, FileText, Folder, Calendar, Settings, Palette, PlayCircle, BarChart3, FolderOpen } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -183,6 +183,24 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">Projektkonfiguration</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => navigate('/bpmn-folder-diff')}
+                aria-label="Analysera Lokal Mapp"
+                className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                  location.pathname === '/bpmn-folder-diff' || location.hash === '#/bpmn-folder-diff'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <FolderOpen className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Analysera Lokal Mapp</TooltipContent>
           </Tooltip>
 
           <Tooltip>

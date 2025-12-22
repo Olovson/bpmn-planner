@@ -7,8 +7,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { BpmnProcessNode } from './bpmn/processGraph';
-import { parseBpmnFile, type BpmnParseResult } from './bpmnParser';
-import { calculateBpmnDiff, diffResultToDbFormat } from './bpmnDiff';
+import { parseBpmnFile, parseBpmnFileContent, type BpmnParseResult } from './bpmnParser';
+import { calculateBpmnDiff, diffResultToDbFormat, type BpmnNodeSnapshot, type BpmnDiffResult } from './bpmnDiff';
 import type { BpmnMeta } from '@/types/bpmnMeta';
 import { 
   calculateContentHash, 
@@ -16,6 +16,10 @@ import {
   getPreviousVersion,
   createOrGetVersion 
 } from './bpmnVersioning';
+import { getNodeDocStoragePath, getFeatureGoalDocStoragePaths } from './artifactUrls';
+import { getFeatureGoalDocFileKey } from './nodeArtifactPaths';
+import { buildDocStoragePaths } from './artifactPaths';
+import { getCurrentVersionHash } from './bpmnVersioning';
 
 export interface DiffRegenerationConfig {
   /**
@@ -298,6 +302,22 @@ export async function calculateAndSaveDiff(
       }
     }
 
+    // After saving diffs, detect cascade effects and cleanup removed nodes
+    if (dbRows.length > 0) {
+      try {
+        // Detect cascade effects: if subprocess file changed, mark call activities as modified
+        await detectCascadeDiffs(fileName, diffResult);
+        
+        // Cleanup removed nodes: delete documentation for removed nodes
+        if (diffResult.removed.length > 0) {
+          await cleanupRemovedNodes(diffResult.removed);
+        }
+      } catch (cascadeError) {
+        // Don't fail the entire diff calculation if cascade detection or cleanup fails
+        console.error('[bpmnDiffRegeneration] Error in post-diff processing:', cascadeError);
+      }
+    }
+
     return {
       diffCount: dbRows.length,
       added: diffResult.added.length,
@@ -363,6 +383,10 @@ function convertBpmnMetaToParseResult(meta: BpmnMeta, fileName: string): BpmnPar
       businessObject: {} as any,
     }));
 
+  // Note: Process nodes are not added to elements array
+  // They are extracted from meta.processes in extractNodeSnapshots()
+  // The meta object is preserved below so extractNodeSnapshots() can find them
+
   return {
     elements: [...callActivities, ...userTasks, ...serviceTasks, ...businessRuleTasks],
     subprocesses: [],
@@ -372,7 +396,7 @@ function convertBpmnMetaToParseResult(meta: BpmnMeta, fileName: string): BpmnPar
     userTasks,
     businessRuleTasks,
     fileName,
-    meta,
+    meta, // meta.processes contains process nodes for extractNodeSnapshots()
   };
 }
 
@@ -450,6 +474,513 @@ async function enrichCallActivitiesWithMapping(
   return {
     ...parseResult,
     callActivities: enrichedCallActivities,
+  };
+}
+
+/**
+ * Detect cascade effects: when a subprocess file changes, mark all call activities
+ * that point to it as modified
+ * 
+ * This ensures that when a subprocess is updated, all Feature Goals that reference it
+ * are also regenerated.
+ */
+async function detectCascadeDiffs(
+  changedFileName: string,
+  diffResult: import('./bpmnDiff').BpmnDiffResult
+): Promise<void> {
+  // Check if the changed file is a subprocess file (has a process node that changed)
+  const hasProcessNodeChange = diffResult.added.some(n => n.nodeType === 'process') ||
+                               diffResult.modified.some(m => m.node.nodeType === 'process') ||
+                               diffResult.removed.some(n => n.nodeType === 'process');
+  
+  // Also check if any nodes changed (process nodes or other nodes in subprocess files)
+  const hasAnyChange = diffResult.added.length > 0 || 
+                       diffResult.modified.length > 0 || 
+                       diffResult.removed.length > 0;
+
+  // If no changes, no cascade effects
+  if (!hasAnyChange) {
+    return;
+  }
+
+  // Get all BPMN files to find call activities that point to the changed file
+  const { data: allFiles, error: filesError } = await supabase
+    .from('bpmn_files')
+    .select('file_name, meta')
+    .eq('file_type', 'bpmn')
+    .neq('file_name', changedFileName); // Exclude the changed file itself
+
+  if (filesError || !allFiles) {
+    console.error('[detectCascadeDiffs] Error fetching BPMN files:', filesError);
+    return;
+  }
+
+  // Find all call activities that point to the changed file
+  const affectedCallActivities: Array<{ file: string; elementId: string }> = [];
+
+  for (const file of allFiles) {
+    const meta = file.meta as BpmnMeta | null;
+    if (!meta) continue;
+
+    // Use processes array if available, otherwise fall back to legacy structure
+    const processes = meta.processes || [{
+      id: meta.processId,
+      name: meta.name,
+      callActivities: meta.callActivities,
+      tasks: meta.tasks,
+    }];
+
+    // Check all call activities in all processes
+    for (const proc of processes) {
+      for (const ca of proc.callActivities || []) {
+        // Check if this call activity points to the changed file
+        // We need to check both bpmn-map.json mappings and automatic matches
+        // For now, we'll check the metadata that was enriched during diff calculation
+        
+        // Try to match using bpmn-map.json or automatic matching
+        // This is a simplified check - in a full implementation, we'd use the same
+        // matching logic as enrichCallActivitiesWithMapping()
+        const { loadBpmnMapFromStorageSimple } = await import('./bpmn/bpmnMapStorage');
+        const bpmnMap = await loadBpmnMapFromStorageSimple();
+        
+        if (bpmnMap) {
+          const { matchCallActivityUsingMap } = await import('./bpmn/bpmnMapLoader');
+          const mapMatch = matchCallActivityUsingMap(
+            { id: ca.id, name: ca.name, calledElement: ca.calledElement },
+            file.file_name,
+            bpmnMap
+          );
+          
+          if (mapMatch.matchedFileName === changedFileName) {
+            affectedCallActivities.push({
+              file: file.file_name,
+              elementId: ca.id,
+            });
+            continue;
+          }
+        }
+
+        // Also check automatic matching (by process ID or file name)
+        // This is a simplified check - full implementation would use SubprocessMatcher
+        const fileBaseName = changedFileName.replace('.bpmn', '');
+        if (ca.calledElement && (
+          ca.calledElement === fileBaseName ||
+          ca.calledElement.includes(fileBaseName) ||
+          fileBaseName.includes(ca.calledElement)
+        )) {
+          affectedCallActivities.push({
+            file: file.file_name,
+            elementId: ca.id,
+          });
+        }
+      }
+    }
+  }
+
+  // If we found affected call activities, mark them as modified in the diff table
+  if (affectedCallActivities.length > 0) {
+    // Get file IDs for affected files
+    const affectedFileNames = [...new Set(affectedCallActivities.map(ca => ca.file))];
+    const { data: affectedFileData, error: fileDataError } = await supabase
+      .from('bpmn_files')
+      .select('id, file_name')
+      .in('file_name', affectedFileNames);
+
+    if (fileDataError || !affectedFileData) {
+      console.error('[detectCascadeDiffs] Error fetching affected file data:', fileDataError);
+      return;
+    }
+
+    const fileIdMap = new Map(affectedFileData.map(f => [f.file_name, f.id]));
+
+    // Create modified diff entries for affected call activities
+    const cascadeDiffRows: Array<{
+      bpmn_file_id: string;
+      file_name: string;
+      diff_type: 'modified';
+      node_key: string;
+      node_type: string;
+      node_name: string | null;
+      old_content: any;
+      new_content: any;
+      diff_details: any;
+    }> = [];
+
+    for (const ca of affectedCallActivities) {
+      const fileId = fileIdMap.get(ca.file);
+      if (!fileId) continue;
+
+      const nodeKey = `${ca.file}::${ca.elementId}`;
+      
+      // Check if this call activity already has an unresolved diff
+      const { data: existingDiff } = await supabase
+        .from('bpmn_file_diffs')
+        .select('id')
+        .eq('file_name', ca.file)
+        .eq('node_key', nodeKey)
+        .is('resolved_at', null)
+        .single();
+
+      // If it already has a diff, skip (don't create duplicate)
+      if (existingDiff) continue;
+
+      // Create a modified diff entry
+      cascadeDiffRows.push({
+        bpmn_file_id: fileId,
+        file_name: ca.file,
+        diff_type: 'modified',
+        node_key: nodeKey,
+        node_type: 'callActivity',
+        node_name: ca.elementId,
+        old_content: { cascade: true, reason: `Subprocess ${changedFileName} changed` },
+        new_content: { cascade: true, reason: `Subprocess ${changedFileName} changed` },
+        diff_details: {
+          cascade: true,
+          changedSubprocessFile: changedFileName,
+          reason: 'Cascade effect: subprocess file changed',
+        },
+      });
+    }
+
+    // Insert cascade diff entries
+    if (cascadeDiffRows.length > 0) {
+      const { error: insertError } = await supabase
+        .from('bpmn_file_diffs')
+        .insert(cascadeDiffRows);
+
+      if (insertError) {
+        console.error('[detectCascadeDiffs] Error inserting cascade diffs:', insertError);
+      } else {
+        console.log(`[detectCascadeDiffs] Marked ${cascadeDiffRows.length} call activities as modified due to cascade effect from ${changedFileName}`);
+      }
+    }
+  }
+}
+
+/**
+ * Cleanup removed nodes: delete documentation files from Storage when nodes are removed
+ * 
+ * This ensures that when a node is removed from a BPMN file, its documentation
+ * is also removed from Storage to avoid dead links and confusion.
+ */
+async function cleanupRemovedNodes(removedNodes: BpmnNodeSnapshot[]): Promise<void> {
+  if (removedNodes.length === 0) {
+    return;
+  }
+
+  const filesToDelete: string[] = [];
+
+  for (const node of removedNodes) {
+    try {
+      // Build storage paths based on node type
+      if (node.nodeType === 'callActivity') {
+        // For call activities, use Feature Goal paths
+        // We need to determine the subprocess file and parent file from metadata
+        const subprocessFile = node.metadata.mapping?.subprocess_bpmn_file || 
+                               node.metadata.calledElement?.replace('.bpmn', '') + '.bpmn' ||
+                               node.bpmnFile; // Fallback to same file
+        
+        // Try to find parent file (where call activity is defined)
+        // For now, assume parent is the file where the call activity is defined
+        const parentFile = node.bpmnFile;
+        
+        // Get version hash for subprocess file
+        const versionHash = await getCurrentVersionHash(subprocessFile);
+        
+        // Get all possible Feature Goal paths
+        const featureGoalPaths = getFeatureGoalDocStoragePaths(
+          subprocessFile,
+          node.bpmnElementId,
+          parentFile,
+          versionHash,
+          subprocessFile
+        );
+        
+        filesToDelete.push(...featureGoalPaths);
+      } else if (node.nodeType === 'process') {
+        // For process nodes, use Feature Goal paths (for subprocess Feature Goals)
+        const fileBaseName = node.bpmnFile.replace('.bpmn', '');
+        const featureGoalKey = getFeatureGoalDocFileKey(
+          node.bpmnFile,
+          fileBaseName, // Use file base name as elementId for process nodes
+          undefined,
+          undefined // No parent for process nodes
+        );
+        
+        // Get version hash
+        const versionHash = await getCurrentVersionHash(node.bpmnFile);
+        
+        // Build paths (versioned and non-versioned)
+        if (versionHash) {
+          const bpmnFileName = node.bpmnFile.endsWith('.bpmn') ? node.bpmnFile : `${node.bpmnFile}.bpmn`;
+          filesToDelete.push(`docs/claude/${bpmnFileName}/${versionHash}/${featureGoalKey}`);
+        }
+        filesToDelete.push(`docs/claude/${featureGoalKey}`);
+      } else {
+        // For tasks (userTask, serviceTask, businessRuleTask), use node doc paths
+        const docFileKey = getNodeDocStoragePath(node.bpmnFile, node.bpmnElementId);
+        
+        // Get version hash
+        const versionHash = await getCurrentVersionHash(node.bpmnFile);
+        
+        // Build paths (versioned and non-versioned)
+        const { modePath } = buildDocStoragePaths(
+          docFileKey,
+          null, // no mode
+          'cloud', // Claude provider
+          node.bpmnFile,
+          versionHash
+        );
+        
+        filesToDelete.push(modePath);
+        
+        // Also add non-versioned path if version hash exists
+        if (versionHash) {
+          const { modePath: nonVersionedPath } = buildDocStoragePaths(
+            docFileKey,
+            null,
+            'cloud',
+            node.bpmnFile,
+            null // no version hash
+          );
+          filesToDelete.push(nonVersionedPath);
+        }
+      }
+    } catch (error) {
+      console.error(`[cleanupRemovedNodes] Error building paths for node ${node.nodeKey}:`, error);
+      // Continue with other nodes even if one fails
+    }
+  }
+
+  // Remove duplicates
+  const uniqueFilesToDelete = [...new Set(filesToDelete)];
+
+  // Delete files from Storage
+  if (uniqueFilesToDelete.length > 0) {
+    const { error: deleteError } = await supabase.storage
+      .from('bpmn-files')
+      .remove(uniqueFilesToDelete);
+
+    if (deleteError) {
+      console.error('[cleanupRemovedNodes] Error deleting files from Storage:', deleteError);
+    } else {
+      console.log(`[cleanupRemovedNodes] Deleted ${uniqueFilesToDelete.length} documentation files for removed nodes`);
+    }
+  }
+}
+
+/**
+ * Calculate diff for a local file (READ-ONLY - does NOT save to database)
+ * Used for folder analysis to preview changes before uploading
+ * 
+ * ⚠️ SECURITY: This function is READ-ONLY. It does NOT:
+ * - Write to database
+ * - Upload files
+ * - Modify existing files
+ * - Save diffs
+ * 
+ * It only reads existing data for comparison.
+ */
+export async function calculateDiffForLocalFile(
+  fileName: string,
+  localContent: string,
+  localMeta?: BpmnMeta
+): Promise<BpmnDiffResult | null> {
+  try {
+    // Parse local file
+    const localParseResult = await parseBpmnFileContent(localContent, fileName);
+    
+    // Enrich call activities with mapping information
+    const enrichedLocalParseResult = await enrichCallActivitiesWithMapping(
+      localParseResult,
+      fileName
+    );
+
+    // Try to get existing version from bpmn_file_versions first
+    let currentVersion = await getCurrentVersion(fileName);
+    
+    // If no version in bpmn_file_versions, check if file exists in bpmn_files
+    // and use its metadata directly
+    if (!currentVersion) {
+      const { data: fileData, error: fileError } = await supabase
+        .from('bpmn_files')
+        .select('meta, current_version_hash')
+        .eq('file_name', fileName)
+        .maybeSingle();
+      
+      if (!fileError && fileData && fileData.meta) {
+        // File exists but no version record - create a temporary version object
+        // This allows us to compare against existing metadata
+        currentVersion = {
+          file_name: fileName,
+          content_hash: fileData.current_version_hash || '',
+          version_number: 1,
+          is_current: true,
+          meta: fileData.meta,
+          content: '', // We don't need content for comparison, only meta
+        } as any;
+      }
+    }
+    
+    if (!currentVersion || !currentVersion.meta) {
+      // New file or no metadata - all nodes are "added"
+      const { extractNodeSnapshots } = await import('./bpmnDiff');
+      return {
+        added: extractNodeSnapshots(enrichedLocalParseResult, fileName),
+        removed: [],
+        modified: [],
+        unchanged: [],
+      };
+    }
+
+    // Compare against existing version
+    const oldMeta = currentVersion.meta as BpmnMeta;
+    const oldParseResult = convertBpmnMetaToParseResult(oldMeta, fileName);
+    
+    // Calculate diff
+    return calculateBpmnDiff(oldParseResult, enrichedLocalParseResult, fileName);
+  } catch (error) {
+    console.error(`[calculateDiffForLocalFile] Error calculating diff for ${fileName}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Analyze folder diff: find all BPMN files in a directory and calculate diffs
+ * 
+ * @param directoryHandle - FileSystemDirectoryHandle from showDirectoryPicker()
+ * @param options - Options for analysis
+ * @returns Analysis result with diffs for all files
+ */
+export interface FolderDiffResult {
+  files: Array<{
+    fileName: string;
+    filePath: string;
+    content: string;
+    parseResult: BpmnParseResult;
+    diffResult: BpmnDiffResult | null; // null if file doesn't exist in system or error
+    hasChanges: boolean;
+    summary: {
+      added: number;
+      removed: number;
+      modified: number;
+      unchanged: number;
+    };
+    error?: string;
+    fileHandle?: FileSystemFileHandle; // Store file handle for upload
+  }>;
+  totalFiles: number;
+  totalChanges: {
+    added: number;
+    removed: number;
+    modified: number;
+    unchanged: number;
+  };
+}
+
+export async function analyzeFolderDiff(
+  directoryHandle: FileSystemDirectoryHandle,
+  options?: {
+    recursive?: boolean; // Default: true
+    onProgress?: (current: number, total: number, fileName: string) => void;
+  }
+): Promise<FolderDiffResult> {
+  const { findBpmnFilesInDirectory, readFileContent } = await import('./fileSystemUtils');
+  
+  // Find all BPMN files
+  const bpmnFiles = await findBpmnFilesInDirectory(
+    directoryHandle,
+    options?.recursive !== false
+  );
+
+  const files: FolderDiffResult['files'] = [];
+  let totalAdded = 0;
+  let totalRemoved = 0;
+  let totalModified = 0;
+  let totalUnchanged = 0;
+
+  // Process each file
+  for (let i = 0; i < bpmnFiles.length; i++) {
+    const file = bpmnFiles[i];
+    options?.onProgress?.(i + 1, bpmnFiles.length, file.fileName);
+
+    try {
+      // Read file content
+      const content = await readFileContent(file.handle);
+
+      // Parse BPMN
+      const parseResult = await parseBpmnFileContent(content, file.fileName);
+
+      // Calculate diff
+      const diffResult = await calculateDiffForLocalFile(
+        file.fileName,
+        content,
+        parseResult.meta
+      );
+
+      if (diffResult) {
+        const summary = {
+          added: diffResult.added.length,
+          removed: diffResult.removed.length,
+          modified: diffResult.modified.length,
+          unchanged: diffResult.unchanged.length,
+        };
+
+        const hasChanges = summary.added > 0 || summary.removed > 0 || summary.modified > 0;
+
+        totalAdded += summary.added;
+        totalRemoved += summary.removed;
+        totalModified += summary.modified;
+        totalUnchanged += summary.unchanged;
+
+        files.push({
+          fileName: file.fileName,
+          filePath: file.filePath,
+          content,
+          parseResult,
+          diffResult,
+          hasChanges,
+          summary,
+          fileHandle: file.handle, // Store file handle for upload
+        });
+      } else {
+        // Error calculating diff
+        files.push({
+          fileName: file.fileName,
+          filePath: file.filePath,
+          content,
+          parseResult,
+          diffResult: null,
+          hasChanges: false,
+          summary: { added: 0, removed: 0, modified: 0, unchanged: 0 },
+          error: 'Failed to calculate diff',
+          fileHandle: file.handle, // Store file handle even on error
+        });
+      }
+    } catch (error) {
+      console.error(`[analyzeFolderDiff] Error processing ${file.fileName}:`, error);
+      files.push({
+        fileName: file.fileName,
+        filePath: file.filePath,
+        content: '',
+        parseResult: {} as BpmnParseResult,
+        diffResult: null,
+        hasChanges: false,
+        summary: { added: 0, removed: 0, modified: 0, unchanged: 0 },
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  return {
+    files,
+    totalFiles: bpmnFiles.length,
+    totalChanges: {
+      added: totalAdded,
+      removed: totalRemoved,
+      modified: totalModified,
+      unchanged: totalUnchanged,
+    },
   };
 }
 

@@ -595,6 +595,26 @@ export async function parseBpmnFile(bpmnFilePath: string, versionHash?: string |
   }
 }
 
+/**
+ * Parse BPMN content directly from a string (for local file analysis)
+ * This is used when analyzing files from a local folder without uploading them
+ */
+export async function parseBpmnFileContent(
+  bpmnXml: string,
+  fileName?: string
+): Promise<BpmnParseResult> {
+  const parser = new BpmnParser();
+  try {
+    const result = await parser.parse(bpmnXml);
+    return {
+      ...result,
+      fileName: fileName || result.fileName,
+    };
+  } finally {
+    parser.destroy();
+  }
+}
+
 // Clear cache if needed
 export function clearBpmnParseCache() {
   parseCache.clear();

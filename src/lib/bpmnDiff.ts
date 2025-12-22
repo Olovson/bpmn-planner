@@ -13,7 +13,7 @@ import type { BpmnMeta } from '@/types/bpmnMeta';
 
 export interface BpmnNodeSnapshot {
   nodeKey: string; // Format: "bpmnFile::bpmnElementId"
-  nodeType: string; // 'callActivity', 'userTask', 'serviceTask', 'businessRuleTask', etc.
+  nodeType: string; // 'callActivity', 'userTask', 'serviceTask', 'businessRuleTask', 'process', etc.
   nodeName: string;
   bpmnFile: string;
   bpmnElementId: string;
@@ -21,6 +21,9 @@ export interface BpmnNodeSnapshot {
     name?: string;
     type?: string;
     calledElement?: string;
+    processId?: string; // For process nodes
+    callActivitiesCount?: number; // For process nodes
+    tasksCount?: number; // For process nodes
     // Add more fields as needed
   };
 }
@@ -112,6 +115,41 @@ export function extractNodeSnapshots(
       metadata: {
         name: brt.name,
         type: 'businessRuleTask',
+      },
+    });
+  }
+
+  // Extract process nodes (for subprocess Feature Goals)
+  // Process nodes represent the process itself in a BPMN file
+  // They generate Feature Goal documentation for subprocess files
+  // Use processes array if available, otherwise fall back to legacy single-process structure
+  const processes = parseResult.meta?.processes || (parseResult.meta?.processId ? [{
+    id: parseResult.meta.processId,
+    name: parseResult.meta.name || parseResult.meta.processId,
+    callActivities: parseResult.meta.callActivities || [],
+    tasks: parseResult.meta.tasks || [],
+  }] : []);
+
+  for (const proc of processes) {
+    // For process nodes, use the process ID as elementId
+    // The nodeKey format is: "fileName::processId"
+    // Note: Process nodes are only included if they would generate Feature Goals
+    // (i.e., for subprocess files, not root files)
+    // However, we include all process nodes here and let the regeneration logic
+    // decide whether to regenerate them based on whether they're in subprocess files
+    snapshots.push({
+      nodeKey: `${fileName}::${proc.id}`,
+      nodeType: 'process',
+      nodeName: proc.name || proc.id,
+      bpmnFile: fileName,
+      bpmnElementId: proc.id,
+      metadata: {
+        name: proc.name,
+        type: 'process',
+        processId: proc.id,
+        // Include counts of child elements for change detection
+        callActivitiesCount: proc.callActivities?.length || 0,
+        tasksCount: proc.tasks?.length || 0,
       },
     });
   }

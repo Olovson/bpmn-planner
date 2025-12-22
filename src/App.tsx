@@ -11,6 +11,7 @@ import NodeTestsPage from "./pages/NodeTestsPage";
 import NodeTestScriptViewer from "./pages/NodeTestScriptViewer";
 import BpmnFileManager from "./pages/BpmnFileManager";
 import BpmnDiffOverviewPage from "./pages/BpmnDiffOverviewPage";
+import BpmnFolderDiffPage from "./pages/BpmnFolderDiffPage";
 import BpmnVersionHistoryPage from "./pages/BpmnVersionHistoryPage";
 import RegistryStatus from "./pages/RegistryStatus";
 import NotFound from "./pages/NotFound";
@@ -123,6 +124,7 @@ const App = () => {
                   <Route path="/node-test-script" element={<NodeTestScriptViewer />} />
                   <Route path="/files" element={<ProtectedRoute><BpmnFileManager /></ProtectedRoute>} />
                   <Route path="/bpmn-diff" element={<ProtectedRoute><BpmnDiffOverviewPage /></ProtectedRoute>} />
+                  <Route path="/bpmn-folder-diff" element={<ProtectedRoute><BpmnFolderDiffPage /></ProtectedRoute>} />
                   <Route path="/bpmn-versions/:fileName" element={<ProtectedRoute><BpmnVersionHistoryPage /></ProtectedRoute>} />
                   <Route path="/registry-status" element={<ProtectedRoute><RegistryStatus /></ProtectedRoute>} />
                   <Route path="/llm-debug" element={<ProtectedRoute><LlmDebugView /></ProtectedRoute>} />
