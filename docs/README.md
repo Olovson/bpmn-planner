@@ -111,6 +111,7 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - Du ska **analysera diff för lokala filer** → läs `guides/user/LOCAL_DIFF_ANALYSIS_GUIDE.md`
 - Du ska **validera nya BPMN-filer från A till Ö** → läs `guides/validation/VALIDATE_NEW_BPMN_FILES.md` ⭐
 - Du ska **uppdatera bpmn-map.json från template handlers** → läs `guides/BPMN_MAP_UPDATE_GUIDE.md` ⚠️
+- Du ska **validera att bpmn-map.json fungerar efter uppdatering** → kör testprocessen (A-Ö valideringsprocessen) enligt [`guides/validation/VALIDATE_NEW_BPMN_FILES.md`](guides/validation/VALIDATE_NEW_BPMN_FILES.md) (detta är "testprocessen")
 - Du ska **förstå testrapporten** → läs `testing/test-report-views.md`
 - Du ska **skriva/uppdatera Confluence‑sidor** → använd `confluence/template.md` och `confluence/README.md`
 - Du ska **förstå teststrategi** → läs `testing/strategy/TEST_OVERVIEW_AND_GAPS.md`

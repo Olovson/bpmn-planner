@@ -5,6 +5,22 @@
 > **Handlers är INTE kompletta** - du måste alltid kombinera med BPMN-parsing eller manuell granskning.  
 > Se [`docs/analysis/BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md`](../analysis/BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md) för detaljerad analys av varför.
 
+## Snabbstart: Testprocess för Validering
+
+**Efter att ha uppdaterat `bpmn-map.json`, kör ALLTID testprocessen för att validera:**
+
+**"Testprocessen"** är vår kompletta A-Ö valideringsprocess som validerar att allt fungerar hela vägen från parsing till appens UI.
+
+```bash
+# 1. Hitta filer och analysera diff
+npm test -- tests/integration/local-folder-diff.test.ts
+
+# 2. Validera parsing, graph, tree och dokumentationsgenerering
+BPMN_TEST_DIR=/path/to/your/bpmn/files npm test -- tests/integration/validate-feature-goals-generation.test.ts
+```
+
+**Se "Validering"-sektionen nedan för detaljer och [`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](../validation/VALIDATE_NEW_BPMN_FILES.md) för komplett guide.**
+
 ## Översikt
 
 `bpmn-map.json` mappar call activities till subprocess BPMN-filer. Vi kan extrahera mappningar från `mortgage-template-main` call activity handlers, men handlers täcker INTE alla call activities i BPMN-filerna.
@@ -112,7 +128,62 @@ Efter uppdatering, verifiera:
 - [ ] Verifiera att alla call activities finns
 - [ ] Verifiera korrekta mappningar
 - [ ] Uppdatera `generated_at` och `note` i `bpmn-map.json`
+- [ ] **Validera att bpmn-map.json fungerar korrekt** (se "Validering" nedan)
 - [ ] Commit ändringar med beskrivande meddelande
+
+## Validering
+
+Efter att ha uppdaterat `bpmn-map.json`, **MÅSTE du validera att den fungerar korrekt:**
+
+### Testprocess: A-Ö Validering
+
+**"Testprocessen"** är vår kompletta A-Ö valideringsprocess som validerar att allt fungerar hela vägen från parsing till appens UI. Detta är inte bara ett test, utan en komplett valideringsprocess.
+
+**Se [`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](../validation/VALIDATE_NEW_BPMN_FILES.md) för komplett guide.**
+
+**Snabbstart - kör dessa kommandon i ordning:**
+
+```bash
+# 1. Hitta filer och analysera diff
+npm test -- tests/integration/local-folder-diff.test.ts
+
+# 2. Validera parsing, graph, tree och dokumentationsgenerering
+BPMN_TEST_DIR=/path/to/your/bpmn/files npm test -- tests/integration/validate-feature-goals-generation.test.ts
+```
+
+**Vad testprocessen validerar (A-Ö):**
+1. ✅ **Hitta alla BPMN-filer** (rekursivt)
+2. ✅ **Analysera diff** mot befintliga filer
+3. ✅ **Validera parsing** av alla filer
+4. ✅ **Validera process graph building** (med `bpmn-map.json`)
+5. ✅ **Validera process tree building**
+6. ✅ **Validera dokumentationsgenerering** (Feature Goals & Epics)
+   - Feature Goals genereras för call activities och process-noder
+   - Epics genereras för tasks
+   - Inga tasks genereras som Feature Goals (kritiskt!)
+   - Call activities mappas korrekt till subprocesser (via `bpmn-map.json`)
+7. ✅ **Validera uppladdning** (valfritt, om du vill testa upload)
+
+**Förväntat resultat:**
+- Alla tester ska passera utan fel
+- Feature Goals ska matcha förväntningar baserat på `bpmn-map.json`
+- Inga varningar om saknade mappningar
+- Process graph byggs korrekt med `bpmn-map.json`
+
+**Om testet misslyckas:**
+- Kontrollera att alla call activities i `bpmn-map.json` har korrekt `subprocess_bpmn_file`
+- Verifiera att `bpmn_id` matchar element-id i BPMN-filerna
+- Se felsökningssektionen nedan och [`VALIDATE_NEW_BPMN_FILES.md`](../validation/VALIDATE_NEW_BPMN_FILES.md)
+
+### Alternativ: Validera mot Supabase (om filer är uppladdade)
+
+Om BPMN-filerna redan är uppladdade till Supabase, kan du också köra:
+
+```bash
+node scripts/validate-bpmn-map.mjs
+```
+
+Detta validerar `bpmn-map.json` mot faktiska BPMN-filer i Supabase och genererar en rapport.
 
 ## Vanliga Problem
 
@@ -161,8 +232,14 @@ npm run generate:bpmn-map:template
 2. Kombinera handler-mappningar med befintliga call activities
 3. Lägg till saknade call activities (markera med `needs_manual_review: true`)
 4. Verifiera att alla call activities finns
+5. **Validera att bpmn-map.json fungerar:**
+   ```bash
+   npm test -- tests/integration/validate-feature-goals-generation.test.ts
+   ```
 
 **⚠️ KOMMA IHÅG:** Handlers täcker bara ~34 av ~39 call activities. Du MÅSTE alltid kombinera!
+
+**⚠️ KOMMA IHÅG:** Efter uppdatering av `bpmn-map.json`, kör ALLTID valideringstestet för att säkerställa att mappningen fungerar korrekt!
 
 ## Nästa Steg
 
@@ -170,3 +247,34 @@ För framtida förbättringar:
 - Implementera hybrid-approach i scriptet (handlers + BPMN-parsing)
 - Automatisera kombineringsprocessen
 - Verifiera automatiskt att alla call activities inkluderas
+
+## Testprocess: Validera efter Uppdatering
+
+**När du har uppdaterat `bpmn-map.json`, kör ALLTID testprocessen:**
+
+**"Testprocessen"** är vår kompletta A-Ö valideringsprocess som validerar att allt fungerar hela vägen från parsing till appens UI.
+
+```bash
+# 1. Hitta filer och analysera diff
+npm test -- tests/integration/local-folder-diff.test.ts
+
+# 2. Validera parsing, graph, tree och dokumentationsgenerering
+BPMN_TEST_DIR=/path/to/your/bpmn/files npm test -- tests/integration/validate-feature-goals-generation.test.ts
+```
+
+**Vad testprocessen validerar:**
+1. Hitta alla BPMN-filer (rekursivt)
+2. Analysera diff mot befintliga filer
+3. Validera parsing av alla filer
+4. Validera process graph building (med `bpmn-map.json`)
+5. Validera process tree building
+6. Validera dokumentationsgenerering (Feature Goals & Epics)
+   - Feature Goals genereras korrekt baserat på `bpmn-map.json`
+   - Call activities mappas korrekt till subprocesser
+   - Process graph byggs korrekt
+   - Inga tasks genereras som Feature Goals
+7. Validera uppladdning (valfritt)
+
+**Se [`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](../validation/VALIDATE_NEW_BPMN_FILES.md) för komplett guide.**
+
+**Om någon säger "kör din testprocess igen efter uppdatering av bpmn-map.json", menar de hela A-Ö valideringsprocessen ovan.**

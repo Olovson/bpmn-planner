@@ -160,4 +160,16 @@ Efter generering, verifiera:
    - Call activities med handlers ska ha korrekta mappningar
    - Call activities utan handlers ska vara markerade för review
 
+6. **Validera att bpmn-map.json fungerar:**
+   ```bash
+   # 1. Hitta filer och analysera diff
+   npm test -- tests/integration/local-folder-diff.test.ts
+   
+   # 2. Validera parsing, graph, tree och dokumentationsgenerering
+   BPMN_TEST_DIR=/path/to/your/bpmn/files npm test -- tests/integration/validate-feature-goals-generation.test.ts
+   ```
+   Detta är **testprocessen** (A-Ö valideringsprocessen) som validerar att `bpmn-map.json` fungerar korrekt hela vägen från parsing till appens UI. Se [`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](../guides/validation/VALIDATE_NEW_BPMN_FILES.md) för komplett guide.
+
 **⚠️ KOMMA IHÅG:** Handlers är INTE kompletta! Alltid kombinera med BPMN-parsing eller manuell granskning.
+
+**⚠️ KOMMA IHÅG:** Efter uppdatering, kör ALLTID valideringstestet för att säkerställa att mappningen fungerar!

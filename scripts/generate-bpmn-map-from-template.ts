@@ -387,7 +387,13 @@ function main() {
     console.log('   1. Jämför med befintlig bpmn-map.json');
     console.log('   2. Lägg till call activities som saknas handlers');
     console.log('   3. Kombinera handler-mappningar med BPMN-parsade call activities');
-    console.log('   4. Se docs/analysis/BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md för detaljer');
+    console.log('   4. ⚠️  VALIDERA: Kör testprocessen (A-Ö valideringsprocessen) för att säkerställa att bpmn-map.json fungerar:');
+    console.log('      # 1. Hitta filer och analysera diff');
+    console.log('      npm test -- tests/integration/local-folder-diff.test.ts');
+    console.log('      # 2. Validera parsing, graph, tree och dokumentationsgenerering');
+    console.log('      BPMN_TEST_DIR=/path/to/your/bpmn/files npm test -- tests/integration/validate-feature-goals-generation.test.ts');
+    console.log('      # Se docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md för komplett guide');
+    console.log('   5. Se docs/guides/BPMN_MAP_UPDATE_GUIDE.md för komplett guide');
     console.log('\n💡 TIP: Använd hybrid-approach (handlers + BPMN-parsing) för komplett coverage.');
   } catch (error) {
     console.error('❌ Error generating bpmn-map.json:', error);

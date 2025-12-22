@@ -82,7 +82,9 @@ npm run generate:bpmn-map:template  # Generera bpmn-map.json från mortgage-temp
 # ⚠️ VIKTIGT: Detta genererar INTE en komplett bpmn-map.json!
 # Handlers täcker INTE alla call activities. Du MÅSTE kombinera med befintlig bpmn-map.json
 # eller använda hybrid-approach (handlers + BPMN-parsing).
-# Se docs/analysis/BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md för detaljerad analys.
+# Efter uppdatering, validera med testprocessen (A-Ö valideringsprocessen):
+# Se docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md för komplett guide
+# Se docs/guides/BPMN_MAP_UPDATE_GUIDE.md för komplett guide.
 
 # Verktyg
 npm run print:bpmn-tree  # Exportera BPMN-träd
