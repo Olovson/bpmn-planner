@@ -14,7 +14,8 @@ export type ViewKey =
   | 'timeline'
   | 'configuration'
   | 'files'
-  | 'styleguide';
+  | 'styleguide'
+  | 'bpmn-folder-diff';
 
 interface AppHeaderWithTabsProps {
   userEmail?: string | null;
@@ -189,10 +190,10 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => navigate('/bpmn-folder-diff')}
+                onClick={() => handleTabChange('bpmn-folder-diff')}
                 aria-label="Analysera Lokal Mapp"
                 className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                  location.pathname === '/bpmn-folder-diff' || location.hash === '#/bpmn-folder-diff'
+                  currentView === 'bpmn-folder-diff'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted'
                 }`}

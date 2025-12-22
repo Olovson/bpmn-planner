@@ -2267,19 +2267,6 @@ export default function BpmnFileManager() {
             queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
             queryClient.invalidateQueries({ queryKey: ['file-artifact-coverage'] }),
             queryClient.invalidateQueries({ queryKey: ['all-dor-dod-criteria'] }),
-            
-            // Trigger Chroma DB indexering i bakgrunden (för AI-assistentens minne)
-            (async () => {
-              try {
-                const { triggerChromaIndexingDebounced } = await import('@/lib/chromaIndexer');
-                triggerChromaIndexingDebounced(10000); // Vänta 10 sekunder efter generering
-              } catch (error) {
-                // Ignorera fel - indexering är inte kritisk
-                if (import.meta.env.DEV) {
-                  console.warn('[BpmnFileManager] Kunde inte trigga Chroma indexering:', error);
-                }
-              }
-            })(),
             queryClient.invalidateQueries({ queryKey: ['process-tree'] }),
             queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
             queryClient.invalidateQueries({ queryKey: ['node-test-links'] }),

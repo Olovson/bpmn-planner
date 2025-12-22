@@ -32,24 +32,6 @@ async function main() {
     log('⚠️  Supabase körde inte eller kunde inte stoppas.');
   }
 
-  // Stoppa ChromaDB server
-  log('Stoppar ChromaDB server...');
-  try {
-    execSync('node scripts/stop-chroma-server.mjs', { stdio: 'inherit' });
-    log('✅ ChromaDB server stoppad.');
-  } catch (err) {
-    log('⚠️  ChromaDB server körde inte eller kunde inte stoppas.');
-  }
-
-  // Stoppa Chroma Auto Indexer
-  log('Stoppar Chroma Auto Indexer...');
-  try {
-    execSync("pkill -f 'chroma-auto-indexer.mjs'", { stdio: 'ignore' });
-    log('✅ Chroma Auto Indexer stoppad.');
-  } catch (err) {
-    log('⚠️  Chroma Auto Indexer körde inte eller kunde inte stoppas.');
-  }
-
   // Stoppa edge functions och dev-server (de körs i bakgrunden)
   log('Stoppar edge functions och dev-server...');
   try {

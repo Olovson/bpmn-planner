@@ -3,7 +3,6 @@
 /**
  * Script som startar hela utvecklingsmiljön:
  * - Supabase (om den inte redan körs)
- * - ChromaDB server (för minnesförbättring)
  * - Edge functions (llm-health och build-process-tree)
  * - Dev-server (npm run dev)
  * 
@@ -96,58 +95,6 @@ function startEdgeFunction(name) {
   return proc.pid;
 }
 
-async function checkChromaRunning() {
-  try {
-    // Node.js 18+ har inbyggd fetch
-    // v1 API är deprecated men servern svarar ändå
-    const response = await fetch('http://localhost:8000/api/v1/heartbeat', {
-      signal: AbortSignal.timeout(1000), // 1 sekund timeout
-    });
-    // v1 API returnerar error men servern körs ändå
-    return response.status === 200 || response.status === 404 || response.status === 500;
-  } catch {
-    return false;
-  }
-}
-
-async function startChromaServer() {
-  log('Kontrollerar ChromaDB server...');
-  
-  // Kontrollera om servern redan körs
-  const isRunning = await checkChromaRunning();
-  if (isRunning) {
-    log('✅ ChromaDB server körs redan.');
-    return null;
-  }
-  
-  log('Startar ChromaDB server...');
-  const proc = spawn('node', ['scripts/start-chroma-server.mjs'], {
-    cwd: projectRoot,
-    detached: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: false
-  });
-
-  // Logga output
-  proc.stdout.on('data', (data) => {
-    process.stdout.write(`[ChromaDB] ${data}`);
-  });
-  
-  proc.stderr.on('data', (data) => {
-    process.stderr.write(`[ChromaDB] ${data}`);
-  });
-
-  proc.on('error', (err) => {
-    error(`Kunde inte starta ChromaDB server: ${err.message}`);
-  });
-
-  // Låt processen köra i bakgrunden
-  proc.unref();
-  
-  log(`✅ ChromaDB server startad (PID: ${proc.pid})`);
-  return proc.pid;
-}
-
 function startDevServer() {
   log('Startar dev-server...');
   
@@ -202,47 +149,7 @@ async function main() {
     process.exit(1);
   }
 
-  // 3. Starta ChromaDB server
-  console.log('');
-  log('Startar ChromaDB server (för minnesförbättring)...');
-  const chromaPid = await startChromaServer();
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  
-  // 3.3. Starta Chroma DB Auto Indexer (för automatisk indexering)
-  log('Startar Chroma DB Auto Indexer...');
-  const autoIndexerProc = spawn('node', ['scripts/chroma-auto-indexer.mjs'], {
-    cwd: projectRoot,
-    stdio: 'pipe',
-    detached: false,
-  });
-  
-  autoIndexerProc.stdout.on('data', (data) => {
-    process.stdout.write(`[ChromaAutoIndexer] ${data}`);
-  });
-  
-  autoIndexerProc.stderr.on('data', (data) => {
-    process.stderr.write(`[ChromaAutoIndexer] ${data}`);
-  });
-  
-  autoIndexerProc.on('exit', (code) => {
-    if (code !== 0 && code !== null) {
-      log(`⚠️  Chroma Auto Indexer avslutades med kod ${code}`);
-    }
-  });
-  
-  // 3.5. Indexera med Cipher (om ChromaDB är redo)
-  log('Kontrollerar Cipher-indexering...');
-  try {
-    execSync('node scripts/index-with-cipher.mjs', { 
-      stdio: 'pipe', 
-      cwd: projectRoot 
-    });
-  } catch (err) {
-    // Det är okej om Cipher inte är konfigurerad ännu
-    log('ℹ️  Cipher-indexering hoppas över (kräver konfiguration i Cursor)');
-  }
-
-  // 4. Starta edge functions
+  // 3. Starta edge functions
   console.log('');
   log('Startar edge functions...');
   const llmHealthPid = startEdgeFunction('llm-health');
@@ -264,8 +171,6 @@ async function main() {
   console.log('');
   log('Processer som körs:');
   log(`  - Supabase: körs`);
-  log(`  - ChromaDB: körs (http://localhost:8000)`);
-  log(`  - Cipher: använder ChromaDB (via MCP i Cursor)`);
   log(`  - llm-health: PID ${llmHealthPid}`);
   log(`  - build-process-tree: PID ${buildProcessTreePid}`);
   log(`  - Dev-server: PID ${devServerPid}`);

@@ -48,7 +48,9 @@ const Index = () => {
               ? 'configuration'
               : location.pathname.includes('/styleguide')
                 ? 'styleguide'
-                : 'diagram';
+                : location.pathname.includes('/bpmn-folder-diff')
+                  ? 'bpmn-folder-diff'
+                  : 'diagram';
 
   const handleViewChange = (value: string) => {
     if (value === 'listvy') {
@@ -67,6 +69,8 @@ const Index = () => {
       baseNavigate('/styleguide');
     } else if (value === 'timeline') {
       baseNavigate('/timeline');
+    } else if (value === 'bpmn-folder-diff') {
+      baseNavigate('/bpmn-folder-diff');
     } else {
       setViewMode(value as 'diagram' | 'tree');
       if (value === 'diagram') baseNavigate('/');

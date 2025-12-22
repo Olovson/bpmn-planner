@@ -98,18 +98,6 @@ export const useUploadBpmnFile = () => {
         description: 'Filen har laddats upp.',
         variant: 'default',
       });
-
-      // Trigger Chroma DB indexering i bakgrunden (för AI-assistentens minne)
-      try {
-        // Trigger ChromaDB indexering (valfritt - kan ignoreras om ChromaDB inte körs)
-        // CORS-fel i konsolen är normalt om ChromaDB inte är igång och kan ignoreras
-        const { triggerChromaIndexingDebounced } = await import('@/lib/chromaIndexer');
-        triggerChromaIndexingDebounced(5000); // Vänta 5 sekunder innan indexering
-      } catch (error) {
-        // Ignorera fel - indexering är inte kritisk
-        // ChromaDB är valfritt och påverkar inte huvudfunktionaliteten
-        // CORS-fel är förväntat om ChromaDB inte körs
-      }
     },
     onError: (error: Error) => {
       toast({

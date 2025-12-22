@@ -181,3 +181,9 @@ ELLER
 - ⚠️ `userStories` är optional men Epic har det som required
 - ✅ `dependencies` är required (till skillnad från Epic)
 
+
+
+
+
+
+
