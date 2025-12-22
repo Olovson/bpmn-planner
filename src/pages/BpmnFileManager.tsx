@@ -1148,17 +1148,13 @@ export default function BpmnFileManager() {
       let stepDetail = detail;
       if (!stepDetail) {
         // Försök bygga detaljer från progress
-        const effectiveTotalForDetail = Math.max(
-          totalGraphNodes || 0,
-          docgenCompleted,
-          docgenProgress.total || 0
-        );
-        if (docgenCompleted > 0 && effectiveTotalForDetail > 0) {
-          stepDetail = `Dokumentation: ${docgenCompleted}/${effectiveTotalForDetail} noder`;
+        const currentTotal = totalGraphNodes || docgenProgress.total || docgenCompleted;
+        if (docgenCompleted > 0 && currentTotal > 0) {
+          stepDetail = `Dokumentation: ${docgenCompleted}/${currentTotal} filer`;
         } else if (docUploadsCompleted > 0 && docUploadsPlanned > 0) {
           stepDetail = `Laddar upp: ${docUploadsCompleted}/${docUploadsPlanned} filer`;
-        } else if (effectiveTotalForDetail > 0) {
-          stepDetail = `Förbereder ${effectiveTotalForDetail} noder`;
+        } else if (currentTotal > 0) {
+          stepDetail = `Förbereder ${currentTotal} filer`;
         }
       }
       
@@ -1171,11 +1167,8 @@ export default function BpmnFileManager() {
         currentStepDetail: stepDetail,
         docs: {
           completed: docgenCompleted,
-          // Använd faktisk totalGraphNodes om den är satt, annars fallback
-          total: totalGraphNodes > 0 ? totalGraphNodes : Math.max(
-            docgenCompleted,
-            docgenProgress.total || 0
-          ),
+          // Använd faktisk totalGraphNodes (fix total, ändras aldrig efter total:init)
+          total: totalGraphNodes || docgenProgress.total || docgenCompleted,
         },
         htmlUpload: {
           completed: docUploadsCompleted,
@@ -1196,9 +1189,16 @@ export default function BpmnFileManager() {
       const totalSteps = jobTotalCount;
       const completedSteps = jobProgressCount;
       // Säkerställ att progress inte överstiger 100%
-      const totalProgressPercent = totalSteps > 0 
+      let totalProgressPercent = totalSteps > 0 
         ? Math.min(100, Math.round((completedSteps / totalSteps) * 100))
         : 0;
+      
+      // VIKTIGT: Progress ska inte vara 100% om docs inte är klara
+      // Detta förhindrar att popupen spinner på 100% medan filer fortfarande genereras
+      if (totalGraphNodes > 0 && docgenCompleted < totalGraphNodes) {
+        // Max 99% om docs inte är klara
+        totalProgressPercent = Math.min(99, totalProgressPercent);
+      }
       
       // Bygg en mer informativ currentStep-sträng
       let currentStepText = overlayDescription || 'Förbereder generering';
@@ -1210,17 +1210,13 @@ export default function BpmnFileManager() {
       let stepDetail = currentGenerationStep?.detail;
       if (!stepDetail) {
         // Försök bygga detaljer från progress
-        const effectiveTotalForDetail = Math.max(
-          totalGraphNodes || 0,
-          docgenCompleted,
-          docgenProgress.total || 0
-        );
-        if (docgenCompleted > 0 && effectiveTotalForDetail > 0) {
-          stepDetail = `Dokumentation: ${docgenCompleted}/${effectiveTotalForDetail} noder`;
+        const currentTotal = totalGraphNodes || docgenProgress.total || docgenCompleted;
+        if (docgenCompleted > 0 && currentTotal > 0) {
+          stepDetail = `Dokumentation: ${docgenCompleted}/${currentTotal} filer`;
         } else if (docUploadsCompleted > 0 && docUploadsPlanned > 0) {
           stepDetail = `Laddar upp: ${docUploadsCompleted}/${docUploadsPlanned} filer`;
-        } else if (effectiveTotalForDetail > 0) {
-          stepDetail = `Förbereder ${effectiveTotalForDetail} noder`;
+        } else if (currentTotal > 0) {
+          stepDetail = `Förbereder ${currentTotal} filer`;
         }
       }
       
@@ -1233,11 +1229,8 @@ export default function BpmnFileManager() {
         currentStepDetail: stepDetail,
         docs: {
           completed: docgenCompleted,
-          // Använd faktisk totalGraphNodes om den är satt, annars fallback
-          total: totalGraphNodes > 0 ? totalGraphNodes : Math.max(
-            docgenCompleted,
-            docgenProgress.total || 0
-          ),
+          // Använd faktisk totalGraphNodes (fix total, ändras aldrig efter total:init)
+          total: totalGraphNodes || docgenProgress.total || docgenCompleted,
         },
         htmlUpload: {
           completed: docUploadsCompleted,
@@ -1315,33 +1308,35 @@ export default function BpmnFileManager() {
           updateGenerationProgressWithStep(stepText, stepDetail);
           break;
         case 'docgen:file':
-          // Här sker den tunga logiken (mallar/LLM per nod), så koppla framsteg till verkligt antal noder.
-          docgenCompleted += 1;
-          // Säkerställ att total alltid är >= completed för att undvika "3/1 noder"
-          const effectiveTotalForFile = Math.max(
-            totalGraphNodes || 0,
-            docgenCompleted,
-            docgenProgress.total || 0
-          );
+          // Här sker den tunga logiken (mallar/LLM per nod), så koppla framsteg till verkligt antal filer.
+          // VIKTIGT: Om detail är ett filnamn (slutar med .bpmn eller .html), så är det en fil-markerare, inte en faktisk fil
+          // Vi räknar bara faktiska filer (genererade från noder), inte fil-markörer
+          const isFileMarker = detail && (detail.endsWith('.bpmn') || detail.endsWith('.html'));
+          if (!isFileMarker) {
+            docgenCompleted += 1;
+          }
+          // Använd fix totalGraphNodes (satt från total:init, ändras aldrig)
+          // Om totalGraphNodes inte är satt ännu, använd prev.total eller completed som fallback
           setDocgenProgress((prev) => ({
             completed: docgenCompleted,
-            total: effectiveTotalForFile,
+            total: totalGraphNodes || prev.total || docgenCompleted,
           }));
           stepText = 'Genererar dokumentation';
           // Använd detail om det finns (innehåller nodtyp och namn direkt från reportProgress)
           // Detail kommer från reportProgress och innehåller format: "service tasken: nodeName" eller liknande
+          const currentTotal = totalGraphNodes || docgenProgress.total || docgenCompleted;
           if (detail) {
             // Detail är redan formaterat som "service tasken: nodeName" eller liknande
             stepDetail = `Genererar information för ${detail}`;
-          } else if (effectiveTotalForFile > 0) {
-            stepDetail = `${docgenCompleted} av ${effectiveTotalForFile} noder`;
+          } else if (currentTotal > 0) {
+            stepDetail = `${docgenCompleted} av ${currentTotal} filer`;
           } else {
-            stepDetail = `Bearbetar nod ${docgenCompleted}`;
+            stepDetail = `Bearbetar fil ${docgenCompleted}`;
           }
           setCurrentGenerationStep({ step: stepText, detail: stepDetail });
-          if (effectiveTotalForFile > 0) {
+          if (currentTotal > 0) {
             await incrementJobProgress(
-              `Dokumentation ${docgenCompleted} av ${effectiveTotalForFile} noder`
+              `Dokumentation ${docgenCompleted} av ${currentTotal} filer`
             );
           } else {
             await incrementJobProgress(`Dokumentation: ${detail || ''}`);
@@ -2207,123 +2202,98 @@ export default function BpmnFileManager() {
         }
       }
       
-      // Uppdatera progress till 100% med tydligt meddelande
-      const finalProgress: GenerationProgress = {
-        totalProgress: 100,
-        currentStep: 'Generering klar',
-        currentStepDetail: 'Alla steg slutförda',
-        docs: {
-          completed: docgenCompleted,
-          total: totalGraphNodes || docgenCompleted,
-        },
-        htmlUpload: {
-          completed: docUploadsCompleted,
-          total: docUploadsPlanned || docUploadsCompleted,
-        },
-        tests: {
-          completed: testUploadsCompleted,
-          total: testUploadsPlanned || testUploadsCompleted,
-        },
-      };
-      setGenerationProgress(finalProgress);
-      // Vänta lite så användaren ser 100%
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Nu visa resultatet - detta kommer automatiskt växla dialogen till result-vyn
-      // Sätt result och rensa progress samtidigt för att säkerställa korrekt växling
+      // Visa resultatet omedelbart - detta kommer automatiskt växla dialogen till result-vyn
       hasGenerationResultRef.current = true; // Markera att result finns
-      
-      // Använd React 18 flushSync för att tvinga omedelbar uppdatering
-      // Detta säkerställer att dialogen växlar till result-vyn omedelbart
-      const { flushSync } = await import('react-dom');
-      flushSync(() => {
-        setGenerationDialogResult(dialogResult);
-        setGenerationProgress(null); // Clear progress to show result
-      });
-      
-      // Vänta lite extra för att säkerställa att UI hinner uppdatera och visa result-vyn
-      // innan vi fortsätter med resten av async-operationerna
-      await new Promise(resolve => setTimeout(resolve, 300));
+      setGenerationDialogResult(dialogResult);
+      setGenerationProgress(null); // Clear progress to show result
       
       // GenerationDialog visar redan resultatet i sin result-vy
       syncOverlayProgress('Generering klar');
       
-      // Mark diffs as resolved for all successfully generated nodes
-      // This applies whether we used a diff filter or regenerated everything
-      if (nodeArtifacts.length > 0) {
+      // Kör async-operationer i bakgrunden (inte blockerande för popupen)
+      (async () => {
         try {
-          const { markDiffsAsResolved } = await import('@/lib/bpmnDiffRegeneration');
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          // Collect all node keys from generated artifacts
-          const generatedNodeKeys = nodeArtifacts
-            .map(artifact => `${artifact.bpmnFile}::${artifact.elementId}`)
-            .filter(Boolean);
-          
-          if (generatedNodeKeys.length > 0) {
-            // Mark diffs as resolved for all files that were included in generation
-            const filesToResolve = new Set(nodeArtifacts.map(a => a.bpmnFile));
-            for (const fileName of filesToResolve) {
-              const fileNodeKeys = generatedNodeKeys.filter(key => key.startsWith(`${fileName}::`));
-              if (fileNodeKeys.length > 0) {
-                await markDiffsAsResolved(fileName, fileNodeKeys, user?.id);
+          // Mark diffs as resolved for all successfully generated nodes
+          // This applies whether we used a diff filter or regenerated everything
+          if (nodeArtifacts.length > 0) {
+            try {
+              const { markDiffsAsResolved } = await import('@/lib/bpmnDiffRegeneration');
+              const { data: { user } } = await supabase.auth.getUser();
+              
+              // Collect all node keys from generated artifacts
+              const generatedNodeKeys = nodeArtifacts
+                .map(artifact => `${artifact.bpmnFile}::${artifact.elementId}`)
+                .filter(Boolean);
+              
+              if (generatedNodeKeys.length > 0) {
+                // Mark diffs as resolved for all files that were included in generation
+                const filesToResolve = new Set(nodeArtifacts.map(a => a.bpmnFile));
+                for (const fileName of filesToResolve) {
+                  const fileNodeKeys = generatedNodeKeys.filter(key => key.startsWith(`${fileName}::`));
+                  if (fileNodeKeys.length > 0) {
+                    await markDiffsAsResolved(fileName, fileNodeKeys, user?.id);
+                  }
+                }
               }
+            } catch (error) {
+              // Don't fail generation if marking diffs as resolved fails
+              console.warn('[BpmnFileManager] Error marking diffs as resolved:', error);
             }
           }
-        } catch (error) {
-          // Don't fail generation if marking diffs as resolved fails
-          console.warn('[BpmnFileManager] Error marking diffs as resolved:', error);
-        }
-      }
-      
-      if (activeJob) {
-          await setJobStatus(activeJob.id, 'succeeded', {
-            finished_at: new Date().toISOString(),
-            progress: jobProgressCount,
-            total: jobTotalCount,
-            result: {
-              dorDod: dorDodCount,
-              tests: totalTestCount,
-              docs: totalDocCount,
-              filesAnalyzed,
-              mode: 'slow',
-              llmProvider: llmProvider,
-              missingDependencies,
-              skippedSubprocesses: skippedList,
-            },
-          });
-      }
-
-      // Refresh data (structure + artifacts) and give UI some time to re-render
-      invalidateStructureQueries(queryClient);
-      invalidateArtifactQueries(queryClient);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['bpmn-files'] }),
-        queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
-        queryClient.invalidateQueries({ queryKey: ['file-artifact-coverage'] }),
-        queryClient.invalidateQueries({ queryKey: ['all-dor-dod-criteria'] }),
-        
-        // Trigger Chroma DB indexering i bakgrunden (för AI-assistentens minne)
-        (async () => {
-          try {
-            const { triggerChromaIndexingDebounced } = await import('@/lib/chromaIndexer');
-            triggerChromaIndexingDebounced(10000); // Vänta 10 sekunder efter generering
-          } catch (error) {
-            // Ignorera fel - indexering är inte kritisk
-            console.log('[BpmnFileManager] Kunde inte trigga Chroma indexering:', error);
+          
+          if (activeJob) {
+            await setJobStatus(activeJob.id, 'succeeded', {
+              finished_at: new Date().toISOString(),
+              progress: jobProgressCount,
+              total: jobTotalCount,
+              result: {
+                dorDod: dorDodCount,
+                tests: totalTestCount,
+                docs: totalDocCount,
+                filesAnalyzed,
+                mode: 'slow',
+                llmProvider: llmProvider,
+                missingDependencies,
+                skippedSubprocesses: skippedList,
+              },
+            });
           }
-        })(),
-        queryClient.invalidateQueries({ queryKey: ['process-tree'] }),
-        queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
-        queryClient.invalidateQueries({ queryKey: ['node-test-links'] }),
-      ]);
-      // Force immediate refetch of files list
-      await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
-      
-      // Dispatch event to notify other components that artifacts have been updated
-      window.dispatchEvent(new CustomEvent('bpmn-artifacts-updated'));
-      
-      await new Promise(resolve => setTimeout(resolve, 1200));
+
+          // Refresh data (structure + artifacts)
+          invalidateStructureQueries(queryClient);
+          invalidateArtifactQueries(queryClient);
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['bpmn-files'] }),
+            queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
+            queryClient.invalidateQueries({ queryKey: ['file-artifact-coverage'] }),
+            queryClient.invalidateQueries({ queryKey: ['all-dor-dod-criteria'] }),
+            
+            // Trigger Chroma DB indexering i bakgrunden (för AI-assistentens minne)
+            (async () => {
+              try {
+                const { triggerChromaIndexingDebounced } = await import('@/lib/chromaIndexer');
+                triggerChromaIndexingDebounced(10000); // Vänta 10 sekunder efter generering
+              } catch (error) {
+                // Ignorera fel - indexering är inte kritisk
+                if (import.meta.env.DEV) {
+                  console.warn('[BpmnFileManager] Kunde inte trigga Chroma indexering:', error);
+                }
+              }
+            })(),
+            queryClient.invalidateQueries({ queryKey: ['process-tree'] }),
+            queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
+            queryClient.invalidateQueries({ queryKey: ['node-test-links'] }),
+          ]);
+          // Force immediate refetch of files list
+          await queryClient.refetchQueries({ queryKey: ['bpmn-files'] });
+          
+          // Dispatch event to notify other components that artifacts have been updated
+          window.dispatchEvent(new CustomEvent('bpmn-artifacts-updated'));
+        } catch (error) {
+          // Don't fail generation if background operations fail
+          console.warn('[BpmnFileManager] Error in background operations:', error);
+        }
+      })();
       
       return generationResult;
     } catch (error) {

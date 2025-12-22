@@ -43,12 +43,13 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
   - **Plats:** `src/lib/testGenerators.ts` och `src/lib/bpmnGenerators.ts`
 
 ### Progress-räkning för dokumentationsgenerering
-- [ ] **FIXA:** Process nodes (subprocess Feature Goals) räknas inte i progress-räkningen
+- [x] **FIXA:** Process nodes (subprocess Feature Goals) räknas inte i progress-räkningen ✅ FIXAD
   - **Problem:** Appen visar 102 noder istället för 126 (20 process nodes saknas i räkningen)
   - **Orsak:** `getTestableNodes()` inkluderar inte `type === 'process'` noder, och process nodes genereras separat utanför `nodesToGenerate`-loopen
   - **Påverkan:** Alla 126 noder genereras korrekt, men progress-visningen är felaktig
   - **Lösning:** Inkludera process nodes i progress-räkningen (antingen i `nodesToGenerate` eller räkna dem separat och lägg till i totalen)
   - **Plats:** `src/lib/bpmnGenerators.ts` (rad ~1671, `nodesToGenerate.length` används för progress)
+  - **Status:** Fixad - process nodes inkluderas nu i `totalNodesToGenerate` och popupen visar "filer" istället för "noder"
 
 ### Timeline / Planning View
 - [ ] Spara redigerade datum till backend/database
