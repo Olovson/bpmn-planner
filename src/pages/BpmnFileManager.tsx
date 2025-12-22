@@ -4209,17 +4209,17 @@ export default function BpmnFileManager() {
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Dokumentation</span>
                       <span className="font-medium">
-                        {docgenProgress.completed} av {graphTotals.nodes} noder
+                        {docgenProgress.completed} av {Math.max(docgenProgress.total || 0, graphTotals.nodes)} noder
                         {docgenProgress.total > 0 && (
                           <span className="text-muted-foreground ml-1">
-                            ({Math.round((docgenProgress.completed / docgenProgress.total) * 100)}%)
+                            ({Math.round((docgenProgress.completed / Math.max(docgenProgress.total, 1)) * 100)}%)
                           </span>
                         )}
                       </span>
                     </div>
                     {docgenProgress.total > 0 && (
                       <Progress 
-                        value={(docgenProgress.completed / docgenProgress.total) * 100} 
+                        value={(docgenProgress.completed / Math.max(docgenProgress.total, 1)) * 100} 
                         className="h-2"
                       />
                     )}
