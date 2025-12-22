@@ -9,14 +9,14 @@ describe('artifactAvailability helpers', () => {
 
   it('checks storage for docs when no confluence URL', async () => {
     const storageExists = vi.fn().mockResolvedValue(true);
-    const result = await checkDocsAvailable(undefined, 'docs/nodes/mortgage/A_1.html', storageExists);
-    expect(storageExists).toHaveBeenCalledWith('docs/nodes/mortgage/A_1.html');
+    const result = await checkDocsAvailable(undefined, 'docs/claude/nodes/mortgage/A_1.html', storageExists);
+    expect(storageExists).toHaveBeenCalledWith('docs/claude/nodes/mortgage/A_1.html');
     expect(result).toBe(true);
   });
 
   it('handles missing docs gracefully', async () => {
     const storageExists = vi.fn().mockResolvedValue(false);
-    const result = await checkDocsAvailable(undefined, 'docs/nodes/mortgage/A_1.html', storageExists);
+    const result = await checkDocsAvailable(undefined, 'docs/claude/nodes/mortgage/A_1.html', storageExists);
     expect(result).toBe(false);
   });
 

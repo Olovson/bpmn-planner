@@ -432,94 +432,15 @@ const inferTeamForNode = (type: NodeDocumentationContext['node']['type']) => {
 export function buildFeatureGoalDocModelFromContext(
   context: NodeDocumentationContext,
 ): FeatureGoalDocModel {
-  // Kopierar Epic base model builder och anpassar för Feature Goal
-  const node = context.node;
-  const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
-  const previousNode = context.parentChain.length
-    ? context.parentChain[context.parentChain.length - 1]
-    : undefined;
-  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
-  const downstreamNodes = context.childNodes.slice(0, 3);
-  const upstreamName = previousNode ? formatNodeName(previousNode) : 'Processstart';
-  const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg';
-  const processStep = node.bpmnFile.replace('.bpmn', '');
-  const isUserTask = node.type === 'userTask';
-  const isServiceTask = node.type === 'serviceTask';
-
-  const triggerBullets = [
-    previousNode
-      ? `Triggas normalt efter <strong>${formatNodeName(previousNode)}</strong>.`
-      : 'Triggas när föregående processsteg är klart.',
-    'Förutsätter att grundläggande kund- och ansökningsdata är validerade.',
-    'Eventuella föregående KYC/AML- och identitetskontroller ska vara godkända.',
-  ];
-
-  const highLevelStepsUser = [
-    'Användaren öppnar vyn och ser sammanfattad ansöknings- och kundinformation.',
-    'Formulär eller val presenteras baserat på föregående steg och riskprofil.',
-    'Användaren fyller i eller bekräftar uppgifter och skickar vidare.',
-    'Systemet validerar indata och uppdaterar processens status samt triggar nästa steg.',
-  ];
-
-  const highLevelStepsService = [
-    'Processmotorn triggar tjänsten med relevant ansöknings- och kunddata.',
-    'Tjänsten anropar interna och/eller externa system för att hämta eller berika data.',
-    'Svar kontrolleras mot förväntade format och felkoder hanteras på övergripande nivå.',
-    'Resultatet lagras och vidarebefordras till nästa BPMN-nod.',
-  ];
-
-  const flowSteps = isUserTask ? highLevelStepsUser : highLevelStepsService;
-
-  const interactionBulletsUser = [
-    'Kanal: web/app eller internt handläggargränssnitt beroende på roll.',
-    'UI ska vara förklarande, med tydlig koppling till kreditbeslut och nästa steg.',
-    'Felmeddelanden ska vara begripliga och vägleda till rätt åtgärd.',
-  ];
-
-  const interactionBulletsService = [
-    `Primära API:er: t.ex. POST /api/${slugify(nodeName)} för exekvering.`,
-    'Tjänsten ska hantera timeouts och felkoder från beroenden på ett kontrollerat sätt (retry/circuit breaker på plattformsnivå).',
-    'Respons ska vara deterministisk och innehålla tydliga statusfält som går att logga och följa upp.',
-  ];
-
-  const dependencyBullets = [
-    'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
-    'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
-    'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
-  ];
-
-  const userStories: FeatureGoalDocModel['userStories'] = [
-    {
-      id: 'US-1',
-      role: isUserTask ? 'Kund' : 'System',
-      goal: isUserTask
-        ? 'Få tydlig vägledning och feedback i kreditprocessen'
-        : 'Automatiskt hantera kreditprocesssteg',
-      value: isUserTask
-        ? 'Kunna fatta välgrundade beslut och förstå nästa steg'
-        : 'Minska manuellt arbete och öka processhastighet',
-      acceptanceCriteria: isUserTask
-        ? [
-            'Systemet ska presentera tydlig information om vad som behöver göras.',
-            'Systemet ska ge begriplig feedback vid fel eller avvisningar.',
-            'Systemet ska vägleda användaren till nästa steg i processen.',
-          ]
-        : [
-            'Systemet ska automatiskt hantera standardfall utan manuell intervention.',
-            'Systemet ska logga alla viktiga steg för spårbarhet.',
-            'Systemet ska hantera fel på ett kontrollerat sätt.',
-          ],
-    },
-  ];
-
+  // INGEN FALLBACK-TEXT - LLM måste generera allt
+  // User stories måste ha roll 'Kund', 'Handläggare' eller 'Processägare' - inga System-roller
+  // Returnerar tom modell - LLM måste fylla i allt
   return {
-    summary:
-      `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet. ` +
-      'Feature Goalet säkerställer att rätt data, regler och interaktioner finns på plats för att fatta välgrundade kreditbeslut.',
-    prerequisites: triggerBullets,
-    flowSteps,
-    dependencies: dependencyBullets,
-    userStories,
+    summary: '',
+    prerequisites: [],
+    flowSteps: [],
+    dependencies: [],
+    userStories: [],
   };
 }
 
@@ -649,15 +570,11 @@ function buildEpicDocModelFromContext(
     ? relatedNodes.map((n) => `${formatNodeName(n)} (${n.type})`)
     : ['Inga närliggande noder identifierade.'];
 
-  const summary =
-    `${nodeName} är ett delsteg i kreditflödet som säkerställer att rätt data, regler och interaktioner hanteras innan processen går vidare. ` +
-    'Epiken bidrar till en spårbar och begriplig kreditprocess för både kund och interna användare.';
-
-  const prerequisites = triggerBullets;
-
-  const flowSteps = (isUserTask ? highLevelStepsUser : highLevelStepsService).slice();
-
-  const interactions = isUserTask ? interactionBulletsUser : interactionBulletsService;
+  // INGEN FALLBACK-TEXT - LLM måste generera allt
+  const summary = '';
+  const prerequisites: string[] = [];
+  const flowSteps: string[] = [];
+  const interactions: string[] = [];
 
   const userStories: EpicUserStory[] = isUserTask
     ? [
@@ -710,9 +627,9 @@ function buildEpicDocModelFromContext(
         },
         {
           id: 'US-2',
-          role: 'System',
-          goal: 'Hämta och validera data från externa källor',
-          value: 'Säkerställa datakvalitet och kompletthet',
+          role: 'Handläggare',
+          goal: 'Få systemet att hämta och validera data från externa källor',
+          value: 'Säkerställa datakvalitet och kompletthet för korrekt kreditbedömning',
           acceptanceCriteria: [
             'Systemet ska validera att all nödvändig data finns innan exekvering',
             'Systemet ska hantera fel från externa källor på ett robust sätt',
@@ -732,11 +649,8 @@ function buildEpicDocModelFromContext(
         },
       ];
 
-  const dependencies = [
-    'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
-    'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
-    'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
-  ];
+  // INGEN FALLBACK-TEXT - LLM måste generera allt
+  const dependencies: string[] = [];
 
   return {
     summary,
@@ -778,23 +692,19 @@ function buildEpicDocHtmlFromModel(
   const versionLabel = '1.0 (exempel) – uppdateras vid ändring';
   const ownerLabel = 'Produktteam Kredit / Arkitektur';
 
-  const summaryText =
-    model.summary ||
-    `${nodeName} är ett delsteg i kreditflödet som säkerställer att rätt data, regler och interaktioner hanteras innan processen går vidare.`;
-  const summarySource = model.summary ? 'llm' : 'fallback';
-
-  const prerequisites = model.prerequisites.length
-    ? model.prerequisites
-    : [
-        previousNode
-          ? `Triggas normalt efter <strong>${formatNodeName(previousNode)}</strong>.`
-          : 'Triggas när föregående processsteg är klart.',
-        'Förutsätter att grundläggande kund- och ansökningsdata är validerade.',
-        'Eventuella föregående KYC/AML- och identitetskontroller ska vara godkända.',
-      ];
-  const prerequisitesSource = model.prerequisites.length ? 'llm' : 'fallback';
+  // INGEN FALLBACK-TEXT - LLM måste generera allt
+  const summaryText = model.summary || '';
+  const summarySource = model.summary ? 'llm' : 'missing';
+  const prerequisites = model.prerequisites.length ? model.prerequisites : [];
+  const prerequisitesSource = model.prerequisites.length ? 'llm' : 'missing';
 
 
+  // Använd samma specifika logik som i buildEpicDocModelFromContext
+  const nodeNameLower = nodeName.toLowerCase();
+  const isDataGathering = nodeNameLower.includes('data') && (nodeNameLower.includes('gathering') || nodeNameLower.includes('fetch') || nodeNameLower.includes('hämta'));
+  const isEvaluation = nodeNameLower.includes('evaluation') || nodeNameLower.includes('bedömning') || nodeNameLower.includes('utvärdering');
+  const isDecision = nodeNameLower.includes('decision') || nodeNameLower.includes('beslut');
+  
   const flowSteps = model.flowSteps.length
     ? model.flowSteps
     : isUserTask
@@ -804,11 +714,32 @@ function buildEpicDocHtmlFromModel(
         'Kunden fyller i eller bekräftar uppgifter och skickar vidare.',
         'Systemet validerar uppgifterna och uppdaterar processen innan den fortsätter till nästa steg.',
       ]
+    : isDataGathering
+    ? [
+        `${nodeName} triggas när ansökningsdata är tillgänglig från föregående steg (${upstreamName}).`,
+        `Tjänsten hämtar kompletterande information från externa källor som kreditupplysning (UC), folkbokföring, engagemangsdata och PSD2-tjänster.`,
+        `Systemet validerar att all nödvändig data är korrekt och komplett, och hanterar saknade eller felaktiga svar enligt övergripande felstrategi.`,
+        `Berikad data sammanställs och skickas vidare till nästa steg (${downstreamName}) för vidare bearbetning.`,
+      ]
+    : isEvaluation
+    ? [
+        `${nodeName} triggas när all nödvändig kund- och ansökningsdata är samlad från föregående steg (${upstreamName}).`,
+        `Tjänsten analyserar data mot kreditregler och riskmodeller för att bedöma ansökan.`,
+        `Systemet validerar att bedömningen är komplett och att alla nödvändiga kontroller är genomförda.`,
+        `Bedömningsresultatet skickas vidare till nästa steg (${downstreamName}) för beslutsfattande.`,
+      ]
+    : isDecision
+    ? [
+        `${nodeName} triggas när kreditbedömning är klar från föregående steg (${upstreamName}).`,
+        `Tjänsten utvärderar bedömningsresultatet mot beslutsregler (DMN) och produktvillkor.`,
+        `Systemet fattar ett kreditbeslut (godkänd/avslagen/villkorad) baserat på regler och riskprofil.`,
+        `Beslutet loggas och skickas vidare till nästa steg (${downstreamName}) för vidare åtgärder.`,
+      ]
     : [
-        'Systemet startar automatiskt när ansökningsdata är tillgänglig.',
-        'Systemet hämtar kompletterande information från externa källor (t.ex. kreditupplysning, folkbokföring).',
-        'Systemet validerar att informationen är korrekt och komplett.',
-        'Systemet sparar resultatet och skickar vidare till nästa steg i processen.',
+        `${nodeName} triggas när föregående steg (${upstreamName}) är klart med relevant data.`,
+        `Tjänsten exekverar sin specifika logik baserat på indata och affärsregler.`,
+        `Systemet validerar resultatet och hanterar eventuella fel eller avvikelser.`,
+        `Resultatet skickas vidare till nästa steg (${downstreamName}) i kreditprocessen.`,
       ];
   const flowStepsSource = model.flowSteps.length ? 'llm' : 'fallback';
 
@@ -827,38 +758,109 @@ function buildEpicDocHtmlFromModel(
       ];
   const interactionsSource = model.interactions && model.interactions.length ? 'llm' : 'fallback';
 
+  // Använd samma specifika logik som i buildEpicDocModelFromContext
   const dependencies = model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0
     ? model.dependencies
+    : isDataGathering
+    ? [
+        `Integrationer mot externa datakällor: kreditupplysning (UC), folkbokföring, engagemangsdata och PSD2-tjänster med stabil anslutning och felhantering.`,
+        `Tillgång till valideringsregler och datakvalitetskontroller för att säkerställa att hämtad data är korrekt och komplett.`,
+        `Överenskomna SLA:er och timeout-hantering för externa tjänster för att säkerställa processens pålitlighet.`,
+      ]
+    : isEvaluation
+    ? [
+        `Tillgång till kreditregler, riskmodeller och beslutsregler (DMN) med tydlig versionering och spårbarhet.`,
+        `Komplett kund- och ansökningsdata från föregående steg (${upstreamName}) för att kunna göra en korrekt bedömning.`,
+        `Överenskommen målbild för riskaptit, produktportfölj och kreditvillkor för att säkerställa konsistenta bedömningar.`,
+      ]
+    : isDecision
+    ? [
+        `Tillgång till beslutsregler (DMN) med tydlig versionering och spårbarhet för att säkerställa korrekta beslut.`,
+        `Komplett bedömningsresultat från föregående steg (${upstreamName}) för att kunna fatta välgrundade beslut.`,
+        `Överenskommen målbild för riskaptit, produktportfölj och kreditvillkor för att säkerställa konsistenta beslut.`,
+      ]
     : [
         'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
-        'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
+        'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2) med stabil anslutning.',
         'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
       ];
   const dependenciesSource = model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0 ? 'llm' : 'fallback';
 
+  // Generera mer specifika user stories baserat på nodtyp
   const userStories = model.userStories.length > 0
     ? model.userStories
+    : isUserTask
+    ? [
+        {
+          id: 'US-1',
+          role: 'Kund',
+          goal: 'Fylla i ansökningsinformation',
+          value: 'Kunna ansöka om lån på ett enkelt sätt',
+          acceptanceCriteria: [
+            'Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas',
+            'Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga',
+            'Systemet ska spara utkast automatiskt så att användaren inte förlorar information',
+          ],
+        },
+        {
+          id: 'US-2',
+          role: 'Handläggare',
+          goal: 'Se och granska kundens ansökningsinformation',
+          value: 'Kunna bedöma ansökan korrekt och effektivt',
+          acceptanceCriteria: [
+            'Systemet ska visa all relevant ansökningsinformation på ett överskådligt sätt',
+            'Systemet ska markera vilka fält som är obligatoriska och vilka som är valfria',
+            'Systemet ska visa status för ansökan och vilka steg som är klara',
+          ],
+        },
+      ]
+    : isDataGathering
+    ? [
+        {
+          id: 'US-1',
+          role: 'Handläggare',
+          goal: 'Få systemet att automatiskt hämta kunddata från externa källor',
+          value: 'Spara tid genom automatisering och säkerställa datakvalitet',
+          acceptanceCriteria: [
+            'Systemet ska automatiskt exekvera datahämtning när ansökningsdata är tillgänglig',
+            'Systemet ska hantera fel från externa källor (UC, folkbokföring, PSD2) på ett robust sätt',
+            'Systemet ska logga alla datahämtningar för spårbarhet',
+          ],
+        },
+        {
+          id: 'US-2',
+          role: 'Handläggare',
+          goal: 'Få systemet att validera att all nödvändig data är korrekt och komplett',
+          value: 'Säkerställa datakvalitet för korrekt kreditbedömning',
+          acceptanceCriteria: [
+            'Systemet ska validera att all nödvändig data finns innan processen går vidare',
+            'Systemet ska hantera saknade eller felaktiga svar från externa källor enligt övergripande felstrategi',
+            'Systemet ska ge tydlig status om datakvalitet och eventuella saknade data',
+          ],
+        },
+      ]
     : [
         {
           id: 'US-1',
-          role: isUserTask ? 'Kund' : 'Handläggare',
-          goal: isUserTask
-            ? 'Fylla i ansökningsinformation'
-            : 'Få systemet att automatiskt hantera processsteg',
-          value: isUserTask
-            ? 'Kunna ansöka om lån på ett enkelt sätt'
-            : 'Spara tid genom automatisering',
-          acceptanceCriteria: isUserTask
-            ? [
-                'Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas',
-                'Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga',
-                'Systemet ska spara utkast automatiskt så att användaren inte förlorar information',
-              ]
-            : [
-                'Systemet ska automatiskt exekvera tjänsten när föregående steg är klart',
-                'Systemet ska hantera fel och timeouts på ett kontrollerat sätt',
-                'Systemet ska logga alla viktiga steg för spårbarhet',
-              ],
+          role: 'Handläggare',
+          goal: 'Få systemet att automatiskt hantera processsteg',
+          value: 'Spara tid genom automatisering',
+          acceptanceCriteria: [
+            'Systemet ska automatiskt exekvera tjänsten när föregående steg är klart',
+            'Systemet ska hantera fel och timeouts på ett kontrollerat sätt',
+            'Systemet ska logga alla viktiga steg för spårbarhet',
+          ],
+        },
+        {
+          id: 'US-2',
+          role: 'Handläggare',
+          goal: 'Få tydlig information om vad systemet har gjort',
+          value: 'Kunna följa upp och felsöka vid behov',
+          acceptanceCriteria: [
+            'Systemet ska logga alla viktiga steg och beslut',
+            'Systemet ska ge tydlig status om exekveringen',
+            'Systemet ska eskalera fel på ett begripligt sätt',
+          ],
         },
       ];
   const userStoriesSource = model.userStories.length > 0 ? 'llm' : 'fallback';
@@ -966,58 +968,19 @@ function buildFeatureGoalDocHtmlFromModel(
     : '1.0 (exempel) – uppdateras vid ändring';
   const ownerLabel = 'Produktägare Kredit / Risk & Policy';
 
-  const summaryText =
-    model.summary ||
-    `${nodeName} samlar och koordinerar ett antal epics för att skapa ett sammanhängande kreditflöde med tydlig ansvarsfördelning och spårbarhet.`;
-  const summarySource = model.summary ? 'llm' : 'fallback';
+  // INGEN FALLBACK-TEXT - LLM måste generera allt
+  const summaryText = model.summary || '';
+  const summarySource = model.summary ? 'llm' : 'missing';
+  const prerequisites = model.prerequisites && model.prerequisites.length > 0 ? model.prerequisites : [];
+  const prerequisitesSource = model.prerequisites && model.prerequisites.length > 0 ? 'llm' : 'missing';
 
-  const prerequisites = model.prerequisites && model.prerequisites.length > 0
-    ? model.prerequisites
-    : [
-        upstreamNode
-          ? `Triggas normalt efter <strong>${formatNodeName(upstreamNode)}</strong>.`
-          : 'Triggas när föregående processsteg är klart.',
-        'Förutsätter att grundläggande kund- och ansökningsdata är validerade.',
-        'Eventuella föregående KYC/AML- och identitetskontroller ska vara godkända.',
-      ];
-  const prerequisitesSource = model.prerequisites && model.prerequisites.length > 0 ? 'llm' : 'fallback';
-
-  const flowSteps = model.flowSteps && model.flowSteps.length > 0
-    ? model.flowSteps
-    : [
-        `Initiativet startar i ${upstreamName} när en kreditprocess initieras.`,
-        `${nodeName} samlar in, koordinerar och kvalitetssäkrar data och beslut från ingående epics.`,
-        'Regler och policystöd appliceras på ett konsekvent sätt för att möjliggöra välgrundade kreditbeslut.',
-        `Resultat och status förs vidare till ${downstreamName} och vidare in i efterföljande processer.`,
-      ];
-  const flowStepsSource = model.flowSteps && model.flowSteps.length > 0 ? 'llm' : 'fallback';
-
-  const dependencies = model.dependencies && model.dependencies.length > 0
-    ? model.dependencies
-    : [
-        'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
-        'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2).',
-        'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
-      ];
-  const dependenciesSource = model.dependencies && model.dependencies.length > 0 ? 'llm' : 'fallback';
-
-  const userStories = model.userStories && model.userStories.length > 0
-    ? model.userStories
-    : [
-        {
-          id: 'US-1',
-          role: 'Produktägare',
-          goal: 'Få Feature Goalet implementerat och levererat',
-          value: 'Möjliggöra affärsvärde genom sammanhängande kreditflöde',
-          acceptanceCriteria: [
-            'Alla ingående epics är implementerade och testade',
-            'Feature Goalet stödjer definierade affärsscenarier',
-            'Automatiska tester täcker centrala flöden',
-            'Dokumentation är uppdaterad och tillgänglig',
-          ],
-        },
-      ];
-  const userStoriesSource = model.userStories && model.userStories.length > 0 ? 'llm' : 'fallback';
+  // INGEN FALLBACK-TEXT - LLM måste generera allt
+  const flowSteps = model.flowSteps && model.flowSteps.length > 0 ? model.flowSteps : [];
+  const flowStepsSource = model.flowSteps && model.flowSteps.length > 0 ? 'llm' : 'missing';
+  const dependencies = model.dependencies && model.dependencies.length > 0 ? model.dependencies : [];
+  const dependenciesSource = model.dependencies && model.dependencies.length > 0 ? 'llm' : 'missing';
+  const userStories = model.userStories && model.userStories.length > 0 ? model.userStories : [];
+  const userStoriesSource = model.userStories && model.userStories.length > 0 ? 'llm' : 'missing';
 
 
   return `
@@ -1252,32 +1215,31 @@ export async function renderFeatureGoalDoc(
         const llmModel = mapFeatureGoalLlmToSections(llmContent);
         model = mergeLlmPatch(model, llmModel);
       } catch (error) {
-        console.warn(
+        console.error(
           `[renderFeatureGoalDoc] Error parsing/merging LLM content for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
           error
         );
-        // Continue with base/override model - LLM patch is optional
+        throw new Error(
+          `Failed to parse LLM content for Feature Goal documentation (${context.node.bpmnFile}::${context.node.bpmnElementId}): ${error instanceof Error ? error.message : String(error)}`
+        );
       }
+    } else {
+      // INGEN LLM-INNEHÅLL - kasta fel istället för att visa tom dokumentation
+      throw new Error(
+        `Feature Goal documentation has not been generated with LLM for ${context.node.bpmnFile}::${context.node.bpmnElementId}. LLM generation is required.`
+      );
     }
 
     // 3.5. Validate model after merge
     const validation = validateFeatureGoalModelAfterMerge(model);
     if (!validation.valid) {
-      console.error(
-        `[renderFeatureGoalDoc] Model validation failed for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
-        validation.errors
-      );
-      // Log warnings but don't fail
-      if (validation.warnings.length > 0) {
-        console.warn(
-          `[renderFeatureGoalDoc] Model validation warnings for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
-          validation.warnings
-        );
-      }
-      // Continue anyway - model might still be renderable with missing fields
-    } else if (validation.warnings.length > 0) {
-      // Log warnings for empty arrays (not critical)
-      console.info(
+      const errorMessage = `Feature Goal documentation validation failed for ${context.node.bpmnFile}::${context.node.bpmnElementId}: ${validation.errors.join(', ')}`;
+      console.error(`[renderFeatureGoalDoc] ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+    
+    if (validation.warnings.length > 0) {
+      console.warn(
         `[renderFeatureGoalDoc] Model validation warnings for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
         validation.warnings
       );
@@ -1332,17 +1294,12 @@ export async function renderFeatureGoalDoc(
     const title = context.node.name || context.node.bpmnElementId || 'Feature Goal';
     return wrapDocument(title, body, llmMetadata);
   } catch (error) {
-    // Final fallback: return minimal HTML document
+    // Kasta fel vidare - inga fallbacks
     console.error(
       `[renderFeatureGoalDoc] Critical error rendering documentation for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`,
       error
     );
-    const title = context.node.name || context.node.bpmnElementId || 'Feature Goal';
-    return wrapDocument(
-      title,
-      `<section><h2>Error</h2><p>Failed to render documentation. Please check the console for details.</p></section>`,
-      llmMetadata
-    );
+    throw error;
   }
 }
 

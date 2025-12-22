@@ -69,7 +69,6 @@ describe('Claude-generering för application-processen', () => {
     };
     const generationSourceLabel = 'Claude (moln-LLM)';
     const llmProvider: LlmProvider = 'cloud';
-    const localAvailable = false;
     console.log('\n🚀 Startar generering med Claude...');
     console.log(`   Fil: ${fileName}`);
     console.log(`   LLM Provider: ${llmProvider}\n`);
@@ -84,7 +83,12 @@ describe('Claude-generering för application-processen', () => {
       handleGeneratorPhase,
       generationSourceLabel,
       llmProvider,
-      localAvailable
+      undefined, // nodeFilter
+      undefined, // getVersionHashForFile
+      undefined, // checkCancellation
+      undefined, // abortSignal
+      undefined, // isActualRootFile
+      false, // forceRegenerate
     );
 
     // 4. Verifiera resultat

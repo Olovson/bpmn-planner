@@ -129,6 +129,10 @@ export async function buildBpmnProcessGraph(
   };
 }
 
+/**
+ * Parse multiple BPMN files from file names (uses /bpmn/ URLs)
+ * This is the default implementation that loads files via fetch/Storage.
+ */
 async function parseAllBpmnFiles(
   fileNames: string[],
   versionHashes?: Map<string, string | null>
@@ -144,6 +148,75 @@ async function parseAllBpmnFiles(
     }
   }
   return results;
+}
+
+/**
+ * Build BPMN process graph with pre-parsed results.
+ * This allows tests to use actual parseBpmnFile with data URLs without needing fetch stubs.
+ */
+export async function buildBpmnProcessGraphFromParseResults(
+  rootFile: string,
+  parseResults: Map<string, BpmnParseResult>
+): Promise<BpmnProcessGraph> {
+  const inputFiles = buildProcessModelInputFiles(parseResults);
+  const model = buildProcessModelFromDefinitions(inputFiles, {
+    preferredRootFile: rootFile,
+  });
+
+  if (!model.hierarchyRoots.length) {
+    throw new Error('Kunde inte bygga hierarki: inga processrötter hittades.');
+  }
+
+  const rootProcess =
+    model.hierarchyRoots.find((proc) => proc.bpmnFile === rootFile) ??
+    model.hierarchyRoots[0];
+
+  const rootFileName = rootFile;
+
+  const elementsByFile = buildElementIndex(parseResults);
+  const allNodes = new Map<string, BpmnProcessNode>();
+  const fileNodes = new Map<string, BpmnProcessNode[]>();
+  const missingDependencies: { parent: string; childProcess: string }[] = [];
+
+  const rootChildren = convertProcessModelChildren(
+    rootProcess,
+    model,
+    {
+      currentFile: rootFileName,
+      rootFile: rootFileName,
+      elementsByFile,
+      allNodes,
+      fileNodes,
+      missingDependencies,
+      visitedProcesses: new Set<string>(),
+      existingBpmnFiles: Array.from(parseResults.keys()),
+    },
+  );
+
+  const root: BpmnProcessNode = {
+    id: `root:${rootFileName}`,
+    name: rootProcess.name || rootFileName.replace('.bpmn', ''),
+    type: 'process',
+    bpmnFile: rootFileName,
+    bpmnElementId: rootProcess.processId || 'root',
+    children: rootChildren,
+  };
+
+  allNodes.set(root.id, root);
+  if (!fileNodes.has(rootFileName)) {
+    fileNodes.set(rootFileName, []);
+  }
+  fileNodes.get(rootFileName)!.push(root);
+
+  assignExecutionOrder(parseResults, fileNodes);
+
+  return {
+    rootFile: rootFileName,
+    root,
+    allNodes,
+    fileNodes,
+    missingDependencies,
+  };
 }
 
 function buildProcessModelInputFiles(

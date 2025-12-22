@@ -99,8 +99,9 @@ export async function storageFileExists(filePath: string): Promise<boolean> {
 }
 
 export const getNodeDocStoragePath = (bpmnFile: string, elementId: string) =>
-  // Docs lagras i Supabase Storage under 'docs/<node-doc-key>'
-  `docs/${getNodeDocFileKey(bpmnFile, elementId)}`;
+  // Docs lagras i Supabase Storage under 'docs/claude/<node-doc-key>'
+  // Claude-only: All documentation is generated using Claude
+  `docs/claude/${getNodeDocFileKey(bpmnFile, elementId)}`;
 
 /**
  * Get all possible storage paths for Feature Goal documentation (call activities).

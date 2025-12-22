@@ -330,6 +330,7 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
   const tryLocal = async () => {
     try {
       // I Node.js-miljö fungerar inte relativa URLs - hoppa över tryLocal
+      // Tester använder data URLs direkt (samma approach som appen använder för versioned files)
       if (typeof window === 'undefined' && !fileUrl.startsWith('http') && !fileUrl.startsWith('data:')) {
         return null;
       }

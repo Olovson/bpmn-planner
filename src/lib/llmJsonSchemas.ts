@@ -50,7 +50,11 @@ export function buildFeatureGoalJsonSchema() {
             required: ['id', 'role', 'goal', 'value', 'acceptanceCriteria'],
             properties: {
               id: { type: 'string' },
-              role: { type: 'string' },
+              role: { 
+                type: 'string',
+                enum: ['Kund', 'Handläggare', 'Processägare'],
+                description: 'Roll måste vara "Kund", "Handläggare" eller "Processägare". Prioritera "Kund" och "Handläggare" - använd "Processägare" endast när det är lämpligt och inte kan täckas av "Kund" eller "Handläggare".'
+              },
               goal: { type: 'string' },
               value: { type: 'string' },
               acceptanceCriteria: {
@@ -113,7 +117,11 @@ export function buildEpicJsonSchema() {
             required: ['id', 'role', 'goal', 'value', 'acceptanceCriteria'],
             properties: {
               id: { type: 'string' },
-              role: { type: 'string' },
+              role: { 
+                type: 'string',
+                enum: ['Kund', 'Handläggare', 'Processägare'],
+                description: 'Roll måste vara "Kund", "Handläggare" eller "Processägare". Prioritera "Kund" och "Handläggare" - använd "Processägare" endast när det är lämpligt och inte kan täckas av "Kund" eller "Handläggare".'
+              },
               goal: { type: 'string' },
               value: { type: 'string' },
               acceptanceCriteria: {

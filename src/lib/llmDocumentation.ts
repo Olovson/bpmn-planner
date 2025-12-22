@@ -722,7 +722,9 @@ export function buildContextPayload(
               
               const allDocs = context.descendantNodes
                 .map((descendant, index) => {
-                  const descendantDoc = childrenDocumentation.get(descendant.id);
+                  const descendantDoc = childrenDocumentation && childrenDocumentation instanceof Map 
+                    ? childrenDocumentation.get(descendant.id)
+                    : undefined;
                   if (!descendantDoc) return null;
                   
                   // OBS: scenarios har tagits bort - testinformation genereras i separat steg
@@ -774,7 +776,9 @@ export function buildContextPayload(
           : // För Epics/Tasks: mappa bara mot direkta children
             context.childNodes
               .map((child) => {
-                const childDoc = childrenDocumentation.get(child.id);
+                const childDoc = childrenDocumentation && childrenDocumentation instanceof Map
+                  ? childrenDocumentation.get(child.id)
+                  : undefined;
                 if (!childDoc) return null;
                 
                 // OBS: scenarios har tagits bort - testinformation genereras i separat steg

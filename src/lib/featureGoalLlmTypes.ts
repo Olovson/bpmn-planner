@@ -15,7 +15,7 @@ export interface FeatureGoalDocModel {
   dependencies?: string[]; // Optional - dependencies for the Feature Goal
   userStories: Array<{
     id: string;
-    role: string;
+    role: 'Kund' | 'Handläggare' | 'Processägare'; // Kund, Handläggare eller Processägare - inga System-roller
     goal: string;
     value: string;
     acceptanceCriteria: string[]; // 2-4 acceptanskriterier per user story

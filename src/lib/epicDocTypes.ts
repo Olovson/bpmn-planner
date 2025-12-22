@@ -37,7 +37,7 @@ export interface EpicScenario {
 
 export interface EpicUserStory {
   id: string;
-  role: string; // "Kund", "Handläggare", "System", etc.
+  role: 'Kund' | 'Handläggare' | 'Processägare'; // Kund, Handläggare eller Processägare - inga System-roller
   goal: string; // Vad vill rollen uppnå?
   value: string; // Varför är det värdefullt?
   acceptanceCriteria: string[]; // Konkreta krav (2-4 per story)

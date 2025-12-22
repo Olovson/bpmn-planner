@@ -188,12 +188,6 @@ export const useResetAndRegenerate = () => {
             undefined, // isActualRootFile
             true, // forceRegenerate: Always regenerate when resetting
           );
-            undefined, // nodeFilter
-            undefined, // getVersionHashForFile
-            undefined, // checkCancellation
-            undefined, // abortSignal
-            undefined, // isActualRootFile - will be inferred
-          );
 
           // Save DoR/DoD
           if (result.dorDod.size > 0) {

@@ -981,11 +981,14 @@ function buildTestSkeletonScenariosFromDocJson(
   return [];
 }
 
-async function renderDocWithLlmFallback(
+/**
+ * Generates documentation using LLM. REQUIRES LLM to work - no fallback.
+ * If LLM is disabled or fails, throws an error.
+ */
+async function renderDocWithLlm(
   docType: DocumentationDocType,
   context: NodeDocumentationContext,
   links: TemplateLinks,
-  fallback: () => string | Promise<string>,
   llmAllowed: boolean,
   llmProvider?: LlmProvider,
   onLlmResult?: (provider: LlmProvider, fallbackUsed: boolean, docJson?: unknown) => void,
@@ -1006,10 +1009,9 @@ async function renderDocWithLlmFallback(
     bpmnFile: context.node.bpmnFile,
   };
 
-  // I lokalt läge eller när LLM är avstängt ska vi aldrig göra något LLM-anrop.
+  // LLM måste vara aktivt - inga fallbacks
   if (!llmActive) {
-    const fallbackResult = fallback();
-    return fallbackResult instanceof Promise ? await fallbackResult : fallbackResult;
+    throw new Error(`LLM is required for ${docType} documentation generation but is disabled or not available`);
   }
 
   // Kontrollera avbrytning INNAN LLM-anrop
@@ -1027,89 +1029,64 @@ async function renderDocWithLlmFallback(
       childrenDocumentation,
       abortSignal, // Pass abort signal for LLM calls
     );
-    if (llmResult && llmResult.text && llmResult.text.trim()) {
-      onLlmResult?.(llmResult.provider, llmResult.fallbackUsed, llmResult.docJson);
-      // Hämta provider-info för metadata från faktisk provider
-      const llmClient = getLlmClient(llmResult.provider);
-      
-      const llmMetadata = {
-        llmMetadata: {
-          provider: llmClient.provider,
-          model: llmClient.modelName,
-        },
-        fallbackUsed: llmResult.fallbackUsed,
-        finalProvider: llmResult.provider,
-      };
-
-      // Use unified render functions - they handle base + overrides + LLM patch
-      if (docType === 'feature') {
-        return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata);
-      }
-
-      if (docType === 'epic') {
-        return await renderEpicDoc(context, links, llmResult.text, llmMetadata);
-      }
-
-      if (docType === 'businessRule') {
-        return await renderBusinessRuleDoc(context, links, llmResult.text, llmMetadata);
-      }
-
-      const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
-      await saveLlmDebugArtifact('doc', identifier, llmResult.text);
-      const title =
-        context.node.name ||
-        context.node.bpmnElementId ||
-        (docType === 'feature'
-          ? 'Feature'
-          : docType === 'epic'
-          ? 'Epic'
-          : 'Business Rule');
-      const wrapped = wrapLlmContentAsDocument(llmResult.text, title, { docType });
-      if (!/<html[\s>]/i.test(wrapped) || !/<body[\s>]/i.test(wrapped)) {
-        await logLlmFallback({
-          eventType: 'documentation',
-          status: 'fallback',
-          reason: 'invalid-html-contract',
-          ...basePayload,
-        });
-        return fallback();
-      }
-      return wrapped;
-    }
-    await logLlmFallback({
-      eventType: 'documentation',
-      status: 'fallback',
-      reason: 'empty-response',
-      ...basePayload,
-      metadata: {
-        childCount: context.childNodes.length,
-        parentDepth: context.parentChain.length,
-      },
-    });
-  } catch (error) {
-    // Om kontot är inaktivt, logga tydligt och använd fallback direkt
-    if (error instanceof Error && error.message.includes('account is inactive')) {
-      console.error('[LLM Documentation] Cloud account is inactive - using fallback:', error.message);
-      await logLlmFallback({
-        eventType: 'documentation',
-        status: 'fallback',
-        reason: 'account-inactive',
-        error: error.message,
-        ...basePayload,
-      });
-      return fallback();
-    }
     
-    console.error('LLM documentation generation failed:', error);
+    if (!llmResult || !llmResult.text || !llmResult.text.trim()) {
+      throw new Error(`LLM returned empty response for ${docType} documentation (${context.node.bpmnFile}::${context.node.bpmnElementId})`);
+    }
+
+    onLlmResult?.(llmResult.provider, llmResult.fallbackUsed, llmResult.docJson);
+    // Hämta provider-info för metadata från faktisk provider
+    const llmClient = getLlmClient(llmResult.provider);
+    
+    const llmMetadata = {
+      llmMetadata: {
+        provider: llmClient.provider,
+        model: llmClient.modelName,
+      },
+      fallbackUsed: llmResult.fallbackUsed,
+      finalProvider: llmResult.provider,
+    };
+
+    // Use unified render functions - they handle base + overrides + LLM patch
+    if (docType === 'feature') {
+      return await renderFeatureGoalDoc(context, links, llmResult.text, llmMetadata);
+    }
+
+    if (docType === 'epic') {
+      return await renderEpicDoc(context, links, llmResult.text, llmMetadata);
+    }
+
+    if (docType === 'businessRule') {
+      return await renderBusinessRuleDoc(context, links, llmResult.text, llmMetadata);
+    }
+
+    const identifier = `${context.node.bpmnFile || 'unknown'}-${context.node.bpmnElementId || context.node.id}`;
+    await saveLlmDebugArtifact('doc', identifier, llmResult.text);
+    const title =
+      context.node.name ||
+      context.node.bpmnElementId ||
+      (docType === 'feature'
+        ? 'Feature'
+        : docType === 'epic'
+        ? 'Epic'
+        : 'Business Rule');
+    const wrapped = wrapLlmContentAsDocument(llmResult.text, title, { docType });
+    if (!/<html[\s>]/i.test(wrapped) || !/<body[\s>]/i.test(wrapped)) {
+      throw new Error(`LLM returned invalid HTML for ${docType} documentation (${context.node.bpmnFile}::${context.node.bpmnElementId})`);
+    }
+    return wrapped;
+  } catch (error) {
+    console.error(`[LLM Documentation] Failed to generate ${docType} documentation for ${context.node.bpmnFile}::${context.node.bpmnElementId}:`, error);
     await logLlmFallback({
       eventType: 'documentation',
       status: 'error',
-      reason: 'request-error',
+      reason: error instanceof Error ? error.message : 'unknown-error',
       error,
       ...basePayload,
     });
+    // Kasta fel vidare - inga fallbacks
+    throw error;
   }
-  return fallback();
 }
 
 async function parseSubprocessFile(fileName: string): Promise<SubprocessSummary | null> {
@@ -2048,15 +2025,12 @@ export async function generateAllFromBpmnWithGraph(
                 if (existingDoc) {
                   // Generera instans-specifik dokumentation med LLM
                   // Detta skapar en separat Feature Goal-sida med parent-fil i namnet
-                  nodeDocContent = await renderDocWithLlmFallback(
+                  nodeDocContent = await renderDocWithLlm(
                     'feature',
                     nodeContext,
                     docLinks,
-                    async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined),
                     useLlm,
                     llmProvider,
-                    undefined,
-                    childDocsForNode.size > 0 ? childDocsForNode : undefined,
                     async (provider, fallbackUsed, docJson) => {
                       if (fallbackUsed) {
                         llmFallbackUsed = true;
@@ -2073,21 +2047,19 @@ export async function generateAllFromBpmnWithGraph(
                         }
                       }
                     },
+                    childDocsForNode.size > 0 ? childDocsForNode : undefined,
                     checkCancellation,
                     abortSignal,
                   );
                 } else {
                   // Ingen dokumentation att hämta - detta kan hända om subprocess-filen inte är med i analyzedFiles
                   // Generera Feature Goal ändå med LLM (inte bara fallback)
-                  nodeDocContent = await renderDocWithLlmFallback(
+                  nodeDocContent = await renderDocWithLlm(
                     'feature',
                     nodeContext,
                     docLinks,
-                    async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined),
                     useLlm,
                     llmProvider,
-                    undefined,
-                    childDocsForNode.size > 0 ? childDocsForNode : undefined,
                     async (provider, fallbackUsed, docJson) => {
                       if (fallbackUsed) {
                         llmFallbackUsed = true;
@@ -2106,22 +2078,19 @@ export async function generateAllFromBpmnWithGraph(
                         }
                       }
                     },
+                    childDocsForNode.size > 0 ? childDocsForNode : undefined,
                     checkCancellation,
                     abortSignal,
                   );
                 }
               } else {
                 // Första gången subprocessen genereras - generera både dokumentation och testscenarion
-                nodeDocContent = await renderDocWithLlmFallback(
+                nodeDocContent = await renderDocWithLlm(
                   'feature',
                   nodeContext,
                   docLinks,
-                  async () => await renderFeatureGoalDoc(nodeContext, docLinks, undefined, undefined),
                   useLlm,
                   llmProvider,
-                  undefined,
-                  undefined, // no version suffix
-                  childDocsForNode.size > 0 ? childDocsForNode : undefined,
                   async (provider, fallbackUsed, docJson) => {
                     if (fallbackUsed) {
                       llmFallbackUsed = true;
@@ -2199,11 +2168,10 @@ export async function generateAllFromBpmnWithGraph(
                 }
               }
             } else if (node.type === 'businessRuleTask') {
-              nodeDocContent = await renderDocWithLlmFallback(
+              nodeDocContent = await renderDocWithLlm(
                 'businessRule',
                 nodeContext,
                 docLinks,
-                async () => await renderBusinessRuleDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
                 async (provider, fallbackUsed, docJson) => {
@@ -2253,11 +2221,10 @@ export async function generateAllFromBpmnWithGraph(
                   '\n<p>Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell när den finns.</p>';
               }
             } else {
-              nodeDocContent = await renderDocWithLlmFallback(
+              nodeDocContent = await renderDocWithLlm(
                 'epic',
                 nodeContext,
                 docLinks,
-                async () => await renderEpicDoc(nodeContext, docLinks),
                 useLlm,
                 llmProvider,
                 async (provider, fallbackUsed, docJson) => {
@@ -2318,7 +2285,7 @@ export async function generateAllFromBpmnWithGraph(
           // === TESTGENERERING HAR FLYTTATS TILL SEPARAT STEG ===
           // Testfiler och testscenarion genereras inte längre i dokumentationssteget.
           // Scenarion från dokumentationen sparas fortfarande i node_planned_scenarios
-          // (se renderDocWithLlmFallback callback ovan) eftersom de är del av dokumentationen.
+          // (se renderDocWithLlm callback ovan) eftersom de är del av dokumentationen.
 
           hierarchicalNodeArtifacts.push({
             bpmnFile: node.bpmnFile,
@@ -2457,91 +2424,33 @@ export async function generateAllFromBpmnWithGraph(
                   testLink: undefined, // Subprocess-processen har inget eget test
                 };
                 
-                // Om base doc redan finns (från callActivity), använd den som fallback
-                // Annars generera ny Feature Goal-dokumentation
-                let subprocessDocContent: string;
-                
-                if (baseDocExists) {
-                  // Använd befintlig base dokumentation men generera HTML för subprocess-filen
-                  // Detta säkerställer att subprocess-filen alltid har sin egen Feature Goal-sida
-                  const existingDoc = generatedChildDocs.get(subprocessDocKey);
-                  if (existingDoc) {
-                    // Generera HTML från befintlig dokumentation
-                    subprocessDocContent = await renderFeatureGoalDoc(
-                      subprocessContext,
-                      subprocessDocLinks,
-                      undefined,
-                      undefined,
-                    );
-                  } else {
-                    // Fallback: generera ny dokumentation
-                    subprocessDocContent = await renderDocWithLlmFallback(
-                      'feature',
-                      subprocessContext,
-                      subprocessDocLinks,
-                      async () => await renderFeatureGoalDoc(
-                        subprocessContext,
-                        subprocessDocLinks,
-                        undefined,
-                        undefined,
-                      ),
-                      useLlm,
-                      llmProvider,
-                      undefined,
-                      childDocsForSubprocess.size > 0 ? childDocsForSubprocess : undefined,
-                      async (provider, fallbackUsed, docJson) => {
-                        if (fallbackUsed) {
-                          llmFallbackUsed = true;
-                          llmFinalProvider = provider;
-                        }
-                        // Spara dokumentationen om den inte redan finns
-                        if (docJson && !baseDocExists) {
-                          const docInfo = extractDocInfoFromJson(docJson);
-                          if (docInfo) {
-                            generatedChildDocs.set(subprocessDocKey, docInfo);
-                            generatedSubprocessFeatureGoals.add(file);
-                          }
-                        }
-                      },
-                      checkCancellation,
-                      abortSignal,
-                    );
-                  }
-                } else {
-                  // Generera ny Feature Goal-dokumentation för subprocessen själv
-                  subprocessDocContent = await renderDocWithLlmFallback(
-                    'feature',
-                    subprocessContext,
-                    subprocessDocLinks,
-                    async () => await renderFeatureGoalDoc(
-                      subprocessContext,
-                      subprocessDocLinks,
-                      undefined,
-                      undefined,
-                    ),
-                    useLlm,
-                    llmProvider,
-                    undefined,
-                    childDocsForSubprocess.size > 0 ? childDocsForSubprocess : undefined,
-                    async (provider, fallbackUsed, docJson) => {
-                      if (fallbackUsed) {
-                        llmFallbackUsed = true;
-                        llmFinalProvider = provider;
+                // INGEN FALLBACK - alltid generera med LLM
+                // Om dokumentation redan finns i storage, kommer den att hoppas över av storage-checken tidigare
+                const subprocessDocContent = await renderDocWithLlm(
+                  'feature',
+                  subprocessContext,
+                  subprocessDocLinks,
+                  useLlm,
+                  llmProvider,
+                  async (provider, fallbackUsed, docJson) => {
+                    if (fallbackUsed) {
+                      llmFallbackUsed = true;
+                      llmFinalProvider = provider;
+                    }
+                    // Spara dokumentationen så den kan användas av parent callActivities
+                    if (docJson) {
+                      const docInfo = extractDocInfoFromJson(docJson);
+                      if (docInfo) {
+                        generatedChildDocs.set(subprocessDocKey, docInfo);
+                        // Markera att Feature Goal-dokumentation har genererats för denna subprocess
+                        generatedSubprocessFeatureGoals.add(file);
                       }
-                      // Spara dokumentationen så den kan användas av parent callActivities
-                      if (docJson) {
-                        const docInfo = extractDocInfoFromJson(docJson);
-                        if (docInfo) {
-                          generatedChildDocs.set(subprocessDocKey, docInfo);
-                          // Markera att Feature Goal-dokumentation har genererats för denna subprocess
-                          generatedSubprocessFeatureGoals.add(file);
-                        }
-                      }
-                    },
-                    checkCancellation,
-                    abortSignal,
-                  );
-                }
+                    }
+                  },
+                  childDocsForSubprocess.size > 0 ? childDocsForSubprocess : undefined,
+                  checkCancellation,
+                  abortSignal,
+                );
                 
                 // Skapa Feature Goal-sida för subprocessen (alltid, även om base doc redan finns)
                 result.docs.set(

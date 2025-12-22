@@ -71,5 +71,5 @@ describe('Application documentation generation', () => {
     expect(applicationFeatureGoal).toBeDefined();
     
     console.log('\n✓ All assertions passed!');
-  }, 30000);
+  }, 120000); // 2 minuter timeout (kan ta tid med bpmn-map loading)
 });

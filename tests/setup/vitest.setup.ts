@@ -204,19 +204,6 @@ if (!('localStorage' in globalThis)) {
   });
 }
 
-// Helper to load BPMN fixtures for fetch stub
-function loadBpmnFixture(fileName: string): string | null {
-  try {
-    const fixturePath = path.resolve(__dirname, '..', 'fixtures', 'bpmn', fileName);
-    if (fs.existsSync(fixturePath)) {
-      return fs.readFileSync(fixturePath, 'utf8');
-    }
-  } catch (err) {
-    // File doesn't exist or can't be read
-  }
-  return null;
-}
-
 beforeEach(() => {
   // Provide a minimal localStorage for supabase client usage in tests
   if (!('localStorage' in globalThis)) {
@@ -231,48 +218,7 @@ beforeEach(() => {
     });
   }
 
-  // Setup fetch stub that reads from fixtures for BPMN files
-  // När vi ska köra real-LLM-tester måste global fetch få vara "riktig",
-  // annars kan inte OpenAI-klienten anropa nätverket. I det läget hoppar
-  // vi över BPMN-fetch-stubben här.
-  if (ALLOW_LLM_IN_TESTS) {
-    vi.restoreAllMocks();
-    return;
-  }
-
-  const originalFetch = globalThis.fetch;
-  const fetchStub = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url =
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-        ? input.toString()
-        : input.url;
-
-    // Check if this is a BPMN file request (from /bpmn/ path or .bpmn extension)
-    if (url.includes('/bpmn/') || url.endsWith('.bpmn')) {
-      const fileName = url.split('/').pop() || url;
-      const xml = loadBpmnFixture(fileName);
-
-      if (xml) {
-        return new Response(xml, {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/xml',
-          },
-        });
-      }
-    }
-
-    // Fallback to original fetch or reject if not mocked
-    if (originalFetch && originalFetch !== fetchStub) {
-      return originalFetch(input, init);
-    }
-
-    return Promise.reject(new Error(`fetch not mocked for: ${url}`));
-  });
-
-  // Ensure previous mocks don't leak between tests
-  vi.restoreAllMocks();
-  vi.stubGlobal('fetch', fetchStub);
+  // OBS: Vi använder inte längre fetch-stubbar för BPMN-filer.
+  // Testerna använder faktisk kod med data URLs (samma approach som appen använder för versioned files).
+  // Se tests/helpers/bpmnTestHelpers.ts för hur BPMN-filer laddas i testerna.
 });

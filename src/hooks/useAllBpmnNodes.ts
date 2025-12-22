@@ -266,6 +266,8 @@ export const useAllBpmnNodes = () => {
             try {
               // För call activities, använd Feature Goal-sökvägar med version hash
               let featureGoalPaths: string[] | undefined = undefined;
+              let epicDocPaths: string[] | undefined = undefined;
+              
               if (node.nodeType === 'CallActivity') {
                 if (!node.subprocessFile) {
                   if (import.meta.env.DEV) {
@@ -304,6 +306,21 @@ export const useAllBpmnNodes = () => {
                     parentBpmnFileName,  // BPMN file name for versioned paths
                   );
                 }
+              } else {
+                // För Epic-dokumentation (UserTask, ServiceTask, BusinessRuleTask): kolla både versioned och non-versioned paths
+                const bpmnFileName = node.bpmnFile.endsWith('.bpmn') 
+                  ? node.bpmnFile 
+                  : `${node.bpmnFile}.bpmn`;
+                const versionHash = await getVersionHash(bpmnFileName);
+                const docFileKey = getNodeDocFileKey(node.bpmnFile, node.elementId);
+                
+                epicDocPaths = [];
+                if (versionHash) {
+                  // Versioned path: docs/claude/{bpmnFileName}/{versionHash}/nodes/...
+                  epicDocPaths.push(`docs/claude/${bpmnFileName}/${versionHash}/${docFileKey}`);
+                }
+                // Non-versioned path: docs/claude/nodes/...
+                epicDocPaths.push(`docs/claude/${docFileKey}`);
               }
               
               // Only log for call activities with feature goal paths (most verbose case)
@@ -313,9 +330,9 @@ export const useAllBpmnNodes = () => {
               
               const resolvedDocs = await checkDocsAvailable(
                 node.confluenceUrl,
-                docPathFromNode(node),
+                docPathFromNode(node), // Main path (non-versioned, for backward compatibility)
                 storageFileExists,
-                featureGoalPaths, // ✅ Skicka med Feature Goal-sökvägar för call activities (inkl. versioned paths)
+                featureGoalPaths || epicDocPaths, // ✅ Skicka med Feature Goal-sökvägar för call activities ELLER Epic-sökvägar för tasks/epics (inkl. versioned paths)
               );
               
               // Only log when docs are found (success case)
