@@ -2,15 +2,15 @@
 /* eslint-disable no-console */
 
 /**
- * Migration script: Re-render HTML from existing JSON in llm-debug/docs-raw
- * without calling Claude again. Uploads to new per-file versioned paths.
+ * Regenerera HTML-filer från befintligt JSON-material i llm-debug/docs-raw
+ * med korrekt namn och placering (versioned paths, hierarchical naming).
  * 
- * This script:
- * 1. Lists all JSON files in llm-debug/docs-raw
- * 2. Parses JSON to extract documentation models
- * 3. Re-renders HTML using existing render functions (no LLM calls)
- * 4. Uploads to new paths: docs/claude/{bpmnFile}/{versionHash}/...
- * 5. Does NOT delete old files (keeps them for safety)
+ * Detta script:
+ * 1. Listar alla JSON-filer i llm-debug/docs-raw
+ * 2. Parsar JSON och extraherar dokumentationsmodeller
+ * 3. Re-renderar HTML med korrekt namngivning (hierarchical för Feature Goals)
+ * 4. Uploadar till korrekta versioned paths: docs/claude/{bpmnFile}/{versionHash}/...
+ * 5. Använder korrekt namngivning baserat på node-typ (call activity vs process node)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -34,9 +34,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Set up environment for modules that read import.meta.env
-// This is needed because some modules read env vars at import time
 if (typeof globalThis !== 'undefined') {
-  // @ts-ignore - setting up env for module imports
+  // @ts-ignore
   if (!globalThis.import) {
     // @ts-ignore
     globalThis.import = { meta: { env: {} } };
@@ -50,7 +49,7 @@ if (typeof globalThis !== 'undefined') {
   };
 }
 
-// Helper to get version hash using our supabase client
+// Helper to get version hash
 async function getCurrentVersionHash(fileName: string): Promise<string | null> {
   const { data, error } = await supabase
     .from('bpmn_files')
@@ -65,14 +64,15 @@ async function getCurrentVersionHash(fileName: string): Promise<string | null> {
   return data.current_version_hash || null;
 }
 
-// Dynamic imports for app code (to avoid import issues in script context)
+// Dynamic imports for app code (to avoid path-intersection issues)
 async function getAppImports() {
+  // Import modules one at a time to avoid path-intersection issues
   const [
-    { buildBpmnProcessGraph },
-    { buildNodeDocumentationContext },
-    { renderEpicDoc, renderFeatureGoalDoc, renderBusinessRuleDoc },
-    { buildDocStoragePaths },
-    { getNodeDocFileKey, getFeatureGoalDocFileKey },
+    bpmnProcessGraphModule,
+    documentationContextModule,
+    documentationTemplatesModule,
+    artifactPathsModule,
+    nodeArtifactPathsModule,
   ] = await Promise.all([
     import('../src/lib/bpmnProcessGraph'),
     import('../src/lib/documentationContext'),
@@ -82,18 +82,18 @@ async function getAppImports() {
   ]);
   
   return {
-    buildBpmnProcessGraph,
-    buildNodeDocumentationContext,
-    renderEpicDoc,
-    renderFeatureGoalDoc,
-    renderBusinessRuleDoc,
-    buildDocStoragePaths,
-    getNodeDocFileKey,
-    getFeatureGoalDocFileKey,
+    buildBpmnProcessGraph: bpmnProcessGraphModule.buildBpmnProcessGraph,
+    buildNodeDocumentationContext: documentationContextModule.buildNodeDocumentationContext,
+    renderEpicDoc: documentationTemplatesModule.renderEpicDoc,
+    renderFeatureGoalDoc: documentationTemplatesModule.renderFeatureGoalDoc,
+    renderBusinessRuleDoc: documentationTemplatesModule.renderBusinessRuleDoc,
+    buildDocStoragePaths: artifactPathsModule.buildDocStoragePaths,
+    getNodeDocFileKey: nodeArtifactPathsModule.getNodeDocFileKey,
+    getFeatureGoalDocFileKey: nodeArtifactPathsModule.getFeatureGoalDocFileKey,
   };
 }
 
-interface MigrationResult {
+interface RegenerationResult {
   success: number;
   failed: number;
   skipped: number;
@@ -101,7 +101,7 @@ interface MigrationResult {
 }
 
 /**
- * Parse JSON from raw text (same logic as in loadChildDocFromStorage)
+ * Parse JSON from raw text
  */
 function parseJsonFromRawText(rawText: string): any {
   let jsonText = rawText.trim();
@@ -134,66 +134,40 @@ function parseJsonFromRawText(rawText: string): any {
 
 /**
  * Extract bpmnFile and elementId from identifier
- * Format from saveLlmDebugArtifact: "{bpmnFile}-{elementId}" (sanitized)
- * The identifier is created in llmDocumentation.ts: `${bpmnFile}-${elementId}`
- * Then sanitized: toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/-+/g, '-')
- * 
- * Example: "mortgage-se-household-register-household-economy-information"
- *          -> bpmnFile: "mortgage-se-household.bpmn", elementId: "register-household-economy-information"
  */
 function parseIdentifier(identifier: string, allBpmnFiles: string[]): { bpmnFile: string; elementId: string } | null {
-  // Sanitize function (same as in llmDebugStorage.ts)
   const sanitizeForMatch = (s: string) => 
     s.toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   
-  // Sort files by length (longest first) to match most specific first
   const sortedFiles = [...allBpmnFiles].sort((a, b) => b.length - a.length);
   
   for (const bpmnFile of sortedFiles) {
     const fileBase = bpmnFile.replace('.bpmn', '');
     const sanitizedFile = sanitizeForMatch(fileBase);
     
-    // Check if identifier starts with sanitized file name followed by a dash
     if (identifier.startsWith(sanitizedFile + '-')) {
-      const elementId = identifier.slice(sanitizedFile.length + 1); // +1 for the dash
-      // ElementId might have dashes - that's fine, keep them
-      return {
-        bpmnFile: bpmnFile,
-        elementId: elementId,
-      };
+      const elementId = identifier.slice(sanitizedFile.length + 1);
+      return { bpmnFile, elementId };
     }
     
-    // Also try exact match (file name without extension)
-    // This might be a process node where elementId equals file base name
     if (identifier === sanitizedFile) {
-      return {
-        bpmnFile: bpmnFile,
-        elementId: fileBase,
-      };
+      return { bpmnFile, elementId: fileBase };
     }
   }
   
-  // Fallback: try common patterns if no exact match found
-  // Pattern: "mortgage-se-{subprocess}-{elementId}"
+  // Fallback patterns
   const mortgageSeMatch = identifier.match(/^mortgage-se-([^-]+(?:-[^-]+)*?)-(.+)$/);
   if (mortgageSeMatch) {
     const [, subprocessPart, elementId] = mortgageSeMatch;
     const possibleFile = `mortgage-se-${subprocessPart}.bpmn`;
     if (allBpmnFiles.includes(possibleFile)) {
-      return {
-        bpmnFile: possibleFile,
-        elementId: elementId,
-      };
+      return { bpmnFile: possibleFile, elementId };
     }
   }
   
-  // Pattern: "mortgage-{elementId}" (root file)
   if (identifier.startsWith('mortgage-') && allBpmnFiles.includes('mortgage.bpmn')) {
     const elementId = identifier.replace('mortgage-', '');
-    return {
-      bpmnFile: 'mortgage.bpmn',
-      elementId: elementId,
-    };
+    return { bpmnFile: 'mortgage.bpmn', elementId };
   }
   
   return null;
@@ -222,25 +196,23 @@ function determineDocType(docJson: any): 'epic' | 'feature' | 'businessRule' | n
   
   // Fallback: if it has flowSteps and summary, likely epic or feature
   if (docJson.flowSteps && docJson.summary) {
-    // Default to epic if we can't determine
     return 'epic';
   }
   
   return null;
 }
 
-async function migrateDocs(): Promise<MigrationResult> {
-  const result: MigrationResult = {
+async function regenerateDocs(): Promise<RegenerationResult> {
+  const result: RegenerationResult = {
     success: 0,
     failed: 0,
     skipped: 0,
     errors: [],
   };
 
-  console.log('[Migration] Starting migration of docs from llm-debug/docs-raw...');
-  console.log('[Migration] Loading app modules...');
+  console.log('[Regeneration] Starting regeneration of HTML from JSON...');
+  console.log('[Regeneration] Loading app modules...');
 
-  // Load app modules
   const {
     buildBpmnProcessGraph,
     buildNodeDocumentationContext,
@@ -257,68 +229,60 @@ async function migrateDocs(): Promise<MigrationResult> {
     const { data: rawFiles, error: listError } = await supabase.storage
       .from('bpmn-files')
       .list('llm-debug/docs-raw', {
-        limit: 10000, // Get all files
+        limit: 10000,
       });
 
     if (listError) {
-      console.error('[Migration] Error listing files:', listError);
+      console.error('[Regeneration] Error listing files:', listError);
       throw listError;
     }
 
     if (!rawFiles || rawFiles.length === 0) {
-      console.log('[Migration] No files found in llm-debug/docs-raw');
+      console.log('[Regeneration] No files found in llm-debug/docs-raw');
       return result;
     }
 
-    console.log(`[Migration] Found ${rawFiles.length} files in llm-debug/docs-raw`);
+    console.log(`[Regeneration] Found ${rawFiles.length} JSON files in llm-debug/docs-raw`);
 
-    // 2. Get all BPMN files to build graph
+    // 2. Get all BPMN files
     const { data: bpmnFiles } = await supabase
       .from('bpmn_files')
       .select('file_name')
       .eq('file_type', 'bpmn');
     
     const allBpmnFiles = bpmnFiles?.map(f => f.file_name) || [];
-    console.log(`[Migration] Found ${allBpmnFiles.length} BPMN files in database`);
+    console.log(`[Regeneration] Found ${allBpmnFiles.length} BPMN files in database`);
 
-    // Build graph once for all files
+    // 3. Build graph for context
     let graph: any = null;
     try {
       if (allBpmnFiles.length > 0) {
-        // Find root file (mortgage.bpmn or first file)
         const rootFile = allBpmnFiles.find(f => f === 'mortgage.bpmn') || allBpmnFiles[0];
         graph = await buildBpmnProcessGraph(rootFile, allBpmnFiles);
-        console.log(`[Migration] Built BPMN process graph with root: ${rootFile}`);
+        console.log(`[Regeneration] Built BPMN process graph with root: ${rootFile}`);
       }
     } catch (error) {
-      console.warn('[Migration] Could not build graph, will skip context-dependent rendering:', error);
+      console.warn('[Regeneration] Could not build graph, will skip context-dependent rendering:', error);
     }
 
-    // 3. Process each file
+    // 4. Process each file
     const versionHashCache = new Map<string, string | null>();
     const getVersionHash = async (fileName: string): Promise<string | null> => {
       if (versionHashCache.has(fileName)) {
         return versionHashCache.get(fileName) || null;
       }
-      try {
-        const hash = await getCurrentVersionHash(fileName);
-        versionHashCache.set(fileName, hash);
-        return hash;
-      } catch (error) {
-        console.warn(`[Migration] Failed to get version hash for ${fileName}:`, error);
-        versionHashCache.set(fileName, null);
-        return null;
-      }
+      const hash = await getCurrentVersionHash(fileName);
+      versionHashCache.set(fileName, hash);
+      return hash;
     };
 
     for (const rawFile of rawFiles) {
       try {
         // Extract identifier from filename
-        // Format: "{identifier}-{timestamp}.txt"
         const fileName = rawFile.name;
         const identifierMatch = fileName.match(/^(.+?)-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})\.txt$/);
         if (!identifierMatch) {
-          console.warn(`[Migration] Skipping file with unexpected format: ${fileName}`);
+          console.warn(`[Regeneration] Skipping file with unexpected format: ${fileName}`);
           result.skipped++;
           continue;
         }
@@ -327,16 +291,15 @@ async function migrateDocs(): Promise<MigrationResult> {
         const parsed = parseIdentifier(identifier, allBpmnFiles);
         
         if (!parsed) {
-          console.warn(`[Migration] Could not parse identifier: ${identifier}`);
+          console.warn(`[Regeneration] Could not parse identifier: ${identifier}`);
           result.skipped++;
           continue;
         }
 
         const { bpmnFile, elementId } = parsed;
         
-        // Verify that bpmnFile exists in our list
         if (!allBpmnFiles.includes(bpmnFile)) {
-          console.warn(`[Migration] BPMN file ${bpmnFile} not found in database for ${identifier}`);
+          console.warn(`[Regeneration] BPMN file ${bpmnFile} not found for ${identifier}`);
           result.skipped++;
           continue;
         }
@@ -347,7 +310,7 @@ async function migrateDocs(): Promise<MigrationResult> {
           .download(`llm-debug/docs-raw/${fileName}`);
 
         if (downloadError || !rawData) {
-          console.warn(`[Migration] Failed to download ${fileName}:`, downloadError);
+          console.warn(`[Regeneration] Failed to download ${fileName}:`, downloadError);
           result.failed++;
           result.errors.push({ identifier, error: `Download failed: ${downloadError?.message || 'Unknown'}` });
           continue;
@@ -358,7 +321,7 @@ async function migrateDocs(): Promise<MigrationResult> {
         try {
           docJson = parseJsonFromRawText(rawText);
         } catch (parseError) {
-          console.warn(`[Migration] Failed to parse JSON from ${fileName}:`, parseError);
+          console.warn(`[Regeneration] Failed to parse JSON from ${fileName}:`, parseError);
           result.failed++;
           result.errors.push({ identifier, error: `Parse failed: ${parseError instanceof Error ? parseError.message : String(parseError)}` });
           continue;
@@ -367,31 +330,28 @@ async function migrateDocs(): Promise<MigrationResult> {
         // Determine docType
         const docType = determineDocType(docJson);
         if (!docType) {
-          console.warn(`[Migration] Could not determine docType for ${identifier}`);
+          console.warn(`[Regeneration] Could not determine docType for ${identifier}`);
           result.skipped++;
           continue;
         }
 
-        // Build context (if graph is available)
+        // Build context
         let context: any = null;
         if (graph) {
           const nodeId = `${bpmnFile}::${elementId}`;
           context = buildNodeDocumentationContext(graph, nodeId);
           if (!context) {
-            console.warn(`[Migration] Could not build context for ${nodeId}, trying without context`);
+            console.warn(`[Regeneration] Could not build context for ${nodeId}, skipping`);
+            result.skipped++;
+            continue;
           }
-        }
-
-        // If no context, we can't render properly - skip
-        if (!context) {
-          console.warn(`[Migration] Skipping ${identifier} - no context available`);
+        } else {
+          console.warn(`[Regeneration] No graph available, skipping ${identifier}`);
           result.skipped++;
           continue;
         }
 
-        // Convert JSON to string format that mapper functions expect
-        // The mappers expect the raw LLM response string, so we stringify the JSON
-        // Format it nicely to match what LLM would return
+        // Convert JSON to string format
         const llmContent = JSON.stringify(docJson, null, 2);
 
         // Render HTML
@@ -423,13 +383,13 @@ async function migrateDocs(): Promise<MigrationResult> {
             });
           }
         } catch (renderError) {
-          console.warn(`[Migration] Failed to render HTML for ${identifier}:`, renderError);
+          console.warn(`[Regeneration] Failed to render HTML for ${identifier}:`, renderError);
           result.failed++;
           result.errors.push({ identifier, error: `Render failed: ${renderError instanceof Error ? renderError.message : String(renderError)}` });
           continue;
         }
 
-        // Determine storage path
+        // Determine storage path with correct naming
         const versionHash = await getVersionHash(bpmnFile);
         let docFileName: string;
         
@@ -477,17 +437,17 @@ async function migrateDocs(): Promise<MigrationResult> {
           });
 
         if (uploadError) {
-          console.error(`[Migration] Failed to upload ${identifier} to ${modePath}:`, uploadError);
+          console.error(`[Regeneration] Failed to upload ${identifier} to ${modePath}:`, uploadError);
           result.failed++;
           result.errors.push({ identifier, error: `Upload failed: ${uploadError.message}` });
           continue;
         }
 
-        console.log(`[Migration] ✓ Migrated ${identifier} -> ${modePath}`);
+        console.log(`[Regeneration] ✓ Regenerated ${identifier} -> ${modePath}`);
         result.success++;
 
       } catch (error) {
-        console.error(`[Migration] Unexpected error processing ${rawFile.name}:`, error);
+        console.error(`[Regeneration] Unexpected error processing ${rawFile.name}:`, error);
         result.failed++;
         result.errors.push({ 
           identifier: rawFile.name, 
@@ -496,13 +456,18 @@ async function migrateDocs(): Promise<MigrationResult> {
       }
     }
 
-    console.log('\n[Migration] Summary:');
-    console.log(`  Success: ${result.success}`);
-    console.log(`  Failed: ${result.failed}`);
-    console.log(`  Skipped: ${result.skipped}`);
-    if (result.errors.length > 0) {
-      console.log('\n[Migration] Errors:');
+    console.log('\n[Regeneration] Summary:');
+    console.log(`  ✅ Success: ${result.success}`);
+    console.log(`  ❌ Failed: ${result.failed}`);
+    console.log(`  ⏭️  Skipped: ${result.skipped}`);
+    if (result.errors.length > 0 && result.errors.length <= 20) {
+      console.log('\n[Regeneration] Errors:');
       result.errors.forEach(({ identifier, error }) => {
+        console.log(`  - ${identifier}: ${error}`);
+      });
+    } else if (result.errors.length > 20) {
+      console.log(`\n[Regeneration] ${result.errors.length} errors (showing first 20):`);
+      result.errors.slice(0, 20).forEach(({ identifier, error }) => {
         console.log(`  - ${identifier}: ${error}`);
       });
     }
@@ -510,30 +475,26 @@ async function migrateDocs(): Promise<MigrationResult> {
     return result;
 
   } catch (error) {
-    console.error('[Migration] Fatal error:', error);
+    console.error('[Regeneration] Fatal error:', error);
     throw error;
   }
 }
 
-// Run migration if called directly
-// Check if this is the main module
-const isMainModule = import.meta.url === `file://${process.argv[1]}` || 
-                     process.argv[1]?.includes('migrate-docs-to-per-file-paths') ||
-                     process.argv[1]?.endsWith('migrate-docs-to-per-file-paths.ts');
-
-if (isMainModule) {
-  migrateDocs()
+// Run if called directly
+if (import.meta.url === `file://${process.argv[1]}` || 
+    process.argv[1]?.includes('regenerate-html-from-json')) {
+  regenerateDocs()
     .then((result) => {
-      console.log('\n[Migration] Completed');
+      console.log('\n[Regeneration] Completed');
       console.log(`  ✅ Success: ${result.success}`);
       console.log(`  ❌ Failed: ${result.failed}`);
       console.log(`  ⏭️  Skipped: ${result.skipped}`);
       process.exit(result.failed > 0 ? 1 : 0);
     })
     .catch((error) => {
-      console.error('[Migration] Fatal error:', error);
+      console.error('[Regeneration] Fatal error:', error);
       process.exit(1);
     });
 }
 
-export { migrateDocs };
+export { regenerateDocs };

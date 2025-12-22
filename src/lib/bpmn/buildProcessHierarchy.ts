@@ -90,9 +90,11 @@ export function buildProcessHierarchy(
       indegree.set(proc.internalId, 0);
     }
 
+    // Filtrera bort embedded subProcess-noder (kind: 'subProcess') från effectiveCallActivities
+    // Embedded subProcess-noder ska inte behandlas som callActivities
     const effectiveCallActivities =
       proc.subprocessCandidates && proc.subprocessCandidates.length > 0
-        ? proc.subprocessCandidates
+        ? proc.subprocessCandidates.filter((candidate) => candidate.kind !== 'subProcess')
         : proc.callActivities;
 
     effectiveCallActivities.forEach((callActivity) => {
@@ -287,9 +289,11 @@ function buildProcessNode(
 
   const childAncestors = [...context.ancestorStack, processInternalId];
 
+  // Filtrera bort embedded subProcess-noder (kind: 'subProcess') från effectiveCallActivities
+  // Embedded subProcess-noder ska inte behandlas som callActivities
   const effectiveCallActivities =
     proc.subprocessCandidates && proc.subprocessCandidates.length > 0
-      ? proc.subprocessCandidates
+      ? proc.subprocessCandidates.filter((candidate) => candidate.kind !== 'subProcess')
       : proc.callActivities;
 
   for (const callActivity of effectiveCallActivities) {

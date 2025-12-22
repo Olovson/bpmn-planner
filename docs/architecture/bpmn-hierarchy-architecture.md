@@ -13,6 +13,8 @@ Applikationen låter användare ladda upp en eller flera BPMN‑filer. Utifrån 
 
 Denna fil beskriver **hur hierarkin faktiskt är implementerad idag** – inte längre bara en target‑plan.
 
+> 📋 **För dokumentationsgenereringsordning, se `docs/architecture/DOCUMENTATION_GENERATION_ORDER.md`** - Detta är core funktionalitet som beskriver hur filer och noder sorteras för generering.
+
 ---
 
 ## 2. Översikt över implementationen
@@ -246,6 +248,96 @@ Grafen används sedan i:
 - testgenerering,
 - diagnostik (missingDependencies i UI),
 - subprocess‑sync‑steget i pipelines.
+
+### 4.5 Dokumentationsgenerering - Genereringsordning
+
+**VIKTIGT: Core funktionalitet** - Detta är centralt för hur dokumentation genereras.
+
+**Kod:** `src/lib/bpmnGenerators.ts` rad ~1715-1786
+
+#### Filordning (Subprocess-filer före Parent-filer)
+
+Filer sorteras så att subprocess-filer genereras **FÖRE** parent-filer för att säkerställa att child documentation finns tillgänglig när parent Feature Goals genereras.
+
+```typescript
+// 1. Identifiera subprocess-filer (anropas av callActivities)
+const subprocessFiles = new Set<string>();
+for (const node of nodesToGenerate) {
+  if (node.type === 'callActivity' && node.subprocessFile) {
+    subprocessFiles.add(node.subprocessFile);
+  }
+}
+
+// 2. Separera i subprocess-filer och root-filer
+const subprocessFilesList = analyzedFiles.filter(file => subprocessFiles.has(file));
+const rootFilesList = analyzedFiles.filter(file => !subprocessFiles.has(file));
+
+// 3. Sortera varje kategori alfabetiskt för determinism
+subprocessFilesList.sort((a, b) => a.localeCompare(b));
+rootFilesList.sort((a, b) => a.localeCompare(b));
+
+// 4. Subprocess-filer först, sedan root-filer
+const sortedAnalyzedFiles = [...subprocessFilesList, ...rootFilesList];
+```
+
+**Resultat:**
+- Subprocess-filer genereras före parent-filer
+- Feature Goals får aggregerat innehåll från subprocesser
+- Deterministik ordning (alfabetisk inom varje kategori)
+
+#### Nodordning Inom Filer (Hierarkisk + Exekveringsordning)
+
+Noder sorteras med tre nivåer av prioritet:
+
+```typescript
+const sortedNodesInFile = [...nodesInFile].sort((a, b) => {
+  const depthA = nodeDepthMap.get(a.id) ?? 0;
+  const depthB = nodeDepthMap.get(b.id) ?? 0;
+  
+  // Primär sortering: lägre depth först (subprocesser före parent nodes)
+  if (depthA !== depthB) {
+    return depthA - depthB; // LÄGRE DEPTH FÖRST
+  }
+  
+  // Sekundär sortering: orderIndex (exekveringsordning) inom samma depth
+  const orderA = a.orderIndex ?? a.visualOrderIndex ?? 0;
+  const orderB = b.orderIndex ?? b.visualOrderIndex ?? 0;
+  if (orderA !== orderB) {
+    return orderA - orderB; // Lägre orderIndex först
+  }
+  
+  // Tertiär sortering: alfabetiskt för determinism
+  return (a.name || a.bpmnElementId || '').localeCompare(b.name || b.bpmnElementId || '');
+});
+```
+
+**Sorteringsordning:**
+1. **Primär: Depth** (lägre depth först)
+   - Leaf nodes (depth 0) → Subprocesser (depth 1) → Parent processer (depth 2+)
+2. **Sekundär: orderIndex** (exekveringsordning från sequence flows)
+   - Noder med samma depth sorteras efter exekveringsordning
+3. **Tertiär: Alfabetiskt** (för determinism)
+
+**Depth-beräkning:**
+```typescript
+const calculateNodeDepth = (node: BpmnProcessNode): number => {
+  if (!node.children || node.children.length === 0) {
+    return 0; // Leaf nodes har depth 0
+  }
+  const maxChildDepth = Math.max(...node.children.map(calculateNodeDepth));
+  return maxChildDepth + 1; // Parent nodes har högre depth
+};
+```
+
+**Exekveringsordning (orderIndex):**
+- Beräknas från sequence flows via DFS/topologisk sortering
+- Tilldelas till varje nod: `node.orderIndex`
+- Används som sekundär sortering för att bevara exekveringsordning inom samma depth
+
+**Resultat:**
+- Leaf nodes genereras före parent nodes (hierarkisk ordning)
+- Exekveringsordning bevaras inom samma depth
+- Feature Goals får aggregerat innehåll från subprocesser
 
 ### 4.4 Hierarki vs. exekveringsordning (sequence flows)
 

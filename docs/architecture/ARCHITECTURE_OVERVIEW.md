@@ -27,6 +27,17 @@
   - `FeatureGoalDocModel`, `EpicDocModel`, `BusinessRuleDocModel`
 - LLM fyller JSON → mappers → HTML via templates i `src/lib/documentationTemplates.ts`.
 - Samma HTML-layout används för lokal (mallbaserad) och LLM-baserad dokumentation.
+
+### Genereringsordning
+
+**VIKTIGT: Core funktionalitet** - Se `docs/architecture/DOCUMENTATION_GENERATION_ORDER.md` för fullständig dokumentation.
+
+**Kort sammanfattning:**
+- **Filordning**: Subprocess-filer genereras före parent-filer (säkerställer aggregerat innehåll)
+- **Nodordning**: Hierarkisk (depth) + Exekveringsordning (orderIndex från sequence flows)
+  - Primär: Depth (lägre depth först = leaf nodes före parent nodes)
+  - Sekundär: orderIndex (exekveringsordning från sequence flows)
+  - Tertiär: Alfabetiskt (för determinism)
 - Prompts i `prompts/llm/*` instruerar LLM att alltid svara med **ett JSON-objekt** (ingen HTML/markdown) och att markera numeriska tröskelvärden som **exempelvärden** (t.ex. `600 (exempelvärde)`).
 - Input till LLM består av:
   - ett `processContext` (kondenserad processöversikt med processnamn, nyckelnoder samt fas `phase` och roll `lane` per nyckelnod),

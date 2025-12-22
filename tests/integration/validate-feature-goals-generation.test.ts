@@ -51,6 +51,11 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 
+// Mock isLlmEnabled to return true so that LLM functions are called (they're mocked below)
+vi.mock('@/lib/llmClient', () => ({
+  isLlmEnabled: () => true,
+}));
+
 // Mock LLM calls to return empty content (we're just counting, not validating content)
 vi.mock('@/lib/llmDocumentation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/llmDocumentation')>();
@@ -117,8 +122,15 @@ describe('Feature Goals och Epics Generering - Validering', () => {
     
     const expectedSubprocessProcessNodes = subprocessFiles.size;
     
+    // VIKTIGT: Räknar call activities från ALLA processer i bpmn-map.json
+    // Men call activities från root-filen (mortgage.bpmn) är orchestration, inte subprocess features
+    // Därför ska de INTE räknas med i expectedCallActivityInstances
     const callActivityInstances = new Set<string>();
     bpmnMap.processes?.forEach(process => {
+      // VIKTIGT: Hoppa över root-processen - dess call activities är orchestration, inte subprocess features
+      if (process.bpmn_file === rootFile) {
+        return;
+      }
       process.call_activities?.forEach(ca => {
         const key = `${process.bpmn_file}::${ca.bpmn_id}`;
         callActivityInstances.add(key);
@@ -126,6 +138,10 @@ describe('Feature Goals och Epics Generering - Validering', () => {
     });
     
     const expectedCallActivityInstances = callActivityInstances.size;
+    // VIKTIGT: expectedFeatureGoals = subprocess process nodes + call activities från bpmn-map.json
+    // Men faktiskt genererade Feature Goals kan innehålla fler call activities som finns i BPMN-filer
+    // men saknas i bpmn-map.json (t.ex. call activities som inte har mappats ännu)
+    // Därför är expectedFeatureGoals en MINIMUM, inte ett exakt antal
     const expectedFeatureGoals = expectedSubprocessProcessNodes + expectedCallActivityInstances;
     
     // Get all BPMN files from bpmn-map.json
@@ -133,8 +149,34 @@ describe('Feature Goals och Epics Generering - Validering', () => {
       bpmnMap.processes?.map(p => p.bpmn_file) || [rootFile]
     ));
     
+    // VIKTIGT: Validera att filordningen är korrekt (subprocess-filer före parent-filer)
+    // Identifiera subprocess-filer (filer som anropas av callActivities)
+    const subprocessFilesFromMap = new Set<string>();
+    bpmnMap.processes?.forEach(process => {
+      process.call_activities?.forEach(ca => {
+        if (ca.subprocess_bpmn_file) {
+          subprocessFilesFromMap.add(ca.subprocess_bpmn_file);
+        }
+      });
+    });
+    
+    // Separera i subprocess-filer och root-filer
+    const expectedSubprocessFiles = allBpmnFiles.filter(file => 
+      subprocessFilesFromMap.has(file) && file !== rootFile
+    );
+    const expectedRootFiles = allBpmnFiles.filter(file => 
+      !subprocessFilesFromMap.has(file) || file === rootFile
+    );
+    
+    console.log('\n📋 Förväntad filordning:');
+    console.log(`  Subprocess-filer (${expectedSubprocessFiles.length}): ${expectedSubprocessFiles.join(', ')}`);
+    console.log(`  Root-filer (${expectedRootFiles.length}): ${expectedRootFiles.join(', ')}`);
+    console.log(`  Förväntad ordning: subprocess-filer FÖRE root-filer`);
+    
     // Use ACTUAL app code: generateAllFromBpmnWithGraph
     // This will use the same logic as the app, including all validations
+    // VIKTIGT: generateAllFromBpmnWithGraph sorterar nu filer automatiskt så att
+    // subprocess-filer genereras före parent-filer för att säkerställa aggregerat innehåll
     const result = await generateAllFromBpmnWithGraph(
       rootFile,
       allBpmnFiles,
@@ -149,7 +191,7 @@ describe('Feature Goals och Epics Generering - Validering', () => {
       undefined, // no cancellation check
       undefined, // no abort signal
       true, // isActualRootFile
-      false // forceRegenerate = false (respects storage checks)
+      true // forceRegenerate = true (force generation for testing)
     );
     
     // Count feature goals from actual result
@@ -183,7 +225,15 @@ describe('Feature Goals och Epics Generering - Validering', () => {
         subprocessProcessNodeDocs.push(key);
       } else {
         // Otherwise it's a call activity (hierarchical naming: parent-elementId)
-        callActivityDocs.push(key);
+        // VIKTIGT: Filtrera bort call activities från root-filen (prefix "mortgage-")
+        // eftersom de är orchestration, inte subprocess features
+        // Call activities från root-filen har formatet "mortgage-{elementId}" (t.ex. "mortgage-appeal")
+        // Call activities från subprocesser har formatet "mortgage-se-{parent}-{elementId}" (t.ex. "mortgage-se-application-household")
+        if (!fileName.startsWith('mortgage-') || fileName.startsWith('mortgage-se-')) {
+          callActivityDocs.push(key);
+        }
+        // Om fileName börjar med "mortgage-" men INTE "mortgage-se-", är det en call activity från root-filen
+        // och den ska INTE räknas med i callActivityDocs
       }
     }
     
@@ -209,13 +259,74 @@ describe('Feature Goals och Epics Generering - Validering', () => {
     if (actualCallActivityInstances !== expectedCallActivityInstances) {
       console.log('\n⚠️  Call activity-instanser:');
       console.log(`  Genererade: ${actualCallActivityInstances}, Förväntade: ${expectedCallActivityInstances}`);
-      console.log(`  Skillnad: ${expectedCallActivityInstances - actualCallActivityInstances} saknas`);
+      const diff = actualCallActivityInstances - expectedCallActivityInstances;
+      if (diff > 0) {
+        console.log(`  Skillnad: +${diff} fler än förväntat (möjliga duplicater eller extra call activities)`);
+      } else {
+        console.log(`  Skillnad: ${diff} saknas`);
+      }
+      // Lista alla call activity Feature Goals för att identifiera duplicater
+      console.log(`  Alla call activity Feature Goals (${callActivityDocs.length}):`);
+      const callActivityNames = callActivityDocs.map(k => k.replace('feature-goals/', '').replace('.html', '')).sort();
+      callActivityNames.forEach(name => console.log(`    - ${name}`));
+      
+      // Lista förväntade call activities från bpmn-map.json (exklusive root-filen)
+      const expectedCallActivityKeys = new Set<string>();
+      const expectedCallActivityMap = new Map<string, { file: string; elementId: string }>();
+      bpmnMap.processes?.forEach(process => {
+        if (process.bpmn_file !== rootFile) {
+          process.call_activities?.forEach(ca => {
+            const key = `${process.bpmn_file}::${ca.bpmn_id}`;
+            expectedCallActivityKeys.add(key);
+            expectedCallActivityMap.set(key, { file: process.bpmn_file, elementId: ca.bpmn_id });
+          });
+        }
+      });
+      
+      // Försök matcha genererade Feature Goals med förväntade call activities
+      // Feature Goals har formatet "mortgage-se-{parent}-{elementId}" eller "mortgage-se-{parent}-{elementId}-{suffix}"
+      const generatedCallActivityKeys = new Set<string>();
+      callActivityNames.forEach(name => {
+        // För varje förväntad call activity, försök matcha med genererat Feature Goal-namn
+        expectedCallActivityMap.forEach((info, key) => {
+          const parentBaseName = info.file.replace('.bpmn', '');
+          const elementId = info.elementId;
+          
+          // Matcha olika format:
+          // 1. Exact match: "mortgage-se-{parent}-{elementId}"
+          // 2. With suffix: "mortgage-se-{parent}-{elementId}-{suffix}"
+          // 3. Element ID only (om parent ingår i namnet på annat sätt)
+          const exactMatch = name === `${parentBaseName}-${elementId}`;
+          const withSuffix = name.startsWith(`${parentBaseName}-${elementId}-`);
+          const elementIdMatch = name.endsWith(`-${elementId}`) && name.includes(parentBaseName);
+          
+          if (exactMatch || withSuffix || elementIdMatch) {
+            generatedCallActivityKeys.add(key);
+          }
+        });
+      });
+      
+      const missingCallActivityKeys = Array.from(expectedCallActivityKeys).filter(
+        key => !generatedCallActivityKeys.has(key)
+      );
+      
+      if (missingCallActivityKeys.length > 0) {
+        console.log(`\n  ❌ KRITISKT: Saknade call activities (${missingCallActivityKeys.length}):`);
+        missingCallActivityKeys.forEach(key => {
+          const info = expectedCallActivityMap.get(key);
+          if (info) {
+            console.log(`    - ${info.file}::${info.elementId}`);
+          }
+        });
+      }
     }
     
     // Assertions - för nu, låt oss bara verifiera att vi inte genererar tasks som feature goals
     // Antalet kan variera beroende på vilka filer som faktiskt finns i fixtures
-    expect(actualFeatureGoals).toBeGreaterThan(0);
-    expect(actualCallActivityInstances).toBeGreaterThan(0);
+    // VIKTIGT: actualFeatureGoals kan vara större än expectedFeatureGoals eftersom
+    // call activities som finns i BPMN-filer men saknas i bpmn-map.json också genereras
+    expect(actualFeatureGoals).toBeGreaterThanOrEqual(expectedFeatureGoals);
+    expect(actualCallActivityInstances).toBeGreaterThanOrEqual(expectedCallActivityInstances);
     
     // VIKTIGT: Verifiera att inga tasks genereras som feature goals
     const tasksAsFeatureGoals = featureGoalDocs.filter(key => {
@@ -239,6 +350,33 @@ describe('Feature Goals och Epics Generering - Validering', () => {
     const epicDocs = Array.from(result.docs.keys()).filter(
       key => key.includes('nodes/')
     );
+    
+    // Debug: Log all doc keys to see what's actually generated
+    console.log('\n📋 Alla dokument-nycklar i result.docs:');
+    const allDocKeys = Array.from(result.docs.keys());
+    console.log(`  Totalt: ${allDocKeys.length}`);
+    console.log(`  Feature goals (feature-goals/): ${allDocKeys.filter(k => k.includes('feature-goals/')).length}`);
+    console.log(`  Epics (nodes/): ${allDocKeys.filter(k => k.includes('nodes/')).length}`);
+    console.log(`  Andra: ${allDocKeys.filter(k => !k.includes('feature-goals/') && !k.includes('nodes/')).length}`);
+    if (allDocKeys.length > 0 && allDocKeys.length < 100) {
+      console.log(`  Exempel: ${allDocKeys.slice(0, 10).join(', ')}`);
+    }
+    
+    // DEBUG: Log graph to see if tasks exist
+    const { buildBpmnProcessGraph } = await import('@/lib/bpmnProcessGraph');
+    const graph = await buildBpmnProcessGraph(rootFile, allBpmnFiles);
+    const { getTestableNodes } = await import('@/lib/bpmnProcessGraph');
+    const testableNodes = getTestableNodes(graph);
+    const tasks = testableNodes.filter(n => 
+      n.type === 'userTask' || n.type === 'serviceTask' || n.type === 'businessRuleTask'
+    );
+    console.log(`\n🔍 DEBUG: Tasks i grafen:`);
+    console.log(`  Totalt testableNodes: ${testableNodes.length}`);
+    console.log(`  Tasks (userTask/serviceTask/businessRuleTask): ${tasks.length}`);
+    console.log(`  CallActivities: ${testableNodes.filter(n => n.type === 'callActivity').length}`);
+    if (tasks.length > 0 && tasks.length < 20) {
+      tasks.forEach(t => console.log(`    - ${t.bpmnFile}::${t.bpmnElementId} (${t.type})`));
+    }
     
     // Tasks should generate epics, not feature goals
     expect(epicDocs.length).toBeGreaterThan(0);
@@ -270,7 +408,7 @@ describe('Feature Goals och Epics Generering - Validering', () => {
       undefined, // no cancellation check
       undefined, // no abort signal
       true, // isActualRootFile
-      false // forceRegenerate = false
+      true // forceRegenerate = true (force generation for testing)
     );
     
     // Count epics from actual result

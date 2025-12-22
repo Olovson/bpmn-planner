@@ -342,6 +342,54 @@ export class BpmnParser {
               });
             }
           }
+        } else if (bo.$type === 'bpmn:UserTask') {
+          userTasks.push(bpmnElement);
+          metaTasks.push({
+            id: element.id,
+            name: bo.name || element.id,
+            type: 'UserTask',
+          });
+          const owningProcessId = findOwningProcessId(bo) || firstProcessId || processId;
+          const owningProcess = ensureProcessMeta(owningProcessId, processName);
+          if (owningProcess) {
+            owningProcess.tasks.push({
+              id: element.id,
+              name: bo.name || element.id,
+              type: 'UserTask',
+            });
+          }
+        } else if (bo.$type === 'bpmn:ServiceTask') {
+          serviceTasks.push(bpmnElement);
+          metaTasks.push({
+            id: element.id,
+            name: bo.name || element.id,
+            type: 'ServiceTask',
+          });
+          const owningProcessId = findOwningProcessId(bo) || firstProcessId || processId;
+          const owningProcess = ensureProcessMeta(owningProcessId, processName);
+          if (owningProcess) {
+            owningProcess.tasks.push({
+              id: element.id,
+              name: bo.name || element.id,
+              type: 'ServiceTask',
+            });
+          }
+        } else if (bo.$type === 'bpmn:BusinessRuleTask') {
+          businessRuleTasks.push(bpmnElement);
+          metaTasks.push({
+            id: element.id,
+            name: bo.name || element.id,
+            type: 'BusinessRuleTask',
+          });
+          const owningProcessId = findOwningProcessId(bo) || firstProcessId || processId;
+          const owningProcess = ensureProcessMeta(owningProcessId, processName);
+          if (owningProcess) {
+            owningProcess.tasks.push({
+              id: element.id,
+              name: bo.name || element.id,
+              type: 'BusinessRuleTask',
+            });
+          }
         }
       });
       
