@@ -77,6 +77,13 @@ npx playwright test      # Kör Playwright E2E-tester
 > 📋 **Testindex:** Se [`tests/TEST_INDEX.md`](tests/TEST_INDEX.md) för komplett översikt över alla tester.  
 > ⭐ **Validera Nya BPMN-filer:** Se [`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md) för komplett guide från A till Ö.
 
+# BPMN Map Generering
+npm run generate:bpmn-map:template  # Generera bpmn-map.json från mortgage-template-main handlers
+# ⚠️ VIKTIGT: Detta genererar INTE en komplett bpmn-map.json!
+# Handlers täcker INTE alla call activities. Du MÅSTE kombinera med befintlig bpmn-map.json
+# eller använda hybrid-approach (handlers + BPMN-parsing).
+# Se docs/analysis/BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md för detaljerad analys.
+
 # Verktyg
 npm run print:bpmn-tree  # Exportera BPMN-träd
 npm run check:db-schema  # Verifiera databas-schema
