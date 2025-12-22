@@ -187,7 +187,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
       // Get version hash for this file (uses selected version if available)
       const versionHash = await getVersionHashForFile(bpmnFileName);
       const url = await getBpmnFileUrl(bpmnFileName, versionHash);
-      console.log('[BpmnViewer] Loading subprocess:', bpmnFileName, versionHash ? `(version: ${versionHash.substring(0, 8)}...)` : '(current version)', url);
 
       let response = await fetch(url);
       if (!response.ok) {
@@ -412,7 +411,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         // Get version hash for this file (uses selected version if available)
         const versionHash = await getVersionHashForFile(fileToLoad);
         const url = await getBpmnFileUrl(fileToLoad, versionHash);
-        console.log('[BpmnViewer] Loading BPMN from initialFileName:', fileToLoad, versionHash ? `(version: ${versionHash.substring(0, 8)}...)` : '(current version)', url);
 
         // Nollställ navigationen när vi aktivt byter fil via route
         if (fileToLoad !== fileName) {
@@ -442,7 +440,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
           );
         }
 
-        console.log('[BpmnViewer] BPMN loaded successfully, length:', xml.length);
         setCurrentXml(xml);
         setFileName(fileToLoad);
       } catch (error) {
@@ -469,7 +466,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
 
     viewerRef.current = viewer;
     setViewerReady(true);
-    console.log('[BpmnViewer] Viewer initialized');
   }, [isLoadingFiles, fileName]);
 
   // Destroy viewer on unmount
@@ -480,7 +476,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         viewerRef.current = null;
       }
       setViewerReady(false);
-      console.log('[BpmnViewer] Viewer destroyed');
     };
   }, []);
 
@@ -602,18 +597,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
         registryMapping ||
         null;
 
-      console.log('[BpmnViewer] navigateSubprocess', {
-        elementId,
-        type,
-        fileName,
-        hierarchyMatch,
-        hasCallActivityNode: !!callActivityNode,
-        dbMappingFile: dbMapping?.subprocess_bpmn_file,
-        localMappingFile: localMapping,
-        registryMappingFile: registryMapping,
-        resolvedFile,
-      });
-
       if (!resolvedFile) {
         console.warn(`No resolved subprocess for element ${elementId} in file ${fileName}`);
         toast({
@@ -669,7 +652,6 @@ export const BpmnViewer = ({ onElementSelect, onFileChange, bpmnMappings, initia
   // Import XML when currentXml changes
   useEffect(() => {
     if (!viewerReady || !viewerRef.current || !currentXml) {
-      console.log('Skipping XML import:', { hasViewer: !!viewerRef.current, hasXml: !!currentXml, viewerReady });
       return;
     }
     

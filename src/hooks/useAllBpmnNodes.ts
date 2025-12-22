@@ -325,7 +325,6 @@ export const useAllBpmnNodes = () => {
               
               // Only log for call activities with feature goal paths (most verbose case)
               if (import.meta.env.DEV && node.nodeType === 'CallActivity' && featureGoalPaths && featureGoalPaths.length > 0) {
-                console.debug(`[useAllBpmnNodes] Checking ${featureGoalPaths.length} paths for CallActivity ${node.bpmnFile}:${node.elementId}`);
               }
               
               const resolvedDocs = await checkDocsAvailable(
@@ -335,10 +334,6 @@ export const useAllBpmnNodes = () => {
                 featureGoalPaths || epicDocPaths, // ✅ Skicka med Feature Goal-sökvägar för call activities ELLER Epic-sökvägar för tasks/epics (inkl. versioned paths)
               );
               
-              // Only log when docs are found (success case)
-              if (import.meta.env.DEV && resolvedDocs && node.nodeType === 'CallActivity') {
-                console.debug(`[useAllBpmnNodes] ✓ Found docs for CallActivity ${node.bpmnFile}:${node.elementId}`);
-              }
               const resolvedTestReport = await checkTestReportAvailable(
                 node.testReportUrl,
               );
@@ -361,9 +356,6 @@ export const useAllBpmnNodes = () => {
         );
 
         if (isMounted) {
-          if (import.meta.env.DEV) {
-            console.log(`[useAllBpmnNodes] Loaded ${enriched.length} nodes (${enriched.filter(n => n.hasDocs).length} with docs)`);
-          }
           setNodes(enriched);
           setLoading(false);
         }

@@ -35,9 +35,6 @@ export const checkDocsAvailable = async (
   // Kolla huvud-sökvägen
   if (docStoragePath) {
     const exists = await storageExists(docStoragePath);
-    if (import.meta.env.DEV && additionalPaths && additionalPaths.length > 0) {
-      console.debug(`[checkDocsAvailable] Main path ${docStoragePath}: ${exists ? '✓' : '✗'}`);
-    }
     if (exists) return true;
   }
   
@@ -47,17 +44,8 @@ export const checkDocsAvailable = async (
       const path = additionalPaths[i];
       const exists = await storageExists(path);
       if (exists) {
-        if (import.meta.env.DEV) {
-          console.debug(`[checkDocsAvailable] ✓ Found documentation at: ${path}`);
-        }
         return true;
       }
-      // Don't log every missing path - only log when found or if all paths fail
-    }
-    
-    // Only log warning if we checked multiple paths and none were found
-    if (import.meta.env.DEV && additionalPaths.length > 1) {
-      console.debug(`[checkDocsAvailable] No documentation found in ${additionalPaths.length} paths`);
     }
   }
   

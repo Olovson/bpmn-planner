@@ -57,21 +57,6 @@ const NodeMatrix = () => {
       return updates ? { ...node, ...updates } : node;
     });
     
-    // Debug logging
-    if (import.meta.env.DEV) {
-      console.log('[NodeMatrix] Merged nodes:', {
-        total: merged.length,
-        withDocs: merged.filter(n => n.hasDocs).length,
-        callActivities: merged.filter(n => n.nodeType === 'CallActivity').length,
-        callActivitiesWithDocs: merged.filter(n => n.nodeType === 'CallActivity' && n.hasDocs).length,
-        sampleNodes: merged.slice(0, 3).map(n => ({
-          type: n.nodeType,
-          elementId: n.elementId,
-          hasDocs: n.hasDocs,
-          subprocessFile: n.subprocessFile,
-        })),
-      });
-    }
     
     return merged;
   }, [nodes, localNodeUpdates]);
@@ -107,17 +92,7 @@ const NodeMatrix = () => {
 
   // Slutlig lista som visas i tabellen – filtrerad och sorterad
   const filteredAndSortedNodes = useMemo(() => {
-    const result = filterNodesByType(sortedNodes, selectedNodeType);
-    // Debug logging
-    if (import.meta.env.DEV) {
-      console.log('[NodeMatrix Filter Debug]', {
-        selectedNodeType,
-        sortedNodesCount: sortedNodes.length,
-        filteredCount: result.length,
-        sampleNodeTypes: sortedNodes.slice(0, 5).map(n => n.nodeType),
-      });
-    }
-    return result;
+    return filterNodesByType(sortedNodes, selectedNodeType);
   }, [sortedNodes, selectedNodeType]);
 
   // Kontrollera om det finns aktiva filter
@@ -364,7 +339,6 @@ const NodeMatrix = () => {
               <Select
                 value={selectedNodeType}
                 onValueChange={(value) => {
-                  console.log('[NodeMatrix] Filter changed:', value);
                   setSelectedNodeType(value as NodeTypeFilterValue);
                 }}
               >

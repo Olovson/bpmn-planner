@@ -81,13 +81,6 @@ export const useFileArtifactCoverage = (fileName: string) => {
       const rootIsRelevant = isRelevantNodeType(graph.root);
       const total_nodes = relevantNodes.length + (rootIsRelevant ? 1 : 0);
 
-      if (import.meta.env.DEV) {
-        console.log(`[Coverage Debug] ${fileName}:`, {
-          total_nodes,
-          relevant_node_ids: relevantNodes.map(n => `${n.bpmnFile}:${n.bpmnElementId}`),
-          graph_total_nodes: graph.allNodes.size,
-        });
-      }
 
       // Get DoR/DoD coverage from database for all nodes in the process (including subprocesses)
       // We need to check all files that are part of this process graph
@@ -129,15 +122,6 @@ export const useFileArtifactCoverage = (fileName: string) => {
       );
       const tests_covered = uniqueTestNodes.size;
 
-      if (import.meta.env.DEV) {
-        console.log(`[Coverage Debug] ${fileName} - Tests:`, {
-          test_links_found: testLinksData?.length || 0,
-          unique_test_nodes: Array.from(uniqueTestNodes),
-          tests_covered,
-          coverage_status: getCoverageStatus(tests_covered, total_nodes),
-        });
-      }
-
       const hasHierarchyTests = await hasHierarchicalTestsForFile(fileName);
       const hierarchyCovered = hasHierarchyTests ? 1 : 0;
 
@@ -172,9 +156,6 @@ export const useFileArtifactCoverage = (fileName: string) => {
               .from('bpmn-files')
               .list(docFolder, { limit: 1000 });
             
-            if (error && import.meta.env.DEV) {
-              console.debug(`[Coverage] Error listing ${docFolder}:`, error.message);
-            }
             
             if (docEntries && docEntries.length > 0) {
               docNames = new Set(docEntries.map(entry => entry.name));
@@ -363,14 +344,6 @@ export const useAllFilesArtifactCoverage = () => {
             relevantNodes.forEach(n => {
               nodesByFile.set(n.bpmnFile, (nodesByFile.get(n.bpmnFile) || 0) + 1);
             });
-            // Debug-logging endast om det finns något intressant att visa
-            if (total_nodes > 0) {
-              console.debug(`[Coverage] ${file.file_name}:`, {
-                total_nodes,
-                household_nodes_count: householdNodes.length,
-                nodes_by_file: Object.fromEntries(nodesByFile),
-              });
-            }
           }
 
           // Check documentation for all nodes in the process (including subprocesses)
@@ -403,9 +376,6 @@ export const useAllFilesArtifactCoverage = () => {
                   .from('bpmn-files')
                   .list(docFolder, { limit: 1000 });
                 
-                if (error && import.meta.env.DEV) {
-                  console.debug(`[Coverage] Error listing ${docFolder}:`, error.message);
-                }
                 
                 if (docEntries && docEntries.length > 0) {
                   docNames = new Set(docEntries.map(entry => entry.name));

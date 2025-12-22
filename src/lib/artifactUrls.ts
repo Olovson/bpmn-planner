@@ -77,23 +77,13 @@ export async function storageFileExists(filePath: string): Promise<boolean> {
 
     if (error) {
       // Only log unexpected errors (not expected errors for missing files)
-      if (import.meta.env.DEV) {
-        // List errors are usually about permissions or invalid paths, not 400/404
-        console.debug('[storageFileExists] list error for', filePath, error);
-      }
       return false;
     }
 
     const exists = Boolean(data?.find((entry) => entry.name === fileName));
-    if (exists && import.meta.env.DEV) {
-      console.debug(`[storageFileExists] ✓ Found: ${filePath}`);
-    }
     return exists;
   } catch (error) {
     // Network errors or other exceptions - return false silently
-    if (import.meta.env.DEV) {
-      console.debug('[storageFileExists] exception for', filePath, error);
-    }
     return false;
   }
 }

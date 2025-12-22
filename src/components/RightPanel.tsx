@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Trash2, ExternalLink, AlertCircle, FileCode, CheckCircle2, LayoutList, Clock, XCircle, ArrowUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,10 @@ import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 import { useNodeTests } from '@/hooks/useNodeTests';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NodeSummaryCard } from '@/components/NodeSummaryCard';
+import { useProcessTree } from '@/hooks/useProcessTree';
+import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
+import { buildSubprocessNavigationMap } from '@/lib/processTreeNavigation';
+import type { ProcessTreeNode } from '@/lib/processTree';
 
 interface RightPanelProps {
   selectedElement?: string | null;
@@ -70,6 +74,30 @@ export const RightPanel = ({
   const { toast } = useToast();
   const { data: availableBpmnFiles = [] } = useDynamicBpmnFiles();
   const { data: availableDmnFiles = [] } = useDynamicDmnFiles();
+  const { data: rootBpmnFile } = useRootBpmnFile();
+  const hierarchyRootFile = rootBpmnFile || bpmnFile || 'mortgage.bpmn';
+  const { data: processTree } = useProcessTree(hierarchyRootFile);
+  const subprocessNavMap = useMemo(
+    () => buildSubprocessNavigationMap(processTree),
+    [processTree],
+  );
+  
+  // Find call activity node from process tree (similar to BpmnViewer)
+  const findCallActivityNode = useCallback(
+    (targetFile: string, elementId: string): ProcessTreeNode | null => {
+      if (!processTree) return null;
+      const stack: ProcessTreeNode[] = [processTree];
+      while (stack.length > 0) {
+        const node = stack.pop()!;
+        if (node.type === 'callActivity' && node.bpmnFile === targetFile && node.bpmnElementId === elementId) {
+          return node;
+        }
+        stack.push(...node.children);
+      }
+      return null;
+    },
+    [processTree],
+  );
 
   // Get test file URL from node_test_links
   const [testFilePath, setTestFilePath] = useState<string | null>(null);
@@ -81,20 +109,15 @@ export const RightPanel = ({
 
     const fetchTestFileUrl = async () => {
       try {
-        const { data, error, status } = await supabase
+        const { data, error } = await supabase
           .from('node_test_links')
           .select('test_file_path')
           .eq('bpmn_file', bpmnFile)
           .eq('bpmn_element_id', selectedElement)
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (error) {
-          if (status === 406) {
-            console.warn('[RightPanel] node_test_links 406 for', bpmnFile, selectedElement);
-            setTestFilePath(null);
-            return;
-          }
           console.error('[RightPanel] node_test_links error', error);
           setTestFilePath(null);
           return;
@@ -282,16 +305,39 @@ export const RightPanel = ({
   }, [selectedElement]);
 
   const displaySubprocessFile = useMemo(() => {
-    if (!selectedElement) return '';
+    if (!selectedElement || !bpmnFile) return '';
     const mapping = mappings[selectedElement];
+    
+    // Priority 1: Manual mapping from database
     if (mapping?.subprocess_bpmn_file) {
       return mapping.subprocess_bpmn_file;
     }
+    
+    // Priority 2: Process tree hierarchy match (same as BpmnViewer)
+    const hierarchyMatch = subprocessNavMap.get(`${bpmnFile}:${selectedElement}`);
+    if (hierarchyMatch) {
+      return hierarchyMatch;
+    }
+    
+    // Priority 3: Call activity node from process tree
+    const callActivityNode = findCallActivityNode(bpmnFile, selectedElement);
+    if (callActivityNode) {
+      const link = callActivityNode.subprocessLink as any;
+      const linkCandidate: string | null =
+        (link && typeof link.matchedFileName === 'string' && link.matchedFileName) ||
+        (callActivityNode.subprocessFile ?? null);
+      if (linkCandidate) {
+        return linkCandidate;
+      }
+    }
+    
+    // Priority 4: Element resource mapping (legacy)
     if (elementResources?.bpmnFile) {
       return elementResources.bpmnFile;
     }
+    
     return '';
-  }, [selectedElement, mappings, elementResources]);
+  }, [selectedElement, bpmnFile, mappings, elementResources, subprocessNavMap, findCallActivityNode]);
 
   const displayConfluenceUrl = useMemo(() => {
     if (!selectedElement) return '';
@@ -322,10 +368,6 @@ export const RightPanel = ({
     let cancelled = false;
     const loadArtifacts = async () => {
       if (!selectedElement || !bpmnFile) {
-        console.debug('[RightPanel] loadArtifacts: missing selection or bpmnFile', {
-          selectedElement,
-          bpmnFile,
-        });
         setHasDocs(false);
         setHasTestReport(false);
         return;
@@ -356,29 +398,19 @@ export const RightPanel = ({
         // Bygg Feature Goal-sökvägar för call activities (inkl. versioned paths)
         let featureGoalPaths: string[] | undefined = undefined;
         if (isCallActivity && subprocessFile) {
-          // Get version hash for the parent BPMN file (where call activity is defined)
-          const parentBpmnFileName = bpmnFile.endsWith('.bpmn') ? bpmnFile : `${bpmnFile}.bpmn`;
-          const versionHash = await getCurrentVersionHash(parentBpmnFileName);
+          // VIKTIGT: Filen sparas under subprocess-filens version hash (inte parent-filens)
+          // Se kommentar i artifactUrls.ts rad 117-118 och 126
+          const subprocessBpmnFileName = subprocessFile.endsWith('.bpmn') ? subprocessFile : `${subprocessFile}.bpmn`;
+          const versionHash = await getCurrentVersionHash(subprocessBpmnFileName);
           
           featureGoalPaths = getFeatureGoalDocStoragePaths(
             subprocessFile,    // subprocess BPMN file
             selectedElement,   // call activity element ID
             bpmnFile,          // parent BPMN file (där call activity är definierad)
-            versionHash,       // version hash for versioned paths
-            parentBpmnFileName, // BPMN file name for versioned paths
+            versionHash,       // version hash for versioned paths (från subprocess-filen)
+            subprocessBpmnFileName, // BPMN file name for versioned paths (subprocess-filen)
           );
         }
-        
-        console.debug('[RightPanel] loadArtifacts: start', {
-          bpmnFile,
-          selectedElement,
-          selectedElementName,
-          docStoragePath,
-          isCallActivity,
-          subprocessFile,
-          featureGoalPaths: featureGoalPaths?.slice(0, 3), // Logga bara första 3 för debug
-          hasMapping: Boolean(mapping),
-        });
 
         const [docsAvailable, testReportAvailable] = await Promise.all([
           checkDocsAvailable(
@@ -389,14 +421,6 @@ export const RightPanel = ({
           ),
           checkTestReportAvailable(mapping?.test_report_url),
         ]);
-
-        console.debug('[RightPanel] loadArtifacts: resolved', {
-          bpmnFile,
-          selectedElement,
-          docStoragePath,
-          docsAvailable,
-          hasTestReport: testReportAvailable,
-        });
 
         if (!cancelled) {
           setHasDocs(docsAvailable);

@@ -86,7 +86,6 @@ const Index = () => {
       baseRootRef.current = derivedRoot;
       // Sätt bara rotfilen i URL/state om användaren inte redan har valt en specifik fil
       if (!urlFile) {
-        console.log('[Index] Setting currentBpmnFile to root:', derivedRoot);
         setCurrentBpmnFile(derivedRoot);
         setSearchParams((prev) => {
           const next = new URLSearchParams(prev);
