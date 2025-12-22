@@ -124,16 +124,16 @@ export function getFeatureGoalDocStoragePaths(
   const paths: string[] = [];
   
   // Determine which BPMN file to use for versioned paths
-  // For call activities: use parent file (where call activity is defined)
-  // For process nodes: use subprocess file
-  const fileForVersion = bpmnFileForVersion || parentBpmnFile || subprocessBpmnFile;
+  // VIKTIGT: Varje subprocess-fil använder sin egen version hash
+  // bpmnFileForVersion ska vara subprocess-filen (inte parent-filen)
+  const fileForVersion = bpmnFileForVersion || subprocessBpmnFile;
   const bpmnFileName = fileForVersion.endsWith('.bpmn') ? fileForVersion : `${fileForVersion}.bpmn`;
   // VIKTIGT: Filen är sparad MED .bpmn i sökvägen, så vi behåller .bpmn för versioned paths
   const bpmnFileBaseName = bpmnFileName.replace('.bpmn', ''); // För non-versioned paths
   const bpmnFileNameForVersionedPath = bpmnFileName; // För versioned paths, behåll .bpmn
   
   // VIKTIGT: För call activities använder vi ALLTID hierarchical naming (med parent)
-  // eftersom filen alltid sparas under parent-filens version hash.
+  // men filen sparas under subprocess-filens version hash (inte parent-filens).
   // Legacy naming (utan parent) har tagits bort - alla filer måste genereras om med hierarchical naming.
   if (parentBpmnFile) {
     const hierarchicalKey = getFeatureGoalDocFileKey(

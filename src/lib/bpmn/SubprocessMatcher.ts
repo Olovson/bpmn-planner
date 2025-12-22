@@ -4,10 +4,14 @@ import type {
   MatchCandidate,
   DiagnosticsEntry,
 } from './types';
+import type { BpmnMap } from './bpmnMapLoader';
+import { matchCallActivityUsingMap } from './bpmnMapLoader';
 
 export type SubprocessMatcherConfig = {
   fuzzyThreshold?: number;
   ambiguityDelta?: number;
+  bpmnMap?: BpmnMap;
+  currentBpmnFile?: string; // BPMN-filen som callActivity tillhör
 };
 
 const DEFAULT_CONFIG: Required<SubprocessMatcherConfig> = {
@@ -36,6 +40,71 @@ export function matchCallActivityToProcesses(
   config: SubprocessMatcherConfig = {},
 ): SubprocessLink {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+  
+  // VIKTIGT: Försök först matcha via bpmn-map.json om det finns
+  if (config.bpmnMap && config.currentBpmnFile) {
+    const mapMatch = matchCallActivityUsingMap(
+      callActivity,
+      config.currentBpmnFile,
+      config.bpmnMap,
+    );
+    
+    if (mapMatch.matchedFileName) {
+      // Hitta kandidaten som matchar filnamnet från bpmn-map.json
+      const matchedCandidate = candidates.find(
+        (c) => c.fileName === mapMatch.matchedFileName
+      );
+      
+      if (matchedCandidate) {
+        // Returnera matchning baserad på bpmn-map.json
+        return {
+          callActivityId: callActivity.id,
+          callActivityName: callActivity.name,
+          calledElement: callActivity.calledElement,
+          matchedProcessId: matchedCandidate.id,
+          matchedFileName: matchedCandidate.fileName,
+          confidence: 1.0, // Hög konfidens när matchning kommer från bpmn-map.json
+          matchStatus: 'matched',
+          matchSource: 'bpmn-map',
+          candidates: [{
+            processId: matchedCandidate.id,
+            fileName: matchedCandidate.fileName,
+            score: 1.0,
+            reason: 'bpmn-map.json match',
+          }],
+          diagnostics: [],
+        };
+      } else {
+        // VIKTIGT: Även om kandidaten inte finns bland kandidaterna (t.ex. filen inte är direkt nåbar),
+        // returnera matchningen med matchedFileName så att den kan användas senare
+        // Detta är viktigt för filer som inte är direkt nåbara från root-processen
+        if (import.meta.env.DEV) {
+          console.warn(
+            `[SubprocessMatcher] bpmn-map.json pekar på ${mapMatch.matchedFileName} ` +
+            `men filen hittades inte bland kandidaterna för callActivity ${callActivity.id}. ` +
+            `Använder matchedFileName direkt från bpmn-map.json.`
+          );
+        }
+        
+        // Returnera matchning med matchedFileName även om kandidaten saknas
+        // matchedProcessId kan vara undefined, men matchedFileName är viktigare
+        return {
+          callActivityId: callActivity.id,
+          callActivityName: callActivity.name,
+          calledElement: callActivity.calledElement,
+          matchedProcessId: undefined, // Kan inte hitta process ID om kandidaten saknas
+          matchedFileName: mapMatch.matchedFileName, // Men filnamnet är känt från bpmn-map.json
+          confidence: 1.0, // Hög konfidens när matchning kommer från bpmn-map.json
+          matchStatus: 'matched', // Fortfarande matched eftersom bpmn-map.json säger det
+          matchSource: 'bpmn-map',
+          candidates: [],
+          diagnostics: [],
+        };
+      }
+    }
+  }
+  
+  // Fallback till automatisk matchning om bpmn-map.json inte matchade
   const evaluatedCandidates = candidates
     .map((candidate) => evaluateCandidate(callActivity, candidate))
     .filter((candidate): candidate is MatchCandidate => candidate.score > 0)

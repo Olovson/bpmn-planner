@@ -75,6 +75,14 @@ export function matchCallActivityUsingMap(
   );
 
   if (entry?.subprocess_bpmn_file) {
+    if (import.meta.env.DEV) {
+      console.log(`[matchCallActivityUsingMap] ✅ Match found:`, {
+        callActivityId: callActivity.id,
+        callActivityName: callActivity.name,
+        matchedFileName: entry.subprocess_bpmn_file,
+        matchSource: 'bpmn-map',
+      });
+    }
     return { matchedFileName: entry.subprocess_bpmn_file, matchSource: 'bpmn-map' };
   }
 
@@ -84,6 +92,11 @@ export function matchCallActivityUsingMap(
       callActivityName: callActivity.name,
       callActivityCalledElement: callActivity.calledElement,
       inFile: bpmnFile,
+      availableCallActivities: proc.call_activities.map(ca => ({
+        bpmn_id: ca.bpmn_id,
+        name: ca.name,
+        called_element: ca.called_element,
+      })),
     });
   }
 

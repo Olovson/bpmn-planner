@@ -27,11 +27,13 @@ export async function loadAndParseBpmnFromFixtures(
 ): Promise<BpmnParseResult> {
   const defaultDirs = [
     resolve(__dirname, '..', 'fixtures', 'bpmn'),
-    resolve(__dirname, '..', 'fixtures', 'bpmn', 'analytics'),
+    // VIKTIGT: mortgage-se 2025.12.11 18:11 måste komma FÖRE analytics
+    // eftersom analytics-versionen av vissa filer saknar callActivities (t.ex. object-control)
     resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.12.11 18:11'),
     resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.12.11 17:44'),
     resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.12.08'),
     resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.11.29'),
+    resolve(__dirname, '..', 'fixtures', 'bpmn', 'analytics'),
   ];
   
   const allDirs = [...defaultDirs, ...fixtureDirs];

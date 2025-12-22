@@ -1663,7 +1663,7 @@ export default function BpmnFileManager() {
         checkCancellation, // Pass cancellation check function
         abortSignal, // Pass abort signal for LLM calls
         isRootFile, // Pass flag indicating if this is the actual root file
-        true, // forceRegenerate: Always regenerate when user explicitly triggers generation
+        false, // forceRegenerate: Skip existing files, only generate missing ones (saves time and cost)
       );
       checkCancellation();
 
@@ -1992,21 +1992,126 @@ export default function BpmnFileManager() {
       );
       checkCancellation();
 
-      // Get version hash for the BPMN file (uses selected version if available)
-      const versionHash = await getVersionHashForFile(file.file_name);
+      // Helper function to extract BPMN file from docFileName
+      // VIKTIGT: Varje dokument ska använda sin egen BPMN-fils version hash
+      const extractBpmnFileFromDocFileName = (docFileName: string, filesIncluded?: string[]): string | null => {
+        // For node docs: nodes/{bpmnFile}/{elementId}.html
+        const nodeMatch = docFileName.match(/^nodes\/([^\/]+)\/[^\/]+\.html$/);
+        if (nodeMatch) {
+          const baseName = nodeMatch[1];
+          // If it doesn't have .bpmn, add it
+          const bpmnFile = baseName.includes('.bpmn') ? baseName : `${baseName}.bpmn`;
+          // Verify it's in filesIncluded if available
+          if (filesIncluded && !filesIncluded.includes(bpmnFile)) {
+            // Try without .bpmn extension
+            if (filesIncluded.includes(baseName)) {
+              return baseName;
+            }
+          }
+          return bpmnFile;
+        }
+        
+        // For feature goals: feature-goals/{...}.html
+        // Feature goals can be hierarchical (parent-elementId) or subprocess-based
+        if (docFileName.startsWith('feature-goals/')) {
+          const featureGoalName = docFileName.replace('feature-goals/', '').replace('.html', '');
+          
+          // Try to match against known subprocess files
+          if (filesIncluded) {
+            // First, check if any file exactly matches the feature goal name
+            for (const includedFile of filesIncluded) {
+              const baseName = includedFile.replace('.bpmn', '');
+              if (featureGoalName === baseName) {
+                return includedFile;
+              }
+            }
+            
+            // For hierarchical naming (parent-elementId), try to extract elementId
+            // Pattern: "mortgage-se-application-internal-data-gathering"
+            // We want to find the subprocess file that matches the elementId part
+            // Try to find a file where the baseName ends with the last part of featureGoalName
+            const parts = featureGoalName.split('-');
+            if (parts.length > 3) {
+              // Likely hierarchical: try to match last 2-3 parts as elementId
+              // E.g., "internal-data-gathering" -> "mortgage-se-internal-data-gathering.bpmn"
+              const possibleElementId = parts.slice(-3).join('-'); // Last 3 parts
+              const possibleElementId2 = parts.slice(-2).join('-'); // Last 2 parts
+              
+              for (const includedFile of filesIncluded) {
+                const baseName = includedFile.replace('.bpmn', '');
+                // Check if baseName ends with the elementId
+                if (baseName.endsWith(`-${possibleElementId}`) || 
+                    baseName.endsWith(`-${possibleElementId2}`) ||
+                    baseName === `mortgage-se-${possibleElementId}` ||
+                    baseName === `mortgage-se-${possibleElementId2}`) {
+                  return includedFile;
+                }
+              }
+            }
+            
+            // Fallback: check if any file name is contained in feature goal name
+            for (const includedFile of filesIncluded) {
+              const baseName = includedFile.replace('.bpmn', '');
+              if (featureGoalName.includes(baseName) || baseName.includes(featureGoalName)) {
+                return includedFile;
+              }
+            }
+          }
+          
+          // Fallback: try to infer from feature goal name pattern
+          // E.g., "mortgage-se-household" -> "mortgage-se-household.bpmn"
+          if (featureGoalName.match(/^mortgage-se-[a-z-]+$/)) {
+            return `${featureGoalName}.bpmn`;
+          }
+          
+          // If we can't determine, return null to use root file as fallback
+          return null;
+        }
+        
+        // For combined file docs: {bpmnFile}.html
+        if (docFileName.match(/^[^\/]+\.html$/)) {
+          return docFileName.replace('.html', '.bpmn');
+        }
+        
+        return null;
+      };
+
+      // Get version hashes for all files that might be in the result
+      const versionHashCache = new Map<string, string | null>();
+      const getVersionHashForDoc = async (bpmnFileName: string | null): Promise<string | null> => {
+        const targetFile = bpmnFileName || file.file_name;
+        if (versionHashCache.has(targetFile)) {
+          return versionHashCache.get(targetFile) || null;
+        }
+        const hash = await getVersionHashForFile(targetFile);
+        versionHashCache.set(targetFile, hash);
+        return hash;
+      };
 
       if (result.docs.size > 0) {
         if (import.meta.env.DEV) {
-          console.log(`[BpmnFileManager] Uploading ${result.docs.size} docs for ${file.file_name}, versionHash: ${versionHash}`);
+          console.log(`[BpmnFileManager] Uploading ${result.docs.size} docs for ${file.file_name}`);
         }
+        // Get filesIncluded from result metadata for better file matching
+        const filesIncluded = result.metadata?.filesIncluded || [];
+        
         for (const [docFileName, docContent] of result.docs.entries()) {
           checkCancellation();
+          
+          // Extract BPMN file from docFileName
+          const docBpmnFile = extractBpmnFileFromDocFileName(docFileName, filesIncluded) || file.file_name;
+          const docVersionHash = await getVersionHashForDoc(docBpmnFile);
+          
+          if (import.meta.env.DEV && docBpmnFile !== file.file_name) {
+            console.log(`[BpmnFileManager] Doc ${docFileName} belongs to ${docBpmnFile} (not root ${file.file_name})`);
+          }
+          
           const { modePath: docPath } = buildDocStoragePaths(
             docFileName,
             effectiveLlmMode ?? null,
             llmProvider,
-            file.file_name, // bpmnFileName
-            versionHash // versionHash
+            docBpmnFile, // Use the extracted BPMN file, not the root file
+            docVersionHash // Use the version hash for that specific file
           );
           if (import.meta.env.DEV) {
             console.log(`[BpmnFileManager] Uploading doc: ${docFileName} -> ${docPath}`);

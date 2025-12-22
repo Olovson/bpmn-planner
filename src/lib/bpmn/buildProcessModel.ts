@@ -145,6 +145,9 @@ export function buildProcessModelFromDefinitions(
 
   const hierarchy = buildProcessHierarchy(allDefinitions, {
     preferredRootProcessIds,
+    matcherConfig: options.bpmnMap ? {
+      bpmnMap: options.bpmnMap,
+    } : undefined,
   });
 
   const model = buildProcessModelFromHierarchy(hierarchy);

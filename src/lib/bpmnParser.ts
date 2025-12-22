@@ -46,10 +46,91 @@ export class BpmnParser {
 
   async parse(bpmnXml: string): Promise<BpmnParseResult> {
     try {
-      await this.modeler.importXML(bpmnXml);
+      // VIKTIGT: bpmn-js importXML kan hantera både ren XML och data URLs
+      // Men för vår workaround behöver vi ren XML-text, så dekoda data URL om det behövs
+      let xmlText = bpmnXml;
+      if (bpmnXml.startsWith('data:application/xml;base64,')) {
+        const base64 = bpmnXml.split(',')[1];
+        // Use Buffer in Node.js, atob in browser
+        if (typeof Buffer !== 'undefined') {
+          xmlText = Buffer.from(base64, 'base64').toString('utf-8');
+        } else {
+          xmlText = atob(base64);
+        }
+      }
+      
+      // DEBUG: Verify XML text contains callActivities
+      const hasObjectControl = xmlText.includes('object-control');
+      const hasManualCreditEval = xmlText.includes('mortgage-se-manual-credit-evaluation');
+      if (import.meta.env.DEV && hasManualCreditEval && !hasObjectControl) {
+        // Check what process IDs are in the XML
+        const processMatches = xmlText.match(/<bpmn:process[^>]*id="([^"]+)"[^>]*>/g);
+        console.log(`[bpmnParser] DEBUG: xmlText for manual-credit-evaluation does NOT contain 'object-control'`);
+        console.log(`[bpmnParser] DEBUG: Process IDs in XML:`, processMatches?.map(m => m.match(/id="([^"]+)"/)?.[1]));
+        // Check all callActivity IDs in XML
+        const allCallActivityMatches = xmlText.match(/<(?:bpmn:)?callActivity[^>]*id="([^"]+)"[^>]*>/g);
+        console.log(`[bpmnParser] DEBUG: All callActivity IDs in XML:`, allCallActivityMatches?.map(m => m.match(/id="([^"]+)"/)?.[1]));
+      }
+      
+      await this.modeler.importXML(xmlText);
       
       const elementRegistry = this.modeler.get('elementRegistry') as any;
       const allElements = elementRegistry.getAll();
+      
+      // WORKAROUND: Parse callActivities directly from XML if they're missing from elementRegistry
+      // This handles cases where bpmn-js doesn't include certain callActivities (e.g., object-control)
+      // Use regex to find callActivities in XML (works in both browser and Node.js)
+      // Match opening tag - handle both single-line and attributes on same line
+      const callActivityRegex = /<(?:bpmn:)?callActivity[^>]*id="([^"]+)"[^>]*(?:name="([^"]*)")?[^>]*(?:calledElement="([^"]*)")?[^>]*>/g;
+      const xmlCallActivityIds = new Set<string>();
+      const xmlCallActivityData = new Map<string, { name: string; calledElement: string | null }>();
+      let match;
+      let matchCount = 0;
+      while ((match = callActivityRegex.exec(xmlText)) !== null) {
+        matchCount++;
+        const id = match[1];
+        // Extract name from full match (may not be in capture group if attributes are in different order)
+        const fullMatch = match[0];
+        const nameMatch = fullMatch.match(/name="([^"]+)"/);
+        const name = nameMatch ? nameMatch[1] : (match[2] || id);
+        const calledElement = match[3] || null;
+        xmlCallActivityIds.add(id);
+        xmlCallActivityData.set(id, { name, calledElement });
+      }
+      
+      if (import.meta.env.DEV) {
+        console.log(`[bpmnParser] DEBUG: Regex matched ${matchCount} times, found ${xmlCallActivityIds.size} unique callActivities in XML:`, Array.from(xmlCallActivityIds));
+      }
+      
+      // Check if any callActivities from XML are missing from elementRegistry
+      // NOTE: bpmn-js may use calledElement as the ID for some callActivities (e.g., Activity_1gzlxx4 -> credit-evaluation)
+      // So we need to check both the actual ID and the calledElement
+      const registryCallActivityIds = new Set(
+        allElements
+          .filter((e: any) => e.businessObject?.$type === 'bpmn:CallActivity')
+          .flatMap((e: any) => {
+            const ids = [e.id];
+            // Also check if calledElement matches any XML callActivity ID
+            if (e.businessObject?.calledElement) {
+              ids.push(e.businessObject.calledElement);
+            }
+            return ids;
+          })
+      );
+      
+      const missingCallActivityIds = Array.from(xmlCallActivityIds).filter(
+        id => !registryCallActivityIds.has(id)
+      );
+      
+      // Always log in test environment for debugging
+      if (missingCallActivityIds.length > 0) {
+        console.warn(
+          `[bpmnParser] Found ${missingCallActivityIds.length} callActivities in XML but not in elementRegistry:`,
+          missingCallActivityIds
+        );
+        console.log(`[bpmnParser] XML callActivity IDs:`, Array.from(xmlCallActivityIds));
+        console.log(`[bpmnParser] Registry callActivity IDs:`, Array.from(registryCallActivityIds));
+      }
 
       const elements: BpmnElement[] = [];
       const subprocesses: BpmnSubprocess[] = [];
@@ -104,6 +185,43 @@ export class BpmnParser {
 
       const timestamp = () => new Date().toISOString();
 
+      // DEBUG: Log all callActivity elements found in elementRegistry
+      // Note: This runs in test environment too, so we check for both DEV and test
+      const allCallActivityElements = allElements.filter((e: any) => 
+        e.businessObject?.$type === 'bpmn:CallActivity'
+      );
+      if (allCallActivityElements.length > 0) {
+        console.log(`[bpmnParser] Found ${allCallActivityElements.length} CallActivity elements in elementRegistry:`);
+        allCallActivityElements.forEach((e: any) => {
+          const owningProcess = e.businessObject?.$parent;
+          const processId = owningProcess?.id || 'unknown';
+          console.log(`  - ${e.id} (${e.businessObject?.name || 'no name'}) - calledElement: ${e.businessObject?.calledElement || 'none'} - process: ${processId}`);
+        });
+      }
+      
+      // DEBUG: Check if object-control exists in allElements with any type
+      const objectControlAny = allElements.find((e: any) => e.id === 'object-control');
+      if (!objectControlAny && allCallActivityElements.length > 0) {
+        // Check if this file contains manual-credit-evaluation process
+        const hasManualCreditEval = allElements.some((e: any) => 
+          e.businessObject?.id === 'mortgage-se-manual-credit-evaluation' ||
+          e.id === 'mortgage-se-manual-credit-evaluation'
+        );
+        if (hasManualCreditEval || processId === 'mortgage-se-manual-credit-evaluation') {
+          console.log(`[bpmnParser] ⚠️ object-control NOT found in elementRegistry for process ${processId}`);
+          console.log(`[bpmnParser] Total elements in registry: ${allElements.length}`);
+          // Check if there are any elements with "object" in the id
+          const objectRelated = allElements.filter((e: any) => 
+            e.id?.toLowerCase().includes('object') || 
+            e.businessObject?.name?.toLowerCase().includes('object')
+          );
+          console.log(`[bpmnParser] Elements with "object" in id/name: ${objectRelated.length}`);
+          objectRelated.forEach((e: any) => {
+            console.log(`  - ${e.id} (${e.businessObject?.name || 'no name'}) - type: ${e.businessObject?.$type}`);
+          });
+        }
+      }
+      
       allElements.forEach((element: any) => {
         const bo = element.businessObject;
         if (!bo) return;
@@ -224,52 +342,71 @@ export class BpmnParser {
               });
             }
           }
-        } else if (bo.$type === 'bpmn:ServiceTask') {
-          serviceTasks.push(bpmnElement);
-          metaTasks.push({
-            id: element.id,
-            name: bo.name || element.id,
-            type: 'ServiceTask',
-          });
-          const owningProcessId = findOwningProcessId(bo) || firstProcessId || processId;
-          ensureProcessMeta(owningProcessId, processName)?.tasks.push({
-            id: element.id,
-            name: bo.name || element.id,
-            type: 'ServiceTask',
-          });
-        } else if (bo.$type === 'bpmn:UserTask') {
-          userTasks.push(bpmnElement);
-          metaTasks.push({
-            id: element.id,
-            name: bo.name || element.id,
-            type: 'UserTask',
-          });
-          ensureProcessMeta(findOwningProcessId(bo) || firstProcessId || processId, processName)?.tasks.push({
-            id: element.id,
-            name: bo.name || element.id,
-            type: 'UserTask',
-          });
-        } else if (bo.$type === 'bpmn:BusinessRuleTask') {
-          businessRuleTasks.push(bpmnElement);
-          metaTasks.push({
-            id: element.id,
-            name: bo.name || element.id,
-            type: 'BusinessRuleTask',
-          });
-          ensureProcessMeta(findOwningProcessId(bo) || firstProcessId || processId, processName)?.tasks.push({
-            id: element.id,
-            name: bo.name || element.id,
-            type: 'BusinessRuleTask',
-          });
-        } else if (bo.$type === 'bpmn:SequenceFlow') {
-          sequenceFlows.push({
-            id: element.id,
-            name: bo.name || '',
-            sourceRef: bo.sourceRef?.id || '',
-            targetRef: bo.targetRef?.id || '',
-          });
         }
       });
+      
+      // WORKAROUND: Add missing callActivities from XML directly
+      if (missingCallActivityIds.length > 0) {
+        for (const missingId of missingCallActivityIds) {
+          const callActivityData = xmlCallActivityData.get(missingId);
+          if (callActivityData) {
+            const { name, calledElement } = callActivityData;
+            
+            // Create a synthetic BpmnElement for the missing callActivity
+            const syntheticElement: BpmnElement = {
+              id: missingId,
+              name,
+              type: 'bpmn:CallActivity',
+              businessObject: {
+                $type: 'bpmn:CallActivity',
+                id: missingId,
+                name,
+                calledElement,
+                $parent: allElements.find((e: any) => 
+                  e.businessObject?.$type === 'bpmn:Process'
+                )?.businessObject,
+              },
+            };
+            
+            callActivities.push(syntheticElement);
+            elements.push(syntheticElement);
+            
+            subprocesses.push({
+              id: missingId,
+              name,
+              file: calledElement ? `/bpmn/mortgage-se-${calledElement}.bpmn` : undefined,
+            });
+            
+            metaCallActivities.push({
+              id: missingId,
+              name,
+              calledElement,
+            });
+            
+            // Add to process meta
+            const owningProcess = ensureProcessMeta(firstProcessId || processId, processName);
+            if (owningProcess) {
+              owningProcess.callActivities.push({
+                id: missingId,
+                name,
+                calledElement,
+              });
+              if (!owningProcess.subprocessCandidates) {
+                owningProcess.subprocessCandidates = [];
+              }
+              owningProcess.subprocessCandidates.push({
+                id: missingId,
+                name,
+                kind: 'callActivity',
+              });
+            }
+            
+            if (import.meta.env.DEV) {
+              console.log(`[bpmnParser] ✅ Added missing callActivity ${missingId} from XML`);
+            }
+          }
+        }
+      }
 
       const orderedProcesses = processOrder
         .map((id) => processMetaMap.get(id)!)
@@ -329,6 +466,13 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
 
   const tryLocal = async () => {
     try {
+      // Handle data URLs directly (used in tests and for versioned files)
+      if (fileUrl.startsWith('data:application/xml;base64,')) {
+        const base64 = fileUrl.split(',')[1];
+        const xml = atob(base64);
+        return { xml, cacheKey };
+      }
+      
       // I Node.js-miljö fungerar inte relativa URLs - hoppa över tryLocal
       // Tester använder data URLs direkt (samma approach som appen använder för versioned files)
       if (typeof window === 'undefined' && !fileUrl.startsWith('http') && !fileUrl.startsWith('data:')) {

@@ -65,6 +65,7 @@ vi.mock('@/lib/bpmnProcessGraph', async (importOriginal) => {
         }
       }
       // Use actual buildBpmnProcessGraphFromParseResults (faktisk kod!)
+      // Note: bpmnMap is optional - will use automatic matching if not provided
       return actual.buildBpmnProcessGraphFromParseResults(rootFile, parseResults);
     },
   };

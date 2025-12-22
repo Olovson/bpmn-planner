@@ -292,22 +292,22 @@ export const useAllBpmnNodes = () => {
                     ? node.subprocessFile
                     : `${node.subprocessFile}.bpmn`;
                   
-                  // Get version hash for the parent BPMN file (where call activity is defined)
-                  const parentBpmnFileName = node.bpmnFile.endsWith('.bpmn') 
-                    ? node.bpmnFile 
-                    : `${node.bpmnFile}.bpmn`;
-                  const versionHash = await getVersionHash(parentBpmnFileName);
+                  // VIKTIGT: Använd subprocess-filens version hash, inte parent-filens
+                  // Dokumentationen sparas nu under varje fils egen version hash
+                  const subprocessVersionHash = await getVersionHash(subprocessFile);
                   
                   featureGoalPaths = getFeatureGoalDocStoragePaths(
                     subprocessFile.replace('.bpmn', ''), // subprocess BPMN file (without .bpmn for getFeatureGoalDocFileKey)
                     node.elementId,       // call activity element ID
                     node.bpmnFile,       // parent BPMN file (där call activity är definierad)
-                    versionHash,         // version hash for versioned paths
-                    parentBpmnFileName,  // BPMN file name for versioned paths
+                    subprocessVersionHash, // VIKTIGT: Använd subprocess-filens version hash
+                    subprocessFile,      // VIKTIGT: Använd subprocess-filen för versioned paths
                   );
                 }
               } else {
-                // För Epic-dokumentation (UserTask, ServiceTask, BusinessRuleTask): kolla både versioned och non-versioned paths
+                // För Epic-dokumentation (UserTask, ServiceTask, BusinessRuleTask): 
+                // VIKTIGT: Använd alltid nodens egen BPMN-fil och dess version hash
+                // Dokumentationen sparas nu under varje fils egen version hash
                 const bpmnFileName = node.bpmnFile.endsWith('.bpmn') 
                   ? node.bpmnFile 
                   : `${node.bpmnFile}.bpmn`;

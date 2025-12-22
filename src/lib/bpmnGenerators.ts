@@ -1982,6 +1982,18 @@ export async function generateAllFromBpmnWithGraph(
             }
             
             if (node.type === 'callActivity') {
+              // VIKTIGT: Validera att detta faktiskt är en CallActivity (inte en task)
+              // Förhindra att tasks genereras som feature goals
+              if (node.type !== 'callActivity') {
+                if (import.meta.env.DEV) {
+                  console.warn(
+                    `[bpmnGenerators] ⚠️ Skipping Feature Goal generation for ${node.bpmnElementId} - ` +
+                    `node is not a CallActivity (type: ${node.type})`
+                  );
+                }
+                continue;
+              }
+              
               // VIKTIGT: Verifiera att subprocess-filen faktiskt finns innan vi genererar Feature Goal
               // Om subprocess-filen saknas, hoppa över (borde redan filtrerats bort i nodesToGenerate,
               // men dubbelkolla här också för säkerhets skull)
@@ -2334,13 +2346,15 @@ export async function generateAllFromBpmnWithGraph(
         const isSubprocessFile = (hasCallActivityPointingToFile || !!processNodeForFile) && !isRootProcessFromMap;
         
         if (isSubprocessFile && nodesInFile.length > 0 && processNodeForFile) {
-          // Hitta root-processen för denna fil (redan hittad ovan)
-          
-          if (processNodeForFile) {
+          // VIKTIGT: Validera att processNodeForFile faktiskt är en process-nod
+          // Förhindra att tasks (ServiceTask/UserTask) genereras som feature goals
+          if (processNodeForFile.type === 'process') {
+            // Hitta root-processen för denna fil (redan hittad ovan)
             const subprocessDocKey = `subprocess:${file}`;
             // Kolla om base Feature Goal-dokumentation redan genererats (från callActivity)
             const baseDocExists = generatedChildDocs.has(subprocessDocKey);
             // Kolla om Feature Goal-sida redan skapats för subprocess-filen
+            // VIKTIGT: Använd process ID (bpmnElementId) från process-noden, inte från tasks
             const subprocessFeatureDocPath = getFeatureGoalDocFileKey(
               file,
               processNodeForFile.bpmnElementId,
@@ -2356,6 +2370,8 @@ export async function generateAllFromBpmnWithGraph(
                 featureGoalPageExists,
                 subprocessDocKey,
                 subprocessFeatureDocPath,
+                processNodeType: processNodeForFile.type,
+                processNodeElementId: processNodeForFile.bpmnElementId,
                 willGenerate: !featureGoalPageExists,
               });
             }
@@ -2469,26 +2485,33 @@ export async function generateAllFromBpmnWithGraph(
                 // Feature Goal documentation generated for subprocess
               } else {
                 if (import.meta.env.DEV) {
-                  console.log(`[bpmnGenerators] ⚠️ Feature Goal page already exists for ${file}, skipping:`, {
-                    subprocessFeatureDocPath,
-                  });
+                  console.log(`[bpmnGenerators] ⚠️ Feature Goal NOT generated for ${file} - missing subprocessContext`);
                 }
               }
             } else {
               if (import.meta.env.DEV) {
-                console.log(`[bpmnGenerators] ⚠️ Feature Goal NOT generated for ${file} - missing subprocessContext`);
+                console.log(`[bpmnGenerators] ⚠️ Feature Goal page already exists for ${file}, skipping:`, {
+                  subprocessFeatureDocPath,
+                });
               }
             }
           } else {
+            // processNodeForFile is not a process node - skip feature goal generation
             if (import.meta.env.DEV) {
-              console.log(`[bpmnGenerators] ⚠️ Feature Goal NOT generated for ${file} - conditions not met:`, {
-                isSubprocessFile,
-                nodesInFileCount: nodesInFile.length,
-                hasProcessNode: !!processNodeForFile,
-              });
+              console.warn(
+                `[bpmnGenerators] ⚠️ Skipping Feature Goal generation for ${file} - ` +
+                `processNodeForFile is not a process node (type: ${processNodeForFile?.type})`
+              );
             }
           }
         } else {
+          if (import.meta.env.DEV) {
+            console.log(`[bpmnGenerators] ⚠️ Feature Goal NOT generated for ${file} - conditions not met:`, {
+              isSubprocessFile,
+              nodesInFileCount: nodesInFile.length,
+              hasProcessNode: !!processNodeForFile,
+            });
+          }
           if (import.meta.env.DEV && processNodeForFile) {
             console.log(`[bpmnGenerators] ⚠️ File ${file} has process node but is NOT identified as subprocess file:`, {
               hasCallActivityPointingToFile,

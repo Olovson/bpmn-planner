@@ -57,9 +57,25 @@ export async function buildBpmnProcessGraph(
   versionHashes?: Map<string, string | null>
 ): Promise<BpmnProcessGraph> {
   const parseResults = await parseAllBpmnFiles(existingBpmnFiles, versionHashes);
+  
+  // Ladda bpmn-map.json för matchning
+  let bpmnMap: import('./bpmn/bpmnMapLoader').BpmnMap | undefined;
+  try {
+    const { loadBpmnMapFromStorage } = await import('./bpmn/bpmnMapStorage');
+    const mapResult = await loadBpmnMapFromStorage();
+    if (mapResult.valid && mapResult.map) {
+      bpmnMap = mapResult.map;
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[buildBpmnProcessGraph] Kunde inte ladda bpmn-map.json, använder automatisk matchning:', error);
+    }
+  }
+  
   const inputFiles = buildProcessModelInputFiles(parseResults);
   const model = buildProcessModelFromDefinitions(inputFiles, {
     preferredRootFile: rootFile,
+    bpmnMap,
   });
 
   if (!model.hierarchyRoots.length) {
@@ -156,11 +172,13 @@ async function parseAllBpmnFiles(
  */
 export async function buildBpmnProcessGraphFromParseResults(
   rootFile: string,
-  parseResults: Map<string, BpmnParseResult>
+  parseResults: Map<string, BpmnParseResult>,
+  bpmnMap?: import('./bpmn/bpmnMapLoader').BpmnMap
 ): Promise<BpmnProcessGraph> {
   const inputFiles = buildProcessModelInputFiles(parseResults);
   const model = buildProcessModelFromDefinitions(inputFiles, {
     preferredRootFile: rootFile,
+    bpmnMap,
   });
 
   if (!model.hierarchyRoots.length) {
@@ -294,9 +312,14 @@ function convertProcessModelChildren(
     if (node.kind === 'callActivity') {
       const elementId = node.bpmnElementId || node.id.split(':').pop()!;
       const element = context.elementsByFile.get(context.currentFile)?.get(elementId);
-      const resolvedSubprocessFile = node.subprocessLink?.matchedProcessId
-        ? resolveSubprocessFileFromModel(node, model)
-        : undefined;
+      
+      // VIKTIGT: Använd matchedFileName direkt om det finns (från bpmn-map.json matchning)
+      // Annars försök hitta filnamnet via matchedProcessId
+      const resolvedSubprocessFile = node.subprocessLink?.matchedFileName
+        ? node.subprocessLink.matchedFileName
+        : (node.subprocessLink?.matchedProcessId
+          ? resolveSubprocessFileFromModel(node, model)
+          : undefined);
 
       // VIKTIGT: Verifiera att subprocess-filen faktiskt finns i existingBpmnFiles
       // Om filen saknas, sätt subprocessFile till undefined så att missingDefinition blir true
@@ -326,29 +349,64 @@ function convertProcessModelChildren(
       // children från target-processen, inte bara callActivity-nodens children.
       // Detta görs genom att hitta target-processen via subprocess edge och bearbeta dess children.
       // VIKTIGT: Vi måste också undvika oändlig rekursion genom att tracka besökta processer.
+      // VIKTIGT: Om matchedFileName finns men matchedProcessId saknas (från bpmn-map.json),
+      // försök hitta processen via filnamnet istället
       let children: BpmnProcessNode[] = [];
       
-      if (subprocessFile && node.subprocessLink?.matchedProcessId) {
-        // Hitta target-processen via subprocess edge
-        const subprocessEdge = model.edges.find(
-          (e) => e.kind === 'subprocess' && e.fromId === node.id,
-        );
-        if (subprocessEdge) {
-          const targetProcess = model.nodesById.get(subprocessEdge.toId);
-          if (targetProcess) {
-            // Undvik oändlig rekursion genom att kolla om vi redan besökt denna process
-            const visitedProcesses = context.visitedProcesses ?? new Set<string>();
-            if (!visitedProcesses.has(targetProcess.id)) {
-              visitedProcesses.add(targetProcess.id);
-              // Bearbeta children från target-processen med currentFile = subprocessFile
-              children = convertProcessModelChildren(targetProcess, model, {
-                ...context,
-                currentFile: subprocessFile,
-                visitedProcesses,
-              });
-              visitedProcesses.delete(targetProcess.id); // Remove after processing to allow reuse in different branches
-            }
+      // Hitta target-processen - använd matchedProcessId om det finns, annars försök hitta via filnamnet
+      let targetProcess: ProcessNodeModel | undefined;
+      if (subprocessFile) {
+        if (node.subprocessLink?.matchedProcessId) {
+          // Hitta target-processen via subprocess edge
+          const subprocessEdge = model.edges.find(
+            (e) => e.kind === 'subprocess' && e.fromId === node.id,
+          );
+          if (subprocessEdge) {
+            targetProcess = model.nodesById.get(subprocessEdge.toId);
           }
+        } else if (node.subprocessLink?.matchedFileName) {
+          // Om matchedFileName finns men matchedProcessId saknas (från bpmn-map.json),
+          // försök hitta processen via filnamnet
+          targetProcess = Array.from(model.nodesById.values()).find(
+            (p) => p.bpmnFile === subprocessFile && p.kind === 'process'
+          );
+        }
+      }
+      
+      if (subprocessFile && targetProcess) {
+        // Undvik oändlig rekursion genom att kolla om vi redan besökt denna process
+        const visitedProcesses = context.visitedProcesses ?? new Set<string>();
+        if (!visitedProcesses.has(targetProcess.id)) {
+          visitedProcesses.add(targetProcess.id);
+          
+          // VIKTIGT: Skapa en process-nod för subprocess-filen så att den kan hittas
+          // när vi letar efter process-noder för Feature Goal-generering
+          const subprocessProcessNode: BpmnProcessNode = {
+            id: `process:${subprocessFile}:${targetProcess.processId || targetProcess.id}`,
+            name: targetProcess.name || subprocessFile.replace('.bpmn', ''),
+            type: 'process',
+            bpmnFile: subprocessFile,
+            bpmnElementId: targetProcess.processId || targetProcess.id,
+            children: [],
+          };
+          
+          // Bearbeta children från target-processen med currentFile = subprocessFile
+          const subprocessChildren = convertProcessModelChildren(targetProcess, model, {
+            ...context,
+            currentFile: subprocessFile,
+            visitedProcesses,
+          });
+          
+          // Lägg till children till process-noden
+          subprocessProcessNode.children = subprocessChildren;
+          
+          // Registrera process-noden i grafen
+          registerGraphNode(subprocessProcessNode, context);
+          
+          visitedProcesses.delete(targetProcess.id); // Remove after processing to allow reuse in different branches
+          
+          // Children för callActivity är process-noden (som innehåller alla subprocess-children)
+          children = [subprocessProcessNode];
         }
       } else {
         // Om ingen subprocess matchad, bearbeta callActivity-nodens children som vanligt

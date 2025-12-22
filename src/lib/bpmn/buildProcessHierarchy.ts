@@ -115,20 +115,30 @@ export function buildProcessHierarchy(
           kind: (callActivity as any).kind,
         },
         matcherCandidates,
-        matcherConfig,
+        {
+          ...matcherConfig,
+          currentBpmnFile: proc.fileName, // Skicka med BPMN-filen för bpmn-map.json matchning
+        },
       );
 
+      // Normalisera matchedProcessId först
+      const normalizedMatchedProcessId = link.matchedProcessId
+        ? normalizeMatchedProcessId(link.matchedProcessId, processes)
+        : undefined;
+      
+      // Hitta filnamnet - prioritera matchedFileName från link (från bpmn-map.json)
+      // Annars hitta från processes via normalizedMatchedProcessId
+      const matchedFileName = link.matchedFileName || (normalizedMatchedProcessId
+        ? processes.get(normalizedMatchedProcessId)?.fileName
+        : undefined);
+      
       const mappedLink: SubprocessLink = {
         ...link,
         callActivityId: callActivity.id,
         callActivityName: callActivity.name,
         calledElement: callActivity.calledElement,
-        matchedProcessId: link.matchedProcessId
-          ? normalizeMatchedProcessId(link.matchedProcessId, processes)
-          : undefined,
-        matchedFileName: link.matchedProcessId
-          ? processes.get(normalizeMatchedProcessId(link.matchedProcessId, processes))?.fileName
-          : undefined,
+        matchedProcessId: normalizedMatchedProcessId,
+        matchedFileName, // Använd det hittade filnamnet
       };
 
       if (mappedLink.matchStatus !== 'matched' || !mappedLink.matchedProcessId) {
