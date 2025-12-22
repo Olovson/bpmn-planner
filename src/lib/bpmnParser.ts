@@ -98,9 +98,6 @@ export class BpmnParser {
         xmlCallActivityData.set(id, { name, calledElement });
       }
       
-      if (import.meta.env.DEV) {
-        console.log(`[bpmnParser] DEBUG: Regex matched ${matchCount} times, found ${xmlCallActivityIds.size} unique callActivities in XML:`, Array.from(xmlCallActivityIds));
-      }
       
       // Check if any callActivities from XML are missing from elementRegistry
       // NOTE: bpmn-js may use calledElement as the ID for some callActivities (e.g., Activity_1gzlxx4 -> credit-evaluation)
@@ -190,14 +187,6 @@ export class BpmnParser {
       const allCallActivityElements = allElements.filter((e: any) => 
         e.businessObject?.$type === 'bpmn:CallActivity'
       );
-      if (allCallActivityElements.length > 0) {
-        console.log(`[bpmnParser] Found ${allCallActivityElements.length} CallActivity elements in elementRegistry:`);
-        allCallActivityElements.forEach((e: any) => {
-          const owningProcess = e.businessObject?.$parent;
-          const processId = owningProcess?.id || 'unknown';
-          console.log(`  - ${e.id} (${e.businessObject?.name || 'no name'}) - calledElement: ${e.businessObject?.calledElement || 'none'} - process: ${processId}`);
-        });
-      }
       
       // DEBUG: Check if object-control exists in allElements with any type
       const objectControlAny = allElements.find((e: any) => e.id === 'object-control');

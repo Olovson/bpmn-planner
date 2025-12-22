@@ -99,9 +99,6 @@ async function buildClientProcessTree(
       const versionHash = versionHashes.get(fileName) || null;
       const parsed = await parseBpmnFile(fileName, versionHash);
       parseResults.set(fileName, parsed);
-      if (import.meta.env.DEV) {
-        console.log(`[useProcessTree] ✓ Parsed ${fileName}${versionHash ? ` (version: ${versionHash.substring(0, 8)}...)` : ''}`);
-      }
     } catch (parseError) {
       const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
       console.error(`[useProcessTree] Error parsing ${fileName}:`, parseError);
