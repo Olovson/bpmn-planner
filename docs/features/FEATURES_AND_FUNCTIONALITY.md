@@ -11,6 +11,8 @@
 - Deterministisk BPMN-hierarki  
 - Subprocess-matchning med confidence score  
 - Dokumentgenerering i två lägen (Local / Slow LLM)  
+- **Diff-baserad selektiv regenerering** - Endast ändrade/tillagda noder regenereras automatiskt
+- **Lokal diff-analys** - Analysera diff för lokala BPMN-filer utan att ladda upp dem (read-only preview)
 - Playwright-skapande automatiskt  
 - **Design-scenarion** (`testMapping.ts`) för lokal testgenerering utan LLM
 - **Integrationer-sida** (`#/integrations`) för hantering av Stacc vs. bankens integrationskällor
@@ -49,17 +51,19 @@ Alla artefakter lagras i Supabase (tabeller + storage) och kan regenereras från
 ## 🛠️ Arbetsflöde i UI:t
 
 1. **Files** – ladda upp BPMN/DMN eller synka GitHub.  
-2. **Build hierarchy** – bygger deterministisk struktur.  
-3. **Generate documentation** – välj Lokal fallback (ingen LLM), Claude (moln-LLM) eller Ollama (lokal LLM).  
-4. Visa resultat i **Viewer / Tree / List / Timeline**.  
-5. Justera metadata i **Node Matrix**.  
-6. **Integrationer** (`#/integrations`) – hantera Stacc vs. bankens integrationskällor för Service Tasks.  
-7. **Timeline** – visualisera och redigera tidsordning för subprocesser i Gantt-chart.  
-8. **Test Coverage** (`#/test-coverage`) – visualisera E2E test-täckning och exportera till HTML/Excel.  
-9. **E2E Quality Validation** (`#/e2e-quality-validation`) – validera test-scenarion och identifiera saknade komponenter.  
-10. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
-11. **Återgenerera vid behov**.  
-12. **Reset Registry** – rensa allt.
+2. **Analysera Lokal Mapp** (`#/bpmn-folder-diff`) – analysera diff för lokala BPMN-filer utan att ladda upp dem (read-only preview).  
+3. **Build hierarchy** – bygger deterministisk struktur.  
+4. **Generate documentation** – välj Lokal fallback (ingen LLM), Claude (moln-LLM) eller Ollama (lokal LLM).  
+   - **Diff-baserad regenerering:** Endast ändrade/tillagda noder regenereras automatiskt.  
+5. Visa resultat i **Viewer / Tree / List / Timeline**.  
+6. Justera metadata i **Node Matrix**.  
+7. **Integrationer** (`#/integrations`) – hantera Stacc vs. bankens integrationskällor för Service Tasks.  
+8. **Timeline** – visualisera och redigera tidsordning för subprocesser i Gantt-chart.  
+9. **Test Coverage** (`#/test-coverage`) – visualisera E2E test-täckning och exportera till HTML/Excel.  
+10. **E2E Quality Validation** (`#/e2e-quality-validation`) – validera test-scenarion och identifiera saknade komponenter.  
+11. Öppna resultat i **Doc Viewer** eller **Node Tests**.  
+12. **Återgenerera vid behov** (selektivt baserat på diff).  
+13. **Reset Registry** – rensa allt.
 
 ---
 

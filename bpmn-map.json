@@ -99,6 +99,22 @@
       "call_activities": []
     },
     {
+      "id": "mortgage-se-documentation-handling",
+      "alias": "Documentation Handling",
+      "bpmn_file": "mortgage-se-documentation-handling.bpmn",
+      "process_id": "mortgage-se-documentation-handling",
+      "description": "mortgage-se-documentation-handling",
+      "call_activities": []
+    },
+    {
+      "id": "mortgage-se-handle-terminations",
+      "alias": "Handle Terminations",
+      "bpmn_file": "mortgage-se-handle-terminations.bpmn",
+      "process_id": "mortgage-se-handle-terminations",
+      "description": "mortgage-se-handle-terminations",
+      "call_activities": []
+    },
+    {
       "id": "mortgage-se-household",
       "alias": "Household",
       "bpmn_file": "mortgage-se-household.bpmn",
@@ -149,6 +165,13 @@
           "called_element": "credit-evaluation",
           "subprocess_bpmn_file": "mortgage-se-credit-evaluation.bpmn",
           "needs_manual_review": false
+        },
+        {
+          "bpmn_id": "documentation-handling",
+          "name": "Documentation handling",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-documentation-handling.bpmn",
+          "needs_manual_review": true
         }
       ]
     },
@@ -186,6 +209,13 @@
           "called_element": null,
           "subprocess_bpmn_file": "mortgage-se-documentation-assessment.bpmn",
           "needs_manual_review": true
+        },
+        {
+          "bpmn_id": "documentation-handling",
+          "name": "Documentation handling",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-documentation-handling.bpmn",
+          "needs_manual_review": true
         }
       ]
     },
@@ -204,7 +234,7 @@
           "needs_manual_review": true
         },
         {
-          "bpmn_id": "credit-evaluation-2",
+          "bpmn_id": "credit-evaluation",
           "name": "Automatic Credit Evaluation",
           "called_element": "credit-evaluation",
           "subprocess_bpmn_file": "mortgage-se-credit-evaluation.bpmn",
@@ -270,6 +300,13 @@
           "name": "Credit decision",
           "called_element": null,
           "subprocess_bpmn_file": "mortgage-se-credit-decision.bpmn",
+          "needs_manual_review": true
+        },
+        {
+          "bpmn_id": "documentation-handling",
+          "name": "Documentation handling",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-documentation-handling.bpmn",
           "needs_manual_review": true
         }
       ]
@@ -412,6 +449,13 @@
           "name": "Object valuation",
           "called_element": null,
           "subprocess_bpmn_file": "mortgage-se-object-valuation.bpmn",
+          "needs_manual_review": true
+        },
+        {
+          "bpmn_id": "handle-terminations",
+          "name": "Handle Terminations",
+          "called_element": null,
+          "subprocess_bpmn_file": "mortgage-se-handle-terminations.bpmn",
           "needs_manual_review": true
         }
       ]

@@ -4,8 +4,11 @@
 
 Detta test-suite innehåller tester för BPMN Planner-applikationen, organiserade i fyra huvudkategorier:
 
+> 📋 **Snabb referens:** Se [`TEST_INDEX.md`](./TEST_INDEX.md) för komplett index över alla tester organiserade efter funktionalitet.
+
 1. **Unit Tests** (`tests/unit/`) - ~43 filer - Isolerade funktioner och komponenter
-2. **Integration Tests** (`tests/integration/`) - ~40 filer - Flöden mellan komponenter
+2. **Integration Tests** (`tests/integration/`) - ~41 filer - Flöden mellan komponenter
+   - **Local Folder Diff Analysis** (`local-folder-diff.test.ts`) - Testar "Analysera Lokal Mapp"-funktionalitet
 3. **E2E Tests** (`tests/e2e/`) - 1 fil - UI-komponenter i isolerad miljö
 4. **Playwright E2E Tests** (`tests/playwright-e2e/`) - 7 filer - Fullständiga användarflöden
 
@@ -22,6 +25,62 @@ Playwright-tester genereras från BPMN-processmodeller och är organiserade hier
 - **Initiative** (top-level BPMN process, e.g., "Application")
 - **Feature Goals** (CallActivity nodes)
 - **Epics** (UserTask, ServiceTask, BusinessRuleTask nodes)
+
+## Integration Tests
+
+### ⭐ Validera Nya BPMN-filer från A till Ö
+
+**För en komplett guide om hur du validerar nya BPMN-filer, se:**
+**[`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](../docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md)**
+
+Denna guide täcker hela processen:
+- Hitta alla BPMN-filer (rekursivt)
+- Analysera diff mot befintliga filer
+- Validera parsing, graph building, tree building
+- Validera dokumentationsgenerering (Feature Goals & Epics)
+- Checklista och felsökning
+
+### Konfigurerbar BPMN-katalog för tester
+
+Vissa tester kan läsa BPMN-filer från en lokal katalog istället för fixtures via environment variable `BPMN_TEST_DIR`:
+
+```bash
+# Använd lokal katalog
+BPMN_TEST_DIR=/path/to/bpmn/files npm test -- validate-feature-goals-generation.test.ts
+
+# Använd fixtures (default)
+npm test -- validate-feature-goals-generation.test.ts
+```
+
+Detta är användbart när du vill validera nya BPMN-filer innan de läggs till i fixtures. Funktionen söker rekursivt i den angivna katalogen efter BPMN-filer.
+
+**Viktigt:** Använd den kompletta guiden ovan för att se vilka tester som ska användas och i vilken ordning.
+
+### Local Folder Diff Analysis
+
+**`tests/integration/local-folder-diff.test.ts`** - Tests the "Analysera Lokal Mapp" functionality
+
+This test:
+- Finds all BPMN files recursively in a directory using Node.js fs
+- Calculates diff against existing files in Supabase
+- Uses the same core functions as the app (`parseBpmnFileContent`, `calculateDiffForLocalFile`)
+- Validates that diff analysis works correctly before uploading files
+
+**Usage:**
+```bash
+npm test -- tests/integration/local-folder-diff.test.ts
+```
+
+**Test Directory:**
+- Default: `/Users/magnusolovson/Documents/Projects/mortgage-template-main/modules/mortgage-se`
+- Can be modified in the test file's `testDirPath` constant
+
+**What it tests:**
+1. ✅ Recursive BPMN file discovery
+2. ✅ Diff calculation for each file
+3. ✅ Same functions as app (read-only, no uploads)
+
+---
 
 ## Test Structure
 
@@ -113,7 +172,32 @@ npx playwright test --grep "@initiative:application" --grep "@jira-type:epic"
 npx playwright test --grep "@feature:application-internal-data-gathering"
 ```
 
-## Test Generation
+## ⚠️ Viktig Distinktion: Två Typer av Tester
+
+### 1. Utvecklartester (validerar appens funktionalitet)
+Dessa tester i denna mapp (`tests/`) validerar att appens kod fungerar korrekt:
+- **Unit Tests** - Testar isolerade funktioner
+- **Integration Tests** - Testar flöden mellan komponenter
+- **E2E Tests** - Testar UI-komponenter
+- **Playwright E2E Tests** - Testar fullständiga användarflöden
+
+**Syfte:** Säkerställa att appens kod, logik och funktionalitet fungerar som förväntat.
+
+### 2. Användartester (genererade av appen)
+Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
+- **Playwright-testfiler** - Genereras från BPMN-processer
+- **Test-scenarion** - Extraheras från dokumentation
+- **Test Coverage-data** - Visas i Test Coverage Explorer
+
+**Syfte:** Används av användare för att testa sina BPMN-processer, INTE för att validera appens kod.
+
+**Viktigt:** När vi pratar om "tester" i utvecklingssammanhang menar vi vanligtvis kategori 1 (utvecklartester). Kategori 2 är "artefakter" som appen genererar för användarna.
+
+---
+
+## Test Generation (Användartester)
+
+> **Notera:** Detta avsnitt handlar om tester som **appen genererar för användarna**, inte utvecklartester.
 
 Tests are automatically generated from BPMN files via the `generate-artifacts` edge function. The generation:
 
@@ -127,6 +211,8 @@ To regenerate tests:
 2. Select a BPMN file
 3. Click "Generate Artifacts"
 4. Tests will be created/updated in Supabase Storage
+
+**Dessa genererade tester är INTE en del av utvecklartest-suiten.**
 
 ## Test Metadata Utilities
 

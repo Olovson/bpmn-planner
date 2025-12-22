@@ -10,6 +10,11 @@
  * - BPMN-filer laddas från fixtures och skapas som data URLs (samma som appen gör)
  * - generateAllFromBpmnWithGraph används direkt (faktisk kod)
  * - buildBpmnProcessGraphFromParseResults används med parsed results (faktisk kod)
+ * 
+ * Konfiguration:
+ * - Default: Läser från fixtures i tests/fixtures/bpmn/
+ * - Med BPMN_TEST_DIR: Läser från lokal katalog (rekursiv sökning)
+ *   Exempel: BPMN_TEST_DIR=/path/to/bpmn/files npm test -- validate-feature-goals-generation.test.ts
  */
 
 import { describe, it, expect, vi } from 'vitest';

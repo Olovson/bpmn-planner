@@ -1,7 +1,8 @@
 # Analys: Diff-funktionalitet för selektiv regenerering
 
 **Datum:** 2025-12-22  
-**Status:** Delvis implementerad - behöver förbättringar
+**Uppdaterad:** 2025-12-22  
+**Status:** ✅ Implementerad - alla kritiska funktioner är på plats
 
 ## Sammanfattning
 
@@ -36,113 +37,67 @@ Systemet har redan en grundläggande diff-funktionalitet, men den behöver förb
 - ✅ Visar added/removed/modified/unchanged
 - ✅ Filtrering och sortering
 
-## Vad som saknas eller behöver förbättras ⚠️
+## ✅ Implementerade förbättringar
 
-### 1. Process nodes inkluderas inte i diff-beräkning
+### 1. ✅ Process nodes inkluderas nu i diff-beräkning
 
-**Problem:**
-- `extractNodeSnapshots()` i `bpmnDiff.ts` inkluderar bara:
-  - `callActivity`
-  - `userTask`
-  - `serviceTask`
-  - `businessRuleTask`
-- **Saknas:** `process` nodes (subprocess Feature Goals)
+**Implementerat:**
+- `extractNodeSnapshots()` i `bpmnDiff.ts` inkluderar nu `process` nodes
+- Process nodes extraheras från `parseResult.meta.processes`
+- Process nodes kan detekteras som `added`, `removed`, `modified`
 
-**Påverkan:**
-- När en subprocess-fil ändras (t.ex. process-nodens namn), detekteras inte ändringen
-- Process nodes genereras inte selektivt baserat på diff
+**Plats:** `src/lib/bpmnDiff.ts` (rad 122-155)
 
-**Lösning:**
-- Lägg till process nodes i `extractNodeSnapshots()`
-- Identifiera process nodes från `parseResult` (process definitions)
+### 2. ✅ Cascade-diff-detection implementerad
 
-### 2. Hierarchical dependencies hanteras inte
+**Implementerat:**
+- `detectCascadeDiffs()` funktion i `bpmnDiffRegeneration.ts`
+- Om en subprocess-fil ändras → alla call activities som anropar den markeras som `modified`
+- Anropas automatiskt efter diff-beräkning
 
-**Problem:**
-- Om en parent nod (callActivity) ändras, behöver child nodes (tasks i subprocess) också potentiellt regenereras
-- Om en subprocess-fil ändras, behöver alla call activities som anropar den också regenereras
+**Plats:** `src/lib/bpmnDiffRegeneration.ts` (rad 487-664)
 
-**Påverkan:**
-- Ändringar i parent kan påverka child-dokumentation (aggregated content)
-- Ändringar i subprocess kan påverka call activity Feature Goals
+### 3. ✅ Cleanup av removed nodes implementerad
 
-**Lösning:**
-- Implementera cascade-diff-detection:
-  - Om subprocess-fil ändras → markera alla call activities som anropar den som `modified`
-  - Om callActivity ändras → markera subprocess Feature Goal som `modified`
-  - Om parent nod ändras → markera child nodes som behöver regenereras
+**Implementerat:**
+- `cleanupRemovedNodes()` funktion i `bpmnDiffRegeneration.ts`
+- Tar automatiskt bort dokumentation från Storage för removed nodes
+- Anropas automatiskt när noder tas bort
 
-### 3. Removed nodes hanteras inte korrekt
+**Plats:** `src/lib/bpmnDiffRegeneration.ts` (rad 666-770)
 
-**Problem:**
-- När en nod tas bort (`removed`), genereras ingen dokumentation (korrekt)
-- Men befintlig dokumentation i Storage tas inte bort
-- `autoRegenerateRemoved` är `false` som standard (korrekt)
+### 4. ✅ Lokal diff-analys (read-only preview)
 
-**Påverkan:**
-- Döda länkar i dokumentation
-- Förvirring om vilka noder som faktiskt finns
+**Implementerat:**
+- `analyzeFolderDiff()` - Analysera lokala BPMN-filer rekursivt
+- `calculateDiffForLocalFile()` - Beräkna diff för en lokal fil utan att spara
+- `FolderDiffAnalysis` komponent - UI för lokal diff-analys
+- **Read-only:** Inga filer laddas upp eller modifieras
 
-**Lösning:**
-- Implementera cleanup av dokumentation för removed nodes
-- Alternativ: Markera dokumentation som "deprecated" istället för att ta bort
+**Plats:** 
+- `src/lib/bpmnDiffRegeneration.ts` (rad 784-846, 881-977)
+- `src/components/FolderDiffAnalysis.tsx`
+- `src/pages/BpmnFolderDiffPage.tsx`
 
-### 4. Diff-filtret används inte som standard
+### 5. ✅ Förbättrad diff-visning
 
-**Problem:**
-- Diff-filtret används bara om `unresolvedDiffs.size > 0`
-- Om ingen diff-data finns, regenereras allt (fallback)
-- Detta är korrekt beteende, men kan förbättras
+**Implementerat:**
+- Detaljerad visning av vad som ändrats (gamla vs nya värden)
+- Visuell markering av ändringar (grön/röd/gul)
+- Särskild markering för nya filer
+- Process-noder visas tydligt när hela filer är nya
 
-**Påverkan:**
-- Första gången efter uppladdning: alla noder regenereras (korrekt)
-- Efter uppdatering: bara ändrade noder regenereras (korrekt)
-- Men om diff-beräkning misslyckas, regenereras allt (konservativt, men kan vara onödigt)
+**Plats:** `src/components/DiffResultView.tsx`
 
-**Lösning:**
-- Förbättra felhantering i diff-beräkning
-- Lägg till validering att diff-data är korrekt
+## Ytterligare förbättringar (valfria)
 
-### 5. Process nodes räknas inte i progress
-
-**Problem:**
+### Process nodes räknas i progress
 - Process nodes genereras men räknas inte i `nodesToGenerate.length`
-- Detta är relaterat till TODO #1 (progress-räkning)
+- Detta är relaterat till progress-räkning (TODO #1)
 
-**Påverkan:**
-- Progress-visningen är felaktig
-- Men genereringen fungerar korrekt
-
-### 6. Validering av diff-data
-
-**Problem:**
-- Ingen validering att diff-data är korrekt
-- Om diff-beräkning misslyckas, fallback till att regenerera allt
-- Ingen feedback till användaren om diff-problem
-
-**Lösning:**
-- Lägg till validering av diff-data
-- Visa varningar om diff-beräkning misslyckas
-- Ge användaren möjlighet att välja: "regenerera allt" eller "försök igen med diff"
-
-## Rekommenderade förbättringar
-
-### Prioritet 1: Process nodes i diff-beräkning
-- Lägg till process nodes i `extractNodeSnapshots()`
-- Säkerställ att process nodes kan detekteras som `added`, `removed`, `modified`
-
-### Prioritet 2: Cascade-diff-detection
-- Implementera logik för att detektera cascade-effekter:
-  - Subprocess-fil ändras → markera call activities som `modified`
-  - Parent nod ändras → markera child nodes som behöver regenereras
-
-### Prioritet 3: Cleanup av removed nodes
-- Implementera cleanup av dokumentation för removed nodes
-- Alternativ: Markera som "deprecated" istället för att ta bort
-
-### Prioritet 4: Förbättrad felhantering
+### Validering av diff-data
 - Förbättra felhantering i diff-beräkning
-- Lägg till validering och feedback till användaren
+- Lägg till validering och feedback till användaren om diff-problem
 
 ## Nuvarande flöde
 

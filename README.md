@@ -50,6 +50,7 @@ npm run dev              # Starta dev-server (http://localhost:8080/)
 - **Teststrategi**: [`docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md`](docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md) | [`docs/testing/strategy/TEST_IMPLEMENTATION_PLAN.md`](docs/testing/strategy/TEST_IMPLEMENTATION_PLAN.md)
 - **Testguide**: [`docs/testing/TESTING.md`](docs/testing/TESTING.md)
 - **Test Suite**: [`tests/README.md`](tests/README.md)
+- ⭐ **Validera Nya BPMN-filer**: [`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md) - Komplett guide från A till Ö
 
 ### Projektorganisation
 - **Projektorganisation**: [`docs/project-organization/`](docs/project-organization/) - Ways of working, teststrategi, roller
@@ -69,7 +70,12 @@ npm run supabase:reset   # Reset databas
 
 # Tester
 npm test                 # Kör alla Vitest-tester
+npm test -- tests/integration/local-folder-diff.test.ts  # Testa lokal diff-analys
+BPMN_TEST_DIR=/path/to/bpmn/files npm test -- validate-feature-goals-generation.test.ts  # Validera nya BPMN-filer
 npx playwright test      # Kör Playwright E2E-tester
+
+> 📋 **Testindex:** Se [`tests/TEST_INDEX.md`](tests/TEST_INDEX.md) för komplett översikt över alla tester.  
+> ⭐ **Validera Nya BPMN-filer:** Se [`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md) för komplett guide från A till Ö.
 
 # Verktyg
 npm run print:bpmn-tree  # Exportera BPMN-träd
@@ -84,6 +90,8 @@ npm run check:db-schema  # Verifiera databas-schema
 
 - Deterministisk BPMN-hierarki
 - Dokumentgenerering (Feature Goals, Epics, Business Rules)
+- **Diff-baserad selektiv regenerering** - Endast ändrade/tillagda noder regenereras automatiskt
+- **Lokal diff-analys** - Analysera diff för lokala BPMN-filer utan att ladda upp dem (read-only preview)
 - Testgenerering (Playwright-testfiler)
 - Visualisering (diagram, träd, listvy, timeline)
 - LLM-integration (Claude/Ollama)

@@ -4,6 +4,8 @@
 
 Detta projekt innehåller omfattande tester för BPMN-dokumentationsfunktionaliteten.
 
+> 📋 **Snabb referens:** Se [`tests/TEST_INDEX.md`](../../tests/TEST_INDEX.md) för komplett index över alla tester organiserade efter funktionalitet.
+
 ## Teststruktur
 
 ### Unit Tests (`tests/unit/`)
@@ -29,6 +31,26 @@ Tester för batch-generering av overrides:
 
 ### Integration Tests (`tests/integration/`)
 
+#### Local Folder Diff Analysis (`local-folder-diff.test.ts`)
+Testar "Analysera Lokal Mapp"-funktionalitet (read-only diff-analys):
+- Hittar alla BPMN-filer rekursivt i en mapp (Node.js fs)
+- Beräknar diff mot befintliga filer i Supabase
+- Använder samma funktioner som appen (`parseBpmnFileContent`, `calculateDiffForLocalFile`)
+- Validerar att diff-analys fungerar korrekt innan uppladdning
+
+**Kör testet:**
+```bash
+npm test -- tests/integration/local-folder-diff.test.ts
+```
+
+**Test-mapp (kan ändras i testfilen):**
+- `/Users/magnusolovson/Documents/Projects/mortgage-template-main/modules/mortgage-se`
+
+**Vad testet validerar:**
+- ✅ Rekursiv BPMN-filupptäckt
+- ✅ Diff-beräkning för varje fil
+- ✅ Samma funktioner som appen (read-only, inga uppladdningar)
+
 #### LLM Real Smoke Tests (`llm.real.smoke.test.ts`)
 Riktiga LLM-tester som kör mot ChatGPT/Ollama (opt-in):
 - Feature Goal generering
@@ -47,6 +69,7 @@ npm test
 npm test -- tests/unit/llmDocumentationShared.test.ts
 npm test -- tests/unit/promptVersioning.test.ts
 npm test -- tests/unit/codexBatchOverrideHelper.test.ts
+npm test -- tests/integration/local-folder-diff.test.ts  # Testa lokal diff-analys
 ```
 
 ### LLM Smoke Tests (kräver API-nycklar)
@@ -80,6 +103,12 @@ npm run test:watch
 - ✅ Context payload building
 - ✅ LLM request structure building
 - ✅ Response mapping till modeller
+
+### Lokal Diff-analys
+- ✅ Rekursiv BPMN-filupptäckt i mappar
+- ✅ Diff-beräkning mot befintliga filer
+- ✅ Validering av samma funktionalitet som appen
+- ✅ Read-only analys (inga uppladdningar)
 
 ## Best Practices
 

@@ -239,54 +239,62 @@ Efter lyckad generering:
 
 ---
 
-## 6. Nuvarande Problem (TODO)
+## 6. Implementerade Förbättringar ✅
 
-### Problem 1: Process Nodes Inkluderas Inte
-**Plats:** `src/lib/bpmnDiff.ts` → `extractNodeSnapshots()` (rad 42-120)
+### ✅ Problem 1: Process Nodes Inkluderas Nu
+**Plats:** `src/lib/bpmnDiff.ts` → `extractNodeSnapshots()` (rad 122-155)
 
-**Problem:**
-- `extractNodeSnapshots()` inkluderar bara: `callActivity`, `userTask`, `serviceTask`, `businessRuleTask`
-- **Saknas:** `process` nodes (subprocess Feature Goals)
+**Implementerat:**
+- Process nodes extraheras nu från `parseResult.meta.processes`
+- Process nodes kan detekteras som `added`, `removed`, `modified`
+- Process nodes inkluderar metadata: `processId`, `callActivitiesCount`, `tasksCount`
 
-**Påverkan:**
-- När en subprocess-fil ändras, detekteras inte ändringen i process-noden
-- Process-nodens Feature Goal dokumentation regenereras inte automatiskt
+**Resultat:**
+- När en subprocess-fil ändras, detekteras ändringen i process-noden
+- Process-nodens Feature Goal dokumentation regenereras automatiskt när process-noden ändras
 
-**Lösning:**
-- Lägg till logik för att extrahera process nodes från `parseResult`
-- Process nodes identifieras av: `type === 'process'` och finns i subprocess-filer
+### ✅ Problem 2: Cascade-diff-detection Implementerad
+**Plats:** `src/lib/bpmnDiffRegeneration.ts` → `detectCascadeDiffs()` (rad 487-664)
 
-### Problem 2: Cascade-diff-detection Saknas
-**Plats:** `src/lib/bpmnDiffRegeneration.ts`
+**Implementerat:**
+- Efter diff-beräkning, hittar systemet alla call activities som anropar ändrade subprocess-filer
+- Dessa call activities markeras automatiskt som `modified` i diff-tabellen
+- Anropas automatiskt i `calculateAndSaveDiff()` (rad 309)
 
-**Problem:**
-- Om en subprocess-fil ändras, behöver alla call activities som anropar den också regenereras
-- Detta detekteras inte automatiskt
+**Resultat:**
+- Ändringar i subprocess påverkar automatiskt call activity Feature Goals
+- Användaren behöver inte manuellt regenerera call activities
 
-**Påverkan:**
-- Ändringar i subprocess påverkar call activity Feature Goals, men detekteras inte
-- Användaren måste manuellt regenerera call activities
+### ✅ Problem 3: Cleanup av Removed Nodes Implementerad
+**Plats:** `src/lib/bpmnDiffRegeneration.ts` → `cleanupRemovedNodes()` (rad 666-770)
 
-**Lösning:**
-- Efter diff-beräkning, hitta alla call activities som anropar ändrade subprocess-filer
-- Markera dessa call activities som `modified` i diff-tabellen
+**Implementerat:**
+- Cleanup-funktion tar automatiskt bort dokumentation från Storage för removed nodes
+- Hanterar både node docs och Feature Goal docs
+- Anropas automatiskt när noder tas bort (rad 313)
 
-### Problem 3: Cleanup av Removed Nodes Saknas
-**Plats:** `src/lib/bpmnDiffRegeneration.ts`
+**Resultat:**
+- Dokumentation för borttagna noder tas bort automatiskt
+- Inga döda länkar i dokumentation
 
-**Problem:**
-- När en nod tas bort, tas inte dokumentationen bort från Storage
-- Döda länkar i dokumentation
+### ✅ Ny Funktion: Lokal Diff-analys (Read-only Preview)
+**Plats:** 
+- `src/lib/bpmnDiffRegeneration.ts` → `analyzeFolderDiff()`, `calculateDiffForLocalFile()`
+- `src/components/FolderDiffAnalysis.tsx`
+- `src/pages/BpmnFolderDiffPage.tsx`
 
-**Påverkan:**
-- Dokumentation för borttagna noder finns kvar i Storage
-- Förvirring om vilka noder som faktiskt finns
+**Funktionalitet:**
+- Analysera lokala BPMN-filer rekursivt från en mapp
+- Beräkna diff mot befintliga filer i systemet
+- **Read-only:** Inga filer laddas upp eller modifieras
+- Detaljerad visning av ändringar (tillagda/borttagna/ändrade noder)
+- Visuell markering av nya filer och ändringar
 
-**Lösning:**
-- Implementera cleanup-funktion som:
-  1. Hittar alla `removed` nodes i diff-tabellen
-  2. Tar bort dokumentation från Storage
-  3. Alternativt: Markera som "deprecated" istället för att ta bort
+**Användning:**
+1. Gå till "Analysera Lokal Mapp" (`#/bpmn-folder-diff`)
+2. Välj en mapp med BPMN-filer
+3. Se diff-resultat utan att ladda upp filerna
+4. Ladda upp filerna via "Filer"-sidan när du är redo
 
 ---
 
@@ -337,13 +345,20 @@ Efter lyckad generering:
 **Nuvarande Flöde:**
 1. ✅ Filuppladdning → Automatisk diff-beräkning
 2. ✅ Diff sparas i databasen
-3. ✅ Selektiv regenerering baserat på unresolved diffs
-4. ✅ Diffs markeras som lösta efter generering
+3. ✅ Process nodes inkluderas i diff-beräkning
+4. ✅ Cascade-diff-detection (subprocess → call activities)
+5. ✅ Cleanup av removed nodes
+6. ✅ Selektiv regenerering baserat på unresolved diffs
+7. ✅ Diffs markeras som lösta efter generering
+8. ✅ Lokal diff-analys (read-only preview)
 
-**Saknas:**
-1. ❌ Process nodes i diff-beräkning
-2. ❌ Cascade-diff-detection (subprocess → call activities)
-3. ❌ Cleanup av removed nodes
+**Nya Funktioner:**
+1. ✅ Lokal diff-analys - Analysera lokala filer utan att ladda upp
+2. ✅ Förbättrad diff-visning - Detaljerad information om ändringar
+3. ✅ Automatisk cascade-detection - Call activities markeras automatiskt när subprocess ändras
+4. ✅ Automatisk cleanup - Dokumentation för borttagna noder tas bort automatiskt
 
-**Nästa Steg:**
-- Implementera de 3 saknade funktionerna enligt TODO-listan
+**Användning:**
+- **Lokal analys:** Använd "Analysera Lokal Mapp" för att se diff innan uppladdning
+- **Selektiv regenerering:** Endast ändrade/tillagda noder regenereras automatiskt
+- **Säkerhet:** Lokal analys är read-only, inga filer modifieras
