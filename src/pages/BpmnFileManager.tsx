@@ -148,15 +148,6 @@ export default function BpmnFileManager() {
   // TODO: Add a UI test to assert AppHeaderWithTabs renders on /files and stays visible across navigations.
   const { data: files = [], isLoading } = useBpmnFiles();
   
-  // Debug logging to verify files are loaded correctly
-  useEffect(() => {
-    if (files.length > 0) {
-      console.log('[BpmnFileManager] Files loaded:', {
-        count: files.length,
-        fileNames: files.map(f => f.file_name),
-      });
-    }
-  }, [files]);
   const uploadMutation = useUploadBpmnFile();
   const deleteMutation = useDeleteBpmnFile();
   const syncMutation = useSyncFromGithub();
@@ -790,8 +781,6 @@ export default function BpmnFileManager() {
   };
 
   const logGenerationProgress = (modeLabel: string, step: string, detail?: string) => {
-    const message = `[Generation][${modeLabel}] ${step}${detail ? ` – ${detail}` : ''}`;
-    console.log(message);
     setCurrentGenerationStep({ step, detail });
   };
 
@@ -1579,8 +1568,6 @@ export default function BpmnFileManager() {
       // - Filen är subprocess och vi vill inkludera parent-kontext
       const useHierarchy = isRootFile || (isSubprocess && parentFile);
 
-      console.log(`Generating for ${file.file_name} (hierarchy: ${useHierarchy})`);
-
       logGenerationProgress(modeLabel, 'Analyserar BPMN-struktur');
       checkCancellation();
 
@@ -1636,17 +1623,14 @@ export default function BpmnFileManager() {
               autoRegenerateRemoved: false, // Inte regenerera removed (de finns inte längre)
             });
             
-            console.log(`[BpmnFileManager] Using diff-based filter: ${unresolvedDiffs.size} files with unresolved diffs`);
           } else {
             // Ingen diff-data: fallback till att regenerera allt (säkrast)
-            console.log(`[BpmnFileManager] No diff data found, regenerating all nodes (fallback)`);
           }
         } catch (error) {
           console.warn('[BpmnFileManager] Error setting up diff filter, falling back to regenerate all:', error);
           // Fallback: regenerera allt om diff-logik failar
         }
       } else {
-        console.log(`[BpmnFileManager] Using custom nodeFilter (e.g., User Task epics)`);
       }
       
       const result = await generateAllFromBpmnWithGraph(
@@ -1693,7 +1677,6 @@ export default function BpmnFileManager() {
       checkCancellation();
 
       if (result.dorDod.size > 0) {
-        console.log('[Generation] DoR/DoD: bearbetar', result.dorDod.size, 'subprocesser');
         const criteriaToInsert: any[] = [];
         
         result.dorDod.forEach((criteria, subprocessName) => {
@@ -1717,7 +1700,6 @@ export default function BpmnFileManager() {
           });
         });
 
-        console.log('[Local generation] DoR/DoD: skriver', criteriaToInsert.length, 'kriterier till databasen');
         const { error: dbError } = await supabase
           .from('dor_dod_status')
           .upsert(criteriaToInsert, {
@@ -1729,11 +1711,8 @@ export default function BpmnFileManager() {
           console.error('Auto-save DoR/DoD error:', dbError);
         } else {
           dorDodCount = criteriaToInsert.length;
-          console.log('[Generation] DoR/DoD klart:', dorDodCount);
         }
         checkCancellation();
-      } else {
-        console.log('[Generation] DoR/DoD: inga kriterier skapades');
       }
       await incrementJobProgress('Skapar DoR/DoD-kriterier');
 
@@ -1783,9 +1762,6 @@ export default function BpmnFileManager() {
           checkCancellation();
         } else {
           // Inga mappings att synka i fil-scope – behandla som no-op men behåll framsteg.
-          console.log(
-            '[Generation] Synkar subprocess-kopplingar: inga mappings att spara för fil-scope',
-          );
         }
       } else {
         // Node-scope: global subprocess-synk är best-effort och kan hoppas över
@@ -1797,13 +1773,6 @@ export default function BpmnFileManager() {
               subprocessFile: childFile,
             });
           });
-          console.log(
-            '[Generation] Synkar subprocess-kopplingar: hoppar över skrivning till bpmn_dependencies i node-scope',
-          );
-        } else {
-          console.log(
-            '[Generation] Synkar subprocess-kopplingar: inget att göra i node-scope',
-          );
         }
       }
 
@@ -1811,7 +1780,6 @@ export default function BpmnFileManager() {
 
       // Spara BPMN element mappings med Jira-information
       // Detta behövs för att listvyn ska kunna visa jira_type och jira_name
-      console.log('Building element mappings with Jira metadata...');
       const mappingsToInsert: any[] = [];
       const detailedJiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }> = [];
       
@@ -1963,8 +1931,6 @@ export default function BpmnFileManager() {
           } else {
             console.error('Save element mappings error:', mappingsError);
           }
-        } else {
-          console.log(`Saved ${mappingsToInsert.length} element mappings with Jira metadata`);
         }
       }
       await incrementJobProgress('Bygger Jira-mappningar');
@@ -2301,7 +2267,6 @@ export default function BpmnFileManager() {
               const fileNodeKeys = generatedNodeKeys.filter(key => key.startsWith(`${fileName}::`));
               if (fileNodeKeys.length > 0) {
                 await markDiffsAsResolved(fileName, fileNodeKeys, user?.id);
-                console.log(`[BpmnFileManager] Marked ${fileNodeKeys.length} diffs as resolved for ${fileName}`);
               }
             }
           }
@@ -3834,7 +3799,6 @@ export default function BpmnFileManager() {
                     selectedVersionHash: versionHash,
                     selectedFileName: fileName,
                   });
-                  console.log('[BpmnFileManager] Version changed:', { versionHash, fileName });
                 }}
               />
             </div>

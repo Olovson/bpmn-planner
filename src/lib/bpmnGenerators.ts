@@ -1661,14 +1661,44 @@ export async function generateAllFromBpmnWithGraph(
       );
     }
 
+    // Räkna process nodes som kommer att genereras (subprocess-filer med process nodes men inga tasks/callActivities)
+    // Dessa genereras separat och måste inkluderas i progress-räkningen
+    // VIKTIGT: Logiken måste matcha exakt logiken för när process nodes faktiskt genereras (rad 2441-2539)
+    let processNodesToGenerate = 0;
+    for (const file of analyzedFiles) {
+      const hasCallActivityPointingToFile = Array.from(testableNodes.values()).some(
+        node => node.type === 'callActivity' && node.subprocessFile === file
+      );
+      const processNodeForFile = Array.from(graph.allNodes.values()).find(
+        node => node.type === 'process' && node.bpmnFile === file
+      );
+      const fileBaseName = file.replace('.bpmn', '');
+      const isRootProcessFromMap = rootProcessId && (fileBaseName === rootProcessId || file === `${rootProcessId}.bpmn`);
+      const isSubprocessFile = (hasCallActivityPointingToFile || !!processNodeForFile) && !isRootProcessFromMap;
+      
+      // Räkna process node om:
+      // 1. Det är en subprocess-fil (isSubprocessFile = true)
+      // 2. Den har en process node av typ 'process'
+      // 3. Den har inga tasks/callActivities i nodesToGenerate (annars genereras Feature Goal via callActivity istället)
+      // Detta matchar exakt logiken i rad 2441: if (isSubprocessFileForSubprocess && processNodeForFileForSubprocess && processNodeForFileForSubprocess.type === 'process')
+      const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
+      if (isSubprocessFile && processNodeForFile && processNodeForFile.type === 'process' && nodesInFile.length === 0) {
+        processNodesToGenerate++;
+        if (import.meta.env.DEV) {
+          console.log(`[bpmnGenerators] 📊 Counting process node for progress: ${file} (subprocess file with process node but no tasks/callActivities)`);
+        }
+      }
+    }
+    
     // Skicka total:init med korrekt antal filer och noder för progress-räkning
-    // OBS: Använd nodesToGenerate.length (filtrerade noder) för korrekt progress-räkning
+    // OBS: Inkludera både nodesToGenerate.length OCH processNodesToGenerate för korrekt progress-räkning
+    const totalNodesToGenerate = nodesToGenerate.length + processNodesToGenerate;
     await reportProgress(
       'total:init',
       'Initierar generering',
       JSON.stringify({
         files: analyzedFiles.length,
-        nodes: nodesToGenerate.length, // Bara noder som faktiskt ska genereras
+        nodes: totalNodesToGenerate, // Inkluderar både testable nodes och process nodes
       }),
     );
 

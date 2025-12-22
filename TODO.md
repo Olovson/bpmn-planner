@@ -8,6 +8,48 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 
 ## 🔥 Högsta prioritet
 
+### Diff-funktionalitet för selektiv regenerering
+- [ ] **FIXA:** Process nodes (subprocess Feature Goals) inkluderas inte i diff-beräkning
+  - **Problem:** `extractNodeSnapshots()` i `bpmnDiff.ts` inkluderar bara callActivities, tasks, men inte process nodes
+  - **Påverkan:** När en subprocess-fil ändras, detekteras inte ändringen i process-noden
+  - **Lösning:** Lägg till process nodes i `extractNodeSnapshots()` så att de kan detekteras som `added`, `removed`, `modified`
+  - **Plats:** `src/lib/bpmnDiff.ts` (rad ~42, `extractNodeSnapshots()`)
+- [ ] **FIXA:** Cascade-diff-detection saknas
+  - **Problem:** Om en subprocess-fil ändras, behöver alla call activities som anropar den också regenereras
+  - **Påverkan:** Ändringar i subprocess påverkar call activity Feature Goals, men detekteras inte automatiskt
+  - **Lösning:** Implementera cascade-diff-detection: om subprocess-fil ändras → markera call activities som `modified`
+  - **Plats:** `src/lib/bpmnDiffRegeneration.ts` (efter diff-beräkning, lägg till cascade-logik)
+- [ ] **FIXA:** Cleanup av removed nodes saknas
+  - **Problem:** När en nod tas bort, tas inte dokumentationen bort från Storage
+  - **Påverkan:** Döda länkar i dokumentation, förvirring om vilka noder som finns
+  - **Lösning:** Implementera cleanup av dokumentation för removed nodes, eller markera som "deprecated"
+  - **Plats:** `src/lib/bpmnDiffRegeneration.ts` eller ny funktion för cleanup
+
+### Testinformation generering
+- [ ] **FIXA:** Scenarios från dokumentationen sparas inte till `node_planned_scenarios`
+  - **Problem:** `buildScenariosFromEpicUserStories()` och `buildScenariosFromDocJson()` finns men anropas aldrig
+  - **Påverkan:** Epic user stories genereras i dokumentationen, men scenarios extraheras inte och sparas inte
+  - **Lösning:** Anropa `buildScenariosFromDocJson()` när Epic-dokumentation genereras och spara till `node_planned_scenarios` med `origin: 'llm-doc'`
+  - **Plats:** `src/lib/bpmnGenerators.ts` (rad 2286-2323, callback i `renderDocWithLlm` för epics)
+- [ ] **FIXA:** `createPlannedScenariosFromGraph()` returnerar tom array (KRITISK BUGG)
+  - **Problem:** Funktionen skapar `scenarios` array (rad 129-144) men pushar dem ALDRIG till `rows` array
+  - **Påverkan:** Inga fallback-scenarios sparas från `testMapping`, `savePlannedScenarios()` får tom array
+  - **Lösning:** Lägg till `rows.push()` efter rad 144 med korrekt `PlannedScenarioRow` struktur (bpmn_file, bpmn_element_id, provider, origin, scenarios)
+  - **Plats:** `src/lib/plannedScenariosHelper.ts` (rad 144-148, `createPlannedScenariosFromGraph()`)
+- [ ] **FIXA:** Två separata system som inte samverkar
+  - **Problem:** Testfiler (Storage) och planned scenarios (Database) är separata system
+  - **Påverkan:** LLM-genererade scenarios i testfiler sparas inte i `node_planned_scenarios`
+  - **Lösning:** Koppla testgenerering till dokumentationen - använd scenarios från `node_planned_scenarios` eller spara LLM-scenarios dit
+  - **Plats:** `src/lib/testGenerators.ts` och `src/lib/bpmnGenerators.ts`
+
+### Progress-räkning för dokumentationsgenerering
+- [ ] **FIXA:** Process nodes (subprocess Feature Goals) räknas inte i progress-räkningen
+  - **Problem:** Appen visar 102 noder istället för 126 (20 process nodes saknas i räkningen)
+  - **Orsak:** `getTestableNodes()` inkluderar inte `type === 'process'` noder, och process nodes genereras separat utanför `nodesToGenerate`-loopen
+  - **Påverkan:** Alla 126 noder genereras korrekt, men progress-visningen är felaktig
+  - **Lösning:** Inkludera process nodes i progress-räkningen (antingen i `nodesToGenerate` eller räkna dem separat och lägg till i totalen)
+  - **Plats:** `src/lib/bpmnGenerators.ts` (rad ~1671, `nodesToGenerate.length` används för progress)
+
 ### Timeline / Planning View
 - [ ] Spara redigerade datum till backend/database
 - [ ] Automatisk staggering av datum baserat på orderIndex
@@ -116,9 +158,10 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 
 ## 🔄 Versionering & Change Tracking
 
-- [ ] Utöka `bpmn_files` tabell med versioning
-- [ ] Skapa diff-vy för BPMN XML (visuell jämförelse)
-- [ ] Skapa diff-vy för genererad dokumentation
+- [x] Utöka `bpmn_files` tabell med versioning (✅ Implementerad)
+- [x] Skapa diff-vy för BPMN XML (✅ `BpmnDiffOverviewPage.tsx` finns)
+- [ ] **FÖRBÄTTRA:** Diff-funktionalitet för selektiv regenerering (se "Högsta prioritet" ovan)
+- [ ] Skapa diff-vy för genererad dokumentation (jämför HTML-innehåll)
 - [ ] Implementera "What changed since last generation?"-vy
 - [ ] Lägg till changelog per fil/nod
 
@@ -196,7 +239,7 @@ Se [Feature Roadmap](docs/FEATURE_ROADMAP.md) för detaljerade beskrivningar av:
 
 ---
 
-**Senast uppdaterad:** 2025-01-27
+**Senast uppdaterad:** 2025-12-22
 
 ## ✅ Nyligen slutförda uppgifter
 
