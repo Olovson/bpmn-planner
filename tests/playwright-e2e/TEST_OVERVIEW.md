@@ -97,6 +97,25 @@
    - Kan använda återanvändbara steg
    - Validerar specifik funktionalitet
 
+## ✅ Testrealism och Verifiering
+
+Testerna är designade för att vara så realistiska som möjligt och faktiskt testa att appen fungerar:
+
+### Verifieringar som görs
+
+1. **Hierarki-byggnad verifieras** - Tester verifierar att hierarki faktiskt byggdes (kollar Process Explorer)
+2. **Dokumentation verifieras** - Tester verifierar att dokumentation faktiskt genererades (kollar Doc Viewer med faktiskt innehåll)
+3. **Tester verifieras** - Tester verifierar att tester faktiskt genererades (kollar Test Report och Test Coverage med faktiska rader)
+4. **Testgenerering kräver dokumentation** - Testgenerering-testet genererar dokumentation först (som krävs av appen)
+
+### Borttagning av onödiga test.skip()
+
+- ✅ Tester skapar automatiskt det som behövs (filer laddas upp om de saknas)
+- ✅ Tester failar med tydliga felmeddelanden om något saknas (vilket indikerar ett problem med appen)
+- ✅ Färre `test.skip()` anrop (endast för legitima fall, t.ex. GitHub sync om det inte är konfigurerat)
+
+**Se:** [`docs/analysis/TEST_SKIP_REMOVAL.md`](../../docs/analysis/TEST_SKIP_REMOVAL.md) och [`docs/analysis/TEST_REALISM_SUMMARY.md`](../../docs/analysis/TEST_REALISM_SUMMARY.md) för detaljerad information.
+
 ## 📝 Dokumentation
 
 ### Huvuddokumentation

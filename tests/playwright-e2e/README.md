@@ -145,6 +145,11 @@ npx playwright test bpmn-file-manager-dialogs.spec.ts
 ### Utils (Återanvändbara Komponenter)
 
 - **`utils/testSteps.ts`** - Återanvändbara test-steg som kan kombineras till A-Ö tester
+- **`utils/testHelpers.ts`** - ⭐ **NYTT** - Helper-funktioner för att säkerställa att test-miljön är korrekt uppsatt (ersätter onödiga `test.skip()`)
+  - `ensureBpmnFileExists()` - Säkerställer att minst en BPMN-fil finns (laddar upp om ingen finns)
+  - `ensureButtonExists()` - Säkerställer att en knapp finns och är synlig (kastar Error om den saknas)
+  - `ensureFileCanBeSelected()` - Säkerställer att en fil kan väljas för generering
+  - `ensureUploadAreaExists()` - Säkerställer att upload area finns
 - **`utils/uiInteractionHelpers.ts`** - Helper-funktioner för UI-interaktioner
 - **`utils/processTestUtils.ts`** - Helper-funktioner för process-tester
 
@@ -236,4 +241,23 @@ För snabba och pålitliga tester använder vi mockade Claude API-anrop:
 - ✅ Pålitliga tester (inga rate limits eller API-fel)
 - ✅ Testar app-logik utan externa beroenden
 - ✅ Kan testa error cases enkelt
+
+## ✅ Testrealism och Verifiering
+
+Testerna är designade för att vara så realistiska som möjligt och faktiskt testa att appen fungerar:
+
+### Verifieringar som görs
+
+1. **Hierarki-byggnad verifieras** - Tester verifierar att hierarki faktiskt byggdes (kollar Process Explorer)
+2. **Dokumentation verifieras** - Tester verifierar att dokumentation faktiskt genererades (kollar Doc Viewer med faktiskt innehåll)
+3. **Tester verifieras** - Tester verifierar att tester faktiskt genererades (kollar Test Report och Test Coverage med faktiska rader)
+4. **Testgenerering kräver dokumentation** - Testgenerering-testet genererar dokumentation först (som krävs av appen)
+
+### Borttagning av onödiga test.skip()
+
+- ✅ Tester skapar automatiskt det som behövs (filer laddas upp om de saknas)
+- ✅ Tester failar med tydliga felmeddelanden om något saknas (vilket indikerar ett problem med appen)
+- ✅ Färre `test.skip()` anrop (endast för legitima fall, t.ex. GitHub sync om det inte är konfigurerat)
+
+**Se:** [`docs/analysis/TEST_SKIP_REMOVAL.md`](../../docs/analysis/TEST_SKIP_REMOVAL.md) och [`docs/analysis/TEST_REALISM_SUMMARY.md`](../../docs/analysis/TEST_REALISM_SUMMARY.md) för detaljerad information.
 

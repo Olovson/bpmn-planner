@@ -20,6 +20,11 @@ import {
   stepBuildHierarchy,
   stepSelectGenerationMode,
   stepSelectFile,
+  stepStartGeneration,
+  stepWaitForGenerationComplete,
+  stepVerifyGenerationResult,
+  stepNavigateToDocViewer,
+  stepNavigateToProcessExplorer,
   stepNavigateToTestReport,
   stepNavigateToTestCoverage,
 } from './utils/testSteps';
@@ -40,25 +45,45 @@ test.describe('Test Generation from Scratch', () => {
     // Steg 2: Säkerställ att minst en BPMN-fil finns (ladda upp om ingen finns)
     await ensureBpmnFileExists(ctx, 'test-generation.bpmn');
 
-    // Steg 3: Bygg hierarki
-    try {
-      await stepBuildHierarchy(ctx);
-    } catch (error) {
-      console.log('⚠️  Could not build hierarchy, might already be built');
-    }
+    // Steg 3: Bygg hierarki (krav för generering)
+    await stepBuildHierarchy(ctx);
+    
+    // Verifiera att hierarki byggdes (kolla Process Explorer)
+    await stepNavigateToProcessExplorer(ctx);
+    const processTree = page.locator('svg, [data-testid="process-tree"], text=/process/i').first();
+    const hasProcessTree = await processTree.count() > 0;
+    expect(hasProcessTree).toBeTruthy();
+    await stepNavigateToFiles(ctx); // Gå tillbaka till Files
 
     // Steg 4: Välj genereringsläge (Claude med mocked API)
-    try {
-      await stepSelectGenerationMode(ctx, 'claude');
-    } catch (error) {
-      console.log('⚠️  Could not select generation mode, using default');
-    }
+    await stepSelectGenerationMode(ctx, 'claude');
 
-    // Steg 5: Välj fil för testgenerering
+    // Steg 5: Välj fil för dokumentationsgenerering (krav för testgenerering)
     const fileName = await ensureFileCanBeSelected(ctx);
     await stepSelectFile(ctx, fileName);
 
-    // Steg 6: Starta testgenerering
+    // Steg 5a: Generera dokumentation FÖRST (krav för testgenerering)
+    await ensureButtonExists(page,
+      'button:has-text("Generera artefakter"), button:has-text("Generera")',
+      'Generate button'
+    );
+    
+    await stepStartGeneration(ctx);
+    await stepWaitForGenerationComplete(ctx, 30000);
+    await stepVerifyGenerationResult(ctx);
+    
+    // Verifiera att dokumentation faktiskt genererades (kolla Doc Viewer)
+    const bpmnFileName = fileName.trim().replace('.bpmn', '');
+    await stepNavigateToDocViewer(ctx, fileName, bpmnFileName);
+    const docContent = await page.textContent('body');
+    expect(docContent).toBeTruthy();
+    expect(docContent?.length).toBeGreaterThan(100);
+    await stepNavigateToFiles(ctx); // Gå tillbaka till Files
+    
+    // Välj fil igen för testgenerering
+    await stepSelectFile(ctx, fileName);
+
+    // Steg 6: Starta testgenerering (nu när dokumentation finns)
     // Generate tests button should exist if file is selected
     await ensureButtonExists(page,
       'button:has-text("Generera testinformation"), button:has-text("Generera tester"), button:has-text("test")',
@@ -73,52 +98,51 @@ test.describe('Test Generation from Scratch', () => {
       await generateTestsButton.click();
       
       // Vänta på att testgenerering är klar (med mocked API ska detta gå snabbt)
-      await page.waitForTimeout(5000);
+      const successMessage = await page.waitForSelector(
+        'text=/success/i, text=/klar/i, text=/completed/i, text=/generated/i, text=/testgenerering klar/i',
+        { timeout: 30000 }
+      ).catch(() => null);
       
-      // Vänta på success-meddelande eller completion
-      await Promise.race([
-        page.waitForSelector(
-          'text=/success/i, text=/klar/i, text=/completed/i, text=/generated/i',
-          { timeout: 30000 }
-        ),
-        page.waitForTimeout(10000),
-      ]).catch(() => {
-        // Timeout är acceptabelt
-      });
+      if (!successMessage) {
+        // Kolla om det finns ett felmeddelande om saknad dokumentation
+        const errorMessage = page.locator(
+          'text=/dokumentation saknas/i, text=/missing documentation/i, [role="alert"]'
+        ).first();
+        const hasError = await errorMessage.isVisible({ timeout: 2000 }).catch(() => false);
+        
+        if (hasError) {
+          throw new Error('Test generation failed: Documentation is missing. This should not happen since we generated documentation first.');
+        }
+        
+        throw new Error('Test generation did not complete successfully - no success message found');
+      }
 
-      // Steg 7: Verifiera att tester syns i Test Report
+      // Steg 7: Verifiera att tester faktiskt genererades i Test Report
       await stepNavigateToTestReport(ctx);
       
-      // Kolla om test scenarios visas
+      // Verifiera att test scenarios faktiskt visas
       const testScenarios = page.locator(
         'table, [data-testid="test-results-table"], text=/scenario/i'
       ).first();
       
       const hasScenarios = await testScenarios.count() > 0;
+      expect(hasScenarios).toBeTruthy();
       
-      if (hasScenarios) {
-        console.log('✅ Test scenarios visas i Test Report');
-      } else {
-        // Om inga scenarios visas, kan det vara att de inte har genererats ännu
-        // eller att sidan behöver laddas om
-        console.log('ℹ️  Test Report är tom (scenarios kan behöva laddas om)');
-      }
+      // Verifiera att det finns minst en scenario-rad
+      const scenarioRows = page.locator('table tbody tr, [data-testid="test-results-table"] tbody tr').first();
+      const hasRows = await scenarioRows.count() > 0;
+      expect(hasRows).toBeTruthy();
 
       // Steg 8: Verifiera att tester syns i Test Coverage
       await stepNavigateToTestCoverage(ctx);
       
-      // Kolla om E2E scenarios visas
+      // Verifiera att E2E scenarios faktiskt visas
       const e2eScenarios = page.locator(
         'table, [data-testid="test-coverage-table"], text=/e2e/i, text=/scenario/i'
       ).first();
       
       const hasE2eScenarios = await e2eScenarios.count() > 0;
-      
-      if (hasE2eScenarios) {
-        console.log('✅ E2E scenarios visas i Test Coverage');
-      } else {
-        console.log('ℹ️  Test Coverage är tom (scenarios kan behöva laddas om)');
-      }
+      expect(hasE2eScenarios).toBeTruthy();
     }
   });
 

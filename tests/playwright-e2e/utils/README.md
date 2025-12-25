@@ -21,7 +21,43 @@ Detta katalog innehåller återanvändbara test-komponenter som kan användas f�
 - `stepVerifyGenerationResult()` - Verifierar genereringsresultat
 - `stepNavigateToTestReport()` - Navigerar till Test Report
 - `stepNavigateToTestCoverage()` - Navigerar till Test Coverage
+- `stepNavigateToDocViewer()` - Navigerar till Doc Viewer
+- `stepNavigateToProcessExplorer()` - Navigerar till Process Explorer
 - etc.
+
+### `testHelpers.ts` ⭐ **NYTT**
+
+Helper-funktioner för att säkerställa att test-miljön är korrekt uppsatt. Dessa funktioner ersätter onödiga `test.skip()` anrop och säkerställer att testerna faktiskt testar appens funktionalitet.
+
+**Funktioner:**
+- `ensureBpmnFileExists(ctx, fileName?)` - Säkerställer att minst en BPMN-fil finns (laddar upp om ingen finns)
+- `ensureButtonExists(page, selector, name)` - Säkerställer att en knapp finns och är synlig (kastar Error om den saknas)
+- `ensureFileCanBeSelected(ctx)` - Säkerställer att en fil kan väljas för generering
+- `ensureUploadAreaExists(page)` - Säkerställer att upload area finns
+- `createTestContext(page)` - Skapar test context från page
+
+**Användning:**
+```typescript
+import { ensureBpmnFileExists, ensureButtonExists, createTestContext } from './utils/testHelpers';
+
+test('my test', async ({ page }) => {
+  const ctx = createTestContext(page);
+  
+  // Säkerställ att filer finns (laddar upp om de saknas)
+  await ensureBpmnFileExists(ctx, 'my-file.bpmn');
+  
+  // Säkerställ att knapp finns (failar om den saknas)
+  await ensureButtonExists(page, 'button:has-text("Generate")', 'Generate button');
+  
+  // ... resten av testet
+});
+```
+
+**Fördelar:**
+- ✅ Tester skapar automatiskt det som behövs
+- ✅ Tester failar med tydliga felmeddelanden om något saknas
+- ✅ Färre `test.skip()` anrop
+- ✅ Bättre test coverage
 
 ## Användning
 
@@ -102,8 +138,29 @@ När du lägger till nya test-steg:
 1. Skapa funktionen i `testSteps.ts`
 2. Använd `TestContext` som parameter
 3. Dokumentera vad steget gör
-4. Hantera fel gracefully (använd try/catch eller returnera status)
-5. Uppdatera denna README
+4. **VIKTIGT:** Verifiera att operationen faktiskt slutfördes (inte bara att den startade)
+5. Hantera fel gracefully (kasta Error med tydligt felmeddelande, inte bara logga)
+6. Uppdatera denna README
+
+**Exempel på bra verifiering:**
+```typescript
+export async function stepBuildHierarchy(ctx: TestContext) {
+  const { page } = ctx;
+  
+  const buildHierarchyButton = page.locator('button:has-text("Bygg hierarki")').first();
+  await buildHierarchyButton.click();
+  
+  // Verifiera att hierarki faktiskt byggdes
+  const successMessage = await page.waitForSelector(
+    'text=/success/i, text=/klar/i, text=/complete/i',
+    { timeout: 30000 }
+  ).catch(() => null);
+  
+  if (!successMessage) {
+    throw new Error('Hierarchy building did not complete successfully - no success message found');
+  }
+}
+```
 
 **Exempel:**
 

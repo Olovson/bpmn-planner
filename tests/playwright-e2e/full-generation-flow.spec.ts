@@ -23,6 +23,7 @@ import {
   stepStartGeneration,
   stepWaitForGenerationComplete,
   stepVerifyGenerationResult,
+  stepNavigateToProcessExplorer,
   stepNavigateToTestReport,
   stepNavigateToTestCoverage,
 } from './utils/testSteps';
@@ -41,18 +42,17 @@ test.describe('Full Generation Flow', () => {
     await ensureBpmnFileExists(ctx, 'test-generation-flow.bpmn');
 
     // Step 3: Build hierarchy (using reusable step)
-    try {
-      await stepBuildHierarchy(ctx);
-    } catch (error) {
-      console.log('⚠️  Could not build hierarchy, might already be built');
-    }
+    await stepBuildHierarchy(ctx);
+    
+    // Verifiera att hierarki byggdes
+    await stepNavigateToProcessExplorer(ctx);
+    const processTree = page.locator('svg, [data-testid="process-tree"], text=/process/i').first();
+    const hasProcessTree = await processTree.count() > 0;
+    expect(hasProcessTree).toBeTruthy();
+    await stepNavigateToFiles(ctx); // Gå tillbaka till Files
 
     // Step 4: Select generation mode (using reusable step)
-    try {
-      await stepSelectGenerationMode(ctx, 'claude');
-    } catch (error) {
-      console.log('⚠️  Could not select generation mode, using default');
-    }
+    await stepSelectGenerationMode(ctx, 'claude');
 
     // Step 5: Välj fil för generering
     const fileName = await ensureFileCanBeSelected(ctx);

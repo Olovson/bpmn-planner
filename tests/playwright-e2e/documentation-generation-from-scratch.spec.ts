@@ -43,19 +43,18 @@ test.describe('Documentation Generation from Scratch', () => {
     // Steg 2: Säkerställ att minst en BPMN-fil finns (ladda upp om ingen finns)
     await ensureBpmnFileExists(ctx, 'test-doc-generation.bpmn');
 
-    // Steg 3: Bygg hierarki
-    try {
-      await stepBuildHierarchy(ctx);
-    } catch (error) {
-      console.log('⚠️  Could not build hierarchy, might already be built');
-    }
+    // Steg 3: Bygg hierarki (krav för generering)
+    await stepBuildHierarchy(ctx);
+    
+    // Verifiera att hierarki byggdes
+    await stepNavigateToProcessExplorer(ctx);
+    const processTree = page.locator('svg, [data-testid="process-tree"], text=/process/i').first();
+    const hasProcessTree = await processTree.count() > 0;
+    expect(hasProcessTree).toBeTruthy();
+    await stepNavigateToFiles(ctx); // Gå tillbaka till Files
 
     // Steg 4: Välj genereringsläge (Claude med mocked API)
-    try {
-      await stepSelectGenerationMode(ctx, 'claude');
-    } catch (error) {
-      console.log('⚠️  Could not select generation mode, using default');
-    }
+    await stepSelectGenerationMode(ctx, 'claude');
 
     // Steg 5: Välj fil för generering
     const fileName = await ensureFileCanBeSelected(ctx);
@@ -89,22 +88,25 @@ test.describe('Documentation Generation from Scratch', () => {
       const hasResultDialog = await resultDialog.isVisible({ timeout: 5000 }).catch(() => false);
       expect(hasResultDialog).toBeTruthy();
       
-      // Steg 10: Navigera till Doc Viewer och verifiera att dokumentation visas
-      const fileName = await fileLink.textContent() || 'test-doc-generation';
-      const bpmnFileName = fileName.trim().replace('.bpmn', '');
+      // Steg 10: Navigera till Doc Viewer och verifiera att dokumentation faktiskt genererades
+      const selectedFileName = fileName || 'test-doc-generation.bpmn';
+      const bpmnFileName = selectedFileName.replace('.bpmn', '');
       
-      try {
-        await stepNavigateToDocViewer(ctx, `${bpmnFileName}.bpmn`, bpmnFileName);
-        
-        // Verifiera att dokumentation laddades
-        const docContent = await page.textContent('body');
-        expect(docContent).toBeTruthy();
-        expect(docContent?.length).toBeGreaterThan(100);
-        
-        console.log('✅ Dokumentation genererad och visas korrekt i Doc Viewer');
-      } catch (error) {
-        console.log('⚠️  Could not navigate to Doc Viewer, but generation completed');
-      }
+      await stepNavigateToDocViewer(ctx, selectedFileName, bpmnFileName);
+      
+      // Verifiera att dokumentation faktiskt laddades (kritiskt - faila om den saknas)
+      const docContent = await page.textContent('body');
+      expect(docContent).toBeTruthy();
+      expect(docContent?.length).toBeGreaterThan(100);
+      
+      // Verifiera att dokumentation innehåller faktiskt innehåll (inte bara tom HTML)
+      const hasActualContent = docContent && (
+        docContent.includes('process') ||
+        docContent.includes('task') ||
+        docContent.includes('element') ||
+        docContent.length > 500
+      );
+      expect(hasActualContent).toBeTruthy();
     }
   });
 
