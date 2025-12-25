@@ -13,6 +13,12 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
+    // Screenshots för att se vad som händer vid fel
+    screenshot: 'only-on-failure',
+    // Video för att se vad som händer (sparas bara vid fel för att spara diskutrymme)
+    video: 'retain-on-failure',
+    // Headless: false för att se browsern (kan sättas via --headed flagga också)
+    // headless: false, // Kommenterat ut - använd --headed flagga istället
   },
 
   projects: [

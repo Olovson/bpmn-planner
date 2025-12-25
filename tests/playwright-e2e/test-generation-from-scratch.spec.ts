@@ -30,7 +30,6 @@ import {
 } from './utils/testSteps';
 import { ensureBpmnFileExists, ensureFileCanBeSelected, ensureButtonExists } from './utils/testHelpers';
 import { cleanupTestFiles } from './utils/testCleanup';
-import { cleanupTestFiles } from './utils/testCleanup';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
