@@ -337,8 +337,14 @@ async function loadFeatureGoalDocFromStorage(
   }
 }
 
+export interface E2eScenarioGenerationResult {
+  scenarios: E2eScenario[];
+  paths: ProcessPath[];
+}
+
 /**
  * Genererar E2E-scenarios för alla paths i en BPMN-process.
+ * Returnerar både scenarios och paths för vidare användning (t.ex. Feature Goal-test-generering).
  */
 export async function generateE2eScenariosForProcess(
   rootBpmnFile: string,
@@ -348,7 +354,7 @@ export async function generateE2eScenariosForProcess(
   allowFallback: boolean = true,
   abortSignal?: AbortSignal,
   progressCallback?: (progress: { current: number; total: number; currentPath?: string }) => void
-): Promise<E2eScenario[]> {
+): Promise<E2eScenarioGenerationResult> {
   const scenarios: E2eScenario[] = [];
   
   try {
@@ -365,7 +371,7 @@ export async function generateE2eScenariosForProcess(
     const startEvents = findStartEvents(flowGraph);
     if (startEvents.length === 0) {
       console.warn(`[e2eScenarioGenerator] No start events found in ${rootBpmnFile}`);
-      return scenarios;
+      return { scenarios: [], paths: [] };
     }
     
     // 4. Find paths for each start event
@@ -377,10 +383,13 @@ export async function generateE2eScenariosForProcess(
     
     if (allPaths.length === 0) {
       console.warn(`[e2eScenarioGenerator] No paths found in ${rootBpmnFile}`);
-      return scenarios;
+      return { scenarios: [], paths: [] };
     }
     
     progressCallback?.({ current: 0, total: allPaths.length });
+    
+    // Store paths that were used for generation (for Feature Goal test extraction)
+    const usedPaths: ProcessPath[] = [];
     
     // 5. Generate E2E scenario for each path
     for (let i = 0; i < allPaths.length; i++) {
@@ -451,12 +460,17 @@ export async function generateE2eScenariosForProcess(
       
       if (result && result.scenario) {
         scenarios.push(result.scenario);
+        // Store the path that was used for this scenario
+        usedPaths.push(path);
       }
     }
     
     progressCallback?.({ current: allPaths.length, total: allPaths.length });
     
-    return scenarios;
+    return {
+      scenarios,
+      paths: usedPaths, // Return only paths that were actually used for generation
+    };
   } catch (error) {
     console.error('[e2eScenarioGenerator] Error generating E2E scenarios:', error);
     throw error;

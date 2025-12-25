@@ -18,13 +18,14 @@ Detta test-suite innehåller tester för BPMN Planner-applikationen, organiserad
 
 ## Teststruktur
 
-### Playwright Tests (Generated from BPMN)
+**Viktigt:** Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then. All testinformation genereras nu direkt från E2E scenarios.
 
-Playwright-tester genereras från BPMN-processmodeller och är organiserade hierarkiskt för att matcha BPMN- och Jira-strukturen:
+### E2E-scenarios och Feature Goal-test scenarios
 
-- **Initiative** (top-level BPMN process, e.g., "Application")
-- **Feature Goals** (CallActivity nodes)
-- **Epics** (UserTask, ServiceTask, BusinessRuleTask nodes)
+Testinformation genereras från BPMN-processgrafen och Feature Goal-dokumentation:
+
+- **E2E-scenarios** - Kompletta flöden från start till slut, genererade med Claude
+- **Feature Goal-test scenarios** - Extraherat från E2E-scenarios, sparas i databasen
 
 ## Integration Tests
 
@@ -185,9 +186,11 @@ Dessa tester i denna mapp (`tests/`) validerar att appens kod fungerar korrekt:
 
 ### 2. Användartester (genererade av appen)
 Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
-- **Playwright-testfiler** - Genereras från BPMN-processer
-- **Test-scenarion** - Extraheras från dokumentation
+- **E2E-scenarios** - Genereras från BPMN-processgraf och Feature Goals med Claude
+- **Feature Goal-test scenarios** - Extraheras från E2E-scenarios
 - **Test Coverage-data** - Visas i Test Coverage Explorer
+
+**Viktigt:** Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then. Detta sparar tid och pengar (färre LLM-anrop).
 
 **Syfte:** Används av användare för att testa sina BPMN-processer, INTE för att validera appens kod.
 
@@ -199,20 +202,23 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 
 > **Notera:** Detta avsnitt handlar om tester som **appen genererar för användarna**, inte utvecklartester.
 
-Tests are automatically generated from BPMN files via the `generate-artifacts` edge function. The generation:
+Testinformation genereras automatiskt från BPMN-filer via "Generera testinfo"-knappen i BPMN File Manager. Genereringen:
 
-1. Parses BPMN hierarchy (Initiative → Feature Goals)
-2. Generates test stubs with standardized naming for Feature Goals (Call Activities)
-3. Adds metadata annotations for filtering
-4. Preserves existing test implementations (does not overwrite)
+1. Parsar BPMN-processgraf och identifierar paths genom processen
+2. Genererar E2E-scenarios med Claude baserat på paths och Feature Goal-dokumentation
+3. Extraherar Feature Goal-test scenarios från E2E-scenarios
+4. Sparar E2E-scenarios i Supabase Storage och Feature Goal-test scenarios i databasen
 
-**Viktigt:** Epic-testgenerering har tagits bort. Endast Feature Goals (Call Activities) genererar testfiler. Epic-information finns redan inkluderad i Feature Goal-dokumentation via `childrenDocumentation`.
+**Viktigt:** 
+- **Playwright-testfiler har tagits bort** - de innehöll bara stubbar och användes inte för att generera given/when/then. All testinformation finns nu i E2E scenarios och Feature Goal-test scenarios.
+- Epic-testgenerering har tagits bort. Epic-information finns redan inkluderad i Feature Goal-dokumentation via `childrenDocumentation`.
 
 To regenerate tests:
 1. Go to the BPMN File Manager
 2. Select a BPMN file
-3. Click "Generate Artifacts"
-4. Tests will be created/updated in Supabase Storage
+3. Click "Generate Test Information"
+4. E2E scenarios will be created/updated in Supabase Storage
+5. Feature Goal-test scenarios will be saved to database
 
 **Dessa genererade tester är INTE en del av utvecklartest-suiten.**
 

@@ -3,26 +3,18 @@
  * These functions generate test files independently from documentation generation
  */
 
-import { parseBpmnFile, type BpmnElement } from '@/lib/bpmnParser';
+import { parseBpmnFile } from '@/lib/bpmnParser';
 import { buildBpmnProcessGraph, getTestableNodes } from '@/lib/bpmnProcessGraph';
-import { generateTestSpecWithLlm } from '@/lib/llmTests';
-import { generateTestSkeleton } from '@/lib/bpmnGenerators';
-import { getNodeTestFileKey, getNodeDocFileKey } from '@/lib/nodeArtifactPaths';
 import { storageFileExists, getNodeDocStoragePath, getFeatureGoalDocStoragePaths } from '@/lib/artifactUrls';
-import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
-import { supabase } from '@/integrations/supabase/client';
 import type { LlmProvider } from '@/lib/llmClientAbstraction';
 import { isLlmEnabled } from '@/lib/llmClient';
 import { generateE2eScenariosForProcess } from '@/lib/e2eScenarioGenerator';
 import { saveE2eScenariosToStorage } from '@/lib/e2eScenarioStorage';
+import { generateFeatureGoalTestsFromE2e } from '@/lib/featureGoalTestGenerator';
 
 export interface TestGenerationResult {
-  testFiles: Array<{
-    filePath: string;
-    elementId: string;
-    elementName: string;
-    scenariosCount: number;
-  }>;
+  // Playwright-testfiler har tagits bort - de innehöll bara stubbar
+  // All test information is now in E2E scenarios and Feature Goal-test scenarios
   totalFiles: number;
   totalScenarios: number;
   errors: Array<{
@@ -55,7 +47,6 @@ export async function generateTestsForFile(
   abortSignal?: AbortSignal,
 ): Promise<TestGenerationResult> {
   const result: TestGenerationResult = {
-    testFiles: [],
     totalFiles: 0,
     totalScenarios: 0,
     errors: [],
@@ -148,7 +139,8 @@ export async function generateTestsForFile(
       );
     }
 
-    result.totalFiles = testableNodes.length;
+    // Playwright-testfiler genereras inte längre
+    result.totalFiles = 0;
 
     progressCallback?.({
       current: 0,
@@ -157,103 +149,12 @@ export async function generateTestsForFile(
       currentElement: `Found ${testableNodes.length} testable nodes`,
     });
 
-    // Generate tests for each testable node
-    for (let i = 0; i < testableNodes.length; i++) {
-      if (checkCancellation) {
-        checkCancellation();
-      }
-      if (abortSignal?.aborted) {
-        throw new Error('Test generation cancelled');
-      }
-
-      const node = testableNodes[i];
-      const element = node.element;
-
-      try {
-        progressCallback?.({
-          current: i,
-          total: testableNodes.length,
-          status: 'generating',
-          currentElement: element.name || element.id,
-        });
-
-        // Generate test scenarios using LLM (if enabled)
-        let llmScenarios: { name: string; description: string; expectedResult?: string; steps?: string[] }[] | undefined;
-
-        if (isLlmEnabled() && llmProvider) {
-          const scenarios = await generateTestSpecWithLlm(
-            element,
-            llmProvider,
-            checkCancellation,
-            abortSignal,
-          );
-
-          if (scenarios && scenarios.length > 0) {
-            llmScenarios = scenarios.map((s) => ({
-              name: s.name,
-              description: s.description,
-              expectedResult: s.expectedResult,
-              steps: s.steps,
-            }));
-            result.totalScenarios += scenarios.length;
-          }
-        }
-
-        // Generate test file content
-        const testContent = generateTestSkeleton(element, llmScenarios);
-        const testFileKey = getNodeTestFileKey(bpmnFileName, element.id);
-
-        // Upload to Supabase Storage
-        progressCallback?.({
-          current: i,
-          total: testableNodes.length,
-          status: 'uploading',
-          currentElement: element.name || element.id,
-        });
-
-        const { error: uploadError } = await supabase.storage
-          .from('bpmn-files')
-          .upload(testFileKey, testContent, {
-            contentType: 'text/plain',
-            upsert: true, // Allow overwriting existing test files
-          });
-
-        if (uploadError) {
-          throw new Error(`Failed to upload test file: ${uploadError.message}`);
-        }
-
-        // Create test link in database
-        const { error: linkError } = await supabase.from('node_test_links').upsert(
-          {
-            bpmn_file: bpmnFileName,
-            bpmn_element_id: element.id,
-            test_file_path: testFileKey,
-            test_name: `Test for ${element.name || element.id}`,
-          },
-          {
-            onConflict: 'bpmn_file,bpmn_element_id,test_file_path',
-          },
-        );
-
-        if (linkError) {
-          console.warn(`Failed to create test link for ${element.id}:`, linkError);
-        }
-
-        result.testFiles.push({
-          filePath: testFileKey,
-          elementId: element.id,
-          elementName: element.name || element.id,
-          scenariosCount: llmScenarios?.length || 0,
-        });
-      } catch (error) {
-        result.errors.push({
-          elementId: element.id,
-          elementName: element.name || element.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
+    // Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte
+    // för att generera given/when/then. All testinformation finns nu i:
+    // - E2E scenarios (kompletta flöden, JSON i storage)
+    // - Feature Goal-test scenarios (extraherat från E2E scenarios, i databas)
+    
+    // Hoppa över Playwright-testfil-generering och gå direkt till E2E scenario-generering
     progressCallback?.({
       current: testableNodes.length,
       total: testableNodes.length,
@@ -265,8 +166,8 @@ export async function generateTestsForFile(
     if (isLlmEnabled() && llmProvider) {
       try {
         progressCallback?.({
-          current: testableNodes.length,
-          total: testableNodes.length + 1,
+          current: 0,
+          total: 1,
           status: 'generating',
           currentElement: 'Genererar E2E-scenarios...',
         });
@@ -277,7 +178,7 @@ export async function generateTestsForFile(
         const processName = firstProcess?.name || parseResult.meta?.name || bpmnFileName.replace('.bpmn', '');
         const initiative = processName.includes('mortgage') ? 'Mortgage' : processName;
 
-        const e2eScenarios = await generateE2eScenariosForProcess(
+        const e2eResult = await generateE2eScenariosForProcess(
           bpmnFileName,
           processName,
           initiative,
@@ -286,19 +187,64 @@ export async function generateTestsForFile(
           abortSignal,
           (progress) => {
             progressCallback?.({
-              current: testableNodes.length + progress.current,
-              total: testableNodes.length + progress.total,
+              current: progress.current,
+              total: progress.total,
               status: 'generating',
               currentElement: progress.currentPath || 'Genererar E2E-scenarios...',
             });
           }
         );
 
-        if (e2eScenarios.length > 0) {
+        if (e2eResult.scenarios.length > 0) {
           // Save E2E scenarios to storage as JSON
-          await saveE2eScenariosToStorage(bpmnFileName, e2eScenarios);
+          await saveE2eScenariosToStorage(bpmnFileName, e2eResult.scenarios);
           
-          console.log(`[testGenerators] Generated ${e2eScenarios.length} E2E scenarios for ${bpmnFileName}`);
+          console.log(`[testGenerators] Generated ${e2eResult.scenarios.length} E2E scenarios for ${bpmnFileName}`);
+          
+          // Generate Feature Goal tests from E2E scenarios
+          try {
+            progressCallback?.({
+              current: e2eResult.scenarios.length,
+              total: e2eResult.scenarios.length + 1,
+              status: 'generating',
+              currentElement: 'Genererar Feature Goal-tester från E2E-scenarios...',
+            });
+            
+            // Collect all BPMN files that contain Feature Goals from the paths
+            const bpmnFilesSet = new Set<string>([bpmnFileName]);
+            for (const path of e2eResult.paths) {
+              for (const featureGoalId of path.featureGoals) {
+                const element = parseResult.elements.find(e => e.id === featureGoalId);
+                if (element?.bpmnFile) {
+                  bpmnFilesSet.add(element.bpmnFile);
+                }
+              }
+            }
+            
+            const featureGoalTestResult = await generateFeatureGoalTestsFromE2e({
+              e2eScenarios: e2eResult.scenarios,
+              paths: e2eResult.paths,
+              bpmnFiles: Array.from(bpmnFilesSet),
+            });
+            
+            console.log(
+              `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios, ` +
+              `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
+            );
+            
+            if (featureGoalTestResult.errors.length > 0) {
+              console.warn(
+                `[testGenerators] Errors generating Feature Goal tests:`,
+                featureGoalTestResult.errors
+              );
+            }
+          } catch (error) {
+            console.warn(
+              `[testGenerators] Failed to generate Feature Goal tests from E2E scenarios:`,
+              error
+            );
+            // Don't fail the entire test generation if Feature Goal test generation fails
+          }
         }
       } catch (error) {
         console.warn(`[testGenerators] Failed to generate E2E scenarios for ${bpmnFileName}:`, error);
@@ -325,7 +271,6 @@ export async function generateTestsForAllFiles(
   abortSignal?: AbortSignal,
 ): Promise<TestGenerationResult> {
   const aggregatedResult: TestGenerationResult = {
-    testFiles: [],
     totalFiles: 0,
     totalScenarios: 0,
     errors: [],
@@ -366,7 +311,7 @@ export async function generateTestsForAllFiles(
       );
 
       // Aggregate results
-      aggregatedResult.testFiles.push(...fileResult.testFiles);
+      // Playwright-testfiler har tagits bort
       aggregatedResult.totalFiles += fileResult.totalFiles;
       aggregatedResult.totalScenarios += fileResult.totalScenarios;
       aggregatedResult.errors.push(...fileResult.errors);

@@ -101,7 +101,7 @@ npm run check:db-schema  # Verifiera databas-schema
 - Dokumentgenerering (Feature Goals, Epics, Business Rules)
 - **Diff-baserad selektiv regenerering** - Endast ändrade/tillagda noder regenereras automatiskt
 - **Lokal diff-analys** - Analysera diff för lokala BPMN-filer utan att ladda upp dem (read-only preview)
-- Testgenerering (Playwright-testfiler)
+- Testgenerering (E2E-scenarios och Feature Goal-test scenarios)
 - Visualisering (diagram, träd, listvy, timeline)
 - LLM-integration (Claude/Ollama)
 - Versioning och historik

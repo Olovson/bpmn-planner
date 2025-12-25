@@ -105,7 +105,8 @@ describe('Claude-generering för application-processen', () => {
     console.log('\n✅ Generering klar!');
     console.log(`   Filer analyserade: ${result.filesAnalyzed.length}`);
     console.log(`   Dokumentationsfiler: ${result.docFiles.length}`);
-    console.log(`   Testfiler: ${result.testFiles.length}`);
+    // Playwright-testfiler har tagits bort - all testinformation finns nu i E2E scenarios och Feature Goal-test scenarios
+    // Testinfo genereras nu via separat "Generera testinfo"-knapp i UI
     console.log(`   Application-dokumentation: ${applicationDocs.length} fil(er)`);
   }, 300000); // 5 minuter timeout för LLM-generering
 });

@@ -33,7 +33,7 @@ export interface GenerationProgress {
 export interface GenerationResult {
   fileName: string;
   filesAnalyzed: string[];
-  testFiles: Array<{ fileName: string; elements: Array<{ name: string; id: string }> }>;
+  // Playwright-testfiler har tagits bort - all testinformation finns nu i E2E scenarios och Feature Goal-test scenarios
   docFiles: string[];
   jiraMappings: Array<{ elementName: string; jiraType: string; jiraName: string }>;
   subprocessMappings: Array<{ callActivity: string; subprocessFile: string }>;
@@ -424,37 +424,7 @@ export function GenerationDialog({
                     </Card>
                   )}
 
-                  {/* Test Files */}
-                  {result.testFiles.length > 0 && (
-                    <Card className="p-4">
-                      <h3 className="font-semibold mb-2 text-sm flex items-center gap-2">
-                        <FileCode className="h-4 w-4" />
-                        Testfiler ({result.testFiles.length})
-                      </h3>
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {result.testFiles.slice(0, 10).map((testFile, i) => (
-                          <div key={i} className="text-sm p-2 bg-muted/30 rounded">
-                            <div className="font-medium mb-1">{testFile.fileName}</div>
-                            {testFile.elements.length > 0 && (
-                              <ul className="text-xs text-muted-foreground pl-4 space-y-0.5">
-                                {testFile.elements.slice(0, 3).map((el, j) => (
-                                  <li key={j}>• {el.name} ({el.id})</li>
-                                ))}
-                                {testFile.elements.length > 3 && (
-                                  <li className="italic">...och {testFile.elements.length - 3} fler element</li>
-                                )}
-                              </ul>
-                            )}
-                          </div>
-                        ))}
-                        {result.testFiles.length > 10 && (
-                          <p className="text-xs text-muted-foreground italic">
-                            ...och {result.testFiles.length - 10} fler testfiler
-                          </p>
-                        )}
-                      </div>
-                    </Card>
-                  )}
+                  {/* Playwright-testfiler har tagits bort - all testinformation finns nu i E2E scenarios och Feature Goal-test scenarios */}
 
                   {/* Documentation Files */}
                   {result.docFiles.length > 0 && (

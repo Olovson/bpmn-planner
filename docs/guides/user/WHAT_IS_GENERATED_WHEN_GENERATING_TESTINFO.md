@@ -33,31 +33,9 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 
 ---
 
-### Steg 2: Generering av Playwright-testfiler för Feature Goals
+### Steg 2: Generering av E2E-scenarios
 
-**Vad som händer:**
-1. Systemet identifierar alla **Call Activities** (Feature Goals) i BPMN-filen
-2. För varje Feature Goal:
-   - Läser Feature Goal-dokumentation från Supabase Storage
-   - Genererar en Playwright-testfil med teststubbar
-   - Testfilen inkluderar generiska teststubbar och kan inkludera LLM-genererade scenarios
-
-**Vad du får:**
-- En Playwright-testfil per Feature Goal (Call Activity)
-- Testfiler sparas i Supabase Storage
-- Länkar skapas i `node_test_links` tabellen
-
-**Var sparas:**
-- Supabase Storage: `bpmn-files/test-files/{bpmnFile}/{elementId}.spec.ts`
-- Databas: `node_test_links` tabellen (länkar BPMN-noder till testfiler)
-
-**Exempel:**
-- `mortgage-se-application.bpmn` → `test-files/mortgage-se-application.bpmn/application.spec.ts`
-- `mortgage-se-credit-evaluation.bpmn` → `test-files/mortgage-se-credit-evaluation.bpmn/credit-evaluation.spec.ts`
-
----
-
-### Steg 3: Generering av E2E-scenarios
+**Viktigt:** Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then. All testinformation genereras nu direkt från E2E scenarios.
 
 **Vad som händer:**
 1. Systemet bygger en processgraf från BPMN-filen
@@ -129,7 +107,7 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 
 ---
 
-### Steg 4: Extrahering av Feature Goal-test scenarios (från E2E-scenarios)
+### Steg 3: Extrahering av Feature Goal-test scenarios (från E2E-scenarios)
 
 **Vad som händer:**
 1. Systemet extraherar Feature Goal-tester från E2E-scenarios
@@ -151,21 +129,16 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 
 ## 📊 Sammanfattning: Vad Genereras
 
-### 1. Playwright-testfiler
-- **Typ:** TypeScript-filer (`.spec.ts`)
-- **Antal:** En per Feature Goal (Call Activity)
-- **Innehåll:** Teststubbar och generiska testscenarios
-- **Var:** Supabase Storage (`test-files/{bpmnFile}/{elementId}.spec.ts`)
-- **Databas:** `node_test_links` tabellen
+**Viktigt:** Playwright-testfiler har tagits bort. All testinformation finns nu i E2E scenarios och Feature Goal-test scenarios.
 
-### 2. E2E-scenarios
+### 1. E2E-scenarios
 - **Typ:** JSON-filer
 - **Antal:** 1-3 scenarios (beroende på vilka paths som matchar prioriterade scenarios)
 - **Innehåll:** Komplett E2E-scenario med given/when/then på root-nivå och subprocessSteps
 - **Var:** Supabase Storage (`e2e-scenarios/{bpmnFile}-scenarios.json`)
 - **Visas:** E2E Tests Overview-sidan (`/test-coverage`) och Test Coverage-sidan (`/test-coverage`)
 
-### 3. Feature Goal-test scenarios
+### 2. Feature Goal-test scenarios
 - **Typ:** Databasrader
 - **Antal:** En per Feature Goal i varje E2E-scenario
 - **Innehåll:** Test scenarios med gateway-kontext
@@ -175,6 +148,11 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 ---
 
 ## 🚫 Vad Genereras INTE
+
+### Playwright-testfiler
+- **Varför:** Playwright-testfiler har tagits bort
+- **Anledning:** De innehöll bara stubbar och användes inte för att generera given/when/then. All testinformation finns nu i E2E scenarios och Feature Goal-test scenarios.
+- **Fördelar:** Sparar tid och pengar (färre LLM-anrop), enklare system, alltid synkroniserat med E2E scenarios
 
 ### Epic-testfiler
 - **Varför:** Epic-testgenerering har tagits bort
@@ -192,10 +170,7 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 
 ## 📍 Var Kan Du Se Det Genererade Innehållet?
 
-### Playwright-testfiler
-- **Test Report-sidan** (`/test-report`)
-- **RightPanel** (när du väljer en nod i BPMN-viewern)
-- **Supabase Storage** (direkt via Supabase Dashboard)
+**Viktigt:** Playwright-testfiler har tagits bort. All testinformation finns nu i E2E scenarios och Feature Goal-test scenarios.
 
 ### E2E-scenarios
 - **E2E Tests Overview-sidan** (`/test-coverage` eller `/e2e-tests`)
@@ -218,23 +193,24 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 
 1. **Du klickar "Generera testinfo"** i Files-sidan
 2. **Systemet validerar dokumentation** - Stoppar om dokumentation saknas
-3. **Systemet genererar Playwright-testfiler** för alla Feature Goals
-4. **Systemet genererar E2E-scenarios** för root-processen (3 prioriterade scenarios)
-5. **Systemet extraherar Feature Goal-test scenarios** från E2E-scenarios
-6. **Systemet sparar allt** till Supabase Storage och databas
-7. **Du kan se resultatet** på E2E Tests Overview, Test Coverage, och Test Report-sidorna
+3. **Systemet genererar E2E-scenarios** för root-processen (3 prioriterade scenarios)
+4. **Systemet extraherar Feature Goal-test scenarios** från E2E-scenarios
+5. **Systemet sparar allt** till Supabase Storage och databas
+6. **Du kan se resultatet** på E2E Tests Overview, Test Coverage, och Test Report-sidorna
+
+**Viktigt:** Playwright-testfiler genereras inte längre - de innehöll bara stubbar och användes inte för att generera given/when/then.
 
 ---
 
 ## ✅ Checklista: Vad Du Bör Se Efter Generering
 
-- [ ] Playwright-testfiler finns i Supabase Storage (`test-files/`)
 - [ ] E2E-scenarios finns i Supabase Storage (`e2e-scenarios/`)
 - [ ] E2E-scenarios visas på E2E Tests Overview-sidan
 - [ ] E2E-scenarios visas på Test Coverage-sidan
 - [ ] Feature Goal-test scenarios finns i databasen (`node_planned_scenarios`)
-- [ ] Testfiler visas på Test Report-sidan
-- [ ] Länkar finns i `node_test_links` tabellen
+- [ ] Feature Goal-test scenarios visas på Test Report-sidan
+
+**Viktigt:** Playwright-testfiler genereras inte längre - de har tagits bort eftersom de bara innehöll stubbar.
 
 ---
 
@@ -260,9 +236,10 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 
 **När du genererar testinfo får du:**
 
-1. ✅ **Playwright-testfiler** - En per Feature Goal, sparas i Storage
-2. ✅ **E2E-scenarios** - 1-3 scenarios för root-processen, sparas i Storage som JSON
-3. ✅ **Feature Goal-test scenarios** - Extraheras från E2E-scenarios, sparas i databasen
+1. ✅ **E2E-scenarios** - 1-3 scenarios för root-processen, sparas i Storage som JSON
+2. ✅ **Feature Goal-test scenarios** - Extraheras från E2E-scenarios, sparas i databasen
+
+**Viktigt:** Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then. Detta sparar tid och pengar (färre LLM-anrop).
 
 **Allt detta är baserat på:**
 - BPMN-processgraf (paths genom processen)

@@ -172,7 +172,7 @@ export default function BpmnFileManager() {
     fileName: string;
     filesAnalyzed: string[];
     dorDodCriteria: Array<{ subprocess: string; category: string; type: string; text: string }>;
-    testFiles: Array<{ fileName: string; elements: Array<{ id: string; name: string }> }>;
+    // Playwright-testfiler har tagits bort - all testinformation finns nu i E2E scenarios och Feature Goal-test scenarios
     docFiles: string[];
     jiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }>;
     subprocessMappings: Array<{ callActivity: string; subprocessFile: string }>;
@@ -185,7 +185,7 @@ export default function BpmnFileManager() {
     totalFiles: number;
     allFilesAnalyzed: Set<string>;
     allDorDodCriteria: Array<{ subprocess: string; category: string; type: string; text: string }>;
-    allTestFiles: Array<{ fileName: string; elements: Array<{ id: string; name: string }> }>;
+        // Playwright-testfiler har tagits bort - all testinformation finns nu i E2E scenarios och Feature Goal-test scenarios
     allDocFiles: string[];
     allJiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }>;
     allSubprocessMappings: Array<{ callActivity: string; subprocessFile: string }>;
@@ -239,10 +239,8 @@ export default function BpmnFileManager() {
     planned: 0,
     completed: 0,
   });
-  const [testUploadProgress, setTestUploadProgress] = useState<{ planned: number; completed: number }>({
-    planned: 0,
-    completed: 0,
-  });
+  // Playwright-testfiler har tagits bort - testUploadProgress används inte längre
+  const testUploadProgress = { planned: 0, completed: 0 }; // Placeholder för kompatibilitet
   const cancelGenerationRef = useRef(false);
   const [cancelGeneration, setCancelGeneration] = useState(false);
   // Global AbortController för att avbryta pågående LLM-anrop
@@ -766,7 +764,8 @@ export default function BpmnFileManager() {
     setGraphTotals({ files: 0, nodes: 0 });
     setDocgenProgress({ completed: 0, total: 0 });
     setDocUploadProgress({ planned: 0, completed: 0 });
-    setTestUploadProgress({ planned: 0, completed: 0 });
+    // Playwright-testfiler har tagits bort - setTestUploadProgress används inte längre
+    // setTestUploadProgress({ planned: 0, completed: 0 });
     setGenerationPlan(null);
     setGenerationProgress(null);
     setGenerationDialogResult(null);
@@ -1176,7 +1175,7 @@ export default function BpmnFileManager() {
         },
         tests: {
           completed: testUploadsCompleted,
-          total: testUploadsPlanned || testUploadProgress.planned || 0,
+          total: testUploadsPlanned || 0, // Playwright-testfiler har tagits bort
         },
         startTime: generationStartTime,
         ...timeEstimate,
@@ -1238,7 +1237,7 @@ export default function BpmnFileManager() {
         },
         tests: {
           completed: testUploadsCompleted,
-          total: testUploadsPlanned || testUploadProgress.planned || 0,
+          total: testUploadsPlanned || 0, // Playwright-testfiler har tagits bort
         },
         startTime: generationStartTime,
         ...timeEstimate,
@@ -1270,20 +1269,9 @@ export default function BpmnFileManager() {
           setCurrentGenerationStep({ step: stepText, detail: stepDetail });
           updateGenerationProgressWithStep(stepText, stepDetail);
           break;
-        case 'hier-tests:start':
-          stepText = 'Genererar hierarkiska tester';
-          stepDetail = detail;
-          syncOverlayProgress(stepText);
-          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
-          updateGenerationProgressWithStep(stepText, stepDetail);
-          break;
-        case 'hier-tests:file':
-          stepText = 'Genererar hierarkiska tester';
-          stepDetail = detail;
-          await incrementJobProgress(`Hierarkitest: ${detail || ''}`);
-          setCurrentGenerationStep({ step: stepText, detail: stepDetail });
-          updateGenerationProgressWithStep(stepText, stepDetail);
-          break;
+        // Playwright-testfiler har tagits bort - hier-tests cases används inte längre
+        // case 'hier-tests:start':
+        // case 'hier-tests:file':
         case 'node-analysis:start':
           stepText = 'Analyserar noder';
           stepDetail = detail;
@@ -2164,7 +2152,7 @@ export default function BpmnFileManager() {
         fileName: file.file_name,
         filesAnalyzed,
         dorDodCriteria: detailedDorDod,
-        testFiles: [], // Testgenerering sker i separat steg
+        // Playwright-testfiler har tagits bort
         docFiles: detailedDocFiles,
         jiraMappings: detailedJiraMappings,
         subprocessMappings: detailedSubprocessMappings,
@@ -2177,7 +2165,7 @@ export default function BpmnFileManager() {
       const dialogResult: GenerationResult = {
         fileName: file.file_name,
         filesAnalyzed,
-        testFiles: [], // Testgenerering sker i separat steg
+        // Playwright-testfiler har tagits bort
         docFiles: detailedDocFiles,
         jiraMappings: detailedJiraMappings.map(jm => ({
           elementName: jm.elementName,
@@ -2545,7 +2533,7 @@ export default function BpmnFileManager() {
         totalFiles: allBpmnFiles.length,
         allFilesAnalyzed: new Set<string>(),
         allDorDodCriteria: [],
-        allTestFiles: [],
+        // Playwright-testfiler har tagits bort
         allDocFiles: [],
         allJiraMappings: [],
         allSubprocessMappings: [],
@@ -2563,7 +2551,7 @@ export default function BpmnFileManager() {
             // Aggregera resultat
             result.filesAnalyzed.forEach(f => aggregatedResult.allFilesAnalyzed.add(f));
             aggregatedResult.allDorDodCriteria.push(...result.dorDodCriteria);
-            aggregatedResult.allTestFiles.push(...result.testFiles);
+            // Playwright-testfiler har tagits bort
             aggregatedResult.allDocFiles.push(...result.docFiles);
             aggregatedResult.allJiraMappings.push(...result.jiraMappings);
             aggregatedResult.allSubprocessMappings.push(...result.subprocessMappings);
@@ -2592,7 +2580,7 @@ export default function BpmnFileManager() {
         fileName: `Alla filer (${aggregatedResult.totalFiles})`,
         filesAnalyzed: Array.from(aggregatedResult.allFilesAnalyzed),
         dorDodCriteria: aggregatedResult.allDorDodCriteria,
-        testFiles: aggregatedResult.allTestFiles,
+        // Playwright-testfiler har tagits bort
         docFiles: aggregatedResult.allDocFiles,
         jiraMappings: aggregatedResult.allJiraMappings,
         subprocessMappings: aggregatedResult.allSubprocessMappings,
@@ -2605,7 +2593,7 @@ export default function BpmnFileManager() {
       setGenerationDialogResult({
         fileName: summaryResult.fileName,
         filesAnalyzed: summaryResult.filesAnalyzed,
-        testFiles: summaryResult.testFiles,
+        // Playwright-testfiler har tagits bort
         docFiles: summaryResult.docFiles,
         jiraMappings: summaryResult.jiraMappings,
         subprocessMappings: summaryResult.subprocessMappings,
@@ -2711,7 +2699,7 @@ export default function BpmnFileManager() {
 
       toast({
         title: 'Testgenerering klar',
-        description: `Genererade ${result.testFiles.length} testfiler med ${result.totalScenarios} scenarion för ${selectedFile.file_name}.`,
+        description: `Genererade E2E-scenarios och Feature Goal-test scenarios för ${selectedFile.file_name}.`,
       });
 
       if (result.missingDocumentation && result.missingDocumentation.length > 0) {
@@ -2924,7 +2912,7 @@ export default function BpmnFileManager() {
 
         toast({
           title: 'Testgenerering klar',
-          description: `Genererade ${result.testFiles.length} testfiler med ${result.totalScenarios} scenarion för hela hierarkin.`,
+          description: `Genererade E2E-scenarios och Feature Goal-test scenarios för hela hierarkin.`,
         });
 
         if (result.errors.length > 0) {
@@ -2955,7 +2943,7 @@ export default function BpmnFileManager() {
 
         toast({
           title: 'Testgenerering klar',
-          description: `Genererade ${result.testFiles.length} testfiler med ${result.totalScenarios} scenarion för ${result.totalFiles} noder.`,
+          description: `Genererade E2E-scenarios och Feature Goal-test scenarios för ${result.totalFiles} noder.`,
         });
 
         if (result.missingDocumentation && result.missingDocumentation.length > 0) {
@@ -4207,7 +4195,7 @@ export default function BpmnFileManager() {
               disabled={generatingFile !== null || isLoading || files.length === 0}
               onClick={handleGenerateTestsForAllFiles}
               className="gap-2"
-              title="Generera testfiler och testscenarion för alla BPMN-filer. Kräver att dokumentation redan är genererad."
+              title="Generera E2E-scenarios och Feature Goal-test scenarios för alla BPMN-filer. Kräver att dokumentation redan är genererad."
             >
               <FileCode className="w-4 h-4" />
               Generera testinformation (alla filer)
@@ -4255,8 +4243,7 @@ export default function BpmnFileManager() {
               </div>
             )}
             {(graphTotals.nodes > 0 ||
-              docUploadProgress.planned > 0 ||
-              testUploadProgress.planned > 0) && (
+              docUploadProgress.planned > 0) && ( // Playwright-testfiler har tagits bort
               <div className="w-full text-xs bg-muted/30 rounded-md p-3 space-y-3">
                 {graphTotals.nodes > 0 && (
                   <div className="space-y-1">
@@ -4298,25 +4285,7 @@ export default function BpmnFileManager() {
                     />
                   </div>
                 )}
-                {testUploadProgress.planned > 0 && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Testfiler</span>
-                      <span className="font-medium">
-                        {testUploadProgress.completed}/{testUploadProgress.planned}
-                        {testUploadProgress.planned > 0 && (
-                          <span className="text-muted-foreground ml-1">
-                            ({Math.round((testUploadProgress.completed / testUploadProgress.planned) * 100)}%)
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <Progress 
-                      value={(testUploadProgress.completed / testUploadProgress.planned) * 100} 
-                      className="h-2"
-                    />
-                  </div>
-                )}
+                {/* Playwright-testfiler har tagits bort - testUploadProgress används inte längre */}
               </div>
             )}
             {(activeOperation === 'llm' || activeOperation === 'local') && (

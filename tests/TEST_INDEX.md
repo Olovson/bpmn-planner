@@ -23,10 +23,11 @@ Dessa tester körs av utvecklare för att säkerställa att appens kod fungerar 
 
 ### 2. Tester som **appen genererar och använder** (användartester)
 Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
-- **Playwright-testfiler** - Genereras från BPMN-processer (Feature Goals)
-- **Test-scenarion** - Extraheras från dokumentation och sparas i `node_planned_scenarios`
 - **E2E-scenarios** - Genereras från BPMN-processgraf och Feature Goals med Claude, sparas i Supabase Storage (`e2e-scenarios/{bpmnFile}-scenarios.json`)
+- **Feature Goal-test scenarios** - Extraheras från E2E-scenarios och sparas i `node_planned_scenarios`
 - **Test Coverage-data** - Visas i Test Coverage Explorer
+
+**Viktigt:** Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then. Detta sparar tid och pengar (färre LLM-anrop).
 
 **Syfte:** Används av användare för att testa sina BPMN-processer, inte för att validera appens kod.
 
@@ -338,10 +339,17 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 
 > **Viktigt:** Dessa är INTE utvecklartester. De är artefakter som appen genererar för användarna.
 
-### Playwright-testfiler (genererade från BPMN)
-- **Var:** Sparas i Supabase Storage under `tests/` mappen
-- **Hur genereras:** Via "Generera Artefakter" i BPMN File Manager
-- **Struktur:** Hierarkisk struktur som matchar BPMN-processer (Initiative → Feature Goals)
+**Viktigt:** Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then. All testinformation finns nu i E2E scenarios och Feature Goal-test scenarios.
+
+### E2E-scenarios (genererade från BPMN-processgraf)
+- **Var:** Sparas i Supabase Storage under `e2e-scenarios/` mappen
+- **Hur genereras:** Via "Generera testinfo" i BPMN File Manager
+- **Struktur:** JSON-filer med kompletta E2E-scenarios för root-processen
+
+### Feature Goal-test scenarios (extraherat från E2E-scenarios)
+- **Var:** Sparas i databasen (`node_planned_scenarios` tabellen)
+- **Hur genereras:** Automatiskt extraherat från E2E-scenarios
+- **Struktur:** Test scenarios per Feature Goal med gateway-kontext
 - **Syfte:** Används av användare för att testa sina BPMN-processer
 - **Se:** [`tests/README.md`](./README.md) - "Test Generation" sektion
 

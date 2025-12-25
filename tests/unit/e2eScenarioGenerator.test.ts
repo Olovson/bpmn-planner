@@ -94,6 +94,43 @@ describe('E2E Scenario Generator', () => {
   });
 
   describe('generateE2eScenariosForProcess', () => {
+    it('should return scenarios and paths in result object', async () => {
+      // Mock BPMN parsing
+      const { parseBpmnFile } = await import('@/lib/bpmnParser');
+      const { buildFlowGraph, findStartEvents, findPathsThroughProcess } = await import('@/lib/bpmnFlowExtractor');
+      
+      vi.mocked(parseBpmnFile).mockResolvedValue({
+        elements: [],
+        subprocesses: [],
+        sequenceFlows: [],
+        meta: { name: 'test-process' },
+      } as any);
+      
+      vi.mocked(buildFlowGraph).mockReturnValue({
+        nodes: new Map(),
+        edges: new Map(),
+      } as any);
+      
+      vi.mocked(findStartEvents).mockReturnValue([]);
+      vi.mocked(findPathsThroughProcess).mockReturnValue([]);
+      
+      const result = await generateE2eScenariosForProcess(
+        'test.bpmn',
+        'Test Process',
+        'Test',
+        'cloud',
+        true,
+        undefined,
+        undefined
+      );
+      
+      // Verify return type is E2eScenarioGenerationResult
+      expect(result).toHaveProperty('scenarios');
+      expect(result).toHaveProperty('paths');
+      expect(Array.isArray(result.scenarios)).toBe(true);
+      expect(Array.isArray(result.paths)).toBe(true);
+    });
+
     it('should generate E2E scenarios for prioritized paths only', async () => {
       // TODO: Implement test when E2E scenario generation is fully integrated
       // This test should verify that:

@@ -21,24 +21,9 @@ Dessa kan sedan visas i:
 
 ## 📋 Typer av Testgenerering
 
-### 1. Feature Goal-testfiler (från dokumentation)
+**Viktigt:** Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then.
 
-**Vad händer:**
-1. Systemet söker igenom alla **Call Activities** (Feature Goals) i dina BPMN-filer
-2. För varje Feature Goal försöker systemet läsa befintlig Feature Goal-dokumentation från Supabase Storage
-3. Systemet genererar **Playwright-testfiler** för varje Feature Goal
-4. Testfilerna inkluderar generiska teststubbar och kan inkludera LLM-genererade scenarios
-
-**Vad du får:**
-- En testfil per Feature Goal (Call Activity)
-- Testfiler sparas i Supabase Storage
-- Länkar skapas i `node_test_links` tabellen
-
-**Viktigt:** Epic-noder (User Tasks, Service Tasks, Business Rule Tasks) genererar **inte** längre testfiler. Epic-information finns redan i Feature Goal-dokumentationen.
-
----
-
-### 2. E2E-scenarios (från BPMN-processgraf och Feature Goals)
+### 1. E2E-scenarios (från BPMN-processgraf och Feature Goals)
 
 **Vad händer:**
 1. Systemet bygger en processgraf från dina BPMN-filer
@@ -59,7 +44,7 @@ Dessa kan sedan visas i:
 - E2E-scenarios sparas i Supabase Storage som JSON (`e2e-scenarios/{bpmnFile}-scenarios.json`)
 - E2E-scenarios visas på `/e2e-tests`-sidan
 
-### 3. Feature Goal-test scenarios (från E2E-scenarios)
+### 2. Feature Goal-test scenarios (från E2E-scenarios)
 
 **Vad händer:**
 1. Systemet extraherar Feature Goal-tester från E2E-scenarios
@@ -77,8 +62,27 @@ Dessa kan sedan visas i:
 
 ## 💾 Var Sparas Data?
 
-### Test Scenarios
-Alla test scenarios sparas i **Supabase-databasen** i tabellen `node_planned_scenarios`:
+### E2E Scenarios
+E2E-scenarios sparas i **Supabase Storage** som JSON-filer:
+
+```
+bpmn-files/
+└── e2e-scenarios/
+    └── {bpmnFile}-scenarios.json
+```
+
+**Exempel:**
+- `e2e-scenarios/mortgage-scenarios.json` - E2E-scenarios för mortgage.bpmn
+
+**Viktigt:**
+- E2E-scenarios **ersätter** befintliga scenarios vid varje generering (upsert)
+- E2E-scenarios innehåller de tre prioriterade scenarios:
+  1. Lyckad sökning för en sökare (bostadsrätt)
+  2. Lyckad sökning för en sökare med en medsökare (bostadsrätt)
+  3. En sökare som behöver genomgå mest möjliga steg (bostadsrätt, med manuella evalueringar)
+
+### Feature Goal-test Scenarios
+Feature Goal-test scenarios sparas i **Supabase-databasen** i tabellen `node_planned_scenarios`:
 
 ```sql
 node_planned_scenarios
