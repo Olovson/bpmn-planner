@@ -34,6 +34,9 @@ test.describe('Generation Workflow A-Ö', () => {
 
     // Steg 1: Navigera till Files
     await stepNavigateToFiles(ctx);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
 
     // Steg 2: Bygg hierarki
     try {
@@ -50,24 +53,21 @@ test.describe('Generation Workflow A-Ö', () => {
     }
 
     // Steg 4: Välj fil
-    const fileLink = page.locator('a, button, [role="button"]').filter({ 
-      hasText: /mortgage-se-application\.bpmn/ 
-    }).first();
-    
-    if (await fileLink.count() > 0) {
-      try {
-        await stepSelectFile(ctx, 'mortgage-se-application.bpmn');
-      } catch (error) {
-        console.log('⚠️  Could not select file, continuing');
-      }
-    }
+    const fileName = await ensureFileCanBeSelected(ctx);
+    await stepSelectFile(ctx, fileName);
 
     // Steg 5: Starta generering
+    // Generate button should exist if file is selected
+    await ensureButtonExists(page,
+      'button:has-text("Generera artefakter"), button:has-text("Generera")',
+      'Generate button'
+    );
+    
     const generateButton = page.locator(
       'button:has-text("Generera artefakter"), button:has-text("Generera")'
     ).first();
 
-    if (await generateButton.count() > 0 && await generateButton.isVisible().catch(() => false)) {
+    {
       await stepStartGeneration(ctx);
       
       // Steg 6: Vänta på att generering är klar
@@ -81,8 +81,6 @@ test.describe('Generation Workflow A-Ö', () => {
       await stepNavigateToTestCoverage(ctx);
       
       console.log('✅ Generation workflow test slutförd');
-    } else {
-      test.skip('Generate button not found or not visible');
     }
   });
 });

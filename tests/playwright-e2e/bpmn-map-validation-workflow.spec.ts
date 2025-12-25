@@ -17,6 +17,7 @@ import {
   stepNavigateToFiles,
   stepUploadBpmnFile,
 } from './utils/testSteps';
+import { ensureBpmnFileExists, ensureButtonExists } from './utils/testHelpers';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
@@ -26,13 +27,22 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
 
     // Steg 1: Navigera till Files
     await stepNavigateToFiles(ctx);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
 
     // Steg 2: Validera bpmn-map.json
+    // Validate map button should exist if files exist
+    await ensureButtonExists(page,
+      'button:has-text("Validera bpmn-map"), button:has-text("Validera"), button:has-text("bpmn-map")',
+      'Validate map button'
+    );
+    
     const validateMapButton = page.locator(
       'button:has-text("Validera bpmn-map"), button:has-text("Validera"), button:has-text("bpmn-map")'
     ).first();
 
-    if (await validateMapButton.count() > 0 && await validateMapButton.isVisible().catch(() => false)) {
+    {
       await validateMapButton.click();
       
       // Vänta på att validering är klar
@@ -72,8 +82,6 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
       } else {
         console.log('ℹ️  MapValidationDialog visas inte (kan vara att validering inte hittade några problem)');
       }
-    } else {
-      test.skip('Validate map button not found');
     }
   });
 
@@ -83,11 +91,15 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
     await stepNavigateToFiles(ctx);
 
     // För att få map suggestions behöver vi ha BPMN-filer som inte är mappade
-    // Ladda upp en ny BPMN-fil om ingen finns
+    // Ladda upp en ny BPMN-fil (säkerställ att minst en fil finns)
+    await ensureBpmnFileExists(ctx, 'test-map-suggestions.bpmn');
+    
+    // Kolla om filer redan fanns eller om vi just laddade upp
     const filesTable = page.locator('table').first();
     const hasFiles = await filesTable.count() > 0;
 
-    if (!hasFiles) {
+    // Om vi just laddade upp en fil, kan map suggestions visas automatiskt
+    if (hasFiles) {
       const testBpmnContent = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
   <bpmn:process id="test-map-suggestions" name="Test Map Suggestions Process">
@@ -143,8 +155,27 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
       } catch (error) {
         console.log('⚠️  Could not test map suggestions:', error);
       }
-    } else {
-      test.skip('Files already exist, cannot test map suggestions from upload');
+    }
+    
+    // Försök också trigga map suggestions via validate button
+    const validateMapButton = page.locator(
+      'button:has-text("Validera bpmn-map"), button:has-text("Validera")'
+    ).first();
+    
+    if (await validateMapButton.count() > 0) {
+      await validateMapButton.click();
+      await page.waitForTimeout(2000);
+      
+      // Kolla om MapSuggestionsDialog visas efter validering
+      const suggestionsDialog = page.locator(
+        '[role="dialog"]:has-text("Föreslagna uppdateringar"), [role="dialog"]:has-text("bpmn-map")'
+      ).first();
+      
+      const hasSuggestionsDialog = await suggestionsDialog.isVisible({ timeout: 5000 }).catch(() => false);
+      
+      if (hasSuggestionsDialog) {
+        console.log('✅ MapSuggestionsDialog visas efter validering');
+      }
     }
   });
 
@@ -152,16 +183,22 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
 
     // För att testa save behöver vi ha map suggestions
-    // Detta test förutsätter att map suggestions redan finns eller kan genereras
+    // Försök öppna map suggestions dialog via validate button
+    await ensureButtonExists(page,
+      'button:has-text("Validera bpmn-map"), button:has-text("Validera")',
+      'Validate map button'
+    );
     
-    // Försök öppna map suggestions dialog (om den finns)
     const validateMapButton = page.locator(
       'button:has-text("Validera bpmn-map"), button:has-text("Validera")'
     ).first();
 
-    if (await validateMapButton.count() > 0) {
+    {
       await validateMapButton.click();
       await page.waitForTimeout(2000);
       
@@ -193,8 +230,6 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
       } else {
         console.log('ℹ️  Save-knapp finns inte i validation dialog (kan vara att inga ändringar finns)');
       }
-    } else {
-      test.skip('Validate map button not found');
     }
   });
 
@@ -202,13 +237,21 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
 
     // För att testa export behöver vi ha map suggestions eller valideringsresultat
+    await ensureButtonExists(page,
+      'button:has-text("Validera bpmn-map"), button:has-text("Validera")',
+      'Validate map button'
+    );
+    
     const validateMapButton = page.locator(
       'button:has-text("Validera bpmn-map"), button:has-text("Validera")'
     ).first();
 
-    if (await validateMapButton.count() > 0) {
+    {
       await validateMapButton.click();
       await page.waitForTimeout(2000);
       
@@ -241,8 +284,6 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
       } else {
         console.log('ℹ️  Export-knapp finns inte (kan vara att inga ändringar finns att exportera)');
       }
-    } else {
-      test.skip('Validate map button not found');
     }
   });
 
@@ -250,12 +291,21 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
 
+    // Validate map button should exist
+    await ensureButtonExists(page,
+      'button:has-text("Validera bpmn-map"), button:has-text("Validera")',
+      'Validate map button'
+    );
+    
     const validateMapButton = page.locator(
       'button:has-text("Validera bpmn-map"), button:has-text("Validera")'
     ).first();
 
-    if (await validateMapButton.count() > 0 && await validateMapButton.isVisible().catch(() => false)) {
+    {
       await validateMapButton.click();
       
       // Vänta på validering
@@ -275,8 +325,6 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
       
       // Validering ska antingen visa dialog eller error message
       expect(hasDialog || hasError).toBeTruthy();
-    } else {
-      test.skip('Validate map button not found');
     }
   });
 });

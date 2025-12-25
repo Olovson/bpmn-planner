@@ -14,6 +14,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { ensureBpmnFileExists, createTestContext } from './utils/testHelpers';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
@@ -59,8 +60,17 @@ test.describe('BpmnFileManager Dialogs', () => {
         await page.waitForTimeout(500);
       }
     } else {
-      // If no delete button, test passes (no files available)
-      test.skip();
+      // If no delete button, ensure files exist first
+      const ctx = createTestContext(page);
+      await ensureBpmnFileExists(ctx);
+      
+      // Try again after ensuring files exist
+      const deleteButtonRetry = page.locator(
+        'button:has-text("Ta bort"), button:has-text("Delete"), button[aria-label*="delete" i], button[aria-label*="ta bort" i]'
+      ).first();
+      
+      const buttonCountRetry = await deleteButtonRetry.count();
+      expect(buttonCountRetry).toBeGreaterThan(0);
     }
   });
 
@@ -97,8 +107,22 @@ test.describe('BpmnFileManager Dialogs', () => {
         await page.waitForTimeout(500);
       }
     } else {
-      // If no delete all button, test passes (feature might not be available)
-      test.skip();
+      // If no delete all button, ensure files exist first
+      const ctx = createTestContext(page);
+      await ensureBpmnFileExists(ctx);
+      
+      // Try again after ensuring files exist
+      const deleteAllButtonRetry = page.locator(
+        'button:has-text("Ta bort alla"), button:has-text("Delete all"), button:has-text("Radera alla")'
+      ).first();
+      
+      const buttonCountRetry = await deleteAllButtonRetry.count();
+      // Delete all button might not exist if there's only one file, which is fine
+      // But if it exists, it should be visible
+      if (buttonCountRetry > 0) {
+        const isVisible = await deleteAllButtonRetry.isVisible().catch(() => false);
+        expect(isVisible).toBeTruthy();
+      }
     }
   });
 
@@ -135,8 +159,9 @@ test.describe('BpmnFileManager Dialogs', () => {
         await page.waitForTimeout(500);
       }
     } else {
-      // If no reset button, test passes (feature might not be available)
-      test.skip();
+      // Reset button should always exist on files page
+      // If not found, it's a bug
+      throw new Error('Reset button not found on files page. This indicates a bug in the UI.');
     }
   });
 
@@ -227,20 +252,20 @@ test.describe('BpmnFileManager Dialogs', () => {
     await page.waitForTimeout(2000);
 
     // Look for generate button
+    // Ensure files exist first
+    const ctx = createTestContext(page);
+    await ensureBpmnFileExists(ctx);
+    
+    // Generate button should exist if files exist
     const generateButton = page.locator(
       'button:has-text("Generera"), button:has-text("Generate")'
     ).first();
 
-    if (await generateButton.count() === 0) {
-      test.skip();
-      return;
-    }
+    const buttonCount = await generateButton.count();
+    expect(buttonCount).toBeGreaterThan(0);
 
     const isVisible = await generateButton.isVisible().catch(() => false);
-    if (!isVisible) {
-      test.skip();
-      return;
-    }
+    expect(isVisible).toBeTruthy();
 
     // Click generate
     await generateButton.click();
@@ -292,8 +317,17 @@ test.describe('BpmnFileManager Dialogs', () => {
         // Overlay might not appear if operation is quick
       });
     } else {
-      // If no button, test passes (no files available)
-      test.skip();
+      // If no button, ensure files exist first
+      const ctx = createTestContext(page);
+      await ensureBpmnFileExists(ctx);
+      
+      // Try again after ensuring files exist
+      const generateButtonRetry = page.locator(
+        'button:has-text("Generera"), button:has-text("Generate")'
+      ).first();
+      
+      const buttonCountRetry = await generateButtonRetry.count();
+      expect(buttonCountRetry).toBeGreaterThan(0);
     }
   });
 
@@ -323,8 +357,9 @@ test.describe('BpmnFileManager Dialogs', () => {
         // SyncReport might not appear if sync failed or is still in progress
       });
     } else {
-      // If no sync button, test passes (feature might not be available)
-      test.skip();
+      // Sync button might not exist if GitHub sync is not configured
+      // This is acceptable - the feature might not be available
+      console.log('ℹ️  GitHub sync button not found (feature might not be configured)');
     }
   });
 
@@ -361,8 +396,17 @@ test.describe('BpmnFileManager Dialogs', () => {
         }
       }
     } else {
-      // If no delete button, test passes (no files available)
-      test.skip();
+      // If no delete button, ensure files exist first
+      const ctx = createTestContext(page);
+      await ensureBpmnFileExists(ctx);
+      
+      // Try again after ensuring files exist
+      const deleteButtonRetry = page.locator(
+        'button:has-text("Ta bort"), button:has-text("Delete"), button[aria-label*="delete" i], button[aria-label*="ta bort" i]'
+      ).first();
+      
+      const buttonCountRetry = await deleteButtonRetry.count();
+      expect(buttonCountRetry).toBeGreaterThan(0);
     }
   });
 });

@@ -26,6 +26,7 @@ import {
   stepNavigateToTestReport,
   stepNavigateToTestCoverage,
 } from './utils/testSteps';
+import { ensureBpmnFileExists, ensureFileCanBeSelected, ensureButtonExists } from './utils/testHelpers';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
@@ -36,28 +37,8 @@ test.describe('Full Generation Flow', () => {
     // Step 1: Navigate to files page (using reusable step)
     await stepNavigateToFiles(ctx);
 
-    // Step 2: Check if files exist or upload one (using reusable step)
-    const filesTable = page.locator('table').first();
-    const hasFiles = await filesTable.count() > 0;
-
-    if (!hasFiles) {
-      const testBpmnContent = `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
-  <bpmn:process id="test-process" name="Test Process">
-    <bpmn:startEvent id="start" />
-    <bpmn:userTask id="task1" name="Test Task" />
-    <bpmn:endEvent id="end" />
-    <bpmn:sequenceFlow id="flow1" sourceRef="start" targetRef="task1" />
-    <bpmn:sequenceFlow id="flow2" sourceRef="task1" targetRef="end" />
-  </bpmn:process>
-</bpmn:definitions>`;
-
-      try {
-        await stepUploadBpmnFile(ctx, 'test-generation-flow.bpmn', testBpmnContent);
-      } catch (error) {
-        console.log('⚠️  Could not upload file, continuing with existing files');
-      }
-    }
+    // Step 2: Säkerställ att minst en fil finns (ladda upp om ingen finns)
+    await ensureBpmnFileExists(ctx, 'test-generation-flow.bpmn');
 
     // Step 3: Build hierarchy (using reusable step)
     try {
@@ -73,54 +54,51 @@ test.describe('Full Generation Flow', () => {
       console.log('⚠️  Could not select generation mode, using default');
     }
 
-    // Step 5: Start generation (using reusable step)
-    const generateButton = page.locator(
-      'button:has-text("Generera artefakter"), button:has-text("Generera")'
-    ).first();
+    // Step 5: Välj fil för generering
+    const fileName = await ensureFileCanBeSelected(ctx);
+    await stepSelectFile(ctx, fileName);
 
-    if (await generateButton.count() === 0) {
-      test.skip('Generate button not found');
-      return;
-    }
-
-    const isVisible = await generateButton.isVisible().catch(() => false);
-    if (!isVisible) {
-      test.skip('Generate button not visible');
-      return;
-    }
+    // Step 6: Start generation (using reusable step)
+    // Generate button should exist if file is selected
+    await ensureButtonExists(page,
+      'button:has-text("Generera artefakter"), button:has-text("Generera")',
+      'Generate button'
+    );
 
     await stepStartGeneration(ctx);
     
-    // Step 6: Wait for generation to complete (using reusable step)
+    // Step 7: Wait for generation to complete (using reusable step)
     await stepWaitForGenerationComplete(ctx, 120000); // 2 minutes
 
-    // Step 7: Verify result (using reusable step)
+    // Step 8: Verify result (using reusable step)
     await stepVerifyGenerationResult(ctx);
 
-    // Step 8: Navigate to result pages (using reusable steps)
+    // Step 9: Navigate to result pages (using reusable steps)
     await stepNavigateToTestReport(ctx);
     await stepNavigateToTestCoverage(ctx);
   });
 
   test('should show progress during generation', async ({ page }) => {
-    await page.goto('/files');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    const ctx = createTestContext(page);
+    
+    await stepNavigateToFiles(ctx);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
+    
+    // Välj fil
+    const fileName = await ensureFileCanBeSelected(ctx);
+    await stepSelectFile(ctx, fileName);
 
+    // Generate button should exist
+    await ensureButtonExists(page,
+      'button:has-text("Generera"), button:has-text("Generate")',
+      'Generate button'
+    );
+    
     const generateButton = page.locator(
       'button:has-text("Generera"), button:has-text("Generate")'
     ).first();
-
-    if (await generateButton.count() === 0) {
-      test.skip('Generate button not found');
-      return;
-    }
-
-    const isVisible = await generateButton.isVisible().catch(() => false);
-    if (!isVisible) {
-      test.skip('Generate button not visible');
-      return;
-    }
 
     // Select local mode
     const localModeButton = page.locator(

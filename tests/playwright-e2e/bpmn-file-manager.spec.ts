@@ -10,6 +10,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { ensureUploadAreaExists, ensureBpmnFileExists, ensureButtonExists, createTestContext } from './utils/testHelpers';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
@@ -82,15 +83,8 @@ test.describe('BpmnFileManager', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000); // Give more time for component to render
 
-    // Check if upload area exists (FileUploadArea component)
-    const uploadArea = page.locator('text=/ladda upp filer/i, text=/upload.*file/i, text=/dra.*släpp/i').first();
-    const hasUploadArea = await uploadArea.count() > 0;
-    
-    if (!hasUploadArea) {
-      // If upload area doesn't exist, the page might not be fully loaded
-      test.skip();
-      return;
-    }
+    // Upload area should always exist on files page - if not, it's a bug
+    await ensureUploadAreaExists(page);
 
     // Find file input - FileUploadArea component uses id="file-upload" and id="folder-upload"
     // Inputs are hidden but should exist in DOM
@@ -114,59 +108,57 @@ test.describe('BpmnFileManager', () => {
   });
 
   test('should be able to build hierarchy for existing file', async ({ page }) => {
+    const ctx = createTestContext(page);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
+    
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Look for "Build hierarchy" or similar button
+    // Build hierarchy button should exist if files exist
     const buildHierarchyButton = page.locator(
       'button:has-text("Bygg hierarki"), button:has-text("Build hierarchy"), button:has-text("hierarki")'
     ).first();
 
-    const buttonCount = await buildHierarchyButton.count();
+    // Button should exist and be visible
+    await ensureButtonExists(page, 
+      'button:has-text("Bygg hierarki"), button:has-text("Build hierarchy"), button:has-text("hierarki")',
+      'Build hierarchy button'
+    );
     
-    if (buttonCount > 0) {
-      // If button exists, verify it's visible (or at least exists)
-      const isVisible = await buildHierarchyButton.isVisible().catch(() => false);
-      
-      if (isVisible) {
-        // Click button and wait for response
-        await buildHierarchyButton.click();
-        
-        // Wait for success message or completion
-        await Promise.race([
-          page.waitForSelector('text=/success/i, text=/klar/i, text=/complete/i', { timeout: 30000 }),
-          page.waitForTimeout(5000), // Timeout after 5 seconds
-        ]).catch(() => {
-          // If no success message, that's ok - might be async
-        });
-      }
-    } else {
-      // If no build hierarchy button, test passes (feature might not be available)
-      test.skip();
-    }
+    // Click button and wait for response
+    await buildHierarchyButton.click();
+    
+    // Wait for success message or completion
+    await Promise.race([
+      page.waitForSelector('text=/success/i, text=/klar/i, text=/complete/i', { timeout: 30000 }),
+      page.waitForTimeout(5000), // Timeout after 5 seconds
+    ]).catch(() => {
+      // If no success message, that's ok - might be async
+    });
   });
 
   // Local mode removed - all generation now uses LLM (cloud or ollama)
 
   test('should display generation dialog when generating', async ({ page }) => {
+    const ctx = createTestContext(page);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
+    
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Look for generate button
+    // Generate button should exist if files exist
+    await ensureButtonExists(page,
+      'button:has-text("Generera"), button:has-text("Generate")',
+      'Generate button'
+    );
+
     const generateButton = page.locator(
       'button:has-text("Generera"), button:has-text("Generate")'
     ).first();
-
-    if (await generateButton.count() === 0) {
-      test.skip();
-      return;
-    }
-
-    const isVisible = await generateButton.isVisible().catch(() => false);
-    if (!isVisible) {
-      test.skip();
-      return;
-    }
 
     // Click generate
     await generateButton.click();

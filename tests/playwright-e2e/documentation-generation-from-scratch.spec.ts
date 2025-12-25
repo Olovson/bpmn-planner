@@ -26,6 +26,7 @@ import {
   stepVerifyGenerationResult,
   stepNavigateToDocViewer,
 } from './utils/testSteps';
+import { ensureBpmnFileExists, ensureFileCanBeSelected, ensureButtonExists } from './utils/testHelpers';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
@@ -39,29 +40,8 @@ test.describe('Documentation Generation from Scratch', () => {
     // Steg 1: Navigera till Files
     await stepNavigateToFiles(ctx);
 
-    // Steg 2: Ladda upp BPMN-fil (om ingen finns)
-    const filesTable = page.locator('table').first();
-    const hasFiles = await filesTable.count() > 0;
-
-    if (!hasFiles) {
-      const testBpmnContent = `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
-  <bpmn:process id="test-doc-generation" name="Test Documentation Generation">
-    <bpmn:startEvent id="start" />
-    <bpmn:userTask id="task1" name="Test Task" />
-    <bpmn:endEvent id="end" />
-    <bpmn:sequenceFlow id="flow1" sourceRef="start" targetRef="task1" />
-    <bpmn:sequenceFlow id="flow2" sourceRef="task1" targetRef="end" />
-  </bpmn:process>
-</bpmn:definitions>`;
-
-      try {
-        await stepUploadBpmnFile(ctx, 'test-doc-generation.bpmn', testBpmnContent);
-        await page.waitForTimeout(2000);
-      } catch (error) {
-        console.log('⚠️  Could not upload file, continuing with existing files');
-      }
-    }
+    // Steg 2: Säkerställ att minst en BPMN-fil finns (ladda upp om ingen finns)
+    await ensureBpmnFileExists(ctx, 'test-doc-generation.bpmn');
 
     // Steg 3: Bygg hierarki
     try {
@@ -78,27 +58,21 @@ test.describe('Documentation Generation from Scratch', () => {
     }
 
     // Steg 5: Välj fil för generering
-    const fileLink = page.locator('a, button, [role="button"]').filter({ 
-      hasText: /\.bpmn$/ 
-    }).first();
-    
-    if (await fileLink.count() > 0) {
-      const fileName = await fileLink.textContent();
-      if (fileName) {
-        try {
-          await stepSelectFile(ctx, fileName.trim());
-        } catch (error) {
-          console.log('⚠️  Could not select file, continuing');
-        }
-      }
-    }
+    const fileName = await ensureFileCanBeSelected(ctx);
+    await stepSelectFile(ctx, fileName);
 
     // Steg 6: Starta dokumentationsgenerering
+    // Generate button should exist if file is selected
+    await ensureButtonExists(page,
+      'button:has-text("Generera artefakter"), button:has-text("Generera")',
+      'Generate button'
+    );
+    
     const generateButton = page.locator(
       'button:has-text("Generera artefakter"), button:has-text("Generera")'
     ).first();
 
-    if (await generateButton.count() > 0 && await generateButton.isVisible().catch(() => false)) {
+    {
       await stepStartGeneration(ctx);
       
       // Steg 7: Vänta på att generering är klar (med mocked API ska detta gå snabbt)
@@ -131,8 +105,6 @@ test.describe('Documentation Generation from Scratch', () => {
       } catch (error) {
         console.log('⚠️  Could not navigate to Doc Viewer, but generation completed');
       }
-    } else {
-      test.skip('Generate button not found or not visible');
     }
   });
 
@@ -143,13 +115,25 @@ test.describe('Documentation Generation from Scratch', () => {
     await setupClaudeApiMocks(page, { simulateError: true });
 
     await stepNavigateToFiles(ctx);
+    
+    // Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx);
+    
+    // Välj fil
+    const fileName = await ensureFileCanBeSelected(ctx);
+    await stepSelectFile(ctx, fileName);
 
-    // Försök generera dokumentation
+    // Generate button should exist
+    await ensureButtonExists(page,
+      'button:has-text("Generera artefakter"), button:has-text("Generera")',
+      'Generate button'
+    );
+    
     const generateButton = page.locator(
       'button:has-text("Generera artefakter"), button:has-text("Generera")'
     ).first();
 
-    if (await generateButton.count() > 0 && await generateButton.isVisible().catch(() => false)) {
+    {
       await stepSelectGenerationMode(ctx, 'claude');
       await stepStartGeneration(ctx);
       
@@ -165,8 +149,6 @@ test.describe('Documentation Generation from Scratch', () => {
       
       // Fel ska hanteras gracefully (antingen via error message eller dialog stängs)
       expect(hasError || !(await generateButton.isVisible().catch(() => false))).toBeTruthy();
-    } else {
-      test.skip('Generate button not found');
     }
   });
 });

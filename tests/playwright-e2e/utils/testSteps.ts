@@ -131,7 +131,8 @@ export async function stepSelectGenerationMode(ctx: TestContext, mode: 'claude' 
 export async function stepSelectFile(ctx: TestContext, fileName: string) {
   const { page } = ctx;
   
-  const fileLink = page.locator(`text=${fileName}`).first();
+  // Try multiple selectors to find the file
+  const fileLink = page.locator(`text=${fileName}, a:has-text("${fileName}"), button:has-text("${fileName}"), [role="button"]:has-text("${fileName}")`).first();
   await fileLink.waitFor({ state: 'visible', timeout: 10000 });
   await fileLink.click();
   await page.waitForTimeout(1000);
