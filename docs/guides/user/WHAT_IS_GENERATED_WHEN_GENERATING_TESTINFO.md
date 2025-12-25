@@ -9,11 +9,17 @@
 
 När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras följande:
 
-1. **Playwright-testfiler** för Feature Goals (Call Activities)
-2. **E2E-scenarios** för root-processen (mortgage.bpmn)
-3. **Test scenarios** extraheras från E2E-scenarios och sparas i databasen
+1. **E2E-scenarios** för root-processen (mortgage.bpmn)
+2. **Feature Goal-test scenarios** extraheras från E2E-scenarios och sparas i databasen
 
-**Viktigt:** Epic-testgenerering har tagits bort. Epic-information finns redan inkluderad i Feature Goal-dokumentation.
+**Viktigt:** 
+- Epic-testgenerering har tagits bort. Epic-information finns redan inkluderad i Feature Goal-dokumentation.
+- Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then.
+
+**Förbättringar (2025-12-22):**
+- ✅ Förbättrad felhantering - alla fel samlas och kan visas i UI
+- ✅ Innehållsvalidering - säkerställer minsta kvalitet på genererade scenarios
+- ✅ Förbättrad matchning - path-metadata sparas med E2E scenarios för bättre matchning
 
 ---
 

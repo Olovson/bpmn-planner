@@ -18,7 +18,7 @@ import { logLlmEvent } from './llmLogging';
 import { saveLlmDebugArtifact } from './llmDebugStorage';
 import type { E2eScenario } from '@/pages/E2eTestsOverviewPage';
 import { buildE2eScenarioJsonSchema } from './e2eScenarioJsonSchema';
-import { validateE2eScenarioOutput } from './e2eScenarioValidator';
+import { validateE2eScenarioOutput, validateE2eScenarioContent } from './e2eScenarioValidator';
 import { loadChildDocFromStorage } from './bpmnGenerators/docRendering';
 import { getFeatureGoalDocFileKey } from './nodeArtifactPaths';
 import { getFeatureGoalDocStoragePaths } from './artifactUrls';
@@ -235,6 +235,17 @@ function convertLlmOutputToE2eScenario(
     when: llmOutput.when || '',
     then: llmOutput.then || '',
     notesForBankProject: llmOutput.notesForBankProject || '',
+    // Spara path-metadata för bättre matchning med Feature Goal-tester
+    pathMetadata: {
+      startEvent: context.path.startEvent,
+      endEvent: context.path.endEvent,
+      featureGoals: context.path.featureGoals,
+      gatewayConditions: context.path.gatewayConditions.map(gc => ({
+        gatewayId: gc.gatewayId,
+        conditionText: gc.conditionText,
+      })),
+      nodeIds: context.path.nodeIds,
+    },
     bankProjectTestSteps: (llmOutput.bankProjectTestSteps || []).map((step: any) => ({
       bpmnNodeId: step.bpmnNodeId || '',
       bpmnNodeType: step.bpmnNodeType || 'CallActivity',

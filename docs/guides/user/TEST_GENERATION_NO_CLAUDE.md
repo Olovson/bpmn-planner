@@ -176,3 +176,4 @@ System: Sparar i databasen
 **Datum:** 2025-12-22
 **Status:** Förtydligande - testgenerering använder inte Claude
 
+

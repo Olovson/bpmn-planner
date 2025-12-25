@@ -433,3 +433,4 @@ const missingPaths = allPaths.filter(path =>
 **Datum:** 2025-12-22
 **Status:** Realistisk omvärdering klar - Behöver svar på frågor för att fortsätta
 
+

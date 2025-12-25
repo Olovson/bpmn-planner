@@ -593,3 +593,4 @@ const aggregatedScenarios = useMemo(() => {
 **Datum:** 2025-12-22
 **Status:** Design klar
 
+

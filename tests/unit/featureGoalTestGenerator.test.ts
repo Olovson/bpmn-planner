@@ -74,6 +74,13 @@ describe('Feature Goal Test Generator', () => {
           when: 'Test when',
           then: 'Test then',
           notesForBankProject: 'Test notes',
+          pathMetadata: {
+            startEvent: 'start',
+            endEvent: 'end',
+            featureGoals: ['test-id'],
+            gatewayConditions: [],
+            nodeIds: ['start', 'test-id', 'end'],
+          },
           bankProjectTestSteps: [],
           subprocessSteps: [
             {

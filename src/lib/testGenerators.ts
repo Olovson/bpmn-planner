@@ -27,6 +27,16 @@ export interface TestGenerationResult {
     elementName: string;
     docPath: string;
   }>;
+  // Förbättrad felhantering: samla alla fel och varningar
+  e2eGenerationErrors?: Array<{
+    path: string;
+    error: string;
+  }>;
+  featureGoalTestErrors?: Array<{
+    callActivityId: string;
+    error: string;
+  }>;
+  warnings?: string[];
 }
 
 export interface TestGenerationProgress {
@@ -201,53 +211,93 @@ export async function generateTestsForFile(
           
           console.log(`[testGenerators] Generated ${e2eResult.scenarios.length} E2E scenarios for ${bpmnFileName}`);
           
-          // Generate Feature Goal tests from E2E scenarios
-          try {
-            progressCallback?.({
-              current: e2eResult.scenarios.length,
-              total: e2eResult.scenarios.length + 1,
-              status: 'generating',
-              currentElement: 'Genererar Feature Goal-tester från E2E-scenarios...',
-            });
-            
-            // Collect all BPMN files that contain Feature Goals from the paths
-            const bpmnFilesSet = new Set<string>([bpmnFileName]);
-            for (const path of e2eResult.paths) {
-              for (const featureGoalId of path.featureGoals) {
-                const element = parseResult.elements.find(e => e.id === featureGoalId);
-                if (element?.bpmnFile) {
-                  bpmnFilesSet.add(element.bpmnFile);
+          // Explicit kontroll: Om paths är tomma, hoppa över Feature Goal-test-generering
+          if (e2eResult.paths.length === 0) {
+            const warning = `Inga paths hittades för ${bpmnFileName}. Feature Goal-tester kan inte genereras utan gateway-kontext.`;
+            console.warn(`[testGenerators] ${warning}`);
+            if (!result.warnings) {
+              result.warnings = [];
+            }
+            result.warnings.push(warning);
+          } else {
+            // Generate Feature Goal tests from E2E scenarios
+            try {
+              progressCallback?.({
+                current: e2eResult.scenarios.length,
+                total: e2eResult.scenarios.length + 1,
+                status: 'generating',
+                currentElement: 'Genererar Feature Goal-tester från E2E-scenarios...',
+              });
+              
+              // Collect all BPMN files that contain Feature Goals from the paths
+              const bpmnFilesSet = new Set<string>([bpmnFileName]);
+              for (const path of e2eResult.paths) {
+                for (const featureGoalId of path.featureGoals) {
+                  const element = parseResult.elements.find(e => e.id === featureGoalId);
+                  if (element?.bpmnFile) {
+                    bpmnFilesSet.add(element.bpmnFile);
+                  }
                 }
               }
-            }
-            
-            const featureGoalTestResult = await generateFeatureGoalTestsFromE2e({
-              e2eScenarios: e2eResult.scenarios,
-              paths: e2eResult.paths,
-              bpmnFiles: Array.from(bpmnFilesSet),
-            });
-            
-            console.log(
-              `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios, ` +
-              `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
-            );
-            
-            if (featureGoalTestResult.errors.length > 0) {
-              console.warn(
-                `[testGenerators] Errors generating Feature Goal tests:`,
-                featureGoalTestResult.errors
+              
+              const featureGoalTestResult = await generateFeatureGoalTestsFromE2e({
+                e2eScenarios: e2eResult.scenarios,
+                paths: e2eResult.paths,
+                bpmnFiles: Array.from(bpmnFilesSet),
+              });
+              
+              console.log(
+                `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios, ` +
+                `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
               );
+              
+              if (featureGoalTestResult.errors.length > 0) {
+                // Spara fel för feedback till användaren
+                if (!result.featureGoalTestErrors) {
+                  result.featureGoalTestErrors = [];
+                }
+                result.featureGoalTestErrors.push(...featureGoalTestResult.errors);
+                console.warn(
+                  `[testGenerators] Errors generating Feature Goal tests:`,
+                  featureGoalTestResult.errors
+                );
+              }
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              console.warn(
+                `[testGenerators] Failed to generate Feature Goal tests from E2E scenarios:`,
+                error
+              );
+              // Spara fel för feedback till användaren
+              if (!result.featureGoalTestErrors) {
+                result.featureGoalTestErrors = [];
+              }
+              result.featureGoalTestErrors.push({
+                callActivityId: 'unknown',
+                error: `Failed to generate Feature Goal tests: ${errorMessage}`,
+              });
             }
-          } catch (error) {
-            console.warn(
-              `[testGenerators] Failed to generate Feature Goal tests from E2E scenarios:`,
-              error
-            );
-            // Don't fail the entire test generation if Feature Goal test generation fails
           }
+        } else {
+          // Om inga E2E scenarios genererades, ge tydlig feedback
+          const warning = `Inga E2E scenarios genererades för ${bpmnFileName}. Feature Goal-tester kan inte extraheras.`;
+          console.warn(`[testGenerators] ${warning}`);
+          if (!result.warnings) {
+            result.warnings = [];
+          }
+          result.warnings.push(warning);
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.warn(`[testGenerators] Failed to generate E2E scenarios for ${bpmnFileName}:`, error);
+        // Spara fel för feedback till användaren
+        if (!result.e2eGenerationErrors) {
+          result.e2eGenerationErrors = [];
+        }
+        result.e2eGenerationErrors.push({
+          path: bpmnFileName,
+          error: errorMessage,
+        });
         // Don't fail the entire test generation if E2E scenario generation fails
       }
     }

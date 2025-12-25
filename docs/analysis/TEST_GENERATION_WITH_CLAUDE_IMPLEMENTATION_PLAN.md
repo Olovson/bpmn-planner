@@ -270,3 +270,4 @@ export interface TestScenario {
 **Datum:** 2025-12-22
 **Status:** Core-funktionalitet klar, väntar på integration i UI
 
+

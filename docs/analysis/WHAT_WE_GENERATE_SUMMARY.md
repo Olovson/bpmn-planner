@@ -245,3 +245,4 @@ Påminna om vad vi faktiskt genererar när vi bygger tester baserat på E2E-scen
 **Datum:** 2025-12-22
 **Status:** Sammanfattning klar - Vad vi genererar dokumenterat
 
+

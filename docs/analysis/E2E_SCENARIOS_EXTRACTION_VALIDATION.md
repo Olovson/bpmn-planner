@@ -168,3 +168,4 @@ Validera om vi faktiskt kan extrahera relevant information från riktiga BPMN-fi
 **Datum:** 2025-12-22
 **Status:** Validering klar - 60% kvalitet, behöver förbättringar
 
+

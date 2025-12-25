@@ -322,3 +322,4 @@ Bedöma sannolikheten att vi kan generera det föreslagna innehållet (konkreta 
 **Datum:** 2025-12-22
 **Status:** Objektiv analys klar
 
+

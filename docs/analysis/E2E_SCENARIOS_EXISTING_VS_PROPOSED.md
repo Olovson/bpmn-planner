@@ -194,3 +194,4 @@ Jämföra vad som redan finns i "Test Coverage Explorer" med vad vi föreslår a
 **Datum:** 2025-12-22
 **Status:** Jämförelse klar - Föreslaget är likt befintligt men med lägre kvalitet
 
+

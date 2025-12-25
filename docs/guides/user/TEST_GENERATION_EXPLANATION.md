@@ -374,3 +374,4 @@ Båda metoderna läser från **befintlig dokumentation** och ändrar den inte.
 **Datum:** 2025-12-22
 **Version:** 1.0.0
 
+

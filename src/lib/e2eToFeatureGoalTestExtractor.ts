@@ -101,11 +101,29 @@ export async function extractFeatureGoalTestsWithGatewayContext(
 
 /**
  * Hittar ProcessPath som matchar E2E-scenario (deterministiskt)
+ * Förbättrad matchning: Använder pathMetadata om tillgängligt, annars fallback till subprocessSteps
  */
 function findMatchingPath(
   e2eScenario: E2eScenario,
   paths: ProcessPath[]
 ): ProcessPath | undefined {
+  // Förbättrad matchning: Använd pathMetadata om tillgängligt (sparad med E2E scenario)
+  if (e2eScenario.pathMetadata) {
+    const matchingPath = paths.find((path) => {
+      // Matcha baserat på startEvent, endEvent och featureGoals
+      return (
+        path.startEvent === e2eScenario.pathMetadata!.startEvent &&
+        path.endEvent === e2eScenario.pathMetadata!.endEvent &&
+        arraysEqual(path.featureGoals, e2eScenario.pathMetadata!.featureGoals)
+      );
+    });
+    
+    if (matchingPath) {
+      return matchingPath;
+    }
+  }
+  
+  // Fallback: Matcha baserat på Feature Goals i subprocessSteps
   const e2eFeatureGoals = e2eScenario.subprocessSteps
     .map((step) => step.callActivityId)
     .filter(Boolean) as string[];

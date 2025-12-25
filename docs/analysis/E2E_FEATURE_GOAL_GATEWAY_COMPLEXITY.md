@@ -543,3 +543,4 @@ function deduplicateTestScenariosWithGatewayContext(
 **Datum:** 2025-12-22
 **Status:** Analys klar - Gateway-komplexitet hanterad
 
+

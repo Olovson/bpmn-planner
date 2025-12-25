@@ -339,3 +339,4 @@ Du ska returnera ett JSON-objekt med följande struktur:
 **Datum:** 2025-12-22
 **Version:** 1.0.0
 
+

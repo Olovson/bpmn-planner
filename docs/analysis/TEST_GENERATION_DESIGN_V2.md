@@ -567,3 +567,4 @@ src/components/
 **Datum:** 2025-12-22
 **Status:** Design v2 klar - Separerad från dokumentationsgenerering
 
+

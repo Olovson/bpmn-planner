@@ -362,3 +362,4 @@ Sammanfatta hela processen för att skapa bra E2E-scenarios baserat på BPMN-fil
 **Datum:** 2025-12-22
 **Status:** Sammanfattning klar - Process för att skapa bra E2E-scenarios
 
+

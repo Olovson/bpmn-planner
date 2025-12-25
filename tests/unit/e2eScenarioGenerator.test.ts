@@ -231,6 +231,11 @@ describe('E2E Scenario Generator', () => {
       expect(result).toBeDefined();
       expect(result?.scenario).toBeDefined();
       expect(result?.scenario?.name).toBe('En sökande - Bostadsrätt godkänd automatiskt (Happy Path)');
+      // Verify pathMetadata is saved with scenario
+      expect(result?.scenario?.pathMetadata).toBeDefined();
+      expect(result?.scenario?.pathMetadata?.startEvent).toBe('start');
+      expect(result?.scenario?.pathMetadata?.endEvent).toBe('end');
+      expect(result?.scenario?.pathMetadata?.featureGoals).toEqual(['application']);
       expect(generateChatCompletion).toHaveBeenCalled();
     });
 

@@ -212,6 +212,7 @@ Testinformation genereras automatiskt från BPMN-filer via "Generera testinfo"-k
 **Viktigt:** 
 - **Playwright-testfiler har tagits bort** - de innehöll bara stubbar och användes inte för att generera given/when/then. All testinformation finns nu i E2E scenarios och Feature Goal-test scenarios.
 - Epic-testgenerering har tagits bort. Epic-information finns redan inkluderad i Feature Goal-dokumentation via `childrenDocumentation`.
+- **Förbättrad felhantering:** Testgenerering returnerar nu `e2eGenerationErrors`, `featureGoalTestErrors`, och `warnings` för bättre feedback om vad som gick fel eller vad som saknas.
 
 To regenerate tests:
 1. Go to the BPMN File Manager
@@ -326,6 +327,8 @@ Tests run automatically on GitHub Actions. Results are submitted to the app's te
 
 **Fas 1: Kritiska UI-flöden** ✅ **KLART**
 - ✅ BpmnFileManager UI-test
+  - **Refaktorerad:** Filuppladdning extraherad till `useFileUpload` hook och `FileUploadArea` komponent
+  - **Tester:** Playwright E2E-test (`bpmn-file-manager.spec.ts`) validerar funktionalitet
 - ✅ ProcessExplorer UI-test
 - ✅ DocViewer UI-test
 - ✅ Fullständigt genereringsflöde

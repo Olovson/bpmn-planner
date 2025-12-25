@@ -45,6 +45,18 @@ export type BankProjectTestStep = {
   backendState?: string; // Förväntat backend-tillstånd efter teststeget
 };
 
+// Metadata för path som användes för att generera E2E-scenariot
+export type E2eScenarioPathMetadata = {
+  startEvent: string;
+  endEvent: string;
+  featureGoals: string[];
+  gatewayConditions: Array<{
+    gatewayId: string;
+    conditionText: string;
+  }>;
+  nodeIds: string[];
+};
+
 export type E2eScenario = {
   id: string;
   name: string;
@@ -62,6 +74,8 @@ export type E2eScenario = {
   when: string;
   then: string;
   notesForBankProject: string;
+  // Path-metadata för bättre matchning med Feature Goal-tester
+  pathMetadata?: E2eScenarioPathMetadata;
   // Vad som behöver testas i bankprojektet (faktiska affärsflöden baserat på BPMN-noder och Feature Goals)
   // Alla teststeg här är direkt användbara i bankprojektet och baserade på faktiska BPMN-strukturer
   bankProjectTestSteps: BankProjectTestStep[];

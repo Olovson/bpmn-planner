@@ -150,3 +150,4 @@ const scenarios = convertUserStoriesToTestScenarios(userStories);
 **Datum:** 2025-12-22
 **Status:** Förtydligande - Claude används endast för dokumentationsgenerering
 
+

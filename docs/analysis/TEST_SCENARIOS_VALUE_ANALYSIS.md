@@ -196,3 +196,4 @@
 **Datum:** 2025-12-22
 **Status:** Analys klar, väntar på beslut
 
+

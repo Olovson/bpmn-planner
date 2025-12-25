@@ -233,3 +233,4 @@ function extractEndEventsForFeatureGoal(
   return Array.from(endEvents.values());
 }
 
+

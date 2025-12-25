@@ -299,3 +299,4 @@ it('should save scenarios in format that UI can read', async () => {
 **Datum:** 2025-12-22
 **Status:** UI-validering dokumenterad
 
+

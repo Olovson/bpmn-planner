@@ -186,9 +186,10 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 - **`tests/unit/testGeneration/userStoryToTestScenario.test.ts`** - Konvertera user stories till test scenarios
 - **`tests/unit/testGeneration/bpmnProcessFlowTestGenerator.test.ts`** - Generera scenarios från BPMN-processflöde
 - **`tests/unit/e2eScenarioGenerator.test.ts`** - E2E-scenario-generering med Claude
-  - ✅ `generateE2eScenarioWithLlm` - Fullt implementerad med mocks
+  - ✅ `generateE2eScenarioWithLlm` - Fullt implementerad med mocks (inkl. pathMetadata)
   - ⚠️ `generateE2eScenariosForProcess` - Placeholder-tester (TODO: Implementera integrationstester)
 - **`tests/unit/e2eScenarioStorage.test.ts`** - E2E-scenario storage (spara/ladda) - ✅ Implementerad
+- **`tests/unit/e2eScenarioValidator.test.ts`** - E2E-scenario validering (struktur och innehåll) - ✅ Implementerad
 - **`tests/unit/testGeneration/testScenarioSaver.test.ts`** - Spara scenarios till databasen
 
 **Integrationstester:**
@@ -202,8 +203,10 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 
 **Status:**
 - ✅ Testfiler skapade
-- ⏳ Väntar på implementation av funktionalitet
-- ⏳ Tester kommer att köras när implementationen är klar
+- ✅ E2E scenario-generering implementerad (inkl. pathMetadata, innehållsvalidering)
+- ✅ Feature Goal-test generering implementerad
+- ✅ Felhantering och varningar implementerade (`e2eGenerationErrors`, `featureGoalTestErrors`, `warnings`)
+- ⚠️ Vissa integrationstester är fortfarande placeholders
 
 ### Debug & Utilities
 - **Unit:** `debugUtils.test.ts` - Debug utilities
@@ -223,6 +226,8 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 
 ### UI-sidor
 - **`bpmn-file-manager.spec.ts`** - BPMN File Manager-sidan (filhantering, hierarki, generering)
+  - **Refaktorerad:** Filuppladdning extraherad till `useFileUpload` hook och `FileUploadArea` komponent
+  - **Status:** Tester fungerar med refaktorerad kod
 - **`process-explorer.spec.ts`** - Process Explorer-sidan (trädvisualisering, nod-interaktion)
 - **`doc-viewer.spec.ts`** - Doc Viewer-sidan (dokumentationsvisning, länkar, version selection)
 - **`node-matrix.spec.ts`** - Node Matrix-sidan (listvy, filter, sortering)
@@ -324,14 +329,14 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 
 ## 📊 Teststatistik (Utvecklartester)
 
-- **Unit Tests:** ~47 filer (inkl. 4 nya test generation-tester under utveckling)
+- **Unit Tests:** ~48 filer (inkl. 5 nya test generation-tester, varav 4 implementerade)
 - **Integration Tests:** ~42 filer (inkl. 1 ny test generation-test under utveckling)
 - **E2E Tests (Vitest):** 1 fil
 - **Playwright E2E Tests:** 18 filer (7 huvudfiler + 11 scenario-filer)
 
 **Totalt:** ~108 testfiler (utvecklartester)
 
-**Notera:** Test generation-tester (5 filer) är skapade men väntar på implementation av funktionalitet.
+**Notera:** Test generation-tester (5 filer) är skapade, varav 4 är implementerade. Vissa integrationstester är fortfarande placeholders.
 
 ---
 

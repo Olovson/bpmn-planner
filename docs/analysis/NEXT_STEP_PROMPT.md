@@ -131,3 +131,4 @@ it('should handle gateway conditions from real BPMN files', async () => {
 **Datum:** 2025-12-22
 **Status:** Prompt formulerad - Redo för implementation
 
+
