@@ -46,7 +46,8 @@ export async function stepNavigateToFiles(ctx: TestContext) {
 export async function stepUploadBpmnFile(ctx: TestContext, fileName: string, content: string) {
   const { page } = ctx;
   
-  const uploadInput = page.locator('input[type="file"][accept*=".bpmn"], input[type="file"][accept*=".dmn"]').first();
+  // Try multiple selectors for file input
+  const uploadInput = page.locator('input[type="file"][id="file-upload"], input[type="file"][accept*=".bpmn"], input[type="file"][accept*=".dmn"], input[type="file"]').first();
   
   if (await uploadInput.count() > 0) {
     await uploadInput.setInputFiles({

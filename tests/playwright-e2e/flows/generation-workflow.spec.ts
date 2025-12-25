@@ -25,11 +25,14 @@ import {
   stepNavigateToTestReport,
   stepNavigateToTestCoverage,
 } from '../utils/testSteps';
+import { ensureBpmnFileExists, ensureFileCanBeSelected, ensureButtonExists } from '../utils/testHelpers';
+import { cleanupTestFiles } from '../utils/testCleanup';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Generation Workflow A-Ö', () => {
   test('should complete generation workflow from files to results', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Steg 1: Navigera till Files
@@ -82,6 +85,9 @@ test.describe('Generation Workflow A-Ö', () => {
       
       console.log('✅ Generation workflow test slutförd');
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 });
 

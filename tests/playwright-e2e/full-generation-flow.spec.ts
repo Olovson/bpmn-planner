@@ -28,18 +28,21 @@ import {
   stepNavigateToTestCoverage,
 } from './utils/testSteps';
 import { ensureBpmnFileExists, ensureFileCanBeSelected, ensureButtonExists } from './utils/testHelpers';
+import { cleanupTestFiles } from './utils/testCleanup';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Full Generation Flow', () => {
   test('should complete full generation flow for a BPMN file', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Step 1: Navigate to files page (using reusable step)
     await stepNavigateToFiles(ctx);
 
     // Step 2: Säkerställ att minst en fil finns (ladda upp om ingen finns)
-    await ensureBpmnFileExists(ctx, 'test-generation-flow.bpmn');
+    // Filnamn genereras automatiskt med test- prefix och timestamp
+    const testFileName = await ensureBpmnFileExists(ctx, 'test-generation-flow');
 
     // Step 3: Build hierarchy (using reusable step)
     await stepBuildHierarchy(ctx);
@@ -79,6 +82,7 @@ test.describe('Full Generation Flow', () => {
   });
 
   test('should show progress during generation', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
     
     await stepNavigateToFiles(ctx);
@@ -128,5 +132,8 @@ test.describe('Full Generation Flow', () => {
     // Verify page didn't crash
     const pageContent = await page.textContent('body');
     expect(pageContent).toBeTruthy();
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 });

@@ -38,6 +38,7 @@ test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Complete Workflow A-Ö', () => {
   test('should complete full workflow from login to viewing results', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Steg 1: Login (om session saknas)
@@ -66,7 +67,9 @@ test.describe('Complete Workflow A-Ö', () => {
 </bpmn:definitions>`;
 
       try {
-        await stepUploadBpmnFile(ctx, 'test-complete-workflow.bpmn', testBpmnContent);
+        // Generera unikt test-filnamn med prefix och timestamp
+        const testFileName = generateTestFileName('test-complete-workflow');
+        await stepUploadBpmnFile(ctx, testFileName, testBpmnContent);
       } catch (error) {
         console.log('⚠️  Could not upload file, continuing with existing files');
       }
@@ -127,6 +130,9 @@ test.describe('Complete Workflow A-Ö', () => {
     await stepNavigateToDiagram(ctx);
 
     console.log('✅ A-Ö test slutförd - hela arbetsflödet verifierat');
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 
   test('should navigate through all main pages', async ({ page }) => {

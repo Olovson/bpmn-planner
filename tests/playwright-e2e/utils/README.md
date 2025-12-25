@@ -29,12 +29,48 @@ Detta katalog innehåller återanvändbara test-komponenter som kan användas f�
 
 Helper-funktioner för att säkerställa att test-miljön är korrekt uppsatt. Dessa funktioner ersätter onödiga `test.skip()` anrop och säkerställer att testerna faktiskt testar appens funktionalitet.
 
+**⚠️ VIKTIGT: Test Data Isolation**
+- Alla test-filer prefixas automatiskt med `test-{timestamp}-{random}-{name}.bpmn`
+- Testdata isoleras från produktionsdata
+- Testdata rensas automatiskt efter varje test
+
 **Funktioner:**
-- `ensureBpmnFileExists(ctx, fileName?)` - Säkerställer att minst en BPMN-fil finns (laddar upp om ingen finns)
+- `ensureBpmnFileExists(ctx, fileName?)` - Säkerställer att minst en BPMN-fil finns (laddar upp om ingen finns, med prefixat filnamn)
 - `ensureButtonExists(page, selector, name)` - Säkerställer att en knapp finns och är synlig (kastar Error om den saknas)
-- `ensureFileCanBeSelected(ctx)` - Säkerställer att en fil kan väljas för generering
+- `ensureFileCanBeSelected(ctx)` - Säkerställer att en fil kan väljas för generering (prioriterar test-filer)
 - `ensureUploadAreaExists(page)` - Säkerställer att upload area finns
 - `createTestContext(page)` - Skapar test context från page
+
+### `testDataHelpers.ts` ⭐ **NYTT**
+
+Helper-funktioner för att hantera testdata och säkerställa isolering från produktionsdata.
+
+**Funktioner:**
+- `generateTestFileName(baseName?)` - Genererar unikt test-filnamn med prefix och timestamp
+- `isTestDataFile(fileName)` - Kontrollerar om ett filnamn är testdata
+- `extractTimestampFromTestFileName(fileName)` - Extraherar timestamp från test-filnamn
+- `isTestDataOlderThan(fileName, minutes)` - Kontrollerar om testdata är äldre än X minuter
+
+### `testCleanup.ts` ⭐ **NYTT**
+
+Funktioner för att rensa testdata efter tester.
+
+**Funktioner:**
+- `cleanupTestFiles(page, testStartTime?)` - Rensar alla test-filer som skapats under testet
+- `cleanupOldTestData(page, maxAgeMinutes?)` - Rensar alla testdata som är äldre än X minuter
+
+**Användning:**
+```typescript
+test('my test', async ({ page }) => {
+  const testStartTime = Date.now();
+  const ctx = createTestContext(page);
+  
+  // ... test-kod här ...
+  
+  // Cleanup: Rensa testdata efter testet
+  await cleanupTestFiles(page, testStartTime);
+});
+```
 
 **Användning:**
 ```typescript
@@ -131,6 +167,53 @@ test('custom workflow', async ({ page }) => {
 4. **Flexibilitet** - Kan kombineras till A-Ö tester eller användas individuellt
 5. **Läsbarhet** - Tester blir mer läsbara och lättare att förstå
 
+## ⚠️ VIKTIGT: Test Data Isolation - MÅSTE FÖLJAS!
+
+**🚨 KRITISKT: Alla tester MÅSTE använda test data prefixing och cleanup!**
+
+### OBLIGATORISKT för alla nya tester:
+
+**1. Använd ALLTID prefixade test-filnamn:**
+```typescript
+import { ensureBpmnFileExists } from './utils/testHelpers';
+import { generateTestFileName } from './utils/testDataHelpers';
+
+test('my test', async ({ page }) => {
+  const testStartTime = Date.now(); // ✅ OBLIGATORISKT
+  const ctx = createTestContext(page);
+  
+  // ✅ RÄTT: Använd ensureBpmnFileExists() som prefixar automatiskt
+  const testFileName = await ensureBpmnFileExists(ctx, 'my-test-file');
+  
+  // ❌ FEL: Använd INTE direkt filnamn utan prefix
+  // await stepUploadBpmnFile(ctx, 'my-file.bpmn', content); // FEL!
+  
+  // ✅ RÄTT: Om du måste använda stepUploadBpmnFile direkt
+  const testFileName2 = generateTestFileName('my-test-file');
+  await stepUploadBpmnFile(ctx, testFileName2, content);
+  
+  // ... test-kod här ...
+  
+  // ✅ OBLIGATORISKT: Rensa testdata efter testet
+  await cleanupTestFiles(page, testStartTime);
+});
+```
+
+**2. Använd testStartTime för att bara rensa testets egna data:**
+```typescript
+const testStartTime = Date.now(); // ✅ Spara timestamp när testet startar
+// ... test-kod ...
+await cleanupTestFiles(page, testStartTime); // ✅ Rensa bara testets egna filer
+```
+
+**3. Använd rätt helper-funktioner:**
+- ✅ `ensureBpmnFileExists(ctx, baseName?)` - Prefixar automatiskt
+- ✅ `generateTestFileName(baseName?)` - Genererar prefixat filnamn
+- ✅ `cleanupTestFiles(page, testStartTime?)` - Rensar testdata
+- ✅ `ensureFileCanBeSelected(ctx)` - Prioriterar test-filer
+
+**Se:** [`../README.md`](../README.md#-viktigt-test-data-isolation---måste-följas-i-alla-nya-tester) för mer information.
+
 ## Lägga till nya steg
 
 När du lägger till nya test-steg:
@@ -140,7 +223,8 @@ När du lägger till nya test-steg:
 3. Dokumentera vad steget gör
 4. **VIKTIGT:** Verifiera att operationen faktiskt slutfördes (inte bara att den startade)
 5. Hantera fel gracefully (kasta Error med tydligt felmeddelande, inte bara logga)
-6. Uppdatera denna README
+6. **VIKTIGT:** Om steget skapar data, använd prefixade filnamn (via `generateTestFileName()`)
+7. Uppdatera denna README
 
 **Exempel på bra verifiering:**
 ```typescript

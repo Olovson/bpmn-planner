@@ -21,18 +21,22 @@ import {
   stepNavigateToProcessExplorer,
 } from './utils/testSteps';
 import { ensureBpmnFileExists, ensureButtonExists } from './utils/testHelpers';
+import { cleanupTestFiles } from './utils/testCleanup';
+import { cleanupTestFiles } from './utils/testCleanup';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Hierarchy Building from Scratch', () => {
   test('should build hierarchy from scratch and display it correctly', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Steg 1: Navigera till Files
     await stepNavigateToFiles(ctx);
 
     // Steg 2: Säkerställ att minst en BPMN-fil finns (ladda upp om ingen finns)
-    await ensureBpmnFileExists(ctx, 'test-hierarchy.bpmn');
+    // Filnamn genereras automatiskt med test- prefix och timestamp
+    const testFileName = await ensureBpmnFileExists(ctx, 'test-hierarchy');
 
     // Steg 3: Bygg hierarki
     try {
@@ -121,6 +125,7 @@ test.describe('Hierarchy Building from Scratch', () => {
   });
 
   test('should handle hierarchy building errors gracefully', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);
@@ -166,9 +171,13 @@ test.describe('Hierarchy Building from Scratch', () => {
       // Button is disabled - that's a valid form of error handling
       console.log('✅ Build hierarchy button is disabled (valid error handling)');
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 
   test('should show hierarchy report after building', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);

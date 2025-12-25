@@ -18,11 +18,14 @@ import {
   stepUploadBpmnFile,
 } from './utils/testSteps';
 import { ensureBpmnFileExists, ensureButtonExists } from './utils/testHelpers';
+import { cleanupTestFiles } from './utils/testCleanup';
+import { cleanupTestFiles } from './utils/testCleanup';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('BPMN Map Validation and Update Workflow', () => {
   test('should validate bpmn-map.json and show validation results', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Steg 1: Navigera till Files
@@ -83,16 +86,21 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
         console.log('ℹ️  MapValidationDialog visas inte (kan vara att validering inte hittade några problem)');
       }
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 
   test('should show map suggestions and allow accepting/rejecting', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);
 
     // För att få map suggestions behöver vi ha BPMN-filer som inte är mappade
     // Ladda upp en ny BPMN-fil (säkerställ att minst en fil finns)
-    await ensureBpmnFileExists(ctx, 'test-map-suggestions.bpmn');
+    // Filnamn genereras automatiskt med test- prefix och timestamp
+    const testFileName = await ensureBpmnFileExists(ctx, 'test-map-suggestions');
     
     // Kolla om filer redan fanns eller om vi just laddade upp
     const filesTable = page.locator('table').first();
@@ -112,7 +120,8 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
 </bpmn:definitions>`;
 
       try {
-        await stepUploadBpmnFile(ctx, 'test-map-suggestions.bpmn', testBpmnContent);
+        // Använd det genererade test-filnamnet
+        await stepUploadBpmnFile(ctx, testFileName, testBpmnContent);
         await page.waitForTimeout(3000);
         
         // Efter upload kan map suggestions visas automatiskt
@@ -177,9 +186,13 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
         console.log('✅ MapSuggestionsDialog visas efter validering');
       }
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 
   test('should save updated bpmn-map.json', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);
@@ -231,9 +244,13 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
         console.log('ℹ️  Save-knapp finns inte i validation dialog (kan vara att inga ändringar finns)');
       }
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 
   test('should export updated bpmn-map.json', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);
@@ -285,9 +302,13 @@ test.describe('BPMN Map Validation and Update Workflow', () => {
         console.log('ℹ️  Export-knapp finns inte (kan vara att inga ändringar finns att exportera)');
       }
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 
   test('should handle map validation errors gracefully', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     await stepNavigateToFiles(ctx);

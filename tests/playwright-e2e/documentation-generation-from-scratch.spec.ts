@@ -27,11 +27,13 @@ import {
   stepNavigateToDocViewer,
 } from './utils/testSteps';
 import { ensureBpmnFileExists, ensureFileCanBeSelected, ensureButtonExists } from './utils/testHelpers';
+import { cleanupTestFiles } from './utils/testCleanup';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Documentation Generation from Scratch', () => {
   test('should generate documentation from scratch and display it in app', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Setup: Mock Claude API-anrop
@@ -41,7 +43,8 @@ test.describe('Documentation Generation from Scratch', () => {
     await stepNavigateToFiles(ctx);
 
     // Steg 2: Säkerställ att minst en BPMN-fil finns (ladda upp om ingen finns)
-    await ensureBpmnFileExists(ctx, 'test-doc-generation.bpmn');
+    // Filnamn genereras automatiskt med test- prefix och timestamp
+    const testFileName = await ensureBpmnFileExists(ctx, 'test-doc-generation');
 
     // Steg 3: Bygg hierarki (krav för generering)
     await stepBuildHierarchy(ctx);
@@ -108,9 +111,13 @@ test.describe('Documentation Generation from Scratch', () => {
       );
       expect(hasActualContent).toBeTruthy();
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 
   test('should handle Claude API errors gracefully', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Setup: Mock Claude API med fel
@@ -152,6 +159,9 @@ test.describe('Documentation Generation from Scratch', () => {
       // Fel ska hanteras gracefully (antingen via error message eller dialog stängs)
       expect(hasError || !(await generateButton.isVisible().catch(() => false))).toBeTruthy();
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 });
 

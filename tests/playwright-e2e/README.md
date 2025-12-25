@@ -211,6 +211,90 @@ npm run test:claude:generation:headed
 3. **Claude API-nyckel** (för Claude-tester) - `VITE_ANTHROPIC_API_KEY` måste vara satt i `.env.local`
 4. **LLM måste vara aktiverat** (för LLM-tester) - `VITE_USE_LLM=true` (sätts automatiskt av npm-scriptet)
 
+## ⚠️ VIKTIGT: Test Data Isolation - MÅSTE FÖLJAS I ALLA NYA TESTER!
+
+**🚨 KRITISKT: Testerna påverkar faktisk data i databasen!**
+
+### ⚠️ OBLIGATORISKT för alla nya tester:
+
+**1. Använd ALLTID prefixade test-filnamn:**
+```typescript
+import { ensureBpmnFileExists } from './utils/testHelpers';
+import { generateTestFileName } from './utils/testDataHelpers';
+
+test('my test', async ({ page }) => {
+  const testStartTime = Date.now();
+  const ctx = createTestContext(page);
+  
+  // ✅ RÄTT: Använd ensureBpmnFileExists() som prefixar automatiskt
+  const testFileName = await ensureBpmnFileExists(ctx, 'my-test-file');
+  
+  // ❌ FEL: Använd INTE direkt filnamn utan prefix
+  // await stepUploadBpmnFile(ctx, 'my-file.bpmn', content); // FEL!
+  
+  // ✅ RÄTT: Om du måste använda stepUploadBpmnFile direkt, generera prefixat filnamn
+  const testFileName2 = generateTestFileName('my-test-file');
+  await stepUploadBpmnFile(ctx, testFileName2, content);
+});
+```
+
+**2. Rensa ALLTID testdata efter testet:**
+```typescript
+import { cleanupTestFiles } from './utils/testCleanup';
+
+test('my test', async ({ page }) => {
+  const testStartTime = Date.now();
+  const ctx = createTestContext(page);
+  
+  // ... test-kod här ...
+  
+  // ✅ OBLIGATORISKT: Rensa testdata efter testet
+  await cleanupTestFiles(page, testStartTime);
+});
+```
+
+**3. Använd testStartTime för att bara rensa testets egna data:**
+```typescript
+test('my test', async ({ page }) => {
+  const testStartTime = Date.now(); // ✅ Spara timestamp när testet startar
+  const ctx = createTestContext(page);
+  
+  // ... test-kod här ...
+  
+  // ✅ Cleanup med testStartTime säkerställer att vi bara rensar testets egna filer
+  await cleanupTestFiles(page, testStartTime);
+});
+```
+
+### Säkerhetsåtgärder (automatiska):
+
+1. **Testdata prefixas automatiskt:**
+   - Alla test-filer prefixas med `test-{timestamp}-{random}-{name}.bpmn`
+   - Exempel: `test-1704067200000-1234-test-doc-generation.bpmn`
+   - Testdata kan identifieras och rensas enkelt
+
+2. **Automatisk cleanup:**
+   - Testdata rensas automatiskt efter varje test (om du använder `cleanupTestFiles()`)
+   - Gamla testdata kan rensas manuellt med `cleanupOldTestData()`
+
+3. **ALDRIG kör tester mot produktionsdatabas!**
+   - ⚠️ **KRITISKT:** Kontrollera att `VITE_SUPABASE_URL` i `.env.local` pekar på lokal Supabase
+   - Default: `http://127.0.0.1:54321` (lokal Supabase)
+   - **ALDRIG** sätt produktions-URL i `.env.local` när du kör tester!
+
+4. **Testdata kan synas i appen:**
+   - Testdata börjar med "test-" och kan filtreras bort
+   - Cleanup körs automatiskt, men kan misslyckas om testet crashar
+
+### Checklista för nya tester:
+
+- [ ] Använder `testStartTime = Date.now()` i början av testet
+- [ ] Använder `ensureBpmnFileExists()` eller `generateTestFileName()` för filnamn
+- [ ] Använder `cleanupTestFiles(page, testStartTime)` i slutet av testet
+- [ ] Verifierar att `VITE_SUPABASE_URL` pekar på lokal Supabase (inte produktion)
+
+**Se:** [`docs/analysis/TEST_DATA_ISOLATION_IMPLEMENTATION.md`](../../docs/analysis/TEST_DATA_ISOLATION_IMPLEMENTATION.md) för detaljerad information.
+
 ## 🐛 Debugging
 
 Om ett test misslyckas:
@@ -226,6 +310,7 @@ Om ett test misslyckas:
 - **Detaljerad översikt:** [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) - Komplett lista över alla tester
 - **Saknade tester analys:** [`../docs/analysis/MISSING_E2E_TESTS_ANALYSIS.md`](../../docs/analysis/MISSING_E2E_TESTS_ANALYSIS.md) - Analys av vad som saknas
 - **Återanvändbara komponenter:** [`utils/README.md`](./utils/README.md) - Guide för test-steg
+- **⭐ Skapa nya tester:** [`CREATING_NEW_TESTS.md`](./CREATING_NEW_TESTS.md) - **OBLIGATORISK guide för att skapa nya tester (inkluderar test data isolation)**
 - **Playwright dokumentation:** https://playwright.dev
 
 ## 🎯 Mockade API-anrop

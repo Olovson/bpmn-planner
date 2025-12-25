@@ -26,6 +26,7 @@ test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('File Management Workflow A-Ö', () => {
   test('should complete file management workflow', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Steg 1: Navigera till Files
@@ -49,7 +50,9 @@ test.describe('File Management Workflow A-Ö', () => {
 </bpmn:definitions>`;
 
       try {
-        await stepUploadBpmnFile(ctx, 'test-file-management.bpmn', testBpmnContent);
+        // Generera unikt test-filnamn med prefix och timestamp
+        const testFileName = generateTestFileName('test-file-management');
+        await stepUploadBpmnFile(ctx, testFileName, testBpmnContent);
       } catch (error) {
         console.log('⚠️  Could not upload file');
       }
@@ -68,6 +71,9 @@ test.describe('File Management Workflow A-Ö', () => {
     await stepNavigateToNodeMatrix(ctx);
 
     console.log('✅ File management workflow test slutförd');
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 });
 

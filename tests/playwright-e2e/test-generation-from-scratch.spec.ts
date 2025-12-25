@@ -29,11 +29,14 @@ import {
   stepNavigateToTestCoverage,
 } from './utils/testSteps';
 import { ensureBpmnFileExists, ensureFileCanBeSelected, ensureButtonExists } from './utils/testHelpers';
+import { cleanupTestFiles } from './utils/testCleanup';
+import { cleanupTestFiles } from './utils/testCleanup';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Test Generation from Scratch', () => {
   test('should generate tests from scratch and display them in app', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Setup: Mock Claude API-anrop
@@ -43,7 +46,8 @@ test.describe('Test Generation from Scratch', () => {
     await stepNavigateToFiles(ctx);
 
     // Steg 2: Säkerställ att minst en BPMN-fil finns (ladda upp om ingen finns)
-    await ensureBpmnFileExists(ctx, 'test-generation.bpmn');
+    // Filnamn genereras automatiskt med test- prefix och timestamp
+    const testFileName = await ensureBpmnFileExists(ctx, 'test-generation');
 
     // Steg 3: Bygg hierarki (krav för generering)
     await stepBuildHierarchy(ctx);
@@ -144,9 +148,13 @@ test.describe('Test Generation from Scratch', () => {
       const hasE2eScenarios = await e2eScenarios.count() > 0;
       expect(hasE2eScenarios).toBeTruthy();
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 
   test('should handle test generation errors gracefully', async ({ page }) => {
+    const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
     // Setup: Mock Claude API med fel
@@ -188,6 +196,9 @@ test.describe('Test Generation from Scratch', () => {
       // Fel ska hanteras gracefully
       expect(hasError || !(await generateTestsButton.isVisible().catch(() => false))).toBeTruthy();
     }
+    
+    // Cleanup: Rensa testdata efter testet
+    await cleanupTestFiles(page, testStartTime);
   });
 });
 
