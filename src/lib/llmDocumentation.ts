@@ -2,6 +2,9 @@ import type { NodeDocumentationContext } from './documentationContext';
 import type { TemplateLinks } from './documentationTemplates';
 import type { BpmnProcessNode } from './bpmnProcessGraph';
 import { generateChatCompletion, isLlmEnabled } from './llmClient';
+import { enrichNodeContextWithStructuralInfo } from './structuralInfoEnricher';
+import type { ProcessPath } from './bpmnFlowExtractor';
+import type { FlowGraph } from './bpmnFlowExtractor';
 import { saveLlmDebugArtifact } from './llmDebugStorage';
 import type { LlmProvider } from './llmClientAbstraction';
 import { getDefaultLlmProvider } from './llmClients';
@@ -61,10 +64,16 @@ export async function generateDocumentationWithLlm(
   allowFallback: boolean = true,
   childrenDocumentation?: Map<string, ChildNodeDocumentation>,
   abortSignal?: AbortSignal,
+  structuralInfo?: { paths: ProcessPath[]; flowGraph?: FlowGraph },
 ): Promise<DocumentationLlmResult | null> {
   if (!isLlmEnabled()) return null;
 
-  const { processContext, currentNodeContext } = buildContextPayload(context, links, childrenDocumentation);
+  // Berika context med strukturell information om tillgänglig
+  const enrichedContext = structuralInfo
+    ? enrichNodeContextWithStructuralInfo(context, structuralInfo.paths, structuralInfo.flowGraph)
+    : context;
+
+  const { processContext, currentNodeContext } = buildContextPayload(enrichedContext, links, childrenDocumentation);
   const docLabel =
     docType === 'feature'
       ? 'Feature'
@@ -87,11 +96,17 @@ export async function generateDocumentationWithLlm(
     docType === 'businessRule' ? 'businessRule' : docType === 'feature' ? 'feature' : 'epic';
 
   // JSON-input som skickas till LLM enligt promptdefinitionerna.
-  const llmInput = {
+  // Inkludera strukturell information om den finns
+  const llmInput: any = {
     type: docLabel,
     processContext,
     currentNodeContext,
   };
+
+  // Lägg till strukturell information om den finns
+  if ('structuralInfo' in enrichedContext && enrichedContext.structuralInfo) {
+    llmInput.structuralInfo = enrichedContext.structuralInfo;
+  }
 
   const userPrompt = JSON.stringify(llmInput, null, 2);
 
@@ -813,6 +828,11 @@ export function buildContextPayload(
     },
     links,
   };
+
+  // Lägg till strukturell information om den finns i context
+  if ('structuralInfo' in context && context.structuralInfo) {
+    (currentNodeContext as any).structuralInfo = context.structuralInfo;
+  }
 
   return { processContext, currentNodeContext };
 }

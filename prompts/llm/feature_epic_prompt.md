@@ -56,6 +56,7 @@ När du genererar dokumentation för User Tasks, måste du själv evaluera om de
 - `currentNodeContext.childrenDocumentation`: **Om den finns** (för Feature Goals), använd den för att förstå vad child nodes gör när du genererar Feature Goal-dokumentation. Se detaljerade instruktioner nedan för hur den ska användas för varje fält.
 - `currentNodeContext.flows`: Använd för att förstå flödet in och ut från noden (incoming, outgoing).
 - `currentNodeContext.documentation`: Använd befintlig dokumentation från BPMN om den finns.
+- `currentNodeContext.structuralInfo`: **Om den finns** (för Feature Goals), använd den för att förstå strukturell BPMN-information. Se detaljerade instruktioner nedan för hur den ska användas.
 
 **Viktigt om `childrenDocumentation` för Feature Goals:**
 Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa mer precisa och relevanta dokumentation. Här är specifika instruktioner per fält:
@@ -78,10 +79,27 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 
 **Viktigt:** Referera INTE direkt till child node-namn i texten (t.ex. "UserTask X gör Y"), men använd deras funktionalitet för att skapa bättre dokumentation (t.ex. "Kunden fyller i ansökningsinformation"). **⚠️ Evaluera alltid vem som gör vad baserat på child node-namn och funktionalitet**: Om en child node har ett namn som "register", "upload", "fill" → använd "kunden" eller "kund" i texten. Om en child node har ett namn som "review", "evaluate", "assess" → använd "handläggaren" eller "handläggare" i texten. Använd lane-information endast som hint, evaluera själv baserat på task-namnet och funktionalitet. Detta säkerställer att Feature Goals korrekt reflekterar vem som gör vad i subprocessen.
 
+**Viktigt om strukturell information (`structuralInfo`):**
+Om `currentNodeContext.structuralInfo` finns, använd den för att förbättra dokumentationen:
+
+- **gatewayConditions**: Gateway-conditions som gäller FÖRE Feature Goal. Använd dessa för att förbättra prerequisites (t.ex. "Gateway condition: KALP OK = Yes måste vara uppfylld"). Inkludera gateway-conditions i prerequisites när de är relevanta.
+
+- **processPaths**: Paths som går genom Feature Goal. Använd dessa för att förstå Feature Goal's roll i processen. T.ex. om Feature Goal ingår i flera paths, kan du beskriva olika scenarion i flowSteps.
+
+- **flowContext**: Feature Goals FÖRE/EFTER. Använd dessa för att förbättra prerequisites (inkludera Feature Goals FÖRE) och dependencies (inkludera Feature Goals EFTER).
+
+- **endEvents**: End events som Feature Goal kan leda till. Använd dessa för att förbättra outputs (inkludera end events som Feature Goal kan producera).
+
+**Exempel på användning:**
+- Om `gatewayConditions` innehåller "KALP OK = Yes", inkludera detta i prerequisites: "Gateway condition: KALP OK = Yes (creditDecision.approved === true) måste vara uppfylld".
+- Om `flowContext.previousFeatureGoals` innehåller "application", inkludera detta i prerequisites: "Application-processen måste vara slutförd".
+- Om `endEvents` innehåller "end-event-approved", inkludera detta i outputs: "Processen kan slutföras med end-event-approved när KALP OK = Yes".
+
 **Viktigt om kontext:**
 - **Hitta INTE på** egna faser/roller eller system utanför det som går att härleda från `processContext` och `currentNodeContext`.
 - Om information saknas i kontexten (t.ex. `phase` eller `lane` saknas), använd generiska termer som "processen" eller "systemet" istället för att hitta på specifika faser/roller.
 - Om `childrenDocumentation` saknas: Generera dokumentation baserat på nodens namn, typ och kontext, utan att referera till child nodes.
+- Om `structuralInfo` saknas: Generera dokumentation baserat på annan tillgänglig kontext.
 
 **Prioritering när instruktioner konfliktar:**
 1. **Högsta prioritet**: Korrekt JSON-struktur och format (t.ex. dependencies-formatet måste vara exakt korrekt)

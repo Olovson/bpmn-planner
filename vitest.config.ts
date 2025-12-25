@@ -10,6 +10,8 @@ export default defineConfig({
       ['**/bpmnRealParse*.test.ts', 'jsdom'],
       ['**/bpmnHierarchy*.test.ts', 'jsdom'],
       ['**/processExplorer*.test.ts', 'jsdom'],
+      ['**/bpmnFlowExtractor*.test.ts', 'jsdom'],
+      ['**/e2eToFeatureGoalRealBpmnFiles.test.ts', 'jsdom'],
     ],
     setupFiles: ['./tests/setup/vitest.setup.ts'],
     alias: {

@@ -75,6 +75,7 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - Ways of working, teststrategi, roller, projektstruktur
 
 ### 📁 Analysis (`analysis/`)
+- **`FEATURE_GOAL_GENERATION_IMPROVEMENT.md`** - ✅ Förbättring: Använd BPMN-strukturell information för Feature Goal-generering (implementerad)
 - **`DIFF_FUNCTIONALITY_ANALYSIS.md`** - Analys av diff-funktionalitet för selektiv regenerering
 - **`DIFF_FUNCTIONALITY_EXPLANATION.md`** - Förklaring av diff-funktionalitet
 - **`BPMN_MAP_FROM_TEMPLATE_ANALYSIS.md`** - Analys: Extrahera BPMN Map från mortgage-template-main handlers
@@ -88,11 +89,14 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - **En hierarki, många konsumenter**  
   BPMN‑hierarkin byggs en gång och kör sedan:
   - Process Explorer / trädet,
-  - dokumentationsgeneratorn,
+  - dokumentationsgeneratorn (med strukturell BPMN-information för Feature Goals),
   - testgeneratorn (Playwright),
   - testrapportvyerna,
   - Timeline / Planning View (Gantt),
   - samt Jira‑namngivning och DoR/DoD.
+
+- **Strukturell BPMN-information för Feature Goals**  
+  Feature Goal-generering använder nu strukturell BPMN-information (gateway-conditions, process paths, flödesinformation) för att förbättra dokumentationskvaliteten. Se [`analysis/FEATURE_GOAL_GENERATION_IMPROVEMENT.md`](./analysis/FEATURE_GOAL_GENERATION_IMPROVEMENT.md) för detaljer.
 
 - **Planerade scenarier i `node_planned_scenarios`**  
   Alla "planerade scenarion" i UI kommer från tabellen `node_planned_scenarios`:

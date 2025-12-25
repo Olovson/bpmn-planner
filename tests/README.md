@@ -201,10 +201,12 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 
 Tests are automatically generated from BPMN files via the `generate-artifacts` edge function. The generation:
 
-1. Parses BPMN hierarchy (Initiative → Feature Goals → Epics)
-2. Generates test stubs with standardized naming
+1. Parses BPMN hierarchy (Initiative → Feature Goals)
+2. Generates test stubs with standardized naming for Feature Goals (Call Activities)
 3. Adds metadata annotations for filtering
 4. Preserves existing test implementations (does not overwrite)
+
+**Viktigt:** Epic-testgenerering har tagits bort. Endast Feature Goals (Call Activities) genererar testfiler. Epic-information finns redan inkluderad i Feature Goal-dokumentation via `childrenDocumentation`.
 
 To regenerate tests:
 1. Go to the BPMN File Manager
@@ -213,6 +215,59 @@ To regenerate tests:
 4. Tests will be created/updated in Supabase Storage
 
 **Dessa genererade tester är INTE en del av utvecklartest-suiten.**
+
+---
+
+## Test Information Generation (Ny funktionalitet - Under utveckling)
+
+> **Status:** Tester skapade men väntar på implementation av funktionalitet.
+
+### Översikt
+
+En ny funktionalitet för att generera testinformation från befintlig dokumentation och BPMN-processer. Funktionen är helt separerad från dokumentationsgenerering och läser från befintlig dokumentation.
+
+**Se:** [`docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md`](../docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md) för detaljerad implementeringsplan.
+
+### Testfiler (Under utveckling)
+
+**Unit-tester:**
+- `tests/unit/testGeneration/userStoryExtractor.test.ts` - Extrahera user stories från dokumentation
+- `tests/unit/testGeneration/userStoryToTestScenario.test.ts` - Konvertera user stories till test scenarios
+- `tests/unit/testGeneration/bpmnProcessFlowTestGenerator.test.ts` - Generera scenarios från BPMN-processflöde
+- `tests/unit/testGeneration/testScenarioSaver.test.ts` - Spara scenarios till databasen
+
+**Integrationstester:**
+- `tests/integration/testGeneration/integration.test.ts` - Fullständigt dataflöde (extrahera → konvertera → spara)
+
+### Teststrategi
+
+Tester fokuserar på:
+1. **Struktur:** Verifiera att funktioner returnerar rätt struktur
+2. **Dataflöde:** Verifiera att data kan flöda genom systemet
+3. **UI-kompatibilitet:** Verifiera att format matchar UI-förväntningar
+4. **Mock-data:** Använder mock-data istället för faktisk dokumentation
+5. **Ingen Claude:** Tester kräver inte Claude-anrop
+
+**VIKTIGT:** UI-tester fungerar inte i projektet. Istället verifierar vi att data-format matchar UI-förväntningar. Se [`docs/analysis/TEST_GENERATION_UI_VALIDATION.md`](../docs/analysis/TEST_GENERATION_UI_VALIDATION.md) för detaljerad validering.
+
+### Status
+
+- ✅ Testfiler skapade
+- ✅ Funktionalitet implementerad
+- ✅ Tester uppdaterade för att använda faktisk funktionalitet
+- ⚠️ Vissa tester kan behöva justeras efter manuell validering
+
+### Körning
+
+Tester kan inte köras ännu eftersom modulerna inte är implementerade. När implementationen är klar:
+
+```bash
+# Kör alla test generation-tester
+npm test -- tests/unit/testGeneration tests/integration/testGeneration
+
+# Kör specifik test
+npm test -- tests/unit/testGeneration/userStoryExtractor.test.ts
+```
 
 ## Test Metadata Utilities
 
@@ -241,8 +296,10 @@ See `src/tests/meta/jiraBpmnMeta.ts` for details.
 
 Test results are integrated into the app's Test Report dashboard:
 - Navigate to the "Tests" page in the app
-- View hierarchical test results grouped by Initiative → Feature Goal → Epic
+- View hierarchical test results grouped by Initiative → Feature Goal
 - Click on test names to see BPMN links and documentation
+
+**Viktigt:** Epic-testgenerering har tagits bort. Testfiler genereras endast för Feature Goals (Call Activities).
 
 ## CI/CD Integration
 
@@ -273,8 +330,9 @@ Tests run automatically on GitHub Actions. Results are submitted to the app's te
 - ✅ NodeMatrix UI-test
 - ✅ TimelinePage UI-test
 
-**Fas 3: Mindre gaps** ⏳ **PENDING**
-- ⏳ TestCoverageExplorerPage
+**Fas 3: Mindre gaps** ✅ **DELVIS KLART**
+- ✅ TestCoverageExplorerPage (Playwright-test skapad)
+- ✅ E2eTestsOverviewPage (Playwright-test skapad)
 - ⏳ E2eQualityValidationPage
 - ⏳ GitHub-synkronisering
 - ⏳ Jira-namngivning
@@ -282,8 +340,9 @@ Tests run automatically on GitHub Actions. Results are submitted to the app's te
 ### Identifierade Gaps (Återstående)
 
 **Mindre gaps (låg prioritet):**
-- TestCoverageExplorerPage UI-test
-- E2eQualityValidationPage UI-test
+- ✅ TestCoverageExplorerPage UI-test (Playwright-test skapad)
+- ✅ E2eTestsOverviewPage UI-test (Playwright-test skapad)
+- ⏳ E2eQualityValidationPage UI-test
 - GitHub-synkronisering integration test
 - Jira-namngivning unit test
 - DoR/DoD i UI

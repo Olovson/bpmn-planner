@@ -1,6 +1,6 @@
 {
   "error": "ChatGPT (moln-LLM) connection failed",
   "provider": "cloud",
-  "details": "LLM returned null response",
-  "timestamp": "2025-12-19T18:33:57.998Z"
+  "details": "enrichedContext is not defined",
+  "timestamp": "2025-12-23T22:39:00.144Z"
 }

@@ -38,6 +38,7 @@ const {
     bpmnElementId: 'Task_Approve',
     parentPath: ['Mortgage'],
     element: mockNodeElement,
+    children: [] as any[],
   };
   const unresolvedCallActivity = {
     id: 'mortgage:Call_Sub',
@@ -47,8 +48,11 @@ const {
     bpmnElementId: 'Call_Sub',
     parentPath: ['Mortgage'],
     element: { ...mockNodeElement, type: 'bpmn:CallActivity', id: 'Call_Sub' },
+    subprocessFile: 'subprocess.bpmn', // Add subprocessFile to avoid being skipped
+    missingDefinition: false, // Set to false so it's not skipped
     subprocessMatchStatus: 'unresolved' as const,
     subprocessDiagnostics: ['NO_MATCH'],
+    children: [] as any[],
   };
   const businessRuleNode = {
     id: 'mortgage:Rule_1',
@@ -58,6 +62,7 @@ const {
     bpmnElementId: 'Rule_1',
     parentPath: ['Mortgage'],
     element: { ...mockNodeElement, type: 'bpmn:BusinessRuleTask', id: 'Rule_1' },
+    children: [] as any[],
   };
 
   const mockProcessGraph = {
@@ -208,7 +213,7 @@ describe('generateAllFromBpmnWithGraph', () => {
       ['mortgage.bpmn'],
       [],
       true,
-      false
+      true // useLlm must be true since LLM is now required
     );
 
     expect(mockBuildBpmnProcessGraph).toHaveBeenCalledTimes(1);
@@ -225,23 +230,26 @@ describe('generateAllFromBpmnWithGraph', () => {
     mockBuildBpmnProcessGraph.mockRejectedValue(new Error('graph boom'));
 
     await expect(
-      generateAllFromBpmnWithGraph('mortgage.bpmn', ['mortgage.bpmn'], [], true, false)
+      generateAllFromBpmnWithGraph('mortgage.bpmn', ['mortgage.bpmn'], [], true, true)
     ).rejects.toThrow('graph boom');
   });
 
   it('generates diagnostic docs but skips rich output for unresolved subprocess matches', async () => {
+    // Add subprocessFile to existingBpmnFiles so it's not filtered out
     mockGetTestableNodes.mockReturnValue([testableNode, unresolvedCallActivity] as any);
 
     const result = await generateAllFromBpmnWithGraph(
       'mortgage.bpmn',
-      ['mortgage.bpmn'],
+      ['mortgage.bpmn', 'subprocess.bpmn'], // Include subprocess file so it's not filtered out
       [],
       true,
-      false
+      true // useLlm must be true since LLM is now required
     );
 
+    // With the new logic, callActivities with subprocessFile and missingDefinition=false
+    // should generate Feature Goal documentation
     const unresolvedDocKey = Array.from(result.docs.keys()).find((key) =>
-      key.includes('Call_Sub'),
+      key.includes('Call_Sub') || key.includes('subprocess'),
     );
     expect(unresolvedDocKey).toBeDefined();
     const unresolvedDoc = unresolvedDocKey ? result.docs.get(unresolvedDocKey) : '';
@@ -259,7 +267,7 @@ describe('generateAllFromBpmnWithGraph', () => {
       ['mortgage.bpmn'],
       [],
       true,
-      false
+      true // useLlm must be true since LLM is now required
     );
 
     const docKey = Array.from(result.docs.keys()).find((key) => key.includes('Rule_1'));
@@ -276,6 +284,8 @@ describe('generateAllFromBpmnWithGraph', () => {
       bpmnFile: 'mortgage.bpmn',
       bpmnElementId: 'Call_C',
       element: { ...mockNodeElement, type: 'bpmn:CallActivity', id: 'Call_C' },
+      subprocessFile: 'subprocessC.bpmn', // Add subprocessFile to avoid being skipped
+      missingDefinition: false, // Set to false so it's not skipped
       children: [] as any[],
     };
     const deepTask = {
@@ -337,7 +347,7 @@ describe('generateAllFromBpmnWithGraph', () => {
       ['mortgage.bpmn', 'subprocessC.bpmn'],
       [],
       true,
-      false
+      true // useLlm must be true since LLM is now required
     );
 
     const cDoc = Array.from(result.docs.keys()).find((key) => key.includes('Call_C'));

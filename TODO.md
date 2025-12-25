@@ -8,23 +8,6 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 
 ## 🔥 Högsta prioritet
 
-### Diff-funktionalitet för selektiv regenerering
-- [ ] **FIXA:** Process nodes (subprocess Feature Goals) inkluderas inte i diff-beräkning
-  - **Problem:** `extractNodeSnapshots()` i `bpmnDiff.ts` inkluderar bara callActivities, tasks, men inte process nodes
-  - **Påverkan:** När en subprocess-fil ändras, detekteras inte ändringen i process-noden
-  - **Lösning:** Lägg till process nodes i `extractNodeSnapshots()` så att de kan detekteras som `added`, `removed`, `modified`
-  - **Plats:** `src/lib/bpmnDiff.ts` (rad ~42, `extractNodeSnapshots()`)
-- [ ] **FIXA:** Cascade-diff-detection saknas
-  - **Problem:** Om en subprocess-fil ändras, behöver alla call activities som anropar den också regenereras
-  - **Påverkan:** Ändringar i subprocess påverkar call activity Feature Goals, men detekteras inte automatiskt
-  - **Lösning:** Implementera cascade-diff-detection: om subprocess-fil ändras → markera call activities som `modified`
-  - **Plats:** `src/lib/bpmnDiffRegeneration.ts` (efter diff-beräkning, lägg till cascade-logik)
-- [ ] **FIXA:** Cleanup av removed nodes saknas
-  - **Problem:** När en nod tas bort, tas inte dokumentationen bort från Storage
-  - **Påverkan:** Döda länkar i dokumentation, förvirring om vilka noder som finns
-  - **Lösning:** Implementera cleanup av dokumentation för removed nodes, eller markera som "deprecated"
-  - **Plats:** `src/lib/bpmnDiffRegeneration.ts` eller ny funktion för cleanup
-
 ### Testinformation generering
 - [ ] **FIXA:** Scenarios från dokumentationen sparas inte till `node_planned_scenarios`
   - **Problem:** `buildScenariosFromEpicUserStories()` och `buildScenariosFromDocJson()` finns men anropas aldrig
@@ -161,7 +144,7 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 
 - [x] Utöka `bpmn_files` tabell med versioning (✅ Implementerad)
 - [x] Skapa diff-vy för BPMN XML (✅ `BpmnDiffOverviewPage.tsx` finns)
-- [ ] **FÖRBÄTTRA:** Diff-funktionalitet för selektiv regenerering (se "Högsta prioritet" ovan)
+- [x] Diff-funktionalitet för selektiv regenerering (✅ Implementerad: process nodes, cascade-detection, cleanup)
 - [ ] Skapa diff-vy för genererad dokumentation (jämför HTML-innehåll)
 - [ ] Implementera "What changed since last generation?"-vy
 - [ ] Lägg till changelog per fil/nod

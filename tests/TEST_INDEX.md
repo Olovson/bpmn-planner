@@ -23,8 +23,9 @@ Dessa tester körs av utvecklare för att säkerställa att appens kod fungerar 
 
 ### 2. Tester som **appen genererar och använder** (användartester)
 Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
-- **Playwright-testfiler** - Genereras från BPMN-processer (Feature Goals, Epics)
+- **Playwright-testfiler** - Genereras från BPMN-processer (Feature Goals)
 - **Test-scenarion** - Extraheras från dokumentation och sparas i `node_planned_scenarios`
+- **E2E-scenarios** - Genereras från BPMN-processgraf och Feature Goals med Claude, sparas i Supabase Storage (`e2e-scenarios/{bpmnFile}-scenarios.json`)
 - **Test Coverage-data** - Visas i Test Coverage Explorer
 
 **Syfte:** Används av användare för att testa sina BPMN-processer, inte för att validera appens kod.
@@ -176,6 +177,33 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 ### Test Report
 - **Unit:** `testReportFiltering.test.ts` - Test report filtering
 
+### Test Information Generation (Under utveckling)
+> **Status:** Testfiler skapade men väntar på implementation av funktionalitet. Se [`docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md`](../docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md) för implementeringsplan.
+
+**Unit-tester:**
+- **`tests/unit/testGeneration/userStoryExtractor.test.ts`** - Extrahera user stories från dokumentation
+- **`tests/unit/testGeneration/userStoryToTestScenario.test.ts`** - Konvertera user stories till test scenarios
+- **`tests/unit/testGeneration/bpmnProcessFlowTestGenerator.test.ts`** - Generera scenarios från BPMN-processflöde
+- **`tests/unit/e2eScenarioGenerator.test.ts`** - E2E-scenario-generering med Claude
+  - ✅ `generateE2eScenarioWithLlm` - Fullt implementerad med mocks
+  - ⚠️ `generateE2eScenariosForProcess` - Placeholder-tester (TODO: Implementera integrationstester)
+- **`tests/unit/e2eScenarioStorage.test.ts`** - E2E-scenario storage (spara/ladda) - ✅ Implementerad
+- **`tests/unit/testGeneration/testScenarioSaver.test.ts`** - Spara scenarios till databasen
+
+**Integrationstester:**
+- **`tests/integration/testGeneration/integration.test.ts`** - Fullständigt dataflöde (extrahera → konvertera → spara)
+
+**Teststrategi:**
+- Fokuserar på struktur och dataflöde (inte faktisk LLM-generering)
+- Använder mock-data istället för faktisk dokumentation
+- Verifierar UI-kompatibilitet (format matchar UI-förväntningar)
+- Se [`docs/analysis/TEST_GENERATION_UI_VALIDATION.md`](../docs/analysis/TEST_GENERATION_UI_VALIDATION.md) för detaljerad validering
+
+**Status:**
+- ✅ Testfiler skapade
+- ⏳ Väntar på implementation av funktionalitet
+- ⏳ Tester kommer att köras när implementationen är klar
+
 ### Debug & Utilities
 - **Unit:** `debugUtils.test.ts` - Debug utilities
 - **Unit:** `createGraphSummaryDepth.test.ts` - Create graph summary depth
@@ -198,6 +226,8 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 - **`doc-viewer.spec.ts`** - Doc Viewer-sidan (dokumentationsvisning, länkar, version selection)
 - **`node-matrix.spec.ts`** - Node Matrix-sidan (listvy, filter, sortering)
 - **`timeline-page.spec.ts`** - Timeline-sidan (Gantt-chart, filter, datum-redigering)
+- **`test-coverage-explorer.spec.ts`** - Test Coverage Explorer-sidan (E2E scenarios, scenario selector, TestCoverageTable)
+- **`e2e-tests-overview.spec.ts`** - E2E Tests Overview-sidan (scenarios table, filter, search, expand scenario)
 
 ### Fullständiga Flöden
 - **`full-generation-flow.spec.ts`** - Komplett genereringsflöde (upload → hierarki → generering)
@@ -293,12 +323,14 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 
 ## 📊 Teststatistik (Utvecklartester)
 
-- **Unit Tests:** ~43 filer
-- **Integration Tests:** ~41 filer
+- **Unit Tests:** ~47 filer (inkl. 4 nya test generation-tester under utveckling)
+- **Integration Tests:** ~42 filer (inkl. 1 ny test generation-test under utveckling)
 - **E2E Tests (Vitest):** 1 fil
 - **Playwright E2E Tests:** 18 filer (7 huvudfiler + 11 scenario-filer)
 
-**Totalt:** ~103 testfiler (utvecklartester)
+**Totalt:** ~108 testfiler (utvecklartester)
+
+**Notera:** Test generation-tester (5 filer) är skapade men väntar på implementation av funktionalitet.
 
 ---
 
@@ -309,15 +341,21 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 ### Playwright-testfiler (genererade från BPMN)
 - **Var:** Sparas i Supabase Storage under `tests/` mappen
 - **Hur genereras:** Via "Generera Artefakter" i BPMN File Manager
-- **Struktur:** Hierarkisk struktur som matchar BPMN-processer (Initiative → Feature Goals → Epics)
+- **Struktur:** Hierarkisk struktur som matchar BPMN-processer (Initiative → Feature Goals)
 - **Syfte:** Används av användare för att testa sina BPMN-processer
 - **Se:** [`tests/README.md`](./README.md) - "Test Generation" sektion
 
-### Test-scenarion (extraherade från dokumentation)
+**Viktigt:** Epic-testgenerering har tagits bort. Endast Feature Goals (Call Activities) genererar testfiler. Epic-information finns redan inkluderad i Feature Goal-dokumentation via `childrenDocumentation`.
+
+### Test-scenarion (extraherade från E2E-scenarios)
 - **Var:** Sparas i `node_planned_scenarios` tabellen i Supabase
-- **Hur genereras:** Extraheras från Epic-dokumentation när den genereras
+- **Hur genereras:** Extraheras från E2E-scenarios (som genereras från Feature Goal-dokumentation)
 - **Syfte:** Används för att visa test-scenarion i Test Coverage Explorer
 - **Se:** [`docs/analysis/TEST_INFORMATION_GENERATION_ANALYSIS.md`](../docs/analysis/TEST_INFORMATION_GENERATION_ANALYSIS.md)
+- **Se:** [`docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md`](../docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md) - Implementeringsplan
+- **Se:** [`docs/analysis/TEST_GENERATION_UI_VALIDATION.md`](../docs/analysis/TEST_GENERATION_UI_VALIDATION.md) - UI-validering
+- **Se:** [`docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md`](../docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md) - Implementeringsplan
+- **Se:** [`docs/analysis/TEST_GENERATION_UI_VALIDATION.md`](../docs/analysis/TEST_GENERATION_UI_VALIDATION.md) - UI-validering
 
 ### Test Coverage-data
 - **Var:** Visas i Test Coverage Explorer-sidan i appen

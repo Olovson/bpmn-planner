@@ -12,13 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Download, Search, X } from 'lucide-react';
 import { TestCoverageTable } from '@/components/TestCoverageTable';
-import { scenarios as allScenarios } from '@/pages/E2eTestsOverviewPage';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import type { E2eScenario } from '@/pages/E2eTestsOverviewPage';
 import { sortCallActivities } from '@/lib/ganttDataConverter';
+import { loadAllE2eScenarios } from '@/lib/e2eScenarioStorage';
 
 export default function TestCoverageExplorerPage() {
   const navigate = useNavigate();
@@ -26,12 +26,27 @@ export default function TestCoverageExplorerPage() {
   const { data: rootFile, isLoading: isLoadingRoot } = useRootBpmnFile();
   const { data: tree, isLoading: isLoadingTree, error } = useProcessTree(rootFile || 'mortgage.bpmn');
 
-  const isLoading = isLoadingRoot || isLoadingTree;
+  const isLoading = isLoadingRoot || isLoadingTree || isLoadingScenarios;
 
-  const e2eScenarios = useMemo(
-    () => allScenarios.filter((s) => s.id === 'E2E_BR001' || s.id === 'E2E_BR006'),
-    [],
-  );
+  // Ladda E2E-scenarios från storage
+  const [e2eScenarios, setE2eScenarios] = useState<E2eScenario[]>([]);
+  const [isLoadingScenarios, setIsLoadingScenarios] = useState(true);
+
+  useEffect(() => {
+    const loadScenarios = async () => {
+      setIsLoadingScenarios(true);
+      try {
+        const scenarios = await loadAllE2eScenarios();
+        setE2eScenarios(scenarios);
+      } catch (error) {
+        console.error('[TestCoverageExplorerPage] Failed to load E2E scenarios:', error);
+      } finally {
+        setIsLoadingScenarios(false);
+      }
+    };
+    
+    loadScenarios();
+  }, []);
 
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');

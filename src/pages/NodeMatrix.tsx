@@ -542,22 +542,28 @@ const NodeMatrix = () => {
                     </TableCell>
                     <TableCell>
                       {node.elementId && node.bpmnFile ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(
-                              getNodeTestReportUrl(
-                                node.bpmnFile,
-                                node.elementId,
-                              ).replace('#', ''),
-                            );
-                          }}
-                          className="text-xs text-primary hover:underline flex items-center gap-1"
-                          title="Visa testrapport för denna nod"
-                        >
-                          <FileCode className="h-3 w-3 shrink-0" />
-                          <span>Testrapport</span>
-                        </button>
+                        // Visa testrapport-länk endast om det finns en faktisk testrapport
+                        // (antingen testReportUrl från databasen ELLER hasTestReport = true)
+                        node.testReportUrl || node.hasTestReport ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(
+                                getNodeTestReportUrl(
+                                  node.bpmnFile,
+                                  node.elementId,
+                                ).replace('#', ''),
+                              );
+                            }}
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                            title="Visa testrapport för denna nod"
+                          >
+                            <FileCode className="h-3 w-3 shrink-0" />
+                            <span>Testrapport</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Ingen testrapport</span>
+                        )
                       ) : (
                         <span className="text-xs text-muted-foreground">Ingen testrapport</span>
                       )}

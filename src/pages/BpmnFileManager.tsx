@@ -2714,6 +2714,21 @@ export default function BpmnFileManager() {
         description: `Genererade ${result.testFiles.length} testfiler med ${result.totalScenarios} scenarion för ${selectedFile.file_name}.`,
       });
 
+      if (result.missingDocumentation && result.missingDocumentation.length > 0) {
+        const missingNames = result.missingDocumentation
+          .map(d => d.elementName || d.elementId)
+          .slice(0, 3)
+          .join(', ');
+        const moreText = result.missingDocumentation.length > 3 
+          ? ` och ${result.missingDocumentation.length - 3} fler` 
+          : '';
+        toast({
+          title: 'Dokumentation saknas',
+          description: `Dokumentation saknas för ${result.missingDocumentation.length} nod(er): ${missingNames}${moreText}. Generera dokumentation först.`,
+          variant: 'destructive',
+        });
+      }
+
       if (result.errors.length > 0) {
         toast({
           title: 'Varning',
@@ -2899,7 +2914,6 @@ export default function BpmnFileManager() {
         const result = await generateTestsForFile(
           rootFile.file_name,
           llmProvider,
-          false, // localAvailable
           (progress) => {
             setCurrentGenerationStep({
               step: `Genererar tester: ${progress.currentElement || '...'}`,
@@ -2931,7 +2945,6 @@ export default function BpmnFileManager() {
         const result = await generateTestsForAllFiles(
           fileNames,
           llmProvider,
-          false, // localAvailable
           (progress) => {
             setCurrentGenerationStep({
               step: `Genererar tester: ${progress.currentFile || '...'}`,
@@ -2944,6 +2957,21 @@ export default function BpmnFileManager() {
           title: 'Testgenerering klar',
           description: `Genererade ${result.testFiles.length} testfiler med ${result.totalScenarios} scenarion för ${result.totalFiles} noder.`,
         });
+
+        if (result.missingDocumentation && result.missingDocumentation.length > 0) {
+          const missingNames = result.missingDocumentation
+            .map(d => d.elementName || d.elementId)
+            .slice(0, 3)
+            .join(', ');
+          const moreText = result.missingDocumentation.length > 3 
+            ? ` och ${result.missingDocumentation.length - 3} fler` 
+            : '';
+          toast({
+            title: 'Dokumentation saknas',
+            description: `Dokumentation saknas för ${result.missingDocumentation.length} nod(er): ${missingNames}${moreText}. Generera dokumentation först.`,
+            variant: 'destructive',
+          });
+        }
 
         if (result.errors.length > 0) {
           toast({
