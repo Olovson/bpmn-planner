@@ -638,3 +638,4 @@ async function interpretConditionsWithClaude(
 **Status:** Analys klar
 
 
+

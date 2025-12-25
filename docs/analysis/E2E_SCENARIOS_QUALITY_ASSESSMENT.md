@@ -290,3 +290,4 @@ backendState: 'Application.status should be COMPLETE, Application should be read
 **Status:** Kvalitetsbedömning klar - Delvis bra, men kräver komplettering
 
 
+

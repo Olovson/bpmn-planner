@@ -293,3 +293,4 @@ Vi har implementerat en hybrid approach för att extrahera Feature Goal-tester f
 **Status:** Analys klar - Valideringsplan och prompt formulerad
 
 
+

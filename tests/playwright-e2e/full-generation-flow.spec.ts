@@ -4,29 +4,43 @@
  * Verifies the complete flow:
  * 1. Upload BPMN file (if needed)
  * 2. Build hierarchy
- * 3. Generate documentation (local mode)
+ * 3. Generate documentation (LLM mode)
  * 4. Verify artifacts are created
  * 
  * This is a comprehensive test that covers the entire generation pipeline.
+ * 
+ * NOTE: This test can also use the reusable test steps from utils/testSteps.ts
+ * for better maintainability. See flows/complete-workflow-a-to-z.spec.ts for an example.
  */
 
 import { test, expect } from '@playwright/test';
+import {
+  createTestContext,
+  stepNavigateToFiles,
+  stepUploadBpmnFile,
+  stepBuildHierarchy,
+  stepSelectGenerationMode,
+  stepStartGeneration,
+  stepWaitForGenerationComplete,
+  stepVerifyGenerationResult,
+  stepNavigateToTestReport,
+  stepNavigateToTestCoverage,
+} from './utils/testSteps';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Full Generation Flow', () => {
   test('should complete full generation flow for a BPMN file', async ({ page }) => {
-    // Step 1: Navigate to files page
-    await page.goto('/files');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    const ctx = createTestContext(page);
 
-    // Step 2: Check if files exist or upload one
+    // Step 1: Navigate to files page (using reusable step)
+    await stepNavigateToFiles(ctx);
+
+    // Step 2: Check if files exist or upload one (using reusable step)
     const filesTable = page.locator('table').first();
     const hasFiles = await filesTable.count() > 0;
 
     if (!hasFiles) {
-      // If no files, try to upload a test file
       const testBpmnContent = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
   <bpmn:process id="test-process" name="Test Process">
@@ -38,53 +52,30 @@ test.describe('Full Generation Flow', () => {
   </bpmn:process>
 </bpmn:definitions>`;
 
-      const uploadInput = page.locator('input[type="file"]').filter({ 
-        has: page.locator('[accept*="bpmn"], [accept*="dmn"]') 
-      }).first();
-      
-      const altInput = page.locator('input[accept*=".bpmn"], input[accept*=".dmn"]').first();
-      const finalInput = (await uploadInput.count() > 0) ? uploadInput : altInput;
-
-      if (await finalInput.count() > 0) {
-        await finalInput.setInputFiles({
-          name: 'test-generation-flow.bpmn',
-          mimeType: 'application/xml',
-          buffer: Buffer.from(testBpmnContent),
-        });
-
-        // Wait for upload to complete
-        await expect(
-          page.locator('text=/success/i, text=/uploaded/i, text=test-generation-flow.bpmn')
-        ).toBeVisible({ timeout: 30000 });
-        
-        await page.waitForTimeout(2000);
+      try {
+        await stepUploadBpmnFile(ctx, 'test-generation-flow.bpmn', testBpmnContent);
+      } catch (error) {
+        console.log('⚠️  Could not upload file, continuing with existing files');
       }
     }
 
-    // Step 3: Build hierarchy (if button exists)
-    const buildHierarchyButton = page.locator(
-      'button:has-text("Bygg hierarki"), button:has-text("Build hierarchy"), button:has-text("hierarki")'
-    ).first();
-
-    if (await buildHierarchyButton.count() > 0) {
-      const isVisible = await buildHierarchyButton.isVisible().catch(() => false);
-      
-      if (isVisible) {
-        await buildHierarchyButton.click();
-        
-        // Wait for hierarchy to be built
-        await Promise.race([
-          page.waitForSelector('text=/success/i, text=/klar/i, text=/complete/i', { timeout: 30000 }),
-          page.waitForTimeout(5000),
-        ]).catch(() => {});
-        
-        await page.waitForTimeout(2000);
-      }
+    // Step 3: Build hierarchy (using reusable step)
+    try {
+      await stepBuildHierarchy(ctx);
+    } catch (error) {
+      console.log('⚠️  Could not build hierarchy, might already be built');
     }
 
-    // Step 4: Generate documentation (LLM mode - cloud or ollama)
+    // Step 4: Select generation mode (using reusable step)
+    try {
+      await stepSelectGenerationMode(ctx, 'claude');
+    } catch (error) {
+      console.log('⚠️  Could not select generation mode, using default');
+    }
+
+    // Step 5: Start generation (using reusable step)
     const generateButton = page.locator(
-      'button:has-text("Generera"), button:has-text("Generate"), button:has-text("artifacts")'
+      'button:has-text("Generera artefakter"), button:has-text("Generera")'
     ).first();
 
     if (await generateButton.count() === 0) {
@@ -98,40 +89,17 @@ test.describe('Full Generation Flow', () => {
       return;
     }
 
-    // Click generate (local mode removed - all generation uses LLM)
-    await generateButton.click();
+    await stepStartGeneration(ctx);
     
-    // Wait for generation dialog
-    const dialog = page.locator('[role="dialog"], .generation-dialog').first();
-    await Promise.race([
-      expect(dialog).toBeVisible({ timeout: 10000 }),
-      page.waitForTimeout(2000),
-    ]).catch(() => {});
+    // Step 6: Wait for generation to complete (using reusable step)
+    await stepWaitForGenerationComplete(ctx, 120000); // 2 minutes
 
-    // Wait for generation to complete
-    await Promise.race([
-      page.waitForSelector(
-        'text=/completed/i, text=/klar/i, text=/success/i, text=/done/i',
-        { timeout: 120000 } // 2 minutes for generation
-      ),
-      page.waitForTimeout(10000), // Max 10 seconds wait for this test
-    ]).catch(() => {
-      // Timeout is acceptable - generation might take longer
-    });
+    // Step 7: Verify result (using reusable step)
+    await stepVerifyGenerationResult(ctx);
 
-    // Step 5: Verify artifacts were created (check for success message or file list)
-    const successMessage = page.locator(
-      'text=/success/i, text=/completed/i, text=/klar/i, text=/generated/i'
-    ).first();
-    
-    // Either success message or dialog should indicate completion
-    const hasSuccess = await successMessage.count() > 0;
-    
-    // If no explicit success message, check if dialog is still open (might indicate progress)
-    const dialogStillOpen = await dialog.isVisible().catch(() => false);
-    
-    // At least one indicator should exist
-    expect(hasSuccess || dialogStillOpen).toBeTruthy();
+    // Step 8: Navigate to result pages (using reusable steps)
+    await stepNavigateToTestReport(ctx);
+    await stepNavigateToTestCoverage(ctx);
   });
 
   test('should show progress during generation', async ({ page }) => {

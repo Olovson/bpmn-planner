@@ -11,6 +11,7 @@ export type ViewKey =
   | 'listvy'
   | 'tests'
   | 'test-coverage'
+  | 'e2e-quality-validation'
   | 'timeline'
   | 'configuration'
   | 'files'

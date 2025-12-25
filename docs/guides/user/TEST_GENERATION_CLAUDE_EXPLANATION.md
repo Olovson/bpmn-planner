@@ -151,3 +151,4 @@ const scenarios = convertUserStoriesToTestScenarios(userStories);
 **Status:** Förtydligande - Claude används endast för dokumentationsgenerering
 
 
+

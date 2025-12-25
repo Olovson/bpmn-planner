@@ -384,3 +384,4 @@ Analysera vad som finns på Test Coverage Explorer-sidan och vad vi kan generera
 **Status:** Strategi klar - Kan generera 70-80% med Claude
 
 
+

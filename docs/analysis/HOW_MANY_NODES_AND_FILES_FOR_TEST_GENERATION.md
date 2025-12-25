@@ -220,3 +220,4 @@ För att räkna exakt antal noder och filer:
 **Status:** Analys klar. Exakt antal beror på BPMN-struktur, men förväntat ~30-50 noder och ~10-15 filer.
 
 
+

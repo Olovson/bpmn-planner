@@ -94,11 +94,12 @@ export async function updateGenerationJob(
 export async function setJobStatus(
   jobId: string,
   status: GenerationStatus,
-  extra: Record<string, unknown> = {}
+  extra: Record<string, unknown> = {},
+  refreshGenerationJobs?: () => void
 ): Promise<void> {
   await updateGenerationJob(jobId, {
     status,
     ...extra,
-  });
+  }, refreshGenerationJobs);
 }
 

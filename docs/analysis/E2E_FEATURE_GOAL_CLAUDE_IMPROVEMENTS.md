@@ -564,3 +564,4 @@ async function generateFeatureGoalTestWithClaude(
 **Status:** Analys klar - Hybrid approach med fallback rekommenderas
 
 
+

@@ -195,3 +195,4 @@ Jämföra vad som redan finns i "Test Coverage Explorer" med vad vi föreslår a
 **Status:** Jämförelse klar - Föreslaget är likt befintligt men med lägre kvalitet
 
 
+

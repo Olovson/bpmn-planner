@@ -234,11 +234,17 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 - **`timeline-page.spec.ts`** - Timeline-sidan (Gantt-chart, filter, datum-redigering)
 - **`test-coverage-explorer.spec.ts`** - Test Coverage Explorer-sidan (E2E scenarios, scenario selector, TestCoverageTable)
 - **`e2e-tests-overview.spec.ts`** - E2E Tests Overview-sidan (scenarios table, filter, search, expand scenario)
+- **`styleguide.spec.ts`** - ⭐ **NYTT** - Style Guide-sidan (UI-komponenter, design system)
 
 ### Fullständiga Flöden
 - **`full-generation-flow.spec.ts`** - Komplett genereringsflöde (upload → hierarki → generering)
 - **`file-upload-versioning.spec.ts`** - Fil-upload och versioning
-- **`claude-generation.spec.ts`** - Claude-generering för application-processen
+- **`claude-generation.spec.ts`** - Claude-generering för application-processen (använder faktiska API-anrop)
+- **`documentation-generation-from-scratch.spec.ts`** - Dokumentationsgenerering från scratch med mocked Claude API
+- **`test-generation-from-scratch.spec.ts`** - Testgenerering från scratch med mocked Claude API
+- **`hierarchy-building-from-scratch.spec.ts`** - Hierarki-byggnad från scratch (isolerat test)
+- **`bpmn-map-validation-workflow.spec.ts`** - BPMN Map-validering och uppdatering (komplett flöde)
+- **`github-sync-workflow.spec.ts`** - ⭐ **NYTT** - GitHub Sync workflow (synka från GitHub → visa sync-rapport)
 
 ### Happy Path Scenarios
 - **`scenarios/happy-path/mortgage-application-happy.spec.ts`** - Mortgage application happy path
@@ -332,9 +338,9 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 - **Unit Tests:** ~48 filer (inkl. 5 nya test generation-tester, varav 4 implementerade)
 - **Integration Tests:** ~42 filer (inkl. 1 ny test generation-test under utveckling)
 - **E2E Tests (Vitest):** 1 fil
-- **Playwright E2E Tests:** 18 filer (7 huvudfiler + 11 scenario-filer)
+- **Playwright E2E Tests:** 36 filer (22 huvudfiler + 3 A-Ö flöden + 5 scenario-filer + 6 nya tester)
 
-**Totalt:** ~108 testfiler (utvecklartester)
+**Totalt:** ~114 testfiler (utvecklartester)
 
 **Notera:** Test generation-tester (5 filer) är skapade, varav 4 är implementerade. Vissa integrationstester är fortfarande placeholders.
 

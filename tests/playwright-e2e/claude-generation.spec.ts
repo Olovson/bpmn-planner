@@ -177,7 +177,62 @@ test.describe('Claude-generering för Application', () => {
       console.log('ℹ️  Claude-genereringsindikator hittades inte, men innehåll finns');
     }
 
-    console.log('✅ Test slutfört - Claude-generering fungerar!');
+    // 13. Verifiera GenerationDialog result view (gå tillbaka till files-sidan)
+    await page.goto('/files');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    
+    // Kolla om GenerationDialog fortfarande är öppen med result view
+    const resultDialog = page.locator('[role="dialog"]:has-text("Generering Klar")').first();
+    const hasResultDialog = await resultDialog.isVisible({ timeout: 3000 }).catch(() => false);
+    
+    if (hasResultDialog) {
+      // Verifiera att result summary visas
+      const summaryCards = page.locator('text=/Filer/i, text=/Tester/i, text=/Dokumentation/i');
+      const cardsCount = await summaryCards.count();
+      expect(cardsCount).toBeGreaterThan(0);
+      console.log('✅ GenerationDialog result view visar korrekt information');
+    }
+
+    // 14. Navigera till Test Report och verifiera att genererade scenarios visas
+    await page.goto('/test-report');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    
+    // Verifiera att Test Report laddades
+    const testReportContent = await page.textContent('body');
+    expect(testReportContent).toBeTruthy();
+    
+    // Kolla om det finns test scenarios (kan vara tomt om inga genererades ännu)
+    const testScenarios = page.locator('table, [data-testid="test-results-table"]').first();
+    const hasScenarios = await testScenarios.count() > 0;
+    
+    if (hasScenarios) {
+      console.log('✅ Test Report visar genererade scenarios');
+    } else {
+      console.log('ℹ️  Test Report är tom (inga scenarios genererade ännu)');
+    }
+
+    // 15. Navigera till Test Coverage Explorer och verifiera
+    await page.goto('/test-coverage');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    
+    // Verifiera att Test Coverage laddades
+    const testCoverageContent = await page.textContent('body');
+    expect(testCoverageContent).toBeTruthy();
+    
+    // Kolla om det finns E2E scenarios
+    const e2eScenarios = page.locator('table, [data-testid="test-coverage-table"]').first();
+    const hasE2eScenarios = await e2eScenarios.count() > 0;
+    
+    if (hasE2eScenarios) {
+      console.log('✅ Test Coverage visar E2E scenarios');
+    } else {
+      console.log('ℹ️  Test Coverage är tom (inga E2E scenarios genererade ännu)');
+    }
+
+    console.log('✅ Test slutfört - Claude-generering fungerar och resultatsidor verifieras!');
   });
 
   test('Verifiera att template-version-väljaren är borttagen', async ({ page }) => {

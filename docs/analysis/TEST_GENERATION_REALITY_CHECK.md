@@ -510,3 +510,4 @@ Göra en ärlig bedömning av vad vi faktiskt kan generera med bra kvalitet base
 **Status:** Objektiv analys klar - baserad på faktisk information
 
 
+

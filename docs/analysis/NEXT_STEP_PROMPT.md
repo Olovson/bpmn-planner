@@ -132,3 +132,4 @@ it('should handle gateway conditions from real BPMN files', async () => {
 **Status:** Prompt formulerad - Redo för implementation
 
 
+

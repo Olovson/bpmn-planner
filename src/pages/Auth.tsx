@@ -84,10 +84,16 @@ const Auth = () => {
     }
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    // Read values from form elements as fallback if state is not updated
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const emailValue = email || (formData.get('email') as string) || (form.querySelector('#signin-email') as HTMLInputElement)?.value || '';
+    const passwordValue = password || (formData.get('password') as string) || (form.querySelector('#signin-password') as HTMLInputElement)?.value || '';
+    
+    if (!emailValue || !passwordValue) {
       toast({
         title: "Fel",
         description: "Fyll i både email och lösenord",
@@ -99,8 +105,8 @@ const Auth = () => {
     setLoading(true);
 
     const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: emailValue,
+      password: passwordValue,
     });
 
     setLoading(false);

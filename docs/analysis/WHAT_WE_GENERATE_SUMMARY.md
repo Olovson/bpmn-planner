@@ -246,3 +246,4 @@ Påminna om vad vi faktiskt genererar när vi bygger tester baserat på E2E-scen
 **Status:** Sammanfattning klar - Vad vi genererar dokumenterat
 
 
+

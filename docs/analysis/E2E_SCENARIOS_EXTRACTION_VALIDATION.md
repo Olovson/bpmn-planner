@@ -169,3 +169,4 @@ Validera om vi faktiskt kan extrahera relevant information från riktiga BPMN-fi
 **Status:** Validering klar - 60% kvalitet, behöver förbättringar
 
 
+
