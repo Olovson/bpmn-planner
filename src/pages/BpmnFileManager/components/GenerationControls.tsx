@@ -28,7 +28,6 @@ export interface GenerationControlsProps {
   onGenerateAll: () => void;
   onGenerateTestsSelected: () => void;
   onGenerateTestsAll: () => void;
-  onRegenerateUserTaskEpics: () => void;
   llmHealth?: LlmHealth | null;
   llmHealthLoading: boolean;
   showAdvancedTools: boolean;
@@ -38,7 +37,6 @@ export interface GenerationControlsProps {
   onDeleteAll: () => void;
   validatingMap: boolean;
   isResetting: boolean;
-  userTaskEpicsList?: unknown[];
   currentGenerationLabel: string;
 }
 
@@ -55,7 +53,6 @@ export function GenerationControls({
   onGenerateAll,
   onGenerateTestsSelected,
   onGenerateTestsAll,
-  onRegenerateUserTaskEpics,
   llmHealth,
   llmHealthLoading,
   showAdvancedTools,
@@ -65,7 +62,6 @@ export function GenerationControls({
   onDeleteAll,
   validatingMap,
   isResetting,
-  userTaskEpicsList,
   currentGenerationLabel,
 }: GenerationControlsProps) {
   return (
@@ -278,41 +274,6 @@ export function GenerationControls({
           >
             <Sparkles className="w-4 h-4" />
             Generera information (alla filer)
-          </Button>
-        </div>
-        
-        {/* User Task Epic Regeneration Button */}
-        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={
-              generatingFile !== null ||
-              isLoading ||
-              files.length === 0 ||
-              !rootFileName ||
-              !userTaskEpicsList ||
-              (userTaskEpicsList as any[]).length === 0
-            }
-            onClick={onRegenerateUserTaskEpics}
-            className="gap-2"
-            title={
-              !userTaskEpicsList || (userTaskEpicsList as any[]).length === 0
-                ? 'Kör "node scripts/list-all-user-task-epics.mjs" först för att skapa listan'
-                : `Regenerera ${(userTaskEpicsList as any[]).length} User Task epics med uppdaterad lane inference-logik. Detta genererar endast User Tasks, inte alla noder.`
-            }
-          >
-            {generatingFile === 'user-task-epics' ? (
-              <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Regenererar User Task epics…
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-3 h-3" />
-                Regenerera User Task epics
-              </>
-            )}
           </Button>
         </div>
         

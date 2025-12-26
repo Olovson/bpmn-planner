@@ -2282,7 +2282,7 @@ export async function generateAllFromBpmnWithGraph(
               }
               // Skapa Feature Goal-sida för callActivity
               // VIKTIGT: För call activities använder vi ALLTID hierarchical naming (med parent)
-              // eftersom filen alltid sparas under parent-filens version hash.
+              // eftersom filen alltid sparas under subprocess-filens version hash.
               // Subprocess-filen kommer senare generera sin egen Feature Goal-sida (utan parent)
               // när subprocess-filen genereras separat.
               const bpmnFileForFeatureGoal = node.type === 'callActivity' && node.subprocessFile

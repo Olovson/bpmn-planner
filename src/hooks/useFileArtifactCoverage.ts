@@ -79,7 +79,11 @@ export const useFileArtifactCoverage = (fileName: string) => {
       
       // Also include the root node if it's a relevant type (though it's usually 'process')
       const rootIsRelevant = isRelevantNodeType(graph.root);
-      const total_nodes = relevantNodes.length + (rootIsRelevant ? 1 : 0);
+      
+      // VIKTIGT: total_nodes ska bara räkna noder som tillhör själva filen, inte alla subprocesses
+      // Detta är för att visa korrekt antal dokument som förväntas för denna specifika fil
+      const nodesInThisFile = relevantNodes.filter(n => n.bpmnFile === fileName);
+      const total_nodes = nodesInThisFile.length + (rootIsRelevant && graph.root.bpmnFile === fileName ? 1 : 0);
 
 
       // Get DoR/DoD coverage from database for all nodes in the process (including subprocesses)
@@ -125,114 +129,113 @@ export const useFileArtifactCoverage = (fileName: string) => {
       const hasHierarchyTests = await hasHierarchicalTestsForFile(fileName);
       const hierarchyCovered = hasHierarchyTests ? 1 : 0;
 
-      // Docs: Check documentation for all nodes in the process (including subprocesses)
-      // We need to check all files that are part of this process graph
+      // Docs: Check documentation for nodes in THIS file only (not subprocesses)
+      // VIKTIGT: Vi räknar bara dokumentation för noder i själva filen, inte alla subprocesses
       let docs_covered = 0;
       try {
-        // Check docs for each file in the graph
-        for (const fileInGraph of allFilesInGraph) {
-          // Get version hash for the file
-          const versionHash = await getCurrentVersionHash(fileInGraph);
+        // Get version hash for THIS file only
+        const versionHash = await getCurrentVersionHash(fileName);
+        
+        // Try multiple paths: versioned path, legacy path
+        const pathsToTry = versionHash
+          ? [
+              `docs/claude/${fileName}/${versionHash}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/ollama/${fileName}/${versionHash}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/local/${fileName}/${versionHash}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/nodes/${fileName.replace('.bpmn', '')}`, // Legacy path
+            ]
+          : [
+              `docs/claude/${fileName}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/ollama/${fileName}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/local/${fileName}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/nodes/${fileName.replace('.bpmn', '')}`, // Legacy path
+            ];
+        
+        let docNames = new Set<string>();
+        let foundPath: string | null = null;
+        for (const docFolder of pathsToTry) {
+          const { data: docEntries, error } = await supabase.storage
+            .from('bpmn-files')
+            .list(docFolder, { limit: 1000 });
           
-          // Try multiple paths: versioned path, legacy path
-          const pathsToTry = versionHash
-            ? [
-                `docs/claude/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/ollama/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/local/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
-              ]
-            : [
-                `docs/claude/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/ollama/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/local/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
-              ];
           
-          let docNames = new Set<string>();
-          let foundPath: string | null = null;
-          for (const docFolder of pathsToTry) {
-            const { data: docEntries, error } = await supabase.storage
-              .from('bpmn-files')
-              .list(docFolder, { limit: 1000 });
-            
-            
-            if (docEntries && docEntries.length > 0) {
-              docNames = new Set(docEntries.map(entry => entry.name));
-              foundPath = docFolder;
-              break; // Found docs, stop trying other paths
-            }
+          if (docEntries && docEntries.length > 0) {
+            docNames = new Set(docEntries.map(entry => entry.name));
+            foundPath = docFolder;
+            break; // Found docs, stop trying other paths
           }
+        }
+        
+        // VIKTIGT: För versioned paths, behåll .bpmn i filnamnet eftersom filen är sparad så
+        const fileForVersionedPath = fileName.endsWith('.bpmn') ? fileName : `${fileName}.bpmn`;
+        const featureGoalPathsToTry = versionHash
+          ? [
+              `docs/claude/${fileForVersionedPath}/${versionHash}/feature-goals`,
+              `docs/ollama/${fileForVersionedPath}/${versionHash}/feature-goals`,
+              `docs/local/${fileForVersionedPath}/${versionHash}/feature-goals`,
+              `docs/claude/feature-goals`,
+              `docs/ollama/feature-goals`,
+              `docs/local/feature-goals`,
+              `docs/feature-goals`,
+            ]
+          : [
+              `docs/claude/feature-goals`,
+              `docs/ollama/feature-goals`,
+              `docs/local/feature-goals`,
+              `docs/feature-goals`,
+            ];
+        
+        let featureGoalNames = new Set<string>();
+        for (const featureGoalPath of featureGoalPathsToTry) {
+          const { data: featureGoalEntries, error } = await supabase.storage
+            .from('bpmn-files')
+            .list(featureGoalPath, { limit: 1000 });
           
-          // Count docs for nodes that belong to this process
-          for (const node of relevantNodes) {
-            if (node.bpmnFile === fileInGraph) {
-              let foundDoc = false;
-              
-              if (node.type === 'callActivity' && node.subprocessFile) {
-                // För call activities, kolla Feature Goal-dokumentation i feature-goals/ mappen
-                const hierarchicalKey = getFeatureGoalDocFileKey(
-                  node.subprocessFile,
-                  node.bpmnElementId,
-                  undefined, // no version suffix
-                  node.bpmnFile, // parent BPMN file
-                );
-                const legacyKey = getFeatureGoalDocFileKey(
-                  node.subprocessFile,
-                  node.bpmnElementId,
-                  undefined, // no version suffix
-                  undefined, // Ingen parent
-                );
-                
-                // Extrahera filnamn från keys (ta bort "feature-goals/" prefix)
-                const hierarchicalFileName = hierarchicalKey.replace('feature-goals/', '');
-                const legacyFileName = legacyKey.replace('feature-goals/', '');
-                
-                // Kolla feature-goals/ mappen separat
-                // VIKTIGT: För versioned paths, behåll .bpmn i filnamnet eftersom filen är sparad så
-                const fileForVersionedPath = fileInGraph.endsWith('.bpmn') ? fileInGraph : `${fileInGraph}.bpmn`;
-                const featureGoalPathsToTry = versionHash
-                  ? [
-                      `docs/claude/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                      `docs/ollama/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                      `docs/local/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                      `docs/claude/feature-goals`,
-                      `docs/ollama/feature-goals`,
-                      `docs/local/feature-goals`,
-                      `docs/feature-goals`,
-                    ]
-                  : [
-                      `docs/claude/feature-goals`,
-                      `docs/ollama/feature-goals`,
-                      `docs/local/feature-goals`,
-                      `docs/feature-goals`,
-                    ];
-                
-                // Kolla om Feature Goal-filen finns
-                for (const featureGoalPath of featureGoalPathsToTry) {
-                  const { data: featureGoalEntries, error } = await supabase.storage
-                    .from('bpmn-files')
-                    .list(featureGoalPath, { limit: 1000 });
-                  
-                  if (!error && featureGoalEntries) {
-                    const featureGoalNames = new Set(featureGoalEntries.map(e => e.name));
-                    if (featureGoalNames.has(hierarchicalFileName) || featureGoalNames.has(legacyFileName)) {
-                      foundDoc = true;
-                      break;
-                    }
-                  }
-                }
-              } else {
-                // För vanliga noder, använd standard-logik
-                const safeId = sanitizeElementId(node.bpmnElementId);
-                const fileName = `${safeId}.html`;
-                foundDoc = docNames.has(fileName);
-              }
-              
-              if (foundDoc) {
-                docs_covered++;
-              }
+          if (!error && featureGoalEntries && featureGoalEntries.length > 0) {
+            featureGoalNames = new Set(featureGoalEntries.map(e => e.name));
+            break;
+          }
+        }
+        
+        // Count docs for nodes that belong to THIS file only
+        // VIKTIGT: Vi räknar bara dokumentation för faktiska noder (tasks, call activities),
+        // INTE process Feature Goal dokumentation (t.ex. mortgage-se-object-control.html)
+        for (const node of nodesInThisFile) {
+          let foundDoc = false;
+          
+          if (node.type === 'callActivity' && node.subprocessFile) {
+            // För call activities, kolla Feature Goal-dokumentation i feature-goals/ mappen
+            // VIKTIGT: Använd BARA hierarchical naming för att undvika att matcha fel filer
+            // Legacy naming kan matcha samma fil för call activities från olika parent-filer
+            const hierarchicalKey = getFeatureGoalDocFileKey(
+              node.subprocessFile,
+              node.bpmnElementId,
+              undefined, // no version suffix
+              node.bpmnFile, // parent BPMN file (där call activity är definierad)
+            );
+            
+            // Extrahera filnamn från key (ta bort "feature-goals/" prefix)
+            const hierarchicalFileName = hierarchicalKey.replace('feature-goals/', '');
+            
+            // Kolla om Feature Goal-filen finns
+            // VIKTIGT: Vi matchar exakt - process Feature Goals (t.ex. mortgage-se-object-control.html)
+            // matchar INTE call activity dokumentation (t.ex. mortgage-se-object-control-credit-evaluation.html)
+            // VIKTIGT: Använd BARA hierarchical naming - legacy naming kan matcha fel filer
+            if (featureGoalNames.has(hierarchicalFileName)) {
+              foundDoc = true;
             }
+          } else if (node.type !== 'process') {
+            // För vanliga noder (userTask, serviceTask, businessRuleTask), använd standard-logik
+            // VIKTIGT: Ignorera process-noder - de har Feature Goal dokumentation som inte räknas här
+            const safeId = sanitizeElementId(node.bpmnElementId);
+            const docFileName = `${safeId}.html`;
+            foundDoc = docNames.has(docFileName);
+          }
+          // Note: process-noder (type === 'process') räknas inte - de har Feature Goal dokumentation
+          // som är separat och räknas inte som "node documentation"
+          
+          if (foundDoc) {
+            docs_covered++;
           }
         }
       } catch (error) {
@@ -305,7 +308,11 @@ export const useAllFilesArtifactCoverage = () => {
           
           // Also include the root node if it's a relevant type
           const rootIsRelevant = isRelevantNodeType(graph.root);
-          const total_nodes = relevantNodes.length + (rootIsRelevant ? 1 : 0);
+          
+          // VIKTIGT: total_nodes ska bara räkna noder som tillhör själva filen, inte alla subprocesses
+          // Detta är för att visa korrekt antal dokument som förväntas för denna specifika fil
+          const nodesInThisFile = relevantNodes.filter(n => n.bpmnFile === file.file_name);
+          const total_nodes = nodesInThisFile.length + (rootIsRelevant && graph.root.bpmnFile === file.file_name ? 1 : 0);
           
           // Get all files in the graph for this process
           const allFilesInGraph = Array.from(new Set(relevantNodes.map(n => n.bpmnFile)));
@@ -346,154 +353,114 @@ export const useAllFilesArtifactCoverage = () => {
             });
           }
 
-          // Check documentation for all nodes in the process (including subprocesses)
+          // Check documentation for nodes in THIS file only (not subprocesses)
+          // VIKTIGT: Vi räknar bara dokumentation för noder i själva filen, inte alla subprocesses
           let docs_covered = 0;
           try {
-            // Check docs for each file in the graph
-            for (const fileInGraph of allFilesInGraph) {
-              // Get version hash for the file
-              const versionHash = await getCurrentVersionHash(fileInGraph);
+            // Get version hash for THIS file only
+            const versionHash = await getCurrentVersionHash(file.file_name);
+            
+            // Try multiple paths: versioned path, legacy path
+            const pathsToTry = versionHash
+              ? [
+                  `docs/claude/${file.file_name}/${versionHash}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/ollama/${file.file_name}/${versionHash}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/local/${file.file_name}/${versionHash}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/nodes/${file.file_name.replace('.bpmn', '')}`, // Legacy path
+                ]
+              : [
+                  `docs/claude/${file.file_name}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/ollama/${file.file_name}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/local/${file.file_name}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/nodes/${file.file_name.replace('.bpmn', '')}`, // Legacy path
+                ];
+            
+            let docNames = new Set<string>();
+            let foundPath: string | null = null;
+            for (const docFolder of pathsToTry) {
+              const { data: docEntries, error } = await supabase.storage
+                .from('bpmn-files')
+                .list(docFolder, { limit: 1000 });
               
-              // Try multiple paths: versioned path, legacy path
-              const pathsToTry = versionHash
-                ? [
-                    `docs/claude/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/ollama/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/local/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
-                  ]
-                : [
-                    `docs/claude/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/ollama/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/local/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
-                  ];
               
-              let docNames = new Set<string>();
-              let foundPath: string | null = null;
-              for (const docFolder of pathsToTry) {
-                const { data: docEntries, error } = await supabase.storage
-                  .from('bpmn-files')
-                  .list(docFolder, { limit: 1000 });
-                
-                
-                if (docEntries && docEntries.length > 0) {
-                  docNames = new Set(docEntries.map(entry => entry.name));
-                  foundPath = docFolder;
-                  break; // Found docs, stop trying other paths
-                }
+              if (docEntries && docEntries.length > 0) {
+                docNames = new Set(docEntries.map(entry => entry.name));
+                foundPath = docFolder;
+                break; // Found docs, stop trying other paths
               }
+            }
+            
+            // VIKTIGT: För versioned paths, behåll .bpmn i filnamnet eftersom filen är sparad så
+            const fileForVersionedPath = file.file_name.endsWith('.bpmn') ? file.file_name : `${file.file_name}.bpmn`;
+            const featureGoalPathsToTry = versionHash
+              ? [
+                  `docs/claude/${fileForVersionedPath}/${versionHash}/feature-goals`,
+                  `docs/ollama/${fileForVersionedPath}/${versionHash}/feature-goals`,
+                  `docs/local/${fileForVersionedPath}/${versionHash}/feature-goals`,
+                  `docs/claude/feature-goals`,
+                  `docs/ollama/feature-goals`,
+                  `docs/local/feature-goals`,
+                  `docs/feature-goals`,
+                ]
+              : [
+                  `docs/claude/feature-goals`,
+                  `docs/ollama/feature-goals`,
+                  `docs/local/feature-goals`,
+                  `docs/feature-goals`,
+                ];
+            
+            let featureGoalNames = new Set<string>();
+            for (const featureGoalPath of featureGoalPathsToTry) {
+              const { data: featureGoalEntries, error } = await supabase.storage
+                .from('bpmn-files')
+                .list(featureGoalPath, { limit: 1000 });
               
-              
-              // Count docs for nodes that belong to this process
-              // För call activities, kolla också feature-goals/ mappen
-              // VIKTIGT: För versioned paths, behåll .bpmn i filnamnet eftersom filen är sparad så
-              const fileForVersionedPath = fileInGraph.endsWith('.bpmn') ? fileInGraph : `${fileInGraph}.bpmn`;
-              const featureGoalPathsToTry = versionHash
-                ? [
-                    `docs/claude/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                    `docs/ollama/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                    `docs/local/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                    `docs/claude/feature-goals`,
-                    `docs/ollama/feature-goals`,
-                    `docs/local/feature-goals`,
-                    `docs/feature-goals`,
-                  ]
-                : [
-                    `docs/claude/feature-goals`,
-                    `docs/ollama/feature-goals`,
-                    `docs/local/feature-goals`,
-                    `docs/feature-goals`,
-                  ];
-              
-              let featureGoalNames = new Set<string>();
-              for (const featureGoalPath of featureGoalPathsToTry) {
-                const { data: featureGoalEntries, error } = await supabase.storage
-                  .from('bpmn-files')
-                  .list(featureGoalPath, { limit: 1000 });
-                
-                if (!error && featureGoalEntries && featureGoalEntries.length > 0) {
-                  featureGoalNames = new Set(featureGoalEntries.map(e => e.name));
-                  break;
-                }
+              if (!error && featureGoalEntries && featureGoalEntries.length > 0) {
+                featureGoalNames = new Set(featureGoalEntries.map(e => e.name));
+                break;
               }
+            }
+            
+            // Count docs for nodes that belong to THIS file only
+            // VIKTIGT: Vi räknar bara dokumentation för faktiska noder (tasks, call activities),
+            // INTE process Feature Goal dokumentation (t.ex. mortgage-se-object-control.html)
+            for (const node of nodesInThisFile) {
+              let foundDoc = false;
               
-              // First, try to match each doc file to a node
-              const matchedDocs = new Set<string>();
-              
-              // Match call activities against feature-goals/ files
-              for (const node of relevantNodes) {
-                if (node.bpmnFile === fileInGraph && node.type === 'callActivity' && node.subprocessFile) {
-                  const hierarchicalKey = getFeatureGoalDocFileKey(
-                    node.subprocessFile,
-                    node.bpmnElementId,
-                    undefined, // no version suffix
-                    node.bpmnFile,
-                  );
-                  const legacyKey = getFeatureGoalDocFileKey(
-                    node.subprocessFile,
-                    node.bpmnElementId,
-                    undefined, // no version suffix
-                    undefined,
-                  );
-                  const hierarchicalFileName = hierarchicalKey.replace('feature-goals/', '');
-                  const legacyFileName = legacyKey.replace('feature-goals/', '');
-                  
-                  if (featureGoalNames.has(hierarchicalFileName) || featureGoalNames.has(legacyFileName)) {
-                    matchedDocs.add(`${node.bpmnFile}:${node.bpmnElementId}`);
-                    docs_covered++;
-                  }
-                }
-              }
-              
-              // Debug: Log nodes and docs for Household only if there's a mismatch
-              if (import.meta.env.DEV && fileInGraph === file.file_name && file.file_name === 'mortgage-se-household.bpmn' && docNames.size > 0) {
-                const householdNodes = relevantNodes.filter(n => n.bpmnFile === fileInGraph);
-                if (householdNodes.length === 0) {
-                  console.warn(`[Coverage] ⚠️ Household: Found ${docNames.size} docs but 0 nodes with bpmnFile='mortgage-se-household.bpmn'`);
-                }
-              }
-              
-              for (const docName of docNames) {
-                const docBase = docName.replace('.html', '');
-                let matched = false;
+              if (node.type === 'callActivity' && node.subprocessFile) {
+                // För call activities, kolla Feature Goal-dokumentation i feature-goals/ mappen
+                // VIKTIGT: Använd BARA hierarchical naming för att undvika att matcha fel filer
+                // Legacy naming kan matcha samma fil för call activities från olika parent-filer
+                const hierarchicalKey = getFeatureGoalDocFileKey(
+                  node.subprocessFile,
+                  node.bpmnElementId,
+                  undefined, // no version suffix
+                  node.bpmnFile, // parent BPMN file (där call activity är definierad)
+                );
                 
-                // Try exact match first
-                for (const node of relevantNodes) {
-                  if (node.bpmnFile === fileInGraph) {
-                    const safeId = sanitizeElementId(node.bpmnElementId);
-                    if (docBase === safeId || docBase.toLowerCase() === safeId.toLowerCase()) {
-                      matchedDocs.add(docName);
-                      matched = true;
-                      docs_covered++;
-                      break;
-                    }
-                  }
-                }
+                // Extrahera filnamn från key (ta bort "feature-goals/" prefix)
+                const hierarchicalFileName = hierarchicalKey.replace('feature-goals/', '');
                 
-                // If no exact match, try partial match (check if doc name contains elementId or vice versa)
-                if (!matched) {
-                  for (const node of relevantNodes) {
-                    if (node.bpmnFile === fileInGraph) {
-                      const safeId = sanitizeElementId(node.bpmnElementId);
-                      // Check if doc name contains elementId or vice versa
-                      if (docBase.includes(safeId) || safeId.includes(docBase) ||
-                          docBase.toLowerCase().includes(safeId.toLowerCase()) ||
-                          safeId.toLowerCase().includes(docBase.toLowerCase())) {
-                        matchedDocs.add(docName);
-                        matched = true;
-                        docs_covered++;
-                        // Doc matched with partial match (logged only if verbose)
-                        break;
-                      }
-                    }
-                  }
+                // Kolla om Feature Goal-filen finns
+                // VIKTIGT: Vi matchar exakt - process Feature Goals (t.ex. mortgage-se-object-control.html)
+                // matchar INTE call activity dokumentation (t.ex. mortgage-se-object-control-credit-evaluation.html)
+                // VIKTIGT: Använd BARA hierarchical naming - legacy naming kan matcha fel filer
+                if (featureGoalNames.has(hierarchicalFileName)) {
+                  foundDoc = true;
                 }
-                
-                // Doc file doesn't match any node (logged only if verbose)
+              } else if (node.type !== 'process') {
+                // För vanliga noder (userTask, serviceTask, businessRuleTask), använd standard-logik
+                // VIKTIGT: Ignorera process-noder - de har Feature Goal dokumentation som inte räknas här
+                const safeId = sanitizeElementId(node.bpmnElementId);
+                const docFileName = `${safeId}.html`;
+                foundDoc = docNames.has(docFileName);
               }
+              // Note: process-noder (type === 'process') räknas inte - de har Feature Goal dokumentation
+              // som är separat och räknas inte som "node documentation"
               
-              // Debug logging disabled for cleaner output
+              if (foundDoc) {
+                docs_covered++;
+              }
             }
           } catch (error) {
             console.error(`[Coverage Debug] Error checking docs for ${file.file_name}:`, error);

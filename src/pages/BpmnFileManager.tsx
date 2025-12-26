@@ -79,9 +79,6 @@ import { useLlmHealth } from '@/hooks/useLlmHealth';
 import { getAllUnresolvedDiffs } from '@/lib/bpmnDiffRegeneration';
 import { VersionSelector } from '@/components/VersionSelector';
 import { useVersionSelection } from '@/hooks/useVersionSelection';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore – Vite hanterar JSON-import enligt bundler-konfigurationen.
-import userTaskEpicsList from '../../user-task-epics-list.json';
 import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
 import { useFileUpload } from '@/pages/BpmnFileManager/hooks/useFileUpload';
 import { FileUploadArea } from '@/pages/BpmnFileManager/components/FileUploadArea';
@@ -744,26 +741,6 @@ export default function BpmnFileManager() {
 
   // handleDownload and handleDeleteAllFiles are now provided by the useFileOperations hook (see line 313)
 
-  // TODO: Implement handleRegenerateUserTaskEpics
-  const handleRegenerateUserTaskEpics = async () => {
-    setGeneratingFile('user-task-epics');
-    try {
-      // TODO: Implement User Task Epic regeneration logic
-      toast({
-        title: 'Funktionen är inte implementerad än',
-        description: 'User Task Epic regeneration kommer att implementeras snart.',
-        variant: 'default',
-      });
-    } catch (error) {
-      toast({
-        title: 'Fel vid regenerering',
-        description: error instanceof Error ? error.message : 'Okänt fel',
-        variant: 'destructive',
-      });
-    } finally {
-      setGeneratingFile(null);
-    }
-  };
 
   // handleReset is now provided by the useReset hook (see line 323)
 
@@ -890,7 +867,6 @@ export default function BpmnFileManager() {
         onGenerateAll={handleGenerateAllArtifacts}
         onGenerateTestsSelected={handleGenerateTestsForSelectedFile}
         onGenerateTestsAll={handleGenerateTestsForAllFiles}
-        onRegenerateUserTaskEpics={handleRegenerateUserTaskEpics}
         llmHealth={llmHealth}
         llmHealthLoading={llmHealthLoading}
         showAdvancedTools={showAdvancedTools}
@@ -900,7 +876,6 @@ export default function BpmnFileManager() {
         onDeleteAll={() => setShowDeleteAllDialog(true)}
         validatingMap={validatingMap}
         isResetting={isResetting}
-        userTaskEpicsList={userTaskEpicsList as any[]}
         currentGenerationLabel={currentGenerationLabel}
       />
 

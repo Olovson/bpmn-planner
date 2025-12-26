@@ -124,7 +124,6 @@ export function getFeatureGoalDocStoragePaths(
   
   // VIKTIGT: För call activities använder vi ALLTID hierarchical naming (med parent)
   // men filen sparas under subprocess-filens version hash (inte parent-filens).
-  // Legacy naming (utan parent) har tagits bort - alla filer måste genereras om med hierarchical naming.
   if (parentBpmnFile) {
     const hierarchicalKey = getFeatureGoalDocFileKey(
       subprocessBpmnFile,
@@ -145,11 +144,12 @@ export function getFeatureGoalDocStoragePaths(
   } else {
     // För process nodes (inte call activities): använd subprocess-filen direkt (ingen parent)
     // Detta är för när subprocess-filen genereras separat och skapar sin egen Feature Goal-sida
+    // Process nodes använder subprocess-filens base name som key (hierarchical naming gäller inte här)
     const processNodeKey = getFeatureGoalDocFileKey(
       subprocessBpmnFile,
       elementId,
       undefined, // no version suffix
-      undefined, // Ingen parent för process nodes
+      undefined, // No parent for process nodes (they generate their own Feature Goal page)
     );
     
     // Versioned paths (if version hash is provided)

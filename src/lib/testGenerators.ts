@@ -134,26 +134,6 @@ export async function generateTestsForFile(
           }
         }
         
-        // If not found with hierarchical naming, try legacy naming (without parent prefix)
-        // This handles cases where documentation was generated with older naming convention
-        if (!docExists) {
-          const legacyPaths = getFeatureGoalDocStoragePaths(
-            node.subprocessFile,
-            elementId,
-            undefined, // no parent for legacy naming
-            subprocessVersionHash,
-            node.subprocessFile,
-          );
-          
-          for (const path of legacyPaths) {
-            if (await storageFileExists(path)) {
-              docExists = true;
-              docPath = path;
-              break;
-            }
-          }
-        }
-        
         if (!docExists) {
           docPath = featureGoalPaths[0] || `feature-goals/${node.subprocessFile}/${elementId}.html`;
         }

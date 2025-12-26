@@ -57,6 +57,12 @@
     "analyze:bpmn-map": "tsx scripts/analyze-bpmn-map-updates.ts",
     "check:missing-feature-goals": "tsx scripts/check-missing-feature-goals.ts",
     "diagnose:docs": "tsx scripts/diagnose-documentation-mismatch.ts",
+    "migrate:legacy-docs": "tsx scripts/migrate-legacy-documentation.ts",
+    "migrate:legacy-docs:dry": "tsx scripts/migrate-legacy-documentation.ts --dry-run",
+    "cleanup:legacy-docs": "tsx scripts/cleanup-legacy-documentation.ts",
+    "cleanup:legacy-docs:dry": "tsx scripts/cleanup-legacy-documentation.ts --dry-run",
+    "validate:doc-counts": "tsx scripts/validate-documentation-counts.ts",
+    "check:storage-docs": "tsx scripts/check-storage-docs.ts",
     "archive:bpmn": "tsx scripts/archive-bpmn-files.ts",
     "generate:bpmn-diagrams": "tsx scripts/generate-bpmn-diagrams.ts",
     "generate:bpmn-map:template": "tsx scripts/generate-bpmn-map-from-template.ts"
