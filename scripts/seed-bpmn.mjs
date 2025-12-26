@@ -21,7 +21,10 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 });
 
 const bucketName = 'bpmn-files';
-const storagePrefix = 'bpmn';
+// VIKTIGT: Använd samma storage path struktur som upload funktionen
+// Upload funktionen sparar i root: ${fileName}
+// För konsistens, använd samma struktur här
+const storagePrefix = ''; // Root level - samma som upload funktionen
 const bpmnDir = resolve(__dirname, '../public/bpmn');
 
 async function seedBpmnFiles() {
@@ -35,7 +38,9 @@ async function seedBpmnFiles() {
   for (const fileName of files) {
     const filePath = join(bpmnDir, fileName);
     const fileContents = await readFile(filePath);
-    const storagePath = `${storagePrefix}/${fileName}`;
+    // VIKTIGT: Använd samma struktur som upload-bpmn-file funktionen
+    // Upload funktionen använder: storagePath = ${fileName} (root level)
+    const storagePath = storagePrefix ? `${storagePrefix}/${fileName}` : fileName;
 
     console.log(`Uploading ${fileName} to storage...`);
     const { error: uploadError } = await supabase.storage.from(bucketName).upload(storagePath, fileContents, {

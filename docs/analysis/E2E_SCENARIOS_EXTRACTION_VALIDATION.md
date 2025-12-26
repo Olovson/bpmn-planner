@@ -170,3 +170,5 @@ Validera om vi faktiskt kan extrahera relevant information från riktiga BPMN-fi
 
 
 
+
+

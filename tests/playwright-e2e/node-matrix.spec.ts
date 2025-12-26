@@ -15,8 +15,19 @@ test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Node Matrix', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to node matrix
-    await page.goto('/node-matrix');
+    // Login (om session saknas)
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
+      const { createTestContext, stepLogin } = await import('./utils/testSteps');
+      const ctx = createTestContext(page);
+      await stepLogin(ctx);
+    }
+    
+    // Navigate to node matrix (HashRouter format)
+    await page.goto('/#/node-matrix');
     await page.waitForLoadState('networkidle');
     
     // Wait for the page to be fully loaded

@@ -14,9 +14,20 @@ test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Doc Viewer', () => {
   test('should load Doc Viewer page without errors', async ({ page }) => {
-    // Navigate to a known documentation URL
+    // Login (om session saknas)
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
+      const { createTestContext, stepLogin } = await import('./utils/testSteps');
+      const ctx = createTestContext(page);
+      await stepLogin(ctx);
+    }
+    
+    // Navigate to a known documentation URL (HashRouter format)
     // Using a generic path that might exist
-    await page.goto('/doc-viewer/mortgage-se-household');
+    await page.goto('/#/doc-viewer/mortgage-se-household');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -46,7 +57,7 @@ test.describe('Doc Viewer', () => {
 
   test('should display documentation content if available', async ({ page }) => {
     // Try to navigate to a documentation page
-    await page.goto('/doc-viewer/mortgage-se-household');
+    await page.goto('/#/doc-viewer/mortgage-se-household');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000); // Give time for content to load
 
@@ -76,7 +87,7 @@ test.describe('Doc Viewer', () => {
 
   test('should handle missing documentation gracefully', async ({ page }) => {
     // Navigate to a non-existent documentation
-    await page.goto('/doc-viewer/non-existent-doc');
+    await page.goto('/#/doc-viewer/non-existent-doc');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -91,7 +102,7 @@ test.describe('Doc Viewer', () => {
   });
 
   test('should have version selector if multiple versions exist', async ({ page }) => {
-    await page.goto('/doc-viewer/mortgage-se-household');
+    await page.goto('/#/doc-viewer/mortgage-se-household');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -115,7 +126,7 @@ test.describe('Doc Viewer', () => {
   });
 
   test('should handle navigation links if present', async ({ page }) => {
-    await page.goto('/doc-viewer/mortgage-se-household');
+    await page.goto('/#/doc-viewer/mortgage-se-household');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 

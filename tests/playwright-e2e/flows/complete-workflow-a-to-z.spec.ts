@@ -33,6 +33,8 @@ import {
   stepNavigateToNodeMatrix,
   stepNavigateToDiagram,
 } from '../utils/testSteps';
+import { cleanupTestFiles } from '../utils/testCleanup';
+import { ensureBpmnFileExists } from '../utils/testHelpers';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
@@ -42,38 +44,19 @@ test.describe('Complete Workflow A-Ö', () => {
     const ctx = createTestContext(page);
 
     // Steg 1: Login (om session saknas)
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
     const currentUrl = page.url();
-    if (currentUrl.includes('/auth')) {
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
       await stepLogin(ctx);
     }
 
     // Steg 2: Navigera till Files
     await stepNavigateToFiles(ctx);
 
-    // Steg 3: Kontrollera om filer finns, annars ladda upp
-    const filesTable = page.locator('table').first();
-    const hasFiles = await filesTable.count() > 0;
-
-    if (!hasFiles) {
-      const testBpmnContent = `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
-  <bpmn:process id="test-process" name="Test Process">
-    <bpmn:startEvent id="start" />
-    <bpmn:userTask id="task1" name="Test Task" />
-    <bpmn:endEvent id="end" />
-    <bpmn:sequenceFlow id="flow1" sourceRef="start" targetRef="task1" />
-    <bpmn:sequenceFlow id="flow2" sourceRef="task1" targetRef="end" />
-  </bpmn:process>
-</bpmn:definitions>`;
-
-      try {
-        // Generera unikt test-filnamn med prefix och timestamp
-        const testFileName = generateTestFileName('test-complete-workflow');
-        await stepUploadBpmnFile(ctx, testFileName, testBpmnContent);
-      } catch (error) {
-        console.log('⚠️  Could not upload file, continuing with existing files');
-      }
-    }
+    // Steg 3: Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx, 'test-complete-workflow');
 
     // Steg 4: Bygg hierarki
     try {
@@ -90,15 +73,19 @@ test.describe('Complete Workflow A-Ö', () => {
     }
 
     // Steg 6: Välj fil (försök hitta första tillgängliga fil)
-    const fileLink = page.locator('a, button, [role="button"]').filter({ 
-      hasText: /\.bpmn$/ 
-    }).first();
+    // Använd TableRow selector istället för länkar/knappar
+    const fileRow = page.locator('tr:has-text(".bpmn")').first();
     
-    if (await fileLink.count() > 0) {
-      const fileName = await fileLink.textContent();
+    if (await fileRow.count() > 0) {
+      // Hitta filnamnet i första TableCell i raden
+      const fileNameCell = fileRow.locator('td').first();
+      const fileName = await fileNameCell.textContent();
       if (fileName) {
+        // Extrahera filnamnet (kan innehålla ikoner eller extra whitespace)
+        const match = fileName.match(/([a-zA-Z0-9_-]+\.bpmn)/);
+        const cleanFileName = match ? match[1] : fileName.trim();
         try {
-          await stepSelectFile(ctx, fileName.trim());
+          await stepSelectFile(ctx, cleanFileName);
         } catch (error) {
           console.log('⚠️  Could not select file, continuing');
         }
@@ -139,8 +126,11 @@ test.describe('Complete Workflow A-Ö', () => {
     const ctx = createTestContext(page);
 
     // Login om nödvändigt
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
     const currentUrl = page.url();
-    if (currentUrl.includes('/auth')) {
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
       await stepLogin(ctx);
     }
 

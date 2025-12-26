@@ -561,14 +561,47 @@ export async function stepNavigateToTestCoverage(ctx: TestContext) {
 export async function stepNavigateToDocViewer(ctx: TestContext, bpmnFile: string, elementId: string) {
   const { page } = ctx;
   const docViewerUrl = `/#/doc-viewer/nodes/${bpmnFile}/${elementId}`;
+  console.log(`📄 [stepNavigateToDocViewer] Navigating to: ${docViewerUrl}`);
+  
   await page.goto(docViewerUrl);
+  console.log(`📄 [stepNavigateToDocViewer] Navigation complete, current URL: ${page.url()}`);
+  
   await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(2000);
+  console.log(`📄 [stepNavigateToDocViewer] Network idle`);
+  
+  // Vänta lite extra för att React ska hinna rendera
+  await page.waitForTimeout(3000);
+  console.log(`📄 [stepNavigateToDocViewer] Wait complete`);
   
   // Verifiera att dokumentation laddades
   const pageContent = await page.textContent('body');
-  expect(pageContent).toBeTruthy();
-  expect(pageContent?.length).toBeGreaterThan(100);
+  const pageHTML = await page.content();
+  
+  console.log(`📄 [stepNavigateToDocViewer] Page content check:`, {
+    hasContent: !!pageContent,
+    contentLength: pageContent?.length || 0,
+    htmlLength: pageHTML?.length || 0,
+    preview: pageContent?.substring(0, 200) || 'NO CONTENT'
+  });
+  
+  // Kolla om det finns specifika element som indikerar att sidan laddades
+  const hasDocContent = await page.locator('article, .doc-content, [data-testid="doc-content"], main').count();
+  const hasError = await page.locator('text=/error/i, text=/not found/i, text=/404/i').count();
+  const hasLoading = await page.locator('text=/loading/i, text=/laddar/i').count();
+  
+  console.log(`📄 [stepNavigateToDocViewer] Element checks:`, {
+    hasDocContent,
+    hasError,
+    hasLoading
+  });
+  
+  // Om sidan är för kort, kan det vara ett fel eller att innehållet inte laddades
+  if (!pageContent || pageContent.length < 100) {
+    console.log(`❌ [stepNavigateToDocViewer] Page content too short. Full HTML preview:`, pageHTML?.substring(0, 500));
+    throw new Error(`Doc viewer page content too short (${pageContent?.length || 0} chars). URL: ${docViewerUrl}. This may indicate the documentation was not generated or the page failed to load.`);
+  }
+  
+  console.log(`✅ [stepNavigateToDocViewer] Doc viewer loaded successfully`);
 }
 
 /**
@@ -601,10 +634,12 @@ export async function stepNavigateToNodeMatrix(ctx: TestContext) {
 
 /**
  * Steg 15: Navigera till Index (Diagram)
+ * VIKTIGT: I HashRouter måste vi navigera till /#/ istället för /
  */
 export async function stepNavigateToDiagram(ctx: TestContext, file?: string) {
   const { page } = ctx;
-  const url = file ? `/?file=${file}` : '/';
+  // I HashRouter är root-routen /#/ och query params kan läggas till
+  const url = file ? `/#/?file=${file}` : '/#/';
   await page.goto(url);
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000);

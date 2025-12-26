@@ -15,6 +15,7 @@
 import { test, expect } from '@playwright/test';
 import {
   createTestContext,
+  stepLogin,
   stepNavigateToFiles,
   stepBuildHierarchy,
   stepSelectGenerationMode,
@@ -35,7 +36,16 @@ test.describe('Generation Workflow A-Ö', () => {
     const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
-    // Steg 1: Navigera till Files
+    // Steg 1: Login (om session saknas)
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
+      await stepLogin(ctx);
+    }
+
+    // Steg 2: Navigera till Files
     await stepNavigateToFiles(ctx);
     
     // Säkerställ att minst en fil finns

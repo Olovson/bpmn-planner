@@ -1,0 +1,229 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img "BPMN Planner" [ref=e7]
+        - navigation "Huvudnavigering" [ref=e8]:
+          - button "BPMN-diagram" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Strukturträd" [ref=e14] [cursor=pointer]:
+            - img [ref=e15]
+          - button "Listvy" [ref=e20] [cursor=pointer]:
+            - img [ref=e21]
+          - button "Timeline" [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+          - button "Tests" [disabled] [ref=e25]:
+            - img [ref=e26]
+          - button "Test Coverage" [ref=e29] [cursor=pointer]:
+            - img [ref=e30]
+          - button "Projektkonfiguration" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+          - button "Analysera Lokal Mapp" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+          - button "Filer" [ref=e39] [cursor=pointer]:
+            - img [ref=e40]
+          - button "Styleguide" [ref=e43] [cursor=pointer]:
+            - img [ref=e44]
+      - generic [ref=e50]:
+        - generic [ref=e51]: test-bot@local.test
+        - button "Versioner" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+        - button "Logga ut" [ref=e57] [cursor=pointer]:
+          - img [ref=e58]
+    - main [ref=e61]:
+      - generic [ref=e62]:
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - heading "Timeline / Planning View" [level=1] [ref=e65]
+            - paragraph [ref=e66]: Visualize and refine time ordering for BPMN subprocesses (feature goals). Each subprocess is shown with a default 2-week duration starting from 2026-01-01.
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - generic [ref=e69]: "Filter by BPMN type:"
+              - button "Call Activity" [ref=e70] [cursor=pointer]: Call Activity
+              - button "User Task" [ref=e72] [cursor=pointer]: User Task
+              - button "Service Task" [ref=e74] [cursor=pointer]: Service Task
+              - button "Business Rule" [ref=e76] [cursor=pointer]: Business Rule
+            - button "Exportera till Excel" [ref=e78] [cursor=pointer]:
+              - img
+              - text: Exportera till Excel
+        - generic [ref=e80]:
+          - generic [ref=e82]:
+            - treegrid [ref=e85]:
+              - row "# Jira namn Jira typ" [ref=e86]:
+                - columnheader "#" [ref=e87]
+                - columnheader "Jira namn" [ref=e88]
+                - columnheader "Jira typ" [ref=e89]
+              - rowgroup [ref=e90]:
+                - 'row "Task: mortgage Start date: 2026-01-01 End date: 2031-10-02" [expanded] [level=1] [ref=e91]':
+                  - gridcell "1" [ref=e92]:
+                    - generic [ref=e93]: "1"
+                  - gridcell "mortgage" [ref=e94]:
+                    - generic [ref=e95] [cursor=pointer]: 
+                    - generic [ref=e97]: mortgage
+                  - gridcell [ref=e98]
+                - 'row "Task: Application Start date: 2026-02-12 End date: 2028-08-24" [expanded] [level=2] [ref=e100]':
+                  - gridcell "2" [ref=e101]:
+                    - generic [ref=e102]: "2"
+                  - gridcell "Application" [ref=e103]:
+                    - generic [ref=e105] [cursor=pointer]: 
+                    - generic [ref=e107]: Application
+                  - gridcell "Feature goal" [ref=e108]:
+                    - generic [ref=e109]: Feature goal
+                - 'row "Task: Internal data gathering Start date: 2026-06-18 End date: 2026-07-30" [expanded] [level=3] [ref=e110]':
+                  - gridcell "3" [ref=e111]:
+                    - generic [ref=e112]: "3"
+                  - gridcell "Application - Internal data gathering" [ref=e113]:
+                    - generic [ref=e116] [cursor=pointer]: 
+                    - generic [ref=e118]: Application - Internal data gathering
+                  - gridcell "Feature goal" [ref=e119]:
+                    - generic [ref=e120]: Feature goal
+                - 'row "Task: Fetch party information Start date: 2026-06-18 End date: 2026-07-02" [level=4] [ref=e121]':
+                  - gridcell "4" [ref=e122]:
+                    - generic [ref=e123]: "4"
+                  - gridcell "Application - Internal data gathering - Fetch party information" [ref=e124]:
+                    - generic [ref=e130]: Application - Internal data gathering - Fetch party information
+                  - gridcell "Epic" [ref=e131]:
+                    - generic [ref=e132]: Epic
+                - 'row "Task: Screen party Start date: 2026-07-02 End date: 2026-07-16" [level=4] [ref=e133]':
+                  - gridcell "5" [ref=e134]:
+                    - generic [ref=e135]: "5"
+                  - gridcell "Application - Internal data gathering - Screen party" [ref=e136]:
+                    - generic [ref=e142]: Application - Internal data gathering - Screen party
+                  - gridcell "Epic" [ref=e143]:
+                    - generic [ref=e144]: Epic
+                - 'row "Task: Fetch engagements Start date: 2026-07-16 End date: 2026-07-30" [level=4] [ref=e145]':
+                  - gridcell "6" [ref=e146]:
+                    - generic [ref=e147]: "6"
+                  - gridcell "Application - Internal data gathering - Fetch engagements" [ref=e148]:
+                    - generic [ref=e154]: Application - Internal data gathering - Fetch engagements
+                  - gridcell "Epic" [ref=e155]:
+                    - generic [ref=e156]: Epic
+                - 'row "Task: Object Start date: 2026-02-12 End date: 2028-08-24" [expanded] [level=3] [ref=e157]':
+                  - gridcell "7" [ref=e158]:
+                    - generic [ref=e159]: "7"
+                  - gridcell "Application - Object" [ref=e160]:
+                    - generic [ref=e163] [cursor=pointer]: 
+                    - generic [ref=e165]: Application - Object
+                  - gridcell "Feature goal" [ref=e166]:
+                    - generic [ref=e167]: Feature goal
+                - 'row "Task: Object information Start date: 2028-06-29 End date: 2028-08-24" [expanded] [level=4] [ref=e168]':
+                  - gridcell "8" [ref=e169]:
+                    - generic [ref=e170]: "8"
+                  - gridcell "Application - Object - Object information" [ref=e171]:
+                    - generic [ref=e175] [cursor=pointer]: 
+                    - generic [ref=e177]: Application - Object - Object information
+                  - gridcell "Feature goal" [ref=e178]:
+                    - generic [ref=e179]: Feature goal
+                - 'row "Task: Fetch fastighets-information Start date: 2028-06-29 End date: 2028-07-13" [level=5] [ref=e180]':
+                  - gridcell "9" [ref=e181]:
+                    - generic [ref=e182]: "9"
+                  - gridcell "Application - Object - Object information - Fetch fastighets-information" [ref=e183]:
+                    - generic [ref=e190]: Application - Object - Object information - Fetch fastighets-information
+                  - gridcell "Epic" [ref=e191]:
+                    - generic [ref=e192]: Epic
+                - 'row "Task: Fetch BRF information Start date: 2028-07-13 End date: 2028-07-27" [level=5] [ref=e193]':
+                  - gridcell "10" [ref=e194]:
+                    - generic [ref=e195]: "10"
+                  - gridcell "Application - Object - Object information - Fetch BRF information" [ref=e196]:
+                    - generic [ref=e203]: Application - Object - Object information - Fetch BRF information
+                  - gridcell "Epic" [ref=e204]:
+                    - generic [ref=e205]: Epic
+                - 'row "Task: Screen fastighet Start date: 2028-07-27 End date: 2028-08-10" [level=5] [ref=e206]':
+                  - gridcell "11" [ref=e207]:
+                    - generic [ref=e208]: "11"
+                  - gridcell "Application - Object - Object information - Screen fastighet" [ref=e209]:
+                    - generic [ref=e216]: Application - Object - Object information - Screen fastighet
+                  - gridcell "Epic" [ref=e217]:
+                    - generic [ref=e218]: Epic
+                - 'row "Task: Screen bostadsrätt Start date: 2028-08-10 End date: 2028-08-24" [level=5] [ref=e219]':
+                  - gridcell "12" [ref=e220]:
+                    - generic [ref=e221]: "12"
+                  - gridcell "Application - Object - Object information - Screen bostadsrätt" [ref=e222]:
+                    - generic [ref=e229]: Application - Object - Object information - Screen bostadsrätt
+                  - gridcell "Epic" [ref=e230]:
+                    - generic [ref=e231]: Epic
+                - 'row "Task: Register source of equity Start date: 2026-02-12 End date: 2026-02-26" [level=4] [ref=e232]':
+                  - gridcell "13" [ref=e233]:
+                    - generic [ref=e234]: "13"
+                  - gridcell "Application - Object - Register source of equity" [ref=e235]:
+                    - generic [ref=e241]: Application - Object - Register source of equity
+                  - gridcell "Epic" [ref=e242]:
+                    - generic [ref=e243]: Epic
+                - 'row "Task: Register loan details Start date: 2026-02-26 End date: 2026-03-12" [level=4] [ref=e244]':
+                  - gridcell "14" [ref=e245]:
+                    - generic [ref=e246]: "14"
+                  - gridcell "Application - Object - Register loan details" [ref=e247]:
+                    - generic [ref=e253]: Application - Object - Register loan details
+                  - gridcell "Epic" [ref=e254]:
+                    - generic [ref=e255]: Epic
+                - 'row "Task: Valuate bostad Start date: 2026-05-07 End date: 2026-05-21" [level=4] [ref=e256]':
+                  - gridcell "15" [ref=e257]:
+                    - generic [ref=e258]: "15"
+                  - gridcell "Application - Object - Valuate bostad" [ref=e259]:
+                    - generic [ref=e265]: Application - Object - Valuate bostad
+                  - gridcell "Epic" [ref=e266]:
+                    - generic [ref=e267]: Epic
+                - 'row "Task: Household Start date: 2026-05-21 End date: 2026-06-04" [expanded] [level=3] [ref=e268]':
+                  - gridcell "16" [ref=e269]:
+                    - generic [ref=e270]: "16"
+                  - gridcell "Application - Household" [ref=e271]:
+                    - generic [ref=e274] [cursor=pointer]: 
+                    - generic [ref=e276]: Application - Household
+                  - gridcell "Feature goal" [ref=e277]:
+                    - generic [ref=e278]: Feature goal
+                - 'row "Task: Register household economy infomation Start date: 2026-05-21 End date: 2026-06-04" [level=4] [ref=e279]':
+                  - gridcell "17" [ref=e280]:
+                    - generic [ref=e281]: "17"
+                  - gridcell "Application - Household - Register household economy infomation" [ref=e282]:
+                    - generic [ref=e288]: Application - Household - Register household economy infomation
+                  - gridcell "Epic" [ref=e289]:
+                    - generic [ref=e290]: Epic
+            - generic [ref=e293]:
+              - generic [ref=e294]:
+                - generic [ref=e295]:
+                  - generic "December 2025" [ref=e296]
+                  - generic "January 2026" [ref=e297]
+                  - generic "February 2026" [ref=e298]
+                  - generic "March 2026" [ref=e299]
+                  - generic "April 2026" [ref=e300]:
+                    - generic [ref=e301]: April 2026
+                - generic [ref=e302]:
+                  - generic "V52" [ref=e303]
+                  - generic "V1 (2025)-V1 (2026)" [ref=e304]
+                  - generic "V2" [ref=e305]
+                  - generic "V3" [ref=e306]
+                  - generic "V4" [ref=e307]
+                  - generic "V5" [ref=e308]
+                  - generic "V6" [ref=e309]
+                  - generic "V7" [ref=e310]
+                  - generic "V8" [ref=e311]
+                  - generic "V9" [ref=e312]
+                  - generic "V10" [ref=e313]
+                  - generic "V11" [ref=e314]
+                  - generic "V12" [ref=e315]
+                  - generic "V13" [ref=e316]
+                  - generic "V14" [ref=e317]
+                  - generic "V15" [ref=e318]
+              - generic [ref=e319]:
+                - generic:
+                  - 'img "Task: mortgage Start date: 2026-01-01 End date: 2031-10-02" [ref=e627]':
+                    - generic [ref=e629] [cursor=pointer]: mortgage
+                  - 'img "Task: Application Start date: 2026-02-12 End date: 2028-08-24" [ref=e632]':
+                    - generic [ref=e634] [cursor=pointer]: Application
+                  - 'img "Task: Object Start date: 2026-02-12 End date: 2028-08-24" [ref=e637]':
+                    - generic [ref=e639] [cursor=pointer]: Object
+                  - 'img "Task: Register source of equity Start date: 2026-02-12 End date: 2026-02-26" [ref=e642]':
+                    - generic [ref=e644] [cursor=pointer]: Register source of equity
+                  - 'img "Task: Register loan details Start date: 2026-02-26 End date: 2026-03-12" [ref=e647]':
+                    - generic [ref=e649] [cursor=pointer]: Register loan details
+                  - 'img "Task: Valuate bostad Start date: 2026-05-07 End date: 2026-05-21" [ref=e652]':
+                    - generic [ref=e654] [cursor=pointer]: Valuate bostad
+          - iframe [ref=e665]:
+            
+```

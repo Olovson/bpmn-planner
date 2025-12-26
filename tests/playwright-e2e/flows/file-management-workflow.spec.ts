@@ -14,13 +14,15 @@
 import { test, expect } from '@playwright/test';
 import {
   createTestContext,
+  stepLogin,
   stepNavigateToFiles,
-  stepUploadBpmnFile,
   stepBuildHierarchy,
   stepNavigateToDiagram,
   stepNavigateToProcessExplorer,
   stepNavigateToNodeMatrix,
 } from '../utils/testSteps';
+import { ensureBpmnFileExists } from '../utils/testHelpers';
+import { cleanupTestFiles } from '../utils/testCleanup';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
@@ -29,34 +31,20 @@ test.describe('File Management Workflow A-Ö', () => {
     const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
-    // Steg 1: Navigera till Files
+    // Steg 1: Login (om session saknas)
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
+      await stepLogin(ctx);
+    }
+
+    // Steg 2: Navigera till Files
     await stepNavigateToFiles(ctx);
 
-    // Steg 2: Kontrollera om filer finns
-    const filesTable = page.locator('table').first();
-    const hasFiles = await filesTable.count() > 0;
-
-    if (!hasFiles) {
-      // Steg 3: Ladda upp testfil
-      const testBpmnContent = `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
-  <bpmn:process id="test-process" name="Test Process">
-    <bpmn:startEvent id="start" />
-    <bpmn:userTask id="task1" name="Test Task" />
-    <bpmn:endEvent id="end" />
-    <bpmn:sequenceFlow id="flow1" sourceRef="start" targetRef="task1" />
-    <bpmn:sequenceFlow id="flow2" sourceRef="task1" targetRef="end" />
-  </bpmn:process>
-</bpmn:definitions>`;
-
-      try {
-        // Generera unikt test-filnamn med prefix och timestamp
-        const testFileName = generateTestFileName('test-file-management');
-        await stepUploadBpmnFile(ctx, testFileName, testBpmnContent);
-      } catch (error) {
-        console.log('⚠️  Could not upload file');
-      }
-    }
+    // Steg 3: Säkerställ att minst en fil finns
+    await ensureBpmnFileExists(ctx, 'test-file-management');
 
     // Steg 4: Bygg hierarki
     try {

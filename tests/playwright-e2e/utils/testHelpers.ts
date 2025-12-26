@@ -27,10 +27,20 @@ export async function ensureBpmnFileExists(ctx: TestContext, fileName?: string):
   
   // Säkerställ att vi är på files-sidan
   const currentUrl = page.url();
-  if (!currentUrl.includes('/files') || currentUrl.includes('/auth')) {
+  if (!currentUrl.includes('/files') || currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
     await page.goto('/#/files');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
+    
+    // Om vi fortfarande är på /auth efter navigation, vänta lite till
+    const retryUrl = page.url();
+    if (retryUrl.includes('/auth') || retryUrl.includes('#/auth')) {
+      await page.waitForTimeout(3000);
+      const finalUrl = page.url();
+      if (finalUrl.includes('/auth') || finalUrl.includes('#/auth')) {
+        throw new Error(`Cannot navigate to files page - still on auth page. URL: ${finalUrl}. This may indicate a login problem.`);
+      }
+    }
   }
   
   // Vänta på att sidan är helt laddad

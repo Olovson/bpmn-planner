@@ -14,8 +14,19 @@ test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Test Report', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to test report page
-    await page.goto('/test-report');
+    // Login (om session saknas)
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
+      const { createTestContext, stepLogin } = await import('./utils/testSteps');
+      const ctx = createTestContext(page);
+      await stepLogin(ctx);
+    }
+    
+    // Navigate to test report page (HashRouter format)
+    await page.goto('/#/test-report');
     await page.waitForLoadState('networkidle');
     
     // Wait for the page to be fully loaded
@@ -112,14 +123,24 @@ test.describe('Test Report', () => {
 
     // Look for statistics or summary cards
     const stats = page.locator(
-      '[data-testid="test-stats"], .stats, .statistics, text=/total/i, text=/passed/i, text=/failed/i'
+      '[data-testid="test-stats"], .stats, .statistics'
     ).first();
     const statsCount = await stats.count();
+    
+    // Also check for text content that might indicate statistics
+    const statsText = page.locator('text=/total/i, text=/passed/i, text=/failed/i').first();
+    const statsTextCount = await statsText.count();
     
     // Statistics might or might not be visible (depends on data)
     // Just verify page didn't crash
     const pageContent = await page.textContent('body');
     expect(pageContent).toBeTruthy();
+    
+    // If either stats element or stats text exists, that's good
+    if (statsCount === 0 && statsTextCount === 0) {
+      // No stats found, but that's ok - might not have data
+      test.skip();
+    }
   });
 
   test('should handle links to node tests', async ({ page }) => {
