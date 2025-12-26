@@ -1,0 +1,849 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img "BPMN Planner" [ref=e7]
+        - navigation "Huvudnavigering" [ref=e8]:
+          - button "BPMN-diagram" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Strukturträd" [ref=e14] [cursor=pointer]:
+            - img [ref=e15]
+          - button "Listvy" [ref=e20] [cursor=pointer]:
+            - img [ref=e21]
+          - button "Timeline" [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+          - button "Tests" [disabled] [ref=e25]:
+            - img [ref=e26]
+          - button "Test Coverage" [ref=e29] [cursor=pointer]:
+            - img [ref=e30]
+          - button "Projektkonfiguration" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+          - button "Analysera Lokal Mapp" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+          - button "Filer" [ref=e39] [cursor=pointer]:
+            - img [ref=e40]
+          - button "Styleguide" [ref=e43] [cursor=pointer]:
+            - img [ref=e44]
+      - generic [ref=e50]:
+        - generic [ref=e51]: test-bot@local.test
+        - button "Versioner" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+        - button "Logga ut" [ref=e57] [cursor=pointer]:
+          - img [ref=e58]
+    - main [ref=e61]:
+      - generic [ref=e62]:
+        - generic [ref=e64]:
+          - heading "BPMN & DMN Filhantering" [level=1] [ref=e65]
+          - paragraph [ref=e66]: Hantera dina BPMN- och DMN-filer, registrera status och generera artefakter för hela hierarkin.
+        - generic [ref=e68]:
+          - generic [ref=e70]:
+            - heading "Versionsval" [level=3] [ref=e71]
+            - paragraph [ref=e72]: Välj vilken version av BPMN-filer som ska användas i hela appen
+          - combobox [ref=e74] [cursor=pointer]:
+            - generic: Välj BPMN-fil för versionsval
+            - img [ref=e75]
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - heading "Ladda upp filer" [level=2] [ref=e80]
+              - paragraph [ref=e81]: Dra och släpp eller välj filer att ladda upp
+            - button "📥 Synka från GitHub" [ref=e82] [cursor=pointer]:
+              - generic [ref=e83]: 📥
+              - text: Synka från GitHub
+          - generic [ref=e84]:
+            - img [ref=e85]
+            - heading "Släpp .bpmn eller .dmn filer här" [level=3] [ref=e88]
+            - paragraph [ref=e89]: eller klicka för att välja filer eller en mapp
+            - generic [ref=e90]:
+              - generic [ref=e91] [cursor=pointer]: Välj filer
+              - generic [ref=e92] [cursor=pointer]: Välj mapp (rekursivt)
+            - paragraph [ref=e93]: Mappval hittar automatiskt alla .bpmn och .dmn filer rekursivt i vald mapp
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - img [ref=e97]
+            - heading "Genereringsläge" [level=2] [ref=e99]
+            - generic [ref=e100]: Claude (moln-LLM)
+          - button "Visa avancerade verktyg" [ref=e102] [cursor=pointer]:
+            - img
+            - text: Visa avancerade verktyg
+          - generic [ref=e103]:
+            - button "Claude (moln-LLM)" [pressed] [ref=e104] [cursor=pointer]:
+              - img
+              - text: Claude (moln-LLM)
+            - button "Ollama (lokal LLM) Tillgänglig (2340ms)" [ref=e105] [cursor=pointer]:
+              - img
+              - text: Ollama (lokal LLM)
+              - generic [ref=e106]: Tillgänglig (2340ms)
+          - generic [ref=e107]:
+            - button "Generera information för vald fil" [disabled]:
+              - img
+              - text: Generera information för vald fil
+            - button "Generera information (alla filer)" [ref=e108] [cursor=pointer]:
+              - img
+              - text: Generera information (alla filer)
+          - generic [ref=e109]:
+            - button "Generera testinformation för vald fil" [disabled]:
+              - img
+              - text: Generera testinformation för vald fil
+            - button "Generera testinformation (alla filer)" [ref=e110] [cursor=pointer]:
+              - img
+              - text: Generera testinformation (alla filer)
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - img [ref=e114]
+              - generic [ref=e116]: "Filtrera:"
+              - combobox [ref=e117] [cursor=pointer]:
+                - generic: Alla filer
+                - img [ref=e118]
+            - generic [ref=e120]: Visar 25 av 25 filer
+          - table [ref=e122]:
+            - rowgroup [ref=e123]:
+              - row "Filnamn Storlek Senast uppdaterad Struktur & artefakter Åtgärder" [ref=e124]:
+                - cell "Filnamn" [ref=e125] [cursor=pointer]:
+                  - generic [ref=e126]:
+                    - text: Filnamn
+                    - img [ref=e127]
+                - cell "Storlek" [ref=e129] [cursor=pointer]:
+                  - generic [ref=e130]: Storlek
+                - cell "Senast uppdaterad" [ref=e131] [cursor=pointer]:
+                  - generic [ref=e132]: Senast uppdaterad
+                - cell "Struktur & artefakter" [ref=e133] [cursor=pointer]:
+                  - generic [ref=e134]: Struktur & artefakter
+                - cell "Åtgärder" [ref=e135]
+            - rowgroup [ref=e136]:
+              - 'row "mortgage-se 2025.11.29/mortgage-se-appeal.bpmn 9.8 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e137] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-appeal.bpmn" [ref=e138]:
+                  - generic [ref=e139]:
+                    - img [ref=e140]
+                    - text: mortgage-se 2025.11.29/mortgage-se-appeal.bpmn
+                - cell "9.8 KB" [ref=e143]
+                - cell "26 dec. 2025 22:50" [ref=e144]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e145]':
+                  - generic [ref=e146]:
+                    - generic "Dok saknas för alla 2 noder" [ref=e147]:
+                      - generic [ref=e148]: 📄
+                      - generic [ref=e149]: "Dok:"
+                      - generic [ref=e150]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e151]:
+                      - generic [ref=e152]: 🧪
+                      - generic [ref=e153]: "Test:"
+                      - generic [ref=e154]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e155]:
+                  - generic [ref=e156]:
+                    - button "Hierarki" [ref=e157]:
+                      - img
+                      - generic [ref=e158]: Hierarki
+                    - button "Dokumentation" [ref=e159]:
+                      - img
+                      - generic [ref=e160]: Dokumentation
+                    - button [ref=e161]:
+                      - img
+                    - button [ref=e162]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-application.bpmn 15.9 KB 26 dec. 2025 22:49 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e163] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-application.bpmn" [ref=e164]:
+                  - generic [ref=e165]:
+                    - img [ref=e166]
+                    - text: mortgage-se 2025.11.29/mortgage-se-application.bpmn
+                - cell "15.9 KB" [ref=e169]
+                - cell "26 dec. 2025 22:49" [ref=e170]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e171]':
+                  - generic [ref=e172]:
+                    - generic "Dok saknas för alla 5 noder" [ref=e173]:
+                      - generic [ref=e174]: 📄
+                      - generic [ref=e175]: "Dok:"
+                      - generic [ref=e176]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e177]:
+                      - generic [ref=e178]: 🧪
+                      - generic [ref=e179]: "Test:"
+                      - generic [ref=e180]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e181]:
+                  - generic [ref=e182]:
+                    - button "Hierarki" [ref=e183]:
+                      - img
+                      - generic [ref=e184]: Hierarki
+                    - button "Dokumentation" [ref=e185]:
+                      - img
+                      - generic [ref=e186]: Dokumentation
+                    - button [ref=e187]:
+                      - img
+                    - button [ref=e188]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-collateral-registration.bpmn 21.7 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e189] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-collateral-registration.bpmn" [ref=e190]:
+                  - generic [ref=e191]:
+                    - img [ref=e192]
+                    - text: mortgage-se 2025.11.29/mortgage-se-collateral-registration.bpmn
+                - cell "21.7 KB" [ref=e195]
+                - cell "26 dec. 2025 22:50" [ref=e196]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e197]':
+                  - generic [ref=e198]:
+                    - generic "Dok saknas för alla 3 noder" [ref=e199]:
+                      - generic [ref=e200]: 📄
+                      - generic [ref=e201]: "Dok:"
+                      - generic [ref=e202]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e203]:
+                      - generic [ref=e204]: 🧪
+                      - generic [ref=e205]: "Test:"
+                      - generic [ref=e206]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e207]:
+                  - generic [ref=e208]:
+                    - button "Hierarki" [ref=e209]:
+                      - img
+                      - generic [ref=e210]: Hierarki
+                    - button "Dokumentation" [ref=e211]:
+                      - img
+                      - generic [ref=e212]: Dokumentation
+                    - button [ref=e213]:
+                      - img
+                    - button [ref=e214]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-credit-decision.bpmn 16.9 KB 26 dec. 2025 22:49 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e215] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-credit-decision.bpmn" [ref=e216]:
+                  - generic [ref=e217]:
+                    - img [ref=e218]
+                    - text: mortgage-se 2025.11.29/mortgage-se-credit-decision.bpmn
+                - cell "16.9 KB" [ref=e221]
+                - cell "26 dec. 2025 22:49" [ref=e222]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e223]':
+                  - generic [ref=e224]:
+                    - generic "Dok saknas för alla 4 noder" [ref=e225]:
+                      - generic [ref=e226]: 📄
+                      - generic [ref=e227]: "Dok:"
+                      - generic [ref=e228]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e229]:
+                      - generic [ref=e230]: 🧪
+                      - generic [ref=e231]: "Test:"
+                      - generic [ref=e232]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e233]:
+                  - generic [ref=e234]:
+                    - button "Hierarki" [ref=e235]:
+                      - img
+                      - generic [ref=e236]: Hierarki
+                    - button "Dokumentation" [ref=e237]:
+                      - img
+                      - generic [ref=e238]: Dokumentation
+                    - button [ref=e239]:
+                      - img
+                    - button [ref=e240]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-credit-evaluation.bpmn 16.2 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e241] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-credit-evaluation.bpmn" [ref=e242]:
+                  - generic [ref=e243]:
+                    - img [ref=e244]
+                    - text: mortgage-se 2025.11.29/mortgage-se-credit-evaluation.bpmn
+                - cell "16.2 KB" [ref=e247]
+                - cell "26 dec. 2025 22:50" [ref=e248]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e249]':
+                  - generic [ref=e250]:
+                    - generic "Dok saknas för alla 9 noder" [ref=e251]:
+                      - generic [ref=e252]: 📄
+                      - generic [ref=e253]: "Dok:"
+                      - generic [ref=e254]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e255]:
+                      - generic [ref=e256]: 🧪
+                      - generic [ref=e257]: "Test:"
+                      - generic [ref=e258]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e259]:
+                  - generic [ref=e260]:
+                    - button "Hierarki" [ref=e261]:
+                      - img
+                      - generic [ref=e262]: Hierarki
+                    - button "Dokumentation" [ref=e263]:
+                      - img
+                      - generic [ref=e264]: Dokumentation
+                    - button [ref=e265]:
+                      - img
+                    - button [ref=e266]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-disbursement.bpmn 19.2 KB 26 dec. 2025 22:49 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e267] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-disbursement.bpmn" [ref=e268]:
+                  - generic [ref=e269]:
+                    - img [ref=e270]
+                    - text: mortgage-se 2025.11.29/mortgage-se-disbursement.bpmn
+                - cell "19.2 KB" [ref=e273]
+                - cell "26 dec. 2025 22:49" [ref=e274]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e275]':
+                  - generic [ref=e276]:
+                    - generic "Dok saknas för alla 6 noder" [ref=e277]:
+                      - generic [ref=e278]: 📄
+                      - generic [ref=e279]: "Dok:"
+                      - generic [ref=e280]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e281]:
+                      - generic [ref=e282]: 🧪
+                      - generic [ref=e283]: "Test:"
+                      - generic [ref=e284]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e285]:
+                  - generic [ref=e286]:
+                    - button "Hierarki" [ref=e287]:
+                      - img
+                      - generic [ref=e288]: Hierarki
+                    - button "Dokumentation" [ref=e289]:
+                      - img
+                      - generic [ref=e290]: Dokumentation
+                    - button [ref=e291]:
+                      - img
+                    - button [ref=e292]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-document-generation.bpmn 4.8 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e293] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-document-generation.bpmn" [ref=e294]:
+                  - generic [ref=e295]:
+                    - img [ref=e296]
+                    - text: mortgage-se 2025.11.29/mortgage-se-document-generation.bpmn
+                - cell "4.8 KB" [ref=e299]
+                - cell "26 dec. 2025 22:50" [ref=e300]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e301]':
+                  - generic [ref=e302]:
+                    - generic "Dok saknas för alla 2 noder" [ref=e303]:
+                      - generic [ref=e304]: 📄
+                      - generic [ref=e305]: "Dok:"
+                      - generic [ref=e306]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e307]:
+                      - generic [ref=e308]: 🧪
+                      - generic [ref=e309]: "Test:"
+                      - generic [ref=e310]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e311]:
+                  - generic [ref=e312]:
+                    - button "Hierarki" [ref=e313]:
+                      - img
+                      - generic [ref=e314]: Hierarki
+                    - button "Dokumentation" [ref=e315]:
+                      - img
+                      - generic [ref=e316]: Dokumentation
+                    - button [ref=e317]:
+                      - img
+                    - button [ref=e318]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-documentation-assessment.bpmn 7.6 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e319] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-documentation-assessment.bpmn" [ref=e320]:
+                  - generic [ref=e321]:
+                    - img [ref=e322]
+                    - text: mortgage-se 2025.11.29/mortgage-se-documentation-assessment.bpmn
+                - cell "7.6 KB" [ref=e325]
+                - cell "26 dec. 2025 22:50" [ref=e326]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e327]':
+                  - generic [ref=e328]:
+                    - generic "Dok saknas för alla 2 noder" [ref=e329]:
+                      - generic [ref=e330]: 📄
+                      - generic [ref=e331]: "Dok:"
+                      - generic [ref=e332]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e333]:
+                      - generic [ref=e334]: 🧪
+                      - generic [ref=e335]: "Test:"
+                      - generic [ref=e336]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e337]:
+                  - generic [ref=e338]:
+                    - button "Hierarki" [ref=e339]:
+                      - img
+                      - generic [ref=e340]: Hierarki
+                    - button "Dokumentation" [ref=e341]:
+                      - img
+                      - generic [ref=e342]: Dokumentation
+                    - button [ref=e343]:
+                      - img
+                    - button [ref=e344]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-household.bpmn 4.3 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e345] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-household.bpmn" [ref=e346]:
+                  - generic [ref=e347]:
+                    - img [ref=e348]
+                    - text: mortgage-se 2025.11.29/mortgage-se-household.bpmn
+                - cell "4.3 KB" [ref=e351]
+                - cell "26 dec. 2025 22:50" [ref=e352]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e353]':
+                  - generic [ref=e354]:
+                    - generic "Dok saknas för alla 1 noder" [ref=e355]:
+                      - generic [ref=e356]: 📄
+                      - generic [ref=e357]: "Dok:"
+                      - generic [ref=e358]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e359]:
+                      - generic [ref=e360]: 🧪
+                      - generic [ref=e361]: "Test:"
+                      - generic [ref=e362]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e363]:
+                  - generic [ref=e364]:
+                    - button "Hierarki" [ref=e365]:
+                      - img
+                      - generic [ref=e366]: Hierarki
+                    - button "Dokumentation" [ref=e367]:
+                      - img
+                      - generic [ref=e368]: Dokumentation
+                    - button [ref=e369]:
+                      - img
+                    - button [ref=e370]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-internal-data-gathering.bpmn 9.5 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e371] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-internal-data-gathering.bpmn" [ref=e372]:
+                  - generic [ref=e373]:
+                    - img [ref=e374]
+                    - text: mortgage-se 2025.11.29/mortgage-se-internal-data-gathering.bpmn
+                - cell "9.5 KB" [ref=e377]
+                - cell "26 dec. 2025 22:50" [ref=e378]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e379]':
+                  - generic [ref=e380]:
+                    - generic "Dok saknas för alla 3 noder" [ref=e381]:
+                      - generic [ref=e382]: 📄
+                      - generic [ref=e383]: "Dok:"
+                      - generic [ref=e384]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e385]:
+                      - generic [ref=e386]: 🧪
+                      - generic [ref=e387]: "Test:"
+                      - generic [ref=e388]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e389]:
+                  - generic [ref=e390]:
+                    - button "Hierarki" [ref=e391]:
+                      - img
+                      - generic [ref=e392]: Hierarki
+                    - button "Dokumentation" [ref=e393]:
+                      - img
+                      - generic [ref=e394]: Dokumentation
+                    - button [ref=e395]:
+                      - img
+                    - button [ref=e396]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-kyc.bpmn 14.8 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e397] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-kyc.bpmn" [ref=e398]:
+                  - generic [ref=e399]:
+                    - img [ref=e400]
+                    - text: mortgage-se 2025.11.29/mortgage-se-kyc.bpmn
+                - cell "14.8 KB" [ref=e403]
+                - cell "26 dec. 2025 22:50" [ref=e404]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e405]':
+                  - generic [ref=e406]:
+                    - generic "Dok saknas för alla 5 noder" [ref=e407]:
+                      - generic [ref=e408]: 📄
+                      - generic [ref=e409]: "Dok:"
+                      - generic [ref=e410]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e411]:
+                      - generic [ref=e412]: 🧪
+                      - generic [ref=e413]: "Test:"
+                      - generic [ref=e414]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e415]:
+                  - generic [ref=e416]:
+                    - button "Hierarki" [ref=e417]:
+                      - img
+                      - generic [ref=e418]: Hierarki
+                    - button "Dokumentation" [ref=e419]:
+                      - img
+                      - generic [ref=e420]: Dokumentation
+                    - button [ref=e421]:
+                      - img
+                    - button [ref=e422]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-manual-credit-evaluation.bpmn 22.5 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e423] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-manual-credit-evaluation.bpmn" [ref=e424]:
+                  - generic [ref=e425]:
+                    - img [ref=e426]
+                    - text: mortgage-se 2025.11.29/mortgage-se-manual-credit-evaluation.bpmn
+                - cell "22.5 KB" [ref=e429]
+                - cell "26 dec. 2025 22:50" [ref=e430]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e431]':
+                  - generic [ref=e432]:
+                    - generic "Dok saknas för alla 6 noder" [ref=e433]:
+                      - generic [ref=e434]: 📄
+                      - generic [ref=e435]: "Dok:"
+                      - generic [ref=e436]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e437]:
+                      - generic [ref=e438]: 🧪
+                      - generic [ref=e439]: "Test:"
+                      - generic [ref=e440]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e441]:
+                  - generic [ref=e442]:
+                    - button "Hierarki" [ref=e443]:
+                      - img
+                      - generic [ref=e444]: Hierarki
+                    - button "Dokumentation" [ref=e445]:
+                      - img
+                      - generic [ref=e446]: Dokumentation
+                    - button [ref=e447]:
+                      - img
+                    - button [ref=e448]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-mortgage-commitment.bpmn 30.6 KB 26 dec. 2025 22:49 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e449] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-mortgage-commitment.bpmn" [ref=e450]:
+                  - generic [ref=e451]:
+                    - img [ref=e452]
+                    - text: mortgage-se 2025.11.29/mortgage-se-mortgage-commitment.bpmn
+                - cell "30.6 KB" [ref=e455]
+                - cell "26 dec. 2025 22:49" [ref=e456]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e457]':
+                  - generic [ref=e458]:
+                    - generic "Dok saknas för alla 5 noder" [ref=e459]:
+                      - generic [ref=e460]: 📄
+                      - generic [ref=e461]: "Dok:"
+                      - generic [ref=e462]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e463]:
+                      - generic [ref=e464]: 🧪
+                      - generic [ref=e465]: "Test:"
+                      - generic [ref=e466]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e467]:
+                  - generic [ref=e468]:
+                    - button "Hierarki" [ref=e469]:
+                      - img
+                      - generic [ref=e470]: Hierarki
+                    - button "Dokumentation" [ref=e471]:
+                      - img
+                      - generic [ref=e472]: Dokumentation
+                    - button [ref=e473]:
+                      - img
+                    - button [ref=e474]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-object-information.bpmn 11.3 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e475] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-object-information.bpmn" [ref=e476]:
+                  - generic [ref=e477]:
+                    - img [ref=e478]
+                    - text: mortgage-se 2025.11.29/mortgage-se-object-information.bpmn
+                - cell "11.3 KB" [ref=e481]
+                - cell "26 dec. 2025 22:50" [ref=e482]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e483]':
+                  - generic [ref=e484]:
+                    - generic "Dok saknas för alla 5 noder" [ref=e485]:
+                      - generic [ref=e486]: 📄
+                      - generic [ref=e487]: "Dok:"
+                      - generic [ref=e488]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e489]:
+                      - generic [ref=e490]: 🧪
+                      - generic [ref=e491]: "Test:"
+                      - generic [ref=e492]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e493]:
+                  - generic [ref=e494]:
+                    - button "Hierarki" [ref=e495]:
+                      - img
+                      - generic [ref=e496]: Hierarki
+                    - button "Dokumentation" [ref=e497]:
+                      - img
+                      - generic [ref=e498]: Dokumentation
+                    - button [ref=e499]:
+                      - img
+                    - button [ref=e500]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-object.bpmn 18.0 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e501] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-object.bpmn" [ref=e502]:
+                  - generic [ref=e503]:
+                    - img [ref=e504]
+                    - text: mortgage-se 2025.11.29/mortgage-se-object.bpmn
+                - cell "18.0 KB" [ref=e507]
+                - cell "26 dec. 2025 22:50" [ref=e508]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e509]':
+                  - generic [ref=e510]:
+                    - generic "Dok saknas för alla 4 noder" [ref=e511]:
+                      - generic [ref=e512]: 📄
+                      - generic [ref=e513]: "Dok:"
+                      - generic [ref=e514]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e515]:
+                      - generic [ref=e516]: 🧪
+                      - generic [ref=e517]: "Test:"
+                      - generic [ref=e518]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e519]:
+                  - generic [ref=e520]:
+                    - button "Hierarki" [ref=e521]:
+                      - img
+                      - generic [ref=e522]: Hierarki
+                    - button "Dokumentation" [ref=e523]:
+                      - img
+                      - generic [ref=e524]: Dokumentation
+                    - button [ref=e525]:
+                      - img
+                    - button [ref=e526]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-offer.bpmn 14.9 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e527] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-offer.bpmn" [ref=e528]:
+                  - generic [ref=e529]:
+                    - img [ref=e530]
+                    - text: mortgage-se 2025.11.29/mortgage-se-offer.bpmn
+                - cell "14.9 KB" [ref=e533]
+                - cell "26 dec. 2025 22:50" [ref=e534]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e535]':
+                  - generic [ref=e536]:
+                    - generic "Dok saknas för alla 3 noder" [ref=e537]:
+                      - generic [ref=e538]: 📄
+                      - generic [ref=e539]: "Dok:"
+                      - generic [ref=e540]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e541]:
+                      - generic [ref=e542]: 🧪
+                      - generic [ref=e543]: "Test:"
+                      - generic [ref=e544]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e545]:
+                  - generic [ref=e546]:
+                    - button "Hierarki" [ref=e547]:
+                      - img
+                      - generic [ref=e548]: Hierarki
+                    - button "Dokumentation" [ref=e549]:
+                      - img
+                      - generic [ref=e550]: Dokumentation
+                    - button [ref=e551]:
+                      - img
+                    - button [ref=e552]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-signing.bpmn 43.0 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e553] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-signing.bpmn" [ref=e554]:
+                  - generic [ref=e555]:
+                    - img [ref=e556]
+                    - text: mortgage-se 2025.11.29/mortgage-se-signing.bpmn
+                - cell "43.0 KB" [ref=e559]
+                - cell "26 dec. 2025 22:50" [ref=e560]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e561]':
+                  - generic [ref=e562]:
+                    - generic "Dok saknas för alla 5 noder" [ref=e563]:
+                      - generic [ref=e564]: 📄
+                      - generic [ref=e565]: "Dok:"
+                      - generic [ref=e566]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e567]:
+                      - generic [ref=e568]: 🧪
+                      - generic [ref=e569]: "Test:"
+                      - generic [ref=e570]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e571]:
+                  - generic [ref=e572]:
+                    - button "Hierarki" [ref=e573]:
+                      - img
+                      - generic [ref=e574]: Hierarki
+                    - button "Dokumentation" [ref=e575]:
+                      - img
+                      - generic [ref=e576]: Dokumentation
+                    - button [ref=e577]:
+                      - img
+                    - button [ref=e578]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage-se-stakeholder.bpmn 22.6 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e579] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage-se-stakeholder.bpmn" [ref=e580]:
+                  - generic [ref=e581]:
+                    - img [ref=e582]
+                    - text: mortgage-se 2025.11.29/mortgage-se-stakeholder.bpmn
+                - cell "22.6 KB" [ref=e585]
+                - cell "26 dec. 2025 22:50" [ref=e586]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e587]':
+                  - generic [ref=e588]:
+                    - generic "Dok saknas för alla 6 noder" [ref=e589]:
+                      - generic [ref=e590]: 📄
+                      - generic [ref=e591]: "Dok:"
+                      - generic [ref=e592]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e593]:
+                      - generic [ref=e594]: 🧪
+                      - generic [ref=e595]: "Test:"
+                      - generic [ref=e596]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e597]:
+                  - generic [ref=e598]:
+                    - button "Hierarki" [ref=e599]:
+                      - img
+                      - generic [ref=e600]: Hierarki
+                    - button "Dokumentation" [ref=e601]:
+                      - img
+                      - generic [ref=e602]: Dokumentation
+                    - button [ref=e603]:
+                      - img
+                    - button [ref=e604]:
+                      - img
+              - 'row "mortgage-se 2025.11.29/mortgage.bpmn 57.6 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e605] [cursor=pointer]':
+                - cell "mortgage-se 2025.11.29/mortgage.bpmn" [ref=e606]:
+                  - generic [ref=e607]:
+                    - img [ref=e608]
+                    - text: mortgage-se 2025.11.29/mortgage.bpmn
+                - cell "57.6 KB" [ref=e611]
+                - cell "26 dec. 2025 22:50" [ref=e612]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e613]':
+                  - generic [ref=e614]:
+                    - generic "Dok saknas för alla 15 noder" [ref=e615]:
+                      - generic [ref=e616]: 📄
+                      - generic [ref=e617]: "Dok:"
+                      - generic [ref=e618]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e619]:
+                      - generic [ref=e620]: 🧪
+                      - generic [ref=e621]: "Test:"
+                      - generic [ref=e622]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e623]:
+                  - generic [ref=e624]:
+                    - button "Hierarki" [ref=e625]:
+                      - img
+                      - generic [ref=e626]: Hierarki
+                    - button "Dokumentation" [ref=e627]:
+                      - img
+                      - generic [ref=e628]: Dokumentation
+                    - button [ref=e629]:
+                      - img
+                    - button [ref=e630]:
+                      - img
+              - 'row "test-1766785853882-7296-mortgage-se-object-information.bpmn 9.9 KB 26 dec. 2025 22:50 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e631] [cursor=pointer]':
+                - cell "test-1766785853882-7296-mortgage-se-object-information.bpmn" [ref=e632]:
+                  - generic [ref=e633]:
+                    - img [ref=e634]
+                    - text: test-1766785853882-7296-mortgage-se-object-information.bpmn
+                - cell "9.9 KB" [ref=e637]
+                - cell "26 dec. 2025 22:50" [ref=e638]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e639]':
+                  - generic [ref=e640]:
+                    - generic "Dok saknas för alla 4 noder" [ref=e641]:
+                      - generic [ref=e642]: 📄
+                      - generic [ref=e643]: "Dok:"
+                      - generic [ref=e644]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e645]:
+                      - generic [ref=e646]: 🧪
+                      - generic [ref=e647]: "Test:"
+                      - generic [ref=e648]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e649]:
+                  - generic [ref=e650]:
+                    - button "Hierarki" [ref=e651]:
+                      - img
+                      - generic [ref=e652]: Hierarki
+                    - button "Dokumentation" [ref=e653]:
+                      - img
+                      - generic [ref=e654]: Dokumentation
+                    - button [ref=e655]:
+                      - img
+                    - button [ref=e656]:
+                      - img
+              - 'row "test-1766785853882-9247-mortgage-se-object.bpmn 21.5 KB 26 dec. 2025 22:51 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e657] [cursor=pointer]':
+                - cell "test-1766785853882-9247-mortgage-se-object.bpmn" [ref=e658]:
+                  - generic [ref=e659]:
+                    - img [ref=e660]
+                    - text: test-1766785853882-9247-mortgage-se-object.bpmn
+                - cell "21.5 KB" [ref=e663]
+                - cell "26 dec. 2025 22:51" [ref=e664]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e665]':
+                  - generic [ref=e666]:
+                    - generic "Dok saknas för alla 4 noder" [ref=e667]:
+                      - generic [ref=e668]: 📄
+                      - generic [ref=e669]: "Dok:"
+                      - generic [ref=e670]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e671]:
+                      - generic [ref=e672]: 🧪
+                      - generic [ref=e673]: "Test:"
+                      - generic [ref=e674]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e675]:
+                  - generic [ref=e676]:
+                    - button "Hierarki" [ref=e677]:
+                      - img
+                      - generic [ref=e678]: Hierarki
+                    - button "Dokumentation" [ref=e679]:
+                      - img
+                      - generic [ref=e680]: Dokumentation
+                    - button [ref=e681]:
+                      - img
+                    - button [ref=e682]:
+                      - img
+              - 'row "test-1766786033416-6752-mortgage-se-object.bpmn 21.5 KB 26 dec. 2025 22:54 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e683] [cursor=pointer]':
+                - cell "test-1766786033416-6752-mortgage-se-object.bpmn" [ref=e684]:
+                  - generic [ref=e685]:
+                    - img [ref=e686]
+                    - text: test-1766786033416-6752-mortgage-se-object.bpmn
+                - cell "21.5 KB" [ref=e689]
+                - cell "26 dec. 2025 22:54" [ref=e690]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e691]':
+                  - generic [ref=e692]:
+                    - generic "Dok saknas för alla 4 noder" [ref=e693]:
+                      - generic [ref=e694]: 📄
+                      - generic [ref=e695]: "Dok:"
+                      - generic [ref=e696]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e697]:
+                      - generic [ref=e698]: 🧪
+                      - generic [ref=e699]: "Test:"
+                      - generic [ref=e700]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e701]:
+                  - generic [ref=e702]:
+                    - button "Hierarki" [ref=e703]:
+                      - img
+                      - generic [ref=e704]: Hierarki
+                    - button "Dokumentation" [ref=e705]:
+                      - img
+                      - generic [ref=e706]: Dokumentation
+                    - button [ref=e707]:
+                      - img
+                    - button [ref=e708]:
+                      - img
+              - 'row "test-1766786033417-4841-mortgage-se-object-information.bpmn 9.9 KB 26 dec. 2025 22:53 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e709] [cursor=pointer]':
+                - cell "test-1766786033417-4841-mortgage-se-object-information.bpmn" [ref=e710]:
+                  - generic [ref=e711]:
+                    - img [ref=e712]
+                    - text: test-1766786033417-4841-mortgage-se-object-information.bpmn
+                - cell "9.9 KB" [ref=e715]
+                - cell "26 dec. 2025 22:53" [ref=e716]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e717]':
+                  - generic [ref=e718]:
+                    - generic "Dok saknas för alla 4 noder" [ref=e719]:
+                      - generic [ref=e720]: 📄
+                      - generic [ref=e721]: "Dok:"
+                      - generic [ref=e722]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e723]:
+                      - generic [ref=e724]: 🧪
+                      - generic [ref=e725]: "Test:"
+                      - generic [ref=e726]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e727]:
+                  - generic [ref=e728]:
+                    - button "Hierarki" [ref=e729]:
+                      - img
+                      - generic [ref=e730]: Hierarki
+                    - button "Dokumentation" [ref=e731]:
+                      - img
+                      - generic [ref=e732]: Dokumentation
+                    - button [ref=e733]:
+                      - img
+                    - button [ref=e734]:
+                      - img
+              - 'row "test-1766786115615-4098-mortgage-se-object.bpmn 21.5 KB 26 dec. 2025 22:55 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e735] [cursor=pointer]':
+                - cell "test-1766786115615-4098-mortgage-se-object.bpmn" [ref=e736]:
+                  - generic [ref=e737]:
+                    - img [ref=e738]
+                    - text: test-1766786115615-4098-mortgage-se-object.bpmn
+                - cell "21.5 KB" [ref=e741]
+                - cell "26 dec. 2025 22:55" [ref=e742]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e743]':
+                  - generic [ref=e744]:
+                    - generic "Dok saknas för alla 4 noder" [ref=e745]:
+                      - generic [ref=e746]: 📄
+                      - generic [ref=e747]: "Dok:"
+                      - generic [ref=e748]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e749]:
+                      - generic [ref=e750]: 🧪
+                      - generic [ref=e751]: "Test:"
+                      - generic [ref=e752]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e753]:
+                  - generic [ref=e754]:
+                    - button "Hierarki" [ref=e755]:
+                      - img
+                      - generic [ref=e756]: Hierarki
+                    - button "Dokumentation" [ref=e757]:
+                      - img
+                      - generic [ref=e758]: Dokumentation
+                    - button [ref=e759]:
+                      - img
+                    - button [ref=e760]:
+                      - img
+              - 'row "test-1766786115616-1285-mortgage-se-object-information.bpmn 9.9 KB 26 dec. 2025 22:55 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e761] [cursor=pointer]':
+                - cell "test-1766786115616-1285-mortgage-se-object-information.bpmn" [ref=e762]:
+                  - generic [ref=e763]:
+                    - img [ref=e764]
+                    - text: test-1766786115616-1285-mortgage-se-object-information.bpmn
+                - cell "9.9 KB" [ref=e767]
+                - cell "26 dec. 2025 22:55" [ref=e768]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e769]':
+                  - generic [ref=e770]:
+                    - generic "Dok saknas för alla 4 noder" [ref=e771]:
+                      - generic [ref=e772]: 📄
+                      - generic [ref=e773]: "Dok:"
+                      - generic [ref=e774]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e775]:
+                      - generic [ref=e776]: 🧪
+                      - generic [ref=e777]: "Test:"
+                      - generic [ref=e778]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e779]:
+                  - generic [ref=e780]:
+                    - button "Hierarki" [ref=e781]:
+                      - img
+                      - generic [ref=e782]: Hierarki
+                    - button "Dokumentation" [ref=e783]:
+                      - img
+                      - generic [ref=e784]: Dokumentation
+                    - button [ref=e785]:
+                      - img
+                    - button [ref=e786]:
+                      - img
+        - generic [ref=e787]:
+          - heading "Jobb & historik" [level=3] [ref=e789]
+          - paragraph [ref=e792]: Inga aktiva jobb – alla genereringar är klara just nu.
+```

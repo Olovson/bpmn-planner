@@ -311,6 +311,15 @@ export async function stepNavigateToFiles(ctx: TestContext) {
 export async function stepUploadBpmnFile(ctx: TestContext, fileName: string, content: string) {
   const { page } = ctx;
   
+  // VIKTIGT: Skydd mot att test skriver över produktionsfiler
+  // Alla test-filer måste ha prefix "test-" för att undvika att skriva över produktionsfiler
+  if (!fileName.startsWith('test-')) {
+    throw new Error(
+      `[stepUploadBpmnFile] SECURITY: Test files must have "test-" prefix to avoid overwriting production files. ` +
+      `Received: "${fileName}". Use generateTestFileName() to create safe test file names.`
+    );
+  }
+  
   // Vänta på att sidan är laddad
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000);
@@ -358,18 +367,66 @@ export async function stepUploadBpmnFile(ctx: TestContext, fileName: string, con
     }
     
     // Verifiera att filen faktiskt laddades upp (kolla tabellen)
-    await page.waitForTimeout(2000); // Låt UI uppdateras
+    // Vänta på att filen visas i tabellen - detta kan ta tid eftersom queries behöver uppdateras
+    console.log(`📤 [stepUploadBpmnFile] Waiting for file "${fileName}" to appear in table...`);
     
-    const fileInTable = page.locator(`table:has-text("${fileName}"), a:has-text("${fileName}"), button:has-text("${fileName}"), [role="button"]:has-text("${fileName}")`).first();
-    const fileExists = await fileInTable.count() > 0;
+    const fileInTable = page.locator(`tr:has-text("${fileName}"), table:has-text("${fileName}")`).first();
     
-    if (!fileExists) {
-      // Vänta lite till och försök igen
-      await page.waitForTimeout(3000);
-      const fileExistsRetry = await fileInTable.count() > 0;
+    try {
+      // Vänta på att filen faktiskt visas i tabellen (max 15 sekunder)
+      await fileInTable.waitFor({ state: 'visible', timeout: 15000 });
+      console.log(`✅ [stepUploadBpmnFile] File "${fileName}" found in table`);
+    } catch (error) {
+      // Om filen inte visas, försök vänta lite till och kolla igen
+      // Men först kolla om sidan fortfarande är öppen
+      try {
+        const isClosed = page.isClosed();
+        if (isClosed) {
+          throw new Error(`Page was closed while waiting for file "${fileName}" to appear`);
+        }
+      } catch (closedError) {
+        throw new Error(`Page was closed while waiting for file "${fileName}" to appear: ${closedError}`);
+      }
+      
+      console.warn(`⚠️  [stepUploadBpmnFile] File "${fileName}" not immediately visible, waiting a bit more...`);
+      
+      // Försök vänta, men fånga om sidan stängs
+      try {
+        await page.waitForTimeout(3000);
+      } catch (timeoutError) {
+        // Om sidan stängs, försök navigera tillbaka
+        if (timeoutError instanceof Error && timeoutError.message.includes('closed')) {
+          console.warn(`⚠️  [stepUploadBpmnFile] Page was closed, attempting to recover...`);
+          // Detta kommer inte fungera om sidan är stängd, men vi försöker
+          throw new Error(`Page was closed while waiting for file "${fileName}"`);
+        }
+        throw timeoutError;
+      }
+      
+      const fileExistsRetry = await fileInTable.isVisible({ timeout: 5000 }).catch(() => false);
       if (!fileExistsRetry) {
-        // Logga men faila inte - filen kan ha laddats upp ändå
-        console.warn(`⚠️  File "${fileName}" was not found in table after upload, but upload may have succeeded`);
+        // Kolla om filen finns i databasen ändå (upload kan ha fungerat men UI inte uppdaterats)
+        const fileInDb = await page.evaluate(async (fileName: string) => {
+          try {
+            const { supabase } = await import('/src/integrations/supabase/client');
+            const { data, error } = await supabase
+              .from('bpmn_files')
+              .select('file_name')
+              .eq('file_name', fileName)
+              .maybeSingle();
+            return !error && data !== null;
+          } catch {
+            return false;
+          }
+        }, fileName);
+        
+        if (fileInDb) {
+          console.warn(`⚠️  [stepUploadBpmnFile] File "${fileName}" exists in database but not visible in table - UI may need refresh`);
+          // Försök uppdatera sidan eller vänta lite till
+          await page.waitForTimeout(2000);
+        } else {
+          throw new Error(`File "${fileName}" was not uploaded successfully - not found in database or table`);
+        }
       }
     }
     
@@ -459,17 +516,142 @@ export async function stepSelectFile(ctx: TestContext, fileName: string) {
   
   console.log(`📁 [stepSelectFile] Looking for file: ${fileName}`);
   
+  // Vänta på att sidan är laddad och stabil
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(1000);
+  
+  // Vänta på att tabellen är laddad och stabil (kan ta tid om queries uppdateras)
+  let tableFound = false;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const table = page.locator('table').first();
+    const count = await table.count();
+    if (count > 0) {
+      const isVisible = await table.isVisible({ timeout: 2000 }).catch(() => false);
+      if (isVisible) {
+        tableFound = true;
+        break;
+      }
+    }
+    console.log(`📁 [stepSelectFile] Table not found yet, attempt ${attempt + 1}/10, waiting...`);
+    await page.waitForTimeout(1000);
+  }
+  
+  if (!tableFound) {
+    // Debug: Kolla vad som finns på sidan
+    const currentUrl = page.url();
+    const pageTitle = await page.title().catch(() => 'unknown');
+    const bodyText = await page.locator('body').textContent().catch(() => '');
+    console.log(`📁 [stepSelectFile] Debug: URL=${currentUrl}, Title=${pageTitle}, Body length=${bodyText?.length || 0}`);
+    
+    // Försök navigera tillbaka till /files om vi inte är där
+    if (!currentUrl.includes('/files')) {
+      console.log(`📁 [stepSelectFile] Not on /files page, navigating back...`);
+      await page.goto('/#/files');
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(2000);
+      
+      // Försök hitta tabellen igen
+      const table = page.locator('table').first();
+      const count = await table.count();
+      if (count > 0) {
+        const isVisible = await table.isVisible({ timeout: 5000 }).catch(() => false);
+        if (isVisible) {
+          tableFound = true;
+          console.log(`📁 [stepSelectFile] Table found after navigation`);
+        }
+      }
+    }
+    
+    if (!tableFound) {
+      throw new Error(`Table not found on page after ${10} attempts and navigation. Current URL: ${currentUrl}`);
+    }
+  }
+  
+  await page.waitForTimeout(1000); // Låt tabellen stabilisera
+  
   // Filerna renderas i TableRow med onClick, inte som länkar/knappar
   // Försök hitta TableRow som innehåller filnamnet
+  // Använd mer flexibel selector som matchar filnamnet i TableCell
   const fileRow = page.locator(`tr:has-text("${fileName}")`).first();
   
-  // Vänta på att raden finns och är synlig
-  await fileRow.waitFor({ state: 'visible', timeout: 10000 });
+  // Försök hitta filen - kan ta lite tid om tabellen uppdateras
+  let fileFound = false;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const count = await fileRow.count();
+    if (count > 0) {
+      const isVisible = await fileRow.isVisible({ timeout: 2000 }).catch(() => false);
+      if (isVisible) {
+        fileFound = true;
+        break;
+      }
+    }
+    console.log(`📁 [stepSelectFile] File not found yet, attempt ${attempt + 1}/5, waiting...`);
+    await page.waitForTimeout(1000);
+  }
+  
+  if (!fileFound) {
+    // Debug: Kolla vilka filer som faktiskt finns i tabellen
+    const allRows = page.locator('table tbody tr');
+    const rowCount = await allRows.count();
+    console.log(`📁 [stepSelectFile] Debug: Found ${rowCount} rows in table`);
+    for (let i = 0; i < Math.min(rowCount, 5); i++) {
+      const rowText = await allRows.nth(i).textContent().catch(() => '');
+      console.log(`📁 [stepSelectFile] Debug: Row ${i}: ${rowText?.substring(0, 100)}`);
+    }
+    throw new Error(`File "${fileName}" not found in table after ${5} attempts`);
+  }
   console.log(`📁 [stepSelectFile] File row found, clicking...`);
   
   // Klicka på raden (TableRow har onClick som väljer filen)
-  await fileRow.click();
-  await page.waitForTimeout(1000);
+  // Om en dialog öppnas (t.ex. MapSuggestionsDialog), stäng den först
+  // Vänta lite för att se om en dialog öppnas
+  await page.waitForTimeout(500);
+  
+  // Kolla om det finns en dialog öppen
+  const dialog = page.locator('[role="dialog"]').first();
+  const hasDialog = await dialog.isVisible({ timeout: 1000 }).catch(() => false);
+  
+  if (hasDialog) {
+    console.log(`📁 [stepSelectFile] Dialog detected, closing it...`);
+    
+    // Försök hitta och klicka på stäng-knappen
+    const closeButton = dialog.locator('button:has-text("Stäng"), button:has-text("Close"), button[aria-label="Close"], button[aria-label*="close" i]').first();
+    const hasCloseButton = await closeButton.isVisible({ timeout: 2000 }).catch(() => false);
+    
+    if (hasCloseButton) {
+      await closeButton.click();
+      // Vänta på att dialogen faktiskt stängs
+      await dialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {
+        console.log(`📁 [stepSelectFile] Dialog did not close, trying Escape...`);
+      });
+    } else {
+      // Try pressing Escape
+      await page.keyboard.press('Escape');
+      // Vänta på att dialogen stängs
+      await dialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {
+        console.log(`📁 [stepSelectFile] Dialog still visible after Escape`);
+      });
+    }
+    
+    // Vänta lite extra för att säkerställa att dialogen är stängd
+    await page.waitForTimeout(500);
+  }
+  
+  // Scrolla till filen för att säkerställa att den är synlig
+  await fileRow.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(500);
+  
+  // Försök klicka på filen - använd force om nödvändigt
+  try {
+    await fileRow.click({ timeout: 5000 });
+  } catch (error) {
+    // Om vanligt klick inte fungerar, försök med force
+    console.log(`📁 [stepSelectFile] Normal click failed, trying force click...`);
+    await fileRow.click({ force: true, timeout: 5000 });
+  }
+  
+  // Vänta lite för att filen ska väljas
+  await page.waitForTimeout(500);
   
   console.log(`✅ [stepSelectFile] File selected: ${fileName}`);
 }
@@ -495,16 +677,38 @@ export async function stepStartGeneration(ctx: TestContext) {
 export async function stepWaitForGenerationComplete(ctx: TestContext, timeout: number = 180000) {
   const { page } = ctx;
   
-  // Vänta på att generering är klar
-  await Promise.race([
-    page.waitForSelector(
-      'text=/completed/i, text=/klar/i, text=/success/i, text=/done/i, text=/Generering Klar/i',
-      { timeout }
-    ),
-    page.waitForTimeout(10000), // Fallback timeout
-  ]).catch(() => {
-    // Timeout är acceptabelt - generering kan ta längre tid
+  console.log(`⏳ [stepWaitForGenerationComplete] Waiting for generation to complete (timeout: ${timeout}ms)...`);
+  
+  // Monitor page state
+  const pageClosed = new Promise<void>((resolve) => {
+    page.once('close', () => {
+      console.error('❌ [stepWaitForGenerationComplete] Page closed during wait!');
+      resolve();
+    });
   });
+  
+  // Vänta på att generering är klar
+  try {
+    await Promise.race([
+      page.waitForSelector(
+        'text=/completed/i, text=/klar/i, text=/success/i, text=/done/i, text=/Generering Klar/i',
+        { timeout }
+      ),
+      page.waitForTimeout(10000), // Fallback timeout
+      pageClosed.then(() => {
+        throw new Error('Page was closed during generation wait');
+      }),
+    ]);
+    console.log('✅ [stepWaitForGenerationComplete] Generation completed');
+  } catch (error) {
+    // Check if page is still open
+    if (page.isClosed()) {
+      console.error('❌ [stepWaitForGenerationComplete] Page is closed!');
+      throw new Error('Page was closed during generation wait');
+    }
+    // Timeout är acceptabelt - generering kan ta längre tid
+    console.warn('⚠️  [stepWaitForGenerationComplete] Timeout waiting for generation completion');
+  }
 }
 
 /**

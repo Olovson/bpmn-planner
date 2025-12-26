@@ -35,20 +35,38 @@ export const checkDocsAvailable = async (
   // Kolla huvud-sökvägen
   if (docStoragePath) {
     const exists = await storageExists(docStoragePath);
-    if (exists) return true;
+    if (exists) {
+      if (import.meta.env.DEV) {
+        console.log(`[checkDocsAvailable] ✓ Found docs at: ${docStoragePath}`);
+      }
+      return true;
+    }
   }
   
   // Kolla ytterligare sökvägar (för call activities/Feature Goals)
   if (additionalPaths && additionalPaths.length > 0) {
+    if (import.meta.env.DEV) {
+      console.log(`[checkDocsAvailable] Checking ${additionalPaths.length} additional paths:`, additionalPaths);
+    }
     for (let i = 0; i < additionalPaths.length; i++) {
       const path = additionalPaths[i];
       const exists = await storageExists(path);
       if (exists) {
+        if (import.meta.env.DEV) {
+          console.log(`[checkDocsAvailable] ✓ Found docs at: ${path}`);
+        }
         return true;
+      } else {
+        if (import.meta.env.DEV) {
+          console.log(`[checkDocsAvailable] ✗ Not found: ${path}`);
+        }
       }
     }
   }
   
+  if (import.meta.env.DEV) {
+    console.log(`[checkDocsAvailable] ✗ No docs found (checked ${docStoragePath ? 1 : 0} main path + ${additionalPaths?.length || 0} additional paths)`);
+  }
   return false;
 };
 

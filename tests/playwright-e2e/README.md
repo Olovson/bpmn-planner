@@ -2,16 +2,17 @@
 
 ## 📋 Snabböversikt
 
-- **Totalt antal test-filer:** 36
+- **Totalt antal test-filer:** 37
 - **A-Ö tester (kompletta flöden):** 3
-- **Sid-specifika tester:** 22
+- **Sid-specifika tester:** 23
 - **Scenario-tester:** 5
 - **Generering från scratch (med mocked API):** 2
 - **Hierarki och Map-validering:** 2
-- **GitHub Sync och StyleGuide:** 2 ⭐ **NYTT**
+- **GitHub Sync och StyleGuide:** 2
+- **Feature Goal-dokumentation:** 1 ⭐ **NYTT**
 - **Återanvändbara test-steg:** 15+
 
-> 📖 **Detaljerad översikt:** Se [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) för komplett lista över alla tester och vad de validerar.
+> 📖 **⚠️ MASTER TEST FIL:** Se [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) för **alla testregler** och komplett översikt över alla tester!
 
 ## Översikt
 
@@ -49,133 +50,44 @@ Vi har en tvånivå-struktur:
    - Exempel: `stepLogin()`, `stepNavigateToFiles()`, `stepBuildHierarchy()`, etc.
 
 2. **A-Ö tester** (`flows/*.spec.ts`)
-   - Kompletta end-to-end flöden från början till slut
+   - Kompletta end-to-end flöden
    - Använder återanvändbara test-steg
-   - Exempel: `complete-workflow-a-to-z.spec.ts`, `generation-workflow.spec.ts`
+   - Validerar hela arbetsflöden
 
-### Användning
+3. **Sid-specifika tester** (`*.spec.ts`)
+   - Testar specifika sidor/funktioner
+   - Kan använda återanvändbara steg
+   - Validerar specifik funktionalitet
 
-**Kör A-Ö tester:**
-```bash
-# Kör komplett arbetsflöde
-npx playwright test flows/complete-workflow-a-to-z.spec.ts
+## ⚠️ VIKTIGT: Test Data Isolation
 
-# Kör genereringsflöde
-npx playwright test flows/generation-workflow.spec.ts
+**🚨 KRITISKT: Testerna påverkar faktisk data i databasen!**
 
-# Kör filhanteringsflöde
-npx playwright test flows/file-management-workflow.spec.ts
-```
+**Se [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) för alla testregler och detaljerad information om test data isolation.**
 
-**Använd individuella test-steg:**
-```typescript
-import { stepLogin, stepNavigateToFiles, createTestContext } from '../utils/testSteps';
+### Snabböversikt - OBLIGATORISKT för alla nya tester:
 
-test('my custom test', async ({ page }) => {
-  const ctx = createTestContext(page);
-  await stepLogin(ctx);
-  await stepNavigateToFiles(ctx);
-  // ... använd fler steg eller skriv egen logik
-});
-```
+1. ✅ Använd `testStartTime = Date.now()` i början
+2. ✅ Använd `cleanupTestFiles(page, testStartTime)` i slutet (rensar BPMN-filer OCH dokumentationsfiler från Storage)
+3. ✅ Använd `generateTestFileName()` eller `ensureBpmnFileExists()` för filnamn
+4. ✅ Använd `setupBpmnMapMocking(page)` om testet kan påverka bpmn-map.json
+5. ✅ Använd `test.describe.configure({ mode: 'serial' })` om tester kan påverka varandra
+6. ✅ Verifiera att `VITE_SUPABASE_URL` pekar på lokal Supabase (inte produktion)
 
-**Kör isolerade tester:**
-```bash
-# Kör bara en specifik sida
-npx playwright test bpmn-file-manager.spec.ts
+**Se [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) för alla detaljerade testregler och exempel!**
 
-# Kör bara dialogs
-npx playwright test bpmn-file-manager-dialogs.spec.ts
-```
+## 📋 Förutsättningar
 
-## Testfiler
-
-### Kritiska UI-tester (Fas 1)
-
-- **`index-diagram.spec.ts`** - Testar Index (diagram)-sidan (BPMN-diagramvisning, elementval, RightPanel, navigation)
-- **`bpmn-file-manager.spec.ts`** - Testar BpmnFileManager-sidan (filhantering, hierarki-byggnad, generering)
-- **`bpmn-file-manager-dialogs.spec.ts`** - Testar alla dialogs/popups på files-sidan (DeleteFileDialog, DeleteAllFilesDialog, ResetRegistryDialog, HierarchyReportDialog, MapValidationDialog, MapSuggestionsDialog, SyncReport, GenerationDialog, TransitionOverlay)
-- **`process-explorer.spec.ts`** - Testar Process Explorer-sidan (trädvisualisering, nod-interaktion)
-- **`doc-viewer.spec.ts`** - Testar Doc Viewer-sidan (dokumentationsvisning, länkar, version selection)
-- **`full-generation-flow.spec.ts`** - Testar komplett genereringsflöde (upload → hierarki → generering)
-- **`hierarchy-building-from-scratch.spec.ts`** - ⭐ **NYTT** - Testar hierarki-byggnad från scratch (isolerat test)
-- **`bpmn-map-validation-workflow.spec.ts`** - ⭐ **NYTT** - Testar BPMN Map-validering och uppdatering (komplett flöde)
-
-### Viktiga funktioner (Fas 2)
-
-- **`node-matrix.spec.ts`** - Testar Node Matrix-sidan (listvy, filter, sortering)
-- **`timeline-page.spec.ts`** - Testar Timeline-sidan (Gantt-chart, filter, datum-redigering)
-- **`test-report.spec.ts`** - Testar Test Report-sidan (testrapporter, filter, länkar till nod-tester)
-- **`test-scripts.spec.ts`** - Testar Test Scripts-sidan (test scripts, externa länkar)
-- **`node-tests.spec.ts`** - Testar Node Tests-sidan (planerade scenarion, körda tester, provider-filter)
-- **`configuration.spec.ts`** - Testar Configuration-sidan (projektkonfiguration, redigering)
-- **`styleguide.spec.ts`** - ⭐ **NYTT** - Testar Style Guide-sidan (UI-komponenter, design system)
-
-### Test Coverage & Quality
-
-- **`test-coverage-explorer.spec.ts`** - Testar Test Coverage Explorer-sidan
-- **`e2e-quality-validation.spec.ts`** - Testar E2E Quality Validation-sidan
-- **`e2e-tests-overview.spec.ts`** - Testar E2E Tests Overview-sidan
-
-### BPMN Management
-
-- **`bpmn-diff.spec.ts`** - Testar BPMN Diff-sidan (diff-analys, selektiv regenerering)
-- **`bpmn-folder-diff.spec.ts`** - Testar BPMN Folder Diff-sidan (mapp-diff)
-- **`bpmn-version-history.spec.ts`** - Testar BPMN Version History-sidan (versionshistorik, diff, återställning)
-- **`file-upload-versioning.spec.ts`** - Testar fil-upload och versioning
-- **`registry-status.spec.ts`** - Testar Registry Status-sidan (registry-status, saknade element)
-- **`hierarchy-building-from-scratch.spec.ts`** - ⭐ **NYTT** - Testar hierarki-byggnad från scratch (isolerat test: identifiera filer → bygg hierarki → verifiera i Process Explorer)
-- **`bpmn-map-validation-workflow.spec.ts`** - ⭐ **NYTT** - Testar BPMN Map-validering och uppdatering (komplett flöde: validera → se resultat → acceptera/avvisa → spara/exporta)
-- **`github-sync-workflow.spec.ts`** - ⭐ **NYTT** - Testar GitHub Sync workflow (synka från GitHub → visa sync-rapport → verifiera filändringar)
-
-### A-Ö Flöden (Complete Workflows)
-
-- **`flows/complete-workflow-a-to-z.spec.ts`** - Komplett arbetsflöde från login till resultatsidor (använder återanvändbara test-steg)
-- **`flows/generation-workflow.spec.ts`** - Genereringsflöde från files till resultatsidor (använder återanvändbara test-steg)
-- **`flows/file-management-workflow.spec.ts`** - Filhanteringsflöde från upload till olika vyer (använder återanvändbara test-steg)
-
-### Generering
-
-- **`claude-generation.spec.ts`** - Testar Claude-generering för application-processen (inkluderar verifiering av resultatsidor, använder faktiska API-anrop)
-- **`full-generation-flow.spec.ts`** - Testar komplett genereringsflöde (inkluderar verifiering av resultatsidor, använder faktiska API-anrop)
-- **`generation-result-pages.spec.ts`** - Testar att resultatsidor visas korrekt efter generering (GenerationDialog result view, Test Report, Test Coverage, E2E Tests Overview, Doc Viewer)
-- **`documentation-generation-from-scratch.spec.ts`** - ⭐ **NYTT** - Testar dokumentationsgenerering från scratch med mocked Claude API (identifiera BPMN-filer → hierarki → generering → visas i appen)
-- **`test-generation-from-scratch.spec.ts`** - ⭐ **NYTT** - Testar testgenerering från scratch med mocked Claude API (identifiera BPMN-filer → hierarki → generera tester → visas i appen)
-
-### Utils (Återanvändbara Komponenter)
-
-- **`utils/testSteps.ts`** - Återanvändbara test-steg som kan kombineras till A-Ö tester
-- **`utils/testHelpers.ts`** - ⭐ **NYTT** - Helper-funktioner för att säkerställa att test-miljön är korrekt uppsatt (ersätter onödiga `test.skip()`)
-  - `ensureBpmnFileExists()` - Säkerställer att minst en BPMN-fil finns (laddar upp om ingen finns)
-  - `ensureButtonExists()` - Säkerställer att en knapp finns och är synlig (kastar Error om den saknas)
-  - `ensureFileCanBeSelected()` - Säkerställer att en fil kan väljas för generering
-  - `ensureUploadAreaExists()` - Säkerställer att upload area finns
-- **`utils/uiInteractionHelpers.ts`** - Helper-funktioner för UI-interaktioner
-- **`utils/processTestUtils.ts`** - Helper-funktioner för process-tester
-
-### Fixtures (Mock-data och API-mocks)
-
-- **`fixtures/claudeApiMocks.ts`** - ⭐ **NYTT** - Mock-responser för Claude API-anrop (används för snabba, pålitliga tester utan externa API-anrop)
-- **`fixtures/mortgageE2eMocks.ts`** - Mock-responser för E2E-scenarios
-- **`fixtures/mortgageCreditDecisionMocks.ts`** - Mock-responser för credit decision
+1. **Appen måste köra** - Testet startar automatiskt appen via `webServer` i `playwright.config.ts`
+2. **Supabase måste vara igång** - BPMN-filer måste finnas i storage
+3. **Claude API-nyckel** (för Claude-tester) - `VITE_ANTHROPIC_API_KEY` måste vara satt i `.env.local`
+4. **LLM måste vara aktiverat** (för LLM-tester) - `VITE_USE_LLM=true` (sätts automatiskt av npm-scriptet)
 
 ## 🚀 Kör Tester
 
 ### Kör alla tester
 ```bash
 npx playwright test
-```
-
-### Kör A-Ö tester (kompletta flöden)
-```bash
-# Komplett arbetsflöde från login till resultatsidor
-npx playwright test flows/complete-workflow-a-to-z.spec.ts
-
-# Genereringsflöde
-npx playwright test flows/generation-workflow.spec.ts
-
-# Filhanteringsflöde
-npx playwright test flows/file-management-workflow.spec.ts
 ```
 
 ### Kör specifika tester
@@ -195,106 +107,6 @@ npx playwright test test-report.spec.ts
 npx playwright test --headed
 ```
 
-### Kör Claude-generering test
-```bash
-# Kör testet (headless)
-npm run test:claude:generation
-
-# Kör testet med visuell browser (headed)
-npm run test:claude:generation:headed
-```
-
-## 📋 Förutsättningar
-
-1. **Appen måste köra** - Testet startar automatiskt appen via `webServer` i `playwright.config.ts`
-2. **Supabase måste vara igång** - BPMN-filer måste finnas i storage
-3. **Claude API-nyckel** (för Claude-tester) - `VITE_ANTHROPIC_API_KEY` måste vara satt i `.env.local`
-4. **LLM måste vara aktiverat** (för LLM-tester) - `VITE_USE_LLM=true` (sätts automatiskt av npm-scriptet)
-
-## ⚠️ VIKTIGT: Test Data Isolation - MÅSTE FÖLJAS I ALLA NYA TESTER!
-
-**🚨 KRITISKT: Testerna påverkar faktisk data i databasen!**
-
-### ⚠️ OBLIGATORISKT för alla nya tester:
-
-**1. Använd ALLTID prefixade test-filnamn:**
-```typescript
-import { ensureBpmnFileExists } from './utils/testHelpers';
-import { generateTestFileName } from './utils/testDataHelpers';
-
-test('my test', async ({ page }) => {
-  const testStartTime = Date.now();
-  const ctx = createTestContext(page);
-  
-  // ✅ RÄTT: Använd ensureBpmnFileExists() som prefixar automatiskt
-  const testFileName = await ensureBpmnFileExists(ctx, 'my-test-file');
-  
-  // ❌ FEL: Använd INTE direkt filnamn utan prefix
-  // await stepUploadBpmnFile(ctx, 'my-file.bpmn', content); // FEL!
-  
-  // ✅ RÄTT: Om du måste använda stepUploadBpmnFile direkt, generera prefixat filnamn
-  const testFileName2 = generateTestFileName('my-test-file');
-  await stepUploadBpmnFile(ctx, testFileName2, content);
-});
-```
-
-**2. Rensa ALLTID testdata efter testet:**
-```typescript
-import { cleanupTestFiles } from './utils/testCleanup';
-
-test('my test', async ({ page }) => {
-  const testStartTime = Date.now();
-  const ctx = createTestContext(page);
-  
-  // ... test-kod här ...
-  
-  // ✅ OBLIGATORISKT: Rensa testdata efter testet
-  await cleanupTestFiles(page, testStartTime);
-});
-```
-
-**3. Använd testStartTime för att bara rensa testets egna data:**
-```typescript
-test('my test', async ({ page }) => {
-  const testStartTime = Date.now(); // ✅ Spara timestamp när testet startar
-  const ctx = createTestContext(page);
-  
-  // ... test-kod här ...
-  
-  // ✅ Cleanup med testStartTime säkerställer att vi bara rensar testets egna filer
-  await cleanupTestFiles(page, testStartTime);
-});
-```
-
-### Säkerhetsåtgärder (automatiska):
-
-1. **Testdata prefixas automatiskt:**
-   - Alla test-filer prefixas med `test-{timestamp}-{random}-{name}.bpmn`
-   - Exempel: `test-1704067200000-1234-test-doc-generation.bpmn`
-   - Testdata kan identifieras och rensas enkelt
-
-2. **Automatisk cleanup:**
-   - Testdata rensas automatiskt efter varje test (om du använder `cleanupTestFiles()`)
-   - Gamla testdata kan rensas manuellt med `cleanupOldTestData()`
-
-3. **ALDRIG kör tester mot produktionsdatabas!**
-   - ⚠️ **KRITISKT:** Kontrollera att `VITE_SUPABASE_URL` i `.env.local` pekar på lokal Supabase
-   - Default: `http://127.0.0.1:54321` (lokal Supabase)
-   - **ALDRIG** sätt produktions-URL i `.env.local` när du kör tester!
-
-4. **Testdata kan synas i appen:**
-   - Testdata börjar med "test-" och kan filtreras bort
-   - Cleanup körs automatiskt, men kan misslyckas om testet crashar
-
-### Checklista för nya tester:
-
-- [ ] Använder `testStartTime = Date.now()` i början av testet
-- [ ] Använder `ensureBpmnFileExists()` eller `generateTestFileName()` för filnamn
-- [ ] Använder `cleanupTestFiles(page, testStartTime)` i slutet av testet
-- [ ] Verifierar att `VITE_SUPABASE_URL` pekar på lokal Supabase (inte produktion)
-
-**Se:** [`docs/analysis/TEST_DATA_ISOLATION_IMPLEMENTATION.md`](../../docs/analysis/TEST_DATA_ISOLATION_IMPLEMENTATION.md) för detaljerad information.
-
 ## 🐛 Debugging
 
 Om ett test misslyckas:
@@ -307,10 +119,13 @@ Om ett test misslyckas:
 
 ## 📚 Ytterligare Dokumentation
 
-- **Detaljerad översikt:** [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) - Komplett lista över alla tester
-- **Saknade tester analys:** [`../docs/analysis/MISSING_E2E_TESTS_ANALYSIS.md`](../../docs/analysis/MISSING_E2E_TESTS_ANALYSIS.md) - Analys av vad som saknas
+**⚠️ VIKTIGT: [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) är MASTER-FILEN med alla testregler!**
+
+- **⭐ MASTER TEST FIL:** [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) - **Alla testregler och komplett översikt över alla tester**
+- **⭐ Skapa nya tester:** [`CREATING_NEW_TESTS.md`](./CREATING_NEW_TESTS.md) - Detaljerad guide
+- **⭐ Snabbchecklista:** [`TEST_CREATION_CHECKLIST.md`](./TEST_CREATION_CHECKLIST.md) - Snabbreferens för nya tester
 - **Återanvändbara komponenter:** [`utils/README.md`](./utils/README.md) - Guide för test-steg
-- **⭐ Skapa nya tester:** [`CREATING_NEW_TESTS.md`](./CREATING_NEW_TESTS.md) - **OBLIGATORISK guide för att skapa nya tester (inkluderar test data isolation)**
+- **Saknade tester analys:** [`../docs/analysis/MISSING_E2E_TESTS_ANALYSIS.md`](../../docs/analysis/MISSING_E2E_TESTS_ANALYSIS.md) - Analys av vad som saknas
 - **Playwright dokumentation:** https://playwright.dev
 
 ## 🎯 Mockade API-anrop
@@ -320,12 +135,47 @@ För snabba och pålitliga tester använder vi mockade Claude API-anrop:
 - **`fixtures/claudeApiMocks.ts`** - Mockar Claude API-anrop
 - **`documentation-generation-from-scratch.spec.ts`** - Använder mocked API för dokumentationsgenerering
 - **`test-generation-from-scratch.spec.ts`** - Använder mocked API för testgenerering
+- **`feature-goal-documentation.spec.ts`** - Använder mocked API för Feature Goal-dokumentation
 
 **Fördelar:**
 - ✅ Snabba tester (ingen väntan på externa API:er)
 - ✅ Pålitliga tester (inga rate limits eller API-fel)
 - ✅ Testar app-logik utan externa beroenden
 - ✅ Kan testa error cases enkelt
+
+### 📋 Skillnad mellan dokumentationsgenerering-tester
+
+Vi har två tester som båda testar dokumentationsgenerering, men med olika fokus:
+
+#### `documentation-generation-from-scratch.spec.ts`
+**Syfte:** Testar generell dokumentationsgenerering och att resultatet visas.
+
+**Vad det testar:**
+- ✅ Laddar upp en BPMN-fil (eller använder befintlig)
+- ✅ Bygger hierarki
+- ✅ Genererar dokumentation (mockad Claude API)
+- ✅ Validerar att resultatet visas i GenerationDialog
+- ✅ Fokuserar på att genereringen fungerar och att dialogen visas
+
+**Fokus:** Generering och visning av resultat.
+
+#### `feature-goal-documentation.spec.ts`
+**Syfte:** Testar specifikt Feature Goal-dokumentation för call activities och att den kan hittas i node-matrix.
+
+**Vad det testar:**
+- ✅ Laddar upp parent + subprocess filer (krävs för call activities)
+- ✅ Bygger hierarki
+- ✅ Genererar dokumentation (mockad Claude API)
+- ✅ Mockar bpmn-map.json (viktigt för call activity-mappning)
+- ✅ Validerar att Feature Goal-dokumentation sparas under subprocess-filens version hash
+- ✅ Validerar att node-matrix kan hitta dokumentationen ("Visa docs"-knapp)
+- ✅ Testar både single och multiple file upload-scenarion
+
+**Fokus:** Lagring och retrieval av Feature Goal-dokumentation.
+
+**Varför båda behövs:**
+- `documentation-generation-from-scratch.spec.ts` validerar att genereringen fungerar och att resultatet visas
+- `feature-goal-documentation.spec.ts` validerar specifik Feature Goal-logik och att dokumentationen kan hittas efter generering
 
 ## ✅ Testrealism och Verifiering
 
@@ -343,6 +193,3 @@ Testerna är designade för att vara så realistiska som möjligt och faktiskt t
 - ✅ Tester skapar automatiskt det som behövs (filer laddas upp om de saknas)
 - ✅ Tester failar med tydliga felmeddelanden om något saknas (vilket indikerar ett problem med appen)
 - ✅ Färre `test.skip()` anrop (endast för legitima fall, t.ex. GitHub sync om det inte är konfigurerat)
-
-**Se:** [`docs/analysis/TEST_SKIP_REMOVAL.md`](../../docs/analysis/TEST_SKIP_REMOVAL.md) och [`docs/analysis/TEST_REALISM_SUMMARY.md`](../../docs/analysis/TEST_REALISM_SUMMARY.md) för detaljerad information.
-

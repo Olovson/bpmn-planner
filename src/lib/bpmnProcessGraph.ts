@@ -197,7 +197,34 @@ async function parseAllBpmnFiles(
       const result = await parseBpmnFile(`/bpmn/${file}`, versionHash);
       results.set(file, result);
     } catch (error) {
-      console.error(`Kunde inte parsa ${file}:`, error);
+      // För testfiler som saknas, logga bara i dev och hoppa över
+      // Detta förhindrar spam i konsolen från gamla testfiler
+      const isTestFile = file.startsWith('test-');
+      const isMissingFile = error instanceof Error && 
+        (error.message.includes('Failed to load') || 
+         error.message.includes('400') ||
+         error.message.includes('Bad Request'));
+      
+      // För filer med mappstruktur (t.ex. "mortgage-se 2025.11.29/file.bpmn"),
+      // kan det vara att filen precis laddats upp och databasen inte hunnit uppdateras
+      const hasFolderStructure = file.includes('/') || file.includes('\\');
+      
+      if (isTestFile && isMissingFile) {
+        // Testfiler som saknas är troligen gamla testfiler som inte rensats
+        // Logga bara i dev och hoppa över
+        if (import.meta.env.DEV) {
+          console.warn(`[bpmnProcessGraph] Test file ${file} not found in Storage, skipping (likely old test file)`);
+        }
+      } else if (hasFolderStructure && isMissingFile) {
+        // Filer med mappstruktur kan saknas om de precis laddats upp
+        // Logga bara i dev som warning
+        if (import.meta.env.DEV) {
+          console.warn(`[bpmnProcessGraph] File with folder structure ${file} not found in Storage, may need to wait for database update`);
+        }
+      } else {
+        // För produktionsfiler eller andra fel, logga som vanligt
+        console.error(`Kunde inte parsa ${file}:`, error);
+      }
     }
   }
   return results;

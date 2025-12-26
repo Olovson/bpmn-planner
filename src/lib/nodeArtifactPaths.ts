@@ -1,7 +1,14 @@
 export const sanitizeElementId = (elementId: string) =>
   elementId.replace(/[^a-zA-Z0-9_-]/g, '-');
 
-const getBaseName = (bpmnFile: string) => bpmnFile.replace('.bpmn', '');
+// VIKTIGT: Hantera både med och utan .bpmn extension
+const getBaseName = (bpmnFile: string) => {
+  // Remove .bpmn extension if present
+  if (bpmnFile.endsWith('.bpmn')) {
+    return bpmnFile.slice(0, -5); // Remove '.bpmn' (5 characters)
+  }
+  return bpmnFile;
+};
 
 export const getNodeDocFileKey = (bpmnFile: string, elementId: string) =>
   `nodes/${getBaseName(bpmnFile)}/${sanitizeElementId(elementId)}.html`;

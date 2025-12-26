@@ -50,9 +50,26 @@ export function matchCallActivityToProcesses(
     );
     
     if (mapMatch.matchedFileName) {
+      // Hjälpfunktion för att extrahera bara filnamnet från en sökväg
+      const getFileNameOnly = (pathOrName: string): string => {
+        if (pathOrName.includes('/')) {
+          return pathOrName.split('/').pop() || pathOrName;
+        }
+        return pathOrName;
+      };
+      
+      // Normalisera matchedFileName från bpmn-map.json (kan vara bara filnamn)
+      const normalizedMatchedFileName = getFileNameOnly(mapMatch.matchedFileName);
+      
       // Hitta kandidaten som matchar filnamnet från bpmn-map.json
+      // Jämför både med full sökväg och bara filnamnet (för att hantera både paths och korta filnamn)
       const matchedCandidate = candidates.find(
-        (c) => c.fileName === mapMatch.matchedFileName
+        (c) => {
+          const candidateFileNameOnly = getFileNameOnly(c.fileName);
+          return c.fileName === mapMatch.matchedFileName || 
+                 candidateFileNameOnly === normalizedMatchedFileName ||
+                 c.fileName === normalizedMatchedFileName;
+        }
       );
       
       if (matchedCandidate) {
@@ -78,13 +95,8 @@ export function matchCallActivityToProcesses(
         // VIKTIGT: Även om kandidaten inte finns bland kandidaterna (t.ex. filen inte är direkt nåbar),
         // returnera matchningen med matchedFileName så att den kan användas senare
         // Detta är viktigt för filer som inte är direkt nåbara från root-processen
-        if (import.meta.env.DEV) {
-          console.warn(
-            `[SubprocessMatcher] bpmn-map.json pekar på ${mapMatch.matchedFileName} ` +
-            `men filen hittades inte bland kandidaterna för callActivity ${callActivity.id}. ` +
-            `Använder matchedFileName direkt från bpmn-map.json.`
-          );
-        }
+        // Inte logga här - detta är normalt när filer inte är direkt synliga i kandidatlistan,
+        // men systemet hanterar det korrekt genom att använda matchedFileName från bpmn-map.json
         
         // Returnera matchning med matchedFileName även om kandidaten saknas
         // matchedProcessId kan vara undefined, men matchedFileName är viktigare

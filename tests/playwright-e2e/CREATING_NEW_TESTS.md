@@ -1,8 +1,27 @@
 # Guide: Skapa Nya UI E2E-tester
 
+## ⚠️ KRITISKT: LÄS MASTER-FILEN FÖRST!
+
+**🚨 INNAN DU LÄSER DENNA GUIDE - LÄS [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) FÖRST!**
+
+**🚨 [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) är MASTER-FILEN med alla testregler!**
+
+**🚨 Denna guide är en detaljerad utbyggnad av reglerna i TEST_OVERVIEW.md**
+
+---
+
 ## ⚠️ KRITISKT: Test Data Isolation - MÅSTE FÖLJAS!
 
 **🚨 ALLA nya tester MÅSTE följa dessa regler för att inte påverka produktionsdata!**
+
+**🚨 DU MÅSTE ALLTID:**
+1. ✅ Rensa testfiler efter testet (`cleanupTestFiles`)
+2. ✅ Använda `test-` prefix för alla testfiler (`generateTestFileName`)
+3. ✅ Spara `testStartTime` i början av testet
+4. ✅ Mocka `bpmn-map.json` så att produktionsfilen INTE skrivs över
+5. ✅ Köra testerna sekventiellt om de kan påverka varandra
+
+**Se:** [`TEST_OVERVIEW.md`](./TEST_OVERVIEW.md) för den kompletta master-listan över alla regler.
 
 ## Checklista för Nya Tester
 

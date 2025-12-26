@@ -2,10 +2,13 @@
  * Script för att rensa gamla LLM debug-filer från Supabase Storage
  * 
  * Tar bort alla filer i:
- * - llm-debug/docs-raw/
- * - llm-debug/docs/
+ * - llm-debug/ (hela mappen, inklusive alla undermappar)
  * 
- * Dessa är gamla debug-filer som inte längre används.
+ * Dessa är debug-filer som genereras under LLM-generering för felsökning.
+ * De kan säkert tas bort efter att registret har raderats.
+ * 
+ * Användning:
+ *   npm run cleanup:llm-debug
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -43,8 +46,11 @@ async function listAllFiles(prefix: string): Promise<string[]> {
       });
     
     if (error) {
+      // Om mappen inte finns, returnera tom array
+      if (error.message?.includes('not found') || error.message?.includes('does not exist')) {
+        return;
+      }
       console.error(`Error listing ${path}:`, error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
       return;
     }
     
@@ -56,14 +62,17 @@ async function listAllFiles(prefix: string): Promise<string[]> {
       const fullPath = path ? `${path}/${item.name}` : item.name;
       
       // Supabase Storage list() returnerar items där:
-      // - id är null för filer
-      // - id är inte null för mappar
-      // Men vi kan också kolla metadata för att avgöra
-      if (item.id === null || !item.metadata) {
+      // - Om item har en filändelse (t.ex. .txt, .json) är det en fil
+      // - Om item inte har filändelse eller är tom, kan det vara en mapp
+      // - Vi kan också kolla om metadata.size finns och är > 0
+      const hasExtension = item.name.includes('.') && !item.name.endsWith('/');
+      const hasSize = item.metadata?.size && item.metadata.size > 0;
+      
+      if (hasExtension || hasSize) {
         // Det är en fil
         files.push(fullPath);
       } else {
-        // Det är en mapp, lista rekursivt
+        // Det är troligen en mapp, lista rekursivt
         await listRecursive(fullPath);
       }
     }
@@ -129,36 +138,31 @@ async function deleteFiles(filePaths: string[]): Promise<{ deleted: number; erro
 async function main() {
   console.log('🧹 Starting cleanup of old LLM debug files...\n');
   
-  const foldersToClean = ['llm-debug/docs-raw', 'llm-debug/docs'];
-  const allFilesToDelete: string[] = [];
+  // Rensa hela llm-debug mappen (inklusive alla undermappar)
+  const folderToClean = 'llm-debug';
+  console.log(`📁 Listing all files in ${folderToClean}/ recursively...`);
   
-  for (const folder of foldersToClean) {
-    console.log(`📁 Listing files in ${folder}/...`);
+  // Lista alla filer i mappen rekursivt
+  const allFilesToDelete = await listAllFiles(folderToClean);
+  
+  if (allFilesToDelete.length === 0) {
+    // Om listAllFiles inte hittar något, försök lista direkt
+    const { data, error } = await supabase.storage
+      .from('bpmn-files')
+      .list(folderToClean, { limit: 1000 });
     
-    // Lista alla filer i mappen rekursivt
-    const files = await listAllFiles(folder);
-    
-    if (files.length > 0) {
-      console.log(`   Found ${files.length} files`);
-      allFilesToDelete.push(...files);
-    } else {
-      // Om listAllFiles inte hittar något, försök lista direkt
-      const { data, error } = await supabase.storage
-        .from('bpmn-files')
-        .list(folder, { limit: 1000 });
-      
-      if (error) {
-        console.log(`   Error listing ${folder}: ${error.message}`);
-      } else if (data && data.length > 0) {
-        console.log(`   Found ${data.length} items (direct list)`);
-        // Lägg till alla items som filer (Supabase Storage list() returnerar både filer och mappar)
-        data.forEach(item => {
-          const filePath = `${folder}/${item.name}`;
-          allFilesToDelete.push(filePath);
-        });
-      } else {
-        console.log(`   ✓ No files found in ${folder}/`);
+    if (error) {
+      console.log(`   Error listing ${folderToClean}: ${error.message}`);
+    } else if (data && data.length > 0) {
+      console.log(`   Found ${data.length} items (direct list - may be folders)`);
+      // Försök lista rekursivt för varje item
+      for (const item of data) {
+        const itemPath = `${folderToClean}/${item.name}`;
+        const subFiles = await listAllFiles(itemPath);
+        allFilesToDelete.push(...subFiles);
       }
+    } else {
+      console.log(`   ✓ No files found in ${folderToClean}/`);
     }
   }
   
@@ -185,9 +189,8 @@ async function main() {
   }
   
   console.log('\n✅ Cleanup complete!');
-  console.log('\n💡 Tip: If files still exist, you can delete the folders directly in Supabase Dashboard:');
-  console.log('   - Storage > bpmn-files > llm-debug > docs');
-  console.log('   - Storage > bpmn-files > llm-debug > docs-raw');
+  console.log('\n💡 Tip: If files still exist, you can delete the llm-debug folder directly in Supabase Dashboard:');
+  console.log('   - Storage > bpmn-files > llm-debug');
 }
 
 main().catch((error) => {

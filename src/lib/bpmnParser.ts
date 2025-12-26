@@ -515,6 +515,12 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
       if (typeof window === 'undefined' && !fileUrl.startsWith('http') && !fileUrl.startsWith('data:')) {
         return null;
       }
+      // För test-filer, hoppa över /bpmn/ endpoint (test-filer finns alltid i Storage)
+      // Detta förhindrar 400 Bad Request fel när test-filer försöker laddas från /bpmn/
+      if (fileUrl.includes('/bpmn/test-')) {
+        return null; // Silent fail, Storage will handle it
+      }
+      
       const response = await fetch(fileUrl, { cache: 'no-store' });
       const contentType = response.headers.get('content-type') || '';
       if (response.ok && contentType.toLowerCase().includes('xml')) {
@@ -524,32 +530,151 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
       return null;
     } catch (error) {
       // I Node.js kastar fetch ett fel för relativa URLs - returnera null så tryStorage kan köras
+      // För test-filer, hoppa över fel-logging (Storage fallback hanterar det)
+      if (fileUrl.includes('/bpmn/test-')) {
+        return null; // Silent fail, Storage will handle it
+      }
       return null;
     }
   };
 
   const tryStorage = async () => {
+    // Om filen har mappstruktur i fileUrl (t.ex. /bpmn/mortgage-se 2025.11.29/file.bpmn),
+    // försök först hitta den med den fulla sökvägen
+    if (fileUrl.includes('/') && !fileUrl.startsWith('http') && !fileUrl.startsWith('data:')) {
+      // Extrahera path från fileUrl (t.ex. "mortgage-se 2025.11.29/mortgage-se-credit-decision.bpmn")
+      const pathMatch = fileUrl.match(/\/bpmn\/(.+)$/);
+      if (pathMatch && pathMatch[1]) {
+        const fullPath = pathMatch[1];
+        
+        // Försök först hitta filen i databasen med storage_path eller file_name som matchar fullPath
+        // Använd separata queries istället för .or() för bättre kompatibilitet
+        let storageRecord = null;
+        
+        // Försök först med storage_path
+        const { data: storagePathRecord } = await supabase
+          .from('bpmn_files')
+          .select('storage_path')
+          .eq('storage_path', fullPath)
+          .maybeSingle();
+        
+        if (storagePathRecord) {
+          storageRecord = storagePathRecord;
+        } else {
+          // Om inte hittad med storage_path, försök med file_name
+          const { data: fileNameRecord } = await supabase
+            .from('bpmn_files')
+            .select('storage_path')
+            .eq('file_name', fullPath)
+            .maybeSingle();
+          
+          if (fileNameRecord) {
+            storageRecord = fileNameRecord;
+          }
+        }
+
+        // Om filen finns i databasen, använd storage_path
+        if (storageRecord?.storage_path) {
+          const { data, error } = await supabase.storage
+            .from('bpmn-files')
+            .download(storageRecord.storage_path);
+
+          if (!error && data) {
+            const xml = await data.text();
+            if (xml && xml.includes('<bpmn:definitions')) {
+              return { xml, cacheKey };
+            }
+          } else if (error && (error.statusCode === 400 || error.message?.includes('400'))) {
+            // Filen finns i databasen men inte i Storage - detta är ett verkligt problem
+            if (import.meta.env.DEV) {
+              console.warn(`[bpmnParser] File ${fullPath} exists in database but not in Storage (likely deleted from Storage but not from database)`);
+            }
+            return null;
+          }
+        }
+
+        // Fallback: Försök ladda direkt med fullPath (om filen inte finns i databasen ännu)
+        const { data: pathData, error: pathError } = await supabase.storage
+          .from('bpmn-files')
+          .download(fullPath);
+
+        if (!pathError && pathData) {
+          const xml = await pathData.text();
+          if (xml && xml.includes('<bpmn:definitions')) {
+            return { xml, cacheKey };
+          }
+        }
+        // Om pathError är 400 och filen inte finns i databasen, är det ok - fortsätt med andra försök
+        // Vi loggar inte här eftersom filen kan finnas med bara filnamnet
+      }
+    }
+
+    // Försök hitta filen i databasen med file_name (bara filnamnet)
     const { data: storageRecord } = await supabase
       .from('bpmn_files')
       .select('storage_path')
       .eq('file_name', cacheKey)
       .maybeSingle();
 
-    const storagePath = storageRecord?.storage_path || cacheKey;
-    const { data, error } = await supabase.storage
+    // Om filen finns i databasen, använd storage_path
+    if (storageRecord?.storage_path) {
+      const { data, error } = await supabase.storage
+        .from('bpmn-files')
+        .download(storageRecord.storage_path);
+
+      // Hantera 400-fel gracefully (filen finns inte i Storage)
+      if (error) {
+        // 400 Bad Request betyder att filen inte finns i Storage
+        // Detta kan hända när filer raderats men queries fortfarande försöker ladda dem
+        if (error.statusCode === 400 || error.message?.includes('400')) {
+          // Filen finns i databasen men inte i Storage - detta är ett verkligt problem
+          if (import.meta.env.DEV) {
+            console.warn(`[bpmnParser] File ${cacheKey} exists in database but not in Storage (likely deleted from Storage but not from database)`);
+          }
+          return null; // Return null instead of throwing, let caller handle it
+        }
+        // För andra fel, logga men returnera null
+        if (import.meta.env.DEV) {
+          console.warn(`[bpmnParser] Error loading ${cacheKey} from Storage:`, error.message);
+        }
+        return null;
+      }
+
+      if (data) {
+        const xml = await data.text();
+        if (xml && xml.includes('<bpmn:definitions')) {
+          return { xml, cacheKey };
+        }
+      }
+    }
+
+    // Fallback: Försök ladda direkt med cacheKey (för filer som inte har storage_path satt ännu)
+    // Detta kan hända när filer precis laddats upp och databasen inte hunnit uppdateras
+    const { data: directData, error: directError } = await supabase.storage
       .from('bpmn-files')
-      .download(storagePath);
+      .download(cacheKey);
 
-    if (error || !data) {
+    // Hantera 400-fel gracefully
+    if (directError) {
+      if (directError.statusCode === 400 || directError.message?.includes('400')) {
+        // Filen finns inte i Storage - detta är ok om filen inte finns i databasen heller
+        // Vi loggar inte här eftersom det kan vara en normal situation (filen har inte laddats upp ännu)
+        return null;
+      }
+      if (import.meta.env.DEV) {
+        console.warn(`[bpmnParser] Error loading ${cacheKey} directly from Storage:`, directError.message);
+      }
       return null;
     }
 
-    const xml = await data.text();
-    if (!xml || !xml.includes('<bpmn:definitions')) {
-      return null;
+    if (directData) {
+      const xml = await directData.text();
+      if (xml && xml.includes('<bpmn:definitions')) {
+        return { xml, cacheKey };
+      }
     }
 
-    return { xml, cacheKey };
+    return null;
   };
 
   const localResult = await tryLocal();
@@ -558,7 +683,41 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
   const storageResult = await tryStorage();
   if (storageResult) return storageResult;
 
-  throw new Error(`Failed to load BPMN file: ${cacheKey}`);
+  // Filen hittades inte - returnera null istället för att kasta error
+  // Detta gör att queries kan hantera saknade filer gracefully
+  // Vi loggar bara om filen faktiskt finns i databasen (vilket indikerar ett problem)
+  // Annars kan det vara en normal situation (filen har inte laddats upp ännu)
+  let fileExistsInDb = false;
+  
+  // Kolla om filen finns i databasen med file_name
+  const { data: fileNameCheck } = await supabase
+    .from('bpmn_files')
+    .select('id')
+    .eq('file_name', cacheKey)
+    .maybeSingle();
+  
+  if (fileNameCheck) {
+    fileExistsInDb = true;
+  } else {
+    // Kolla om filen finns i databasen med storage_path
+    const { data: storagePathCheck } = await supabase
+      .from('bpmn_files')
+      .select('id')
+      .eq('storage_path', cacheKey)
+      .maybeSingle();
+    
+    if (storagePathCheck) {
+      fileExistsInDb = true;
+    }
+  }
+  
+  if (fileExistsInDb && import.meta.env.DEV) {
+    // Filen finns i databasen men inte i Storage - detta är ett verkligt problem
+    console.warn(`[bpmnParser] File ${cacheKey} exists in database but not in Storage (likely deleted from Storage but not from database)`);
+  }
+  // Om filen inte finns i databasen, loggar vi inte - det är en normal situation
+  
+  return null;
 }
 
 export async function parseBpmnFile(bpmnFilePath: string, versionHash?: string | null): Promise<BpmnParseResult> {
@@ -571,7 +730,24 @@ export async function parseBpmnFile(bpmnFilePath: string, versionHash?: string |
   }
 
   try {
-    const { xml: bpmnXml, cacheKey: key } = await loadBpmnXml(bpmnFilePath, versionHash);
+    const loadResult = await loadBpmnXml(bpmnFilePath, versionHash);
+    
+    // Om filen inte hittades (loadBpmnXml returnerade null), hantera detta gracefully
+    if (!loadResult) {
+      const cacheKey = bpmnFilePath.split('/').pop() || bpmnFilePath;
+      if (import.meta.env.DEV) {
+        const isTestFile = cacheKey.startsWith('test-');
+        if (isTestFile) {
+          console.warn(`[bpmnParser] Test file ${cacheKey} not found (likely deleted), skipping parse`);
+        } else {
+          console.warn(`[bpmnParser] File ${cacheKey} not found (likely deleted), skipping parse`);
+        }
+      }
+      // Kasta ett error så att callers kan hantera det, men med ett tydligt meddelande
+      throw new Error(`File not found: ${cacheKey} (likely deleted from Storage)`);
+    }
+    
+    const { xml: bpmnXml, cacheKey: key } = loadResult;
     const parser = new BpmnParser();
     const result = await parser.parse(bpmnXml);
     parser.destroy();
@@ -590,7 +766,33 @@ export async function parseBpmnFile(bpmnFilePath: string, versionHash?: string |
     
     return resultWithFileName;
   } catch (error) {
-    console.error(`Error parsing BPMN file ${bpmnFilePath}:`, error);
+    // För testfiler eller filer med mappstruktur som saknas, logga bara i dev
+    // Detta förhindrar spam i konsolen från gamla testfiler eller filer som precis laddats upp
+    const cacheKey = bpmnFilePath.split('/').pop() || bpmnFilePath;
+    const isTestFile = cacheKey.startsWith('test-');
+    const hasFolderStructure = bpmnFilePath.includes('/') && bpmnFilePath.split('/').length > 2;
+    const isMissingFile = error instanceof Error && 
+      (error.message.includes('Failed to load') || 
+       error.message.includes('400') ||
+       error.message.includes('Bad Request') ||
+       error.message.includes('File not found'));
+    
+    if (isTestFile && isMissingFile) {
+      // Testfiler som saknas är troligen gamla testfiler som inte rensats
+      // Logga bara i dev
+      if (import.meta.env.DEV) {
+        console.warn(`[bpmnParser] Test file ${cacheKey} not found in Storage (likely old test file)`);
+      }
+    } else if (hasFolderStructure && isMissingFile) {
+      // Filer med mappstruktur kan saknas om de precis laddats upp
+      // Logga bara i dev som warning
+      if (import.meta.env.DEV) {
+        console.warn(`[bpmnParser] File with folder structure ${bpmnFilePath} not found in Storage, may need to wait for database update`);
+      }
+    } else {
+      // För produktionsfiler eller andra fel, logga som vanligt
+      console.error(`Error parsing BPMN file ${bpmnFilePath}:`, error);
+    }
     throw error;
   }
 }

@@ -2,6 +2,8 @@
  * Test Data Cleanup - Rensar testdata efter tester
  * 
  * ⚠️ VIKTIGT: Detta säkerställer att testdata inte påverkar produktionsdata
+ * 
+ * Rensar både BPMN-filer från databasen OCH dokumentationsfiler från Storage.
  */
 
 import type { Page } from '@playwright/test';
@@ -55,7 +57,7 @@ export async function cleanupTestFiles(
       }
     }
 
-    // Ta bort varje test-fil
+    // Ta bort varje test-fil från databasen (via UI)
     for (const fileName of filesToDelete) {
       try {
         // Hitta delete-knappen för denna fil
@@ -86,9 +88,192 @@ export async function cleanupTestFiles(
         console.warn(`⚠️  Could not delete test file "${fileName}":`, error);
       }
     }
+
+    // Rensa dokumentationsfiler från Storage (använder Supabase client i browser context)
+    if (filesToDelete.length > 0) {
+      try {
+        console.log(`🧹 Cleaning up documentation files from Storage for ${filesToDelete.length} test files...`);
+        await cleanupTestDocumentationFromStorage(page, filesToDelete);
+      } catch (error) {
+        // Logga men faila inte testet
+        console.warn('⚠️  Error during test documentation cleanup from Storage:', error);
+      }
+    }
   } catch (error) {
     // Logga men faila inte testet
     console.warn('⚠️  Error during test file cleanup:', error);
+  }
+}
+
+/**
+ * Rensar dokumentationsfiler från Supabase Storage för testfiler
+ * 
+ * Använder Supabase client i browser context för att rensa:
+ * - docs/claude/{testFileName}/... (versioned paths)
+ * - docs/claude/feature-goals/... (feature goals med testfilnamn)
+ * - docs/claude/nodes/... (node docs med testfilnamn)
+ * - tests/... (test files)
+ * - llm-debug/... (debug files med testfilnamn)
+ * 
+ * @param page Playwright page instance
+ * @param testFileNames Array av testfilnamn att rensa dokumentation för
+ */
+async function cleanupTestDocumentationFromStorage(
+  page: Page,
+  testFileNames: string[]
+): Promise<void> {
+  try {
+    // Använd page.evaluate() för att köra kod i browser context där Supabase client finns
+    const result = await page.evaluate(async (fileNames: string[]) => {
+      // Använd Supabase client från appen (samma approach som bpmnMapTestHelper)
+      const { supabase } = await import('/src/integrations/supabase/client');
+      
+      // Lista alla filer rekursivt i docs/claude, tests, och llm-debug
+      async function listAllFiles(prefix: string): Promise<string[]> {
+        const files: string[] = [];
+        
+        async function listRecursive(path: string) {
+          try {
+            const { data, error } = await supabase.storage
+              .from('bpmn-files')
+              .list(path, { limit: 1000, offset: 0 });
+            
+            if (error) {
+              if (error.message?.includes('not found') || error.statusCode === 404) {
+                return;
+              }
+              console.warn(`[cleanupTestDocumentationFromStorage] Error listing ${path}:`, error);
+              return;
+            }
+            
+            if (!data || data.length === 0) {
+              return;
+            }
+            
+            for (const item of data) {
+              const fullPath = path ? `${path}/${item.name}` : item.name;
+              const hasExtension = item.name.includes('.') && !item.name.endsWith('/');
+              const hasSize = item.metadata?.size && item.metadata.size > 0;
+              const isBpmnFile = item.name.endsWith('.bpmn');
+              
+              if (isBpmnFile) {
+                // Försök lista innehållet - om det fungerar är det en mapp
+                const { data: subData, error: subError } = await supabase.storage
+                  .from('bpmn-files')
+                  .list(fullPath, { limit: 1 });
+                
+                if (!subError && subData && subData.length > 0) {
+                  await listRecursive(fullPath);
+                } else if (hasSize) {
+                  files.push(fullPath);
+                } else {
+                  await listRecursive(fullPath);
+                }
+              } else if (hasExtension || hasSize) {
+                files.push(fullPath);
+              } else {
+                await listRecursive(fullPath);
+              }
+            }
+          } catch (error) {
+            console.warn(`[cleanupTestDocumentationFromStorage] Error in listRecursive for ${path}:`, error);
+          }
+        }
+        
+        await listRecursive(prefix);
+        return files;
+      }
+      
+      // KRITISKT: Whitelist av produktionsfiler som INTE får raderas
+      const PRODUCTION_FILES = [
+        'mortgage-se-application.bpmn',
+        'mortgage-se-object.bpmn',
+        'mortgage-se-credit-evaluation.bpmn',
+        'mortgage-se-object-control.bpmn',
+        'mortgage-se-object-information.bpmn',
+        'mortgage-se-household.bpmn',
+        'mortgage-se-internal-data-gathering.bpmn',
+        'mortgage-se-appeal.bpmn',
+        'mortgage.bpmn',
+      ];
+      
+      function isProductionFile(fileName: string): boolean {
+        const normalized = fileName.toLowerCase();
+        return PRODUCTION_FILES.some(prod => 
+          normalized === prod.toLowerCase() || 
+          normalized.includes(prod.toLowerCase().replace('.bpmn', ''))
+        );
+      }
+      
+      // Kontrollera om en fil är en testfil
+      function isTestFile(filePath: string, testFileNames: string[]): boolean {
+        const fileName = filePath.split('/').pop() || '';
+        
+        // KRITISKT: INTE radera produktionsfiler
+        if (isProductionFile(fileName)) {
+          console.warn(`[cleanupTestDocumentationFromStorage] SKIPPING production file: ${fileName}`);
+          return false;
+        }
+        
+        const testPattern = /test-\d+-\d+-/;
+        const pathParts = filePath.split('/');
+        
+        // Kolla om path innehåller något av testfilnamnen
+        for (const testFileName of testFileNames) {
+          const baseName = testFileName.replace('.bpmn', '');
+          if (filePath.includes(testFileName) || filePath.includes(baseName)) {
+            return true;
+          }
+        }
+        
+        // Kolla om path matchar test-pattern
+        return testPattern.test(filePath) || testPattern.test(fileName) || 
+               pathParts.some(part => testPattern.test(part));
+      }
+      
+      // Lista alla filer i relevanta mappar
+      const docsFiles = await listAllFiles('docs/claude');
+      const testFiles = await listAllFiles('tests');
+      const debugFiles = await listAllFiles('llm-debug');
+      
+      // Filtrera testfiler
+      const allFiles = [...docsFiles, ...testFiles, ...debugFiles];
+      const testFilesToDelete = allFiles.filter(file => isTestFile(file, fileNames));
+      
+      if (testFilesToDelete.length === 0) {
+        return { deleted: 0, errors: 0 };
+      }
+      
+      // Ta bort filerna i batchar
+      let deleted = 0;
+      let errors = 0;
+      const batchSize = 100;
+      
+      for (let i = 0; i < testFilesToDelete.length; i += batchSize) {
+        const batch = testFilesToDelete.slice(i, i + batchSize);
+        const { error } = await supabase.storage
+          .from('bpmn-files')
+          .remove(batch);
+        
+        if (error) {
+          console.warn(`[cleanupTestDocumentationFromStorage] Error deleting batch:`, error);
+          errors += batch.length;
+        } else {
+          deleted += batch.length;
+        }
+      }
+      
+      return { deleted, errors };
+    }, testFileNames);
+    
+    if (result.deleted > 0) {
+      console.log(`✅ Cleaned up ${result.deleted} documentation files from Storage`);
+    }
+    if (result.errors > 0) {
+      console.warn(`⚠️  Errors cleaning up ${result.errors} documentation files from Storage`);
+    }
+  } catch (error) {
+    console.warn('[cleanupTestDocumentationFromStorage] Error:', error);
   }
 }
 

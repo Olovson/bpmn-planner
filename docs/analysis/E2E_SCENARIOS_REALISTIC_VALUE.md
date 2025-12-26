@@ -383,3 +383,5 @@ Analysera vad vi faktiskt kan göra med 60% extraktionskvalitet och vad som ger 
 
 
 
+
+

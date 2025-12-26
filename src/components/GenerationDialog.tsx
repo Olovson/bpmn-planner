@@ -350,7 +350,7 @@ export function GenerationDialog({
               </div>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Card className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <FileText className="h-5 w-5 text-blue-500" />
@@ -358,15 +358,6 @@ export function GenerationDialog({
                   </div>
                   <div className="text-2xl font-bold">{result.filesAnalyzed.length}</div>
                   <p className="text-xs text-muted-foreground mt-1">Analyserade</p>
-                </Card>
-
-                <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileCode className="h-5 w-5 text-green-500" />
-                    <h4 className="font-semibold text-sm">Tester</h4>
-                  </div>
-                  <div className="text-2xl font-bold">{result.testFiles.length}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Testfiler</p>
                 </Card>
 
                 <Card className="p-4">

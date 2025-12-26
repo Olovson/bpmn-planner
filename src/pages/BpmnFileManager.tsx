@@ -289,7 +289,7 @@ export default function BpmnFileManager() {
   });
 
   // Use BPMN map management hook
-  const { handleValidateBpmnMap, handleSaveUpdatedMap, handleExportUpdatedMap } = useBpmnMapManagement({
+  const { handleValidateBpmnMap, handleSaveUpdatedMap, handleRegenerateBpmnMap, handleExportUpdatedMap } = useBpmnMapManagement({
     setValidatingMap,
     setMapValidationResult,
     setShowMapValidationDialog,

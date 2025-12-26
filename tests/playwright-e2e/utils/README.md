@@ -1,5 +1,13 @@
 # Test Utils - Återanvändbara Test-Komponenter
 
+## ⚠️ LÄS MASTER-FILEN FÖRST!
+
+**🚨 INNAN DU ANVÄNDER DETTA - LÄS [`../TEST_OVERVIEW.md`](../TEST_OVERVIEW.md) FÖRST!**
+
+**🚨 [`../TEST_OVERVIEW.md`](../TEST_OVERVIEW.md) är MASTER-FILEN med alla testregler!**
+
+---
+
 ## Översikt
 
 Detta katalog innehåller återanvändbara test-komponenter som kan användas för att bygga A-Ö tester eller isolerade tester.
@@ -209,10 +217,12 @@ await cleanupTestFiles(page, testStartTime); // ✅ Rensa bara testets egna file
 **3. Använd rätt helper-funktioner:**
 - ✅ `ensureBpmnFileExists(ctx, baseName?)` - Prefixar automatiskt
 - ✅ `generateTestFileName(baseName?)` - Genererar prefixat filnamn
-- ✅ `cleanupTestFiles(page, testStartTime?)` - Rensar testdata
+- ✅ `cleanupTestFiles(page, testStartTime?)` - Rensar testdata (BPMN-filer OCH dokumentationsfiler från Storage)
 - ✅ `ensureFileCanBeSelected(ctx)` - Prioriterar test-filer
 
-**Se:** [`../README.md`](../README.md#-viktigt-test-data-isolation---måste-följas-i-alla-nya-tester) för mer information.
+**Se:** [`../TEST_OVERVIEW.md`](../TEST_OVERVIEW.md#-viktigt-test-data-isolation---måste-följas-i-alla-nya-tester) för mer information.
+
+**⚠️ KOMM IHÅG: [`../TEST_OVERVIEW.md`](../TEST_OVERVIEW.md) är MASTER-FILEN - läs den först!**
 
 ## Lägga till nya steg
 

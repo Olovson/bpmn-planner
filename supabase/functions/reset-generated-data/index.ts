@@ -260,7 +260,12 @@ Deno.serve(async (req) => {
       // In safe mode, only delete what's explicitly requested
       // Note: BPMN/DMN source files ('bpmn', 'dmn' prefixes) are NEVER deleted
       if (shouldDeleteDocs) storagePrefixes.push('docs', 'generated-docs');
-      if (shouldDeleteTests) storagePrefixes.push('tests', 'tests/e2e', 'llm-debug/tests');
+      if (shouldDeleteTests) {
+        storagePrefixes.push('tests', 'tests/e2e');
+        // VIKTIGT: Rensa hela llm-debug mappen när tester raderas
+        // eftersom llm-debug innehåller debug-artifacts från generering
+        storagePrefixes.push('llm-debug');
+      }
       if (shouldDeleteReports) storagePrefixes.push('test-reports', 'reports');
     }
     

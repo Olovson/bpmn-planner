@@ -1702,6 +1702,38 @@ export async function generateAllFromBpmnWithGraph(
       );
     }
 
+    // VIKTIGT: För progress-räkning räknar vi alla relevanta noder direkt från BPMN-filerna,
+    // INTE bara de som kommer att genereras. Detta matchar coverage-räkningen och säkerställer
+    // att progress visar korrekt antal (t.ex. 4/4 istället för 4/3).
+    // 
+    // Call activities räknas i parent-filen, även om subprocess-filen saknas.
+    // Detta matchar logiken i useFileArtifactCoverage.ts.
+    let totalNodesFromFiles = 0;
+    for (const file of analyzedFiles) {
+      try {
+        const { parseBpmnFile } = await import('./bpmnParser');
+        const parseResult = await parseBpmnFile(`/bpmn/${file}`);
+        
+        // Räkna relevanta noder direkt från parseResult (samma logik som coverage-räkning)
+        const relevantElements = parseResult.elements.filter(e => {
+          const elementType = e.type;
+          // Räkna tasks (UserTask, ServiceTask, BusinessRuleTask) → Epics
+          // Räkna call activities → Feature Goals
+          return elementType === 'bpmn:UserTask' || 
+                 elementType === 'bpmn:ServiceTask' || 
+                 elementType === 'bpmn:BusinessRuleTask' ||
+                 elementType === 'bpmn:CallActivity';
+        });
+        
+        totalNodesFromFiles += relevantElements.length;
+      } catch (error) {
+        console.warn(`[bpmnGenerators] Failed to parse ${file} for progress counting:`, error);
+        // Fallback: använd nodesToGenerate för denna fil
+        const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
+        totalNodesFromFiles += nodesInFile.length;
+      }
+    }
+    
     // Räkna process nodes som kommer att genereras (subprocess-filer med process nodes men inga tasks/callActivities)
     // Dessa genereras separat och måste inkluderas i progress-räkningen
     // VIKTIGT: Logiken måste matcha exakt logiken för när process nodes faktiskt genereras (rad 2441-2539)
@@ -1732,8 +1764,10 @@ export async function generateAllFromBpmnWithGraph(
     }
     
     // Skicka total:init med korrekt antal filer och noder för progress-räkning
-    // OBS: Inkludera både nodesToGenerate.length OCH processNodesToGenerate för korrekt progress-räkning
-    const totalNodesToGenerate = nodesToGenerate.length + processNodesToGenerate;
+    // VIKTIGT: Använd totalNodesFromFiles (räknat direkt från BPMN-filer) istället för nodesToGenerate.length
+    // Detta säkerställer att progress visar korrekt antal, även om vissa call activities hoppas över i generering
+    // (t.ex. om subprocess-filen saknas, hoppas call activity över i nodesToGenerate, men räknas ändå här)
+    const totalNodesToGenerate = totalNodesFromFiles + processNodesToGenerate;
     await reportProgress(
       'total:init',
       'Initierar generering',

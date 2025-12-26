@@ -1070,6 +1070,8 @@ export function useFileGeneration({
         
         // For feature goals: feature-goals/{...}.html
         // Feature goals can be hierarchical (parent-elementId) or subprocess-based
+        // VIKTIGT: För hierarchical naming måste vi hitta subprocess-filen, inte parent-filen
+        // eftersom filen sparas under subprocess-filens version hash
         if (docFileName.startsWith('feature-goals/')) {
           const featureGoalName = docFileName.replace('feature-goals/', '').replace('.html', '');
           
@@ -1084,33 +1086,152 @@ export function useFileGeneration({
             }
             
             // For hierarchical naming (parent-elementId), try to extract elementId
-            // Pattern: "mortgage-se-application-internal-data-gathering"
+            // Pattern: "mortgage-se-application-internal-data-gathering" eller "test-{timestamp}-test-parent-call-activity-test-call-activity"
             // We want to find the subprocess file that matches the elementId part
-            // Try to find a file where the baseName ends with the last part of featureGoalName
-            const parts = featureGoalName.split('-');
-            if (parts.length > 3) {
-              // Likely hierarchical: try to match last 2-3 parts as elementId
-              // E.g., "internal-data-gathering" -> "mortgage-se-internal-data-gathering.bpmn"
-              const possibleElementId = parts.slice(-3).join('-'); // Last 3 parts
-              const possibleElementId2 = parts.slice(-2).join('-'); // Last 2 parts
+            // VIKTIGT: Prioritera subprocess-filen (som slutar med elementId) över parent-filen
+            
+            // Special handling for test files with timestamps: extract timestamp prefix
+            const testTimestampMatch = featureGoalName.match(/^(test-\d+-\d+-)/);
+            if (testTimestampMatch) {
+              const timestampPrefix = testTimestampMatch[1];
+              // For test files, try to find subprocess file with same timestamp prefix
+              // Pattern: "test-{timestamp}-{parent}-{elementId}" -> "test-{timestamp}-{subprocess}"
+              const partsAfterTimestamp = featureGoalName.substring(timestampPrefix.length).split('-');
+              
+              // VIKTIGT: För hierarchical naming, elementId är vanligtvis de sista delarna
+              // T.ex. "test-xxx-mortgage-se-application-internal-data-gathering" -> elementId = "internal-data-gathering"
+              // Subprocess-filen är "test-xxx-mortgage-se-internal-data-gathering.bpmn"
+              
+              // Try to extract elementId from hierarchical name
+              // Pattern: "mortgage-se-application-internal-data-gathering" -> elementId = "internal-data-gathering"
+              // We need to find where "mortgage-se-application" ends and elementId begins
+              const mortgageSeIndex = partsAfterTimestamp.indexOf('mortgage');
+              if (mortgageSeIndex >= 0 && partsAfterTimestamp[mortgageSeIndex + 1] === 'se') {
+                // Found "mortgage-se", now find where parent file name ends
+                // Parent is typically "mortgage-se-{name}" (e.g., "mortgage-se-application")
+                // ElementId starts after parent (e.g., "internal-data-gathering")
+                const parentEndIndex = mortgageSeIndex + 3; // After "mortgage-se-{name}"
+                if (parentEndIndex < partsAfterTimestamp.length) {
+                  const elementId = partsAfterTimestamp.slice(parentEndIndex).join('-');
+                  
+                  // Now try to find subprocess file that ends with this elementId
+                  for (const includedFile of filesIncluded) {
+                    const baseName = includedFile.replace('.bpmn', '');
+                    // Check if file starts with same timestamp prefix and ends with elementId
+                    if (baseName.startsWith(timestampPrefix)) {
+                      const baseNameWithoutPrefix = baseName.substring(timestampPrefix.length);
+                      // Check if baseName ends with elementId (subprocess file)
+                      // T.ex. "mortgage-se-internal-data-gathering" ends with "internal-data-gathering"
+                      if (baseNameWithoutPrefix.endsWith(`-${elementId}`) || 
+                          baseNameWithoutPrefix === elementId ||
+                          baseNameWithoutPrefix.endsWith(`mortgage-se-${elementId}`) ||
+                          baseNameWithoutPrefix === `mortgage-se-${elementId}`) {
+                        if (import.meta.env.DEV) {
+                          console.log(`[extractBpmnFileFromDocFileName] Matched test subprocess file for "${featureGoalName}": ${includedFile} (elementId: ${elementId})`);
+                        }
+                        return includedFile;
+                      }
+                    }
+                  }
+                }
+              }
+              
+              // Fallback: try to find subprocess file using last 2-3 parts as elementId
+              const possibleElementIds = [
+                partsAfterTimestamp.slice(-3).join('-'), // Last 3 parts (e.g., "internal-data-gathering")
+                partsAfterTimestamp.slice(-2).join('-'), // Last 2 parts (e.g., "data-gathering")
+              ];
               
               for (const includedFile of filesIncluded) {
                 const baseName = includedFile.replace('.bpmn', '');
-                // Check if baseName ends with the elementId
-                if (baseName.endsWith(`-${possibleElementId}`) || 
-                    baseName.endsWith(`-${possibleElementId2}`) ||
-                    baseName === `mortgage-se-${possibleElementId}` ||
-                    baseName === `mortgage-se-${possibleElementId2}`) {
-                  return includedFile;
+                // Check if file starts with same timestamp prefix
+                if (baseName.startsWith(timestampPrefix)) {
+                  const baseNameWithoutPrefix = baseName.substring(timestampPrefix.length);
+                  // Check if file ends with elementId (subprocess file)
+                  for (const elementId of possibleElementIds) {
+                    if (elementId && (
+                      baseNameWithoutPrefix.endsWith(`-${elementId}`) || 
+                      baseNameWithoutPrefix === elementId ||
+                      baseNameWithoutPrefix.endsWith(`mortgage-se-${elementId}`) ||
+                      baseNameWithoutPrefix === `mortgage-se-${elementId}`
+                    )) {
+                      if (import.meta.env.DEV) {
+                        console.log(`[extractBpmnFileFromDocFileName] Matched test subprocess file (fallback) for "${featureGoalName}": ${includedFile} (elementId: ${elementId})`);
+                      }
+                      return includedFile;
+                    }
+                  }
                 }
               }
             }
             
-            // Fallback: check if any file name is contained in feature goal name
-            for (const includedFile of filesIncluded) {
-              const baseName = includedFile.replace('.bpmn', '');
-              if (featureGoalName.includes(baseName) || baseName.includes(featureGoalName)) {
-                return includedFile;
+            // Special handling for test files: if featureGoalName contains "parent", look for files with "subprocess"
+            if (featureGoalName.includes('parent') && !featureGoalName.includes('subprocess')) {
+              for (const includedFile of filesIncluded) {
+                const baseName = includedFile.replace('.bpmn', '');
+                // For test files, if parent file is in the name, look for corresponding subprocess file
+                if (baseName.includes('subprocess') && !baseName.includes('parent')) {
+                  // Extract timestamp prefix if present (e.g., "test-{timestamp}-")
+                  const parentMatch = featureGoalName.match(/^(test-\d+-\d+-)/);
+                  if (parentMatch) {
+                    const timestampPrefix = parentMatch[1];
+                    // Check if subprocess file has the same timestamp prefix
+                    if (baseName.startsWith(timestampPrefix)) {
+                      return includedFile;
+                    }
+                  } else if (baseName.includes('subprocess') && baseName.includes('call-activity')) {
+                    // Fallback: if both have "call-activity" but one has "subprocess", use that
+                    return includedFile;
+                  }
+                }
+              }
+            }
+            
+            const parts = featureGoalName.split('-');
+            if (parts.length > 3) {
+              // Likely hierarchical: try to match last 2-3 parts as elementId
+              // E.g., "internal-data-gathering" -> "mortgage-se-internal-data-gathering.bpmn"
+              const possibleElementId = parts.slice(-3).join('-'); // Last 3 parts (e.g., "internal-data-gathering")
+              const possibleElementId2 = parts.slice(-2).join('-'); // Last 2 parts (e.g., "data-gathering")
+              
+              // PRIORITERA: Först sök efter filer som slutar med elementId (subprocess-filer)
+              // Detta är viktigt för att undvika att matcha parent-filen
+              const subprocessMatches: string[] = [];
+              for (const includedFile of filesIncluded) {
+                const baseName = includedFile.replace('.bpmn', '');
+                // Check if baseName ends with the elementId (subprocess-fil)
+                // T.ex. "mortgage-se-internal-data-gathering" ends with "internal-data-gathering"
+                if (baseName.endsWith(`-${possibleElementId}`) || 
+                    baseName.endsWith(`-${possibleElementId2}`) ||
+                    baseName === `mortgage-se-${possibleElementId}` ||
+                    baseName === `mortgage-se-${possibleElementId2}`) {
+                  subprocessMatches.push(includedFile);
+                }
+              }
+              
+              // Om vi hittade subprocess-filer, returnera den första (bör bara finnas en)
+              if (subprocessMatches.length > 0) {
+                if (import.meta.env.DEV) {
+                  console.log(`[extractBpmnFileFromDocFileName] Matched subprocess file for "${featureGoalName}": ${subprocessMatches[0]}`);
+                }
+                return subprocessMatches[0];
+              }
+              
+              // VIKTIGT: För test-filer med hierarchical naming, kan vi behöva matcha mot filer
+              // som innehåller elementId men inte nödvändigtvis slutar med det
+              // T.ex. "test-xxx-mortgage-se-application-internal-data-gathering" -> "test-xxx-mortgage-se-internal-data-gathering.bpmn"
+              for (const includedFile of filesIncluded) {
+                const baseName = includedFile.replace('.bpmn', '');
+                // Check if baseName contains elementId and is likely a subprocess file
+                // (not the parent file, which would be shorter)
+                if ((baseName.includes(`-${possibleElementId}`) || baseName.includes(`-${possibleElementId2}`)) &&
+                    !baseName.includes('application') && // Exclude parent file
+                    baseName.length > parts.slice(0, 3).join('-').length) { // Subprocess files are usually longer
+                  if (import.meta.env.DEV) {
+                    console.log(`[extractBpmnFileFromDocFileName] Matched subprocess file (fallback) for "${featureGoalName}": ${includedFile}`);
+                  }
+                  return includedFile;
+                }
               }
             }
           }
@@ -1159,8 +1280,13 @@ export function useFileGeneration({
           const docBpmnFile = extractBpmnFileFromDocFileName(docFileName, filesIncluded) || file.file_name;
           const docVersionHash = await getVersionHashForDoc(docBpmnFile);
           
-          if (import.meta.env.DEV && docBpmnFile !== file.file_name) {
-            console.log(`[BpmnFileManager] Doc ${docFileName} belongs to ${docBpmnFile} (not root ${file.file_name})`);
+          if (import.meta.env.DEV) {
+            if (docBpmnFile !== file.file_name) {
+              console.log(`[BpmnFileManager] Doc ${docFileName} belongs to ${docBpmnFile} (not root ${file.file_name})`);
+            }
+            if (docFileName.startsWith('feature-goals/')) {
+              console.log(`[BpmnFileManager] Feature Goal doc "${docFileName}" -> BPMN file: ${docBpmnFile}, version hash: ${docVersionHash}`);
+            }
           }
           
           const { modePath: docPath } = buildDocStoragePaths(
@@ -1650,4 +1776,5 @@ export function useFileGeneration({
     handleGenerateSelectedFile,
   };
 }
+
 

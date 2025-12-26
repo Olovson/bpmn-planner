@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
-import { invalidateStructureQueries } from '@/lib/queryInvalidation';
+import { invalidateStructureQueries, invalidateArtifactQueries } from '@/lib/queryInvalidation';
 import { calculateAndSaveDiff } from '@/lib/bpmnDiffRegeneration';
 
 export interface BpmnFileUsage {
@@ -123,7 +123,13 @@ export const useDeleteBpmnFile = () => {
       return data;
     },
     onSuccess: (data) => {
+      // Invalidera alla queries som kan försöka ladda den raderade filen
       invalidateStructureQueries(queryClient);
+      invalidateArtifactQueries(queryClient);
+      // Invalidera specifikt coverage queries som kan försöka ladda filerna
+      queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] });
+      queryClient.invalidateQueries({ queryKey: ['file-artifact-coverage'] });
+      queryClient.invalidateQueries({ queryKey: ['node-matrix'] });
 
       toast({
         title: 'Fil borttagen',

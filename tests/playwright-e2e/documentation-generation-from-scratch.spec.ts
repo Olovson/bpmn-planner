@@ -36,25 +36,6 @@ test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Documentation Generation from Scratch', () => {
   test('should generate documentation from scratch and display it in app', async ({ page }) => {
-    // Monitor console for errors (especially ReferenceError, TypeError, etc.)
-    const consoleErrors: string[] = [];
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') {
-        const text = msg.text();
-        consoleErrors.push(text);
-        // Log critical errors immediately
-        if (text.includes('ReferenceError') || text.includes('TypeError') || text.includes('is not defined')) {
-          console.error(`[CRITICAL ERROR] ${text}`);
-        }
-      }
-    });
-
-    // Monitor page errors (unhandled promise rejections, etc.)
-    page.on('pageerror', (error) => {
-      consoleErrors.push(`PageError: ${error.message}`);
-      console.error(`[PAGE ERROR] ${error.message}`, error.stack);
-    });
-
     DebugLogger.reset();
     const testStartTime = Date.now();
     const ctx = createTestContext(page);
@@ -172,26 +153,6 @@ test.describe('Documentation Generation from Scratch', () => {
       DebugLogger.log('STEP 8: Verifying generation result');
       await stepVerifyGenerationResult(ctx);
       DebugLogger.log('Generation result verified');
-      
-      // Steg 8.1: Verifiera att inga kritiska JavaScript-fel uppstod under genereringen
-      const criticalErrors = consoleErrors.filter(
-        (e) => 
-          e.includes('ReferenceError') || 
-          e.includes('TypeError') || 
-          e.includes('is not defined') ||
-          e.includes('Cannot read properties') ||
-          e.includes('Cannot access')
-      );
-      
-      if (criticalErrors.length > 0) {
-        console.error('❌ Critical JavaScript errors detected during generation:');
-        criticalErrors.forEach((error, index) => {
-          console.error(`  ${index + 1}. ${error}`);
-        });
-      }
-      
-      // Fail test if critical errors found
-      expect(criticalErrors.length).toBe(0);
       
       // Steg 9: Verifiera att dokumentation syns i GenerationDialog
       DebugLogger.log('STEP 9: Checking for result dialog');

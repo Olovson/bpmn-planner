@@ -50,11 +50,50 @@ if (featureGoalNames.has(hierarchicalFileName)) {
 }
 ```
 
+### Ytterligare Fix: Node Documentation Paths
+
+Efter första fixen upptäcktes att node documentation inte hittades korrekt. Problemet var att vi letade i fel paths.
+
+**Node docs sparas som:**
+- `docs/claude/nodes/{fileBaseName}/{elementId}.html` (non-versioned, mest vanliga)
+- `docs/claude/{fileName}/{versionHash}/nodes/{fileBaseName}/{elementId}.html` (versioned)
+
+**Men vi letade bara i:**
+- `docs/claude/{fileName}/{versionHash}/nodes/{fileBaseName}` (versioned)
+- `docs/nodes/{fileBaseName}` (legacy)
+
+**Fix:**
+- Lade till `docs/claude/nodes/{fileBaseName}` (non-versioned path) som första prioritet
+- Lade till `docs/ollama/nodes/{fileBaseName}` och `docs/local/nodes/{fileBaseName}` som fallback
+
+### Ytterligare Fix: Call Activities Räknas i Parent-Filen
+
+**VIKTIGT:** Call activities räknas som Feature Goals för filen där de är **definierade** (parent-filen), INTE när subprocess-filen genereras.
+
+**Exempel:**
+- `mortgage-se-object.bpmn` har call activity "object-information" som pekar på `mortgage-se-object-information.bpmn`
+- Feature Goal genereras när `mortgage-se-object.bpmn` genereras
+- Feature Goal-filnamn: `mortgage-se-object-object-information.html` (hierarchical naming)
+- Detta räknas som dokumentation för `mortgage-se-object.bpmn`, INTE för `mortgage-se-object-information.bpmn`
+
+**Logik:**
+- **UserTask/ServiceTask/BusinessRuleTask** → Epic (räknas i filen)
+- **CallActivity** → Feature Goal (räknas i parent-filen)
+
+**Exempel för `mortgage-se-object.bpmn`:**
+- 2 UserTasks → 2 Epics
+- 1 ServiceTask → 1 Epic
+- 1 CallActivity → 1 Feature Goal
+- **Total: 4/4** (3 Epics + 1 Feature Goal)
+
 ### Resultat
 
-Nu borde dokumentationsräkningen visa korrekt antal för varje fil, baserat på faktiska noder i filen och deras dokumentation med hierarchical naming.
+Nu borde dokumentationsräkningen visa korrekt antal för varje fil, baserat på faktiska noder i filen och deras dokumentation med hierarchical naming. Call activities räknas korrekt i parent-filen som Feature Goals.
 
 ### Validering
 
 Kör `npm run check:storage-docs <fileName>` för att se vilka dokumentationer som faktiskt finns i Storage för en specifik fil.
+Kör `npm run count:all-docs` för att se totalt antal dokumentationsfiler i Storage.
+
+Se även `docs/analysis/DOCUMENTATION_COVERAGE_COUNTING_RULES.md` för fullständig dokumentation av räkningsreglerna.
 

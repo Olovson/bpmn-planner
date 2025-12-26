@@ -164,6 +164,55 @@ Deno.serve(async (req) => {
       throw new Error('Only .bpmn and .dmn files are allowed');
     }
 
+    // 🚨 KRITISKT: Skydd mot att test-filer skriver över produktionsfiler
+    // Test-filer måste ha prefix "test-" för att kunna skrivas över
+    // Produktionsfiler (utan "test-" prefix) kan INTE skrivas över av test-filer
+    const isTestFile = fileName.startsWith('test-');
+    
+    // KRITISKT: Whitelist av produktionsfiler som INTE får skrivas över av test-filer
+    const PRODUCTION_FILES = [
+      'mortgage-se-application.bpmn',
+      'mortgage-se-object.bpmn',
+      'mortgage-se-credit-evaluation.bpmn',
+      'mortgage-se-object-control.bpmn',
+      'mortgage-se-object-information.bpmn',
+      'mortgage-se-household.bpmn',
+      'mortgage-se-internal-data-gathering.bpmn',
+      'mortgage-se-appeal.bpmn',
+      'mortgage.bpmn',
+    ];
+    
+    const isProductionFile = PRODUCTION_FILES.some(prod => 
+      fileName.toLowerCase() === prod.toLowerCase()
+    );
+    
+    if (!isTestFile) {
+      // Detta är en produktionsfil - kontrollera om den redan finns
+      const { data: existingFile } = await supabase
+        .from('bpmn_files')
+        .select('file_name, storage_path')
+        .eq('file_name', fileName)
+        .maybeSingle();
+
+      if (existingFile) {
+        // Produktionsfil finns redan - tillåt endast uppdatering om innehållet faktiskt ändrats
+        // (Detta hanteras av versioning-systemet, men vi loggar ändå)
+        console.log(`[upload-bpmn-file] Updating existing production file: ${fileName}`);
+      } else {
+        console.log(`[upload-bpmn-file] Creating new production file: ${fileName}`);
+      }
+    } else {
+      // Detta är en test-fil
+      // KRITISKT: Om test-filen matchar produktionsfil-namn, INTE tillåt skrivning
+      if (isProductionFile) {
+        throw new Error(
+          `[upload-bpmn-file] SECURITY: Test file "${fileName}" matches production file name. ` +
+          `Test files cannot overwrite production files. Use a different name.`
+        );
+      }
+      console.log(`[upload-bpmn-file] Uploading test file: ${fileName}`);
+    }
+
     // Read file content
     const arrayBuffer = await file.arrayBuffer();
     const content = new TextDecoder().decode(arrayBuffer);

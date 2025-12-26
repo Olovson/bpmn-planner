@@ -296,13 +296,31 @@ export const useAllBpmnNodes = () => {
                   // Dokumentationen sparas nu under varje fils egen version hash
                   const subprocessVersionHash = await getVersionHash(subprocessFile);
                   
+                  // VIKTIGT: Normalisera parentBpmnFile också (säkra att den har .bpmn extension)
+                  const parentBpmnFile = node.bpmnFile.endsWith('.bpmn')
+                    ? node.bpmnFile
+                    : `${node.bpmnFile}.bpmn`;
+                  
+                  if (import.meta.env.DEV) {
+                    console.log(`[useAllBpmnNodes] CallActivity ${node.elementId}:`, {
+                      parentBpmnFile,
+                      subprocessFile,
+                      subprocessVersionHash,
+                      elementId: node.elementId,
+                    });
+                  }
+                  
                   featureGoalPaths = getFeatureGoalDocStoragePaths(
                     subprocessFile.replace('.bpmn', ''), // subprocess BPMN file (without .bpmn for getFeatureGoalDocFileKey)
                     node.elementId,       // call activity element ID
-                    node.bpmnFile,       // parent BPMN file (där call activity är definierad)
+                    parentBpmnFile,       // parent BPMN file (där call activity är definierad) - NORMALISERAD
                     subprocessVersionHash, // VIKTIGT: Använd subprocess-filens version hash
                     subprocessFile,      // VIKTIGT: Använd subprocess-filen för versioned paths
                   );
+                  
+                  if (import.meta.env.DEV && featureGoalPaths.length > 0) {
+                    console.log(`[useAllBpmnNodes] Feature Goal paths for ${node.elementId}:`, featureGoalPaths);
+                  }
                 }
               } else {
                 // För Epic-dokumentation (UserTask, ServiceTask, BusinessRuleTask): 

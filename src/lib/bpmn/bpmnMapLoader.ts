@@ -41,43 +41,74 @@ export function matchCallActivityUsingMap(
   bpmnFile: string,
   bpmnMap: BpmnMap,
 ): { matchedFileName?: string; matchSource: 'bpmn-map' | 'none' } {
-  const proc = bpmnMap.processes.find((p) => p.bpmn_file === bpmnFile);
-  if (!proc) {
-    if (import.meta.env.DEV) {
-      console.warn(
-        `[matchCallActivityUsingMap] No process found in map for file: ${bpmnFile}`,
-        `Available files: ${bpmnMap.processes.map(p => p.bpmn_file).join(', ')}`
-      );
+  // Hjälpfunktion för att extrahera bara filnamnet från en sökväg
+  const getFileNameOnly = (pathOrName: string): string => {
+    if (pathOrName.includes('/')) {
+      return pathOrName.split('/').pop() || pathOrName;
     }
+    return pathOrName;
+  };
+
+  // Försök först med exakt matchning
+  let proc = bpmnMap.processes.find((p) => p.bpmn_file === bpmnFile);
+  
+  // Om ingen exakt match, försök med normaliserad matchning (bara filnamnet)
+  if (!proc) {
+    const bpmnFileNameOnly = getFileNameOnly(bpmnFile);
+    proc = bpmnMap.processes.find((p) => {
+      const mapFileNameOnly = getFileNameOnly(p.bpmn_file);
+      return mapFileNameOnly === bpmnFileNameOnly;
+    });
+  }
+  
+  if (!proc) {
+    // Inte logga här - detta är normalt när filer inte finns i map ännu.
+    // Systemet faller tillbaka på automatisk matchning, vilket är korrekt beteende.
     return { matchSource: 'none' };
   }
 
 
-  const entry = proc.call_activities.find(
-    (ca) =>
-      ca.bpmn_id === callActivity.id ||
-      (ca.name && ca.name === callActivity.name) ||
-      (ca.called_element && ca.called_element === callActivity.calledElement),
-  );
+  // Hjälpfunktion för att normalisera strängar för matchning (case-insensitive, trim)
+  const normalizeForMatch = (str?: string | null): string => {
+    return (str || '').toLowerCase().trim();
+  };
+
+  // Försök matcha call activity med flexibel matchning
+  const entry = proc.call_activities.find((ca) => {
+    // Exakt match på ID
+    if (ca.bpmn_id === callActivity.id) return true;
+    
+    // Normaliserad match på ID (fallback)
+    if (normalizeForMatch(ca.bpmn_id) === normalizeForMatch(callActivity.id)) return true;
+    
+    // Match på namn (normaliserat, case-insensitive)
+    if (ca.name && callActivity.name) {
+      if (normalizeForMatch(ca.name) === normalizeForMatch(callActivity.name)) return true;
+    }
+    
+    // Match på calledElement (normaliserat, case-insensitive)
+    if (ca.called_element && callActivity.calledElement) {
+      if (normalizeForMatch(ca.called_element) === normalizeForMatch(callActivity.calledElement)) return true;
+    }
+    
+    // Match på calledElement mot ID (om calledElement i map är tomt men callActivity har calledElement)
+    if (!ca.called_element && callActivity.calledElement) {
+      if (normalizeForMatch(ca.bpmn_id) === normalizeForMatch(callActivity.calledElement)) return true;
+    }
+    
+    return false;
+  });
 
   if (entry?.subprocess_bpmn_file) {
-    return { matchedFileName: entry.subprocess_bpmn_file, matchSource: 'bpmn-map' };
+    // Normalisera filnamnet (extrahera bara filnamnet från mappsökvägar)
+    // Detta säkerställer konsistens när filnamnet jämförs med kandidater
+    const normalizedFileName = getFileNameOnly(entry.subprocess_bpmn_file);
+    return { matchedFileName: normalizedFileName, matchSource: 'bpmn-map' };
   }
 
-  if (import.meta.env.DEV) {
-    console.warn(`[matchCallActivityUsingMap] ✗ No match found for:`, {
-      callActivityId: callActivity.id,
-      callActivityName: callActivity.name,
-      callActivityCalledElement: callActivity.calledElement,
-      inFile: bpmnFile,
-      availableCallActivities: proc.call_activities.map(ca => ({
-        bpmn_id: ca.bpmn_id,
-        name: ca.name,
-        called_element: ca.called_element,
-      })),
-    });
-  }
-
+  // Inte logga här - detta är inte ett fel. Om call activity inte finns i map,
+  // faller systemet tillbaka på automatisk matchning, vilket är korrekt beteende.
+  // Loggning skulle bara skapa onödig loggbrus.
   return { matchSource: 'none' };
 }
 
