@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { useProcessTree } from '@/hooks/useProcessTree';
@@ -26,11 +27,11 @@ export default function TestCoverageExplorerPage() {
   const { data: rootFile, isLoading: isLoadingRoot } = useRootBpmnFile();
   const { data: tree, isLoading: isLoadingTree, error } = useProcessTree(rootFile || 'mortgage.bpmn');
 
-  const isLoading = isLoadingRoot || isLoadingTree || isLoadingScenarios;
-
   // Ladda E2E-scenarios från storage
   const [e2eScenarios, setE2eScenarios] = useState<E2eScenario[]>([]);
   const [isLoadingScenarios, setIsLoadingScenarios] = useState(true);
+
+  const isLoading = isLoadingRoot || isLoadingTree || isLoadingScenarios;
 
   useEffect(() => {
     const loadScenarios = async () => {
@@ -886,16 +887,7 @@ export default function TestCoverageExplorerPage() {
   };
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'tree') navigate('/process-explorer');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
-    else if (view === 'test-coverage') navigate('/test-coverage');
-    else if (view === 'files') navigate('/files');
-    else if (view === 'timeline') navigate('/timeline');
-    else if (view === 'configuration') navigate('/configuration');
-    else if (view === 'styleguide') navigate('/styleguide');
-    else navigate('/test-coverage');
+    navigateToView(navigate, view as ViewKey);
   };
 
   if (isLoading) {

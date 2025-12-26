@@ -15,7 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -331,7 +332,9 @@ export default function BpmnVersionHistoryPage() {
         <AppHeaderWithTabs
           userEmail={user?.email ?? ''}
           currentView="files"
-          onViewChange={() => {}}
+          onViewChange={(view) => {
+            navigateToView(navigate, view as ViewKey);
+          }}
           onOpenVersions={() => {}}
           onSignOut={async () => {
             await signOut();
@@ -356,7 +359,9 @@ export default function BpmnVersionHistoryPage() {
         <AppHeaderWithTabs
           userEmail={user?.email ?? ''}
           currentView="files"
-          onViewChange={() => {}}
+          onViewChange={(view) => {
+            navigateToView(navigate, view as ViewKey);
+          }}
           onOpenVersions={() => {}}
           onSignOut={async () => {
             await signOut();
@@ -387,10 +392,7 @@ export default function BpmnVersionHistoryPage() {
         userEmail={user?.email ?? ''}
         currentView="files"
         onViewChange={(view) => {
-          if (view === 'files') navigate('/files');
-          else if (view === 'diagram') navigate('/');
-          else if (view === 'tree') navigate('/process-explorer');
-          else navigate('/files');
+          navigateToView(navigate, view as ViewKey);
         }}
         onOpenVersions={() => navigate('/')}
         onSignOut={async () => {

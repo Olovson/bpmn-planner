@@ -20,7 +20,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -32,7 +33,8 @@ import {
   AlertCircle,
   FileText,
   Loader2,
-  FolderOpen
+  FolderOpen,
+  GitCompare
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -50,6 +52,10 @@ interface BpmnFileDiff {
   diff_details: any;
   detected_at: string;
   resolved_at: string | null;
+  from_version_hash?: string | null;
+  to_version_hash?: string | null;
+  from_version_number?: number | null;
+  to_version_number?: number | null;
 }
 
 interface MappingInfo {
@@ -272,8 +278,7 @@ export default function BpmnDiffOverviewPage() {
         userEmail={user?.email}
         currentView="files"
         onViewChange={(v) => {
-          if (v === 'files') navigate('/files');
-          else if (v === 'diagram') navigate('/');
+          navigateToView(navigate, v as ViewKey);
         }}
         onOpenVersions={() => {}}
         onSignOut={signOut}
@@ -487,6 +492,19 @@ export default function BpmnDiffOverviewPage() {
                                   </TableCell>
                                   <TableCell>
                                     <div className="space-y-2">
+                                      {/* Version information */}
+                                      {(diff.from_version_number || diff.to_version_number) && (
+                                        <div className="text-xs text-muted-foreground mb-2">
+                                          <span className="font-semibold">Version:</span>{' '}
+                                          {diff.from_version_number ? `v${diff.from_version_number}` : '?'} → {diff.to_version_number ? `v${diff.to_version_number}` : '?'}
+                                          {diff.from_version_hash && diff.to_version_hash && (
+                                            <span className="ml-2 font-mono text-xs">
+                                              ({diff.from_version_hash.substring(0, 8)}... → {diff.to_version_hash.substring(0, 8)}...)
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                      
                                       {/* Mappningsinformation för call activities */}
                                       {diff.node_type === 'callActivity' && (
                                         <div className="space-y-1">
@@ -572,13 +590,100 @@ export default function BpmnDiffOverviewPage() {
                                       )}
                                       
                                       {/* Vanliga diff-detaljer */}
-                                      {diff.diff_details && (
-                                        <div className="text-sm">
-                                          {Object.keys(diff.diff_details).map((key) => (
-                                            <div key={key} className="text-muted-foreground">
-                                              <strong>{key}:</strong> {String(diff.diff_details[key].old)} → {String(diff.diff_details[key].new)}
+                                      {diff.diff_details && Object.keys(diff.diff_details).length > 0 && (
+                                        <div className="text-sm space-y-1">
+                                          {Object.entries(diff.diff_details).map(([key, change]) => {
+                                            // Format field names (Swedish)
+                                            const formatFieldName = (field: string): string => {
+                                              const fieldMap: Record<string, string> = {
+                                                name: 'Namn',
+                                                type: 'Typ',
+                                                calledElement: 'Anropad process',
+                                                processId: 'Process ID',
+                                                callActivitiesCount: 'Antal call activities',
+                                                tasksCount: 'Antal tasks',
+                                                mapping: 'Mapping',
+                                              };
+                                              return fieldMap[field] || field;
+                                            };
+                                            
+                                            // Format change values
+                                            const formatChangeValue = (value: any): string => {
+                                              if (value === null || value === undefined) return '(tomt)';
+                                              if (typeof value === 'boolean') return value ? 'Ja' : 'Nej';
+                                              if (typeof value === 'object') {
+                                                if (Array.isArray(value)) {
+                                                  return `[${value.length} items]`;
+                                                }
+                                                return JSON.stringify(value).slice(0, 50) + (JSON.stringify(value).length > 50 ? '...' : '');
+                                              }
+                                              return String(value);
+                                            };
+                                            
+                                            return (
+                                              <div key={key} className="flex items-start gap-2">
+                                                <span className="font-medium text-muted-foreground min-w-[120px]">
+                                                  {formatFieldName(key)}:
+                                                </span>
+                                                <div className="flex-1 space-x-2">
+                                                  <span className="line-through text-red-600 dark:text-red-400">
+                                                    {formatChangeValue(change.old)}
+                                                  </span>
+                                                  <span className="text-muted-foreground">→</span>
+                                                  <span className="text-green-600 dark:text-green-400 font-medium">
+                                                    {formatChangeValue(change.new)}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                      
+                                      {/* För added/removed noder, visa relevant information */}
+                                      {!diff.diff_details && (
+                                        <div className="text-sm text-muted-foreground">
+                                          {diff.diff_type === 'added' && diff.new_content && (
+                                            <div className="space-y-1">
+                                              {diff.new_content.name && (
+                                                <div><span className="font-medium">Namn:</span> {diff.new_content.name}</div>
+                                              )}
+                                              {diff.new_content.calledElement && (
+                                                <div><span className="font-medium">Anropad process:</span> {diff.new_content.calledElement}</div>
+                                              )}
+                                              {diff.new_content.type && (
+                                                <div><span className="font-medium">Typ:</span> {diff.new_content.type}</div>
+                                              )}
                                             </div>
-                                          ))}
+                                          )}
+                                          {diff.diff_type === 'removed' && diff.old_content && (
+                                            <div className="space-y-1">
+                                              {diff.old_content.name && (
+                                                <div><span className="font-medium">Namn:</span> {diff.old_content.name}</div>
+                                              )}
+                                              {diff.old_content.calledElement && (
+                                                <div><span className="font-medium">Anropade:</span> {diff.old_content.calledElement}</div>
+                                              )}
+                                              {diff.old_content.type && (
+                                                <div><span className="font-medium">Typ:</span> {diff.old_content.type}</div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Länk till version history om version numbers finns */}
+                                      {(diff.from_version_number && diff.to_version_number) && (
+                                        <div className="mt-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => navigate(`/bpmn-versions/${diff.file_name}?from=${diff.from_version_number}&to=${diff.to_version_number}`)}
+                                            className="text-xs"
+                                          >
+                                            <GitCompare className="h-3 w-3 mr-1" />
+                                            Visa i version history
+                                          </Button>
                                         </div>
                                       )}
                                     </div>

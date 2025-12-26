@@ -10,7 +10,8 @@ import { VersionHistoryDialog } from '@/components/VersionHistoryDialog';
 import { ProcessExplorerView } from '@/pages/ProcessExplorer';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { useBpmnFiles } from '@/hooks/useBpmnFiles';
-import { AppHeaderWithTabs, ViewKey } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { getHashRoute } from '@/utils/hashRouterHelpers';
 
@@ -56,28 +57,12 @@ const Index = () => {
                   : 'diagram';
 
   const handleViewChange = (value: string) => {
-    if (value === 'listvy') {
-      baseNavigate('/node-matrix');
-    } else if (value === 'tree') {
-      baseNavigate('/process-explorer');
-    } else if (value === 'test-coverage') {
-      baseNavigate('/test-coverage');
-    } else if (value === 'tests') {
-      baseNavigate('/test-report');
-    } else if (value === 'configuration') {
-      baseNavigate('/configuration');
-    } else if (value === 'files') {
-      baseNavigate('/files');
-    } else if (value === 'styleguide') {
-      baseNavigate('/styleguide');
-    } else if (value === 'timeline') {
-      baseNavigate('/timeline');
-    } else if (value === 'bpmn-folder-diff') {
-      baseNavigate('/bpmn-folder-diff');
-    } else {
-      setViewMode(value as 'diagram' | 'tree');
-      if (value === 'diagram') baseNavigate('/');
+    const view = value as ViewKey;
+    // Special handling for diagram/tree view mode (internal state)
+    if (view === 'diagram' || view === 'tree') {
+      setViewMode(view as 'diagram' | 'tree');
     }
+    navigateToView(baseNavigate, view);
   };
   const baseRootRef = useRef<string | null>(null);
   const derivedRoot = useMemo(() => {

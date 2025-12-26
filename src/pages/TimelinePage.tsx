@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
@@ -577,13 +578,7 @@ const TimelinePage = () => {
   }, [visibleTasks, isGanttInitialized]);
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'tree') navigate('/process-explorer');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
-    else if (view === 'configuration') navigate('/configuration');
-    else if (view === 'files') navigate('/files');
-    else if (view === 'timeline') navigate('/timeline');
+    navigateToView(navigate, view as ViewKey);
   };
 
   const handleSignOut = async () => {

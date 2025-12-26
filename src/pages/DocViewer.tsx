@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { useDocVariantAvailability } from '@/hooks/useDocVariantAvailability';
@@ -563,12 +564,7 @@ const DocViewer = () => {
         userEmail={user?.email ?? ''}
         currentView="diagram"
         onViewChange={(view) => {
-          if (view === 'diagram') navigate('/');
-          else if (view === 'tree') navigate('/process-explorer');
-          else if (view === 'listvy') navigate('/node-matrix');
-          else if (view === 'tests') navigate('/test-report');
-          else if (view === 'timeline') navigate('/timeline');
-          else navigate('/files');
+          navigateToView(navigate, view as ViewKey);
         }}
         onOpenVersions={() => navigate('/')}
         onSignOut={async () => {

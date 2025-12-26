@@ -6,7 +6,8 @@ import { ProcessTreeNode, NodeArtifact, getProcessNodeStyle, ProcessNodeType } f
 import { getDefaultFilterSet } from '@/lib/bpmnNodeTypeFilters';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { NodeSummaryCard } from '@/components/NodeSummaryCard';
@@ -247,13 +248,7 @@ export default function ProcessExplorerPage() {
   const { hasTests } = useArtifactAvailability();
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
-    else if (view === 'test-coverage') navigate('/test-coverage');
-    else if (view === 'files') navigate('/files');
-    else if (view === 'timeline') navigate('/timeline');
-    else navigate('/process-explorer');
+    navigateToView(navigate, view as ViewKey);
   };
 
   return (

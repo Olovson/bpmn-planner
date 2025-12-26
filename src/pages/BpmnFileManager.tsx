@@ -68,7 +68,8 @@ import {
   savePlannedScenarios,
 } from '@/lib/plannedScenariosHelper';
 import { useGenerationJobs, type GenerationJob, type GenerationOperation, type GenerationStatus } from '@/hooks/useGenerationJobs';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { buildDocStoragePaths, buildTestStoragePaths } from '@/lib/artifactPaths';
@@ -399,12 +400,7 @@ export default function BpmnFileManager() {
   // showMapValidationDialog and mapValidationResult are now defined above, before useBpmnMapManagement
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'tree') navigate('/process-explorer');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
-    else if (view === 'timeline') navigate('/timeline');
-    else navigate('/files');
+    navigateToView(navigate, view as ViewKey);
   };
   
   const { resetGeneratedData, isResetting } = useResetAndRegenerate();

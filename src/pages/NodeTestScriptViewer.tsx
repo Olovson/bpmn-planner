@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { useAllBpmnNodes } from '@/hooks/useAllBpmnNodes';
@@ -216,14 +217,7 @@ const NodeTestScriptViewer = () => {
   }, [activeVariant]);
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'tree') navigate('/process-explorer');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
-    else if (view === 'configuration') navigate('/configuration');
-    else if (view === 'files') navigate('/files');
-    else if (view === 'timeline') navigate('/timeline');
-    else navigate('/files');
+    navigateToView(navigate, view as ViewKey);
   };
 
   return (

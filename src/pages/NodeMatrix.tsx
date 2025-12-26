@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { getTestFileUrl, getDocumentationUrl, getNodeTestReportUrl } from '@/lib/artifactUrls';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { DocVariantBadges } from '@/components/DocVariantBadges';
@@ -295,12 +296,7 @@ const NodeMatrix = () => {
         userEmail={user?.email ?? ''}
         currentView="listvy"
         onViewChange={(v) => {
-          if (v === 'diagram') navigate('/');
-          else if (v === 'tree') navigate('/process-explorer');
-          else if (v === 'tests') navigate('/test-report');
-          else if (v === 'files') navigate('/files');
-          else if (v === 'timeline') navigate('/timeline');
-          else navigate('/node-matrix');
+          navigateToView(navigate, v as ViewKey);
         }}
         onOpenVersions={() => navigate('/')}
         onSignOut={async () => {

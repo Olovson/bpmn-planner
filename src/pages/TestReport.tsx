@@ -12,7 +12,8 @@ import { Progress } from '@/components/ui/progress';
 import { elementResourceMapping } from '@/data/elementResourceMapping';
 import { testMapping, getAllTests, type TestScenario } from '@/data/testMapping';
 import { useTestResults } from '@/hooks/useTestResults';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
 import { useAllFilesArtifactCoverage } from '@/hooks/useFileArtifactCoverage';
@@ -434,13 +435,7 @@ const TestReport = () => {
   ]);
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'tree') navigate('/process-explorer');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'test-coverage') navigate('/test-coverage');
-    else if (view === 'files') navigate('/files');
-    else if (view === 'timeline') navigate('/timeline');
-    else navigate('/test-report');
+    navigateToView(navigate, view as ViewKey);
   };
 
   return (

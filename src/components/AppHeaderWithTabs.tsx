@@ -4,7 +4,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { VersionIndicator } from '@/components/VersionIndicator';
-import { isHashRoute } from '@/utils/hashRouterHelpers';
 
 export type ViewKey =
   | 'diagram'
@@ -36,8 +35,6 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
   onSignOut,
   isTestsEnabled = true,
 }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
   const displayEmail = userEmail === 'seed-bot@local.test' ? null : userEmail;
   const handleTabChange = (v: string) => {
     if (v === 'tests' && !isTestsEnabled) return;
@@ -174,10 +171,10 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => navigate('/configuration')}
+                onClick={() => handleTabChange('configuration')}
                 aria-label="Projektkonfiguration"
                 className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                  isHashRoute(location, '/configuration')
+                  currentView === 'configuration'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted'
                 }`}
@@ -231,10 +228,10 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => navigate('/styleguide')}
+                onClick={() => handleTabChange('styleguide')}
                 aria-label="Styleguide"
                 className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                  isHashRoute(location, '/styleguide')
+                  currentView === 'styleguide'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted'
                 }`}

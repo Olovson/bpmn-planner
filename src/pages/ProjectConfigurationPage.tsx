@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,21 +95,7 @@ const ProjectConfigurationPage = () => {
   }, [tasks]);
 
   const handleViewChange = (view: string) => {
-    if (view === 'timeline') {
-      navigate('/timeline');
-    } else if (view === 'listvy') {
-      navigate('/node-matrix');
-    } else if (view === 'tree') {
-      navigate('/process-explorer');
-    } else if (view === 'tests') {
-      navigate('/test-report');
-    } else if (view === 'configuration') {
-      navigate('/configuration');
-    } else if (view === 'files') {
-      navigate('/files');
-    } else {
-      navigate('/');
-    }
+    navigateToView(navigate, view as ViewKey);
   };
 
   const handleToggleBankImplementation = async (task: GanttTask) => {

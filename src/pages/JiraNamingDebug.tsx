@@ -13,7 +13,8 @@ const getJiraType = (nodeType: string): 'feature goal' | 'epic' | null => {
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
@@ -187,12 +188,7 @@ export function JiraNamingDebugPage() {
   }, [processTree, treeLoading]);
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'tree') navigate('/process-explorer');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
-    else if (view === 'files') navigate('/files');
-    else if (view === 'timeline') navigate('/timeline');
+    navigateToView(navigate, view as ViewKey);
   };
 
   const handleSignOut = async () => {

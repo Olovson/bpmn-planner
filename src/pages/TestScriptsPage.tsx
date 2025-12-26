@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useAllBpmnNodes } from '@/hooks/useAllBpmnNodes';
 import { useNodeTestLinks, type TestMode } from '@/hooks/useNodeTestLinks';
@@ -25,14 +26,7 @@ const TestScriptsPage = () => {
   const [viewMode, setViewMode] = useState<TestMode | 'all'>('all');
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'tree') navigate('/process-explorer');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
-    else if (view === 'test-coverage') navigate('/test-coverage');
-    else if (view === 'files') navigate('/files');
-    else if (view === 'timeline') navigate('/timeline');
-    else navigate('/test-report');
+    navigateToView(navigate, view as ViewKey);
   };
 
   const rows = useMemo(() => {

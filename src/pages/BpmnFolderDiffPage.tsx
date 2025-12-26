@@ -4,7 +4,8 @@
  * Page for analyzing diffs of BPMN files in a local folder
  */
 
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { FolderDiffAnalysis } from '@/components/FolderDiffAnalysis';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -19,8 +20,7 @@ export default function BpmnFolderDiffPage() {
         userEmail={user?.email}
         currentView="files"
         onViewChange={(v) => {
-          if (v === 'files') navigate('/files');
-          else if (v === 'diagram') navigate('/');
+          navigateToView(navigate, v as ViewKey);
         }}
         onOpenVersions={() => {}}
         onSignOut={signOut}

@@ -1,4 +1,5 @@
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,23 +18,7 @@ const StyleGuidePage = () => {
   const { user, signOut } = useAuth();
 
   const handleViewChange = (view: string) => {
-    if (view === 'timeline') {
-      navigate('/timeline');
-    } else if (view === 'listvy') {
-      navigate('/node-matrix');
-    } else if (view === 'tree') {
-      navigate('/process-explorer');
-    } else if (view === 'tests') {
-      navigate('/test-report');
-    } else if (view === 'configuration') {
-      navigate('/configuration');
-    } else if (view === 'files') {
-      navigate('/files');
-    } else if (view === 'styleguide') {
-      navigate('/styleguide');
-    } else {
-      navigate('/');
-    }
+    navigateToView(navigate, view as ViewKey);
   };
 
   return (

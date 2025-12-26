@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppHeaderWithTabs } from '@/components/AppHeaderWithTabs';
+import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
+import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -50,17 +51,7 @@ export default function E2eQualityValidationPage() {
   const summary = useValidationSummary(validationResults);
 
   const handleViewChange = (view: string) => {
-    if (view === 'diagram') navigate('/');
-    else if (view === 'tree') navigate('/process-explorer');
-    else if (view === 'listvy') navigate('/node-matrix');
-    else if (view === 'tests') navigate('/test-report');
-    else if (view === 'test-coverage') navigate('/test-coverage');
-    else if (view === 'e2e-quality-validation') navigate('/e2e-quality-validation');
-    else if (view === 'files') navigate('/files');
-    else if (view === 'timeline') navigate('/timeline');
-    else if (view === 'configuration') navigate('/configuration');
-    else if (view === 'styleguide') navigate('/styleguide');
-    else navigate('/e2e-quality-validation');
+    navigateToView(navigate, view as ViewKey);
   };
 
   return (
