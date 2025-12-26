@@ -129,7 +129,7 @@ export function useTestGeneration({
     if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
       // Bygg hierarki tyst i bakgrunden (transparent för användaren)
       try {
-        await buildHierarchySilently(hierarchyFile);
+        await buildHierarchySilently(hierarchyFile, queryClient);
         // Invalidera queries så att UI uppdateras med ny hierarki
         queryClient.invalidateQueries({ queryKey: ['process-tree'] });
         queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
@@ -276,7 +276,7 @@ export function useTestGeneration({
     if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
       // Bygg hierarki tyst i bakgrunden (transparent för användaren)
       try {
-        await buildHierarchySilently(hierarchyFile);
+        await buildHierarchySilently(hierarchyFile, queryClient);
         // Invalidera queries så att UI uppdateras med ny hierarki
         queryClient.invalidateQueries({ queryKey: ['process-tree'] });
         queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
