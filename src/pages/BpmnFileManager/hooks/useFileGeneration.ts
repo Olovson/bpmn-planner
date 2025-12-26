@@ -280,7 +280,7 @@ export function useFileGeneration({
         },
         htmlUpload: {
           completed: docUploadsCompleted,
-          total: docUploadsPlanned || docUploadProgress.planned || 0,
+          total: docUploadsPlanned || 0,
         },
         tests: {
           completed: testUploadsCompleted,
@@ -342,7 +342,7 @@ export function useFileGeneration({
         },
         htmlUpload: {
           completed: docUploadsCompleted,
-          total: docUploadsPlanned || docUploadProgress.planned || 0,
+          total: docUploadsPlanned || 0,
         },
         tests: {
           completed: testUploadsCompleted,

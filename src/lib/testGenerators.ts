@@ -6,6 +6,7 @@
 import { parseBpmnFile } from '@/lib/bpmnParser';
 import { buildBpmnProcessGraphFromParseResults, getTestableNodes } from '@/lib/bpmnProcessGraph';
 import { storageFileExists, getNodeDocStoragePath, getFeatureGoalDocStoragePaths } from '@/lib/artifactUrls';
+import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 import type { LlmProvider } from '@/lib/llmClientAbstraction';
 import { isLlmEnabled } from '@/lib/llmClient';
 import { generateE2eScenariosForProcess } from '@/lib/e2eScenarioGenerator';
@@ -104,16 +105,24 @@ export async function generateTestsForFile(
     const missingDocs: Array<{ elementId: string; elementName: string; docPath: string }> = [];
     
     for (const node of testableNodes) {
-      const element = node.element;
+      // Use bpmnElementId directly from BpmnProcessNode (element is optional and may be undefined)
+      const elementId = node.bpmnElementId;
+      const elementName = node.name || elementId;
       let docExists = false;
       let docPath = '';
 
       // For callActivities, check Feature Goal documentation
       if (node.type === 'callActivity' && node.subprocessFile) {
+        // Get version hash for the subprocess file (not the parent file)
+        // This is important because Feature Goal docs are stored under the subprocess file's version
+        const subprocessVersionHash = await getCurrentVersionHash(node.subprocessFile);
+        
         const featureGoalPaths = getFeatureGoalDocStoragePaths(
           node.subprocessFile,
-          element.id,
+          elementId,
           bpmnFileName, // parent BPMN file
+          subprocessVersionHash, // version hash for subprocess file
+          node.subprocessFile, // bpmnFileForVersion: use subprocess file for versioned paths
         );
         
         // Check all possible paths (versioned and non-versioned)
@@ -125,19 +134,39 @@ export async function generateTestsForFile(
           }
         }
         
+        // If not found with hierarchical naming, try legacy naming (without parent prefix)
+        // This handles cases where documentation was generated with older naming convention
         if (!docExists) {
-          docPath = featureGoalPaths[0] || `feature-goals/${node.subprocessFile}/${element.id}.html`;
+          const legacyPaths = getFeatureGoalDocStoragePaths(
+            node.subprocessFile,
+            elementId,
+            undefined, // no parent for legacy naming
+            subprocessVersionHash,
+            node.subprocessFile,
+          );
+          
+          for (const path of legacyPaths) {
+            if (await storageFileExists(path)) {
+              docExists = true;
+              docPath = path;
+              break;
+            }
+          }
+        }
+        
+        if (!docExists) {
+          docPath = featureGoalPaths[0] || `feature-goals/${node.subprocessFile}/${elementId}.html`;
         }
       } else {
         // For other node types, check regular node documentation
-        docPath = getNodeDocStoragePath(bpmnFileName, element.id);
+        docPath = getNodeDocStoragePath(bpmnFileName, elementId);
         docExists = await storageFileExists(docPath);
       }
       
       if (!docExists) {
         missingDocs.push({
-          elementId: element.id,
-          elementName: element.name || element.id,
+          elementId: elementId,
+          elementName: elementName,
           docPath: docPath,
         });
       }

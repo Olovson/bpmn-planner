@@ -36,6 +36,25 @@ test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Test Generation from Scratch', () => {
   test('should generate tests from scratch and display them in app', async ({ page }) => {
+    // Monitor console for errors (especially ReferenceError, TypeError, etc.)
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        consoleErrors.push(text);
+        // Log critical errors immediately
+        if (text.includes('ReferenceError') || text.includes('TypeError') || text.includes('is not defined')) {
+          console.error(`[CRITICAL ERROR] ${text}`);
+        }
+      }
+    });
+
+    // Monitor page errors (unhandled promise rejections, etc.)
+    page.on('pageerror', (error) => {
+      consoleErrors.push(`PageError: ${error.message}`);
+      console.error(`[PAGE ERROR] ${error.message}`, error.stack);
+    });
+
     const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
@@ -118,6 +137,26 @@ test.describe('Test Generation from Scratch', () => {
 
     // Steg 7: Verifiera att Test Report laddas korrekt (detta validerar att testgenerering-resultat kan visas)
     await stepNavigateToTestReport(ctx);
+    
+    // Verifiera att inga kritiska JavaScript-fel uppstod
+    const criticalErrors = consoleErrors.filter(
+      (e) => 
+        e.includes('ReferenceError') || 
+        e.includes('TypeError') || 
+        e.includes('is not defined') ||
+        e.includes('Cannot read properties') ||
+        e.includes('Cannot access')
+    );
+    
+    if (criticalErrors.length > 0) {
+      console.error('❌ Critical JavaScript errors detected during test generation:');
+      criticalErrors.forEach((error, index) => {
+        console.error(`  ${index + 1}. ${error}`);
+      });
+    }
+    
+    // Fail test if critical errors found
+    expect(criticalErrors.length).toBe(0);
     
     // Verifiera att Test Report-sidan laddades korrekt
     const testReportContent = await page.textContent('body');
