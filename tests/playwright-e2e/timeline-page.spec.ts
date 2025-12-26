@@ -234,16 +234,18 @@ test.describe('Timeline Page', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
 
-    // Check for empty state message
+    // Check for empty state message (updated to match actual text)
     const emptyState = page.locator(
-      'text=/no.*data/i, text=/no.*process/i, text=/no.*files/i, text=/empty/i'
+      'text=/no.*subprocesses/i, text=/no.*tasks.*match/i, text=/no.*process/i, text=/no.*files/i, text=/empty/i'
     ).first();
     
+    // Check for Gantt container (even if hidden)
     const ganttContainer = page.locator('.gantt-container, [data-testid="gantt"]').first();
     const hasGantt = await ganttContainer.count() > 0;
     const hasEmptyState = await emptyState.count() > 0;
     
-    // Either Gantt should be displayed or empty state should be shown
+    // Either Gantt container should exist (even if hidden) or empty state should be shown
+    // This handles the case where tasks exist but are filtered out
     expect(hasGantt || hasEmptyState).toBeTruthy();
   });
 });

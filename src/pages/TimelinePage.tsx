@@ -355,9 +355,10 @@ const TimelinePage = () => {
     loadTasksWithJiraData();
   }, [processTree, timelineDates, projectConfig, useStaccIntegration]);
 
-  // Initialize DHTMLX Gantt when container is ready and we have tasks
+  // Initialize DHTMLX Gantt when container is ready
+  // Initialize even if tasks.length === 0, so container is ready when tasks are added
   useEffect(() => {
-    if (!ganttContainerRef.current || isGanttInitialized || tasks.length === 0) {
+    if (!ganttContainerRef.current || isGanttInitialized) {
       return;
     }
 
@@ -505,9 +506,9 @@ const TimelinePage = () => {
 
         setIsGanttInitialized(true);
         
-        // Load initial data immediately after initialization
-        if (tasks.length > 0) {
-          const ganttData = toGanttData(tasks);
+        // Load initial data immediately after initialization if we have visible tasks
+        if (tasks.length > 0 && visibleTasks.length > 0) {
+          const ganttData = toGanttData(visibleTasks);
           
           // No links - dependencies removed per user request
           gantt.parse({ data: ganttData, links: [] });
@@ -516,6 +517,10 @@ const TimelinePage = () => {
           if (import.meta.env.DEV) {
                 console.log('[TimelinePage] Initial data loaded into Gantt:', ganttData.length, 'tasks');
           }
+        } else if (tasks.length > 0 && visibleTasks.length === 0) {
+          // If we have tasks but they're all filtered out, parse empty data
+          gantt.parse({ data: [], links: [] });
+          gantt.render();
         }
       } catch (error) {
         console.error('[TimelinePage] Error initializing Gantt:', error);
@@ -532,7 +537,7 @@ const TimelinePage = () => {
         }
       }
     };
-  }, [isGanttInitialized, tasks]);
+  }, [isGanttInitialized, tasks, visibleTasks]);
 
   // Update Gantt data when tasks or filters change (view-only filtering)
   useEffect(() => {
@@ -611,10 +616,18 @@ const TimelinePage = () => {
             {isLoading && (
               <p className="text-sm text-muted-foreground mt-2">Loading process tree...</p>
             )}
-            {!isLoading && tasks.length === 0 && (
-              <p className="text-sm text-muted-foreground mt-2">
-                No subprocesses found. Make sure you have uploaded BPMN files and built the hierarchy.
-              </p>
+            {!isLoading && visibleTasks.length === 0 && (
+              <div className="text-center py-8">
+                {tasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No subprocesses found. Make sure you have uploaded BPMN files and built the hierarchy.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No tasks match the current filter. Try adjusting your filters above.
+                  </p>
+                )}
+              </div>
             )}
 
             {/* BPMN type filter (view-only, same types as Process Explorer) */}
@@ -673,15 +686,19 @@ const TimelinePage = () => {
             </div>
           </div>
 
-          {visibleTasks.length > 0 && (
+          {/* Render Gantt container if we have tasks (even if filtered out), so Gantt can initialize */}
+          {tasks.length > 0 && (
             <div className="border rounded-lg overflow-hidden bg-white">
               <div 
-                ref={ganttContainerRef} 
+                ref={ganttContainerRef}
+                data-testid="gantt"
+                className="gantt-container"
                 style={{ 
                   width: '100%', 
                   height: '600px',
                   minHeight: '600px',
-                  position: 'relative'
+                  position: 'relative',
+                  display: visibleTasks.length > 0 ? 'block' : 'none'
                 }} 
               />
             </div>
