@@ -4,7 +4,7 @@
  */
 
 import { parseBpmnFile } from '@/lib/bpmnParser';
-import { buildBpmnProcessGraph, getTestableNodes } from '@/lib/bpmnProcessGraph';
+import { buildBpmnProcessGraphFromParseResults, getTestableNodes } from '@/lib/bpmnProcessGraph';
 import { storageFileExists, getNodeDocStoragePath, getFeatureGoalDocStoragePaths } from '@/lib/artifactUrls';
 import type { LlmProvider } from '@/lib/llmClientAbstraction';
 import { isLlmEnabled } from '@/lib/llmClient';
@@ -76,8 +76,12 @@ export async function generateTestsForFile(
       throw new Error(`Failed to parse BPMN file: ${bpmnFileName}`);
     }
 
-    // Build graph and get testable nodes
-    const graph = buildBpmnProcessGraph(parseResult.elements, bpmnFileName);
+    // Build graph from parse result
+    // Use buildBpmnProcessGraphFromParseResults since we already have the parsed result
+    const parseResults = new Map<string, typeof parseResult>();
+    parseResults.set(bpmnFileName, parseResult);
+    
+    const graph = await buildBpmnProcessGraphFromParseResults(bpmnFileName, parseResults);
     const allTestableNodes = getTestableNodes(graph);
     
     // Filter: Only generate test files for Feature Goals (callActivities)

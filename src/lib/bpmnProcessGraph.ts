@@ -56,6 +56,16 @@ export async function buildBpmnProcessGraph(
   existingBpmnFiles: string[],
   versionHashes?: Map<string, string | null>
 ): Promise<BpmnProcessGraph> {
+  // Validate input - ensure existingBpmnFiles is an array
+  if (!Array.isArray(existingBpmnFiles)) {
+    console.error(
+      '[buildBpmnProcessGraph] Invalid input: existingBpmnFiles must be an array, got:',
+      typeof existingBpmnFiles,
+      existingBpmnFiles
+    );
+    throw new Error(`existingBpmnFiles must be an array, got ${typeof existingBpmnFiles}`);
+  }
+
   const parseResults = await parseAllBpmnFiles(existingBpmnFiles, versionHashes);
   
   // Ladda bpmn-map.json för matchning
@@ -153,8 +163,35 @@ async function parseAllBpmnFiles(
   fileNames: string[],
   versionHashes?: Map<string, string | null>
 ): Promise<Map<string, BpmnParseResult>> {
+  // Validate input - ensure fileNames is an array
+  if (!Array.isArray(fileNames)) {
+    console.error('[parseAllBpmnFiles] Invalid input: fileNames must be an array, got:', typeof fileNames, fileNames);
+    return new Map();
+  }
+
+  // Filter out invalid file names (empty strings, single characters that look like typos)
+  const validFileNames = fileNames.filter((file) => {
+    if (typeof file !== 'string') {
+      console.warn(`[parseAllBpmnFiles] Skipping non-string file name:`, file);
+      return false;
+    }
+    if (!file || file.length < 3 || !file.endsWith('.bpmn')) {
+      // Skip very short names or names that don't end with .bpmn (likely typos)
+      if (import.meta.env.DEV) {
+        console.warn(`[parseAllBpmnFiles] Skipping invalid file name: "${file}"`);
+      }
+      return false;
+    }
+    return true;
+  });
+
+  if (validFileNames.length === 0) {
+    console.warn('[parseAllBpmnFiles] No valid file names provided');
+    return new Map();
+  }
+
   const results = new Map<string, BpmnParseResult>();
-  for (const file of fileNames) {
+  for (const file of validFileNames) {
     try {
       const versionHash = versionHashes?.get(file) || null;
       const result = await parseBpmnFile(`/bpmn/${file}`, versionHash);
