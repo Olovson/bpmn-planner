@@ -19,3 +19,10 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     autoRefreshToken: true,
   }
 });
+
+// Exponera Supabase client via window för Playwright-tester
+// OBS: Detta exponeras alltid i development för att underlätta testning
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  window.__SUPABASE_CLIENT__ = supabase;
+}

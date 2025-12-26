@@ -1,4 +1,5 @@
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { getHashRoute } from '@/utils/hashRouterHelpers';
 
 /**
  * Central navigation helper to keep BPMN viewer state in the URL.
@@ -30,8 +31,11 @@ export function useAppNavigation() {
   const goToFiles = () => navigate('/files');
   const goToDocViewer = (docId: string) => navigate(`/doc-viewer/${encodeURIComponent(docId)}`);
 
+  // In HashRouter, we need to use location.hash instead of location.pathname
+  const currentRoute = getHashRoute(location);
+
   return {
-    path: location.pathname,
+    path: currentRoute, // Use hash route instead of pathname
     searchParams,
     currentFile,
     selectedElement,

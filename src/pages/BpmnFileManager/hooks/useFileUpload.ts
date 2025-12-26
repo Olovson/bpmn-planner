@@ -41,39 +41,6 @@ export function useFileUpload(
     }
   }, []);
 
-  const handleFiles = useCallback(async (fileList: FileList) => {
-    const files = Array.from(fileList).filter(file =>
-      file.name.endsWith('.bpmn') || file.name.endsWith('.dmn')
-    );
-
-    if (files.length === 0) {
-      toast({
-        title: 'Inga filer hittades',
-        description: 'Inga .bpmn eller .dmn filer hittades i vald mapp eller filer.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // For folder uploads with many files, show confirmation
-    if (files.length > 10) {
-      setPendingFiles(files);
-      return;
-    }
-
-    await uploadFiles(files);
-  }, [toast, uploadFiles]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFiles(e.dataTransfer.files);
-    }
-  }, [handleFiles]);
-
   const analyzeAndSuggestMapUpdates = useCallback(async () => {
     try {
       const { data: filesData, error } = await supabase
@@ -211,6 +178,39 @@ export function useFileUpload(
       }
     }
   }, [uploadMutation, toast, analyzeAndSuggestMapUpdates]);
+
+  const handleFiles = useCallback(async (fileList: FileList) => {
+    const files = Array.from(fileList).filter(file =>
+      file.name.endsWith('.bpmn') || file.name.endsWith('.dmn')
+    );
+
+    if (files.length === 0) {
+      toast({
+        title: 'Inga filer hittades',
+        description: 'Inga .bpmn eller .dmn filer hittades i vald mapp eller filer.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // For folder uploads with many files, show confirmation
+    if (files.length > 10) {
+      setPendingFiles(files);
+      return;
+    }
+
+    await uploadFiles(files);
+  }, [toast, uploadFiles]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFiles(e.dataTransfer.files);
+    }
+  }, [handleFiles]);
 
   return {
     dragActive,

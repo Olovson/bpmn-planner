@@ -16,6 +16,7 @@ import { test, expect } from '@playwright/test';
 import { setupClaudeApiMocks } from './fixtures/claudeApiMocks';
 import {
   createTestContext,
+  stepLogin,
   stepNavigateToFiles,
   stepUploadBpmnFile,
   stepBuildHierarchy,
@@ -25,43 +26,107 @@ import {
   stepWaitForGenerationComplete,
   stepVerifyGenerationResult,
   stepNavigateToDocViewer,
+  stepNavigateToProcessExplorer,
 } from './utils/testSteps';
 import { ensureBpmnFileExists, ensureFileCanBeSelected, ensureButtonExists } from './utils/testHelpers';
 import { cleanupTestFiles } from './utils/testCleanup';
+import { DebugLogger } from './utils/debugLogger';
 
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 test.describe('Documentation Generation from Scratch', () => {
   test('should generate documentation from scratch and display it in app', async ({ page }) => {
+    DebugLogger.reset();
     const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
+    DebugLogger.log('TEST START', { testStartTime });
+
     // Setup: Mock Claude API-anrop
+    DebugLogger.log('Setting up Claude API mocks');
     await setupClaudeApiMocks(page, { simulateSlowResponse: false });
 
-    // Steg 1: Navigera till Files
+    // Steg 1: Login (om session saknas)
+    DebugLogger.log('STEP 1: Checking login status');
+    await page.goto('/');
+    DebugLogger.logUrl(page);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    const currentUrl = page.url();
+    DebugLogger.log('After initial navigation', { currentUrl });
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
+      DebugLogger.log('Not logged in, performing login');
+      await stepLogin(ctx);
+      DebugLogger.logUrl(page);
+    } else {
+      DebugLogger.log('Already logged in');
+    }
+
+    // Steg 2: Navigera till Files
+    DebugLogger.log('STEP 2: Navigating to Files page');
     await stepNavigateToFiles(ctx);
+    DebugLogger.logUrl(page);
+    const filesPageContent = await DebugLogger.logPageContent(page);
+    DebugLogger.log('Files page loaded', { hasContent: !!filesPageContent, contentLength: filesPageContent?.length });
 
-    // Steg 2: Säkerställ att minst en BPMN-fil finns (ladda upp om ingen finns)
+    // Steg 3: Säkerställ att minst en BPMN-fil finns (ladda upp om ingen finns)
     // Filnamn genereras automatiskt med test- prefix och timestamp
+    DebugLogger.log('STEP 3: Ensuring BPMN file exists');
+    const fileTableBefore = await DebugLogger.logElement(page, 'table', 'File table');
+    const fileLinksBefore = await DebugLogger.logElement(page, 'a:has-text(".bpmn"), button:has-text(".bpmn")', 'File links');
+    
     const testFileName = await ensureBpmnFileExists(ctx, 'test-doc-generation');
+    DebugLogger.log('After ensureBpmnFileExists', { testFileName });
+    
+    await page.waitForTimeout(2000); // Låt UI uppdateras
+    const fileTableAfter = await DebugLogger.logElement(page, 'table', 'File table');
+    const fileLinksAfter = await DebugLogger.logElement(page, 'a:has-text(".bpmn"), button:has-text(".bpmn")', 'File links');
+    DebugLogger.log('File table status', { 
+      tableBefore: fileTableBefore, 
+      tableAfter: fileTableAfter,
+      linksBefore: fileLinksBefore,
+      linksAfter: fileLinksAfter
+    });
 
-    // Steg 3: Bygg hierarki (krav för generering)
+    // Steg 4: Bygg hierarki (krav för generering)
+    DebugLogger.log('STEP 4: Building hierarchy');
     await stepBuildHierarchy(ctx);
+    DebugLogger.log('Hierarchy build complete');
     
     // Verifiera att hierarki byggdes
     await stepNavigateToProcessExplorer(ctx);
-    const processTree = page.locator('svg, [data-testid="process-tree"], text=/process/i').first();
-    const hasProcessTree = await processTree.count() > 0;
+    // Använd separata locators för att undvika CSS selector-fel med regex
+    const svgTree = page.locator('svg').first();
+    const dataTestIdTree = page.locator('[data-testid="process-tree"]').first();
+    const textTree = page.locator('text=/process/i').first();
+    
+    const hasSvgTree = await svgTree.count() > 0;
+    const hasDataTestIdTree = await dataTestIdTree.count() > 0;
+    const hasTextTree = await textTree.count() > 0;
+    const hasProcessTree = hasSvgTree || hasDataTestIdTree || hasTextTree;
     expect(hasProcessTree).toBeTruthy();
     await stepNavigateToFiles(ctx); // Gå tillbaka till Files
 
-    // Steg 4: Välj genereringsläge (Claude med mocked API)
+    // Steg 5: Välj genereringsläge (Claude med mocked API)
+    DebugLogger.log('STEP 5: Selecting generation mode (Claude)');
     await stepSelectGenerationMode(ctx, 'claude');
+    DebugLogger.log('Generation mode selected');
 
-    // Steg 5: Välj fil för generering
+    // Steg 6: Välj fil för generering
+    DebugLogger.log('STEP 6: Selecting file for generation');
+    const fileTableBeforeSelect = await DebugLogger.logElement(page, 'table', 'File table');
+    const allFileLinks = await DebugLogger.logElement(page, 'a, button, [role="button"], td, th', 'All clickable elements');
+    DebugLogger.log('Before ensureFileCanBeSelected', { 
+      tableExists: fileTableBeforeSelect > 0,
+      clickableElements: allFileLinks
+    });
+    
     const fileName = await ensureFileCanBeSelected(ctx);
+    DebugLogger.log('File selected', { fileName });
+    
+    DebugLogger.log('STEP 6.1: Clicking on selected file');
     await stepSelectFile(ctx, fileName);
+    DebugLogger.log('File clicked');
 
     // Steg 6: Starta dokumentationsgenerering
     // Generate button should exist if file is selected
@@ -122,6 +187,15 @@ test.describe('Documentation Generation from Scratch', () => {
 
     // Setup: Mock Claude API med fel
     await setupClaudeApiMocks(page, { simulateError: true });
+
+    // Steg 1: Login (om session saknas)
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth') || currentUrl.includes('#/auth')) {
+      await stepLogin(ctx);
+    }
 
     await stepNavigateToFiles(ctx);
     

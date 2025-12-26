@@ -8,8 +8,9 @@ import { readFileSync } from 'fs';
 /**
  * Global setup som:
  * 1. Skapar seed-användaren om den saknas
- * 2. Loggar ut om det finns en gammal session
- * 3. Loggar in på nytt och sparar sessionen
+ * 
+ * OBS: Vi sparar INTE sessionen här - testerna loggar in själva med stepLogin() om de behöver.
+ * Detta är enklare och mer robust.
  */
 async function ensureSeedUser() {
   const __filename = fileURLToPath(import.meta.url);
@@ -46,6 +47,10 @@ async function ensureSeedUser() {
 
   const SEED_USER_EMAIL = 'seed-bot@local.test';
   const SEED_USER_PASSWORD = 'Passw0rd!';
+  
+  // Dedikerat test-konto för Playwright-tester
+  const TEST_USER_EMAIL = 'test-bot@local.test';
+  const TEST_USER_PASSWORD = 'TestPassw0rd!';
 
   const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
@@ -60,11 +65,13 @@ async function ensureSeedUser() {
       return;
     }
 
-    const existing = data.users.find((user) => user.email === SEED_USER_EMAIL);
+    const existingSeed = data.users.find((user) => user.email === SEED_USER_EMAIL);
+    const existingTest = data.users.find((user) => user.email === TEST_USER_EMAIL);
 
-    if (existing) {
+    // Skapa/uppdatera seed-användare
+    if (existingSeed) {
       console.log(`✅ Seed-användare finns redan. Uppdaterar lösenord...`);
-      await adminClient.auth.admin.updateUserById(existing.id, {
+      await adminClient.auth.admin.updateUserById(existingSeed.id, {
         password: SEED_USER_PASSWORD,
         email_confirm: true,
       });
@@ -79,10 +86,32 @@ async function ensureSeedUser() {
 
       if (createError || !created?.user) {
         console.warn('⚠️  Kunde inte skapa seed-användare:', createError?.message ?? 'Unknown error');
-        return;
+      } else {
+        console.log(`✅ Seed-användare skapad`);
       }
+    }
+    
+    // Skapa/uppdatera dedikerat test-konto för Playwright-tester
+    if (existingTest) {
+      console.log(`✅ Test-användare finns redan. Uppdaterar lösenord...`);
+      await adminClient.auth.admin.updateUserById(existingTest.id, {
+        password: TEST_USER_PASSWORD,
+        email_confirm: true,
+      });
+      console.log(`✅ Test-användare uppdaterad`);
+    } else {
+      console.log(`📝 Skapar test-användare: ${TEST_USER_EMAIL}...`);
+      const { data: created, error: createError } = await adminClient.auth.admin.createUser({
+        email: TEST_USER_EMAIL,
+        password: TEST_USER_PASSWORD,
+        email_confirm: true,
+      });
 
-      console.log(`✅ Seed-användare skapad`);
+      if (createError || !created?.user) {
+        console.warn('⚠️  Kunde inte skapa test-användare:', createError?.message ?? 'Unknown error');
+      } else {
+        console.log(`✅ Test-användare skapad`);
+      }
     }
   } catch (err) {
     console.warn('⚠️  Oväntat fel vid skapande av seed-användare:', err instanceof Error ? err.message : String(err));
@@ -110,81 +139,10 @@ async function globalSetup(config: FullConfig) {
     fs.mkdirSync(authDir, { recursive: true });
   }
 
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-
-  try {
-    console.log('🔐 Loggar in med seed-användare för att spara session...');
-    
-    // Gå till appen
-    await page.goto(baseURL);
-    await page.waitForLoadState('networkidle');
-    
-    // Vänta lite för att se om redirect sker
-    await page.waitForTimeout(1000);
-    
-    const currentUrl = page.url();
-    
-    // Om vi inte är på /auth, logga ut först för att säkerställa en ren session
-    if (!currentUrl.includes('/auth')) {
-      console.log('🔓 Loggar ut för att säkerställa ren session...');
-      try {
-        // Försök hitta och klicka på logout-knappen
-        const signOutButton = page.locator('button:has-text("Logga ut"), button:has-text("Sign out"), [data-testid="sign-out"]').first();
-        if (await signOutButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await signOutButton.click();
-          await page.waitForURL(/\/auth/, { timeout: 5000 });
-          await page.waitForLoadState('networkidle');
-        }
-      } catch {
-        // Ignorera om logout inte fungerar - vi försöker logga in ändå
-      }
-    }
-    
-    // Gå till /auth för att logga in
-    await page.goto(`${baseURL}/auth`);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-    
-    const finalUrl = page.url();
-    if (finalUrl.includes('/auth')) {
-      // Vänta på login-formuläret
-      await page.waitForSelector('#signin-email', { timeout: 10000 });
-      await page.waitForSelector('#signin-password', { timeout: 10000 });
-      
-      // Fyll i formuläret
-      await page.fill('#signin-email', SEED_EMAIL);
-      await page.fill('#signin-password', SEED_PASSWORD);
-      
-      // Klicka på login-knappen och vänta på auth API-response
-      const loginButton = page.locator('button:has-text("Logga in"), button[type="submit"]').first();
-      await loginButton.waitFor({ state: 'visible', timeout: 5000 });
-      
-      // Vänta på Supabase auth API-response (React Router navigation, inte full page reload)
-      await Promise.all([
-        page.waitForResponse(response => 
-          response.url().includes('/auth/v1/token') && response.status() === 200
-        ).catch(() => {}),
-        loginButton.click(),
-      ]);
-      
-      // Vänta på att vi navigeras bort från /auth
-      await page.waitForURL(/\/(?!auth)/, { timeout: 20000 });
-      await page.waitForLoadState('networkidle');
-      console.log('✅ Inloggning klar');
-    } else {
-      console.log('✅ Redan inloggad eller ingen login krävs');
-    }
-
-    // Spara storage state (cookies, localStorage, etc.)
-    await page.context().storageState({ path: path.join(authDir, 'user.json') });
-    console.log('✅ Storage state sparad');
-  } catch (error) {
-    console.error('❌ Fel vid global setup:', error);
-    throw error;
-  } finally {
-    await browser.close();
-  }
+  // Skapa en tom storage state fil - testerna kommer att logga in själva med stepLogin()
+  const emptyState = { cookies: [], origins: [] };
+  fs.writeFileSync(path.join(authDir, 'user.json'), JSON.stringify(emptyState, null, 2));
+  console.log('✅ Tom storage state skapad - testerna kommer att logga in själva');
 }
 
 export default globalSetup;

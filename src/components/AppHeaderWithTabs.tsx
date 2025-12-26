@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { VersionIndicator } from '@/components/VersionIndicator';
+import { isHashRoute } from '@/utils/hashRouterHelpers';
 
 export type ViewKey =
   | 'diagram'
@@ -176,7 +177,7 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
                 onClick={() => navigate('/configuration')}
                 aria-label="Projektkonfiguration"
                 className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                  location.pathname === '/configuration' || location.hash === '#/configuration'
+                  isHashRoute(location, '/configuration')
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted'
                 }`}
@@ -233,7 +234,7 @@ export const AppHeaderWithTabs: React.FC<AppHeaderWithTabsProps> = ({
                 onClick={() => navigate('/styleguide')}
                 aria-label="Styleguide"
                 className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                  location.pathname === '/styleguide' || location.hash === '#/styleguide'
+                  isHashRoute(location, '/styleguide')
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted'
                 }`}

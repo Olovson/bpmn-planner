@@ -12,6 +12,7 @@ import { useRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { useBpmnFiles } from '@/hooks/useBpmnFiles';
 import { AppHeaderWithTabs, ViewKey } from '@/components/AppHeaderWithTabs';
 import { useArtifactAvailability } from '@/hooks/useArtifactAvailability';
+import { getHashRoute } from '@/utils/hashRouterHelpers';
 
 const Index = () => {
   const { filename } = useParams();
@@ -36,19 +37,21 @@ const Index = () => {
   const urlElement = searchParams.get('el');
 
   // Determine active view based on current route
-  const currentView: ViewKey = location.pathname.includes('/node-matrix')
+  // In HashRouter, we need to use location.hash instead of location.pathname
+  const currentRoute = getHashRoute(location);
+  const currentView: ViewKey = currentRoute.includes('/node-matrix')
     ? 'listvy'
-    : location.pathname.includes('/process-explorer')
+    : currentRoute.includes('/process-explorer')
       ? 'tree'
-      : location.pathname.includes('/test-coverage')
+      : currentRoute.includes('/test-coverage')
         ? 'test-coverage'
-          : location.pathname.includes('/timeline')
+          : currentRoute.includes('/timeline')
             ? 'timeline'
-            : location.pathname.includes('/configuration')
+            : currentRoute.includes('/configuration')
               ? 'configuration'
-              : location.pathname.includes('/styleguide')
+              : currentRoute.includes('/styleguide')
                 ? 'styleguide'
-                : location.pathname.includes('/bpmn-folder-diff')
+                : currentRoute.includes('/bpmn-folder-diff')
                   ? 'bpmn-folder-diff'
                   : 'diagram';
 

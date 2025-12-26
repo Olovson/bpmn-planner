@@ -198,6 +198,8 @@ export default function BpmnFileManager() {
   const [mapSuggestions, setMapSuggestions] = useState<MapSuggestion[]>([]);
   const [showMapSuggestionsDialog, setShowMapSuggestionsDialog] = useState(false);
   const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<string>>(new Set());
+  const [showMapValidationDialog, setShowMapValidationDialog] = useState(false);
+  const [mapValidationResult, setMapValidationResult] = useState<any | null>(null);
 
   // Use file upload hook
   const fileUpload = useFileUpload(
@@ -205,6 +207,34 @@ export default function BpmnFileManager() {
     setShowMapSuggestionsDialog,
     setAcceptedSuggestions,
   );
+
+  // Define resetGenerationState BEFORE it's used in hooks
+  const resetGenerationState = useCallback(() => {
+    cancelGenerationRef.current = false;
+    setCancelGeneration(false);
+    hasGenerationResultRef.current = false;
+    setCurrentGenerationStep(null);
+    setGraphTotals({ files: 0, nodes: 0 });
+    setDocgenProgress({ completed: 0, total: 0 });
+    setDocUploadProgress({ planned: 0, completed: 0 });
+    setGenerationPlan(null);
+    setGenerationProgress(null);
+    setGenerationDialogResult(null);
+    // Skapa ny AbortController för nästa generering
+    abortControllerRef.current = new AbortController();
+  }, [
+    setCancelGeneration,
+    setCurrentGenerationStep,
+    setGraphTotals,
+    setDocgenProgress,
+    setDocUploadProgress,
+    setGenerationPlan,
+    setGenerationProgress,
+    setGenerationDialogResult,
+    cancelGenerationRef,
+    hasGenerationResultRef,
+    abortControllerRef,
+  ]);
 
   // Use file generation hook
   const { handleGenerateArtifacts, handleGenerateAllArtifacts, handleGenerateSelectedFile } = useFileGeneration({
@@ -366,8 +396,7 @@ export default function BpmnFileManager() {
 
     checkHierarchyStatus();
   }, [rootFileName, files.length]);
-  const [showMapValidationDialog, setShowMapValidationDialog] = useState(false);
-  const [mapValidationResult, setMapValidationResult] = useState<any | null>(null);
+  // showMapValidationDialog and mapValidationResult are now defined above, before useBpmnMapManagement
 
   const handleViewChange = (view: string) => {
     if (view === 'diagram') navigate('/');
@@ -580,24 +609,7 @@ export default function BpmnFileManager() {
   }, [files, coverageMap, generationJobs, rootFileName]);
 
   // handleValidateBpmnMap is now provided by the useBpmnMapManagement hook (see line 300)
-
-  const resetGenerationState = () => {
-    cancelGenerationRef.current = false;
-    setCancelGeneration(false);
-    cancelGenerationRef.current = false;
-    hasGenerationResultRef.current = false; // Reset result ref
-    setCurrentGenerationStep(null);
-    setGraphTotals({ files: 0, nodes: 0 });
-    setDocgenProgress({ completed: 0, total: 0 });
-    setDocUploadProgress({ planned: 0, completed: 0 });
-    // Playwright-testfiler har tagits bort - setTestUploadProgress används inte längre
-    // setTestUploadProgress({ planned: 0, completed: 0 });
-    setGenerationPlan(null);
-    setGenerationProgress(null);
-    setGenerationDialogResult(null);
-    // Skapa ny AbortController för nästa generering
-    abortControllerRef.current = new AbortController();
-  };
+  // resetGenerationState is now defined above, before useHierarchyBuilding (see line 203)
 
   const checkCancellation = () => {
     if (cancelGenerationRef.current) {

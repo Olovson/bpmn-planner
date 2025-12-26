@@ -16,6 +16,7 @@ import BpmnVersionHistoryPage from "./pages/BpmnVersionHistoryPage";
 import RegistryStatus from "./pages/RegistryStatus";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import TestLogin from "./pages/TestLogin";
 import NodeMatrix from "./pages/NodeMatrix";
 import ProcessExplorer from "./pages/ProcessExplorer";
 import ProcessGraphDebugPage from "./pages/ProcessGraphDebug";
@@ -135,6 +136,7 @@ const App = () => {
                   <Route path="/configuration" element={<ProtectedRoute><ConfigurationPage /></ProtectedRoute>} />
                   <Route path="/styleguide" element={<StyleGuidePage />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/test-login" element={<TestLogin />} />
                   <Route path="/doc-viewer/:docId" element={<DocViewer />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

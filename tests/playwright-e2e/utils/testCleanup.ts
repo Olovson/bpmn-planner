@@ -19,7 +19,7 @@ export async function cleanupTestFiles(
 ): Promise<void> {
   try {
     // Navigera till files-sidan
-    await page.goto('/files');
+    await page.goto('/#/files');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -103,7 +103,7 @@ export async function cleanupOldTestData(
   maxAgeMinutes: number = 60
 ): Promise<void> {
   try {
-    await page.goto('/files');
+    await page.goto('/#/files');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 

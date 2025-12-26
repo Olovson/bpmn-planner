@@ -15,6 +15,7 @@ import { test, expect } from '@playwright/test';
 import { setupClaudeApiMocks } from './fixtures/claudeApiMocks';
 import {
   createTestContext,
+  stepLogin,
   stepNavigateToFiles,
   stepUploadBpmnFile,
   stepBuildHierarchy,
