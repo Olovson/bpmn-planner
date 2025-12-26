@@ -608,32 +608,63 @@ export default function BpmnDiffOverviewPage() {
                                             };
                                             
                                             // Format change values
-                                            const formatChangeValue = (value: any): string => {
-                                              if (value === null || value === undefined) return '(tomt)';
+                                            const formatChangeValue = (value: any, fieldName?: string): string => {
+                                              if (value === null || value === undefined) {
+                                                // Special handling for mapping field
+                                                if (fieldName === 'mapping' || fieldName === 'calledElement') {
+                                                  return 'Ingen mappning';
+                                                }
+                                                return 'Inget värde';
+                                              }
                                               if (typeof value === 'boolean') return value ? 'Ja' : 'Nej';
                                               if (typeof value === 'object') {
                                                 if (Array.isArray(value)) {
                                                   return `[${value.length} items]`;
+                                                }
+                                                // For mapping objects, show the subprocess file if available
+                                                if (value.subprocess_bpmn_file) {
+                                                  return value.subprocess_bpmn_file;
+                                                }
+                                                if (value.matchedFileName) {
+                                                  return value.matchedFileName;
                                                 }
                                                 return JSON.stringify(value).slice(0, 50) + (JSON.stringify(value).length > 50 ? '...' : '');
                                               }
                                               return String(value);
                                             };
                                             
+                                            // Special handling for mapping changes: if going from null/undefined/empty to a value, show it as "Mappning tillagd"
+                                            const oldMappingIsEmpty = change.old === null || 
+                                              change.old === undefined || 
+                                              (typeof change.old === 'object' && change.old !== null && !change.old.subprocess_bpmn_file && !change.old.matchedFileName);
+                                            const newMappingHasValue = change.new !== null && 
+                                              change.new !== undefined &&
+                                              (typeof change.new === 'object' && change.new !== null ? (change.new.subprocess_bpmn_file || change.new.matchedFileName) : true);
+                                            const isMappingAdded = key === 'mapping' && oldMappingIsEmpty && newMappingHasValue;
+                                            
                                             return (
                                               <div key={key} className="flex items-start gap-2">
                                                 <span className="font-medium text-muted-foreground min-w-[120px]">
                                                   {formatFieldName(key)}:
                                                 </span>
-                                                <div className="flex-1 space-x-2">
-                                                  <span className="line-through text-red-600 dark:text-red-400">
-                                                    {formatChangeValue(change.old)}
-                                                  </span>
-                                                  <span className="text-muted-foreground">→</span>
-                                                  <span className="text-green-600 dark:text-green-400 font-medium">
-                                                    {formatChangeValue(change.new)}
-                                                  </span>
-                                                </div>
+                                                {isMappingAdded ? (
+                                                  <div className="flex-1">
+                                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                                      <Plus className="h-3 w-3 mr-1" />
+                                                      Mappning tillagd: {formatChangeValue(change.new, key)}
+                                                    </Badge>
+                                                  </div>
+                                                ) : (
+                                                  <div className="flex-1 space-x-2">
+                                                    <span className="line-through text-red-600 dark:text-red-400">
+                                                      {formatChangeValue(change.old, key)}
+                                                    </span>
+                                                    <span className="text-muted-foreground">→</span>
+                                                    <span className="text-green-600 dark:text-green-400 font-medium">
+                                                      {formatChangeValue(change.new, key)}
+                                                    </span>
+                                                  </div>
+                                                )}
                                               </div>
                                             );
                                           })}

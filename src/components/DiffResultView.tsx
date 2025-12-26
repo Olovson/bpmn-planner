@@ -58,8 +58,14 @@ export function DiffResultView({
   };
 
   // Format change values for display
-  const formatChangeValue = (value: any): string => {
-    if (value === null || value === undefined) return '(tomt)';
+  const formatChangeValue = (value: any, fieldName?: string): string => {
+    if (value === null || value === undefined) {
+      // Special handling for mapping field
+      if (fieldName === 'mapping' || fieldName === 'calledElement') {
+        return 'Ingen mappning';
+      }
+      return 'Inget värde';
+    }
     if (typeof value === 'boolean') return value ? 'Ja' : 'Nej';
     if (typeof value === 'object') {
       if (Array.isArray(value)) {
@@ -278,11 +284,11 @@ export function DiffResultView({
                               <div key={field} className="text-muted-foreground">
                                 <span className="font-medium">{field}:</span>{' '}
                                 <span className="line-through text-red-600 dark:text-red-400">
-                                  {formatChangeValue(oldValue)}
+                                  {formatChangeValue(oldValue, field)}
                                 </span>
                                 {' → '}
                                 <span className="text-green-600 dark:text-green-400 font-medium">
-                                  {formatChangeValue(newValue)}
+                                  {formatChangeValue(newValue, field)}
                                 </span>
                               </div>
                             ))}
@@ -416,11 +422,11 @@ export function DiffResultView({
                           </span>
                           <div className="flex-1 space-x-2">
                             <span className="line-through text-red-600 dark:text-red-400">
-                              {formatChangeValue(oldValue)}
+                              {formatChangeValue(oldValue, field)}
                             </span>
                             <span className="text-muted-foreground">→</span>
                             <span className="text-green-600 dark:text-green-400 font-medium">
-                              {formatChangeValue(newValue)}
+                              {formatChangeValue(newValue, field)}
                             </span>
                           </div>
                         </div>
