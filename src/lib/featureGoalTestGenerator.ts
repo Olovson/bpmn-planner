@@ -169,9 +169,8 @@ async function loadFeatureGoalDocFromStorage(
           // Convert to FeatureGoalDocModel format
           return {
             summary: docJson.summary || '',
-            prerequisites: Array.isArray(docJson.prerequisites) ? docJson.prerequisites : [],
             flowSteps: Array.isArray(docJson.flowSteps) ? docJson.flowSteps : [],
-            dependencies: Array.isArray(docJson.dependencies) ? docJson.dependencies : [],
+            dependencies: Array.isArray(docJson.dependencies) ? docJson.dependencies : [], // Includes both process context (prerequisites) and technical systems
             userStories: Array.isArray(docJson.userStories) ? docJson.userStories.map((us: any) => ({
               id: us.id || '',
               role: (us.role === 'Kund' || us.role === 'Handläggare' || us.role === 'Processägare') 
@@ -202,9 +201,8 @@ async function loadFeatureGoalDocFromStorage(
       if (docInfo) {
         return {
           summary: docInfo.summary || '',
-          prerequisites: docInfo.inputs || [],
           flowSteps: docInfo.flowSteps || [],
-          dependencies: docInfo.outputs || [],
+          dependencies: [...(docInfo.inputs || []), ...(docInfo.outputs || [])], // Combine inputs (prerequisites) and outputs (technical systems) into dependencies
           userStories: [], // Not available from this source
         };
       }

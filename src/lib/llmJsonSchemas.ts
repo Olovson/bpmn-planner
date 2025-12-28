@@ -20,17 +20,12 @@ export function buildFeatureGoalJsonSchema() {
       additionalProperties: false,
       required: [
         'summary',
-        'prerequisites',
         'flowSteps',
         'userStories',
       ],
       properties: {
         summary: {
           type: 'string',
-        },
-        prerequisites: {
-          type: 'array',
-          items: { type: 'string' },
         },
         flowSteps: {
           type: 'array',
@@ -83,17 +78,12 @@ export function buildEpicJsonSchema() {
       additionalProperties: false,
       required: [
         'summary',
-        'prerequisites',
         'flowSteps',
         'userStories',
       ],
       properties: {
         summary: {
           type: 'string',
-        },
-        prerequisites: {
-          type: 'array',
-          items: { type: 'string' },
         },
         flowSteps: {
           type: 'array',
@@ -106,6 +96,7 @@ export function buildEpicJsonSchema() {
         dependencies: {
           type: 'array',
           items: { type: 'string' },
+          description: 'Beroenden inkluderar både process-kontext (vad måste vara klart före epiken kan köras) och tekniska system (API:er, databaser, regelmotorer som behövs). Var SPECIFIK - använd konkreta systemnamn, API:er eller processsteg. Undvik generiska beskrivningar som "Tillgång till databas" eller "Föregående steg måste vara klart". Istället: "Beroende: Kunddatabas; Id: internal-customer-db; Beskrivning: tillhandahåller grundläggande kundinformation och historik." eller "Beroende: Process; Id: application; Beskrivning: Ansökningsprocessen måste vara slutförd med komplett kund- och ansökningsdata."',
         },
         userStories: {
           type: 'array',

@@ -210,11 +210,10 @@ export function validateFeatureGoalJson(
   const obj = json as Record<string, unknown>;
 
   // Enligt prompten är dessa obligatoriska:
-  // summary, prerequisites, flowSteps, userStories
-  // dependencies är optional
+  // summary, flowSteps, userStories
+  // dependencies är optional (inkluderar både process-kontext och tekniska system)
   const requiredFields: Array<keyof FeatureGoalDocModel> = [
     'summary',
-    'prerequisites',
     'flowSteps',
     'userStories',
   ];
@@ -232,17 +231,7 @@ export function validateFeatureGoalJson(
     errors.push('Field "summary" must be a string (3-5 sentences describing the feature goal).');
   }
 
-  if ('prerequisites' in obj) {
-    if (!Array.isArray(obj.prerequisites)) {
-      errors.push('Field "prerequisites" must be an array of strings (2-3 full sentences).');
-    } else {
-      obj.prerequisites.forEach((item, index) => {
-        if (typeof item !== 'string') {
-          errors.push(`Field "prerequisites[${index}]" must be a string (full sentence).`);
-        }
-      });
-    }
-  }
+  // prerequisites har konsoliderats till dependencies (samma som Epic)
 
   if ('dependencies' in obj && Array.isArray(obj.dependencies)) {
     obj.dependencies.forEach((item, index) => {
@@ -317,12 +306,12 @@ export function validateEpicJson(json: unknown, provider: LlmProvider): Validati
 
   const obj = json as Record<string, unknown>;
 
-  // EpicDocModel - enligt prompten (v1.4.0) är dessa obligatoriska:
-  // summary, prerequisites, flowSteps, userStories
+  // EpicDocModel - enligt prompten är dessa obligatoriska:
+  // summary, flowSteps, userStories
   // interactions är valfritt (endast för User Tasks)
+  // dependencies är valfritt (rekommenderat)
   const requiredFields = [
     'summary',
-    'prerequisites',
     'flowSteps',
     'userStories',
   ];
@@ -338,18 +327,6 @@ export function validateEpicJson(json: unknown, provider: LlmProvider): Validati
   // Validera datatyper för obligatoriska fält
   if ('summary' in obj && typeof obj.summary !== 'string') {
     errors.push('Field "summary" must be a string (2-4 sentences describing the epic).');
-  }
-
-  if ('prerequisites' in obj) {
-    if (!Array.isArray(obj.prerequisites)) {
-      errors.push('Field "prerequisites" must be an array of strings (2-3 full sentences).');
-    } else {
-      obj.prerequisites.forEach((item, index) => {
-        if (typeof item !== 'string') {
-          errors.push(`Field "prerequisites[${index}]" must be a string (full sentence).`);
-        }
-      });
-    }
   }
 
   if ('flowSteps' in obj) {

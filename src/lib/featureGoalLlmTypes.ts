@@ -4,15 +4,14 @@
 import type { ScenarioPersona, ScenarioRiskLevel, ScenarioAssertionType, ScenarioUiStep } from './epicDocTypes';
 
 /**
- * Feature Goal dokumentation modell - kopierad från EpicDocModel för konsistens.
+ * Feature Goal dokumentation modell - konsoliderat med EpicDocModel för konsistens.
  * 
- * Feature Goals använder nu samma struktur som Epics.
+ * Feature Goals använder nu samma struktur som Epics (prerequisites konsoliderat till dependencies).
  */
 export interface FeatureGoalDocModel {
   summary: string;
-  prerequisites: string[];
   flowSteps: string[];
-  dependencies?: string[]; // Optional - dependencies for the Feature Goal
+  dependencies?: string[]; // Optional - includes both process context (prerequisites) and technical systems
   userStories: Array<{
     id: string;
     role: 'Kund' | 'Handläggare' | 'Processägare'; // Kund, Handläggare eller Processägare - inga System-roller

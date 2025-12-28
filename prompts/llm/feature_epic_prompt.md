@@ -73,26 +73,24 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 
 - **flowSteps**: Skapa mer precisa flowSteps som reflekterar det faktiska flödet genom child nodes. Använd child nodes flowSteps som inspiration, men aggregera dem till Feature Goal-nivå. T.ex. om child nodes har steg för "hämta data" och "validera data", kan Feature Goal flowSteps vara "Systemet hämtar och validerar data automatiskt". **Viktigt**: Om det finns många child nodes, aggregera liknande steg. T.ex. om det finns flera Service Tasks som alla hämtar data, aggregera till ett steg "Systemet hämtar data från externa källor" istället för att lista alla.
 
-- **dependencies**: Identifiera dependencies baserat på vad child nodes behöver. Agregera dependencies från child nodes och ta bort dupliceringar. T.ex. om flera child nodes behöver samma databas, listar du den en gång. **Viktigt**: Om det finns många child nodes med många dependencies, prioritera de viktigaste dependencies (t.ex. regelmotorer, huvuddatakällor).
-
-- **prerequisites**: Identifiera prerequisites baserat på vad child nodes behöver. Agregera prerequisites från child nodes och ta bort dupliceringar. **Viktigt**: Om det finns många child nodes med många prerequisites, prioritera de viktigaste.
+- **dependencies**: Identifiera dependencies baserat på vad child nodes behöver. Agregera dependencies från child nodes och ta bort dupliceringar. T.ex. om flera child nodes behöver samma databas, listar du den en gång. **Viktigt**: Om det finns många child nodes med många dependencies, prioritera de viktigaste dependencies (t.ex. regelmotorer, huvuddatakällor). **VIKTIGT**: Dependencies inkluderar både process-kontext (vad måste vara klart före) och tekniska system (vad behövs för att köra). Var SPECIFIK - se instruktioner under "dependencies"-sektionen.
 
 **Viktigt:** Referera INTE direkt till child node-namn i texten (t.ex. "UserTask X gör Y"), men använd deras funktionalitet för att skapa bättre dokumentation (t.ex. "Kunden fyller i ansökningsinformation"). **⚠️ Evaluera alltid vem som gör vad baserat på child node-namn och funktionalitet**: Om en child node har ett namn som "register", "upload", "fill" → använd "kunden" eller "kund" i texten. Om en child node har ett namn som "review", "evaluate", "assess" → använd "handläggaren" eller "handläggare" i texten. Använd lane-information endast som hint, evaluera själv baserat på task-namnet och funktionalitet. Detta säkerställer att Feature Goals korrekt reflekterar vem som gör vad i subprocessen.
 
 **Viktigt om strukturell information (`structuralInfo`):**
 Om `currentNodeContext.structuralInfo` finns, använd den för att förbättra dokumentationen:
 
-- **gatewayConditions**: Gateway-conditions som gäller FÖRE Feature Goal. Använd dessa för att förbättra prerequisites (t.ex. "Gateway condition: KALP OK = Yes måste vara uppfylld"). Inkludera gateway-conditions i prerequisites när de är relevanta.
+- **gatewayConditions**: Gateway-conditions som gäller FÖRE Feature Goal. Använd dessa för att förbättra dependencies (t.ex. "Beroende: Process; Id: gateway-condition; Beskrivning: Gateway condition: KALP OK = Yes måste vara uppfylld"). Inkludera gateway-conditions i dependencies när de är relevanta.
 
 - **processPaths**: Paths som går genom Feature Goal. Använd dessa för att förstå Feature Goal's roll i processen. T.ex. om Feature Goal ingår i flera paths, kan du beskriva olika scenarion i flowSteps.
 
-- **flowContext**: Feature Goals FÖRE/EFTER. Använd dessa för att förbättra prerequisites (inkludera Feature Goals FÖRE) och dependencies (inkludera Feature Goals EFTER).
+- **flowContext**: Feature Goals FÖRE/EFTER. Använd dessa för att förbättra dependencies (inkludera Feature Goals FÖRE som process-kontext och Feature Goals EFTER som tekniska system).
 
 - **endEvents**: End events som Feature Goal kan leda till. Använd dessa för att förbättra outputs (inkludera end events som Feature Goal kan producera).
 
 **Exempel på användning:**
-- Om `gatewayConditions` innehåller "KALP OK = Yes", inkludera detta i prerequisites: "Gateway condition: KALP OK = Yes (creditDecision.approved === true) måste vara uppfylld".
-- Om `flowContext.previousFeatureGoals` innehåller "application", inkludera detta i prerequisites: "Application-processen måste vara slutförd".
+- Om `gatewayConditions` innehåller "KALP OK = Yes", inkludera detta i dependencies: "Beroende: Process; Id: gateway-condition; Beskrivning: Gateway condition: KALP OK = Yes (creditDecision.approved === true) måste vara uppfylld".
+- Om `flowContext.previousFeatureGoals` innehåller "application", inkludera detta i dependencies: "Beroende: Process; Id: application; Beskrivning: Application-processen måste vara slutförd med komplett kund- och ansökningsdata."
 - Om `endEvents` innehåller "end-event-approved", inkludera detta i outputs: "Processen kan slutföras med end-event-approved när KALP OK = Yes".
 
 **Viktigt om kontext:**
@@ -126,7 +124,7 @@ Om `currentNodeContext.structuralInfo` finns, använd den för att förbättra d
 - Använd istället affärstermer som "processen", "systemet", "kunden", "handläggaren", "nästa steg", "data sparas", "ansökan", "beslut".
 - För Service Tasks: Beskriv vad systemet gör automatiskt (t.ex. "Systemet hämtar kunddata från externa källor") istället för tekniska detaljer (t.ex. "ServiceTask anropar API-endpoint").
 - För Business Rule Tasks: Beskriv vad regeln bedömer (t.ex. "Systemet utvärderar kundens kreditvärdighet") istället för tekniska detaljer (t.ex. "DMN-motorn kör beslutslogik").
-- Detta gäller för **alla fält** i dokumentationen: summary, flowSteps, prerequisites, interactions, userStories, dependencies, etc.
+- Detta gäller för **alla fält** i dokumentationen: summary, flowSteps, interactions, userStories, dependencies, etc.
 
 **Exempel på affärsspråk för olika fält:**
 
@@ -145,22 +143,19 @@ Om `currentNodeContext.structuralInfo` finns, använd den för att förbättra d
 ## Format och struktur
 
 **List-fält:**
-- Alla list-fält (t.ex. `flowSteps`, `dependencies`, `prerequisites`, `interactions`, `userStories`, `dataContracts`, `businessRulesPolicy`) ska returneras som **EN LOGISK PUNKT PER ELEMENT** i arrayen.
+- Alla list-fält (t.ex. `flowSteps`, `dependencies`, `interactions`, `userStories`, `dataContracts`, `businessRulesPolicy`) ska returneras som **EN LOGISK PUNKT PER ELEMENT** i arrayen.
 - Inga semikolon-separerade texter i samma arrayelement.
 - Skriv aldrig flera logiska punkter i samma sträng – varje punkt ska vara ett separat element i listan.
 - List-fält ska vara **strängar**, inte objekt. Skriv alltid hela raden i strängen, inte som ett inre JSON-objekt.
 
 **Formatkrav för specifika fält:**
-- **Dependencies**: Använd EXAKT formatet `"Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>."`
+- **Dependencies**: Använd EXAKT formatet `"Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>."` Var SPECIFIK - undvik generiska beskrivningar. Se detaljerade instruktioner under "dependencies"-sektionen.
 - **FlowSteps**: Varje element ska vara en full mening som beskriver ett steg i flödet.
-- **Prerequisites**: Varje element ska vara en full mening om förutsättningar.
-- **Dependencies**: Varje element ska följa formatet "Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>."
 
 **Riktlinjer för längd:**
 - Använd längre listor (övre delen av intervallet) för komplexa noder med många child nodes eller många steg.
 - Använd kortare listor (nedre delen av intervallet) för enkla noder med få child nodes eller få steg.
-- Var konsekvent: om en Feature Goal har många child nodes, använd längre listor för prerequisites och flowSteps också.
-- Om en Epic har många prerequisites, använd längre listor för flowSteps också.
+- Var konsekvent: om en Feature Goal har många child nodes, använd längre listor för flowSteps också.
 
 **Hantering av Edge Cases:**
 - Om en nod har inga children: Det är okej, dokumentera noden baserat på dess namn, typ och kontext.
@@ -174,17 +169,14 @@ Om `currentNodeContext.structuralInfo` finns, använd den för att förbättra d
 ## Obligatoriska vs Valfria Fält
 
 **Obligatoriska fält (måste ALLTID inkluderas - dessa fält är kritiska och får INTE saknas):**
-- **Feature Goal**: `summary`, `prerequisites`, `flowSteps`, `dependencies`, `userStories`
-  - ⚠️ **VIKTIGT**: `prerequisites` är OBLIGATORISKT och måste alltid inkluderas, även om det är kort.
-  - För `prerequisites`: Minst 2-3 punkter om vad som måste vara klart innan Feature Goalet kan starta.
+- **Feature Goal**: `summary`, `flowSteps`, `userStories`
   - För `userStories`: Minst 3-6 user stories med acceptanskriterier.
-- **Epic**: `summary`, `prerequisites`, `flowSteps`, `userStories`
-  - ⚠️ **VIKTIGT**: `prerequisites` är OBLIGATORISKT och måste alltid inkluderas, även om det är kort.
-  - För `prerequisites`: Minst 2-3 punkter om vad som måste vara klart innan epiken kan starta.
+- **Epic**: `summary`, `flowSteps`, `userStories`
+  - För `userStories`: Minst 3-6 user stories med acceptanskriterier.
 
 **Valfria fält (inkludera endast om relevant):**
-- **Feature Goal**: Inga valfria fält - alla fält är obligatoriska
-- **Epic**: `interactions` (inkludera endast för User Tasks, kan utelämnas för Service Tasks), `dependencies` (optional)
+- **Feature Goal**: `dependencies` (valfritt men rekommenderat - inkluderar både process-kontext och tekniska system)
+- **Epic**: `interactions` (inkludera endast för User Tasks, kan utelämnas för Service Tasks), `dependencies` (valfritt men rekommenderat)
 
 ---
 
@@ -197,11 +189,6 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
 ```json
 {
   "summary": "Intern datainsamling säkerställer att intern kunddata hämtas, kvalitetssäkras och görs tillgänglig för kreditbeslut. Processen omfattar alla typer av kreditansökningar och stödjer bankens kreditstrategi genom att tillhandahålla komplett och kvalitetssäkrad data för riskbedömning.",
-  "prerequisites": [
-    "Triggas normalt efter att en kreditansökan har registrerats i systemet.",
-    "Förutsätter att grundläggande kund- och ansökningsdata är validerade.",
-    "Eventuella föregående KYC/AML- och identitetskontroller ska vara godkända."
-  ],
   "flowSteps": [
     "Processen startar när en kreditansökan har registrerats i systemet.",
     "Systemet initierar automatiskt insamling av intern kund- och engagemangsdata från relevanta källor.",
@@ -210,6 +197,7 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
     "Resultaten görs tillgängliga för efterföljande steg i kreditprocessen."
   ],
   "dependencies": [
+    "Beroende: Process; Id: application; Beskrivning: En kreditansökan måste ha registrerats i systemet med grundläggande kund- och ansökningsdata validerade, eventuella föregående KYC/AML- och identitetskontroller ska vara godkända.",
     "Beroende: Kunddatabas; Id: internal-customer-db; Beskrivning: tillhandahåller grundläggande kundinformation och historik.",
     "Beroende: Regelmotor; Id: data-validation-rules; Beskrivning: används för att validera och kvalitetssäkra insamlad data.",
     "Beroende: Analysplattform; Id: data-enrichment-service; Beskrivning: berikar data med metadata för kreditbedömning."
@@ -246,11 +234,6 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
 ```json
 {
   "summary": "Riskbedömning kombinerar insamlad kund- och ansökningsdata med bankens riskpolicy för att utvärdera kreditvärdighet och risknivå. Processen omfattar automatisk bedömning baserat på regler och möjliggör manuell granskning när det behövs. Feature Goalet stödjer bankens riskhantering genom konsekvent tillämpning av kreditpolicy och riskmandat.",
-  "prerequisites": [
-    "Triggas normalt efter att kund- och ansökningsdata har samlats in och validerats.",
-    "Förutsätter att all nödvändig data för riskbedömning är tillgänglig.",
-    "Eventuella externa kreditupplysningar och registerkontroller ska vara genomförda."
-  ],
   "flowSteps": [
     "Systemet initierar automatisk riskbedömning baserat på insamlad data och bankens riskpolicy.",
     "Riskbedömningen utvärderar kreditvärdighet, skuldsättning och produktvillkor.",
@@ -259,6 +242,7 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
     "Riskbedömningen och rekommendationerna görs tillgängliga för efterföljande beslutsteg."
   ],
   "dependencies": [
+    "Beroende: Process; Id: data-gathering; Beskrivning: Kund- och ansökningsdata måste ha samlats in och validerats, all nödvändig data för riskbedömning måste vara tillgänglig, eventuella externa kreditupplysningar och registerkontroller ska vara genomförda.",
     "Beroende: Regelmotor; Id: riskbedömning-dmn; Beskrivning: används för automatisk riskbedömning baserat på bankens riskpolicy.",
     "Beroende: Kunddatabas; Id: customer-data; Beskrivning: tillhandahåller kund- och engagemangsdata för riskbedömning.",
     "Beroende: Riskpolicy; Id: credit-policy; Beskrivning: definierar regler och mandat för riskbedömning."
@@ -306,10 +290,6 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
 ```json
 {
   "summary": "Epiken möjliggör att kunder kan fylla i ansökningsinformation via webbgränssnitt. Den samlar in grundläggande kund- och ansökningsdata som behövs för att initiera kreditprocessen. Processen är designad för att vara enkel och vägledande för användaren, med tydlig feedback om vad som behöver fyllas i.",
-  "prerequisites": [
-    "Kunden måste ha startat en ny kreditansökan i systemet.",
-    "Grundläggande kundinformation måste vara tillgänglig eller kunna samlas in."
-  ],
   "flowSteps": [
     "Kunden öppnar ansökningsformuläret och ser en översikt över vilken information som behöver fyllas i.",
     "Systemet visar formulär med tydlig struktur och vägledning för varje sektion.",
@@ -322,6 +302,11 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
     "Kanal: webbgränssnitt optimerat för både desktop och mobil enheter.",
     "UI ska vara förklarande med tydlig koppling till kreditprocessen och nästa steg.",
     "Felmeddelanden ska vara begripliga och vägleda kunden till rätt åtgärd."
+  ],
+  "dependencies": [
+    "Beroende: Process; Id: application-initiation; Beskrivning: En ny kreditansökan måste ha initierats i systemet.",
+    "Beroende: Kunddatabas; Id: customer-registry; Beskrivning: tillhandahåller grundläggande kundinformation för att förifylla formulärfält.",
+    "Beroende: Valideringsmotor; Id: form-validation-engine; Beskrivning: validerar att alla obligatoriska fält är korrekt ifyllda innan ansökan kan skickas."
   ],
   "userStories": [
     {
@@ -366,10 +351,6 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
 ```json
 {
   "summary": "Epiken automatiskt hämtar och berikar kunddata från externa källor som kreditupplysningar och folkbokföringsregister. Den kompletterar ansökningsinformationen med data som behövs för kreditbedömning. Processen körs i bakgrunden utan användarinteraktion och är designad för att vara snabb och pålitlig.",
-  "prerequisites": [
-    "Grundläggande kundinformation (t.ex. personnummer) måste vara tillgänglig från ansökan.",
-    "Föregående steg i processen måste ha slutförts och validerats."
-  ],
   "flowSteps": [
     "Systemet startar automatiskt när ansökningsdata är tillgänglig och validerad.",
     "Systemet identifierar vilka externa källor som behöver anropas baserat på ansökningstyp och kundinformation.",
@@ -377,6 +358,12 @@ Följande exempel visar hur bra JSON-output ser ut. Använd dessa som referens n
     "Systemet validerar att hämtad data är korrekt och komplett.",
     "Systemet berikar ansökningsdata med hämtad information.",
     "Systemet sparar resultatet och gör det tillgängligt för efterföljande steg i processen."
+  ],
+  "dependencies": [
+    "Beroende: Process; Id: application; Beskrivning: Ansökningsprocessen måste vara slutförd med komplett kund- och ansökningsdata.",
+    "Beroende: Kreditupplysningstjänst; Id: UC; Beskrivning: tillhandahåller kreditupplysningsdata för kreditbedömning.",
+    "Beroende: Folkbokföringsregister; Id: population-registry; Beskrivning: tillhandahåller folkbokföringsdata för att verifiera kundinformation.",
+    "Beroende: Valideringsmotor; Id: data-validation-engine; Beskrivning: validerar att hämtad data är korrekt och komplett innan den berikas."
   ],
   "userStories": [
     {
@@ -435,7 +422,6 @@ JSON-modellen är (matchar Epic-strukturen):
 ```json
 {
   "summary": "string",
-  "prerequisites": ["string"],
   "flowSteps": ["string"],
   "dependencies": ["string"],
   "userStories": [
@@ -463,22 +449,6 @@ JSON-modellen är (matchar Epic-strukturen):
 - Om `currentNodeContext.childrenDocumentation` finns, aggregera vad child nodes gör för att skapa en mer precis sammanfattning. T.ex. om child nodes automatiskt hämtar data och validerar den, kan sammanfattningen beskriva "automatisk datainsamling och validering" istället för generiska termer.
 - **Viktigt**: Feature Goal-nivå ska vara översiktlig och beskriva VAD som händer i affärstermer, inte HUR det implementeras tekniskt. Om det finns många child nodes, fokusera på huvudfunktionalitet och gruppera liknande funktionalitet.
 
-### prerequisites
-
-**Syfte:** Lista viktiga förutsättningar innan Feature Goalet kan starta.
-
-**⚠️ OBLIGATORISKT FÄLT - Måste alltid inkluderas!**
-
-**Innehåll (`prerequisites`):**
-- **Minst 2–3 strängar** (helst 3), varje en full mening om:
-  - data, kontroller eller beslut som måste vara uppfyllda,
-  - vilken föregående process eller regel som måste ha körts,
-  - system- eller datakrav som måste vara uppfyllda.
-- Använd `currentNodeContext.flows.incoming` för att förstå vad som måste ha körts innan Feature Goalet.
-- Använd affärsspråk (t.ex. "Ansökan måste vara komplett" istället för "UserTask måste vara klar").
-- Om `currentNodeContext.childrenDocumentation` finns, identifiera prerequisites baserat på vad child nodes behöver. Agregera prerequisites från child nodes och ta bort dupliceringar.
-- **Om du inte hittar specifika prerequisites i kontexten, använd generiska men relevanta förutsättningar baserat på nodens typ och position i processen.**
-
 ### flowSteps
 
 **Syfte:** Beskriva Feature Goal-nivåns affärsflöde från start till slut.
@@ -499,7 +469,15 @@ JSON-modellen är (matchar Epic-strukturen):
 
 ### dependencies
 
-**Syfte:** Lista centrala beroenden för att Feature Goalet ska fungera.
+**Syfte:** Lista centrala beroenden för att Feature Goalet ska fungera. **Inkluderar både process-kontext (vad måste vara klart före, tidigare prerequisites) och tekniska system (vad behövs för att köra).**
+
+**⚠️ VIKTIGT - Var SPECIFIK, undvik generiska beskrivningar!**
+
+**⚠️ KRITISKT för Feature Goals:**
+- **Prerequisites har konsoliderats till dependencies** - inkludera ALLTID process-kontext i dependencies
+- **Minst 1-2 dependencies ska vara process-kontext** (beskriver vad som måste vara klart före Feature Goalet kan starta)
+- Process-kontext beskriver vad som måste vara klart före Feature Goalet kan starta (tidigare prerequisites)
+- Tekniska system beskriver vad som behövs för att köra Feature Goalet
 
 **Innehåll (`dependencies`):**
 - 3–6 strängar, varje sträng i EXAKT mönstret:
@@ -569,7 +547,6 @@ JSON-modellen är:
 ```json
 {
   "summary": "string",
-  "prerequisites": ["string"],
   "flowSteps": ["string"],
   "interactions": ["string"],
   "dependencies": ["string"],
@@ -596,21 +573,6 @@ JSON-modellen är:
   - om det är en User Task eller Service Task (på ett naturligt sätt).
 - Använd `processContext.phase` för att placera epiken i rätt kontext.
 - **⚠️ VIKTIGT för User Tasks**: Evaluera själv om det är kunden eller handläggaren som ska genomföra uppgiften baserat på task-namnet och funktionalitet. Använd `processContext.lane` endast som en hint, inte som absolut sanning. Se instruktioner ovan om hur man evaluerar detta.
-
-### prerequisites
-
-**Syfte:** Lista viktiga förutsättningar innan epiken kan starta.
-
-**⚠️ OBLIGATORISKT FÄLT - Måste alltid inkluderas!**
-
-**Innehåll (`prerequisites`):**
-- **Minst 2–3 strängar** (helst 3), varje en full mening om:
-  - data, kontroller eller beslut som måste vara uppfyllda,
-  - vilken föregående process eller regel som måste ha körts,
-  - system- eller datakrav som måste vara uppfyllda.
-- Använd `currentNodeContext.flows.incoming` för att förstå vad som måste ha körts innan epiken.
-- Använd affärsspråk (t.ex. "Ansökan måste vara komplett" istället för "UserTask måste vara klar").
-- **Om du inte hittar specifika prerequisites i kontexten, använd generiska men relevanta förutsättningar baserat på nodens typ och position i processen.**
 
 ### flowSteps
 
@@ -646,17 +608,45 @@ JSON-modellen är:
 
 ### dependencies
 
-**Syfte:** Lista centrala beroenden för att epiken ska fungera.
+**Syfte:** Lista centrala beroenden för att epiken ska fungera. **Inkluderar både process-kontext (vad måste vara klart före) och tekniska system (vad behövs för att köra).**
+
+**⚠️ VIKTIGT - Var SPECIFIK, undvik generiska beskrivningar!**
 
 **Innehåll (`dependencies`):**
-- 3–6 strängar, varje sträng en **full mening** som beskriver ett beroende.
-- Beroenden kan vara:
-  - Externa system eller tjänster (t.ex. kreditupplysning, folkbokföring),
-  - Interna system eller databaser (t.ex. kunddatabas, engagemangsdata),
-  - Regelmotorer eller DMN-beslut,
-  - Plattformstjänster (t.ex. loggning, autentisering).
-- Använd affärsspråk (t.ex. "Tillgång till kunddatabas för att hämta grundläggande kundinformation" istället för "API-anrop till customer-service").
-- **OBS:** Om epiken inte har specifika beroenden, använd generiska men relevanta beroenden baserat på nodens typ och position i processen.
+- **3–6 strängar**, varje sträng en **full mening** som beskriver ett beroende.
+- **Beroenden inkluderar två typer:**
+  1. **Process-kontext (vad måste vara klart före):**
+     - Specifika föregående processsteg eller beslut (t.ex. "Ansökningsprocessen måste vara slutförd med komplett kund- och ansökningsdata")
+     - Specifika kontroller eller valideringar (t.ex. "KYC/AML-kontroller måste vara godkända")
+     - Specifika data eller beslut (t.ex. "Kreditbedömning måste vara klar med risknivå")
+  2. **Tekniska system (vad behövs för att köra):**
+     - Externa system eller tjänster med specifika namn (t.ex. "Kreditupplysningstjänst (UC)", "Folkbokföringsregister")
+     - Interna system eller databaser med specifika namn (t.ex. "Kunddatabas (internal-customer-db)", "Engagemangsdatabas")
+     - Regelmotorer eller DMN-beslut med specifika namn (t.ex. "Kreditregelmotor (credit-rules-engine)", "DMN-beslutstabell (risk-assessment-dmn)")
+     - Plattformstjänster med specifika namn (t.ex. "Loggningstjänst (audit-service)", "Autentiseringstjänst (auth-service)")
+
+**Formatkrav:**
+- Använd formatet: `"Beroende: <typ>; Id: <beskrivande namn>; Beskrivning: <kort förklaring>."`
+- För process-kontext: `"Beroende: Process; Id: <processnamn>; Beskrivning: <vad måste vara klart>."`
+- För tekniska system: `"Beroende: <systemtyp>; Id: <systemnamn>; Beskrivning: <vad systemet tillhandahåller>."`
+
+**Exempel på bra dependencies:**
+- ✅ `"Beroende: Process; Id: application; Beskrivning: Ansökningsprocessen måste vara slutförd med komplett kund- och ansökningsdata."`
+- ✅ `"Beroende: Kunddatabas; Id: internal-customer-db; Beskrivning: tillhandahåller grundläggande kundinformation och historik."`
+- ✅ `"Beroende: Kreditupplysningstjänst; Id: UC; Beskrivning: tillhandahåller kreditupplysningsdata för kreditbedömning."`
+- ✅ `"Beroende: Regelmotor; Id: credit-rules-engine; Beskrivning: används för att utvärdera kreditregler och riskmodeller."`
+
+**Exempel på dåliga dependencies (för generiska):**
+- ❌ `"Tillgång till databas"` (för generiskt - vilken databas?)
+- ❌ `"Föregående steg måste vara klart"` (för generiskt - vilket steg?)
+- ❌ `"Integrationer mot externa system"` (för generiskt - vilka system?)
+- ❌ `"Tillgång till kreditmotor"` (för generiskt - vilken motor, vad gör den?)
+
+**Använd kontextinformation:**
+- Använd `currentNodeContext.flows.incoming` för att identifiera specifika föregående processsteg
+- Använd `processContext.phase` och `processContext.keyNodes` för att identifiera specifika system och processer
+- Använd `childrenDocumentation` för att identifiera specifika system som child nodes använder
+- **Om du inte hittar specifika beroenden i kontexten, använd nodens namn och typ för att skapa specifika beroenden baserat på vad epiken faktiskt gör.**
 
 ### userStories
 

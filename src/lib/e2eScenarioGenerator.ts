@@ -39,8 +39,7 @@ export interface FeatureGoalDoc {
     value: string;
     acceptanceCriteria: string[];
   }>;
-  prerequisites?: string[];
-  dependencies?: string[];
+  dependencies?: string[]; // Includes both process context (prerequisites) and technical systems
   subprocesses?: Array<{
     id: string;
     name: string;
@@ -126,8 +125,7 @@ export async function generateE2eScenarioWithLlm(
       summary: fg.summary,
       flowSteps: fg.flowSteps,
       userStories: fg.userStories || [],
-      prerequisites: fg.prerequisites || [],
-      dependencies: fg.dependencies || [],
+      dependencies: fg.dependencies || [], // Includes both process context (prerequisites) and technical systems
       subprocesses: fg.subprocesses || [],
       serviceTasks: fg.serviceTasks || [],
       userTasks: fg.userTasks || [],
@@ -312,8 +310,7 @@ async function loadFeatureGoalDocFromStorage(
               value: us.value || '',
               acceptanceCriteria: Array.isArray(us.acceptanceCriteria) ? us.acceptanceCriteria : [],
             })) : [],
-            prerequisites: Array.isArray(docJson.prerequisites) ? docJson.prerequisites : [],
-            dependencies: Array.isArray(docJson.dependencies) ? docJson.dependencies : [],
+            dependencies: Array.isArray(docJson.dependencies) ? docJson.dependencies : [], // Includes both process context (prerequisites) and technical systems
           };
         } catch (parseError) {
           console.warn(`[e2eScenarioGenerator] Failed to parse JSON from HTML for ${bpmnFile}::${elementId}:`, parseError);
@@ -335,8 +332,7 @@ async function loadFeatureGoalDocFromStorage(
           bpmnFile: bpmnFile,
           summary: docInfo.summary || '',
           flowSteps: docInfo.flowSteps || [],
-          prerequisites: docInfo.inputs || [],
-          dependencies: docInfo.outputs || [],
+          dependencies: [...(docInfo.inputs || []), ...(docInfo.outputs || [])], // Combine inputs (prerequisites) and outputs (technical systems) into dependencies
         };
       }
     }

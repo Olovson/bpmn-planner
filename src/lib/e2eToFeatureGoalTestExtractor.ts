@@ -325,8 +325,12 @@ function createTestScenarioWithGatewayContext(
     const gatewayText = gatewayConditions.map((gc) => gc.conditionText).join(', ');
     descriptionParts.push(`Gateway Conditions: ${gatewayText}`);
   }
-  if (featureGoalDoc?.prerequisites) {
-    descriptionParts.push(`Prerequisites: ${featureGoalDoc.prerequisites.join(', ')}`);
+  // prerequisites has been consolidated into dependencies
+  if (featureGoalDoc?.dependencies) {
+    const processDependencies = featureGoalDoc.dependencies.filter(dep => dep.includes('Beroende: Process;'));
+    if (processDependencies.length > 0) {
+      descriptionParts.push(`Prerequisites (from dependencies): ${processDependencies.map(dep => dep.split('Beskrivning:')[1]?.trim() || dep).join(', ')}`);
+    }
   }
   
   // When: subprocessStep.when + Feature Goal flowSteps

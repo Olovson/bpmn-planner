@@ -409,6 +409,74 @@ const slugify = (value: string) =>
 const buildNodeNameList = (nodes: NodeDocumentationContext['node'][], limit = nodes.length) =>
   nodes.slice(0, limit).map((child) => `${formatNodeName(child)}`).join(', ');
 
+/**
+ * Extraherar gemensamma kontextvariabler från NodeDocumentationContext.
+ * Används av både buildEpicDocModelFromContext och buildEpicDocHtmlFromModel.
+ */
+interface EpicContextVars {
+  nodeName: string;
+  previousNode: NodeDocumentationContext['node'] | undefined;
+  nextNode: NodeDocumentationContext['node'] | undefined;
+  upstreamName: string;
+  downstreamName: string;
+  processStep: string;
+  isUserTask: boolean;
+  isServiceTask: boolean;
+  swimlaneOwner: string;
+  apiSlug: string;
+}
+
+function extractEpicContextVars(context: NodeDocumentationContext): EpicContextVars {
+  const node = context.node;
+  const nodeName = node.name || node.bpmnElementId || 'Epic';
+  const previousNode = context.parentChain.length
+    ? context.parentChain[context.parentChain.length - 1]
+    : undefined;
+  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
+  const upstreamName = previousNode ? formatNodeName(previousNode) : 'Processstart';
+  const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg';
+  const processStep = node.bpmnFile.replace('.bpmn', '');
+  const isUserTask = node.type === 'userTask';
+  const isServiceTask = node.type === 'serviceTask';
+  const swimlaneOwner = isUserTask
+    ? 'Kund / Rådgivare'
+    : isServiceTask
+    ? 'Backend & Integration'
+    : inferTeamForNode(node.type);
+  const apiSlug = slugify(nodeName);
+
+  return {
+    nodeName,
+    previousNode,
+    nextNode,
+    upstreamName,
+    downstreamName,
+    processStep,
+    isUserTask,
+    isServiceTask,
+    swimlaneOwner,
+    apiSlug,
+  };
+}
+
+/**
+ * Identifierar nodtyp baserat på nodnamn.
+ */
+interface NodeTypeFlags {
+  isDataGathering: boolean;
+  isEvaluation: boolean;
+  isDecision: boolean;
+}
+
+function identifyNodeType(nodeName: string): NodeTypeFlags {
+  const nodeNameLower = nodeName.toLowerCase();
+  return {
+    isDataGathering: nodeNameLower.includes('data') && (nodeNameLower.includes('gathering') || nodeNameLower.includes('fetch') || nodeNameLower.includes('hämta')),
+    isEvaluation: nodeNameLower.includes('evaluation') || nodeNameLower.includes('bedömning') || nodeNameLower.includes('utvärdering'),
+    isDecision: nodeNameLower.includes('decision') || nodeNameLower.includes('beslut'),
+  };
+}
+
 const inferTeamForNode = (type: NodeDocumentationContext['node']['type']) => {
   switch (type) {
     case 'userTask':
@@ -435,9 +503,9 @@ export function buildFeatureGoalDocModelFromContext(
   // INGEN FALLBACK-TEXT - LLM måste generera allt
   // User stories måste ha roll 'Kund', 'Handläggare' eller 'Processägare' - inga System-roller
   // Returnerar tom modell - LLM måste fylla i allt
+  // prerequisites konsoliderat till dependencies (samma som Epic)
   return {
     summary: '',
-    prerequisites: [],
     flowSteps: [],
     dependencies: [],
     userStories: [],
@@ -447,214 +515,15 @@ export function buildFeatureGoalDocModelFromContext(
 function buildEpicDocModelFromContext(
   context: NodeDocumentationContext,
 ): EpicDocModel {
-  const node = context.node;
-  const nodeName = node.name || node.bpmnElementId || 'Epic';
-  const previousNode = context.parentChain.length
-    ? context.parentChain[context.parentChain.length - 1]
-    : undefined;
-  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
-  const downstreamNodes = context.childNodes.slice(0, 3);
-  const relatedNodes = [
-    previousNode,
-    ...downstreamNodes,
-    ...context.siblingNodes.slice(0, 2),
-  ].filter(Boolean) as NodeDocumentationContext['node'][];
-  const apiSlug = slugify(nodeName);
-  const upstreamName = previousNode ? formatNodeName(previousNode) : 'Processstart';
-  const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg';
-  const processStep = node.bpmnFile.replace('.bpmn', '');
-  const isUserTask = node.type === 'userTask';
-  const isServiceTask = node.type === 'serviceTask';
-  const swimlaneOwner = isUserTask
-    ? 'Kund / Rådgivare'
-    : isServiceTask
-    ? 'Backend & Integration'
-    : inferTeamForNode(node.type);
-  const versionLabel = '1.0 (exempel) – uppdateras vid ändring';
-  const ownerLabel = 'Produktteam Kredit / Arkitektur';
-
-  const scopeBullets = [
-    `Epiken <strong>${nodeName}</strong> ingår i steget <strong>${processStep}</strong> mellan ${upstreamName} och ${downstreamName}.`,
-    isUserTask
-      ? 'Fokuserar på interaktion mellan kund/rådgivare och kreditplattformen.'
-      : 'Fokuserar på automatiserad systemexekvering utan direkt användarinteraktion.',
-    'Påverkar vilka data och beslut som förs vidare i kreditkedjan.',
-    'Utanför scope: eftermarknad och generella kundengagemang utanför den aktuella ansökan.',
-  ];
-
-  const triggerBullets = [
-    previousNode
-      ? `Triggas normalt efter <strong>${formatNodeName(previousNode)}</strong>.`
-      : 'Triggas när föregående processsteg är klart.',
-    'Förutsätter att grundläggande kund- och ansökningsdata är validerade.',
-    'Eventuella föregående KYC/AML- och identitetskontroller ska vara godkända.',
-  ];
-
-  const highLevelStepsUser = [
-    'Användaren öppnar vyn och ser sammanfattad ansöknings- och kundinformation.',
-    'Formulär eller val presenteras baserat på föregående steg och riskprofil.',
-    'Användaren fyller i eller bekräftar uppgifter och skickar vidare.',
-    'Systemet validerar indata och uppdaterar processens status samt triggar nästa steg.',
-  ];
-
-  const highLevelStepsService = [
-    'Processmotorn triggar tjänsten med relevant ansöknings- och kunddata.',
-    'Tjänsten anropar interna och/eller externa system för att hämta eller berika data.',
-    'Svar kontrolleras mot förväntade format och felkoder hanteras på övergripande nivå.',
-    'Resultatet lagras och vidarebefordras till nästa BPMN-nod.',
-  ];
-
-  const interactionBulletsUser = [
-    'Kanal: web/app eller internt handläggargränssnitt beroende på roll.',
-    'UI ska vara förklarande, med tydlig koppling till kreditbeslut och nästa steg.',
-    'Felmeddelanden ska vara begripliga och vägleda till rätt åtgärd.',
-  ];
-
-  const interactionBulletsService = [
-    `Primära API:er: t.ex. POST /api/${apiSlug} för exekvering.`,
-    'Tjänsten ska hantera timeouts och felkoder från beroenden på ett kontrollerat sätt (retry/circuit breaker på plattformsnivå).',
-    'Respons ska vara deterministisk och innehålla tydliga statusfält som går att logga och följa upp.',
-  ];
-
-  const dataTable = `
-    <table>
-      <tr>
-        <th>Typ</th>
-        <th>Fält / Objekt</th>
-        <th>Källa / Konsument</th>
-        <th>Kommentar</th>
-      </tr>
-      <tr>
-        <td>Input</td>
-        <td>${previousNode ? formatNodeName(previousNode) : 'Ansökningsdata'}</td>
-        <td>${previousNode ? previousNode.bpmnFile : 'Intern källa'}</td>
-        <td>Underlag som triggar epiken.</td>
-      </tr>
-      <tr>
-        <td>Output</td>
-        <td>${nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen'}</td>
-        <td>${nextNode ? nextNode.bpmnFile : 'Nedströms nod'}</td>
-        <td>Status, flaggor och eventuell berikad data.</td>
-      </tr>
-    </table>
-  `;
-
-  const businessRuleRefs = [
-    'Regeln använder eller påverkas av relevanta Business Rule / DMN-beslut (se separat dokumentation).',
-    'Policykrav för risk, skuldsättning och produktvillkor ska vara spårbara via kopplade regler.',
-    'Eventuella AML/KYC-krav hanteras i samverkan med dedikerade kontrollnoder.',
-  ];
-
-  const testRows = [
-    {
-      name: 'Happy path',
-      description: isUserTask
-        ? 'Kunden/handläggaren fyller i korrekta uppgifter och flödet går vidare utan avvikelser.'
-        : 'Tjänsten får kompletta data, alla beroenden svarar OK och flödet går vidare.',
-    },
-    {
-      name: 'Valideringsfel',
-      description: isUserTask
-        ? 'Användaren lämnar fält tomma eller anger ogiltiga värden, och får begripliga felmeddelanden.'
-        : 'Indata saknar obligatoriska fält eller bryter mot format – tjänsten ska avvisa och logga tydligt.',
-    },
-    {
-      name: 'Tekniskt fel / beroende nere',
-      description: isUserTask
-        ? 'Systemfel eller otillgänglig tjänst ska ge information utan att tappa ansökan.'
-        : 'Extern tjänst svarar inte eller ger fel – epiken ska hantera detta enligt övergripande felstrategi.',
-    },
-  ];
-
-  const relatedList = relatedNodes.length
-    ? relatedNodes.map((n) => `${formatNodeName(n)} (${n.type})`)
-    : ['Inga närliggande noder identifierade.'];
-
   // INGEN FALLBACK-TEXT - LLM måste generera allt
   const summary = '';
-  const prerequisites: string[] = [];
   const flowSteps: string[] = [];
   const interactions: string[] = [];
-
-  const userStories: EpicUserStory[] = isUserTask
-    ? [
-        {
-          id: 'US-1',
-          role: 'Kund',
-          goal: 'Fylla i ansökningsinformation',
-          value: 'Kunna ansöka om lån på ett enkelt sätt',
-          acceptanceCriteria: [
-            'Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas',
-            'Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga',
-            'Systemet ska spara utkast automatiskt så att kunden inte förlorar information',
-            'Systemet ska bekräfta när informationen är sparad',
-          ],
-        },
-        {
-          id: 'US-2',
-          role: 'Handläggare',
-          goal: 'Se och granska kundens ansökningsinformation',
-          value: 'Kunna bedöma ansökan korrekt och effektivt',
-          acceptanceCriteria: [
-            'Systemet ska visa all relevant ansökningsinformation på ett överskådligt sätt',
-            'Systemet ska markera vilka fält som är obligatoriska och vilka som är valfria',
-            'Systemet ska visa status för ansökan och vilka steg som är klara',
-          ],
-        },
-        {
-          id: 'US-3',
-          role: 'Kund',
-          goal: 'Få tydlig feedback om vad som händer med ansökan',
-          value: 'Förstå processen och veta vad som förväntas',
-          acceptanceCriteria: [
-            'Systemet ska visa tydlig status för ansökan',
-            'Systemet ska ge information om nästa steg i processen',
-            'Systemet ska hantera fel på ett begripligt sätt',
-          ],
-        },
-      ]
-    : [
-        {
-          id: 'US-1',
-          role: 'Handläggare',
-          goal: 'Få systemet att automatiskt hantera processsteg',
-          value: 'Spara tid genom automatisering',
-          acceptanceCriteria: [
-            'Systemet ska automatiskt exekvera tjänsten när föregående steg är klart',
-            'Systemet ska hantera fel och timeouts på ett kontrollerat sätt',
-            'Systemet ska logga alla viktiga steg för spårbarhet',
-          ],
-        },
-        {
-          id: 'US-2',
-          role: 'Handläggare',
-          goal: 'Få systemet att hämta och validera data från externa källor',
-          value: 'Säkerställa datakvalitet och kompletthet för korrekt kreditbedömning',
-          acceptanceCriteria: [
-            'Systemet ska validera att all nödvändig data finns innan exekvering',
-            'Systemet ska hantera fel från externa källor på ett robust sätt',
-            'Systemet ska logga alla datahämtningar för spårbarhet',
-          ],
-        },
-        {
-          id: 'US-3',
-          role: 'Handläggare',
-          goal: 'Få tydlig information om vad systemet har gjort',
-          value: 'Kunna följa upp och felsöka vid behov',
-          acceptanceCriteria: [
-            'Systemet ska logga alla viktiga steg och beslut',
-            'Systemet ska ge tydlig status om exekveringen',
-            'Systemet ska eskalera fel på ett begripligt sätt',
-          ],
-        },
-      ];
-
-  // INGEN FALLBACK-TEXT - LLM måste generera allt
   const dependencies: string[] = [];
+  const userStories: EpicUserStory[] = [];
 
   return {
     summary,
-    prerequisites,
     flowSteps,
     interactions,
     dependencies,
@@ -668,246 +537,76 @@ function buildEpicDocHtmlFromModel(
   model: EpicDocModel,
 ): string {
   const node = context.node;
-  const nodeName = node.name || node.bpmnElementId || 'Epic';
-  const previousNode = context.parentChain.length
-    ? context.parentChain[context.parentChain.length - 1]
-    : undefined;
-  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
-  const relatedNodes = [
-    previousNode,
-    ...context.childNodes.slice(0, 3),
-    ...context.siblingNodes.slice(0, 2),
-  ].filter(Boolean) as NodeDocumentationContext['node'][];
-  const apiSlug = slugify(nodeName);
-  const upstreamName = previousNode ? formatNodeName(previousNode) : 'Processstart';
-  const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg';
-  const processStep = node.bpmnFile.replace('.bpmn', '');
-  const isUserTask = node.type === 'userTask';
-  const isServiceTask = node.type === 'serviceTask';
-  const swimlaneOwner = isUserTask
-    ? 'Kund / Rådgivare'
-    : isServiceTask
-    ? 'Backend & Integration'
-    : inferTeamForNode(node.type);
-  const versionLabel = '1.0 (exempel) – uppdateras vid ändring';
-  const ownerLabel = 'Produktteam Kredit / Arkitektur';
+  const ctx = extractEpicContextVars(context);
+  const nodeTypes = identifyNodeType(ctx.nodeName);
 
   // INGEN FALLBACK-TEXT - LLM måste generera allt
   const summaryText = model.summary || '';
   const summarySource = model.summary ? 'llm' : 'missing';
-  const prerequisites = model.prerequisites.length ? model.prerequisites : [];
-  const prerequisitesSource = model.prerequisites.length ? 'llm' : 'missing';
-
-
-  // Använd samma specifika logik som i buildEpicDocModelFromContext
-  const nodeNameLower = nodeName.toLowerCase();
-  const isDataGathering = nodeNameLower.includes('data') && (nodeNameLower.includes('gathering') || nodeNameLower.includes('fetch') || nodeNameLower.includes('hämta'));
-  const isEvaluation = nodeNameLower.includes('evaluation') || nodeNameLower.includes('bedömning') || nodeNameLower.includes('utvärdering');
-  const isDecision = nodeNameLower.includes('decision') || nodeNameLower.includes('beslut');
   
-  const flowSteps = model.flowSteps.length
-    ? model.flowSteps
-    : isUserTask
-    ? [
-        'Kunden öppnar sidan och ser sammanfattad ansöknings- och kundinformation.',
-        'Systemet visar formulär eller val baserat på föregående steg och riskprofil.',
-        'Kunden fyller i eller bekräftar uppgifter och skickar vidare.',
-        'Systemet validerar uppgifterna och uppdaterar processen innan den fortsätter till nästa steg.',
-      ]
-    : isDataGathering
-    ? [
-        `${nodeName} triggas när ansökningsdata är tillgänglig från föregående steg (${upstreamName}).`,
-        `Tjänsten hämtar kompletterande information från externa källor som kreditupplysning (UC), folkbokföring, engagemangsdata och PSD2-tjänster.`,
-        `Systemet validerar att all nödvändig data är korrekt och komplett, och hanterar saknade eller felaktiga svar enligt övergripande felstrategi.`,
-        `Berikad data sammanställs och skickas vidare till nästa steg (${downstreamName}) för vidare bearbetning.`,
-      ]
-    : isEvaluation
-    ? [
-        `${nodeName} triggas när all nödvändig kund- och ansökningsdata är samlad från föregående steg (${upstreamName}).`,
-        `Tjänsten analyserar data mot kreditregler och riskmodeller för att bedöma ansökan.`,
-        `Systemet validerar att bedömningen är komplett och att alla nödvändiga kontroller är genomförda.`,
-        `Bedömningsresultatet skickas vidare till nästa steg (${downstreamName}) för beslutsfattande.`,
-      ]
-    : isDecision
-    ? [
-        `${nodeName} triggas när kreditbedömning är klar från föregående steg (${upstreamName}).`,
-        `Tjänsten utvärderar bedömningsresultatet mot beslutsregler (DMN) och produktvillkor.`,
-        `Systemet fattar ett kreditbeslut (godkänd/avslagen/villkorad) baserat på regler och riskprofil.`,
-        `Beslutet loggas och skickas vidare till nästa steg (${downstreamName}) för vidare åtgärder.`,
-      ]
-    : [
-        `${nodeName} triggas när föregående steg (${upstreamName}) är klart med relevant data.`,
-        `Tjänsten exekverar sin specifika logik baserat på indata och affärsregler.`,
-        `Systemet validerar resultatet och hanterar eventuella fel eller avvikelser.`,
-        `Resultatet skickas vidare till nästa steg (${downstreamName}) i kreditprocessen.`,
-      ];
-  const flowStepsSource = model.flowSteps.length ? 'llm' : 'fallback';
+  // Funktionellt flöde: endast om LLM genererat (inga fallback)
+  const flowSteps = model.flowSteps.length ? model.flowSteps : [];
+  const flowStepsSource = model.flowSteps.length ? 'llm' : 'missing';
 
-  const interactions = model.interactions && model.interactions.length
-    ? model.interactions
-    : isUserTask
-    ? [
-        'Kanal: web/app eller internt handläggargränssnitt beroende på roll.',
-        'UI ska vara förklarande, med tydlig koppling till kreditbeslut och nästa steg.',
-        'Felmeddelanden ska vara begripliga och vägleda till rätt åtgärd.',
-      ]
-    : [
-        `Primära API:er: t.ex. POST /api/${apiSlug} för exekvering.`,
-        'Tjänsten ska hantera timeouts och felkoder från beroenden på ett kontrollerat sätt (retry/circuit breaker på plattformsnivå).',
-        'Respons ska vara deterministisk och innehålla tydliga statusfält som går att logga och följa upp.',
-      ];
-  const interactionsSource = model.interactions && model.interactions.length ? 'llm' : 'fallback';
+  // Interaktioner: endast för user tasks, endast om LLM genererat (inga fallback)
+  const interactions = model.interactions && model.interactions.length ? model.interactions : [];
+  const interactionsSource = model.interactions && model.interactions.length ? 'llm' : 'missing';
 
-  // Använd samma specifika logik som i buildEpicDocModelFromContext
+  // Beroenden: endast om LLM genererat (inga fallback)
+  // Inkluderar både process-kontext (vad måste vara klart före) och tekniska system (vad behövs för att köra)
   const dependencies = model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0
     ? model.dependencies
-    : isDataGathering
-    ? [
-        `Integrationer mot externa datakällor: kreditupplysning (UC), folkbokföring, engagemangsdata och PSD2-tjänster med stabil anslutning och felhantering.`,
-        `Tillgång till valideringsregler och datakvalitetskontroller för att säkerställa att hämtad data är korrekt och komplett.`,
-        `Överenskomna SLA:er och timeout-hantering för externa tjänster för att säkerställa processens pålitlighet.`,
-      ]
-    : isEvaluation
-    ? [
-        `Tillgång till kreditregler, riskmodeller och beslutsregler (DMN) med tydlig versionering och spårbarhet.`,
-        `Komplett kund- och ansökningsdata från föregående steg (${upstreamName}) för att kunna göra en korrekt bedömning.`,
-        `Överenskommen målbild för riskaptit, produktportfölj och kreditvillkor för att säkerställa konsistenta bedömningar.`,
-      ]
-    : isDecision
-    ? [
-        `Tillgång till beslutsregler (DMN) med tydlig versionering och spårbarhet för att säkerställa korrekta beslut.`,
-        `Komplett bedömningsresultat från föregående steg (${upstreamName}) för att kunna fatta välgrundade beslut.`,
-        `Överenskommen målbild för riskaptit, produktportfölj och kreditvillkor för att säkerställa konsistenta beslut.`,
-      ]
-    : [
-        'Tillgång till stabil kreditmotor och beslutsregler (DMN) med tydlig versionering.',
-        'Integrationer mot kunddata, engagemangsdata och externa källor (t.ex. UC, PSD2) med stabil anslutning.',
-        'Överenskommen målbild för kundupplevelse, riskaptit och produktportfölj.',
-      ];
-  const dependenciesSource = model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0 ? 'llm' : 'fallback';
+    : [];
+  const dependenciesSource = model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0 ? 'llm' : 'missing';
 
-  // Generera mer specifika user stories baserat på nodtyp
-  const userStories = model.userStories.length > 0
-    ? model.userStories
-    : isUserTask
-    ? [
-        {
-          id: 'US-1',
-          role: 'Kund',
-          goal: 'Fylla i ansökningsinformation',
-          value: 'Kunna ansöka om lån på ett enkelt sätt',
-          acceptanceCriteria: [
-            'Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas',
-            'Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga',
-            'Systemet ska spara utkast automatiskt så att användaren inte förlorar information',
-          ],
-        },
-        {
-          id: 'US-2',
-          role: 'Handläggare',
-          goal: 'Se och granska kundens ansökningsinformation',
-          value: 'Kunna bedöma ansökan korrekt och effektivt',
-          acceptanceCriteria: [
-            'Systemet ska visa all relevant ansökningsinformation på ett överskådligt sätt',
-            'Systemet ska markera vilka fält som är obligatoriska och vilka som är valfria',
-            'Systemet ska visa status för ansökan och vilka steg som är klara',
-          ],
-        },
-      ]
-    : isDataGathering
-    ? [
-        {
-          id: 'US-1',
-          role: 'Handläggare',
-          goal: 'Få systemet att automatiskt hämta kunddata från externa källor',
-          value: 'Spara tid genom automatisering och säkerställa datakvalitet',
-          acceptanceCriteria: [
-            'Systemet ska automatiskt exekvera datahämtning när ansökningsdata är tillgänglig',
-            'Systemet ska hantera fel från externa källor (UC, folkbokföring, PSD2) på ett robust sätt',
-            'Systemet ska logga alla datahämtningar för spårbarhet',
-          ],
-        },
-        {
-          id: 'US-2',
-          role: 'Handläggare',
-          goal: 'Få systemet att validera att all nödvändig data är korrekt och komplett',
-          value: 'Säkerställa datakvalitet för korrekt kreditbedömning',
-          acceptanceCriteria: [
-            'Systemet ska validera att all nödvändig data finns innan processen går vidare',
-            'Systemet ska hantera saknade eller felaktiga svar från externa källor enligt övergripande felstrategi',
-            'Systemet ska ge tydlig status om datakvalitet och eventuella saknade data',
-          ],
-        },
-      ]
-    : [
-        {
-          id: 'US-1',
-          role: 'Handläggare',
-          goal: 'Få systemet att automatiskt hantera processsteg',
-          value: 'Spara tid genom automatisering',
-          acceptanceCriteria: [
-            'Systemet ska automatiskt exekvera tjänsten när föregående steg är klart',
-            'Systemet ska hantera fel och timeouts på ett kontrollerat sätt',
-            'Systemet ska logga alla viktiga steg för spårbarhet',
-          ],
-        },
-        {
-          id: 'US-2',
-          role: 'Handläggare',
-          goal: 'Få tydlig information om vad systemet har gjort',
-          value: 'Kunna följa upp och felsöka vid behov',
-          acceptanceCriteria: [
-            'Systemet ska logga alla viktiga steg och beslut',
-            'Systemet ska ge tydlig status om exekveringen',
-            'Systemet ska eskalera fel på ett begripligt sätt',
-          ],
-        },
-      ];
-  const userStoriesSource = model.userStories.length > 0 ? 'llm' : 'fallback';
+  // User stories: endast från LLM, inga fallback
+  const userStories = model.userStories.length > 0 ? model.userStories : [];
+  const userStoriesSource = model.userStories.length > 0 ? 'llm' : 'missing';
 
 
   return `
     <section class="doc-section">
       <span class="doc-badge">Epic</span>
-      <h1>${nodeName}</h1>
-      <p class="muted">${node.type} i ${processStep} mellan ${upstreamName} → ${downstreamName}.</p>
+      <h1>${ctx.nodeName}</h1>
+      <p class="muted">${node.type} i ${ctx.processStep} mellan ${ctx.upstreamName} → ${ctx.downstreamName}.</p>
       <ul>
         <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
-        <li><strong>Kreditprocess-steg:</strong> ${processStep}</li>
-        <li><strong>Swimlane/ägare:</strong> ${swimlaneOwner}</li>
-        <li><strong>Version &amp; datum:</strong> ${versionLabel}</li>
+        <li><strong>Kreditprocess-steg:</strong> ${ctx.processStep}</li>
+        <li><strong>Swimlane/ägare:</strong> ${ctx.swimlaneOwner}</li>
       </ul>
     </section>
 
+    ${summaryText ? `
     <section class="doc-section" data-source-summary="${summarySource}">
       <h2>Sammanfattning</h2>
       <p>${summaryText}</p>
     </section>
+    ` : ''}
 
-    <section class="doc-section" data-source-prerequisites="${prerequisitesSource}">
-      <h2>Förutsättningar</h2>
-      ${renderList(prerequisites)}
-    </section>
-
+    ${flowSteps.length > 0 ? `
     <section class="doc-section" data-source-flow="${flowStepsSource}">
       <h2>Funktionellt flöde</h2>
       <ol>
         ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
     </section>
+    ` : ''}
 
-    ${interactions && interactions.length > 0 ? `
+    ${interactions.length > 0 && interactionsSource !== 'missing' ? `
     <section class="doc-section" data-source-interactions="${interactionsSource}">
       <h2>Interaktioner</h2>
       ${renderList(interactions)}
     </section>
     ` : ''}
 
+    ${dependencies.length > 0 ? `
     <section class="doc-section" data-source-dependencies="${dependenciesSource}">
       <h2>Beroenden</h2>
       ${renderList(dependencies)}
     </section>
+    ` : ''}
 
+    ${userStories.length > 0 ? `
     <section class="doc-section" data-source-user-stories="${userStoriesSource}">
       <h2>User Stories</h2>
       <p class="muted">User stories med acceptanskriterier som ska mappas till automatiska tester.</p>
@@ -930,6 +629,7 @@ function buildEpicDocHtmlFromModel(
         </div>
       `).join('')}
     </section>
+    ` : ''}
 
   `;
 }
@@ -953,32 +653,23 @@ function buildFeatureGoalDocHtmlFromModel(
   model: FeatureGoalDocModel,
 ): string {
   const node = context.node;
-  const nodeName = node.name || node.bpmnElementId || 'Feature Goal';
-  const upstreamNode = context.parentChain.length
-    ? context.parentChain[context.parentChain.length - 1]
-    : undefined;
-  const downstreamNode = context.childNodes.length
-    ? context.childNodes[context.childNodes.length - 1]
-    : undefined;
-  const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
-  const downstreamName = downstreamNode ? formatNodeName(downstreamNode) : 'Nästa steg';
-  const processStep = node.bpmnFile.replace('.bpmn', '');
-  const versionLabel = model.summary
-    ? '1.0 (LLM-validerad) – uppdateras vid ändring'
-    : '1.0 (exempel) – uppdateras vid ändring';
-  const ownerLabel = 'Produktägare Kredit / Risk & Policy';
+  const ctx = extractEpicContextVars(context);
 
   // INGEN FALLBACK-TEXT - LLM måste generera allt
   const summaryText = model.summary || '';
   const summarySource = model.summary ? 'llm' : 'missing';
-  const prerequisites = model.prerequisites && model.prerequisites.length > 0 ? model.prerequisites : [];
-  const prerequisitesSource = model.prerequisites && model.prerequisites.length > 0 ? 'llm' : 'missing';
 
   // INGEN FALLBACK-TEXT - LLM måste generera allt
   const flowSteps = model.flowSteps && model.flowSteps.length > 0 ? model.flowSteps : [];
   const flowStepsSource = model.flowSteps && model.flowSteps.length > 0 ? 'llm' : 'missing';
-  const dependencies = model.dependencies && model.dependencies.length > 0 ? model.dependencies : [];
-  const dependenciesSource = model.dependencies && model.dependencies.length > 0 ? 'llm' : 'missing';
+  
+  // Beroenden: endast om LLM genererat (inga fallback)
+  // Inkluderar både process-kontext (vad måste vara klart före, tidigare prerequisites) och tekniska system (vad behövs för att köra)
+  const dependencies = model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0
+    ? model.dependencies
+    : [];
+  const dependenciesSource = model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0 ? 'llm' : 'missing';
+  
   const userStories = model.userStories && model.userStories.length > 0 ? model.userStories : [];
   const userStoriesSource = model.userStories && model.userStories.length > 0 ? 'llm' : 'missing';
 
@@ -986,38 +677,38 @@ function buildFeatureGoalDocHtmlFromModel(
   return `
     <section class="doc-section">
       <span class="doc-badge">Feature Goal</span>
-      <h1>${nodeName}</h1>
-      <p class="muted">${node.type} i ${processStep} mellan ${upstreamName} → ${downstreamName}.</p>
+      <h1>${ctx.nodeName}</h1>
+      <p class="muted">${node.type} i ${ctx.processStep} mellan ${ctx.upstreamName} → ${ctx.downstreamName}.</p>
       <ul>
         <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
-        <li><strong>Kreditprocess-steg:</strong> ${processStep}</li>
-        <li><strong>Ägare:</strong> ${ownerLabel}</li>
-        <li><strong>Version &amp; datum:</strong> ${versionLabel}</li>
+        <li><strong>Kreditprocess-steg:</strong> ${ctx.processStep}</li>
       </ul>
     </section>
 
+    ${summaryText ? `
     <section class="doc-section" data-source-summary="${summarySource}">
       <h2>Sammanfattning</h2>
       <p>${summaryText}</p>
     </section>
+    ` : ''}
 
-    <section class="doc-section" data-source-prerequisites="${prerequisitesSource}">
-      <h2>Förutsättningar</h2>
-      ${renderList(prerequisites)}
-    </section>
-
+    ${flowSteps.length > 0 ? `
     <section class="doc-section" data-source-flow="${flowStepsSource}">
       <h2>Funktionellt flöde</h2>
       <ol>
         ${flowSteps.map((step) => `<li>${step}</li>`).join('')}
       </ol>
     </section>
+    ` : ''}
 
+    ${dependencies.length > 0 ? `
     <section class="doc-section" data-source-dependencies="${dependenciesSource}">
       <h2>Beroenden</h2>
       ${renderList(dependencies)}
     </section>
+    ` : ''}
 
+    ${userStories.length > 0 ? `
     <section class="doc-section" data-source-user-stories="${userStoriesSource}">
       <h2>User Stories</h2>
       <p class="muted">User stories med acceptanskriterier som ska mappas till automatiska tester.</p>
@@ -1040,6 +731,7 @@ function buildFeatureGoalDocHtmlFromModel(
         </div>
       `).join('')}
     </section>
+    ` : ''}
 
   `;
 }
@@ -1053,79 +745,26 @@ function buildBusinessRuleDocModelFromContext(
   context: NodeDocumentationContext,
   links: TemplateLinks,
 ): BusinessRuleDocModel {
-  const node = context.node;
-  const nodeName = node.name || node.bpmnElementId || 'Business Rule';
-  const upstreamNode = context.parentChain.length
-    ? context.parentChain[context.parentChain.length - 1]
-    : undefined;
-  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
-  const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
-  const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen';
-
-  const summary = `${nodeName} kombinerar flera risk- och kreditparametrar för att avgöra om en ansökan kan godkännas, ska skickas till manuell granskning eller avslås. Regeln säkerställer konsekvent tillämpning av kreditpolicy och riskmandat för målgrupperna.`;
-
-  const inputs = [
-    upstreamNode
-      ? `Triggas normalt efter <strong>${formatNodeName(upstreamNode)}</strong>.`
-      : 'Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.',
-    'Kräver att central kund- och ansökningsdata är komplett och validerad.',
-    'Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.',
-  ];
-
-  const decisionLogic = [
-    'Hög riskScore och måttlig skuldsättning ger normalt auto-approve.',
-    'Mellanrisk eller ofullständig data leder till manuell granskning.',
-    'Tydliga exklusionskriterier (t.ex. betalningsanmärkningar eller sanktionsflaggor) ger auto-decline.',
-  ];
-
-  const outputs = [
-    'Beslut: APPROVE, REFER (manuell granskning) eller DECLINE.',
-    `Processpåverkan: fortsätter till ${downstreamName} vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE.`,
-    'Flaggor: t.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff.',
-    'Loggning: beslut, huvudparametrar och regelversion loggas för audit.',
-  ];
-
-  const businessRulesPolicy = [
-    'Stödjer intern kreditpolicy och mandat för respektive produkt och segment.',
-    'Bygger på dokumenterade riskramverk och beslutsmodeller.',
-    'Tar hänsyn till regulatoriska krav (t.ex. konsumentkreditlag, AML/KYC) på en övergripande nivå.',
-  ];
-
-  const scenarios = [
-    {
-      id: 'BR1',
-      name: 'Standardkund med låg risk',
-      input: 'Stabil inkomst, låg skuldsättning, normal kreditdata.',
-      outcome: 'Beslut: APPROVE utan manuell granskning.',
-    },
-    {
-      id: 'BR2',
-      name: 'Kund med hög skuldsättning',
-      input: 'Hög debt-to-income, flera befintliga krediter.',
-      outcome: 'Beslut: REFER till manuell granskning med tydlig flagga.',
-    },
-    {
-      id: 'BR3',
-      name: 'Kund med allvarliga betalningsanmärkningar',
-      input: 'Aktiva betalningsanmärkningar eller inkassoärenden.',
-      outcome: 'Beslut: DECLINE enligt exklusionskriterier.',
-    },
-  ];
-
-
+  // INGEN FALLBACK-TEXT - LLM måste generera allt
+  const summary = '';
+  const inputs: string[] = [];
+  const decisionLogic: string[] = [];
+  const outputs: string[] = [];
+  const businessRulesPolicy: string[] = [];
+  
+  // Related items: endast länkar om de finns (inga fallback-texter)
+  const relatedItems: string[] = [];
   const dmnLabel = links.dmnLink ? links.dmnLink.split('/').pop() : 'Beslutstabell';
-
-  const relatedItems = [
-    links.dmnLink
-      ? `Relaterad DMN-modell: <a href="${links.dmnLink}">${dmnLabel}</a>`
-      : 'Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell/DMN när den finns.',
-    links.bpmnViewerLink
-      ? `Relaterad BPMN-subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
-      : 'Subprocess-länk sätts via BPMN viewer.',
-    context.parentChain.length
-      ? `Överordnad nod: ${buildNodeLink(context.parentChain[context.parentChain.length - 1])}`
-      : 'Överordnad nod: Rotprocess',
-  ];
+  
+  if (links.dmnLink) {
+    relatedItems.push(`Relaterad DMN-modell: <a href="${links.dmnLink}">${dmnLabel}</a>`);
+  }
+  if (links.bpmnViewerLink) {
+    relatedItems.push(`Relaterad BPMN-subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`);
+  }
+  if (context.parentChain.length > 0) {
+    relatedItems.push(`Överordnad nod: ${buildNodeLink(context.parentChain[context.parentChain.length - 1])}`);
+  }
 
   return {
     summary,
@@ -1688,105 +1327,46 @@ function buildBusinessRuleDocHtmlFromModel(
 ): string {
   const node = context.node;
   const nodeName = node.name || node.bpmnElementId || 'Business Rule';
-  const upstreamNode = context.parentChain.length
-    ? context.parentChain[context.parentChain.length - 1]
-    : undefined;
-  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
-  const upstreamName = upstreamNode ? formatNodeName(upstreamNode) : 'Processstart';
-  const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg i processen';
+
+  // INGEN FALLBACK-TEXT - LLM måste generera allt
+  const summaryText = model.summary || '';
+  const summarySource = model.summary ? 'llm' : 'missing';
+  
+  // Decision logic: endast om LLM genererat (inga fallback)
+  const decisionBullets = model.decisionLogic.length ? model.decisionLogic : [];
+  const decisionLogicSource = model.decisionLogic.length ? 'llm' : 'missing';
+
+  // Business rules policy: endast om LLM genererat (inga fallback)
+  const policySupportBullets = model.businessRulesPolicy.length ? model.businessRulesPolicy : [];
+  const policySource = model.businessRulesPolicy.length ? 'llm' : 'missing';
+
+  // Related items: endast om länkar finns eller LLM genererat (inga fallback-texter)
+  const relatedItems: string[] = [];
   const dmnLabel = links.dmnLink ? links.dmnLink.split('/').pop() : 'Beslutstabell';
-
-  const scopeBullets =
-    model.summary && !model.summary.includes('avgör om en ansökan ligger')
-      ? [model.summary]
-      : [
-          `${nodeName} avgör om en ansökan ligger inom bankens riktlinjer för kreditgivning.`,
-          'Regeln används för att automatisera delar av kreditbeslutet och säkerställa likabehandling.',
-          'Omfattar endast den aktuella kreditprodukten – andra produkter hanteras i separata regler.',
-        ];
-
-  const prerequisites = [
-    upstreamNode
-      ? `Triggas normalt efter <strong>${formatNodeName(upstreamNode)}</strong>.`
-      : 'Triggas när föregående processsteg (t.ex. scoring eller datainsamling) är klart.',
-    'Kräver att central kund- och ansökningsdata är komplett och validerad.',
-    'Förutsätter att nödvändiga externa registerslagningar (t.ex. UC, kreditupplysning) är gjorda.',
-  ];
-
-  const decisionBullets = model.decisionLogic.length
-    ? model.decisionLogic
-    : [
-        'Hög riskScore och måttlig skuldsättning ger normalt auto-approve.',
-        'Mellanrisk eller ofullständig data leder till manuell granskning.',
-        'Tydliga exklusionskriterier (t.ex. betalningsanmärkningar eller sanktionsflaggor) ger auto-decline.',
-      ];
-
-  const policySupportBullets = model.businessRulesPolicy.length
-    ? model.businessRulesPolicy
-    : [
-        'Stödjer intern kreditpolicy och mandat för respektive produkt och segment.',
-        'Bygger på dokumenterade riskramverk och beslutsmodeller.',
-        'Tar hänsyn till regulatoriska krav (t.ex. konsumentkreditlag, AML/KYC) på en övergripande nivå.',
-      ];
-
-
-
-  const relatedItems =
-    model.relatedItems.length > 0
-      ? model.relatedItems
-      : [
-          links.dmnLink
-            ? `Relaterad DMN-modell: <a href="${links.dmnLink}">${dmnLabel}</a>`
-            : 'Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell/DMN när den finns.',
-          links.bpmnViewerLink
-            ? `Relaterad BPMN-subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`
-            : 'Subprocess-länk sätts via BPMN viewer.',
-          context.parentChain.length
-            ? `Överordnad nod: ${buildNodeLink(
-                context.parentChain[context.parentChain.length - 1],
-              )}`
-            : 'Överordnad nod: Rotprocess',
-       ];
-  const relatedItemsSource = model.relatedItems.length > 0 ? 'llm' : 'fallback';
+  
+  // Lägg till LLM-genererade items
+  if (model.relatedItems.length > 0) {
+    relatedItems.push(...model.relatedItems);
+  }
+  
+  // Lägg till länkar om de finns
+  if (links.dmnLink) {
+    relatedItems.push(`Relaterad DMN-modell: <a href="${links.dmnLink}">${dmnLabel}</a>`);
+  }
+  if (links.bpmnViewerLink) {
+    relatedItems.push(`Relaterad BPMN-subprocess: <a href="${links.bpmnViewerLink}">Visa i BPMN viewer</a>`);
+  }
+  if (context.parentChain.length > 0) {
+    relatedItems.push(`Överordnad nod: ${buildNodeLink(context.parentChain[context.parentChain.length - 1])}`);
+  }
+  
+  const relatedItemsSource = model.relatedItems.length > 0 ? 'llm' : (relatedItems.length > 0 ? 'links' : 'missing');
 
   const renderInputsTable = () => {
     const inputs = model.inputs;
+    // INGEN FALLBACK-TABELL - visas endast om LLM genererat inputs
     if (!inputs.length) {
-      return `
-      <table>
-        <tr>
-          <th>Fält</th>
-          <th>Datakälla</th>
-          <th>Typ / format</th>
-          <th>Obligatoriskt</th>
-          <th>Validering</th>
-          <th>Felhantering</th>
-        </tr>
-        <tr>
-          <td>riskScore</td>
-          <td>Kreditmotor / UC</td>
-          <td>Tal (0–1000)</td>
-          <td>Ja</td>
-          <td>Inom definierat intervall</td>
-          <td>Avslå eller skicka till manuell granskning</td>
-        </tr>
-        <tr>
-          <td>debtToIncomeRatio</td>
-          <td>Intern beräkning</td>
-          <td>Decimal</td>
-          <td>Ja</td>
-          <td>&gt;= 0</td>
-          <td>Flagga för manuell granskning vid saknade data</td>
-        </tr>
-        <tr>
-          <td>loanToValue</td>
-          <td>Fastighetsvärdering</td>
-          <td>Procent</td>
-          <td>Ja</td>
-          <td>0–100 %</td>
-          <td>Avslå vid orimliga värden</td>
-        </tr>
-      </table>`;
+      return '';
     }
 
     const rows = inputs.map((raw) => {
@@ -1859,14 +1439,11 @@ function buildBusinessRuleDocHtmlFromModel(
 
   const renderOutputsTable = () => {
     const outputs = model.outputs;
-    const rowsSource = outputs.length
-      ? outputs
-      : [
-          'Outputtyp: Beslut; Typ: APPROVE/REFER/DECLINE; Effekt: Kreditprocessen fortsätter, pausas eller avslutas; Loggning: Beslut, huvudparametrar och regelversion loggas för audit.',
-          `Outputtyp: Processpåverkan; Typ: Flödesstyrning; Effekt: Fortsätter till ${downstreamName} vid APPROVE, pausas i manuell kö vid REFER, avslutas vid DECLINE; Loggning: Flödesbeslut loggas med tidsstämpel.`,
-          'Outputtyp: Flagga; Typ: Risk/Datakvalitet; Effekt: T.ex. hög skuldsättning, bristfällig dokumentation, sanktions-/fraudträff; Loggning: Flagga + orsak loggas för spårbarhet.',
-          'Outputtyp: Loggning; Typ: Audit; Effekt: Underlag för revision och efterhandskontroll; Loggning: Beslut, inputparametrar och regelversion.',
-        ];
+    // INGEN FALLBACK-TABELL - visas endast om LLM genererat outputs
+    if (!outputs.length) {
+      return '';
+    }
+    const rowsSource = outputs;
 
     const rows = rowsSource.map((raw) => {
       if (typeof raw !== 'string') {
@@ -1938,59 +1515,51 @@ function buildBusinessRuleDocHtmlFromModel(
       <ul>
         <li><strong>Regel-ID:</strong> ${node.bpmnElementId}</li>
         <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
-        <li><strong>Version:</strong> 1.0 (exempel) – uppdateras vid ändring</li>
-        <li><strong>Ägare:</strong> Risk &amp; Kreditpolicy</li>
         <li><strong>Kreditprocess-steg:</strong> ${node.bpmnFile.replace('.bpmn', '')}</li>
       </ul>
     </section>
 
-    <section class="doc-section" data-source-summary="${
-      model.summary && !model.summary.includes('avgör om en ansökan ligger')
-        ? 'llm'
-        : 'fallback'
-    }">
+    ${summaryText ? `
+    <section class="doc-section" data-source-summary="${summarySource}">
       <h2>Sammanfattning &amp; scope</h2>
-      ${renderList(scopeBullets)}
+      <p>${summaryText}</p>
     </section>
+    ` : ''}
 
-    <section class="doc-section" data-source-prerequisites="fallback">
-      <h2>Förutsättningar &amp; kontext</h2>
-      ${renderList(prerequisites)}
-    </section>
-
-    <section class="doc-section" data-source-inputs="${
-      model.inputs.length ? 'llm' : 'fallback'
-    }">
+    ${model.inputs.length > 0 ? `
+    <section class="doc-section" data-source-inputs="llm">
       <h2>Inputs &amp; datakällor</h2>
-      
       ${renderInputsTable()}
     </section>
+    ` : ''}
 
-    <section class="doc-section" data-source-decision-logic="${
-      model.decisionLogic.length ? 'llm' : 'fallback'
-    }">
+    ${decisionBullets.length > 0 ? `
+    <section class="doc-section" data-source-decision-logic="${decisionLogicSource}">
       <h2>Beslutslogik (DMN / regler)</h2>
       ${renderList(decisionBullets)}
     </section>
+    ` : ''}
 
-    <section class="doc-section" data-source-outputs="${
-      model.outputs.length ? 'llm' : 'fallback'
-    }">
+    ${model.outputs.length > 0 ? `
+    <section class="doc-section" data-source-outputs="llm">
       <h2>Output &amp; effekter</h2>
       ${renderOutputsTable()}
     </section>
+    ` : ''}
 
-    <section class="doc-section" data-source-business-rules="${
-      model.businessRulesPolicy.length ? 'llm' : 'fallback'
-    }">
+    ${policySupportBullets.length > 0 ? `
+    <section class="doc-section" data-source-business-rules="${policySource}">
       <h2>Affärsregler &amp; policystöd</h2>
       ${renderList(policySupportBullets)}
     </section>
+    ` : ''}
 
+    ${relatedItems.length > 0 ? `
     <section class="doc-section" data-source-related-items="${relatedItemsSource}">
       <h2>Relaterade regler &amp; subprocesser</h2>
       ${renderList(relatedItems)}
     </section>
+    ` : ''}
   `;
 }
 

@@ -26,7 +26,6 @@ import { sanitizeElementId } from './nodeArtifactPaths';
  */
 export type FeatureGoalDocOverrides = Partial<FeatureGoalDocModel> & {
   _mergeStrategy?: {
-    prerequisites?: 'replace' | 'extend';
     flowSteps?: 'replace' | 'extend';
     dependencies?: 'replace' | 'extend';
     userStories?: 'replace' | 'extend';
@@ -38,9 +37,9 @@ export type FeatureGoalDocOverrides = Partial<FeatureGoalDocModel> & {
  */
 export type EpicDocOverrides = Partial<EpicDocModel> & {
   _mergeStrategy?: {
-    prerequisites?: 'replace' | 'extend';
     flowSteps?: 'replace' | 'extend';
     interactions?: 'replace' | 'extend';
+    dependencies?: 'replace' | 'extend';
     userStories?: 'replace' | 'extend';
   };
 };
@@ -247,7 +246,6 @@ export function mergeFeatureGoalOverrides(
   }
   // Array fields: check merge strategy
   const arrayFields: Array<keyof FeatureGoalDocModel> = [
-    'prerequisites',
     'flowSteps',
     'dependencies',
     'userStories',
@@ -408,13 +406,13 @@ export function mergeBusinessRuleOverrides(
  * 
  * ```typescript
  * // Base model
- * const base = { summary: "Base summary", prerequisites: ["Prereq 1"] };
+ * const base = { summary: "Base summary", flowSteps: ["Step 1"] };
  * 
  * // LLM patch
- * const llmPatch = { summary: "LLM summary", prerequisites: ["Prereq 2", "Prereq 3"] };
+ * const llmPatch = { summary: "LLM summary", flowSteps: ["Step 2", "Step 3"] };
  * 
  * // Result
- * const merged = { summary: "LLM summary", prerequisites: ["Prereq 2", "Prereq 3"] };
+ * const merged = { summary: "LLM summary", flowSteps: ["Step 2", "Step 3"] };
  * // LLM's values replace base values completely
  * ```
  * 
@@ -489,7 +487,6 @@ export function validateFeatureGoalModelAfterMerge(
   }
   // Required array fields
   const requiredArrayFields: Array<keyof FeatureGoalDocModel> = [
-    'prerequisites',
     'flowSteps',
     'userStories',
   ];
@@ -530,11 +527,23 @@ export function validateFeatureGoalModelAfterMerge(
   }
 
   // Warnings for empty arrays (not errors, but might indicate incomplete data)
-  if (model.prerequisites && model.prerequisites.length === 0) {
-    warnings.push('Field "prerequisites" is empty - consider adding prerequisites');
-  }
   if (model.flowSteps.length === 0) {
     warnings.push('Field "flowSteps" is empty - consider adding flow steps');
+  }
+
+  // Warning if dependencies exist but no process-context dependencies found
+  // Process-context dependencies (prerequisites) should be included in dependencies
+  if (model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0) {
+    const processDependencies = model.dependencies.filter(dep => 
+      typeof dep === 'string' && dep.includes('Beroende: Process;')
+    );
+    if (processDependencies.length === 0) {
+      warnings.push(
+        'No process-context dependencies found in dependencies. ' +
+        'Consider adding process dependencies (prerequisites) that describe what must be completed before this Feature Goal can start. ' +
+        'Format: "Beroende: Process; Id: <process-name>; Beskrivning: <what must be completed>."'
+      );
+    }
   }
 
   return {
@@ -563,7 +572,6 @@ export function validateEpicModelAfterMerge(
 
   // Required array fields
   const requiredArrayFields: Array<keyof EpicDocModel> = [
-    'prerequisites',
     'flowSteps',
     'userStories',
   ];

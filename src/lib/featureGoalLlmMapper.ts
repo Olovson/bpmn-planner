@@ -23,7 +23,6 @@ const splitSentences = (value: string): string[] =>
 function createEmptySections(): FeatureGoalLlmSections {
   return {
     summary: '',
-    prerequisites: [],
     flowSteps: [],
     dependencies: [],
     userStories: [],
@@ -68,7 +67,7 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
     sections.summary = obj.summary.trim();
   }
 
-  sections.prerequisites = coerceStringArray(obj.prerequisites);
+  // prerequisites har konsoliderats till dependencies (samma som Epic)
   sections.flowSteps = coerceStringArray(obj.flowSteps);
   sections.dependencies = coerceStringArray(obj.dependencies);
 
@@ -93,7 +92,6 @@ function parseStructuredSections(rawContent: string): FeatureGoalLlmSections | n
 
   const hasContent =
     sections.summary ||
-    (sections.prerequisites && sections.prerequisites.length > 0) ||
     sections.flowSteps.length > 0 ||
     (sections.dependencies && sections.dependencies.length > 0) ||
     (sections.userStories && sections.userStories.length > 0);
@@ -139,9 +137,7 @@ function parseWithRegexFallback(rawContent: string): FeatureGoalLlmSections {
   const summaryLines = splitLines(summaryPart).filter((line) => {
     const lower = line.toLowerCase();
     return !(
-      lower.startsWith('beroende:') ||
-      lower.startsWith('prerequisites') ||
-      lower.startsWith('förutsättningar')
+      lower.startsWith('beroende:')
     );
   });
   sections.summary = summaryLines.join(' ');

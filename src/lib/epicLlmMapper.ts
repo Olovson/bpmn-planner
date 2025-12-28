@@ -21,7 +21,6 @@ const splitLines = (value: string): string[] =>
 function createEmptyEpicModel(): EpicDocModel {
   return {
     summary: '',
-    prerequisites: [],
     flowSteps: [],
     userStories: [],
   };
@@ -66,7 +65,6 @@ function parseStructuredEpic(rawContent: string): EpicDocModel | null {
     model.summary = obj.summary.trim();
   }
 
-  model.prerequisites = coerceStringArray((obj as any).prerequisites);
   model.flowSteps = coerceStringArray((obj as any).flowSteps);
   // interactions is optional - only include if present
   if ((obj as any).interactions !== undefined) {
@@ -96,7 +94,6 @@ function parseStructuredEpic(rawContent: string): EpicDocModel | null {
 
   const hasContent =
     model.summary ||
-    model.prerequisites.length > 0 ||
     model.flowSteps.length > 0 ||
     (model.interactions && model.interactions.length > 0) ||
     (model.dependencies && model.dependencies.length > 0) ||
@@ -118,7 +115,6 @@ function parseEpicWithFallback(rawContent: string): EpicDocModel {
   const lines = splitLines(text);
 
   const summaryLines: string[] = [];
-  const prereqLines: string[] = [];
   const flowLines: string[] = [];
   const interactionLines: string[] = [];
 
@@ -126,11 +122,6 @@ function parseEpicWithFallback(rawContent: string): EpicDocModel {
     const lower = line.toLowerCase();
 
     if (/scenario[:]/i.test(line)) continue;
-
-    if (/förutsättningar|triggas normalt/i.test(lower)) {
-      prereqLines.push(line);
-      continue;
-    }
 
     if (/flöde|steg/i.test(lower)) {
       flowLines.push(line);
@@ -148,7 +139,6 @@ function parseEpicWithFallback(rawContent: string): EpicDocModel {
   if (summaryLines.length) {
     model.summary = summaryLines.join(' ');
   }
-  model.prerequisites = prereqLines;
   model.flowSteps = flowLines;
   model.interactions = interactionLines;
 
