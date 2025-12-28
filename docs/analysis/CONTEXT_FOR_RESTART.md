@@ -60,3 +60,4 @@ Problemet var att `bpmn-map.json` kan innehålla filnamn med mappstruktur (t.ex.
 ⏳ Väntar på användarens testning och feedback
 
 
+

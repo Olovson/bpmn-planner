@@ -700,6 +700,7 @@ async function cleanupRemovedNodes(removedNodes: BpmnNodeSnapshot[]): Promise<vo
       } else if (node.nodeType === 'process') {
         // For process nodes, use file-level documentation paths
         // File-level docs use {bpmnFile}.html format
+        // Process Feature Goals genereras INTE längre (ersatta av file-level docs)
         const bpmnFile = node.bpmnFile;
         if (bpmnFile) {
           const docFileName = `${bpmnFile}.html`;
@@ -710,23 +711,6 @@ async function cleanupRemovedNodes(removedNodes: BpmnNodeSnapshot[]): Promise<vo
           }
           filesToDelete.push(`docs/claude/${docFileName}`);
         }
-        const fileBaseName = node.bpmnFile.replace('.bpmn', '');
-        const featureGoalKey = getFeatureGoalDocFileKey(
-          node.bpmnFile,
-          fileBaseName, // Use file base name as elementId for process nodes
-          undefined,
-          undefined // No parent for process nodes
-        );
-        
-        // Get version hash
-        const versionHash = await getCurrentVersionHash(node.bpmnFile);
-        
-        // Build paths (versioned and non-versioned)
-        if (versionHash) {
-          const bpmnFileName = node.bpmnFile.endsWith('.bpmn') ? node.bpmnFile : `${node.bpmnFile}.bpmn`;
-          filesToDelete.push(`docs/claude/${bpmnFileName}/${versionHash}/${featureGoalKey}`);
-        }
-        filesToDelete.push(`docs/claude/${featureGoalKey}`);
       } else {
         // For tasks (userTask, serviceTask, businessRuleTask), use node doc paths
         const docFileKey = getNodeDocStoragePath(node.bpmnFile, node.bpmnElementId);

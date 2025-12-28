@@ -171,22 +171,16 @@ export const useFileArtifactCoverage = (fileName: string) => {
               
               if (node.type === 'callActivity' && node.subprocessFile) {
                 // För call activities, kolla Feature Goal-dokumentation i feature-goals/ mappen
+                // Process Feature Goals genereras INTE längre (ersatta av file-level docs)
                 const hierarchicalKey = getFeatureGoalDocFileKey(
                   node.subprocessFile,
                   node.bpmnElementId,
                   undefined, // no version suffix
                   node.bpmnFile, // parent BPMN file
                 );
-                const legacyKey = getFeatureGoalDocFileKey(
-                  node.subprocessFile,
-                  node.bpmnElementId,
-                  undefined, // no version suffix
-                  undefined, // Ingen parent
-                );
                 
-                // Extrahera filnamn från keys (ta bort "feature-goals/" prefix)
+                // Extrahera filnamn från key (ta bort "feature-goals/" prefix)
                 const hierarchicalFileName = hierarchicalKey.replace('feature-goals/', '');
-                const legacyFileName = legacyKey.replace('feature-goals/', '');
                 
                 // Kolla feature-goals/ mappen separat
                 // VIKTIGT: För versioned paths, behåll .bpmn i filnamnet eftersom filen är sparad så
@@ -216,7 +210,8 @@ export const useFileArtifactCoverage = (fileName: string) => {
                   
                   if (!error && featureGoalEntries) {
                     const featureGoalNames = new Set(featureGoalEntries.map(e => e.name));
-                    if (featureGoalNames.has(hierarchicalFileName) || featureGoalNames.has(legacyFileName)) {
+                    // Process Feature Goals genereras INTE längre (ersatta av file-level docs)
+                    if (featureGoalNames.has(hierarchicalFileName)) {
                       foundDoc = true;
                       break;
                     }
@@ -430,16 +425,10 @@ export const useAllFilesArtifactCoverage = () => {
                     undefined, // no version suffix
                     node.bpmnFile,
                   );
-                  const legacyKey = getFeatureGoalDocFileKey(
-                    node.subprocessFile,
-                    node.bpmnElementId,
-                    undefined, // no version suffix
-                    undefined,
-                  );
+                  // Process Feature Goals genereras INTE längre (ersatta av file-level docs)
                   const hierarchicalFileName = hierarchicalKey.replace('feature-goals/', '');
-                  const legacyFileName = legacyKey.replace('feature-goals/', '');
                   
-                  if (featureGoalNames.has(hierarchicalFileName) || featureGoalNames.has(legacyFileName)) {
+                  if (featureGoalNames.has(hierarchicalFileName)) {
                     matchedDocs.add(`${node.bpmnFile}:${node.bpmnElementId}`);
                     docs_covered++;
                   }

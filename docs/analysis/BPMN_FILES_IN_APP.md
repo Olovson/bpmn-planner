@@ -80,3 +80,4 @@ Eftersom alla BPMN-filer laddas från Supabase Storage:
 - När filer laddas upp, genereras `bpmn-map.json` automatiskt från filerna i Storage
 
 
+

@@ -112,3 +112,47 @@ export function matchCallActivityUsingMap(
   return { matchSource: 'none' };
 }
 
+/**
+ * Hitta parent BPMN-fil för en subprocess-fil och elementId från bpmn-map.
+ * Används för att hitta parentBpmnFile när Feature Goals laddas.
+ */
+export function findParentBpmnFileForSubprocess(
+  subprocessBpmnFile: string,
+  elementId: string,
+  bpmnMap: BpmnMap,
+): string | null {
+  const getFileNameOnly = (pathOrName: string): string => {
+    if (pathOrName.includes('/')) {
+      return pathOrName.split('/').pop() || pathOrName;
+    }
+    return pathOrName;
+  };
+
+  const normalizedSubprocessFile = getFileNameOnly(subprocessBpmnFile);
+
+  for (const process of bpmnMap.processes) {
+    for (const ca of process.call_activities || []) {
+      const normalizedSubprocessInMap = ca.subprocess_bpmn_file
+        ? getFileNameOnly(ca.subprocess_bpmn_file)
+        : null;
+      
+      if (normalizedSubprocessInMap === normalizedSubprocessFile) {
+        // Kolla om elementId matchar
+        const normalizeForMatch = (str?: string | null): string => {
+          return (str || '').toLowerCase().trim();
+        };
+        
+        if (
+          ca.bpmn_id === elementId ||
+          normalizeForMatch(ca.bpmn_id) === normalizeForMatch(elementId) ||
+          (ca.name && normalizeForMatch(ca.name) === normalizeForMatch(elementId))
+        ) {
+          return process.bpmn_file;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+

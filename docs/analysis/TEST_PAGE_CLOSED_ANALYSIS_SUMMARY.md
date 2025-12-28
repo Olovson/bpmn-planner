@@ -136,3 +136,4 @@ Sidan stängs/kraschar när testet väntar på att genereringen ska slutföras. 
 5. ⏭️ Lägg till error boundary i React-appen för att fånga fel innan de kraschar sidan
 
 
+

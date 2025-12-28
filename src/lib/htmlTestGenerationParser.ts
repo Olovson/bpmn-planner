@@ -10,6 +10,8 @@ import type { EpicScenario } from './epicDocTypes';
 import type { ScenarioUiStep } from './epicDocTypes';
 import type { ScenarioPersona, ScenarioRiskLevel, ScenarioAssertionType } from './epicDocTypes';
 import { getFeatureGoalDocFileKey } from './nodeArtifactPaths';
+import { loadBpmnMapFromStorage } from './bpmn/bpmnMapStorage';
+import { findParentBpmnFileForSubprocess } from './bpmn/bpmnMapLoader';
 
 export interface ParsedTestScenario {
   id: string;
@@ -365,8 +367,31 @@ function parseAssertionType(value: string): ScenarioAssertionType {
 export async function fetchFeatureGoalHtml(
   bpmnFile: string,
   elementId: string,
+  parentBpmnFile?: string,
 ): Promise<string | null> {
-  const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, undefined); // no version suffix
+  // Hitta parentBpmnFile om den saknas
+  let resolvedParentBpmnFile = parentBpmnFile;
+  if (!resolvedParentBpmnFile) {
+    try {
+      const bpmnMapResult = await loadBpmnMapFromStorage();
+      if (bpmnMapResult.valid && bpmnMapResult.map) {
+        resolvedParentBpmnFile = findParentBpmnFileForSubprocess(
+          bpmnFile,
+          elementId,
+          bpmnMapResult.map
+        ) || undefined;
+      }
+    } catch (error) {
+      console.warn(`[htmlTestGenerationParser] Could not load bpmn-map to find parent for ${bpmnFile}::${elementId}:`, error);
+    }
+  }
+
+  // Om parentBpmnFile saknas, kan vi inte ladda Feature Goal (kastar fel i getFeatureGoalDocFileKey)
+  if (!resolvedParentBpmnFile) {
+    return null;
+  }
+
+  const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, undefined, resolvedParentBpmnFile); // no version suffix
   const filename = fileKey.replace('feature-goals/', '');
 
   // Try local-content first
@@ -415,8 +440,9 @@ export async function fetchFeatureGoalHtml(
 export async function getTestScenariosFromHtml(
   bpmnFile: string,
   elementId: string,
+  parentBpmnFile?: string,
 ): Promise<EpicScenario[] | null> {
-  const html = await fetchFeatureGoalHtml(bpmnFile, elementId);
+  const html = await fetchFeatureGoalHtml(bpmnFile, elementId, parentBpmnFile);
   if (!html) {
     return null;
   }

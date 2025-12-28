@@ -26,6 +26,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { parseBpmnFile } from './bpmnParser';
 import { buildFlowGraph, findStartEvents, findPathsThroughProcess } from './bpmnFlowExtractor';
 import type { BpmnProcessGraph } from './bpmnProcessGraph';
+import { loadBpmnMapFromStorage } from './bpmn/bpmnMapStorage';
+import { findParentBpmnFileForSubprocess } from './bpmn/bpmnMapLoader';
 
 export interface FeatureGoalDoc {
   callActivityId: string;
@@ -275,11 +277,34 @@ function convertLlmOutputToE2eScenario(
  */
 async function loadFeatureGoalDocFromStorage(
   bpmnFile: string,
-  elementId: string
+  elementId: string,
+  parentBpmnFile?: string
 ): Promise<FeatureGoalDoc | null> {
   try {
+    // Hitta parentBpmnFile om den saknas
+    let resolvedParentBpmnFile = parentBpmnFile;
+    if (!resolvedParentBpmnFile) {
+      try {
+        const bpmnMapResult = await loadBpmnMapFromStorage();
+        if (bpmnMapResult.valid && bpmnMapResult.map) {
+          resolvedParentBpmnFile = findParentBpmnFileForSubprocess(
+            bpmnFile,
+            elementId,
+            bpmnMapResult.map
+          ) || undefined;
+        }
+      } catch (error) {
+        console.warn(`[e2eScenarioGenerator] Could not load bpmn-map to find parent for ${bpmnFile}::${elementId}:`, error);
+      }
+    }
+
+    // Om parentBpmnFile fortfarande saknas, kan vi inte ladda Feature Goal
+    if (!resolvedParentBpmnFile) {
+      return null;
+    }
+
     // Försök ladda dokumentation från Storage
-    const storagePaths = getFeatureGoalDocStoragePaths(bpmnFile, elementId);
+    const storagePaths = getFeatureGoalDocStoragePaths(bpmnFile, elementId, resolvedParentBpmnFile);
     
     for (const docPath of storagePaths) {
       const { data, error } = await supabase.storage
@@ -321,7 +346,7 @@ async function loadFeatureGoalDocFromStorage(
       const docInfo = await loadChildDocFromStorage(
         bpmnFile,
         elementId,
-        getFeatureGoalDocFileKey(bpmnFile, elementId),
+        getFeatureGoalDocFileKey(bpmnFile, elementId, undefined, resolvedParentBpmnFile),
         null,
         'e2e-scenario-generation'
       );
@@ -425,8 +450,10 @@ export async function generateE2eScenariosForProcess(
         // Försök hitta BPMN-fil från parseResult
         const element = parseResult.elements.find(e => e.id === featureGoalId);
         const bpmnFile = element?.bpmnFile || rootBpmnFile;
+        // bpmnFile är subprocess-filen, parent-filen är rootBpmnFile (där callActivity är definierad)
+        const parentBpmnFile = rootBpmnFile;
         
-        const doc = await loadFeatureGoalDocFromStorage(bpmnFile, featureGoalId);
+        const doc = await loadFeatureGoalDocFromStorage(bpmnFile, featureGoalId, parentBpmnFile);
         if (doc) {
           featureGoalDocs.push(doc);
         } else {

@@ -1634,6 +1634,53 @@ export async function generateAllFromBpmnWithGraph(
       return analyzedFiles.includes(node.bpmnFile);
     });
 
+    // VIKTIGT: Räkna process nodes som kommer att genereras (subprocess-filer med process nodes men inga tasks/callActivities)
+    // Dessa genereras separat och måste inkluderas i progress-räkningen
+    // VIKTIGT: Logiken måste matcha exakt logiken för när process nodes faktiskt genereras (rad 2441-2539)
+    let processNodesToGenerate = 0;
+    for (const file of analyzedFiles) {
+      const hasCallActivityPointingToFile = Array.from(testableNodes.values()).some(
+        node => node.type === 'callActivity' && node.subprocessFile === file
+      );
+      const processNodeForFile = Array.from(graph.allNodes.values()).find(
+        node => node.type === 'process' && node.bpmnFile === file
+      );
+      const fileBaseName = file.replace('.bpmn', '');
+      const isRootProcessFromMap = rootProcessId && (fileBaseName === rootProcessId || file === `${rootProcessId}.bpmn`);
+      const isSubprocessFile = (hasCallActivityPointingToFile || !!processNodeForFile) && !isRootProcessFromMap;
+      
+      // Räkna process node om:
+      // 1. Det är en subprocess-fil (isSubprocessFile = true)
+      // 2. Den har en process node av typ 'process'
+      // 3. Den har inga tasks/callActivities i nodesToGenerate (annars genereras Feature Goal via callActivity istället)
+      // Detta matchar exakt logiken i rad 2441: if (isSubprocessFileForSubprocess && processNodeForFileForSubprocess && processNodeForFileForSubprocess.type === 'process')
+      const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
+      if (isSubprocessFile && processNodeForFile && processNodeForFile.type === 'process' && nodesInFile.length === 0) {
+        processNodesToGenerate++;
+        if (import.meta.env.DEV) {
+          console.log(`[bpmnGenerators] 📊 Counting process node for progress: ${file} (subprocess file with process node but no tasks/callActivities)`);
+        }
+      }
+    }
+    
+    // VIKTIGT: Skicka total:init med korrekt antal filer och noder för progress-räkning
+    // Använd nodesToGenerate.length (faktiskt antal noder som genereras) istället för totalNodesFromFiles
+    // Detta säkerställer att progress visar korrekt antal, exkluderar noder som hoppas över
+    // (t.ex. call activities med saknade subprocess-filer, redan genererade noder, nodeFilter)
+    // 
+    // För filräkning: Använd graphFileScope.length (antal filer som analyseras) istället för analyzedFiles.length
+    // För subprocess-generering analyseras fler filer (parent + subprocess + siblings) än vad som genereras dokumentation för
+    // Användaren förväntar sig att se antal filer som analyseras, inte bara antal filer som genereras dokumentation för
+    const totalNodesToGenerate = nodesToGenerate.length + processNodesToGenerate;
+    await reportProgress(
+      'total:init',
+      'Initierar generering',
+      JSON.stringify({
+        files: graphFileScope.length, // ✅ Använd antal filer som analyseras (parent + subprocess + siblings)
+        nodes: totalNodesToGenerate, // ✅ Använd faktiskt antal noder som genereras
+      }),
+    );
+
     // Beräkna depth för varje nod (för hierarkisk generering: leaf nodes först)
     // OBS: Använd nodesToGenerate (filtrerade noder) för depth-beräkning
     const nodeDepthMap = new Map<string, number>();
@@ -1774,80 +1821,9 @@ export async function generateAllFromBpmnWithGraph(
       );
     }
 
-    // VIKTIGT: För progress-räkning räknar vi alla relevanta noder direkt från BPMN-filerna,
-    // INTE bara de som kommer att genereras. Detta matchar coverage-räkningen och säkerställer
-    // att progress visar korrekt antal (t.ex. 4/4 istället för 4/3).
-    // 
-    // Call activities räknas i parent-filen, även om subprocess-filen saknas.
-    // Detta matchar logiken i useFileArtifactCoverage.ts.
-    let totalNodesFromFiles = 0;
-    for (const file of analyzedFiles) {
-      try {
-        const { parseBpmnFile } = await import('./bpmnParser');
-        const parseResult = await parseBpmnFile(`/bpmn/${file}`);
-        
-        // Räkna relevanta noder direkt från parseResult (samma logik som coverage-räkning)
-        const relevantElements = parseResult.elements.filter(e => {
-          const elementType = e.type;
-          // Räkna tasks (UserTask, ServiceTask, BusinessRuleTask) → Epics
-          // Räkna call activities → Feature Goals
-          return elementType === 'bpmn:UserTask' || 
-                 elementType === 'bpmn:ServiceTask' || 
-                 elementType === 'bpmn:BusinessRuleTask' ||
-                 elementType === 'bpmn:CallActivity';
-        });
-        
-        totalNodesFromFiles += relevantElements.length;
-      } catch (error) {
-        console.warn(`[bpmnGenerators] Failed to parse ${file} for progress counting:`, error);
-        // Fallback: använd nodesToGenerate för denna fil
-        const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
-        totalNodesFromFiles += nodesInFile.length;
-      }
-    }
-    
-    // Räkna process nodes som kommer att genereras (subprocess-filer med process nodes men inga tasks/callActivities)
-    // Dessa genereras separat och måste inkluderas i progress-räkningen
-    // VIKTIGT: Logiken måste matcha exakt logiken för när process nodes faktiskt genereras (rad 2441-2539)
-    let processNodesToGenerate = 0;
-    for (const file of analyzedFiles) {
-      const hasCallActivityPointingToFile = Array.from(testableNodes.values()).some(
-        node => node.type === 'callActivity' && node.subprocessFile === file
-      );
-      const processNodeForFile = Array.from(graph.allNodes.values()).find(
-        node => node.type === 'process' && node.bpmnFile === file
-      );
-      const fileBaseName = file.replace('.bpmn', '');
-      const isRootProcessFromMap = rootProcessId && (fileBaseName === rootProcessId || file === `${rootProcessId}.bpmn`);
-      const isSubprocessFile = (hasCallActivityPointingToFile || !!processNodeForFile) && !isRootProcessFromMap;
-      
-      // Räkna process node om:
-      // 1. Det är en subprocess-fil (isSubprocessFile = true)
-      // 2. Den har en process node av typ 'process'
-      // 3. Den har inga tasks/callActivities i nodesToGenerate (annars genereras Feature Goal via callActivity istället)
-      // Detta matchar exakt logiken i rad 2441: if (isSubprocessFileForSubprocess && processNodeForFileForSubprocess && processNodeForFileForSubprocess.type === 'process')
-      const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
-      if (isSubprocessFile && processNodeForFile && processNodeForFile.type === 'process' && nodesInFile.length === 0) {
-        processNodesToGenerate++;
-        if (import.meta.env.DEV) {
-          console.log(`[bpmnGenerators] 📊 Counting process node for progress: ${file} (subprocess file with process node but no tasks/callActivities)`);
-        }
-      }
-    }
-    
-    // Skicka total:init med korrekt antal filer och noder för progress-räkning
-    // VIKTIGT: Använd totalNodesFromFiles (räknat direkt från BPMN-filer) istället för nodesToGenerate.length
-    // Detta säkerställer att progress visar korrekt antal, även om vissa call activities hoppas över i generering
-    // (t.ex. om subprocess-filen saknas, hoppas call activity över i nodesToGenerate, men räknas ändå här)
-    const totalNodesToGenerate = totalNodesFromFiles + processNodesToGenerate;
-    await reportProgress(
-      'total:init',
-      'Initierar generering',
-      JSON.stringify({
-        files: analyzedFiles.length,
-        nodes: totalNodesToGenerate, // Inkluderar både testable nodes och process nodes
-      }),
-    );
+    // OBS: total:init har flyttats till EFTER nodesToGenerate beräkning (se rad ~1636)
+    // Detta säkerställer att progress visar korrekt antal noder som faktiskt genereras,
+    // exkluderar noder som hoppas över (saknade subprocesser, redan genererade, nodeFilter)
 
     // Generera dokumentation per fil (inte per element)
     // STRATEGI: Två-pass generering för bättre kontext

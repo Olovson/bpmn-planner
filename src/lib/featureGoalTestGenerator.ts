@@ -118,7 +118,12 @@ async function loadFeatureGoalDocs(
         }
         
         try {
-          const doc = await loadFeatureGoalDocFromStorage(bpmnFile, callActivity.id);
+          // bpmnFile är parent-filen, hitta subprocess-filen från callActivity
+          const subprocessFile = callActivity.calledElement 
+            ? `${callActivity.calledElement}.bpmn`
+            : bpmnFile; // Fallback om calledElement saknas
+          
+          const doc = await loadFeatureGoalDocFromStorage(subprocessFile, callActivity.id, bpmnFile);
           if (doc) {
             docs.set(key, doc);
           }
@@ -143,11 +148,34 @@ async function loadFeatureGoalDocs(
  */
 async function loadFeatureGoalDocFromStorage(
   bpmnFile: string,
-  elementId: string
+  elementId: string,
+  parentBpmnFile?: string
 ): Promise<FeatureGoalDocModel | null> {
   try {
+    // Hitta parentBpmnFile om den saknas
+    let resolvedParentBpmnFile = parentBpmnFile;
+    if (!resolvedParentBpmnFile) {
+      try {
+        const bpmnMapResult = await loadBpmnMapFromStorage();
+        if (bpmnMapResult.valid && bpmnMapResult.map) {
+          resolvedParentBpmnFile = findParentBpmnFileForSubprocess(
+            bpmnFile,
+            elementId,
+            bpmnMapResult.map
+          ) || undefined;
+        }
+      } catch (error) {
+        console.warn(`[featureGoalTestGenerator] Could not load bpmn-map to find parent for ${bpmnFile}::${elementId}:`, error);
+      }
+    }
+
+    // Om parentBpmnFile fortfarande saknas, kan vi inte ladda Feature Goal
+    if (!resolvedParentBpmnFile) {
+      return null;
+    }
+
     // Försök ladda dokumentation från Storage
-    const storagePaths = getFeatureGoalDocStoragePaths(bpmnFile, elementId);
+    const storagePaths = getFeatureGoalDocStoragePaths(bpmnFile, elementId, resolvedParentBpmnFile);
     
     for (const docPath of storagePaths) {
       const { data, error } = await supabase.storage
@@ -193,7 +221,7 @@ async function loadFeatureGoalDocFromStorage(
       const docInfo = await loadChildDocFromStorage(
         bpmnFile,
         elementId,
-        getFeatureGoalDocFileKey(bpmnFile, elementId),
+        getFeatureGoalDocFileKey(bpmnFile, elementId, undefined, resolvedParentBpmnFile),
         null,
         'feature-goal-test-generation'
       );

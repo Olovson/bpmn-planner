@@ -4,7 +4,7 @@ import { useRootBpmnFile } from './useRootBpmnFile';
 import { useProcessTree } from './useProcessTree';
 import { ProcessTreeNode } from '@/lib/processTree';
 import { getDocumentationUrl, storageFileExists, getNodeDocStoragePath, getTestFileUrl, getFeatureGoalDocStoragePaths } from '@/lib/artifactUrls';
-import { getNodeDocFileKey } from '@/lib/nodeArtifactPaths';
+import { getNodeDocFileKey, getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
 import { checkDocsAvailable, checkDorDodAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
 import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 // Removed buildJiraName import - no longer using fallback logic
@@ -341,6 +341,25 @@ export const useAllBpmnNodes = () => {
                 }
                 // Non-versioned path: docs/claude/nodes/...
                 epicDocPaths.push(`docs/claude/${docFileKey}`);
+                
+                // VIKTIGT: Lägg alltid till file-level documentation för alla filer (både root och subprocess)
+                // File-level documentation sparas som {fileBaseName}.html (inte feature-goals/)
+                // Detta säkerställer att file-level documentation visas även när en subprocess-fil laddas upp isolerat
+                // File-level documentation ersätter Process Feature Goals (som inte längre genereras)
+                const fileBaseName = node.bpmnFile.replace('.bpmn', '');
+                
+                if (versionHash) {
+                  const fileLevelDocKey = `${fileBaseName}.html`;
+                  epicDocPaths.push(`docs/claude/${bpmnFileName}/${versionHash}/${fileLevelDocKey}`);
+                  epicDocPaths.push(`docs/claude/${fileLevelDocKey}`);
+                  
+                  if (import.meta.env.DEV) {
+                    console.log(`[useAllBpmnNodes] Added file-level doc paths for ${node.bpmnFile}:`, {
+                      fileLevelDocKey,
+                      versionHash,
+                    });
+                  }
+                }
               }
               
               // Only log for call activities with feature goal paths (most verbose case)

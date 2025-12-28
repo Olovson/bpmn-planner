@@ -88,12 +88,17 @@ export const getNodeDocStoragePath = (bpmnFile: string, elementId: string) =>
  * Get all possible storage paths for Feature Goal documentation (call activities).
  * Returns an array of paths to check, ordered by priority (most specific first).
  * 
+ * VIKTIGT: Process Feature Goals genereras INTE längre (ersatta av file-level documentation).
+ * Denna funktion hanterar bara CallActivity Feature Goals (hierarchical naming med parent).
+ * Om parentBpmnFile saknas, returneras tom array.
+ * 
  * @param subprocessBpmnFile - The subprocess BPMN file (e.g., "mortgage-se-internal-data-gathering.bpmn")
  * @param elementId - The call activity element ID (e.g., "internal-data-gathering")
- * @param parentBpmnFile - The parent BPMN file where call activity is defined (e.g., "mortgage-se-application.bpmn")
+ * @param parentBpmnFile - Required parent BPMN file where call activity is defined (e.g., "mortgage-se-application.bpmn")
+ *   If not provided, returns empty array (Process Feature Goals genereras inte längre)
  * @param versionHash - Optional version hash for the BPMN file (for versioned paths)
- * @param bpmnFileForVersion - Optional BPMN file name to use for versioned paths (defaults to parentBpmnFile or subprocessBpmnFile)
- * @returns Array of storage paths to check
+ * @param bpmnFileForVersion - Optional BPMN file name to use for versioned paths (defaults to subprocessBpmnFile)
+ * @returns Array of storage paths to check (empty if parentBpmnFile is not provided)
  */
 export function getFeatureGoalDocStoragePaths(
   subprocessBpmnFile: string,
@@ -115,46 +120,30 @@ export function getFeatureGoalDocStoragePaths(
   
   // VIKTIGT: För call activities använder vi ALLTID hierarchical naming (med parent)
   // men filen sparas under subprocess-filens version hash (inte parent-filens).
-  if (parentBpmnFile) {
-    const hierarchicalKey = getFeatureGoalDocFileKey(
-      subprocessBpmnFile,
-      elementId,
-      undefined, // no version suffix
-      parentBpmnFile,
-    );
-    
-    // Versioned paths (if version hash is provided)
-    if (versionHash) {
-      // Versioned paths: docs/claude/{bpmnFileName}/{versionHash}/feature-goals/...
-      // VIKTIGT: Behåll .bpmn i filnamnet eftersom filen är sparad så
-      paths.push(`docs/claude/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
-    }
-    
-    // Non-versioned paths (fallback when version hash is not available)
-    paths.push(`docs/claude/${hierarchicalKey}`);
-  } else {
-    // För process nodes (inte call activities): använd subprocess-filen direkt (ingen parent)
-    // Detta är för när subprocess-filen genereras separat och skapar sin egen Feature Goal-sida
-    // Process nodes använder subprocess-filens base name som key (hierarchical naming gäller inte här)
-    const processNodeKey = getFeatureGoalDocFileKey(
-      subprocessBpmnFile,
-      elementId,
-      undefined, // no version suffix
-      undefined, // No parent for process nodes (they generate their own Feature Goal page)
-    );
-    
-    // Versioned paths (if version hash is provided)
-    if (versionHash) {
-      // For process nodes, use subprocess file for version hash
-      const subprocessBpmnFileName = subprocessBpmnFile.endsWith('.bpmn') 
-        ? subprocessBpmnFile 
-        : `${subprocessBpmnFile}.bpmn`;
-      paths.push(`docs/claude/${subprocessBpmnFileName}/${versionHash}/${processNodeKey}`);
-    }
-    
-    // Non-versioned paths (fallback when version hash is not available)
-    paths.push(`docs/claude/${processNodeKey}`);
+  // Process Feature Goals genereras INTE längre (ersatta av file-level documentation),
+  // så parentBpmnFile måste alltid finnas för Feature Goals.
+  if (!parentBpmnFile) {
+    // Process Feature Goals genereras inte längre - returnera tom array
+    // Om parentBpmnFile saknas, finns det ingen Feature Goal att hitta
+    return [];
   }
+  
+  const hierarchicalKey = getFeatureGoalDocFileKey(
+    subprocessBpmnFile,
+    elementId,
+    undefined, // no version suffix
+    parentBpmnFile,
+  );
+  
+  // Versioned paths (if version hash is provided)
+  if (versionHash) {
+    // Versioned paths: docs/claude/{bpmnFileName}/{versionHash}/feature-goals/...
+    // VIKTIGT: Behåll .bpmn i filnamnet eftersom filen är sparad så
+    paths.push(`docs/claude/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
+  }
+  
+  // Non-versioned paths (fallback when version hash is not available)
+  paths.push(`docs/claude/${hierarchicalKey}`);
   
   return paths;
 }

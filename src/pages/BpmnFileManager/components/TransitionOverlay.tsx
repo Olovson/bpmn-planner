@@ -55,17 +55,17 @@ export function TransitionOverlay({
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Dokumentation</span>
                   <span className="font-medium">
-                    {docgenProgress.completed} av {Math.max(docgenProgress.total || 0, graphTotals.nodes)} noder
-                    {docgenProgress.total > 0 && (
+                    {docgenProgress.completed} av {docgenProgress.total || graphTotals.nodes} noder
+                    {(docgenProgress.total || graphTotals.nodes) > 0 && (
                       <span className="text-muted-foreground ml-1">
-                        ({Math.round((docgenProgress.completed / Math.max(docgenProgress.total, 1)) * 100)}%)
+                        ({Math.round((docgenProgress.completed / Math.max(docgenProgress.total || graphTotals.nodes, 1)) * 100)}%)
                       </span>
                     )}
                   </span>
                 </div>
-                {docgenProgress.total > 0 && (
+                {(docgenProgress.total || graphTotals.nodes) > 0 && (
                   <Progress
-                    value={(docgenProgress.completed / Math.max(docgenProgress.total, 1)) * 100}
+                    value={(docgenProgress.completed / Math.max(docgenProgress.total || graphTotals.nodes, 1)) * 100}
                     className="h-2"
                   />
                 )}

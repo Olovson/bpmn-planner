@@ -64,8 +64,7 @@ export async function exportTestsForCompleteEnvironment(
       try {
         const htmlScenarios = await getTestScenariosFromHtml(
           element.bpmnFile,
-          element.id,
-          undefined // no version suffix
+          element.id
         );
         
         if (htmlScenarios && htmlScenarios.length > 0) {
@@ -169,8 +168,7 @@ export async function generateTestFilesForExport(
       try {
         const htmlScenarios = await getTestScenariosFromHtml(
           element.bpmnFile,
-          element.id,
-          undefined // no version suffix
+          element.id
         );
         
         if (htmlScenarios && htmlScenarios.length > 0) {

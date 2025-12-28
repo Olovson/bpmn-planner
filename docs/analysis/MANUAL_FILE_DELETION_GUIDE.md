@@ -137,3 +137,4 @@ Om du kör tester i CI/CD, lägg till cleanup efter varje test-suite.
 - **SQL reference:** https://supabase.com/docs/guides/database
 
 
+

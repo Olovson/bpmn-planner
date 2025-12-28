@@ -3,6 +3,8 @@ import { getFeatureGoalDocFileKey, getNodeDocFileKey } from '@/lib/nodeArtifactP
 import { storageFileExists, getFeatureGoalDocStoragePaths, getEpicDocStoragePaths } from '@/lib/artifactUrls';
 import { parseUserStoriesFromHtml } from './htmlUserStoryParser';
 import type { ParsedUserStory } from './htmlUserStoryParser';
+import { loadBpmnMapFromStorage } from '@/lib/bpmn/bpmnMapStorage';
+import { findParentBpmnFileForSubprocess } from '@/lib/bpmn/bpmnMapLoader';
 
 export interface ExtractedUserStory {
   id: string;
@@ -63,10 +65,27 @@ async function loadDocFromStorage(
   docType: 'epic' | 'feature-goal'
 ): Promise<string | null> {
   try {
+    // För feature-goal, hitta parentBpmnFile från bpmn-map
+    let parentBpmnFile: string | undefined = undefined;
+    if (docType === 'feature-goal') {
+      try {
+        const bpmnMapResult = await loadBpmnMapFromStorage();
+        if (bpmnMapResult.valid && bpmnMapResult.map) {
+          parentBpmnFile = findParentBpmnFileForSubprocess(
+            bpmnFile,
+            elementId,
+            bpmnMapResult.map
+          ) || undefined;
+        }
+      } catch (error) {
+        console.warn(`[userStoryExtractor] Could not load bpmn-map to find parent for ${bpmnFile}::${elementId}:`, error);
+      }
+    }
+
     // Hämta alla möjliga paths för dokumentationen
     const storagePaths = docType === 'epic'
       ? getEpicDocStoragePaths(bpmnFile, elementId)
-      : getFeatureGoalDocStoragePaths(bpmnFile, elementId);
+      : getFeatureGoalDocStoragePaths(bpmnFile, elementId, parentBpmnFile);
     
     // Försök ladda från första path som finns
     for (const docPath of storagePaths) {
@@ -125,6 +144,7 @@ export async function extractUserStoriesFromAllDocs(
   
   return allStories;
 }
+
 
 
 

@@ -10,6 +10,8 @@ import { getFeatureGoalDocFileKey } from './nodeArtifactPaths';
 import { buildFeatureGoalDocModelFromContext } from './documentationTemplates';
 import { buildNodeDocumentationContext } from './documentationContext';
 import { buildBpmnProcessGraph } from './bpmnProcessGraph';
+import { loadBpmnMapFromStorage } from './bpmn/bpmnMapStorage';
+import { findParentBpmnFileForSubprocess } from './bpmn/bpmnMapLoader';
 import { writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -52,8 +54,31 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 async function fetchExistingModel(
   bpmnFile: string,
   elementId: string,
+  parentBpmnFile?: string,
 ): Promise<FeatureGoalDocModel | null> {
-  const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, undefined); // no version suffix
+  // Hitta parentBpmnFile om den saknas
+  let resolvedParentBpmnFile = parentBpmnFile;
+  if (!resolvedParentBpmnFile) {
+    try {
+      const bpmnMapResult = await loadBpmnMapFromStorage();
+      if (bpmnMapResult.valid && bpmnMapResult.map) {
+        resolvedParentBpmnFile = findParentBpmnFileForSubprocess(
+          bpmnFile,
+          elementId,
+          bpmnMapResult.map
+        ) || undefined;
+      }
+    } catch (error) {
+      console.warn(`[featureGoalJsonExport] Could not load bpmn-map to find parent for ${bpmnFile}::${elementId}:`, error);
+    }
+  }
+
+  // Om parentBpmnFile saknas, kan vi inte ladda Feature Goal (kastar fel i getFeatureGoalDocFileKey)
+  if (!resolvedParentBpmnFile) {
+    return null;
+  }
+
+  const fileKey = getFeatureGoalDocFileKey(bpmnFile, elementId, undefined, resolvedParentBpmnFile); // no version suffix
 
   // Try Supabase Storage (Claude-only)
   const possiblePaths = [

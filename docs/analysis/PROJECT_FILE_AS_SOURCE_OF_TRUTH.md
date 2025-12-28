@@ -138,3 +138,4 @@ const mergedMap = mergeBpmnMaps(projectMap, storageMap);
 - ⚠️ Användaren måste manuellt uppdatera projektfilen när nya filer läggs till
 
 
+
