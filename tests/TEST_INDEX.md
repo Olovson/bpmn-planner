@@ -58,6 +58,7 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 - **Integration:** `hierarchy-llm-generation.test.ts` - Hierarkisk LLM-generering
 - **Integration:** `full-flow-generation-upload-read.test.ts` - Fullständigt genereringsflöde
 - **Integration:** `generate-all-files-with-root.test.ts` - Generera alla filer med root
+- **Integration:** `batch-generation-validation.test.ts` - ⭐ **NYTT** - Validerar batch-generering (progress-räkning, Root Process Feature Goal, file-level docs, fallback-logik)
 
 ### LLM Integration
 - **Integration:** `claude-api-simple.test.ts` - Enkel Claude API-test
@@ -141,6 +142,7 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 ### Batch Generation
 - **Integration:** `mortgage-se-batch-generation.test.ts` - Mortgage SE batch-generering
 - **Integration:** `mortgage-se-batch-generation-hierarchy.test.ts` - Mortgage SE batch-generering (hierarki)
+- **Integration:** `batch-generation-validation.test.ts` - ⭐ **NYTT** - Validerar batch-generering med alla filer (progress-räkning, Root Process Feature Goal, file-level docs, fallback-logik)
 
 ### Intermediate Events
 - **Integration:** `intermediate-events-analysis.test.ts` - Intermediate events analys
@@ -336,7 +338,7 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 ## 📊 Teststatistik (Utvecklartester)
 
 - **Unit Tests:** ~48 filer (inkl. 5 nya test generation-tester, varav 4 implementerade)
-- **Integration Tests:** ~42 filer (inkl. 1 ny test generation-test under utveckling)
+- **Integration Tests:** ~43 filer (inkl. 1 ny test generation-test + 1 ny batch-validation-test)
 - **E2E Tests (Vitest):** 1 fil
 - **Playwright E2E Tests:** 36 filer (22 huvudfiler + 3 A-Ö flöden + 5 scenario-filer + 6 nya tester)
 
@@ -395,5 +397,5 @@ find tests -name "*.test.ts" -o -name "*.spec.ts" | sort
 
 ---
 
-**Senast uppdaterad:** 2025-01-XX
+**Senast uppdaterad:** 2025-12-29
 

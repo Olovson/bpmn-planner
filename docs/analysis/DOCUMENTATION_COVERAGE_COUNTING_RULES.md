@@ -42,13 +42,15 @@
 - Feature Goal-filnamn: `mortgage-se-object-object-information.html` (hierarchical naming)
 - Detta räknas som dokumentation för `mortgage-se-object.bpmn`, INTE för `mortgage-se-object-information.bpmn`
 
-### 2. Process Feature Goals är separat
+### 2. File-level Documentation är separat
 
-**VIKTIGT:** Process Feature Goals (t.ex. `mortgage-se-object-information.html` för process-noden i subprocess-filen) är **separat** dokumentation och räknas INTE som node documentation för filen.
+**VIKTIGT:** File-level documentation (t.ex. `mortgage-se-object-information.html` för filen) är **separat** dokumentation och räknas INTE som node documentation för filen.
+
+**OBS:** Process Feature Goals genereras INTE längre (ersatta av file-level documentation).
 
 **Exempel:**
 - `mortgage-se-object-information.bpmn` har en process-nod
-- Process Feature Goal: `mortgage-se-object-information.html` (utan parent prefix)
+- File-level documentation: `mortgage-se-object-information.html` (ersätter Process Feature Goals)
 - Detta är dokumentation för **processen själv**, inte för noder i filen
 - Detta räknas INTE i node documentation coverage
 
@@ -130,7 +132,7 @@ Detta bör visa:
 ## 🚨 Viktiga Regler (För att undvika framtida förvirring)
 
 1. **Call Activities räknas i parent-filen** - INTE när subprocess-filen genereras
-2. **Process Feature Goals räknas INTE** - De är separat process-dokumentation
+2. **File-level documentation räknas INTE** - De är separat fil-dokumentation (ersätter Process Feature Goals)
 3. **Använd BARA hierarchical naming** - Ingen legacy fallback för call activities
 4. **Räkna direkt från parseResult** - INTE från grafen (som inkluderar subprocesser)
 

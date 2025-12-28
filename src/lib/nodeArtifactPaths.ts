@@ -46,6 +46,7 @@ export const getFeatureGoalDocFileKey = (
   elementId: string,
   templateVersion?: 'v1' | 'v2',
   parentBpmnFile?: string,
+  isRootProcess?: boolean, // Required for root process Feature Goals
 ) => {
   const sanitizedId = sanitizeElementId(elementId);
   const versionSuffix = templateVersion ? `-${templateVersion}` : '';
@@ -71,18 +72,13 @@ export const getFeatureGoalDocFileKey = (
   
   // Process Feature Goals för subprocesser genereras INTE längre (ersatta av file-level documentation)
   // Men root process Feature Goals genereras fortfarande (root process har ingen parent)
-  // Om parentBpmnFile saknas, kolla om det är root process (elementId matchar fileBaseName)
-  const baseName = getBaseName(bpmnFile);
-  const normalizedBaseName = baseName.toLowerCase();
-  const normalizedElementId = sanitizedId.toLowerCase();
-  
-  // Root process: elementId matchar fileBaseName (t.ex. "mortgage" + "mortgage")
-  const isRootProcess = normalizedBaseName === normalizedElementId || 
-                        normalizedBaseName.endsWith(`-${normalizedElementId}`) ||
-                        normalizedBaseName === `mortgage-se-${normalizedElementId}`;
+  // VIKTIGT: Om parentBpmnFile saknas, kan det INTE vara en Feature Goal för call activity.
+  // Det kan bara vara Root Process Feature Goal om isRootProcess flag är satt.
+  // Om parentBpmnFile saknas och isRootProcess inte är satt, är det ett fel.
   
   if (isRootProcess) {
     // Root process Feature Goal: använd baseName (ingen parent)
+    const baseName = getBaseName(bpmnFile);
     return `feature-goals/${baseName}${versionSuffix}.html`;
   }
   
@@ -91,6 +87,7 @@ export const getFeatureGoalDocFileKey = (
   throw new Error(
     `getFeatureGoalDocFileKey: parentBpmnFile is required for Feature Goals (call activities). ` +
     `Process Feature Goals för subprocesser genereras inte längre (ersatta av file-level documentation). ` +
+    `Root Process Feature Goals genereras endast för root-processen när isRootProcess flag är satt. ` +
     `bpmnFile: ${bpmnFile}, elementId: ${elementId}`
   );
 };

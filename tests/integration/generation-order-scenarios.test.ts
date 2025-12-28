@@ -554,12 +554,13 @@ describe('Generation Order Scenarios', () => {
       console.log(`Feature Goals: ${featureGoals.length}`);
       featureGoals.forEach(key => console.log(`  - ${key}`));
 
-      // Verify: Should have Feature Goal for application subprocess (process node)
-      const applicationProcessFeatureGoal = featureGoals.find(key =>
-        key.includes('mortgage-se-application.html') && !key.includes('mortgage-application')
+      // Verify: Should have file-level documentation for application subprocess (Process Feature Goals ersatta av file-level docs)
+      // Process Feature Goals genereras INTE längre - ersatta av file-level documentation
+      const applicationFileLevelDoc = Array.from(result.docs.keys()).find(key =>
+        key === 'mortgage-se-application.html' || key.includes('mortgage-se-application.html')
       );
-      expect(applicationProcessFeatureGoal).toBeDefined();
-      console.log(`\n✅ Application process Feature Goal found: ${applicationProcessFeatureGoal}`);
+      expect(applicationFileLevelDoc).toBeDefined();
+      console.log(`\n✅ Application file-level documentation found: ${applicationFileLevelDoc}`);
 
       // Verify: Should have Feature Goal for application call activity from mortgage.bpmn
       const applicationCallActivityFeatureGoal = featureGoals.find(key =>

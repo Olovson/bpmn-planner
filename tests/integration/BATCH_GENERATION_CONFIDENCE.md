@@ -99,6 +99,7 @@
 - ✅ Isolerad generering för alla 21 filer
 - ✅ Hierarkisk generering för root-fil (isolated)
 - ✅ **Batch-generering med root-fil (EN generering för hela hierarkin)** - **NU TESTAT** (`generate-all-files-with-root.test.ts`)
+- ✅ **Batch-generering validering** - **NYTT** (`batch-generation-validation.test.ts`) - Validerar progress-räkning, Root Process Feature Goal, file-level docs, fallback-logik
 - ❌ LLM-generering i batch - INTE testat (tester använder templates)
 
 ## Svar på användarens fråga:
@@ -115,4 +116,5 @@
 **Rekommendation:** 
 - För isolerad generering: **Ja, vi kan vara säkra** ✅
 - För batch-generering med root-fil: **Ja, vi kan vara säkra** ✅ (testat)
+- För batch-generering validering: **Ja, vi kan vara säkra** ✅ (testat i `batch-generation-validation.test.ts`)
 - För LLM-generering: **Delvis säker** (tester använder templates, men logiken är samma)

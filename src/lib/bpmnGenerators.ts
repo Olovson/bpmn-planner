@@ -1544,10 +1544,18 @@ export async function generateAllFromBpmnWithGraph(
     // 2. Ingen nodeFilter (generera allt)
     // 3. Root-filen matchar första filen i hierarkin
     // 4. Antingen isActualRootFile = true ELLER det finns flera filer i scope (hierarkisk struktur)
+    // VIKTIGT: För batch-generering (alla filer laddas upp), vill vi generera för hela hierarkin
+    // Om graphFileScope innehåller många filer (>5), är det sannolikt batch-generering
+    // I så fall, sätt isRootFileGeneration = true även om summary.filesIncluded är tom eller filordningen är annorlunda
+    const isLikelyBatchGeneration = graphFileScope.length > 5 && isActualRootFile === true;
     const isRootFileGeneration = useHierarchy && 
       !nodeFilter && 
-      summary.filesIncluded.length > 0 &&
-      summary.filesIncluded[0] === bpmnFileName &&
+      (
+        // Standard villkor: summary.filesIncluded måste innehålla filer och root-filen måste vara först
+        (summary.filesIncluded.length > 0 && summary.filesIncluded[0] === bpmnFileName) ||
+        // Fallback för batch-generering: om många filer i scope och isActualRootFile = true
+        isLikelyBatchGeneration
+      ) &&
       (isActualRootFile === true || graphFileScope.length > 1); // Root-fil-generering = flera filer i scope (hierarki)
     
     // VIKTIGT: När isRootFileGeneration = true, vill vi generera för ALLA filer i hierarkin.
@@ -1671,7 +1679,11 @@ export async function generateAllFromBpmnWithGraph(
     // För filräkning: Använd graphFileScope.length (antal filer som analyseras) istället för analyzedFiles.length
     // För subprocess-generering analyseras fler filer (parent + subprocess + siblings) än vad som genereras dokumentation för
     // Användaren förväntar sig att se antal filer som analyseras, inte bara antal filer som genereras dokumentation för
-    const totalNodesToGenerate = nodesToGenerate.length + processNodesToGenerate;
+    // 
+    // VIKTIGT: File-level documentation genereras för ALLA filer i analyzedFiles (en per fil)
+    // Detta måste räknas med i totalNodesToGenerate för korrekt progress-räkning
+    const fileLevelDocsCount = analyzedFiles.length; // En file-level doc per fil
+    const totalNodesToGenerate = nodesToGenerate.length + processNodesToGenerate + fileLevelDocsCount;
     await reportProgress(
       'total:init',
       'Initierar generering',
@@ -2777,12 +2789,33 @@ export async function generateAllFromBpmnWithGraph(
         
         // VIKTIGT: Generera Feature Goal för root-processen (mortgage.bpmn)
         // Detta görs endast för root-processen när isActualRootFile = true
-        if (file === bpmnFileName && isActualRootFile && isRootFileGeneration) {
+        // VIKTIGT: Använd samma logik som ovan (isSubprocessFileForRoot) för att avgöra om filen är subprocess
+        // Generera Root Process Feature Goal ENDAST om:
+        // 1. Filen är root-filen (file === bpmnFileName)
+        // 2. Det är faktiskt root-fil-generering (isActualRootFile && isRootFileGeneration)
+        // 3. Filen INTE är en subprocess-fil (ingen callActivity pekar på den, eller den är root-processen enligt bpmn-map)
+        // 4. Filen är root-processen enligt bpmn-map.json ELLER rootProcessId saknas (fallback för batch-generering)
+        // 
+        // VIKTIGT: Om en subprocess-fil laddas upp isolerat, finns det ingen callActivity som pekar på den,
+        // men det finns en process node. I så fall är filen fortfarande en subprocess-fil och ska INTE få Root Process Feature Goal.
+        // Använd isRootProcessFromMapForRoot för att avgöra om det är root-processen enligt bpmn-map.
+        // 
+        // YTTERLIGARE SÄKERHETSKONTROLL: Om filen är en subprocess-fil (isSubprocessFileForRoot = true),
+        // generera INTE Root Process Feature Goal, även om isRootProcessFromMapForRoot är true.
+        // Detta förhindrar att subprocess-filer får Root Process Feature Goal när de laddas upp isolerat.
+        // 
+        // FALLBACK FÖR BATCH-GENERERING: Om rootProcessId saknas men isRootFileGeneration = true och file === bpmnFileName,
+        // generera Root Process Feature Goal ändå (för batch-generering när bpmn-map inte kan laddas)
+        const shouldGenerateRootFeatureGoal = file === bpmnFileName && 
+          isActualRootFile && 
+          isRootFileGeneration && 
+          !isSubprocessFileForRoot &&
+          (isRootProcessFromMapForRoot || (!rootProcessId && isRootFileGeneration)); // Fallback för batch-generering
+        
+        if (shouldGenerateRootFeatureGoal) {
           const fileBaseName = file.replace('.bpmn', '');
-          const isRootProcessFromMap = rootProcessId && (fileBaseName === rootProcessId || file === `${rootProcessId}.bpmn`);
           
-          // Generera Feature Goal för root-processen om den är root-processen enligt bpmn-map.json
-          if (isRootProcessFromMap || (!rootProcessId && file === bpmnFileName)) {
+          // Generera Feature Goal för root-processen (redan verifierat att det är root-processen via isRootProcessFromMapForRoot)
             const processNodeForRoot = Array.from(graph.allNodes.values()).find(
               node => node.type === 'process' && node.bpmnFile === file
             );
@@ -2852,11 +2885,13 @@ export async function generateAllFromBpmnWithGraph(
                 );
                 
                 // Skapa Feature Goal-sida för root-processen (non-hierarchical naming)
+                // VIKTIGT: Sätt isRootProcess = true för att ange att det är root-processen
                 const rootFeatureDocPath = getFeatureGoalDocFileKey(
                   file,
                   processNodeForRoot.bpmnElementId || fileBaseName,
                   undefined, // no version suffix
                   undefined, // no parent (root process)
+                  true, // isRootProcess = true (detta är root-processen)
                 );
                 
                 if (!result.docs.has(rootFeatureDocPath)) {
