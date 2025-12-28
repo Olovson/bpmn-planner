@@ -98,6 +98,9 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - **Strukturell BPMN-information för Feature Goals**  
   Feature Goal-generering använder nu strukturell BPMN-information (gateway-conditions, process paths, flödesinformation) för att förbättra dokumentationskvaliteten. Se [`analysis/FEATURE_GOAL_GENERATION_IMPROVEMENT.md`](./analysis/FEATURE_GOAL_GENERATION_IMPROVEMENT.md) för detaljer.
 
+- **Topologisk fil-sortering för dokumentationsgenerering**  
+  Filer sorteras topologiskt baserat på dependency-grafer (vilka filer anropar vilka) för att säkerställa att subprocess-filer genereras FÖRE parent-filer. Detta garanterar att child documentation (epics) finns tillgänglig när parent Feature Goals genereras. Se [`analysis/TOPOLOGICAL_SORT_IMPLEMENTATION_COMPLETE.md`](./analysis/TOPOLOGICAL_SORT_IMPLEMENTATION_COMPLETE.md) för detaljer.
+
 - **Planerade scenarier i `node_planned_scenarios`**  
   Alla "planerade scenarion" i UI kommer från tabellen `node_planned_scenarios`:
   - LLM‑flöden (ChatGPT/Ollama) skriver in scenarier per nod/provider när dokumentation/testunderlag genereras.

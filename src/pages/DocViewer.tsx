@@ -123,7 +123,7 @@ const DocViewer = () => {
         const modeFolder = resolveModeFolder();
         const tryPaths: string[] = [];
         
-        // For node docs that are Feature Goals (process nodes or callActivities)
+        // For node docs that are Feature Goals (callActivities only)
         // Build Feature Goal path directly based on docId
         let isCallActivity = false;
         let nodeContext: ReturnType<typeof buildNodeDocumentationContext> | null = null;
@@ -132,7 +132,7 @@ const DocViewer = () => {
         let parentBpmnFile: string | undefined = undefined;
         
         if (isNodeDoc && baseName && elementSegment) {
-          // First, check if this is a callActivity or process by resolving from BPMN process graph
+          // First, check if this is a callActivity by resolving from BPMN process graph
           try {
             // Get version hash for the file
             const versionHash = await getVersionHashForFile(baseName + '.bpmn');
@@ -140,19 +140,11 @@ const DocViewer = () => {
             versionHashes.set(baseName + '.bpmn', versionHash);
             const graph = await buildBpmnProcessGraph(baseName + '.bpmn', bpmnFiles, versionHashes);
             
-            // Try to find the node - first try as element node, then as root process node
+            // Try to find the node
             let nodeId = `${baseName}.bpmn::${elementSegment}`;
             nodeContext = buildNodeDocumentationContext(graph, nodeId);
             
-            // If not found, try as root process node (for subprocess files, the root process node has ID "root:filename")
-            if (!nodeContext) {
-              const rootNodeId = `root:${baseName}.bpmn`;
-              nodeContext = buildNodeDocumentationContext(graph, rootNodeId);
-            }
-            
             if (nodeContext?.node.type === 'callActivity') {
-              isCallActivity = true;
-            } else if (nodeContext?.node.type === 'process') {
               isCallActivity = true;
             }
           } catch (error) {
@@ -173,130 +165,123 @@ const DocViewer = () => {
           }
         }
         
-        // For node docs that are Feature Goals (process nodes or callActivities)
-        // Check if this is a process node or callActivity
-        const isProcessNode = nodeContext?.node.type === 'process';
-        const shouldTryFeatureGoal = isNodeDoc && baseName && elementSegment && (isCallActivity || isProcessNode);
-        
-        if (shouldTryFeatureGoal) {
-          
-          // For call activities, we need to resolve the subprocessFile (the actual BPMN file for the subprocess)
-          // For process nodes in subprocess files, the subprocessFile is the file itself
-          // This matches how bpmnGenerators.ts creates Feature Goal filenames
-          featureGoalBpmnFile = baseName;
-          parentBpmnFile = undefined;
-          
-          if (isProcessNode) {
-            // For process nodes: nodeContext.node.bpmnFile should be the subprocess file
-            // e.g., mortgage-se-internal-data-gathering.bpmn (not mortgage-se-application.bpmn)
-            if (nodeContext?.node.bpmnFile && nodeContext.node.bpmnFile !== baseName + '.bpmn') {
-              // nodeContext.node.bpmnFile is the subprocess file
-              featureGoalBpmnFile = nodeContext.node.bpmnFile.replace('.bpmn', '');
+        // For callActivities, build Feature Goal paths (hierarchical naming)
+        if (isNodeDoc && baseName && elementSegment && isCallActivity) {
+          // For call activities, try to resolve subprocessFile from bpmn-map.json first (fastest and most reliable)
+          try {
+            console.log('[DocViewer] 🔍 Resolving subprocessFile for callActivity:', baseName, elementSegment);
+            const bpmnMap = loadBpmnMap(bpmnMapData);
+            const matchResult = matchCallActivityUsingMap(
+              { id: elementSegment, name: undefined, calledElement: undefined },
+              baseName + '.bpmn',
+              bpmnMap
+            );
+            
+            if (matchResult.matchedFileName) {
+              featureGoalBpmnFile = matchResult.matchedFileName.replace('.bpmn', '');
+              parentBpmnFile = baseName + '.bpmn'; // Parent is where call activity is defined
+              console.log('[DocViewer] ✓ Found subprocessFile from bpmn-map.json:', featureGoalBpmnFile);
             } else {
-              // Fallback: construct subprocess file name from baseName and elementSegment
-              // For mortgage-se-application/internal-data-gathering:
-              // subprocess file = mortgage-se-internal-data-gathering
-              featureGoalBpmnFile = `${baseName}-${elementSegment}`;
-            }
-            parentBpmnFile = baseName + '.bpmn'; // Parent is where the process is referenced (for version hash)
-          } else {
-            // For call activities, try to resolve subprocessFile from bpmn-map.json first (fastest and most reliable)
-            try {
-              console.log('[DocViewer] 🔍 Resolving subprocessFile for callActivity:', baseName, elementSegment);
-              const bpmnMap = loadBpmnMap(bpmnMapData);
-              const matchResult = matchCallActivityUsingMap(
-                { id: elementSegment, name: undefined, calledElement: undefined },
-                baseName + '.bpmn',
-                bpmnMap
-              );
-              
-              if (matchResult.matchedFileName) {
-                featureGoalBpmnFile = matchResult.matchedFileName.replace('.bpmn', '');
+              // Fallback: Use nodeContext we already have from above (if available)
+              if (nodeContext?.node.type === 'callActivity' && nodeContext.node.subprocessFile) {
+                featureGoalBpmnFile = nodeContext.node.subprocessFile.replace('.bpmn', '');
                 parentBpmnFile = baseName + '.bpmn'; // Parent is where call activity is defined
-                console.log('[DocViewer] ✓ Found subprocessFile from bpmn-map.json:', featureGoalBpmnFile);
+                console.log('[DocViewer] ✓ Found subprocessFile from process graph:', featureGoalBpmnFile);
               } else {
-                // Fallback: Use nodeContext we already have from above (if available)
-                if (nodeContext?.node.type === 'callActivity' && nodeContext.node.subprocessFile) {
-                  featureGoalBpmnFile = nodeContext.node.subprocessFile.replace('.bpmn', '');
-                  parentBpmnFile = baseName + '.bpmn'; // Parent is where call activity is defined
-                  console.log('[DocViewer] ✓ Found subprocessFile from process graph (reused):', featureGoalBpmnFile);
-                } else {
-                  parentBpmnFile = baseName + '.bpmn'; // Still use baseName as parent
-                  console.log('[DocViewer] Using baseName (no subprocessFile found):', featureGoalBpmnFile);
-                }
+                parentBpmnFile = baseName + '.bpmn'; // Still use baseName as parent
+                console.log('[DocViewer] Using baseName (no subprocessFile found):', featureGoalBpmnFile);
               }
-            } catch (error) {
-              // If we can't resolve subprocessFile, fall back to using baseName
-              parentBpmnFile = baseName + '.bpmn';
-              console.warn('[DocViewer] Could not resolve subprocessFile, using baseName:', error);
             }
+          } catch (error) {
+            // If we can't resolve subprocessFile, fall back to using baseName
+            parentBpmnFile = baseName + '.bpmn';
+            console.warn('[DocViewer] Could not resolve subprocessFile, using baseName:', error);
           }
           
-          // Build Feature Goal path using getFeatureGoalDocFileKey
-          // For process nodes: NO parent (getFeatureGoalDocFileKey will use subprocess file name directly)
-          // For call activities: use parent for hierarchical naming
-          featureGoalPath = getFeatureGoalDocFileKey(
-            featureGoalBpmnFile, // subprocess BPMN file
-            elementSegment, // elementId
-            undefined, // no version suffix
-            isProcessNode ? undefined : parentBpmnFile // NO parent for process nodes, use parent for call activities
-          );
-          
-          // Try versioned paths first (new structure with version hash)
-          // For process nodes: use subprocess file (featureGoalBpmnFile)
-          // For call activities: use parent file (where call activity is defined)
-          try {
-            // VIKTIGT: För process nodes ska vi använda PARENT filen (mortgage-se-application.bpmn), 
-            // inte subprocess filen (mortgage-se-internal-data-gathering.bpmn)!
-            // Eftersom filen är sparad under mortgage-se-application.bpmn/versionHash/feature-goals/...
-            const bpmnFileForVersion = isProcessNode 
-              ? (baseName + '.bpmn') // For process nodes, use the PARENT file (where the process is referenced)
-              : (parentBpmnFile || baseName + '.bpmn'); // For call activities, use parent file
-            // Use selected version if available, otherwise current version
-            const versionHash = await getVersionHashForFile(bpmnFileForVersion);
+          // Build Feature Goal path using getFeatureGoalDocFileKey (hierarchical naming with parent)
+          if (featureGoalBpmnFile && parentBpmnFile) {
+            featureGoalPath = getFeatureGoalDocFileKey(
+              featureGoalBpmnFile, // subprocess BPMN file
+              elementSegment, // elementId
+              undefined, // no version suffix
+              parentBpmnFile // use parent for hierarchical naming
+            );
             
-            if (versionHash) {
-              // NOTE: When saving, buildDocStoragePaths uses the full path including 'feature-goals/'
-              // So we need to keep 'feature-goals/' in the path when using version hash
-              const docFileName = featureGoalPath; // Keep 'feature-goals/' prefix (hierarchical naming with parent)
+            // Try versioned paths first (new structure with version hash)
+            try {
+              // Use parent file (where call activity is defined) for version hash
+              const versionHash = await getVersionHashForFile(parentBpmnFile);
               
-              // Determine provider from modeFolder (claude = cloud, ollama = local LLM)
-              const provider = modeFolder === 'claude' ? 'claude' : modeFolder === 'ollama' ? 'ollama' : null;
-              
-              // VIKTIGT: Filen är sparad MED .bpmn i sökvägen, så vi behåller .bpmn
-              const bpmnFileNameForPath = bpmnFileForVersion.endsWith('.bpmn') ? bpmnFileForVersion : `${bpmnFileForVersion}.bpmn`;
-              
-              if (modeFolder && (modeFolder === 'claude' || modeFolder === 'ollama')) {
-                if (provider === 'claude') {
+              if (versionHash) {
+                // NOTE: When saving, buildDocStoragePaths uses the full path including 'feature-goals/'
+                // So we need to keep 'feature-goals/' in the path when using version hash
+                const docFileName = featureGoalPath; // Keep 'feature-goals/' prefix (hierarchical naming with parent)
+                
+                // Determine provider from modeFolder (claude = cloud, ollama = local LLM)
+                const provider = modeFolder === 'claude' ? 'claude' : modeFolder === 'ollama' ? 'ollama' : null;
+                
+                // VIKTIGT: Filen är sparad MED .bpmn i sökvägen, så vi behåller .bpmn
+                const bpmnFileNameForPath = parentBpmnFile.endsWith('.bpmn') ? parentBpmnFile : `${parentBpmnFile}.bpmn`;
+                
+                if (modeFolder && (modeFolder === 'claude' || modeFolder === 'ollama')) {
+                  if (provider === 'claude') {
+                    tryPaths.unshift(`docs/claude/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
+                  } else if (provider === 'ollama') {
+                    tryPaths.unshift(`docs/ollama/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
+                  }
+                } else {
+                  // Auto mode: try all providers, prioritize claude
                   tryPaths.unshift(`docs/claude/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
-                } else if (provider === 'ollama') {
                   tryPaths.unshift(`docs/ollama/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
                 }
               } else {
-                // Auto mode: try all providers, prioritize claude
-                tryPaths.unshift(`docs/claude/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
-                tryPaths.unshift(`docs/ollama/${bpmnFileNameForPath}/${versionHash}/${docFileName}`);
+                console.log('[DocViewer] ⚠️ No version hash found for', parentBpmnFile);
               }
+            } catch (error) {
+              // Silent fail
+            }
+            
+            // Always add non-versioned Feature Goal paths (even if modeFolder is null)
+            if (modeFolder) {
+              tryPaths.push(`docs/${modeFolder}/${featureGoalPath}`);
             } else {
-              console.log('[DocViewer] ⚠️ No version hash found for', bpmnFileForVersion);
+              // If modeFolder is null (auto mode), try all possible paths
+              // Prioritize claude (most common), then ollama
+              tryPaths.push(`docs/claude/${featureGoalPath}`);
+              tryPaths.push(`docs/ollama/${featureGoalPath}`);
+            }
+            // Also try without mode folder
+            tryPaths.push(`docs/${featureGoalPath}`);
+            
+            console.log('[DocViewer] 🎯 Feature Goal paths:', tryPaths.slice(0, 5).join(', '), '... (total:', tryPaths.length, ')');
+          }
+        } else if (!isNodeDoc) {
+          // File-level documentation (not a node doc)
+          // Try file-level doc paths for both root and subprocess files
+          try {
+            const bpmnFile = baseName + '.bpmn';
+            const docFileName = `${bpmnFile}.html`; // File-level docs use {bpmnFile}.html format
+            
+            // Use selected version if available, otherwise current version
+            const versionHash = await getVersionHashForFile(bpmnFile);
+            
+            if (versionHash) {
+              // Try all providers if modeFolder is null (auto mode)
+              if (!modeFolder || modeFolder === 'claude' || modeFolder === 'ollama') {
+                // Prioritize claude (most common), then ollama
+                tryPaths.unshift(`docs/claude/${bpmnFile}/${versionHash}/${docFileName}`);
+                tryPaths.unshift(`docs/ollama/${bpmnFile}/${versionHash}/${docFileName}`);
+              } else if (modeFolder) {
+                if (modeFolder === 'claude') {
+                  tryPaths.unshift(`docs/claude/${bpmnFile}/${versionHash}/${docFileName}`);
+                } else if (modeFolder === 'ollama') {
+                  tryPaths.unshift(`docs/ollama/${bpmnFile}/${versionHash}/${docFileName}`);
+                }
+              }
             }
           } catch (error) {
             // Silent fail
           }
-          
-          // Always add non-versioned Feature Goal paths (even if modeFolder is null)
-          if (modeFolder) {
-            tryPaths.push(`docs/${modeFolder}/${featureGoalPath}`);
-          } else {
-            // If modeFolder is null (auto mode), try all possible paths
-            // Prioritize claude (most common), then ollama
-            tryPaths.push(`docs/claude/${featureGoalPath}`);
-            tryPaths.push(`docs/ollama/${featureGoalPath}`);
-          }
-          // Also try without mode folder
-          tryPaths.push(`docs/${featureGoalPath}`);
-          
-          console.log('[DocViewer] 🎯 Feature Goal paths:', tryPaths.slice(0, 5).join(', '), '... (total:', tryPaths.length, ')');
         } else {
           // Standard node doc paths (only if NOT a Feature Goal)
           // Feature Goals should ONLY use Feature Goal paths above

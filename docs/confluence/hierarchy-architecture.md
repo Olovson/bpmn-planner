@@ -83,6 +83,29 @@ Documentation generation now follows the same hierarchy:
 
 This ensures documentation readers understand the context and relationship between different parts of the process.
 
+### File Ordering for Generation
+
+**Topological Sorting Based on Dependency Graphs**
+
+Files are sorted topologically (using dependency graphs) before documentation generation to ensure that:
+- **Subprocess files are generated BEFORE parent files**
+- **Child documentation (epics) is available when parent Feature Goals are generated**
+
+**How it works:**
+1. Build dependency graph from `graph.allNodes` (which files call which)
+2. Sort files topologically: leaf nodes (files that are not called) first, root files last
+3. Handle edge cases:
+   - **Cycles:** Files in cycles are sorted alphabetically as fallback
+   - **Missing dependencies:** Excluded from dependency graph
+   - **Determinism:** Secondary alphabetical sorting for files at the same level
+
+**Example:**
+- `mortgage-se-internal-data-gathering.bpmn` (subprocess) is generated FIRST
+- `mortgage-se-application.bpmn` (parent) is generated AFTER
+- Feature Goal for "internal-data-gathering" callActivity is generated AFTER epics are available ✅
+
+This ensures that Feature Goals always have access to child documentation from subprocess files.
+
 ## Test Dashboard
 
 The test dashboard (`/test-report`) now displays tests hierarchically:

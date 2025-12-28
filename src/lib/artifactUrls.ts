@@ -27,17 +27,8 @@ export function getDocumentationUrl(bpmnFile: string, elementId?: string): strin
   const baseName = bpmnFile.replace('.bpmn', '');
   const isLikelyRootProcess = bpmnFile === 'mortgage.bpmn' || baseName === 'mortgage';
   
-  if (!isLikelyRootProcess) {
-    // This is likely a subprocess - link to Feature Goal documentation instead of combined doc
-    // We use the base name as elementId (most BPMN files have a process with id matching the file base name)
-    const processElementId = baseName;
-    const featureGoalPath = getFeatureGoalDocFileKey(bpmnFile, processElementId);
-    // Convert feature-goals/... to viewer path format (remove .html extension)
-    const viewerPath = featureGoalPath.replace('feature-goals/', '').replace('.html', '');
-    return `#/doc-viewer/${encodeURIComponent(viewerPath)}`;
-  }
-  
-  // Root process: use combined file-level documentation
+  // Both root and subprocess files use file-level documentation
+  // File-level docs are now generated for both root and subprocess files
   return `#/doc-viewer/${encodeURIComponent(getFileDocViewerPath(bpmnFile))}`;
 }
 

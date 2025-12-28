@@ -65,6 +65,48 @@ export function extractCallActivities(node: ProcessTreeNode): ProcessTreeNode[] 
 }
 
 /**
+ * Generic comparator function for sorting nodes by visual order.
+ * Works with any node type that has visualOrderIndex, orderIndex, branchId, and name/label.
+ * Used by both sortCallActivities and BpmnProcessNode sorting.
+ */
+export function compareNodesByVisualOrder<T extends {
+  visualOrderIndex?: number;
+  orderIndex?: number;
+  branchId?: string | null;
+  label?: string;
+  name?: string;
+  bpmnElementId?: string;
+}>(
+  a: T,
+  b: T,
+  isRoot: boolean = false,
+): number {
+  const aVisual = a.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+  const bVisual = b.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+  if (aVisual !== bVisual) {
+    return aVisual - bVisual;
+  }
+
+  const aOrder = a.orderIndex ?? Number.MAX_SAFE_INTEGER;
+  const bOrder = b.orderIndex ?? Number.MAX_SAFE_INTEGER;
+  if (aOrder !== bOrder) {
+    return aOrder - bOrder;
+  }
+  
+  // Tertiary (root mode only): branchId (main before branches)
+  if (isRoot && a.branchId !== b.branchId) {
+    if (a.branchId === 'main') return -1;
+    if (b.branchId === 'main') return 1;
+    return (a.branchId || '').localeCompare(b.branchId || '');
+  }
+  
+  // Final fallback: label/name (alphabetical)
+  const aLabel = a.label || a.name || a.bpmnElementId || '';
+  const bLabel = b.label || b.name || b.bpmnElementId || '';
+  return aLabel.localeCompare(bLabel);
+}
+
+/**
  * Sorts call activities by visual order (visualOrderIndex is primary, then orderIndex, then branchId, then label)
  * Visual order is the primary sorting method based on DI coordinates from the BPMN diagram
  */
@@ -72,29 +114,7 @@ export function sortCallActivities(
   nodes: ProcessTreeNode[],
   mode: SortMode = 'root',
 ): ProcessTreeNode[] {
-  const sorted = [...nodes].sort((a, b) => {
-    const aVisual = a.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
-    const bVisual = b.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
-    if (aVisual !== bVisual) {
-      return aVisual - bVisual;
-    }
-
-    const aOrder = a.orderIndex ?? Number.MAX_SAFE_INTEGER;
-    const bOrder = b.orderIndex ?? Number.MAX_SAFE_INTEGER;
-    if (aOrder !== bOrder) {
-      return aOrder - bOrder;
-    }
-    
-    // Tertiary (root mode only): branchId (main before branches)
-    if (mode === 'root' && a.branchId !== b.branchId) {
-      if (a.branchId === 'main') return -1;
-      if (b.branchId === 'main') return 1;
-      return (a.branchId || '').localeCompare(b.branchId || '');
-    }
-    
-    // Final fallback: label (alphabetical)
-    return a.label.localeCompare(b.label);
-  });
+  const sorted = [...nodes].sort((a, b) => compareNodesByVisualOrder(a, b, mode === 'root'));
   
   // Debug logging for sorting (development only)
   if (import.meta.env.DEV && nodes.length > 0 && nodes[0].bpmnFile === 'mortgage.bpmn') {

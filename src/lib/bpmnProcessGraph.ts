@@ -390,6 +390,14 @@ function convertProcessModelChildren(
       const subprocessFile = resolvedSubprocessFile && context.existingBpmnFiles?.includes(resolvedSubprocessFile)
         ? resolvedSubprocessFile
         : undefined;
+      
+      // Debug: Logga om filen saknas men bpmn-map.json pekar på den
+      if (import.meta.env.DEV && resolvedSubprocessFile && !subprocessFile) {
+        console.warn(
+          `[bpmnProcessGraph] ⚠️ bpmn-map.json pekar på ${resolvedSubprocessFile} ` +
+          `men filen finns inte i existingBpmnFiles. Sätter subprocessFile till undefined.`
+        );
+      }
 
       if (!subprocessFile || node.subprocessLink?.matchStatus !== 'matched') {
         context.missingDependencies.push({
@@ -487,6 +495,14 @@ function convertProcessModelChildren(
       const subprocessFileExists = subprocessFile && 
         context.existingBpmnFiles?.includes(subprocessFile);
       const missingDefinition = !subprocessFile || !subprocessFileExists;
+      
+      // Debug: Logga om missingDefinition är true
+      if (import.meta.env.DEV && missingDefinition && resolvedSubprocessFile) {
+        console.warn(
+          `[bpmnProcessGraph] ⚠️ missingDefinition=true för callActivity ${node.name} ` +
+          `(subprocessFile: ${subprocessFile || 'undefined'}, resolvedSubprocessFile: ${resolvedSubprocessFile})`
+        );
+      }
       
       const graphNode: BpmnProcessNode = {
         id: `${callActivityBpmnFile}:${elementId}`,

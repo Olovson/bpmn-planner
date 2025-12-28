@@ -202,6 +202,8 @@ export const useAllBpmnNodes = () => {
             ? null // Använd inte getNodeDocStoragePath för call activities
             : getNodeDocStoragePath(bpmnFile, elementId);
           
+          // För call activities, använd CallActivity Feature Goal viewer path (hierarchical naming)
+          // File-level docs används som fallback för subprocesser utan callActivities
           const docUrl = getDocumentationUrl(bpmnFile, elementId);
 
           const nodeData: BpmnNodeData = {

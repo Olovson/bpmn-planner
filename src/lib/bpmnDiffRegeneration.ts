@@ -698,7 +698,18 @@ async function cleanupRemovedNodes(removedNodes: BpmnNodeSnapshot[]): Promise<vo
         
         filesToDelete.push(...featureGoalPaths);
       } else if (node.nodeType === 'process') {
-        // For process nodes, use Feature Goal paths (for subprocess Feature Goals)
+        // For process nodes, use file-level documentation paths
+        // File-level docs use {bpmnFile}.html format
+        const bpmnFile = node.bpmnFile;
+        if (bpmnFile) {
+          const docFileName = `${bpmnFile}.html`;
+          const versionHash = await getCurrentVersionHash(bpmnFile);
+          
+          if (versionHash) {
+            filesToDelete.push(`docs/claude/${bpmnFile}/${versionHash}/${docFileName}`);
+          }
+          filesToDelete.push(`docs/claude/${docFileName}`);
+        }
         const fileBaseName = node.bpmnFile.replace('.bpmn', '');
         const featureGoalKey = getFeatureGoalDocFileKey(
           node.bpmnFile,

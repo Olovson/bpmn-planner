@@ -41,6 +41,7 @@ import {
   createGraphSummary,
   getTestableNodes,
 } from '@/lib/bpmnProcessGraph';
+import { compareNodesByVisualOrder } from '@/lib/ganttDataConverter';
 import {
   buildFlowGraph,
   findStartEvents,
@@ -1358,6 +1359,77 @@ async function loadChildDocFromStorage(
   }
 }
 
+/**
+ * Topologisk sortering av filer baserat på dependency-grafen.
+ * Leaf nodes (filer som inte anropas) genereras först, root-filer sist.
+ * 
+ * Hanterar:
+ * - Cycles: Filer i cycles sorteras alfabetiskt som fallback
+ * - Missing dependencies: Ignoreras (filer utan dependencies kan genereras när som helst)
+ * - Determinism: Sekundär alfabetisk sortering för filer på samma nivå
+ * 
+ * @param files - Filer att sortera
+ * @param dependencies - Dependency-graf: file → Set of files it depends on
+ * @returns Topologiskt sorterade filer
+ */
+function topologicalSortFiles(
+  files: string[],
+  dependencies: Map<string, Set<string>>
+): string[] {
+  const sorted: string[] = [];
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+  const cycleFiles = new Set<string>();
+  
+  function visit(file: string, path: string[] = []): void {
+    if (visiting.has(file)) {
+      // Cycle detected - markera filer i cycle
+      const cycleStart = path.indexOf(file);
+      if (cycleStart !== -1) {
+        const cycle = path.slice(cycleStart);
+        cycle.push(file);
+        cycle.forEach(f => cycleFiles.add(f));
+      }
+      return; // Don't add to sorted yet, will be handled separately
+    }
+    if (visited.has(file)) {
+      return;
+    }
+    
+    visiting.add(file);
+    const deps = dependencies.get(file) || new Set();
+    for (const dep of deps) {
+      if (files.includes(dep)) {
+        visit(dep, [...path, file]);
+      }
+    }
+    visiting.delete(file);
+    visited.add(file);
+    sorted.push(file);
+  }
+  
+  // Visit all files
+  for (const file of files) {
+    if (!visited.has(file)) {
+      visit(file);
+    }
+  }
+  
+  // För filer i cycles, sortera alfabetiskt och lägg till sist
+  // (de är beroende av varandra ändå, så ordningen spelar mindre roll)
+  const nonCycleFiles = sorted.filter(f => !cycleFiles.has(f));
+  const cycleFilesList = files.filter(f => cycleFiles.has(f)).sort((a, b) => a.localeCompare(b));
+  
+  if (cycleFiles.size > 0 && import.meta.env.DEV) {
+    console.warn(
+      `[bpmnGenerators] ⚠️ Cycles detected in file dependencies. ` +
+      `Files in cycles will be sorted alphabetically: ${Array.from(cycleFiles).join(', ')}`
+    );
+  }
+  
+  return [...nonCycleFiles, ...cycleFilesList];
+}
+
 export async function generateAllFromBpmnWithGraph(
   bpmnFileName: string,
   existingBpmnFiles: string[],
@@ -1537,8 +1609,8 @@ export async function generateAllFromBpmnWithGraph(
           // Subprocess-filen saknas - hoppa över callActivity
           if (import.meta.env.DEV) {
             console.warn(
-              `[bpmnGenerators] ⚠️ Skipping callActivity ${node.bpmnElementId} ` +
-              `(subprocess file ${node.subprocessFile || 'unknown'} not found)`
+              `[bpmnGenerators] ⚠️ Skipping callActivity ${node.bpmnElementId} (${node.name}) ` +
+              `- missingDefinition=true, subprocess file ${node.subprocessFile || 'unknown'} not found`
             );
           }
           return false;
@@ -1548,8 +1620,8 @@ export async function generateAllFromBpmnWithGraph(
         if (node.subprocessFile && !existingBpmnFiles.includes(node.subprocessFile)) {
           if (import.meta.env.DEV) {
             console.warn(
-              `[bpmnGenerators] ⚠️ Skipping callActivity ${node.bpmnElementId} ` +
-              `(subprocess file ${node.subprocessFile} not in existingBpmnFiles)`
+              `[bpmnGenerators] ⚠️ Skipping callActivity ${node.bpmnElementId} (${node.name}) ` +
+              `- subprocess file ${node.subprocessFile} not in existingBpmnFiles`
             );
           }
           return false;
@@ -1804,35 +1876,110 @@ export async function generateAllFromBpmnWithGraph(
       scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
     }>();
     
-    // Global Set för att spåra vilka subprocesser som redan har genererat Feature Goal-dokumentation
-    // Detta förhindrar dubbelgenerering när samma subprocess anropas från olika callActivities
-    const generatedSubprocessFeatureGoals = new Set<string>(); // subprocessFile -> true
-    
     // Global Set för att spåra vilka noder som redan har genererat dokumentation
-    // Detta är konsekvent med generatedSubprocessFeatureGoals och förhindrar dubbelgenerering
     // Key format: för callActivities: `subprocess:${subprocessFile}`, för tasks/epics: `${bpmnFile}::${bpmnElementId}`
     const globalProcessedDocNodes = new Set<string>();
 
-    // VIKTIGT: Sortera filer så att subprocess-filer genereras FÖRE parent-filer
-    // Detta säkerställer att child documentation finns tillgänglig när parent Feature Goals genereras
-    // Identifiera subprocess-filer (filer som anropas av callActivities)
-    const subprocessFiles = new Set<string>();
-    for (const node of nodesToGenerate) {
-      if (node.type === 'callActivity' && node.subprocessFile) {
-        subprocessFiles.add(node.subprocessFile);
+    // VIKTIGT: Sortera filer baserat på hur de visas i ProcessExplorer/test-coverage
+    // Ordningen ska matcha när callActivities anropas i root-processen (mortgage.bpmn)
+    // Samma logik som sortCallActivities: visualOrderIndex → orderIndex → branchId → alfabetisk
+    
+    const fileOrder: string[] = [];
+    const visitedFiles = new Set<string>();
+    
+    // Steg 1: Hitta alla callActivities i root-processen och sortera dem med samma logik som UI:n
+    const rootCallActivities = graph.root.children.filter(
+      (child): child is BpmnProcessNode => 
+        child.type === 'callActivity' && 
+        child.subprocessFile !== undefined && 
+        !child.missingDefinition &&
+        analyzedFiles.includes(child.subprocessFile)
+    );
+    
+    // Sortera root callActivities med samma logik som sortCallActivities (visualOrderIndex → orderIndex → branchId)
+    const sortedRootCallActivities = [...rootCallActivities].sort((a, b) => 
+      compareNodesByVisualOrder(a, b, true) // isRoot = true för root-processen
+    );
+    
+    // Debug: Visa root callActivities ordning
+    if (import.meta.env.DEV && sortedRootCallActivities.length > 0) {
+      console.log('\n[bpmnGenerators] 📋 Root callActivities ordning (samma som UI:n):');
+      sortedRootCallActivities.forEach((ca, idx) => {
+        console.log(`  ${idx + 1}. ${ca.name || ca.bpmnElementId} → ${ca.subprocessFile} (visual:${ca.visualOrderIndex ?? 'N/A'}, order:${ca.orderIndex ?? 'N/A'})`);
+      });
+    }
+    
+    // Steg 2: För varje callActivity i root (i sorterad ordning), lägg till dess subprocess-fil FÖRE parent
+    // VIKTIGT: Varje root callActivity och dess subprocesser ska processas i sin tur
+    // Ordningen ska matcha UI:n: Application subprocesser → Application → Credit Evaluation subprocesser → Credit Evaluation, etc.
+    const processFile = (callActivity: BpmnProcessNode) => {
+      if (!callActivity.subprocessFile || visitedFiles.has(callActivity.subprocessFile)) {
+        return;
+      }
+      
+      // Hitta subprocess-noden
+      const subprocessNodes = graph.fileNodes.get(callActivity.subprocessFile) || [];
+      const subprocessProcessNode = subprocessNodes.find(n => n.type === 'process');
+      
+      if (subprocessProcessNode) {
+        // Rekursivt: processera subprocessens callActivities först (topologisk ordning)
+        const subprocessCallActivities = subprocessProcessNode.children.filter(
+          (child): child is BpmnProcessNode => 
+            child.type === 'callActivity' && 
+            child.subprocessFile !== undefined && 
+            !child.missingDefinition &&
+            analyzedFiles.includes(child.subprocessFile)
+        );
+        
+        // Sortera subprocess callActivities (isRoot = false för subprocesser)
+        const sortedSubprocessCallActivities = [...subprocessCallActivities].sort((a, b) => 
+          compareNodesByVisualOrder(a, b, false)
+        );
+        
+        // Processera subprocessens callActivities rekursivt
+        for (const subCa of sortedSubprocessCallActivities) {
+          processFile(subCa);
+        }
+        
+        // Lägg till subprocess-filen EFTER att dess subprocesser har processats
+        if (!visitedFiles.has(callActivity.subprocessFile)) {
+          fileOrder.push(callActivity.subprocessFile);
+          visitedFiles.add(callActivity.subprocessFile);
+        }
+      }
+    };
+    
+    // Processera alla root callActivities i sorterad ordning (samma ordning som UI:n visar)
+    // Detta säkerställer att Application och dess subprocesser kommer FÖRE Credit Evaluation, etc.
+    // Ordningen: Application subprocesser → Application → Credit Evaluation subprocesser → Credit Evaluation, etc.
+    for (const callActivity of sortedRootCallActivities) {
+      processFile(callActivity);
+    }
+    
+    // Lägg till root-processen sist (efter alla subprocesser)
+    if (!visitedFiles.has(graph.root.bpmnFile) && analyzedFiles.includes(graph.root.bpmnFile)) {
+      fileOrder.push(graph.root.bpmnFile);
+      visitedFiles.add(graph.root.bpmnFile);
+    }
+    
+    // Lägg till eventuella filer som inte hittades i traversal (säkerhetsåtgärd)
+    for (const fileName of analyzedFiles) {
+      if (!visitedFiles.has(fileName)) {
+        fileOrder.push(fileName);
+        visitedFiles.add(fileName);
       }
     }
     
-    // Separera i subprocess-filer och root-filer
-    const subprocessFilesList = analyzedFiles.filter(file => subprocessFiles.has(file));
-    const rootFilesList = analyzedFiles.filter(file => !subprocessFiles.has(file));
+    const sortedAnalyzedFiles = fileOrder;
     
-    // Sortera varje kategori alfabetiskt för determinism
-    subprocessFilesList.sort((a, b) => a.localeCompare(b));
-    rootFilesList.sort((a, b) => a.localeCompare(b));
-    
-    // Subprocess-filer först, sedan root-filer
-    const sortedAnalyzedFiles = [...subprocessFilesList, ...rootFilesList];
+    // Debug-logging: Visa filordning (endast i DEV)
+    if (import.meta.env.DEV && sortedAnalyzedFiles.length > 0) {
+      console.log('\n[bpmnGenerators] 📋 Filordning för dokumentationsgenerering (traversal-order):');
+      sortedAnalyzedFiles.forEach((fileName, index) => {
+        console.log(`  ${index + 1}. ${fileName}`);
+      });
+      console.log('');
+    }
     
     if (import.meta.env.DEV && sortedAnalyzedFiles.length !== analyzedFiles.length) {
       console.warn(
@@ -1846,7 +1993,33 @@ export async function generateAllFromBpmnWithGraph(
       
       // Samla alla noder från denna fil för dokumentation
       // OBS: Använd nodesToGenerate (redan filtrerade) istället för testableNodes
-      const nodesInFile = nodesToGenerate.filter(node => node.bpmnFile === file);
+      // VIKTIGT: Filtrera bort callActivities med missingDefinition eller saknade subprocess-filer
+      const nodesInFile = nodesToGenerate.filter(node => {
+        if (node.bpmnFile !== file) return false;
+        
+        // Ytterligare säkerhetskontroll: hoppa över callActivities med saknade subprocess-filer
+        if (node.type === 'callActivity') {
+          if (node.missingDefinition) {
+            if (import.meta.env.DEV) {
+              console.warn(
+                `[bpmnGenerators] ⚠️ Skipping callActivity ${node.bpmnElementId} (${node.name}) in file ${file} ` +
+                `- missingDefinition=true (should have been filtered in nodesToGenerate)`
+              );
+            }
+            return false;
+          }
+          if (node.subprocessFile && !existingBpmnFiles.includes(node.subprocessFile)) {
+            if (import.meta.env.DEV) {
+              console.warn(
+                `[bpmnGenerators] ⚠️ Skipping callActivity ${node.bpmnElementId} (${node.name}) in file ${file} ` +
+                `- subprocess file ${node.subprocessFile} not in existingBpmnFiles (should have been filtered in nodesToGenerate)`
+              );
+            }
+            return false;
+          }
+        }
+        return true;
+      });
       
       // Debug-logging endast om inga noder hittades (för att identifiera problem)
       // KRITISKT: Detta är viktigt för att identifiera filer som bara har process-noder
@@ -1862,31 +2035,59 @@ export async function generateAllFromBpmnWithGraph(
       }
       
       if (nodesInFile.length > 0) {
-        // Sortera noder primärt efter depth (hierarkisk ordning: leaf nodes först)
-        // Sekundärt efter orderIndex (exekveringsordning från sequence flows) inom samma depth
-        // Detta säkerställer både hierarkisk ordning OCH exekveringsordning
-        // VIKTIGT: Sortera så att subprocesser (lägre depth) genereras FÖRE parent processer (högre depth)
-        // Detta säkerställer att child documentation finns tillgänglig när parent Feature Goal genereras
+        // Sortera noder baserat på anropsordning (samma som test-coverage sidan visar från vänster till höger)
+        // Primärt: orderIndex (exekveringsordning från sequence flows)
+        // Sekundärt: visualOrderIndex (visuell ordning från BPMN-diagrammet)
+        // Tertiärt: node type (tasks/epics före callActivities för att säkerställa leaf nodes före Feature Goals)
+        // Kvartärt: depth (lägre depth först, för att säkerställa subprocesser före parent)
+        // Detta säkerställer att dokumentation genereras i samma ordning som noder anropas i BPMN-filerna
         const sortedNodesInFile = [...nodesInFile].sort((a, b) => {
+          // Primär sortering: orderIndex (anropsordning från sequence flows)
+          // Detta matchar hur test-coverage sidan visar ordningen (från vänster till höger)
+          const orderA = a.orderIndex ?? a.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+          const orderB = b.orderIndex ?? b.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+          
+          if (orderA !== orderB) {
+            return orderA - orderB; // Lägre orderIndex först (tidigare i anropsordningen)
+          }
+          
+          // Sekundär sortering: visualOrderIndex (visuell ordning från BPMN-diagrammet)
+          // Detta säkerställer konsistens med test-coverage sidan som använder visualOrderIndex som primär sortering
+          const visualA = a.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+          const visualB = b.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+          
+          if (visualA !== visualB) {
+            return visualA - visualB;
+          }
+          
+          // Tertiär sortering: node type (tasks/epics före callActivities)
+          // Detta säkerställer att leaf nodes (epics) genereras FÖRE Feature Goals
+          // även om de har samma orderIndex (vilket kan hända om de är i olika filer)
+          const typeOrder: Record<string, number> = {
+            'userTask': 1,
+            'serviceTask': 1,
+            'businessRuleTask': 1,
+            'callActivity': 2,
+            'process': 3,
+          };
+          const typeOrderA = typeOrder[a.type as keyof typeof typeOrder] ?? 99;
+          const typeOrderB = typeOrder[b.type as keyof typeof typeOrder] ?? 99;
+          
+          if (typeOrderA !== typeOrderB) {
+            return typeOrderA - typeOrderB; // Tasks/epics (1) före callActivities (2)
+          }
+          
+          // Kvartär sortering: depth (lägre depth först)
+          // Detta säkerställer att subprocesser genereras FÖRE parent nodes
+          // (användbart när orderIndex/visualOrderIndex saknas eller är samma)
           const depthA = nodeDepthMap.get(a.id) ?? 0;
           const depthB = nodeDepthMap.get(b.id) ?? 0;
           
-          // Primär sortering: lägre depth först (subprocesser före parent nodes)
-          // Detta säkerställer att child documentation sparas i generatedChildDocs innan parent genereras
           if (depthA !== depthB) {
-            return depthA - depthB; // LÄGRE DEPTH FÖRST (inverterat från tidigare)
+            return depthA - depthB; // Lägre depth först (subprocesser före parent)
           }
           
-          // Sekundär sortering: orderIndex (exekveringsordning) inom samma depth
-          // Använd orderIndex om det finns, annars visualOrderIndex, annars 0
-          const orderA = a.orderIndex ?? a.visualOrderIndex ?? 0;
-          const orderB = b.orderIndex ?? b.visualOrderIndex ?? 0;
-          
-          if (orderA !== orderB) {
-            return orderA - orderB; // Lägre orderIndex först (tidigare i exekveringsordningen)
-          }
-          
-          // Tertiär sortering: alfabetiskt för determinism
+          // Kvintär sortering: alfabetiskt för determinism
           return (a.name || a.bpmnElementId || '').localeCompare(b.name || b.bpmnElementId || '');
         });
         
@@ -1927,22 +2128,32 @@ export async function generateAllFromBpmnWithGraph(
           const nodeKey = `${node.bpmnFile}::${node.bpmnElementId}`;
           
           // Kolla om dokumentation redan genererats globalt
-          // För callActivities: kolla både globalProcessedDocNodes och generatedSubprocessFeatureGoals
-          // För tasks/epics: kolla bara globalProcessedDocNodes
           const alreadyProcessedGlobally = globalProcessedDocNodes.has(docKey);
-          const subprocessAlreadyGenerated = node.type === 'callActivity' && node.subprocessFile
-            ? generatedSubprocessFeatureGoals.has(node.subprocessFile)
-            : false;
           
-          // VIKTIGT: För callActivities måste vi ALLTID generera Feature Goal-dokumentation,
-          // även om subprocess-filen redan har genererat sin egen Feature Goal.
-          // skipDocGeneration används bara för att avgöra om vi ska generera base eller instans-specifik.
-          // För tasks/epics: skipDocGeneration = true betyder att vi hoppar över generering helt.
+          // För callActivities: vi genererar alltid Feature Goal-dokumentation (instans-specifik)
+          // För tasks/epics: hoppa över om redan processad
           const skipDocGeneration = node.type === 'callActivity'
-            ? subprocessAlreadyGenerated // För callActivities: bara kolla om subprocess redan genererats (vi genererar ändå instans-specifik)
-            : (alreadyProcessedGlobally || subprocessAlreadyGenerated); // För tasks/epics: hoppa över om redan processad
+            ? false // För callActivities: generera alltid (instans-specifik Feature Goal)
+            : alreadyProcessedGlobally; // För tasks/epics: hoppa över om redan processad
           
           // (Instance-specific documentation generation continues silently)
+          
+          // VIKTIGT: För callActivities, kolla om subprocess-filen finns innan vi visar progress
+          // Om missingDefinition är true eller subprocessFile saknas, hoppa över progress-meddelandet
+          // (noden kommer att hoppas över senare i Feature Goal-genereringen)
+          if (node.type === 'callActivity') {
+            if (node.missingDefinition || !node.subprocessFile || 
+                (node.subprocessFile && !existingBpmnFiles.includes(node.subprocessFile))) {
+              // Subprocess-filen saknas - hoppa över progress-meddelandet och dokumentationsgenerering
+              if (import.meta.env.DEV) {
+                console.warn(
+                  `[bpmnGenerators] ⚠️ Skipping progress message for callActivity ${node.bpmnElementId} (${node.name}) ` +
+                  `- missingDefinition: ${node.missingDefinition}, subprocessFile: ${node.subprocessFile || 'undefined'}`
+                );
+              }
+              continue;
+            }
+          }
           
           // Bygg ett tydligt meddelande med nodtyp och namn
           const nodeTypeLabel = 
@@ -2055,10 +2266,10 @@ export async function generateAllFromBpmnWithGraph(
               
               // Markera som processad så att den inte genereras igen
               processedDocNodesInFile.add(docKey);
-              // For callActivities, only add to globalProcessedDocNodes if subprocess not already generated
-              // For other node types, always add
+              // For callActivities: always add to globalProcessedDocNodes (we always generate instance-specific)
+              // For other node types: add if not already processed
               const isCallActivity = (node.type as string) === 'callActivity';
-              if (!subprocessAlreadyGenerated || !isCallActivity) {
+              if (isCallActivity || !alreadyProcessedGlobally) {
                 globalProcessedDocNodes.add(docKey);
               }
               
@@ -2102,9 +2313,30 @@ export async function generateAllFromBpmnWithGraph(
               }
             };
             
-            // För callActivities: samla rekursivt från alla descendant nodes
-            // Detta säkerställer att vi får dokumentation från alla leaf nodes (tasks/epics) i subprocessen
-            if (node.type === 'callActivity') {
+            // För callActivities: samla dokumentation från subprocess-filen
+            // VIKTIGT: Epics i subprocess-filen är INTE children till callActivity-noden
+            // De är children till process-noden i subprocess-filen
+            // Därför måste vi hämta alla noder i subprocess-filen från graph.fileNodes
+            if (node.type === 'callActivity' && node.subprocessFile) {
+              // Hitta alla noder i subprocess-filen
+              const subprocessNodes = graph.fileNodes.get(node.subprocessFile) || [];
+              
+              // Samla dokumentation från alla noder i subprocess-filen (epics, tasks)
+              for (const subprocessNode of subprocessNodes) {
+                // Hoppa över process-noden (den har ingen epic-dokumentation)
+                if (subprocessNode.type === 'process') continue;
+                
+                // Hitta dokumentation för noden
+                const subprocessDocKey = `${subprocessNode.bpmnFile}::${subprocessNode.bpmnElementId}`;
+                const subprocessDoc = generatedChildDocs.get(subprocessDocKey);
+                
+                if (subprocessDoc) {
+                  childDocsForNode.set(subprocessNode.id, subprocessDoc);
+                }
+              }
+              
+              // Också samla rekursivt från node.children (för nested subprocesser)
+              // Detta säkerställer att vi får dokumentation från alla descendant nodes
               collectChildDocsRecursively(node);
             } else {
               // För tasks/epics: samla bara från direkta children (de har normalt inga children)
@@ -2123,22 +2355,48 @@ export async function generateAllFromBpmnWithGraph(
             }
             
             // Convert childDocsForNode to ChildNodeDocumentation format
+            // VIKTIGT: För callActivities, inkludera noder från subprocess-filen, inte bara node.children
             const convertedChildDocs = childDocsForNode.size > 0 
               ? new Map<string, ChildNodeDocumentation>() 
               : undefined;
-            if (convertedChildDocs && node.children) {
-              for (const child of node.children) {
-                const childDoc = childDocsForNode.get(child.id);
-                if (childDoc) {
-                  convertedChildDocs.set(child.id, {
-                    id: child.bpmnElementId || child.id,
-                    name: child.name || child.bpmnElementId || child.id,
-                    type: child.type,
-                    summary: childDoc.summary,
-                    flowSteps: childDoc.flowSteps,
-                    inputs: childDoc.inputs,
-                    outputs: childDoc.outputs,
-                  });
+            if (convertedChildDocs) {
+              // För callActivities: använd noder från subprocess-filen
+              if (node.type === 'callActivity' && node.subprocessFile) {
+                const subprocessNodes = graph.fileNodes.get(node.subprocessFile) || [];
+                for (const subprocessNode of subprocessNodes) {
+                  // Hoppa över process-noden (den har ingen epic-dokumentation)
+                  if (subprocessNode.type === 'process') continue;
+                  
+                  const childDoc = childDocsForNode.get(subprocessNode.id);
+                  if (childDoc) {
+                    convertedChildDocs.set(subprocessNode.id, {
+                      id: subprocessNode.bpmnElementId || subprocessNode.id,
+                      name: subprocessNode.name || subprocessNode.bpmnElementId || subprocessNode.id,
+                      type: subprocessNode.type,
+                      summary: childDoc.summary,
+                      flowSteps: childDoc.flowSteps,
+                      inputs: childDoc.inputs,
+                      outputs: childDoc.outputs,
+                    });
+                  }
+                }
+              }
+              
+              // För tasks/epics: använd node.children (direkta children)
+              if (node.type !== 'callActivity' && node.children) {
+                for (const child of node.children) {
+                  const childDoc = childDocsForNode.get(child.id);
+                  if (childDoc) {
+                    convertedChildDocs.set(child.id, {
+                      id: child.bpmnElementId || child.id,
+                      name: child.name || child.bpmnElementId || child.id,
+                      type: child.type,
+                      summary: childDoc.summary,
+                      flowSteps: childDoc.flowSteps,
+                      inputs: childDoc.inputs,
+                      outputs: childDoc.outputs,
+                    });
+                  }
                 }
               }
             }
@@ -2160,10 +2418,25 @@ export async function generateAllFromBpmnWithGraph(
               // subProcess är INTE callActivity - de är embedded subprocesses, inte separate files
               // Om subprocessFile saknas, är det troligen en subProcess, inte en callActivity
               if (!node.subprocessFile) {
-                console.warn(
-                  `[bpmnGenerators] ⚠️ KRITISKT: Skipping Feature Goal generation for ${node.bpmnElementId} ` +
-                  `(no subprocessFile - likely a subProcess, not a callActivity)`
-                );
+                if (import.meta.env.DEV) {
+                  console.warn(
+                    `[bpmnGenerators] ⚠️ KRITISKT: Skipping Feature Goal generation for ${node.bpmnElementId} ` +
+                    `(no subprocessFile - likely a subProcess, not a callActivity)`
+                  );
+                }
+                continue;
+              }
+              
+              // KRITISKT: Verifiera att subprocess-filen faktiskt finns i existingBpmnFiles
+              // Detta är den viktigaste kontrollen - även om missingDefinition är false,
+              // kan subprocessFile peka på fel fil om automatisk matchning används
+              if (!existingBpmnFiles.includes(node.subprocessFile)) {
+                if (import.meta.env.DEV) {
+                  console.warn(
+                    `[bpmnGenerators] ⚠️ Skipping Feature Goal generation for ${node.bpmnElementId} (${node.name}) ` +
+                    `- subprocess file ${node.subprocessFile} not in existingBpmnFiles`
+                  );
+                }
                 continue;
               }
               
@@ -2173,18 +2446,8 @@ export async function generateAllFromBpmnWithGraph(
               if (node.missingDefinition) {
                 if (import.meta.env.DEV) {
                   console.warn(
-                    `[bpmnGenerators] ⚠️ Skipping Feature Goal generation for ${node.bpmnElementId} ` +
-                    `(subprocess file ${node.subprocessFile || 'unknown'} is missing)`
-                  );
-                }
-                continue;
-              }
-              
-              if (node.subprocessFile && !existingBpmnFiles.includes(node.subprocessFile)) {
-                if (import.meta.env.DEV) {
-                  console.warn(
-                    `[bpmnGenerators] ⚠️ Skipping Feature Goal generation for ${node.bpmnElementId} ` +
-                    `(subprocess file ${node.subprocessFile} not in existingBpmnFiles)`
+                    `[bpmnGenerators] ⚠️ Skipping Feature Goal generation for ${node.bpmnElementId} (${node.name}) ` +
+                    `- missingDefinition=true, subprocess file ${node.subprocessFile || 'unknown'} is missing`
                   );
                 }
                 continue;
@@ -2259,7 +2522,6 @@ export async function generateAllFromBpmnWithGraph(
                           const subprocessDocKey = `subprocess:${node.subprocessFile}`;
                           if (!generatedChildDocs.has(subprocessDocKey)) {
                             generatedChildDocs.set(subprocessDocKey, docInfo);
-                            generatedSubprocessFeatureGoals.add(node.subprocessFile);
                           }
                         }
                       }
@@ -2299,8 +2561,6 @@ export async function generateAllFromBpmnWithGraph(
                           // Spara bara om det inte redan finns (första gången subprocessen genereras)
                           if (!generatedChildDocs.has(subprocessDocKey)) {
                             generatedChildDocs.set(subprocessDocKey, docInfo);
-                            // Markera att Feature Goal-dokumentation har genererats för denna subprocess
-                            generatedSubprocessFeatureGoals.add(node.subprocessFile);
                           }
                         }
                       }
@@ -2495,7 +2755,9 @@ export async function generateAllFromBpmnWithGraph(
           // För callActivities: markera med docKey (subprocess:file) för att undvika dubbelgenerering av base doc
           // För tasks/epics: markera med docKey (file::elementId) för att undvika dubbelgenerering
           // Men vi tillåter fortfarande instans-specifik dokumentation för återkommande noder
-          if (!subprocessAlreadyGenerated || node.type !== 'callActivity') {
+          // För callActivities: alltid lägg till i globalProcessedDocNodes (vi genererar alltid instans-specifik)
+          // För tasks/epics: lägg till om inte redan processad
+          if (node.type === 'callActivity' || !alreadyProcessedGlobally) {
             globalProcessedDocNodes.add(docKey);
           }
 
@@ -2510,9 +2772,9 @@ export async function generateAllFromBpmnWithGraph(
           }
         }
         
-        // Generera combined file-level documentation ENDAST för root-processer (inte för subprocesser)
-        // Subprocesser har redan Feature Goal-dokumentation som täcker processen
+        // Generera combined file-level documentation för både root-processer och subprocesser
         // Root-processer behöver combined doc som en samlad översikt över alla noder
+        // Subprocesser får också file-level docs (ersätter Process Feature Goals)
         // En fil är en root-fil om:
         // 1. Den är den faktiska root-filen i hierarkin (bpmnFileName === file OCH isRootFileGeneration = true), ELLER
         // 2. Den är root-processen enligt bpmn-map.json (orchestration.root_process)
@@ -2528,155 +2790,121 @@ export async function generateAllFromBpmnWithGraph(
         const isSubprocessFileForRoot = (hasCallActivityPointingToFileForRoot || !!processNodeForFileForRoot) && !isRootProcessFromMapForRoot;
         const isRootFile = isRootProcessFromMapForRoot || (isRootFileGeneration && file === bpmnFileName) || (!isSubprocessFileForRoot && !rootProcessId);
         
-        if (isRootFile && combinedBody.trim().length > 0) {
+        // Generera file-level docs för både root och subprocesser
+        if (combinedBody.trim().length > 0) {
           const wrappedCombined = insertGenerationMeta(
             wrapLlmContentAsDocument(combinedBody, `Dokumentation - ${file}`),
             generationSourceLabel,
           );
           result.docs.set(docFileName, wrappedCombined);
         }
-      } else {
-        // Om inga noder hittades, skapa en tom dokumentationsfil ENDAST för root-processer
-        // Subprocesser ska INTE få tom dokumentation (de har redan Feature Goal)
-        const fileBaseNameForEmpty = file.replace('.bpmn', '');
-        const isRootProcessFromMapForEmpty = rootProcessId && (fileBaseNameForEmpty === rootProcessId || file === `${rootProcessId}.bpmn`);
-        const processNodeForFileForEmpty = Array.from(graph.allNodes.values()).find(
-          node => node.type === 'process' && node.bpmnFile === file
-        );
-        const hasCallActivityPointingToFileForEmpty = Array.from(testableNodes.values()).some(
-          node => node.type === 'callActivity' && node.subprocessFile === file
-        );
-        const isSubprocessFileForEmpty = (hasCallActivityPointingToFileForEmpty || !!processNodeForFileForEmpty) && !isRootProcessFromMapForEmpty;
-        const isRootFileForEmpty = isRootProcessFromMapForEmpty || (isRootFileGeneration && file === bpmnFileName) || (!isSubprocessFileForEmpty && !rootProcessId);
         
-        if (isRootFileForEmpty) {
-          // Skapa tom dokumentation endast för root-processer
-          const emptyDoc = insertGenerationMeta(
-            wrapLlmContentAsDocument(
-              `<h1>Dokumentation för ${file}</h1><p>Inga genererbara noder hittades i denna fil.</p>`,
-              `Dokumentation - ${file}`
-            ),
-            generationSourceLabel,
-          );
-          result.docs.set(docFileName, emptyDoc);
-          console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file}, created empty documentation file`);
-        }
-      }
-      
-      // KRITISKT: Feature Goal-generering för subprocess-filer måste köras även om nodesInFile.length === 0
-      // (t.ex. filer som bara har en process-nod men inga tasks/callActivities)
-      // Detta säkerställer att alla subprocess-filer får Feature Goal-dokumentation
-      // VIKTIGT: Detta måste köras UTANFÖR if (nodesInFile.length > 0)-blocket
-      const hasCallActivityPointingToFileForSubprocess = Array.from(testableNodes.values()).some(
-        node => node.type === 'callActivity' && node.subprocessFile === file
-      );
-      const processNodeForFileForSubprocess = Array.from(graph.allNodes.values()).find(
-        node => node.type === 'process' && node.bpmnFile === file
-      );
-      const fileBaseNameForSubprocess = file.replace('.bpmn', '');
-      const isRootProcessFromMapForSubprocess = rootProcessId && (fileBaseNameForSubprocess === rootProcessId || file === `${rootProcessId}.bpmn`);
-      const isSubprocessFileForSubprocess = (hasCallActivityPointingToFileForSubprocess || !!processNodeForFileForSubprocess) && !isRootProcessFromMapForSubprocess;
-      
-      // Generera Feature Goal för subprocess-filer även om nodesInFile.length === 0
-      if (isSubprocessFileForSubprocess && processNodeForFileForSubprocess && processNodeForFileForSubprocess.type === 'process') {
-        const subprocessDocKey = `subprocess:${file}`;
-        // VIKTIGT: För subprocess process nodes, använd filens base name (utan .bpmn) som elementId
-        // eftersom process-nodens bpmnElementId kan vara processId (t.ex. "mortgage-se-appeal.bpmn#process")
-        // men vi vill ha filens base name (t.ex. "mortgage-se-appeal") för Feature Goal-filnamnet
-        const fileBaseName = file.replace('.bpmn', '');
-        const subprocessFeatureDocPath = getFeatureGoalDocFileKey(
-          file,
-          fileBaseName, // Använd filens base name istället för processNodeForFileForSubprocess.bpmnElementId
-          undefined,
-          undefined,
-        );
-        const featureGoalPageExists = result.docs.has(subprocessFeatureDocPath);
-        
-        if (!featureGoalPageExists) {
-          // Samla child docs från processNodeForFileForSubprocess.children (om de finns)
-          const childDocsForSubprocess = new Map<string, {
-            summary: string;
-            flowSteps: string[];
-            inputs?: string[];
-            outputs?: string[];
-            scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
-          }>();
+        // VIKTIGT: Generera Feature Goal för root-processen (mortgage.bpmn)
+        // Detta görs endast för root-processen när isActualRootFile = true
+        if (file === bpmnFileName && isActualRootFile && isRootFileGeneration) {
+          const fileBaseName = file.replace('.bpmn', '');
+          const isRootProcessFromMap = rootProcessId && (fileBaseName === rootProcessId || file === `${rootProcessId}.bpmn`);
           
-          const collectChildDocsRecursively = (node: BpmnProcessNode) => {
-            for (const child of node.children) {
-              const childDocKey = child.type === 'callActivity' && child.subprocessFile
-                ? `subprocess:${child.subprocessFile}`
-                : `${child.bpmnFile}::${child.bpmnElementId}`;
-              
-              const childDoc = generatedChildDocs.get(childDocKey);
-              if (childDoc) {
-                childDocsForSubprocess.set(child.id, childDoc);
-              }
-              
-              if (child.children && child.children.length > 0) {
-                collectChildDocsRecursively(child);
-              }
-            }
-          };
-          
-          // Använd processNodeForFileForSubprocess.children direkt (filen har inga tasks/callActivities)
-          if (processNodeForFileForSubprocess.children && processNodeForFileForSubprocess.children.length > 0) {
-            collectChildDocsRecursively(processNodeForFileForSubprocess);
-          }
-          
-          const subprocessContext = buildNodeDocumentationContext(graph, processNodeForFileForSubprocess.id);
-          
-          if (subprocessContext) {
-            await reportProgress(
-              'docgen:file',
-              'Genererar Feature Goal för subprocess',
-              `${file} (subprocess root)`,
+          // Generera Feature Goal för root-processen om den är root-processen enligt bpmn-map.json
+          if (isRootProcessFromMap || (!rootProcessId && file === bpmnFileName)) {
+            const processNodeForRoot = Array.from(graph.allNodes.values()).find(
+              node => node.type === 'process' && node.bpmnFile === file
             );
             
-            const subprocessDocLinks = {
-              bpmnViewerLink: `#/bpmn/${file}`,
-              dorLink: undefined,
-              testLink: undefined,
-            };
-            
-            const subprocessDocContent = await renderDocWithLlm(
-              'feature',
-              subprocessContext,
-              subprocessDocLinks,
-              useLlm,
-              llmProvider,
-              async (provider, fallbackUsed, docJson) => {
-                if (fallbackUsed) {
-                  llmFallbackUsed = true;
-                  llmFinalProvider = provider;
-                }
-                if (docJson) {
-                  const docInfo = extractDocInfoFromJson(docJson);
-                  if (docInfo) {
-                    generatedChildDocs.set(subprocessDocKey, docInfo);
-                    generatedSubprocessFeatureGoals.add(file);
+            if (processNodeForRoot) {
+              // Bygg kontext för root-processen
+              const rootContext = buildNodeDocumentationContext(graph, processNodeForRoot.id);
+              if (!rootContext) {
+                console.warn(`[bpmnGenerators] ⚠️ No rootContext found for root process ${processNodeForRoot.id}, skipping Feature Goal generation`);
+              } else {
+                // Hämta child documentation för root-processen
+                const rootChildDocs = new Map<string, {
+                  summary: string;
+                  flowSteps: string[];
+                  inputs?: string[];
+                  outputs?: string[];
+                  scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+                }>();
+                
+                // Samla child documentation från alla callActivities i root-processen
+                for (const childNode of processNodeForRoot.children || []) {
+                  if (childNode.type === 'callActivity' && childNode.subprocessFile) {
+                    const childDocKey = `subprocess:${childNode.subprocessFile}`;
+                    const childDoc = generatedChildDocs.get(childDocKey);
+                    if (childDoc) {
+                      rootChildDocs.set(childNode.bpmnElementId, childDoc);
+                    }
                   }
                 }
-              },
-              childDocsForSubprocess.size > 0 ? childDocsForSubprocess : undefined,
-              undefined, // structuralInfo (not available in this context)
-              checkCancellation,
-              abortSignal,
-            );
-            
-            result.docs.set(
-              subprocessFeatureDocPath,
-              insertGenerationMeta(subprocessDocContent, generationSourceLabel),
-            );
-            
-            console.log(`[bpmnGenerators] ✅ Feature Goal generated for subprocess ${file} (no tasks/callActivities):`, {
-              subprocessFeatureDocPath,
-              contentLength: subprocessDocContent.length,
-            });
-          } else {
-            console.error(`[bpmnGenerators] ❌ KRITISKT: Feature Goal NOT generated for ${file} - missing subprocessContext (process node exists: ${processNodeForFileForSubprocess.id})`);
+                
+                const convertedRootChildDocs = rootChildDocs.size > 0
+                  ? Array.from(rootChildDocs.entries()).map(([elementId, doc]) => ({
+                      elementId,
+                      summary: doc.summary,
+                      flowSteps: doc.flowSteps,
+                      inputs: doc.inputs,
+                      outputs: doc.outputs,
+                      scenarios: doc.scenarios,
+                    }))
+                  : undefined;
+                
+                // Generera Feature Goal för root-processen
+                const rootFeatureGoalContent = await renderDocWithLlm(
+                  'feature',
+                  rootContext,
+                  {
+                    bpmnLink: getBpmnFileUrl(file, getVersionHashForFile),
+                    dmnLink: undefined,
+                  },
+                  useLlm,
+                  llmProvider,
+                  async (provider, fallbackUsed, docJson) => {
+                    if (fallbackUsed) {
+                      llmFallbackUsed = true;
+                      llmFinalProvider = provider;
+                    }
+                    // lastDocJson är redan definierad i scopet ovanför
+                    if (docJson) {
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      const _ = docJson; // Spara för framtida användning om behövs
+                    }
+                  },
+                  convertedRootChildDocs,
+                  undefined, // structuralInfo
+                  checkCancellation,
+                  abortSignal,
+                );
+                
+                // Skapa Feature Goal-sida för root-processen (non-hierarchical naming)
+                const rootFeatureDocPath = getFeatureGoalDocFileKey(
+                  file,
+                  processNodeForRoot.bpmnElementId || fileBaseName,
+                  undefined, // no version suffix
+                  undefined, // no parent (root process)
+                );
+                
+                if (!result.docs.has(rootFeatureDocPath)) {
+                  result.docs.set(
+                    rootFeatureDocPath,
+                    insertGenerationMeta(rootFeatureGoalContent, generationSourceLabel),
+                  );
+                }
+              }
+            }
           }
         }
+      } else {
+        // Om inga noder hittades, skapa en tom dokumentationsfil för både root-processer och subprocesser
+        // Generera tom dokumentation för både root och subprocesser
+        const emptyDoc = insertGenerationMeta(
+          wrapLlmContentAsDocument(
+            `<h1>Dokumentation för ${file}</h1><p>Inga genererbara noder hittades i denna fil.</p>`,
+            `Dokumentation - ${file}`
+          ),
+          generationSourceLabel,
+        );
+        result.docs.set(docFileName, emptyDoc);
+        console.warn(`[bpmnGenerators] ⚠️ No nodes found for ${file}, created empty documentation file`);
       }
     }
     await reportProgress('docgen:complete', 'Dokumentation klara');

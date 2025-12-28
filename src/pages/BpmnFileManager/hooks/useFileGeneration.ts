@@ -1069,7 +1069,7 @@ export function useFileGeneration({
         }
         
         // For feature goals: feature-goals/{...}.html
-        // Feature goals can be hierarchical (parent-elementId) or subprocess-based
+        // Feature goals use hierarchical naming (parent-elementId) for callActivities
         // VIKTIGT: För hierarchical naming måste vi hitta subprocess-filen, inte parent-filen
         // eftersom filen sparas under subprocess-filens version hash
         if (docFileName.startsWith('feature-goals/')) {
@@ -1077,14 +1077,6 @@ export function useFileGeneration({
           
           // Try to match against known subprocess files
           if (filesIncluded) {
-            // First, check if any file exactly matches the feature goal name
-            for (const includedFile of filesIncluded) {
-              const baseName = includedFile.replace('.bpmn', '');
-              if (featureGoalName === baseName) {
-                return includedFile;
-              }
-            }
-            
             // For hierarchical naming (parent-elementId), try to extract elementId
             // Pattern: "mortgage-se-application-internal-data-gathering" eller "test-{timestamp}-test-parent-call-activity-test-call-activity"
             // We want to find the subprocess file that matches the elementId part
@@ -1236,19 +1228,20 @@ export function useFileGeneration({
             }
           }
           
-          // Fallback: try to infer from feature goal name pattern
-          // E.g., "mortgage-se-household" -> "mortgage-se-household.bpmn"
-          if (featureGoalName.match(/^mortgage-se-[a-z-]+$/)) {
-            return `${featureGoalName}.bpmn`;
-          }
-          
           // If we can't determine, return null to use root file as fallback
           return null;
         }
         
-        // For combined file docs: {bpmnFile}.html
-        if (docFileName.match(/^[^\/]+\.html$/)) {
-          return docFileName.replace('.html', '.bpmn');
+        // For combined file docs: {bpmnFile}.html (both root and subprocess files)
+        // Pattern: "mortgage-se-application.bpmn.html" -> "mortgage-se-application.bpmn"
+        if (docFileName.endsWith('.html') && !docFileName.includes('/')) {
+          // Remove .html extension and check if it ends with .bpmn
+          const withoutHtml = docFileName.replace('.html', '');
+          if (withoutHtml.endsWith('.bpmn')) {
+            return withoutHtml;
+          }
+          // If not .bpmn, assume it's a base name and add .bpmn
+          return `${withoutHtml}.bpmn`;
         }
         
         return null;
