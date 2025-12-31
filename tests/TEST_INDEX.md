@@ -3,7 +3,6 @@
 **Syfte:** Centraliserad index över alla tester i projektet, organiserade efter funktionalitet för enkel sökning och referens.
 
 > 📋 **För mer detaljerad information, se:**
-> - [`tests/README.md`](./README.md) - Allmän testdokumentation
 > - [`docs/testing/TESTING.md`](../docs/testing/TESTING.md) - Testing guide
 > - [`docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md`](../docs/testing/strategy/TEST_OVERVIEW_AND_GAPS.md) - Gap-analys
 > - ⭐ **[`docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md`](../docs/guides/validation/VALIDATE_NEW_BPMN_FILES.md)** - **Komplett guide för att validera nya BPMN-filer från A till Ö**
@@ -59,6 +58,7 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 - **Integration:** `full-flow-generation-upload-read.test.ts` - Fullständigt genereringsflöde
 - **Integration:** `generate-all-files-with-root.test.ts` - Generera alla filer med root
 - **Integration:** `batch-generation-validation.test.ts` - ⭐ **NYTT** - Validerar batch-generering (progress-räkning, Root Process Feature Goal, file-level docs, fallback-logik)
+- **Integration:** `subprocess-first-then-parent-storage.test.ts` - ⭐ **NYTT** - Validerar att dokumentation laddas från Storage när parent genereras efter subprocess
 
 ### LLM Integration
 - **Integration:** `claude-api-simple.test.ts` - Enkel Claude API-test
@@ -108,7 +108,8 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 - **Integration:** `print-bpmn-tree.test.ts` - Print BPMN tree
 
 ### Genereringsordning & Hierarki
-- **Integration:** `generation-order-scenarios.test.ts` - Genereringsordning scenarion
+- **Integration:** `generation-order-scenarios.test.ts` - Genereringsordning scenarion (hierarkisk generering, inte Storage-laddning)
+- **Integration:** `subprocess-first-then-parent-storage.test.ts` - ⭐ **NYTT** - Validerar Storage-laddning när parent genereras efter subprocess
 - **Integration:** `aggregation-order.test.ts` - Aggregeringsordning
 - **Integration:** `node-generation-order-analysis.test.ts` - Node-genereringsordning analys
 - **Integration:** `node-generation-order-depth-example.test.ts` - Node-genereringsordning (depth example)
@@ -324,7 +325,8 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 → `tests/unit/featureGoalLlmMapper.test.ts`
 
 ### "Jag vill testa genereringsordning"
-→ `tests/integration/generation-order-scenarios.test.ts`
+→ `tests/integration/generation-order-scenarios.test.ts` - Hierarkisk generering
+→ `tests/integration/subprocess-first-then-parent-storage.test.ts` - Storage-laddning när parent genereras efter subprocess
 → `tests/integration/aggregation-order.test.ts`
 → `tests/integration/node-generation-order-analysis.test.ts`
 
@@ -338,7 +340,7 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 ## 📊 Teststatistik (Utvecklartester)
 
 - **Unit Tests:** ~48 filer (inkl. 5 nya test generation-tester, varav 4 implementerade)
-- **Integration Tests:** ~43 filer (inkl. 1 ny test generation-test + 1 ny batch-validation-test)
+- **Integration Tests:** ~44 filer (inkl. 1 ny test generation-test + 1 ny batch-validation-test + 1 ny subprocess-first-then-parent-storage-test)
 - **E2E Tests (Vitest):** 1 fil
 - **Playwright E2E Tests:** 36 filer (22 huvudfiler + 3 A-Ö flöden + 5 scenario-filer + 6 nya tester)
 
@@ -364,7 +366,7 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 - **Hur genereras:** Automatiskt extraherat från E2E-scenarios
 - **Struktur:** Test scenarios per Feature Goal med gateway-kontext
 - **Syfte:** Används av användare för att testa sina BPMN-processer
-- **Se:** [`tests/README.md`](./README.md) - "Test Generation" sektion
+- **Se:** [`docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md`](../docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md) - Test Generation implementeringsplan
 
 **Viktigt:** Epic-testgenerering har tagits bort. Endast Feature Goals (Call Activities) genererar testfiler. Epic-information finns redan inkluderad i Feature Goal-dokumentation via `childrenDocumentation`.
 

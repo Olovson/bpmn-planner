@@ -834,6 +834,11 @@ export function buildContextPayload(
     (currentNodeContext as any).structuralInfo = context.structuralInfo;
   }
 
+  // Lägg till usage cases om de finns i context (endast för Process Feature Goals)
+  if ('usageCases' in context && context.usageCases) {
+    (currentNodeContext as any).usageCases = context.usageCases;
+  }
+
   return { processContext, currentNodeContext };
 }
 

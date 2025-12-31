@@ -1,11 +1,17 @@
 import { BpmnProcessGraph, BpmnProcessNode } from './bpmnProcessGraph';
 
+export interface UsageCaseData {
+  parentProcess: string;
+  conditions?: string[];
+}
+
 export interface NodeDocumentationContext {
   node: BpmnProcessNode;
   parentChain: BpmnProcessNode[];
   childNodes: BpmnProcessNode[];
   siblingNodes: BpmnProcessNode[];
   descendantNodes: BpmnProcessNode[];
+  usageCases?: UsageCaseData[]; // Optional - only for Process Feature Goals when there are differences
 }
 
 export function collectDescendants(node: BpmnProcessNode): BpmnProcessNode[] {

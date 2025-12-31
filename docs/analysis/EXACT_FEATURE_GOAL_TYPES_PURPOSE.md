@@ -106,40 +106,32 @@ const featureDocPath = getFeatureGoalDocFileKey(
 
 ### När Genereras
 
-**Kod-location:** `bpmnGenerators.ts` - **INTE längre genereras!**
+**Kod-location:** `bpmnGenerators.ts` rad ~2261-2345
 
-**VIKTIGT:** Process Feature Goals genereras **INTE** längre i nuvarande kod!
-
-**Kommentar i koden (rad 2753):**
+**Exakt villkor:**
 ```typescript
-// Subprocesser får också file-level docs (ersätter Process Feature Goals)
+const shouldGenerateProcessFeatureGoal = isSubprocessFileForRoot && 
+  !!processNodeForFileForRoot && 
+  processNodeForFileForRoot.type === 'process' &&
+  !sortedNodesInFile.some(n => n.type === 'callActivity'); // Inga callActivities
 ```
 
-**Men:** Process Feature Goals **söks fortfarande efter** i `useAllBpmnNodes.ts` (rad 372-385) för bakåtkompatibilitet (finns kvar i Storage från tidigare generationer).
-
-**Historisk logik (rad 1656):**
-```typescript
-// Detta matchar exakt logiken i rad 2441: if (isSubprocessFileForSubprocess && processNodeForFileForSubprocess && processNodeForFileForSubprocess.type === 'process')
-// Räkna process node om:
-// 1. Det är en subprocess-fil (isSubprocessFile = true)
-// 2. Den har en process node av typ 'process'
-// 3. Den har inga tasks/callActivities i nodesToGenerate (annars genereras Feature Goal via callActivity istället)
-```
-
-**Tidigare villkor (nu borttaget):**
-- Subprocess-fil (inte root)
+**Genereras för:**
+- Subprocess-filer (inte root)
 - Process node av typ 'process'
-- Inga tasks/callActivities i filen (annars genereras Feature Goal via callActivity istället)
+- Inga callActivities i filen (annars genereras Feature Goal via callActivity istället)
+- **Detta är vad användaren ska se i doc-viewer för subprocess-filer**
 
-### Namngivning (Historisk)
+### Namngivning
 
 **Format:** Non-hierarchical naming (ingen parent)
 ```typescript
 const processFeatureGoalKey = getFeatureGoalDocFileKey(
   file,                    // subprocess-filen (t.ex. mortgage-se-internal-data-gathering.bpmn)
-  fileBaseName,            // filens base name (t.ex. mortgage-se-internal-data-gathering)
+  processNodeForFileForRoot.bpmnElementId || fileBaseName,  // process node ID eller base name
   undefined,                // no version suffix
   undefined,                // INGEN parent (non-hierarchical)
+  false,                    // isRootProcess = false (detta är en subprocess)
 );
 ```
 
@@ -147,18 +139,19 @@ const processFeatureGoalKey = getFeatureGoalDocFileKey(
 - `feature-goals/mortgage-se-internal-data-gathering.html`
 - Sparas under: `docs/claude/{bpmnFileName}/{versionHash}/feature-goals/{baseName}.html`
 
-### Syfte (Historisk)
+### Syfte
 
-**Tidigare syfte:**
+**Syfte:**
 - Dokumentera subprocess-processen från **subprocess-filens perspektiv**
 - Standalone dokumentation (ingen parent-kontext)
 - Beskriver subprocess-processen i isolering
-- Används när subprocess-filen refereras direkt (inte via callActivity)
+- **Detta är vad användaren ser i doc-viewer för subprocess-filer**
+- Har Feature Goal-struktur (summary, flowSteps, userStories, dependencies)
 
-**Nuvarande ersättning:**
-- **File-level documentation** (`{fileBaseName}.html`) ersätter Process Feature Goals
-- File-level documentation innehåller combined documentation för alla noder i filen
-- Ingen Feature Goal-struktur (summary, epics, etc.)
+**Relation till File-level Documentation:**
+- File-level docs genereras också (för E2E-scenarier - JSON-data)
+- Process Feature Goal är primär dokumentation för användaren
+- File-level docs är sekundär (bara för systemet/E2E-scenarier)
 
 ---
 
@@ -218,7 +211,7 @@ const rootFeatureDocPath = getFeatureGoalDocFileKey(
 
 ### När Genereras
 
-**Kod-location:** `bpmnGenerators.ts` rad 2751-2776
+**Kod-location:** `bpmnGenerators.ts` rad ~1713-1800
 
 **Exakt villkor:**
 ```typescript
@@ -247,7 +240,7 @@ const docFileName = file.replace('.bpmn', '.html');
 
 ### Syfte
 
-**Kommentarer i koden (rad 2751-2753):**
+**Kommentarer i koden (rad 1713-1729):**
 ```typescript
 // Generera combined file-level documentation för både root-processer och subprocesser
 // Root-processer behöver combined doc som en samlad översikt över alla noder
@@ -255,9 +248,15 @@ const docFileName = file.replace('.bpmn', '.html');
 ```
 
 **Syfte:**
-- Samla all dokumentation för alla noder i en fil
-- Enkel combined documentation (ingen Feature Goal-struktur)
-- Ersätter Process Feature Goals för subprocesser
+- **Primärt:** JSON-data för E2E-scenariogenerering (embeddad i HTML)
+- För subprocess-filer: **Visas INTE för användaren** (Process Feature Goal visas istället)
+- För root-filer: Visas i doc-viewer
+- **Förbättrad implementation (2025-01-XX):** Använder processens struktur (flow graph, paths) för att skapa en intelligent sammanfattning av hela processen baserat på alla noders dokumentation
+- **JSON-data för E2E-scenarier:** Innehåller `summary`, `flowSteps`, `userStories`, och `dependencies` som används av E2E-scenariogenerering
+
+**Detaljerad implementation:** Se [`FILE_LEVEL_DOCUMENTATION_IMPLEMENTATION.md`](./FILE_LEVEL_DOCUMENTATION_IMPLEMENTATION.md)
+- **Förbättrad implementation (2025-01-XX):** Använder processens struktur (flow graph, paths) för att skapa en intelligent sammanfattning av hela processen baserat på alla noders dokumentation
+- **JSON-data för E2E-scenarier:** Innehåller `summary`, `flowSteps`, `userStories`, och `dependencies` som används av E2E-scenariogenerering
 
 ---
 
@@ -277,13 +276,19 @@ const docFileName = file.replace('.bpmn', '.html');
 ### Scenario 2: Subprocess-fil Genereras Isolerat (utan parent)
 
 **Genereras:**
-1. ✅ **File-level documentation** (ersätter Process Feature Goal)
+1. ✅ **Process Feature Goal** (non-hierarchical naming)
+   - `feature-goals/mortgage-se-internal-data-gathering.html`
+   - Perspektiv: Subprocess-filens perspektiv
+   - Kontext: Standalone (ingen parent-kontext)
+   - **Detta är vad användaren ser i doc-viewer**
+
+2. ✅ **File-level documentation** (för E2E-scenarier - JSON-data)
    - `mortgage-se-internal-data-gathering.html`
-   - Innehåll: Combined documentation för alla noder i filen
+   - Innehåll: JSON-data för E2E-scenariogenerering
+   - **Visas INTE för användaren (Process Feature Goal visas istället)**
 
 **Genereras INTE:**
 - ❌ CallActivity Feature Goal (ingen callActivity i filen)
-- ❌ Process Feature Goal (ersatt av file-level documentation)
 
 ### Scenario 3: Root-fil Genereras med Hela Hierarkin
 
@@ -305,12 +310,15 @@ const docFileName = file.replace('.bpmn', '.html');
    - `feature-goals/mortgage-se-other-process-internal-data-gathering.html`
    - Varje instans har parent-kontext
 
-2. ✅ **File-level documentation** för subprocess-filen
-   - `mortgage-se-internal-data-gathering.html`
-   - Innehåll: Combined documentation för alla noder i filen
+2. ✅ **Process Feature Goal** för subprocess-filen (non-hierarchical naming)
+   - `feature-goals/mortgage-se-internal-data-gathering.html`
+   - Perspektiv: Subprocess-filens perspektiv
+   - **Detta är vad användaren ser i doc-viewer**
 
-**Genereras INTE:**
-- ❌ Process Feature Goal (ersatt av file-level documentation)
+3. ✅ **File-level documentation** för subprocess-filen (för E2E-scenarier - JSON-data)
+   - `mortgage-se-internal-data-gathering.html`
+   - Innehåll: JSON-data för E2E-scenariogenerering
+   - **Visas INTE för användaren (Process Feature Goal visas istället)**
 
 ---
 
@@ -320,60 +328,62 @@ const docFileName = file.replace('.bpmn', '.html');
 
 | Aspekt | CallActivity Feature Goals | Process Feature Goals (Historisk) |
 |--------|---------------------------|----------------------------------|
-| **När genereras** | För varje callActivity | För subprocess-filer utan tasks/callActivities |
+| **När genereras** | För varje callActivity | För subprocess-filer utan callActivities |
 | **Namngivning** | Hierarchical (med parent) | Non-hierarchical (ingen parent) |
 | **Perspektiv** | Parent-processens perspektiv | Subprocess-filens perspektiv |
 | **Kontext** | Parent-kontext + subprocess-kontext | Standalone (ingen parent-kontext) |
-| **Användning** | När subprocess anropas via callActivity | När subprocess-filen refereras direkt |
-| **Status** | ✅ Genereras | ❌ Genereras INTE längre (ersatt av file-level docs) |
+| **Användning** | När subprocess anropas via callActivity | När subprocess-filen refereras direkt (visas i doc-viewer) |
+| **Status** | ✅ Genereras | ✅ Genereras |
 
 ### 2. File-Level Documentation vs Process Feature Goals
 
 | Aspekt | File-Level Documentation | Process Feature Goals (Historisk) |
 |--------|-------------------------|----------------------------------|
-| **När genereras** | För alla filer med noder | För subprocess-filer utan tasks/callActivities |
+| **När genereras** | För alla filer med noder | För subprocess-filer utan callActivities |
 | **Namngivning** | `{fileBaseName}.html` | `feature-goals/{baseName}.html` |
-| **Innehåll** | Combined documentation (alla noder) | Feature Goal-struktur (summary, epics, etc.) |
-| **Struktur** | Enkel samling av Epic-dokumentation | Feature Goal-struktur med summary, flowSteps, etc. |
-| **Status** | ✅ Genereras | ❌ Genereras INTE längre (ersatt av file-level docs) |
+| **Innehåll** | JSON-data för E2E-scenarier | Feature Goal-struktur (summary, flowSteps, userStories, dependencies) |
+| **Struktur** | JSON-data (embeddad i HTML) | Feature Goal-struktur med summary, flowSteps, etc. |
+| **Visas för användare** | ❌ Nej (bara för systemet) | ✅ Ja (visas i doc-viewer) |
+| **Status** | ✅ Genereras | ✅ Genereras |
 
 ---
 
 ## Slutsats
 
-### Nuvarande System (2025-12-29)
+### Nuvarande System (2025-01-XX)
 
 1. **CallActivity Feature Goals:** ✅ Genereras för varje callActivity
    - Hierarchical naming med parent-kontext
    - Instans-specifik dokumentation
+   - Visas i doc-viewer när subprocess anropas via callActivity
 
-2. **Process Feature Goals:** ❌ Genereras INTE längre
-   - Ersatt av file-level documentation
-   - Finns kvar i Storage från tidigare generationer
+2. **Process Feature Goals:** ✅ Genereras för subprocess-filer (utan callActivities)
+   - Non-hierarchical naming (ingen parent)
+   - Standalone dokumentation från subprocess-filens perspektiv
+   - **Visas i doc-viewer för subprocess-filer**
+   - Har Feature Goal-struktur (summary, flowSteps, userStories, dependencies)
 
 3. **File-Level Documentation:** ✅ Genereras för alla filer
-   - Ersätter Process Feature Goals
-   - Combined documentation för alla noder
+   - Innehåller JSON-data för E2E-scenariogenerering
+   - **Visas INTE för användaren (Process Feature Goal visas istället för subprocess-filer)**
+   - För root-filer: visas i doc-viewer
 
 4. **Root Process Feature Goals:** ✅ Genereras för root-processen
    - Endast när hela hierarkin genereras
    - Non-hierarchical naming
+   - Visas i doc-viewer för root-processen
 
-### Status i Koden (2025-12-29)
+### Status i Koden (2025-01-XX)
 
 **Genereras:**
-- ❌ Process Feature Goals genereras **INTE** längre i `bpmnGenerators.ts`
-- ✅ File-level documentation genereras istället (rad 2751-2776)
-
-**Söks efter:**
-- ❌ Process Feature Goals söks **INTE** längre efter
-- ✅ All bakåtkompatibilitet har tagits bort:
-  - `useAllBpmnNodes.ts`: Process Feature Goal-sökning borttagen
-  - `artifactUrls.ts`: Process Feature Goal-hantering borttagen (returnerar tom array om parentBpmnFile saknas)
-  - `nodeArtifactPaths.ts`: Process Feature Goal-path-generering borttagen (kastar fel om parentBpmnFile saknas)
+- ✅ Process Feature Goals genereras för subprocess-filer (rad ~2261-2345)
+- ✅ File-level documentation genereras för alla filer (rad ~1892-2116)
+- ✅ Process Feature Goals är primär dokumentation för användaren (subprocess-filer)
+- ✅ File-level docs är sekundär (bara för E2E-scenarier - JSON-data)
 
 **Nuvarande system:**
 - ✅ CallActivity Feature Goals (hierarchical naming med parent)
-- ✅ File-level documentation (ersätter Process Feature Goals)
+- ✅ Process Feature Goals (non-hierarchical naming för subprocess-filer)
+- ✅ File-level documentation (JSON-data för E2E-scenarier)
 - ✅ Root Process Feature Goals (endast för root-processen)
 

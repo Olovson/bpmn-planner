@@ -21,6 +21,13 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 - ✅ Innehållsvalidering - säkerställer minsta kvalitet på genererade scenarios
 - ✅ Förbättrad matchning - path-metadata sparas med E2E scenarios för bättre matchning
 
+**Förbättringar (2025-01-XX):**
+- ✅ Partiell generering - genererar tester för Feature Goals som har dokumentation, även om några saknas
+- ✅ Dokumentationskvalitetsvalidering - validerar att dokumentation innehåller nödvändiga fält
+- ✅ Förbättrad feedback - tydlig information om vilka paths som hoppades över och varför
+- ✅ Regenerering av Feature Goal-tester - kan regenerera Feature Goal-tester från befintliga E2E scenarios
+- ✅ LLM-tillgänglighetskontroll - kontrollerar LLM-tillgänglighet innan generering startar
+
 ---
 
 ## 📋 Detaljerad Process
@@ -28,14 +35,21 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 ### Steg 1: Validering av Dokumentation
 
 **Vad som händer:**
-- Systemet kontrollerar att all nödvändig dokumentation finns för alla testbara noder
+- Systemet kontrollerar att dokumentation finns för alla testbara noder (Call Activities/Feature Goals)
+- Systemet validerar även dokumentationskvalitet (att minsta nödvändiga fält finns: `summary`, `flowSteps`)
 - För Call Activities (Feature Goals): Kontrollerar att Feature Goal-dokumentation finns
 - För andra noder: Kontrollerar att vanlig nod-dokumentation finns
 
 **Vad händer om dokumentation saknas:**
-- Genereringen stoppas
-- Ett felmeddelande visas med lista över saknad dokumentation
-- Du måste generera dokumentation först
+- **Partiell generering:** Systemet genererar tester endast för Feature Goals som har dokumentation
+- Om **alla** dokumentation saknas: Genereringen stoppas med tydligt felmeddelande
+- Om **några** dokumentation saknas: Varning visas, men generering fortsätter för Feature Goals med dokumentation
+- Du får tydlig feedback om vilka Feature Goals som hoppades över
+
+**Vad händer om dokumentation är ofullständig:**
+- Systemet validerar att dokumentation innehåller minsta nödvändiga fält
+- Varningar visas om dokumentation saknar viktiga fält (t.ex. `userStories`, `dependencies`)
+- Generering fortsätter, men kvaliteten på genererade scenarios kan vara lägre
 
 ---
 
@@ -51,6 +65,8 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
    - ✅ **Lyckad ansökan för en sökare med en medsökare** (bostadsrätt, happy path, inga manuella steg)
    - ✅ **En sökare som behöver genomgå mest möjliga steg** (bostadsrätt, med manuella evalueringar)
 4. Systemet laddar Feature Goal-dokumentation för varje Feature Goal i pathen
+   - **Ny funktion:** Om dokumentation saknas för en path, hoppas path över med tydlig feedback
+   - **Ny funktion:** Dokumentationskvalitet valideras innan generering
 5. Systemet genererar **E2E-scenarios** med Claude baserat på:
    - BPMN-processgraf (paths med Feature Goals)
    - Feature Goal-dokumentation (summary, flowSteps, userStories, prerequisites)

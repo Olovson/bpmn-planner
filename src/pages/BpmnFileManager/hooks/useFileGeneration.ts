@@ -1069,14 +1069,32 @@ export function useFileGeneration({
         }
         
         // For feature goals: feature-goals/{...}.html
-        // Feature goals use hierarchical naming (parent-elementId) for callActivities
+        // Feature goals can be:
+        // 1. Hierarchical naming (parent-elementId) for callActivities: "mortgage-se-application-internal-data-gathering"
+        // 2. Non-hierarchical naming for Process Feature Goals: "mortgage-se-internal-data-gathering"
         // VIKTIGT: För hierarchical naming måste vi hitta subprocess-filen, inte parent-filen
         // eftersom filen sparas under subprocess-filens version hash
         if (docFileName.startsWith('feature-goals/')) {
           const featureGoalName = docFileName.replace('feature-goals/', '').replace('.html', '');
           
-          // Try to match against known subprocess files
-          if (filesIncluded) {
+          // FIRST: Check if featureGoalName matches a file directly (non-hierarchical Process Feature Goal)
+          // For Process Feature Goals, the featureGoalName IS the baseName of the file
+          if (filesIncluded && filesIncluded.length > 0) {
+            const directMatch = filesIncluded.find(f => {
+              const baseName = f.replace('.bpmn', '');
+              return baseName === featureGoalName;
+            });
+            
+            if (directMatch) {
+              if (import.meta.env.DEV) {
+                console.log(`[extractBpmnFileFromDocFileName] Direct match for Process Feature Goal "${featureGoalName}": ${directMatch}`);
+              }
+              return directMatch;
+            }
+          }
+          
+          // Continue with hierarchical matching for callActivities
+          if (filesIncluded && filesIncluded.length > 0) {
             // For hierarchical naming (parent-elementId), try to extract elementId
             // Pattern: "mortgage-se-application-internal-data-gathering" eller "test-{timestamp}-test-parent-call-activity-test-call-activity"
             // We want to find the subprocess file that matches the elementId part
@@ -1228,8 +1246,14 @@ export function useFileGeneration({
             }
           }
           
-          // If we can't determine, return null to use root file as fallback
-          return null;
+          // FALLBACK for Process Feature Goals (non-hierarchical): 
+          // If filesIncluded is empty or doesn't contain the file, construct the filename
+          // For Process Feature Goals, featureGoalName IS the baseName of the file
+          const constructedFileName = `${featureGoalName}.bpmn`;
+          if (import.meta.env.DEV) {
+            console.log(`[extractBpmnFileFromDocFileName] No match found for "${featureGoalName}", using constructed filename: ${constructedFileName}`);
+          }
+          return constructedFileName;
         }
         
         // For combined file docs: {bpmnFile}.html (both root and subprocess files)
@@ -1254,7 +1278,41 @@ export function useFileGeneration({
         if (versionHashCache.has(targetFile)) {
           return versionHashCache.get(targetFile) || null;
         }
-        const hash = await getVersionHashForFile(targetFile);
+        
+        // Try 1: Use getVersionHashForFile (respects user's version selection)
+        let hash = await getVersionHashForFile(targetFile);
+        
+        // Try 2: If null, try getCurrentVersionHash directly (bypasses version selection)
+        if (!hash) {
+          try {
+            hash = await getCurrentVersionHash(targetFile);
+            if (import.meta.env.DEV && hash) {
+              console.log(`[BpmnFileManager] Fallback: Got version hash for ${targetFile} via getCurrentVersionHash`);
+            }
+          } catch (error) {
+            if (import.meta.env.DEV) {
+              console.warn(`[BpmnFileManager] Failed to get current version hash for ${targetFile}:`, error);
+            }
+          }
+        }
+        
+        // Try 3: If still null and it's a subprocess, try root file's hash as last resort
+        if (!hash && targetFile !== file.file_name) {
+          try {
+            const rootHash = await getVersionHashForFile(file.file_name);
+            if (rootHash) {
+              hash = rootHash;
+              if (import.meta.env.DEV) {
+                console.log(`[BpmnFileManager] Fallback: Using root file's version hash for subprocess ${targetFile}`);
+              }
+            }
+          } catch (error) {
+            if (import.meta.env.DEV) {
+              console.warn(`[BpmnFileManager] Failed to get root file's version hash for fallback:`, error);
+            }
+          }
+        }
+        
         versionHashCache.set(targetFile, hash);
         return hash;
       };
@@ -1280,6 +1338,18 @@ export function useFileGeneration({
             if (docFileName.startsWith('feature-goals/')) {
               console.log(`[BpmnFileManager] Feature Goal doc "${docFileName}" -> BPMN file: ${docBpmnFile}, version hash: ${docVersionHash}`);
             }
+          }
+          
+          // Validate version hash before proceeding
+          if (!docVersionHash) {
+            const errorMsg = `Missing version hash for BPMN file "${docBpmnFile}" (doc: ${docFileName}). Cannot upload documentation.`;
+            console.error(`[BpmnFileManager] ${errorMsg}`);
+            toast({
+              title: 'Fel: Saknad version hash',
+              description: `Kunde inte hitta version hash för filen "${docBpmnFile}". Dokumentationen kunde inte laddas upp.`,
+              variant: 'destructive',
+            });
+            continue; // Skip this document and continue with others
           }
           
           const { modePath: docPath } = buildDocStoragePaths(

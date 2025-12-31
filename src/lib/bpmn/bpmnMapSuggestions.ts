@@ -104,8 +104,11 @@ export async function suggestBpmnMapUpdates(
         // Hoppa över matchningar med mycket låg konfidens när det finns för få filer
         // (risk för felaktiga matchningar när algoritmen bara kan välja mellan få alternativ)
         if (matchResult.matchedFileName && matchResult.matchStatus !== 'unresolved') {
-          const isVeryLowConfidence = matchResult.confidence < 0.1; // Mindre än 10% konfidens
-          const shouldSkip = !hasEnoughFilesForReliableMatching && isVeryLowConfidence;
+          // När det finns för få filer (< 5), kräv högre konfidens (30%) för att visa matchningar
+          // eftersom algoritmen bara kan välja mellan få alternativ och risken för felaktiga matchningar är hög
+          const confidenceThreshold = hasEnoughFilesForReliableMatching ? 0.1 : 0.3; // 10% eller 30%
+          const isVeryLowConfidence = matchResult.confidence < confidenceThreshold;
+          const shouldSkip = isVeryLowConfidence;
           
           if (!shouldSkip) {
             suggestions.push({
@@ -141,8 +144,10 @@ export async function suggestBpmnMapUpdates(
 
           // Hoppa över matchningar med mycket låg konfidens när det finns för få filer
           if (matchResult.matchedFileName && matchResult.matchStatus !== 'unresolved') {
-            const isVeryLowConfidence = matchResult.confidence < 0.1; // Mindre än 10% konfidens
-            const shouldSkip = !hasEnoughFilesForReliableMatching && isVeryLowConfidence;
+            // När det finns för få filer (< 5), kräv högre konfidens (30%) för att visa matchningar
+            const confidenceThreshold = hasEnoughFilesForReliableMatching ? 0.1 : 0.3; // 10% eller 30%
+            const isVeryLowConfidence = matchResult.confidence < confidenceThreshold;
+            const shouldSkip = isVeryLowConfidence;
             
             if (!shouldSkip) {
               suggestions.push({
@@ -221,6 +226,8 @@ export async function suggestBpmnMapUpdates(
     suggestions,
     newFiles,
     missingInMap,
+    totalFiles: allFiles.length,
+    hasEnoughFilesForReliableMatching,
   };
 }
 

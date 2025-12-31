@@ -1,6 +1,6 @@
 # Exakt Genereringsordning
 
-**Datum:** 2025-12-28
+**Datum:** 2025-12-29
 
 **Metod:** Topologisk sortering → visualOrderIndex/orderIndex från root
 (Subprocesser genereras FÖRE parent-filer)

@@ -196,12 +196,23 @@ export default function BpmnFileManager() {
   const [mapSuggestions, setMapSuggestions] = useState<MapSuggestion[]>([]);
   const [showMapSuggestionsDialog, setShowMapSuggestionsDialog] = useState(false);
   const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<string>>(new Set());
+  const [mapSuggestionTotalFiles, setMapSuggestionTotalFiles] = useState<number | undefined>(undefined);
+  const [mapSuggestionHasEnoughFiles, setMapSuggestionHasEnoughFiles] = useState<boolean>(true);
   const [showMapValidationDialog, setShowMapValidationDialog] = useState(false);
   const [mapValidationResult, setMapValidationResult] = useState<any | null>(null);
 
+  // Callback för att hantera map suggestions med filinformation
+  const handleMapSuggestions = useCallback((suggestions: MapSuggestion[], result?: { totalFiles?: number; hasEnoughFilesForReliableMatching?: boolean }) => {
+    setMapSuggestions(suggestions);
+    if (result) {
+      setMapSuggestionTotalFiles(result.totalFiles);
+      setMapSuggestionHasEnoughFiles(result.hasEnoughFilesForReliableMatching ?? true);
+    }
+  }, []);
+
   // Use file upload hook
   const fileUpload = useFileUpload(
-    setMapSuggestions,
+    handleMapSuggestions,
     setShowMapSuggestionsDialog,
     setAcceptedSuggestions,
   );
@@ -274,6 +285,9 @@ export default function BpmnFileManager() {
     selectedFile,
     setGeneratingFile,
     setCurrentGenerationStep,
+    setShowGenerationDialog,
+    setGenerationProgress,
+    setGenerationDialogResult,
   });
 
   // Use hierarchy building hook

@@ -5,9 +5,9 @@
  * the correct documentation files.
  * 
  * Expected output:
- * - 1 Feature Goal for the process itself (mortgage-se-application)
  * - Multiple Epics for userTasks/serviceTasks within the process
- * - NO Combined file-level doc (subprocesser genererar inte combined docs, bara root-processer)
+ * - 1 File-level documentation (mortgage-se-application.html)
+ * - NO Feature Goal (subprocess-filer genererar INTE Feature Goals längre - ersatta av file-level docs)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -51,24 +51,24 @@ describe('Application documentation generation', () => {
     });
 
     // Verify we have:
-    // - At least 1 Feature Goal (for the process)
-    expect(featureGoalKeys.length).toBeGreaterThanOrEqual(1);
+    // - NO Feature Goals (subprocess-filer genererar INTE Feature Goals längre)
+    expect(featureGoalKeys.length).toBe(0);
     
     // - At least 1 Epic (for tasks in the process)
     // mortgage-se-application.bpmn should have multiple tasks
     expect(epicKeys.length).toBeGreaterThanOrEqual(1);
     
-    // - NO Combined doc for subprocesses (only root processes get combined docs)
-    expect(combinedDocKeys.length).toBe(0);
+    // - Exactly 1 File-level doc (mortgage-se-application.html)
+    expect(combinedDocKeys.length).toBe(1);
     
-    // Total should be at least: 1 Feature Goal + 1 Epic = 2 (no Combined for subprocesses)
+    // Total should be at least: 1 Epic + 1 File-level doc = 2
     expect(result.docs.size).toBeGreaterThanOrEqual(2);
     
-    // Verify Feature Goal is for the application process
-    const applicationFeatureGoal = featureGoalKeys.find(key => 
-      key.includes('mortgage-se-application')
+    // Verify File-level doc exists
+    const fileLevelDoc = combinedDocKeys.find(key => 
+      key === 'mortgage-se-application.html'
     );
-    expect(applicationFeatureGoal).toBeDefined();
+    expect(fileLevelDoc).toBeDefined();
     
     console.log('\n✓ All assertions passed!');
   }, 120000); // 2 minuter timeout (kan ta tid med bpmn-map loading)

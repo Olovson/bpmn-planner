@@ -73,11 +73,11 @@ export const BPMN_NODE_TYPE_FILTERS: BpmnNodeTypeFilterConfig[] = [
   {
     type: 'process',
     label: 'Process',
-    description: 'En BPMN-process eller huvudprocess. Visas vanligtvis inte i filter.',
+    description: 'File-level dokumentation för en BPMN-process. Representerar en Feature Goal i Jira.',
     hexColor: '#3B82F6',
     tailwindColor: 'text-primary',
     icon: '📋',
-    filterable: false,
+    filterable: true,
     order: 0,
   },
   {

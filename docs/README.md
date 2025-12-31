@@ -76,6 +76,7 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 
 ### 📁 Analysis (`analysis/`)
 - **`FEATURE_GOAL_GENERATION_IMPROVEMENT.md`** - ✅ Förbättring: Använd BPMN-strukturell information för Feature Goal-generering (implementerad)
+- **`FILE_LEVEL_DOCUMENTATION_IMPLEMENTATION.md`** - ✅ File-level dokumentation: Implementation och användning (implementerad)
 - **`DIFF_FUNCTIONALITY_ANALYSIS.md`** - Analys av diff-funktionalitet för selektiv regenerering
 - **`DIFF_FUNCTIONALITY_EXPLANATION.md`** - Förklaring av diff-funktionalitet
 - **`BPMN_MAP_FROM_TEMPLATE_ANALYSIS.md`** - Analys: Extrahera BPMN Map från mortgage-template-main handlers
@@ -100,6 +101,9 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 
 - **Topologisk fil-sortering för dokumentationsgenerering**  
   Filer sorteras topologiskt baserat på dependency-grafer (vilka filer anropar vilka) för att säkerställa att subprocess-filer genereras FÖRE parent-filer. Detta garanterar att child documentation (epics) finns tillgänglig när parent Feature Goals genereras. Se [`analysis/TOPOLOGICAL_SORT_IMPLEMENTATION_COMPLETE.md`](./analysis/TOPOLOGICAL_SORT_IMPLEMENTATION_COMPLETE.md) för detaljer.
+
+- **File-level dokumentation med processstruktur**  
+  File-level dokumentation genereras för alla filer och använder processens struktur (flow graph, paths) för att skapa en intelligent sammanfattning av hela processen baserat på alla noders dokumentation. Innehåller JSON-data för E2E-scenariogenerering. Se [`analysis/FILE_LEVEL_DOCUMENTATION_IMPLEMENTATION.md`](./analysis/FILE_LEVEL_DOCUMENTATION_IMPLEMENTATION.md) för detaljer.
 
 - **Planerade scenarier i `node_planned_scenarios`**  
   Alla "planerade scenarion" i UI kommer från tabellen `node_planned_scenarios`:

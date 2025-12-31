@@ -8,7 +8,8 @@ export type ArtifactProvider = 'cloud' | 'local' | 'fallback' | null | undefined
  * 
  * Format: 
  * - BPMN versioned: docs/claude/{bpmnFileName}/{bpmnVersionHash}/{docFileName}
- * - Non-versioned: docs/claude/{docFileName}
+ * 
+ * VIKTIGT: Version hash är OBLIGATORISKT. Ingen bakåtkompatibilitet.
  * 
  * Note: We use only BPMN file versioning, not per-element artifact versioning.
  * For manual improvements to specific nodes, use node-docs overrides instead.
@@ -27,18 +28,18 @@ export const buildDocStoragePaths = (
   // Claude-only: Always use 'claude' as provider
   const providerName = 'claude';
 
-  // If BPMN version hash is provided, include it in the path
-  if (bpmnVersionHash && bpmnFileName) {
-    const basePath = `docs/${providerName}/${bpmnFileName}/${bpmnVersionHash}`;
-    
-    return { 
-      modePath: `${basePath}/${docFileName}`
-    };
+  // Version hash is REQUIRED - no fallback
+  if (!bpmnVersionHash || !bpmnFileName) {
+    throw new Error(
+      `buildDocStoragePaths: version hash and bpmnFileName are required. ` +
+      `docFileName: ${docFileName}, bpmnFileName: ${bpmnFileName || 'missing'}, versionHash: ${bpmnVersionHash || 'missing'}`
+    );
   }
 
-  // Non-versioned path (used when version hash is not available)
+  const basePath = `docs/${providerName}/${bpmnFileName}/${bpmnVersionHash}`;
+  
   return { 
-    modePath: `docs/${providerName}/${docFileName}`
+    modePath: `${basePath}/${docFileName}`
   };
 };
 

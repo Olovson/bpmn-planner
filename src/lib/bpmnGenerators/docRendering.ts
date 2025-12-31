@@ -37,17 +37,48 @@ export function extractDocInfoFromJson(docJson: unknown): {
   inputs?: string[];
   outputs?: string[];
   scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+  userStories?: Array<{
+    id: string;
+    role: string;
+    goal: string;
+    value: string;
+    acceptanceCriteria: string[];
+  }>;
 } | null {
   if (!docJson || typeof docJson !== 'object') return null;
   
   const obj = docJson as any;
-  return {
+  const result: {
+    summary: string;
+    flowSteps: string[];
+    inputs?: string[];
+    outputs?: string[];
+    scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+    userStories?: Array<{
+      id: string;
+      role: string;
+      goal: string;
+      value: string;
+      acceptanceCriteria: string[];
+    }>;
+  } = {
     summary: obj.summary || '',
     flowSteps: Array.isArray(obj.flowSteps) ? obj.flowSteps : [],
     inputs: Array.isArray(obj.inputs) ? obj.inputs : undefined,
     outputs: Array.isArray(obj.outputs) ? obj.outputs : undefined,
     scenarios: Array.isArray(obj.scenarios) ? obj.scenarios : undefined,
   };
+  // Lägg till userStories om de finns (för Epic-dokumentation)
+  if (Array.isArray(obj.userStories)) {
+    result.userStories = obj.userStories.map((us: any) => ({
+      id: us.id || '',
+      role: us.role || 'Kund',
+      goal: us.goal || '',
+      value: us.value || '',
+      acceptanceCriteria: Array.isArray(us.acceptanceCriteria) ? us.acceptanceCriteria : [],
+    }));
+  }
+  return result;
 }
 
 /**
@@ -182,7 +213,19 @@ export async function renderDocWithLlm(
 
   // LLM måste vara aktivt - inga fallbacks
   if (!llmActive) {
-    throw new Error(`LLM is required for ${docType} documentation generation but is disabled or not available`);
+    const reason = !llmAllowed 
+      ? 'llmAllowed is false' 
+      : !isLlmEnabled() 
+        ? 'isLlmEnabled() returned false (check VITE_USE_LLM and VITE_ANTHROPIC_API_KEY)' 
+        : 'unknown';
+    console.error(
+      `[renderDocWithLlm] LLM is required for ${docType} documentation generation but is disabled or not available. ` +
+      `Reason: ${reason}. Node: ${context.node.bpmnFile}::${context.node.bpmnElementId}`
+    );
+    throw new Error(
+      `LLM is required for ${docType} documentation generation but is disabled or not available. ` +
+      `Reason: ${reason}. Please check your LLM configuration.`
+    );
   }
 
   // Kontrollera avbrytning INNAN LLM-anrop

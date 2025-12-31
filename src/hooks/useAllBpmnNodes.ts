@@ -36,6 +36,8 @@ export interface BpmnNodeData {
   staccIntegrationSource?: string | null;
   replaceWithBankIntegrationSource?: boolean;
   subprocessFile?: string; // ✅ För call activities: subprocess BPMN file
+  isSubprocess?: boolean; // ✅ För Process-noder: true om filen är en subprocess (refereras av CallActivities)
+  isProcessFeatureGoal?: boolean; // ✅ För Process Feature Goal-noder: true om detta är en Process Feature Goal (subprocess-fil utan callActivities)
 }
 
 type FlattenedProcessNode = ProcessTreeNode & { 
@@ -198,13 +200,17 @@ export const useAllBpmnNodes = () => {
           );
 
           // För call activities, använd Feature Goal-sökvägar istället för vanliga node-sökvägar
+          // Note: docPath is not used for call activities, they use Feature Goal paths
           const docPath = node.type === 'callActivity' 
             ? null // Använd inte getNodeDocStoragePath för call activities
-            : getNodeDocStoragePath(bpmnFile, elementId);
+            : null; // Will be resolved async with version hash if needed
           
-          // För call activities, använd CallActivity Feature Goal viewer path (hierarchical naming)
-          // File-level docs används som fallback för subprocesser utan callActivities
-          const docUrl = getDocumentationUrl(bpmnFile, elementId);
+          // För call activities, länka till Process Feature Goal för subprocess-filen (non-hierarchical)
+          // VIKTIGT: CallActivities länkar till Process Feature Goal för subprocess-filen, INTE till Epic-dokumentation
+          // Process Feature Goals använder non-hierarchical naming: feature-goals/{subprocessBaseName}
+          const docUrl = node.type === 'callActivity' && node.subprocessFile
+            ? getDocumentationUrl(node.subprocessFile) // Länka till Process Feature Goal för subprocess-filen
+            : getDocumentationUrl(bpmnFile, elementId); // För tasks/epics, använd normal dokumentation
 
           const nodeData: BpmnNodeData = {
             bpmnFile,
@@ -230,10 +236,10 @@ export const useAllBpmnNodes = () => {
             visualOrderIndex: node.visualOrderIndex,
             branchId: node.branchId ?? null,
             scenarioPath: node.scenarioPath,
-            staccIntegrationSource: mapping?.stacc_integration_source || null,
+            staccIntegrationSource: (mapping as any)?.stacc_integration_source || null,
             replaceWithBankIntegrationSource:
-              typeof mapping?.replace_with_bank_integration_source === 'boolean'
-                ? mapping.replace_with_bank_integration_source
+              typeof (mapping as any)?.replace_with_bank_integration_source === 'boolean'
+                ? (mapping as any).replace_with_bank_integration_source
                 : true,
             // ✅ Spara subprocessFile för call activities så vi kan använda det senare
             subprocessFile: node.subprocessFile,
@@ -242,8 +248,137 @@ export const useAllBpmnNodes = () => {
           nodeMap.set(nodeKey, nodeData);
         }
 
-        // Convert Map to array
+        // Identifiera vilka filer som är subprocesser (refereras av CallActivities)
+        // Detta används för att markera Process-noder som subprocesser (men vi visar dem fortfarande)
+        const subprocessFiles = new Set<string>();
+        for (const node of relevantNodes) {
+          if (node.type === 'callActivity' && node.subprocessFile) {
+            // Normalisera filnamnet (säkra att det har .bpmn extension för jämförelse)
+            const normalizedFile = node.subprocessFile.endsWith('.bpmn')
+              ? node.subprocessFile
+              : `${node.subprocessFile}.bpmn`;
+            subprocessFiles.add(normalizedFile);
+          }
+        }
+
+        // VIKTIGT: Identifiera subprocess-filer som har Process Feature Goals (utan callActivities)
+        // Dessa filer har tasks/epics men INGA callActivities
+        // Vi behöver skapa "virtuella" noder för dessa så att de visas i NodeMatrix
+        const processFeatureGoalFiles = new Set<string>();
+        
+        // Samla alla filer som har tasks/epics
+        const filesWithTasks = new Set<string>();
+        const filesWithCallActivities = new Set<string>();
+        
+        for (const node of relevantNodes) {
+          const normalizedFile = node.bpmnFile.endsWith('.bpmn')
+            ? node.bpmnFile
+            : `${node.bpmnFile}.bpmn`;
+          
+          if (node.type === 'userTask' || node.type === 'serviceTask' || node.type === 'businessRuleTask') {
+            filesWithTasks.add(normalizedFile);
+          } else if (node.type === 'callActivity') {
+            // För callActivities, markera både parent-filen och subprocess-filen
+            filesWithCallActivities.add(normalizedFile);
+            if (node.subprocessFile) {
+              const normalizedSubprocessFile = node.subprocessFile.endsWith('.bpmn')
+                ? node.subprocessFile
+                : `${node.subprocessFile}.bpmn`;
+              filesWithCallActivities.add(normalizedSubprocessFile);
+            }
+          }
+        }
+        
+        // Process Feature Goal-filer: har tasks/epics men INGA callActivities
+        for (const fileWithTasks of filesWithTasks) {
+          if (!filesWithCallActivities.has(fileWithTasks)) {
+            // Kolla att filen INTE är root-processen (mortgage.bpmn)
+            const baseName = fileWithTasks.replace('.bpmn', '');
+            const isRootProcess = fileWithTasks === 'mortgage.bpmn' || baseName === 'mortgage';
+            
+            if (!isRootProcess) {
+              processFeatureGoalFiles.add(fileWithTasks);
+              if (import.meta.env.DEV) {
+                console.log(`[useAllBpmnNodes] Found Process Feature Goal file: ${fileWithTasks}`);
+              }
+            }
+          }
+        }
+        
+        // Skapa "virtuella" noder för Process Feature Goals
+        for (const processFeatureGoalFile of processFeatureGoalFiles) {
+          const baseName = processFeatureGoalFile.replace('.bpmn', '');
+          const processElementId = baseName; // För Process Feature Goals är elementId = baseName
+          const nodeKey = `${processFeatureGoalFile}:${processElementId}`;
+          
+          // Skip om vi redan har en nod för denna fil (t.ex. från callActivity)
+          if (nodeMap.has(nodeKey)) {
+            continue;
+          }
+          
+          // Hitta process-noden för att få label (leta i flattened tree)
+          const allFlattenedNodes = flattenTree(processTree);
+          const processNode = allFlattenedNodes.find(node => 
+            node.type === 'process' && 
+            (node.bpmnFile === processFeatureGoalFile || 
+             (node.bpmnFile.endsWith('.bpmn') ? node.bpmnFile : `${node.bpmnFile}.bpmn`) === processFeatureGoalFile)
+          );
+          const elementName = processNode?.label || baseName;
+          
+          // Hämta mapping från databasen (om den finns)
+          // Process Feature Goals kan ha mappings i databasen om de har genererats via handleBuildHierarchy
+          const mapping = allMappings?.find(
+            m => m.bpmn_file === processFeatureGoalFile && m.element_id === processElementId
+          );
+          
+          // Använd mapping från databasen om den finns, annars använd process-nodens label som fallback
+          // Detta säkerställer att Process Feature Goals har ett Jira-namn även om de inte har genererats via handleBuildHierarchy
+          const jiraName = mapping?.jira_name || elementName || baseName;
+          
+          // Skapa en "virtuell" nod för Process Feature Goal
+          const processFeatureGoalNode: BpmnNodeData = {
+            bpmnFile: processFeatureGoalFile,
+            elementId: processElementId,
+            elementName: elementName,
+            nodeType: 'CallActivity', // Använd CallActivity-typ för att få Feature Goal-stöd i UI
+            hasDocs: false, // resolved below
+            documentationUrl: getDocumentationUrl(processFeatureGoalFile), // Process Feature Goal URL
+            hasTestReport: false,
+            hasDorDod: false,
+            jiraType: (mapping?.jira_type as 'feature goal' | 'epic' | null) || 'feature goal', // Default till 'feature goal' om ingen mapping finns
+            jiraName: jiraName, // Använd mapping från databasen eller process-nodens label som fallback
+            hierarchyPath: null,
+            subprocessMatchStatus: undefined,
+            diagnosticsSummary: null,
+            orderIndex: undefined,
+            visualOrderIndex: undefined,
+            branchId: null,
+            scenarioPath: undefined,
+            staccIntegrationSource: (mapping as any)?.stacc_integration_source || null,
+            replaceWithBankIntegrationSource:
+              typeof (mapping as any)?.replace_with_bank_integration_source === 'boolean'
+                ? (mapping as any).replace_with_bank_integration_source
+                : true,
+            subprocessFile: processFeatureGoalFile, // Sätt subprocessFile så att UI vet att det är en subprocess
+            isProcessFeatureGoal: true, // ✅ Flagga för att identifiera Process Feature Goal-noder
+          };
+          
+          nodeMap.set(nodeKey, processFeatureGoalNode);
+          if (import.meta.env.DEV) {
+            console.log(`[useAllBpmnNodes] Created Process Feature Goal node: ${nodeKey}`, {
+              ...processFeatureGoalNode,
+              mappingFound: !!mapping,
+              jiraName: mapping?.jira_name || 'null',
+            });
+          }
+        }
+
+        // Convert Map to array (efter att Process Feature Goal-noder har lagts till)
         allNodes.push(...Array.from(nodeMap.values()));
+
+        // VIKTIGT: Process-noder (file-level documentation) ska INTE visas i node-matrix
+        // File-level documentation är bara för E2E-scenarier och ger inget värde för användaren
+        // Dessa filtreras bort - bara Feature Goals, Epics och Business Rules visas
 
         // Resolve storage-based artifacts (docs + test reports)
         // Get version hashes for all unique BPMN files (cache to avoid duplicate queries)
@@ -267,64 +402,127 @@ export const useAllBpmnNodes = () => {
           allNodes.map(async (node) => {
             try {
               // För call activities, använd Feature Goal-sökvägar med version hash
-              let featureGoalPaths: string[] | undefined = undefined;
+              let featureGoalPaths: string | undefined = undefined;
               let epicDocPaths: string[] | undefined = undefined;
               
               if (node.nodeType === 'CallActivity') {
-                if (!node.subprocessFile) {
-                  if (import.meta.env.DEV) {
-                    console.warn(`[useAllBpmnNodes] CallActivity ${node.bpmnFile}:${node.elementId} has no subprocessFile - trying to infer from elementId`);
-                  }
-                  // Fallback: Försök inferera subprocessFile från elementId om det matchar ett filnamn
-                  // T.ex. elementId "household" → "mortgage-se-household.bpmn"
-                  const possibleSubprocessFile = `mortgage-se-${node.elementId}.bpmn`;
-                  // Kolla om filen finns i processTree
-                  const allFiles = processTree ? getAllFilesFromTree(processTree) : [];
-                  if (allFiles.includes(possibleSubprocessFile)) {
-                    node.subprocessFile = possibleSubprocessFile;
-                    if (import.meta.env.DEV) {
-                      console.log(`[useAllBpmnNodes] Inferred subprocessFile: ${possibleSubprocessFile}`);
-                    }
-                  }
-                }
+                // VIKTIGT: Identifiera Process Feature Goals (subprocess-filer utan callActivities)
+                // Process Feature Goals har: node.bpmnFile === node.subprocessFile (samma fil)
+                const normalizedBpmnFile = node.bpmnFile.endsWith('.bpmn')
+                  ? node.bpmnFile
+                  : `${node.bpmnFile}.bpmn`;
+                const normalizedSubprocessFile = node.subprocessFile?.endsWith('.bpmn')
+                  ? node.subprocessFile
+                  : node.subprocessFile ? `${node.subprocessFile}.bpmn` : undefined;
                 
-                if (node.subprocessFile) {
-                  // Normalize subprocessFile (ensure it has .bpmn extension)
-                  const subprocessFile = node.subprocessFile.endsWith('.bpmn')
-                    ? node.subprocessFile
-                    : `${node.subprocessFile}.bpmn`;
-                  
-                  // VIKTIGT: Använd subprocess-filens version hash, inte parent-filens
-                  // Dokumentationen sparas nu under varje fils egen version hash
+                const isProcessFeatureGoal = normalizedSubprocessFile && 
+                  normalizedBpmnFile === normalizedSubprocessFile && 
+                  node.elementId === normalizedBpmnFile.replace('.bpmn', '');
+                
+                if (isProcessFeatureGoal) {
+                  // Process Feature Goal: använd non-hierarchical naming (utan parentBpmnFile)
+                  const subprocessFile = normalizedSubprocessFile;
                   const subprocessVersionHash = await getVersionHash(subprocessFile);
                   
-                  // VIKTIGT: Normalisera parentBpmnFile också (säkra att den har .bpmn extension)
-                  const parentBpmnFile = node.bpmnFile.endsWith('.bpmn')
-                    ? node.bpmnFile
-                    : `${node.bpmnFile}.bpmn`;
-                  
                   if (import.meta.env.DEV) {
-                    console.log(`[useAllBpmnNodes] CallActivity ${node.elementId}:`, {
-                      parentBpmnFile,
+                    console.log(`[useAllBpmnNodes] Process Feature Goal ${node.elementId}:`, {
                       subprocessFile,
                       subprocessVersionHash,
                       elementId: node.elementId,
                     });
                   }
                   
-                  featureGoalPaths = getFeatureGoalDocStoragePaths(
-                    subprocessFile.replace('.bpmn', ''), // subprocess BPMN file (without .bpmn for getFeatureGoalDocFileKey)
-                    node.elementId,       // call activity element ID
-                    parentBpmnFile,       // parent BPMN file (där call activity är definierad) - NORMALISERAD
-                    subprocessVersionHash, // VIKTIGT: Använd subprocess-filens version hash
-                    subprocessFile,      // VIKTIGT: Använd subprocess-filen för versioned paths
+                  // Använd Process Feature Goal-sökvägar (non-hierarchical, utan parentBpmnFile)
+                  const { buildDocStoragePaths } = await import('@/lib/artifactPaths');
+                  const processFeatureGoalKey = getFeatureGoalDocFileKey(
+                    subprocessFile,
+                    node.elementId,
+                    undefined, // no version suffix
+                    undefined, // no parent (non-hierarchical) - detta gör det till Process Feature Goal
+                    false, // not a root process
                   );
                   
-                  if (import.meta.env.DEV && featureGoalPaths.length > 0) {
-                    console.log(`[useAllBpmnNodes] Feature Goal paths for ${node.elementId}:`, featureGoalPaths);
+                  if (subprocessVersionHash) {
+                    const { modePath } = buildDocStoragePaths(
+                      processFeatureGoalKey,
+                      'slow',
+                      'cloud', // ArtifactProvider: 'cloud' | 'local' | 'fallback'
+                      subprocessFile,
+                      subprocessVersionHash
+                    );
+                    featureGoalPaths = modePath;
+                    
+                    if (import.meta.env.DEV && featureGoalPaths) {
+                      console.log(`[useAllBpmnNodes] Process Feature Goal path for ${node.elementId}:`, featureGoalPaths);
+                    }
+                  }
+                  
+                } else {
+                  // VIKTIGT: CallActivity Feature Goals genereras INTE längre
+                  // Process Feature Goals används istället för subprocess-filer (non-hierarchical naming)
+                  // För callActivities, peka på Process Feature Goal för subprocess-filen
+                  if (!node.subprocessFile) {
+                    if (import.meta.env.DEV) {
+                      console.warn(`[useAllBpmnNodes] CallActivity ${node.bpmnFile}:${node.elementId} has no subprocessFile - trying to infer from elementId`);
+                    }
+                    // Fallback: Försök inferera subprocessFile från elementId om det matchar ett filnamn
+                    // T.ex. elementId "household" → "mortgage-se-household.bpmn"
+                    const possibleSubprocessFile = `mortgage-se-${node.elementId}.bpmn`;
+                    // Kolla om filen finns i processTree
+                    const allFiles = processTree ? getAllFilesFromTree(processTree) : [];
+                    if (allFiles.includes(possibleSubprocessFile)) {
+                      node.subprocessFile = possibleSubprocessFile;
+                      if (import.meta.env.DEV) {
+                        console.log(`[useAllBpmnNodes] Inferred subprocessFile: ${possibleSubprocessFile}`);
+                      }
+                    }
+                  }
+                  
+                  if (node.subprocessFile) {
+                    // Normalize subprocessFile (ensure it has .bpmn extension)
+                    const subprocessFile = node.subprocessFile.endsWith('.bpmn')
+                      ? node.subprocessFile
+                      : `${node.subprocessFile}.bpmn`;
+                    
+                    // VIKTIGT: Använd subprocess-filens version hash
+                    const subprocessVersionHash = await getVersionHash(subprocessFile);
+                    
+                    if (import.meta.env.DEV) {
+                      console.log(`[useAllBpmnNodes] CallActivity ${node.elementId} -> Process Feature Goal for ${subprocessFile}:`, {
+                        subprocessFile,
+                        subprocessVersionHash,
+                        elementId: node.elementId,
+                      });
+                    }
+                    
+                    // Använd Process Feature Goal (non-hierarchical naming, ingen parent)
+                    const { buildDocStoragePaths } = await import('@/lib/artifactPaths');
+                    const processFeatureGoalKey = getFeatureGoalDocFileKey(
+                      subprocessFile,
+                      subprocessFile.replace('.bpmn', ''), // elementId är filens baseName för Process Feature Goals
+                      undefined, // no version suffix
+                      undefined, // no parent (non-hierarchical)
+                      false, // not a root process
+                    );
+                    
+                    if (subprocessVersionHash) {
+                      const { modePath } = buildDocStoragePaths(
+                        processFeatureGoalKey,
+                        'slow',
+                        'cloud',
+                        subprocessFile,
+                        subprocessVersionHash
+                      );
+                      featureGoalPaths = modePath;
+                      
+                      if (import.meta.env.DEV && featureGoalPaths) {
+                        console.log(`[useAllBpmnNodes] Process Feature Goal path for CallActivity ${node.elementId}:`, featureGoalPaths);
+                      }
+                    }
                   }
                 }
               } else {
+                // Process-noder (file-level documentation) filtreras bort - de visas inte i node-matrix
                 // För Epic-dokumentation (UserTask, ServiceTask, BusinessRuleTask): 
                 // VIKTIGT: Använd alltid nodens egen BPMN-fil och dess version hash
                 // Dokumentationen sparas nu under varje fils egen version hash
@@ -332,45 +530,55 @@ export const useAllBpmnNodes = () => {
                   ? node.bpmnFile 
                   : `${node.bpmnFile}.bpmn`;
                 const versionHash = await getVersionHash(bpmnFileName);
-                const docFileKey = getNodeDocFileKey(node.bpmnFile, node.elementId);
+                
+                if (import.meta.env.DEV) {
+                  console.log(`[useAllBpmnNodes] Epic node ${node.elementId} (${node.nodeType}):`, {
+                    bpmnFileName,
+                    versionHash: versionHash || 'MISSING',
+                    elementId: node.elementId,
+                  });
+                }
                 
                 epicDocPaths = [];
                 if (versionHash) {
-                  // Versioned path: docs/claude/{bpmnFileName}/{versionHash}/nodes/...
-                  epicDocPaths.push(`docs/claude/${bpmnFileName}/${versionHash}/${docFileKey}`);
-                }
-                // Non-versioned path: docs/claude/nodes/...
-                epicDocPaths.push(`docs/claude/${docFileKey}`);
-                
-                // VIKTIGT: Lägg alltid till file-level documentation för alla filer (både root och subprocess)
-                // File-level documentation sparas som {fileBaseName}.html (inte feature-goals/)
-                // Detta säkerställer att file-level documentation visas även när en subprocess-fil laddas upp isolerat
-                // File-level documentation ersätter Process Feature Goals (som inte längre genereras)
-                const fileBaseName = node.bpmnFile.replace('.bpmn', '');
-                
-                if (versionHash) {
-                  const fileLevelDocKey = `${fileBaseName}.html`;
-                  epicDocPaths.push(`docs/claude/${bpmnFileName}/${versionHash}/${fileLevelDocKey}`);
-                  epicDocPaths.push(`docs/claude/${fileLevelDocKey}`);
-                  
+                  // Använd getEpicDocStoragePaths för att bygga korrekt versioned path
+                  // Detta säkerställer att pathen matchar exakt hur dokumentationen sparas
+                  const { getEpicDocStoragePaths } = await import('@/lib/artifactUrls');
+                  try {
+                    const epicDocPath = await getEpicDocStoragePaths(bpmnFileName, node.elementId, versionHash);
+                    epicDocPaths.push(epicDocPath);
+                    if (import.meta.env.DEV) {
+                      console.log(`[useAllBpmnNodes] ✓ Epic doc path for ${node.elementId}:`, epicDocPath);
+                    }
+                  } catch (error) {
+                    console.warn(`[useAllBpmnNodes] ✗ Failed to get Epic doc path for ${bpmnFileName}::${node.elementId}:`, error);
+                  }
+                } else {
                   if (import.meta.env.DEV) {
-                    console.log(`[useAllBpmnNodes] Added file-level doc paths for ${node.bpmnFile}:`, {
-                      fileLevelDocKey,
-                      versionHash,
-                    });
+                    console.warn(`[useAllBpmnNodes] ✗ No version hash for ${bpmnFileName}, cannot build Epic doc path for ${node.elementId}`);
                   }
                 }
               }
               
               // Only log for call activities with feature goal paths (most verbose case)
-              if (import.meta.env.DEV && node.nodeType === 'CallActivity' && featureGoalPaths && featureGoalPaths.length > 0) {
+              if (import.meta.env.DEV && node.nodeType === 'CallActivity' && featureGoalPaths) {
+              }
+              
+              // Bygg additionalPaths array korrekt
+              const additionalPaths: string[] = [];
+              if (featureGoalPaths) {
+                // Feature Goal returnerar en string, inte array
+                additionalPaths.push(featureGoalPaths);
+              } else if (epicDocPaths) {
+                // Epic paths är redan en array
+                additionalPaths.push(...epicDocPaths);
               }
               
               const resolvedDocs = await checkDocsAvailable(
                 node.confluenceUrl,
                 docPathFromNode(node), // Main path (non-versioned, for backward compatibility)
                 storageFileExists,
-                featureGoalPaths || epicDocPaths, // ✅ Skicka med Feature Goal-sökvägar för call activities ELLER Epic-sökvägar för tasks/epics (inkl. versioned paths)
+                additionalPaths.length > 0 ? additionalPaths : undefined, // ✅ Skicka med Feature Goal-sökvägar för call activities ELLER Epic-sökvägar för tasks/epics (inkl. versioned paths)
               );
               
               const resolvedTestReport = await checkTestReportAvailable(
@@ -420,5 +628,13 @@ export const useAllBpmnNodes = () => {
   return { nodes, loading: loading || treeLoading, error };
 };
 
-const docPathFromNode = (node: { bpmnFile: string; elementId: string }) =>
-  getNodeDocStoragePath(node.bpmnFile, node.elementId);
+// Note: docPathFromNode is deprecated - paths should be built with version hash using buildDocStoragePaths
+// This function is kept for backward compatibility but should not be used for new code
+// For Epic nodes, this returns null since they use epicDocPaths instead
+const docPathFromNode = (node: { bpmnFile: string; elementId: string; nodeType?: string }) => {
+  // Process-noder (file-level documentation) visas inte längre i node-matrix
+  // For Epic nodes (UserTask, ServiceTask, BusinessRuleTask), return null
+  // They use epicDocPaths instead (versioned paths)
+  // This is deprecated - should use getNodeDocStoragePath with version hash
+  return null;
+};

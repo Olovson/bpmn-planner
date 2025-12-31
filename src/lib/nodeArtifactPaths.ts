@@ -70,24 +70,24 @@ export const getFeatureGoalDocFileKey = (
     return `feature-goals/${parentBaseName}-${sanitizedId}${versionSuffix}.html`;
   }
   
-  // Process Feature Goals för subprocesser genereras INTE längre (ersatta av file-level documentation)
-  // Men root process Feature Goals genereras fortfarande (root process har ingen parent)
-  // VIKTIGT: Om parentBpmnFile saknas, kan det INTE vara en Feature Goal för call activity.
-  // Det kan bara vara Root Process Feature Goal om isRootProcess flag är satt.
-  // Om parentBpmnFile saknas och isRootProcess inte är satt, är det ett fel.
+  // Process Feature Goals för subprocesser genereras nu igen (användaren ska se Feature Goal-struktur)
+  // Root process Feature Goals genereras också (root process har ingen parent)
+  // VIKTIGT: Om parentBpmnFile saknas, kan det vara:
+  // 1. Root Process Feature Goal (isRootProcess = true)
+  // 2. Process Feature Goal för subprocess-fil (isRootProcess = false eller undefined)
+  // Båda använder non-hierarchical naming (ingen parent)
   
-  if (isRootProcess) {
-    // Root process Feature Goal: använd baseName (ingen parent)
+  if (!parentBpmnFile) {
+    // Non-hierarchical naming: använd baseName (ingen parent)
+    // Detta gäller både Root Process Feature Goals och Process Feature Goals för subprocess-filer
     const baseName = getBaseName(bpmnFile);
     return `feature-goals/${baseName}${versionSuffix}.html`;
   }
   
-  // Om parentBpmnFile saknas och det inte är root process, är det ett fel
-  // Process Feature Goals för subprocesser genereras inte längre
+  // Om vi når hit, borde parentBpmnFile finnas (för call activities)
+  // Men om det inte finns, är det ett fel
   throw new Error(
-    `getFeatureGoalDocFileKey: parentBpmnFile is required for Feature Goals (call activities). ` +
-    `Process Feature Goals för subprocesser genereras inte längre (ersatta av file-level documentation). ` +
-    `Root Process Feature Goals genereras endast för root-processen när isRootProcess flag är satt. ` +
+    `getFeatureGoalDocFileKey: Unexpected state - parentBpmnFile should be provided for call activities. ` +
     `bpmnFile: ${bpmnFile}, elementId: ${elementId}`
   );
 };

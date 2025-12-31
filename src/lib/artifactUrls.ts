@@ -19,7 +19,7 @@ export function getDocumentationUrl(bpmnFile: string, elementId?: string): strin
   }
   
   // For file-level documentation, check if this is a root process or subprocess
-  // Subprocesses don't have combined file-level docs, so link to Feature Goal instead
+  // Subprocesses have Process Feature Goals (non-hierarchical), root processes have file-level docs
   // Note: This is a synchronous function, so we can't use async imports.
   // We'll use a simple heuristic: if the file is not "mortgage.bpmn", assume it's a subprocess.
   // This works for the current mortgage domain where mortgage.bpmn is the root.
@@ -27,9 +27,14 @@ export function getDocumentationUrl(bpmnFile: string, elementId?: string): strin
   const baseName = bpmnFile.replace('.bpmn', '');
   const isLikelyRootProcess = bpmnFile === 'mortgage.bpmn' || baseName === 'mortgage';
   
-  // Both root and subprocess files use file-level documentation
-  // File-level docs are now generated for both root and subprocess files
-  return `#/doc-viewer/${encodeURIComponent(getFileDocViewerPath(bpmnFile))}`;
+  if (isLikelyRootProcess) {
+    // Root process: use file-level documentation
+    return `#/doc-viewer/${encodeURIComponent(getFileDocViewerPath(bpmnFile))}`;
+  } else {
+    // Subprocess: use Process Feature Goal (non-hierarchical)
+    const processFeatureGoalPath = `feature-goals/${baseName}`;
+    return `#/doc-viewer/${encodeURIComponent(processFeatureGoalPath)}`;
+  }
 }
 
 /**
@@ -48,30 +53,40 @@ export function getTestFileUrl(testFilePath: string): string {
 export async function storageFileExists(filePath: string): Promise<boolean> {
   if (!filePath) return false;
 
-  // Use list() method - it's the most reliable and doesn't cause 400 errors
-  // Split path into directory and filename
-  const parts = filePath.split('/');
-  const fileName = parts.pop();
-  const dir = parts.join('/');
-  
-  if (!fileName) return false;
-
   try {
+    // Först: Försök direkt download (snabbast och mest pålitligt)
+    // Detta fungerar bättre för versioned paths med långa directory-strukturer
+    const { data, error } = await supabase.storage
+      .from('bpmn-files')
+      .download(filePath);
+
+    if (!error && data) {
+      return true;
+    }
+
+    // Fallback: Använd list() method om download misslyckas
+    // Split path into directory and filename
+    const parts = filePath.split('/');
+    const fileName = parts.pop();
+    const dir = parts.join('/');
+    
+    if (!fileName) return false;
+
     // List files in directory and search for the filename
     // This method doesn't use v1 object API and won't cause 400 errors
-    const { data, error } = await supabase.storage
+    const { data: listData, error: listError } = await supabase.storage
       .from('bpmn-files')
       .list(dir || undefined, { 
         search: fileName, 
         limit: 1 
       });
 
-    if (error) {
+    if (listError) {
       // Only log unexpected errors (not expected errors for missing files)
       return false;
     }
 
-    const exists = Boolean(data?.find((entry) => entry.name === fileName));
+    const exists = Boolean(listData?.find((entry) => entry.name === fileName));
     return exists;
   } catch (error) {
     // Network errors or other exceptions - return false silently
@@ -79,54 +94,69 @@ export async function storageFileExists(filePath: string): Promise<boolean> {
   }
 }
 
-export const getNodeDocStoragePath = (bpmnFile: string, elementId: string) =>
-  // Docs lagras i Supabase Storage under 'docs/claude/<node-doc-key>'
-  // Claude-only: All documentation is generated using Claude
-  `docs/claude/${getNodeDocFileKey(bpmnFile, elementId)}`;
+/**
+ * Get storage path for node documentation (Epic, Business Rule).
+ * Uses buildDocStoragePaths() for consistency - requires version hash.
+ */
+export async function getNodeDocStoragePath(
+  bpmnFile: string,
+  elementId: string,
+  versionHash: string | null
+): Promise<string> {
+  if (!versionHash) {
+    throw new Error(`getNodeDocStoragePath: version hash is required for ${bpmnFile}::${elementId}`);
+  }
+  
+  const { buildDocStoragePaths } = await import('./artifactPaths');
+  const docFileKey = getNodeDocFileKey(bpmnFile, elementId);
+  
+  const { modePath } = buildDocStoragePaths(
+    docFileKey,
+    'slow', // mode
+    'claude', // provider
+    bpmnFile,
+    versionHash
+  );
+  
+  return modePath;
+}
 
 /**
- * Get all possible storage paths for Feature Goal documentation (call activities).
- * Returns an array of paths to check, ordered by priority (most specific first).
+ * Get storage path for Feature Goal documentation (call activities).
+ * Uses buildDocStoragePaths() for consistency - requires version hash.
  * 
  * VIKTIGT: Process Feature Goals genereras INTE längre (ersatta av file-level documentation).
  * Denna funktion hanterar bara CallActivity Feature Goals (hierarchical naming med parent).
- * Om parentBpmnFile saknas, returneras tom array.
  * 
  * @param subprocessBpmnFile - The subprocess BPMN file (e.g., "mortgage-se-internal-data-gathering.bpmn")
  * @param elementId - The call activity element ID (e.g., "internal-data-gathering")
  * @param parentBpmnFile - Required parent BPMN file where call activity is defined (e.g., "mortgage-se-application.bpmn")
- *   If not provided, returns empty array (Process Feature Goals genereras inte längre)
- * @param versionHash - Optional version hash for the BPMN file (for versioned paths)
+ * @param versionHash - Required version hash for the BPMN file
  * @param bpmnFileForVersion - Optional BPMN file name to use for versioned paths (defaults to subprocessBpmnFile)
- * @returns Array of storage paths to check (empty if parentBpmnFile is not provided)
+ * @returns Storage path (empty string if parentBpmnFile is not provided)
  */
-export function getFeatureGoalDocStoragePaths(
+export async function getFeatureGoalDocStoragePaths(
   subprocessBpmnFile: string,
   elementId: string,
   parentBpmnFile?: string,
   versionHash?: string | null,
   bpmnFileForVersion?: string,
-): string[] {
-  const paths: string[] = [];
+): Promise<string> {
+  // VIKTIGT: Process Feature Goals genereras inte längre - parentBpmnFile måste finnas
+  if (!parentBpmnFile) {
+    return '';
+  }
+  
+  if (!versionHash) {
+    throw new Error(
+      `getFeatureGoalDocStoragePaths: version hash is required for ${subprocessBpmnFile}::${elementId}`
+    );
+  }
   
   // Determine which BPMN file to use for versioned paths
   // VIKTIGT: Varje subprocess-fil använder sin egen version hash
-  // bpmnFileForVersion ska vara subprocess-filen (inte parent-filen)
   const fileForVersion = bpmnFileForVersion || subprocessBpmnFile;
   const bpmnFileName = fileForVersion.endsWith('.bpmn') ? fileForVersion : `${fileForVersion}.bpmn`;
-  // VIKTIGT: Filen är sparad MED .bpmn i sökvägen, så vi behåller .bpmn för versioned paths
-  const bpmnFileBaseName = bpmnFileName.replace('.bpmn', ''); // För non-versioned paths
-  const bpmnFileNameForVersionedPath = bpmnFileName; // För versioned paths, behåll .bpmn
-  
-  // VIKTIGT: För call activities använder vi ALLTID hierarchical naming (med parent)
-  // men filen sparas under subprocess-filens version hash (inte parent-filens).
-  // Process Feature Goals genereras INTE längre (ersatta av file-level documentation),
-  // så parentBpmnFile måste alltid finnas för Feature Goals.
-  if (!parentBpmnFile) {
-    // Process Feature Goals genereras inte längre - returnera tom array
-    // Om parentBpmnFile saknas, finns det ingen Feature Goal att hitta
-    return [];
-  }
   
   const hierarchicalKey = getFeatureGoalDocFileKey(
     subprocessBpmnFile,
@@ -135,19 +165,50 @@ export function getFeatureGoalDocStoragePaths(
     parentBpmnFile,
   );
   
-  // Versioned paths (if version hash is provided)
-  if (versionHash) {
-    // Versioned paths: docs/claude/{bpmnFileName}/{versionHash}/feature-goals/...
-    // VIKTIGT: Behåll .bpmn i filnamnet eftersom filen är sparad så
-    paths.push(`docs/claude/${bpmnFileNameForVersionedPath}/${versionHash}/${hierarchicalKey}`);
-  }
+  const { buildDocStoragePaths } = await import('./artifactPaths');
+  const { modePath } = buildDocStoragePaths(
+    hierarchicalKey,
+    'slow', // mode
+    'claude', // provider
+    bpmnFileName,
+    versionHash
+  );
   
-  // Non-versioned paths (fallback when version hash is not available)
-  paths.push(`docs/claude/${hierarchicalKey}`);
-  
-  return paths;
+  return modePath;
 }
 
+/**
+ * Get storage path for Epic documentation.
+ * Uses buildDocStoragePaths() for consistency - requires version hash.
+ */
+export async function getEpicDocStoragePaths(
+  bpmnFile: string,
+  elementId: string,
+  versionHash: string | null
+): Promise<string> {
+  if (!versionHash) {
+    throw new Error(`getEpicDocStoragePaths: version hash is required for ${bpmnFile}::${elementId}`);
+  }
+  
+  const { buildDocStoragePaths } = await import('./artifactPaths');
+  const docFileKey = getNodeDocFileKey(bpmnFile, elementId);
+  
+  const { modePath } = buildDocStoragePaths(
+    docFileKey,
+    'slow', // mode
+    'claude', // provider
+    bpmnFile,
+    versionHash
+  );
+  
+  return modePath;
+}
+
+/**
+ * Get storage path for documentation variant.
+ * NOTE: This function is deprecated - use buildDocStoragePaths() with version hash instead.
+ * Kept for backward compatibility with useDocVariantAvailability hook.
+ */
 export function getDocVariantPaths(docId: string): {
   claude: string;
 } {

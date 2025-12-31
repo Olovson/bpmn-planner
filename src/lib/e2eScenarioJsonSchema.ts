@@ -6,6 +6,7 @@ import type { JSONSchema7 } from 'json-schema';
 export function buildE2eScenarioJsonSchema(): JSONSchema7 {
   return {
     type: 'object',
+    additionalProperties: false,
     required: ['id', 'name', 'priority', 'type', 'iteration', 'summary', 'given', 'when', 'then', 'bankProjectTestSteps', 'subprocessSteps'],
     properties: {
       id: {
@@ -54,6 +55,7 @@ export function buildE2eScenarioJsonSchema(): JSONSchema7 {
         type: 'array',
         items: {
           type: 'object',
+          additionalProperties: false,
           required: ['bpmnNodeId', 'bpmnNodeType', 'bpmnNodeName', 'action', 'assertion'],
           properties: {
             bpmnNodeId: {
@@ -88,6 +90,7 @@ export function buildE2eScenarioJsonSchema(): JSONSchema7 {
         type: 'array',
         items: {
           type: 'object',
+          additionalProperties: false,
           required: ['order', 'bpmnFile', 'callActivityId', 'description'],
           properties: {
             order: {

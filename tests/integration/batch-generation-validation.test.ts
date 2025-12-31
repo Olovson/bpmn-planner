@@ -69,6 +69,51 @@ vi.mock('@/lib/bpmn/bpmnMapStorage', async (importOriginal) => {
   };
 });
 
+// Mock LLM client to return template content (so we can test without real LLM)
+vi.mock('@/lib/llmClient', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/llmClient')>();
+  return {
+    ...actual,
+    isLlmEnabled: () => true, // Enable LLM for testing
+    getLlmClient: (provider: any) => {
+      return {
+        provider,
+        modelName: provider === 'cloud' ? 'gpt-4o' : 'llama3.1:8b',
+        generate: async ({ userPrompt }: any) => {
+          // Return template JSON based on doc type
+          if (typeof userPrompt === 'string') {
+            if (userPrompt.includes('"type":"Feature"')) {
+              return JSON.stringify({
+                summary: 'Test Feature Summary',
+                effectGoals: [],
+                scopeIncluded: [],
+                scopeExcluded: [],
+                epics: [],
+                flowSteps: [],
+                dependencies: [],
+                scenarios: [],
+                testDescription: 'Test',
+                implementationNotes: [],
+                relatedItems: [],
+              });
+            } else if (userPrompt.includes('"type":"Epic"')) {
+              return JSON.stringify({
+                summary: 'Test Epic Summary',
+                userStories: [],
+                acceptanceCriteria: [],
+                inputs: [],
+                outputs: [],
+                scenarios: [],
+              });
+            }
+          }
+          return JSON.stringify({ summary: 'Test', flowSteps: [] });
+        },
+      };
+    },
+  };
+});
+
 // Mock buildBpmnProcessGraph to use our test helper
 vi.mock('@/lib/bpmnProcessGraph', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/bpmnProcessGraph')>();
@@ -150,11 +195,11 @@ describe('Batch Generation Validation (mortgage-se 2025.11.29)', () => {
       bpmnFiles, // All 19 files
       [],
       true, // useHierarchy = true
-      false, // useLlm = false (templates)
+      true, // useLlm = true (mocked above)
       progressCallback,
       'test',
       undefined,
-      undefined, // nodeFilter
+      undefined, // nodeFilter - no filter to test full batch generation
       undefined, // getVersionHashForFile
       undefined, // checkCancellation
       undefined, // abortSignal
@@ -273,11 +318,11 @@ describe('Batch Generation Validation (mortgage-se 2025.11.29)', () => {
       bpmnFiles,
       [],
       true, // useHierarchy = true
-      false, // useLlm = false
+      true, // useLlm = true (mocked above)
       progressCallback,
       'test',
       undefined,
-      undefined,
+      undefined, // nodeFilter - no filter to test full batch generation
       undefined,
       undefined,
       undefined,

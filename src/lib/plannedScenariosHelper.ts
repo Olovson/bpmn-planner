@@ -76,6 +76,15 @@ export function createPlannedScenariosFromTree(
         ];
       }
 
+      // Add the row to the results array
+      rows.push({
+        bpmn_file: node.bpmnFile,
+        bpmn_element_id: nodeId,
+        provider: 'claude', // Default provider
+        origin: 'design', // Default origin
+        scenarios,
+      });
+
       // Note: Design scenarios are no longer automatically created
       // They should be generated via LLM instead
     }
@@ -142,6 +151,15 @@ export function createPlannedScenariosFromGraph(
         },
       ];
     }
+
+    // Add the row to the results array
+    rows.push({
+      bpmn_file: node.bpmnFile,
+      bpmn_element_id: nodeId,
+      provider: 'claude', // Default provider
+      origin: 'design', // Default origin
+      scenarios,
+    });
 
     // Note: Design scenarios are no longer automatically created
     // They should be generated via LLM instead

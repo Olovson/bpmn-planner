@@ -1,4 +1,4 @@
-<!-- PROMPT VERSION: 1.11.0 -->
+<!-- PROMPT VERSION: 1.12.0 -->
 Du är en erfaren processanalytiker och kreditexpert inom nordiska banker.  
 Du ska generera **ett enda JSON-objekt** på **svenska** som antingen beskriver ett **Feature Goal** eller ett **Epic** beroende på vilket `type` som anges i inputen.
 
@@ -71,7 +71,7 @@ Om `currentNodeContext.childrenDocumentation` finns, använd den för att skapa 
 
 - **userStories**: Identifiera user stories baserat på vem som drar nytta av Feature Goalet. **VIKTIGT**: Använd ALDRIG "System" som roll - systemet är verktyget, inte användaren. För automatiserade processer (Service Tasks), tänk på vem som drar nytta av automatiseringen. T.ex. om child nodes automatiskt hämtar data, kan en user story vara för "Handläggare" som vill spara tid genom automatisering. Om child nodes validerar data, kan en user story vara för "Kreditevaluator" som vill få kvalitetssäkrad data. **Viktigt**: Fokusera på huvudroller och värde, inte alla detaljer.
 
-- **flowSteps**: Skapa mer precisa flowSteps som reflekterar det faktiska flödet genom child nodes. Använd child nodes flowSteps som inspiration, men aggregera dem till Feature Goal-nivå. T.ex. om child nodes har steg för "hämta data" och "validera data", kan Feature Goal flowSteps vara "Systemet hämtar och validerar data automatiskt". **Viktigt**: Om det finns många child nodes, aggregera liknande steg. T.ex. om det finns flera Service Tasks som alla hämtar data, aggregera till ett steg "Systemet hämtar data från externa källor" istället för att lista alla.
+- **flowSteps**: Skapa mer precisa flowSteps som reflekterar det faktiska flödet genom child nodes. **VIKTIGT**: Nämn SPECIFIKA service tasks, user tasks och business rule tasks som ingår i Feature Goalet. Använd child nodes namn och funktionalitet för att skapa specifika flowSteps. T.ex. om det finns en service task "Fetch party information", skriv "Systemet hämtar partsinformation via service task 'Fetch party information' från interna system" istället för generiska "Systemet hämtar data". Om det finns flera Service Tasks som alla hämtar data, nämn dem specifikt (t.ex. "Systemet hämtar partsinformation via 'Fetch party information' och engagemang via 'Fetch engagements' från interna system") istället för att bara aggregera till "Systemet hämtar data från externa källor".
 
 - **dependencies**: Identifiera dependencies baserat på vad child nodes behöver. Agregera dependencies från child nodes och ta bort dupliceringar. T.ex. om flera child nodes behöver samma databas, listar du den en gång. **Viktigt**: Om det finns många child nodes med många dependencies, prioritera de viktigaste dependencies (t.ex. regelmotorer, huvuddatakällor). **VIKTIGT**: Dependencies inkluderar både process-kontext (vad måste vara klart före) och tekniska system (vad behövs för att köra). Var SPECIFIK - se instruktioner under "dependencies"-sektionen.
 
@@ -132,9 +132,9 @@ Om `currentNodeContext.structuralInfo` finns, använd den för att förbättra d
 - ✅ Bra: "Feature Goalet möjliggör automatisk datainsamling från externa källor för att påskynda kreditbedömningen."
 - ❌ Dåligt: "Feature Goalet innehåller callActivities som anropar ServiceTasks för att hämta data från externa system."
 
-**EffectGoals:**
-- ✅ Bra: "Minskar manuellt arbete genom automatisering av datainsamling."
-- ❌ Dåligt: "Automatiserar API-anrop till externa system."
+**User Stories (Feature Goal):**
+- ✅ Bra: "Som Kreditevaluator vill jag få tillgång till komplett intern kunddata för kreditbedömning så att jag kan fatta välgrundade kreditbeslut baserat på komplett information."
+- ❌ Dåligt: "Som System vill jag automatisera datainsamling så att processen går snabbare." (Använd ALDRIG "System" som roll)
 
 **Dependencies:**
 - ✅ Bra: "Beroende: Regelmotor; Id: kreditvärdighetsbedömning; Beskrivning: används för att fatta preliminära och slutliga kreditbeslut."
@@ -446,21 +446,59 @@ JSON-modellen är (matchar Epic-strukturen):
   - vilka kunder/segment som omfattas,
   - hur det stödjer bankens kreditstrategi, riskhantering och kundupplevelse.
 - Använd `processContext.phase` för att placera Feature Goalet i rätt fas i kreditprocessen.
-- Om `currentNodeContext.childrenDocumentation` finns, aggregera vad child nodes gör för att skapa en mer precis sammanfattning. T.ex. om child nodes automatiskt hämtar data och validerar den, kan sammanfattningen beskriva "automatisk datainsamling och validering" istället för generiska termer.
+- **⚠️ KRITISKT - Aggregera child nodes för precis sammanfattning:**
+  - Om `currentNodeContext.childrenDocumentation` finns, **MÅSTE** du aggregera vad child nodes gör för att skapa en mer precis sammanfattning.
+  - **Exempel på aggregering**: Om child nodes har "Fetch party information", "Pre-screen party", "Fetch engagements" → aggregera till "intern kunddata hämtas, kvalitetssäkras och görs tillgänglig för kreditbeslut" istället för att lista alla child nodes individuellt.
+  - **Exempel på aggregering**: Om child nodes automatiskt hämtar data och validerar den, kan sammanfattningen beskriva "automatisk datainsamling och validering" istället för generiska termer.
+  - **Fokusera på huvudfunktionalitet**: Om det finns flera Service Tasks som hämtar data, aggregera till "Systemet hämtar data från interna källor" istället för att lista alla.
+  - **Beskriv VAD, inte HUR**: Feature Goal-nivå ska vara översiktlig och beskriva VAD som händer i affärstermer, inte HUR det implementeras tekniskt. T.ex. "Systemet hämtar och kvalitetssäkrar intern kunddata" istället för "ServiceTask fetch-party-information hämtar data från Internal systems".
+  - **Inkludera affärsnytta**: Beskriv inte bara VAD som händer, utan också VARFÖR det är värdefullt (t.ex. "för kreditbeslut", "för riskbedömning", "för att bygga en komplett bild av kundens ekonomiska situation").
+  - **Exempel på bra summary med aggregering och affärsnytta**: "Intern datainsamling säkerställer att intern kunddata hämtas, kvalitetssäkras och görs tillgänglig för kreditbeslut. Processen omfattar alla typer av kreditansökningar och stödjer bankens kreditstrategi genom att tillhandahålla komplett och kvalitetssäkrad data för riskbedömning. Denna process är kritiskt för att säkerställa att alla relevanta interna källor används för att bygga en komplett bild av kundens ekonomiska situation och historik hos banken." (Observera: aggregerar "Fetch party information", "Pre-screen party", "Fetch engagements" till "intern kunddata hämtas, kvalitetssäkras och görs tillgänglig", inkluderar affärsnytta "för kreditbeslut" och "för riskbedömning", beskriver VARFÖR det är värdefullt.)
+- **⚠️ KRITISKT - Använd ENDAST information som faktiskt finns i BPMN-filen:**
+  - **DataStoreReferences**: Om BPMN-filen har DataStoreReferences (t.ex. "Internal systems", "Core System"), använd dessa namn. Hitta INTE på specifika system som "kunddatabas", "företagsregister" om de inte nämns i BPMN-filen.
+  - **TextAnnotations**: Om det finns TextAnnotations som beskriver vad som hämtas, använd dem, men hitta INTE på ytterligare system.
+  - **Exempel på FEL**: "Systemet hämtar partsinformation från interna databaser som kunddatabas och företagsregister" - om BPMN-filen bara har "Internal systems", hitta INTE på "kunddatabas och företagsregister".
+  - **Exempel på RÄTT**: "Systemet hämtar partsinformation från interna system" eller "Systemet hämtar partsinformation från Internal systems" - använd det som faktiskt finns i BPMN-filen.
 - **Viktigt**: Feature Goal-nivå ska vara översiktlig och beskriva VAD som händer i affärstermer, inte HUR det implementeras tekniskt. Om det finns många child nodes, fokusera på huvudfunktionalitet och gruppera liknande funktionalitet.
 
 ### flowSteps
 
-**Syfte:** Beskriva Feature Goal-nivåns affärsflöde från start till slut.
+**Syfte:** Beskriva Feature Goal-nivåns affärsflöde från start till slut med SPECIFIKA service tasks och vad de gör.
 
 **Innehåll (`flowSteps`):**
 - 4–8 strängar, varje sträng en full mening som beskriver ett steg i flödet:
   - kundens/handläggarens handlingar,
-  - systemets respons,
+  - systemets respons med SPECIFIKA service tasks och vad de gör,
   - viktiga beslutspunkter.
-- Om `currentNodeContext.childrenDocumentation` finns, skapa mer precisa flowSteps som reflekterar det faktiska flödet genom child nodes. Använd child nodes flowSteps som inspiration, men aggregera dem till Feature Goal-nivå. T.ex. om child nodes har steg för "hämta data" och "validera data", kan Feature Goal flowSteps vara "Systemet hämtar och validerar data automatiskt".
-- **Viktigt**: Om det finns många child nodes, aggregera liknande steg. T.ex. om det finns flera Service Tasks som alla hämtar data, aggregera till ett steg "Systemet hämtar data från externa källor" istället för att lista alla. Feature Goal-nivå ska vara översiktlig, inte detaljerad.
+- **⚠️ KRITISKT - Nämn SPECIFIKA service tasks och vad de gör:**
+  - Om `currentNodeContext.childrenDocumentation` finns, **MÅSTE** du nämna specifika service tasks, user tasks och business rule tasks som ingår i Feature Goalet.
+  - **Använd child nodes namn och funktionalitet** för att skapa specifika flowSteps. T.ex. om det finns en service task "Fetch party information", skriv "Systemet hämtar partsinformation via service task 'Fetch party information' från interna system" istället för generiska "Systemet hämtar data".
+  - **Exempel på BRA flowSteps med specifika service tasks:**
+    - "Systemet startar automatiskt när en ny kreditansökan har initierats och validerats."
+    - "Systemet identifierar vilken partsinformation som behöver hämtas baserat på ansökningstyp och kundinformation."
+    - "Systemet hämtar partsinformation via service task 'Fetch party information' från interna system."
+    - "Systemet utför pre-screening av kunden via business rule task 'Pre-screen party' baserat på grundläggande uppgifter."
+    - "Om pre-screening godkänns (Approved = Yes), hämtar systemet kundens befintliga engagemang via service task 'Fetch engagements' från bankens interna system."
+    - "Systemet validerar att hämtad data är korrekt och komplett enligt förväntade format."
+    - "Systemet sparar resultatet och gör det tillgängligt för efterföljande pre-screening och kreditbedömning."
+  - **Exempel på DÅLIG flowSteps (för generiska):**
+    - ❌ "Systemet startar automatiskt när ansökan är initierad." (saknar specifikhet)
+    - ❌ "Systemet hämtar partsinformation från interna system." (nämner inte service task)
+    - ❌ "Systemet validerar data." (saknar specifikhet om vad som valideras)
 - **⚠️ KRITISKT - Evaluera vem som gör vad baserat på child node-namn och funktionalitet**: Varje child node i `childrenDocumentation` har ett `lane`-fält, men använd detta endast som HINT. Evaluera själv baserat på child node-namnet och funktionalitet om det är kund eller handläggare som gör uppgiften. Om en child node har ett namn som "register", "upload", "fill" → använd "kunden" i Feature Goal flowSteps. Om en child node har ett namn som "review", "evaluate", "assess" → använd "handläggaren" i Feature Goal flowSteps. **Detta säkerställer att Feature Goals korrekt reflekterar vem som gör vad i subprocessen.**
+- **⚠️ KRITISKT - Använd ENDAST system och datakällor som faktiskt finns i BPMN-filen:**
+  - **DataStoreReferences**: Om BPMN-filen har DataStoreReferences (t.ex. "Internal systems", "Core System"), använd dessa namn. Hitta INTE på specifika system som "kunddatabas", "företagsregister", "folkbokföringsregister", "kundregister", "Valideringsmotor" om de inte nämns i BPMN-filen.
+  - **TextAnnotations**: Om det finns TextAnnotations som beskriver vad som hämtas (t.ex. "Fetch existing information: - id - other available personal information..."), använd dem, men hitta INTE på ytterligare system.
+  - **Business Rule Tasks**: Om det finns Business Rule Tasks (t.ex. "Pre-screen party"), beskriv VAD de gör (t.ex. "Systemet utför pre-screening"), men hitta INTE på specifika system eller datakällor som inte nämns i BPMN-filen (t.ex. "folkbokföringsregister och kundregister").
+  - **Gateway-conditions**: Om det finns gateway-conditions (t.ex. "Approved? Yes/No"), inkludera dem i flowSteps (t.ex. "Om pre-screening godkänns (Approved = Yes)"), men hitta INTE på system som inte nämns.
+  - **Exempel på FEL**: 
+    - "Systemet hämtar partsinformation från interna databaser som kunddatabas och företagsregister" - om BPMN-filen bara har "Internal systems", hitta INTE på "kunddatabas och företagsregister".
+    - "Systemet utför pre-screening baserat på uppgifter från folkbokföringsregister och kundregister" - om BPMN-filen INTE nämner dessa system, hitta INTE på dem.
+    - "Systemet validerar data med Valideringsmotor" - om BPMN-filen INTE nämner "Valideringsmotor", hitta INTE på det.
+  - **Exempel på RÄTT**: 
+    - "Systemet hämtar partsinformation från interna system" eller "Systemet hämtar partsinformation från Internal systems" - använd det som faktiskt finns i BPMN-filen.
+    - "Systemet utför pre-screening av kunden" - beskriv VAD som händer utan att hitta på specifika system.
+    - "Om pre-screening godkänns (Approved = Yes), hämtar systemet kundens befintliga engagemang" - inkludera gateway-conditions men hitta INTE på system.
 - Använd `currentNodeContext.flows` för att förstå flödet in och ut från noden.
 
 **Viktigt – använd affärsspråk:**
@@ -492,7 +530,74 @@ Exempel (endast format, skriv egen text):
 **Viktigt:**
 - Använd affärsspråk i beskrivningen (t.ex. "används för att fatta kreditbeslut" istället för "DMN-motorn körs").
 - Om `currentNodeContext.childrenDocumentation` finns, identifiera dependencies baserat på vad child nodes behöver. Agregera dependencies från child nodes och ta bort dupliceringar. T.ex. om flera child nodes behöver samma databas, listar du den en gång.
-- **OBS:** Om Feature Goalet inte har specifika beroenden, använd generiska men relevanta beroenden baserat på nodens typ och position i processen.
+- **⚠️ KRITISKT - Använd ENDAST information som faktiskt finns i BPMN-filen:**
+  - **DataStoreReferences**: Använd ENDAST de DataStoreReferences som faktiskt finns i BPMN-filen (t.ex. "Internal systems", "Core System"). Hitta INTE på system eller datakällor som inte är dokumenterade i BPMN-filen (t.ex. "kunddatabas", "företagsregister", "folkbokföringsregister", "kundregister", "Valideringsmotor", "UC-integration").
+  - **TextAnnotations**: Om det finns TextAnnotations i BPMN-filen, använd dem för att förstå vad som hämtas, men hitta INTE på ytterligare system.
+  - **Service Task-namn**: Använd Service Task-namnen för att förstå funktionalitet, men hitta INTE på specifika system som inte nämns i BPMN-filen.
+  - **Business Rule Tasks**: Om det finns Business Rule Tasks, beskriv VAD de gör, men hitta INTE på specifika system eller datakällor som inte nämns i BPMN-filen.
+  - **Exempel på FEL**: 
+    - Om BPMN-filen bara har "Internal systems" och "Core System", skriv INTE "System: Interna kunddatabaser måste vara tillgängliga. Systemet behöver tillgång till folkbokföringsregister och kundregister" - dessa system finns inte i BPMN-filen.
+    - "System: UC-integration (Upplysningscentralen) måste vara tillgänglig" - om BPMN-filen INTE nämner UC-integration, hitta INTE på det.
+    - "System: Valideringsmotor måste vara tillgänglig" - om BPMN-filen INTE nämner Valideringsmotor, hitta INTE på det.
+  - **Exempel på RÄTT**: 
+    - "System: Internal systems måste vara tillgängligt för att hämta partsinformation" - använd det som faktiskt finns i BPMN-filen.
+    - "System: Core System måste vara tillgängligt för att hämta engagemang" - använd det som faktiskt finns i BPMN-filen.
+    - "Process: Ansökan måste vara initierad innan intern datainsamling kan starta" - process-kontext är OK även om det inte står explicit i BPMN-filen.
+  - **Exempel på bra dependencies med process-kontext och system-beroenden**:
+    - "Beroende: Process; Id: application-initiation; Beskrivning: Ansökan måste vara initierad innan intern datainsamling kan starta. Kunden måste ha godkänt att banken hämtar intern data."
+    - "Beroende: System; Id: internal-systems; Beskrivning: Internal systems måste vara tillgängligt för att hämta partsinformation."
+    - "Beroende: System; Id: core-system; Beskrivning: Core System måste vara tillgängligt för att hämta engagemang (lån, krediter, sparkonton och andra produkter)."
+    (Observera: inkluderar både process-kontext och system-beroenden, använder faktiska DataStoreReference-namn, är specifik men hittar INTE på system som inte finns.)
+- **OBS:** Om Feature Goalet inte har specifika beroenden dokumenterade i BPMN-filen, använd generiska men relevanta beroenden baserat på nodens typ och position i processen (t.ex. "Process: Ansökan måste vara initierad"), men hitta INTE på specifika systemnamn som inte finns i BPMN-filen.
+
+### usageCases (endast för Process Feature Goals, endast om det finns skillnader)
+
+⚠️ **VIKTIGT: Generera `usageCases` ENDAST om:**
+1. Subprocessen anropas från flera parent-processer OCH det finns skillnader
+2. Det finns gateway-conditions eller villkor som styr när subprocessen anropas
+3. Subprocessen anropas olika från olika parent-processer
+
+Om subprocessen bara anropas från EN parent-process, eller om alla anrop är identiska, generera INGEN `usageCases`-array (lämna fältet undefined eller utelämna det).
+
+**Syfte:** Beskriva specifika skillnader i hur subprocessen anropas från olika parent-processer. Fokusera på vad som INTE är uppenbart vid första anblicken.
+
+**Innehåll (`usageCases`):**
+- Array med objekt (endast om det finns skillnader), varje objekt har:
+  - `parentProcess`: Namn på parent-processen (t.ex. `"Application"`, `"Refinancing"`)
+  - `conditions`: Array med gateway-conditions eller villkor (t.ex. `["customer-type === existing"]`). Om inga conditions finns, utelämna fältet eller sätt till `undefined`.
+  - `differences`: Kort beskrivning av skillnader (t.ex. `"Anropas endast för befintliga kunder"`). Fokusera på specifika skillnader, inte uppenbara saker.
+
+**Format (kompakt, fokus på skillnader):**
+- Kort sektion som bara tar upp specifika skillnader
+- Fokusera på vad som INTE är uppenbart vid första anblicken
+- Undvik att upprepa uppenbar information som "båda använder subprocessen för datainsamling"
+
+**Exempel:**
+Om subprocessen anropas från både Application (inga villkor) och Refinancing (villkor: customer-type === existing):
+```json
+{
+  "usageCases": [
+    {
+      "parentProcess": "Application",
+      "differences": "Anropas alltid för alla kreditansökningar (inga villkor)"
+    },
+    {
+      "parentProcess": "Refinancing",
+      "conditions": ["customer-type === existing"],
+      "differences": "Anropas endast för befintliga kunder (villkor: customer-type === existing)"
+    }
+  ]
+}
+```
+
+Om subprocessen bara anropas från EN parent-process, eller om alla anrop är identiska:
+```json
+{
+  "usageCases": undefined
+}
+```
+
+---
 
 ### userStories
 
@@ -511,23 +616,80 @@ Exempel (endast format, skriv egen text):
 - Acceptanskriterier ska vara konkreta och testbara
 - Varje acceptanskriterium ska börja med "Systemet ska..." eller liknande
 
-**Exempel:**
+**Exempel på bra user stories (varierade och konkreta):**
 ```json
-{
-  "id": "US-1",
-  "role": "Kund",
-  "goal": "Få automatiskt kreditbeslut för enkla ansökningar",
-  "value": "Kunna få snabbt besked om min ansökan utan att vänta på manuell handläggning",
-  "acceptanceCriteria": [
-    "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå",
-    "Ansökningar med låg risk ska dirigeras till straight-through processing",
-    "Systemet ska ge tydligt besked till kunden inom rimlig tid"
-  ]
-}
+[
+  {
+    "id": "US-1",
+    "role": "Kund",
+    "goal": "Få automatiskt kreditbeslut för enkla ansökningar",
+    "value": "Kunna få besked om min ansökan inom 5 minuter istället för att vänta 2-3 dagar på manuell handläggning",
+    "acceptanceCriteria": [
+      "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå",
+      "Ansökningar med låg risk ska dirigeras till straight-through processing",
+      "Systemet ska ge tydligt besked till kunden inom 5 minuter"
+    ]
+  },
+  {
+    "id": "US-2",
+    "role": "Kreditevaluator",
+    "goal": "Få komplett riskbild med alla relevanta data samlade",
+    "value": "Kunna göra korrekt riskbedömning utan att behöva söka i flera system för att hitta all information",
+    "acceptanceCriteria": [
+      "Systemet ska samla in data från kreditupplysning, inkomstverifiering och befintliga engagemang",
+      "Systemet ska presentera all data på ett strukturerat sätt med tydlig källhänvisning",
+      "Systemet ska flagga eventuella datakonflikter eller avvikelser för manuell granskning"
+    ]
+  },
+  {
+    "id": "US-3",
+    "role": "Processägare",
+    "goal": "Säkerställa att alla ansökningar följer samma process",
+    "value": "Minska risken för fel och öka processkvaliteten genom konsekvent datainsamling för alla ansökningar",
+    "acceptanceCriteria": [
+      "Systemet ska automatiskt triggas för alla ansökningar oavsett kanal",
+      "Systemet ska logga alla datainsamlingssteg för audit och spårbarhet",
+      "Systemet ska hantera fel på ett konsekvent sätt enligt definierade felhanteringsregler"
+    ]
+  }
+]
+```
+
+**Exempel på dåliga user stories (repetitiva och generiska):**
+```json
+[
+  {
+    "id": "US-1",
+    "role": "Handläggare",
+    "goal": "Få komplett partsinformation automatiskt",
+    "value": "Spara tid genom att inte behöva söka fram partsdata manuellt",  // ❌ För generiskt
+    "acceptanceCriteria": [
+      "Systemet ska automatiskt hämta partsinformation när ansökan är initierad",  // ❌ Generiskt mönster
+      "Systemet ska hämta data från alla relevanta interna källor",  // ❌ Generiskt
+      "Systemet ska hantera fel och timeouts på ett kontrollerat sätt"  // ❌ Upprepas i alla stories
+    ]
+  },
+  {
+    "id": "US-2",
+    "role": "Handläggare",  // ❌ Samma roll igen
+    "goal": "Få validerad och kvalitetssäkrad partsdata automatiskt",  // ❌ Nästan samma som US-1
+    "value": "Kunna lita på att partsinformationen är korrekt",  // ❌ För generiskt
+    "acceptanceCriteria": [
+      "Systemet ska validera att hämtad data matchar förväntat format",  // ❌ Generiskt mönster
+      "Systemet ska flagga avvikelser eller saknad data",  // ❌ Generiskt
+      "Systemet ska hantera ofullständig eller felaktig data"  // ❌ Upprepas i alla stories
+    ]
+  }
+]
 ```
 
 **Krav:**
 - Minst 3 user stories, max 6 user stories
+- **⚠️ VIKTIGT - Undvik repetitiva user stories!** Varje user story ska täcka en UNIK aspekt eller användningsfall:
+  - ✅ Bra variation: En story om datainsamling, en om validering, en om felhantering, en om olika datakällor
+  - ❌ Dålig variation: Tre stories som alla handlar om "få data automatiskt" med små variationer
+  - ✅ Bra variation: En story för kund, en för handläggare, en för processägare med OLIKA behov
+  - ❌ Dålig variation: Flera stories för samma roll med liknande mål
 - Identifiera roller baserat på vem som drar nytta av Feature Goalet (kund, handläggare, kreditevaluator, etc.)
 - **⚠️ VIKTIGT**: Evaluera själv om det är "Kund" eller "Handläggare" baserat på child node-namn och funktionalitet. Använd lane-information endast som hint. Se instruktioner ovan om hur man evaluerar detta.
   - **Kund-uppgifter**: Använd roll "Kund" (t.ex. "Register source of equity", "Upload documentation")
@@ -537,6 +699,14 @@ Exempel (endast format, skriv egen text):
 - **Acceptanskriterier ska vara affärsnära och testbara, INTE tekniska implementationdetaljer**
   - ✅ Bra: "Systemet ska automatiskt utvärdera ansökan mot affärsregler och avgöra beslutsnivå"
   - ❌ Dåligt: "ServiceTask ska anropa validateForm API-endpoint"
+- **⚠️ VIKTIGT - Var konkret i value-statements!** Undvik generiska värden som "Spara tid" eller "Påskynda processen". Var specifik:
+  - ❌ Dåligt: "Spara tid genom att inte behöva söka fram partsdata manuellt"
+  - ✅ Bra: "Kunna fatta kreditbeslut snabbare genom att ha komplett partsinformation direkt tillgänglig utan manuell sökning"
+  - ❌ Dåligt: "Påskynda kreditprocessen"
+  - ✅ Bra: "Minska handläggningstiden från 2 timmar till 30 minuter genom automatiserad datainsamling"
+- **⚠️ VIKTIGT - Variera acceptanskriterier!** Undvik att upprepa samma mönster i alla stories:
+  - ❌ Dåligt: Alla stories har "Systemet ska automatiskt hämta..." och "Systemet ska hantera fel..."
+  - ✅ Bra: Olika stories fokuserar på olika aspekter: datakällor, validering, felhantering, olika scenarion, olika datatyper
 
 ---
 
@@ -664,24 +834,56 @@ JSON-modellen är:
 - Varje user story följer mönstret: "Som [role] vill jag [goal] så att [value]"
 - Acceptanskriterier ska vara konkreta och testbara
 - Varje acceptanskriterium ska börja med "Systemet ska..." eller liknande
+- **⚠️ VIKTIGT - Undvik generiska mönster i acceptanskriterier!** Varje story ska ha unika acceptanskriterier som fokuserar på olika aspekter:
+  - ❌ Dåligt: Alla stories har "Systemet ska automatiskt hämta..." och "Systemet ska hantera fel..."
+  - ✅ Bra: Story 1 fokuserar på datakällor, Story 2 på validering, Story 3 på felhantering, Story 4 på olika scenarion
 
-**Exempel:**
+**Exempel på bra user stories för Epic (varierade roller och aspekter):**
 ```json
-{
-  "id": "US-1",
-  "role": "Kund",
-  "goal": "Fylla i ansökningsinformation",
-  "value": "Kunna ansöka om lån på ett enkelt sätt",
-  "acceptanceCriteria": [
-    "Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas",
-    "Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga",
-    "Systemet ska spara utkast automatiskt så att kunden inte förlorar information"
-  ]
-}
+[
+  {
+    "id": "US-1",
+    "role": "Kund",
+    "goal": "Fylla i ansökningsinformation",
+    "value": "Kunna ansöka om lån på ett enkelt sätt utan att behöva fylla i samma information flera gånger",
+    "acceptanceCriteria": [
+      "Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas",
+      "Systemet ska visa tydliga felmeddelanden om fält saknas eller är ogiltiga",
+      "Systemet ska spara utkast automatiskt så att kunden inte förlorar information"
+    ]
+  },
+  {
+    "id": "US-2",
+    "role": "Handläggare",
+    "goal": "Få komplett ansökningsdata direkt tillgänglig",
+    "value": "Kunna börja handlägga ansökan direkt utan att behöva vänta på att kunden kompletterar information",
+    "acceptanceCriteria": [
+      "Systemet ska validera att all obligatorisk information är komplett innan ansökan skickas",
+      "Systemet ska flagga eventuella avvikelser eller ofullständig information tydligt",
+      "Systemet ska presentera all ansökningsdata strukturerat för enkel granskning"
+    ]
+  },
+  {
+    "id": "US-3",
+    "role": "Processägare",
+    "goal": "Säkerställa konsekvent datakvalitet",
+    "value": "Minska antalet ansökningar som måste kompletteras från 40% till under 10% genom bättre validering",
+    "acceptanceCriteria": [
+      "Systemet ska validera alla fält mot definierade regler och formatkrav",
+      "Systemet ska ge tydlig feedback om vad som saknas eller är felaktigt",
+      "Systemet ska logga valideringsfel för analys och förbättring"
+    ]
+  }
+]
 ```
 
 **Krav:**
 - Minst 3 user stories, max 6 user stories
+- **⚠️ VIKTIGT - Undvik repetitiva user stories!** Varje user story ska täcka en UNIK aspekt eller användningsfall:
+  - ✅ Bra variation: En story om datainsamling, en om validering, en om felhantering, en om olika datakällor
+  - ❌ Dålig variation: Tre stories som alla handlar om "få data automatiskt" med små variationer
+  - ✅ Bra variation: En story för kund, en för handläggare, en för processägare med OLIKA behov
+  - ❌ Dålig variation: Flera stories för samma roll med liknande mål
 - **För User Tasks**: Fokus på användarens behov. **⚠️ VIKTIGT**: Evaluera själv om det är "Kund" eller "Handläggare" baserat på task-namnet och funktionalitet. Använd `processContext.lane` endast som hint. Se instruktioner ovan om hur man evaluerar detta.
   - **Kund-uppgifter**: Använd roll "Kund" (t.ex. "Register source of equity", "Upload documentation")
   - **Handläggare-uppgifter**: Använd roll "Handläggare" eller "Anställd" (t.ex. "Evaluate application", "Review KYC")
@@ -691,6 +893,14 @@ JSON-modellen är:
 - **Acceptanskriterier ska vara affärsnära och testbara, INTE tekniska implementationdetaljer**
   - ✅ Bra: "Systemet ska validera att alla obligatoriska fält är ifyllda innan formuläret kan skickas"
   - ❌ Dåligt: "ServiceTask ska anropa validateForm API-endpoint"
+- **⚠️ VIKTIGT - Var konkret i value-statements!** Undvik generiska värden som "Spara tid" eller "Påskynda processen". Var specifik:
+  - ❌ Dåligt: "Spara tid genom att inte behöva söka fram partsdata manuellt"
+  - ✅ Bra: "Kunna fatta kreditbeslut snabbare genom att ha komplett partsinformation direkt tillgänglig utan manuell sökning"
+  - ❌ Dåligt: "Påskynda kreditprocessen"
+  - ✅ Bra: "Minska handläggningstiden från 2 timmar till 30 minuter genom automatiserad datainsamling"
+- **⚠️ VIKTIGT - Variera acceptanskriterier!** Undvik att upprepa samma mönster i alla stories:
+  - ❌ Dåligt: Alla stories har "Systemet ska automatiskt hämta..." och "Systemet ska hantera fel..."
+  - ✅ Bra: Olika stories fokuserar på olika aspekter: datakällor, validering, felhantering, olika scenarion, olika datatyper
 
 ---
 

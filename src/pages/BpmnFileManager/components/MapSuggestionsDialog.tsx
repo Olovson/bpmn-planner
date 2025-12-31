@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +19,8 @@ interface MapSuggestionsDialogProps {
   onAcceptedSuggestionsChange: (suggestions: Set<string>) => void;
   onExport: () => void;
   onSave: (syncToGitHub: boolean) => void;
+  totalFiles?: number; // Antal filer som användes för matchning
+  hasEnoughFilesForReliableMatching?: boolean; // Om det finns tillräckligt med filer
 }
 
 export function MapSuggestionsDialog({
@@ -27,7 +31,11 @@ export function MapSuggestionsDialog({
   onAcceptedSuggestionsChange,
   onExport,
   onSave,
+  totalFiles,
+  hasEnoughFilesForReliableMatching = true,
 }: MapSuggestionsDialogProps) {
+  const showWarning = totalFiles !== undefined && !hasEnoughFilesForReliableMatching;
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -37,6 +45,16 @@ export function MapSuggestionsDialog({
             Nya filer har analyserats och matchningar har gjorts automatiskt. Välj vilka uppdateringar du vill inkludera.
           </DialogDescription>
         </DialogHeader>
+        {showWarning && (
+          <Alert className="mt-4 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+            <AlertTitle>Opålitliga matchningar</AlertTitle>
+            <AlertDescription>
+              Det finns bara {totalFiles} filer i systemet, vilket gör att matchningarna kan vara opålitliga. 
+              Matchningar med konfidens under 30% har döljts. Överväg att ladda upp fler filer för mer pålitliga matchningar.
+            </AlertDescription>
+          </Alert>
+        )}
         {mapSuggestions.length > 0 && (
           <div className="mt-4 space-y-4">
             <div className="flex items-center justify-between">

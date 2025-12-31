@@ -82,28 +82,39 @@ async function loadDocFromStorage(
       }
     }
 
-    // Hämta alla möjliga paths för dokumentationen
-    const storagePaths = docType === 'epic'
-      ? getEpicDocStoragePaths(bpmnFile, elementId)
-      : getFeatureGoalDocStoragePaths(bpmnFile, elementId, parentBpmnFile);
+    // Get version hash (required)
+    const { getCurrentVersionHash } = await import('@/lib/bpmnVersioning');
+    const versionHash = await getCurrentVersionHash(bpmnFile);
     
-    // Försök ladda från första path som finns
-    for (const docPath of storagePaths) {
-      const exists = await storageFileExists(docPath);
-      if (exists) {
-        const { data, error } = await supabase.storage
-          .from('bpmn-files')
-          .download(docPath);
-        
-        if (error || !data) {
-          continue; // Försök nästa path
-        }
-        
-        return await data.text();
-      }
+    if (!versionHash) {
+      console.warn(`[userStoryExtractor] No version hash found for ${bpmnFile}, cannot load documentation`);
+      return null;
     }
     
-    return null;
+    // Get storage path using unified approach
+    const docPath = docType === 'epic'
+      ? await getEpicDocStoragePaths(bpmnFile, elementId, versionHash)
+      : await getFeatureGoalDocStoragePaths(bpmnFile, elementId, parentBpmnFile, versionHash);
+    
+    if (!docPath) {
+      return null;
+    }
+    
+    // Try to load from the path
+    const exists = await storageFileExists(docPath);
+    if (!exists) {
+      return null;
+    }
+    
+    const { data, error } = await supabase.storage
+      .from('bpmn-files')
+      .download(docPath);
+    
+    if (error || !data) {
+      return null;
+    }
+    
+    return await data.text();
   } catch (error) {
     console.warn(`[userStoryExtractor] Failed to load doc from storage for ${bpmnFile}::${elementId}:`, error);
     return null;

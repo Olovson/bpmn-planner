@@ -3,16 +3,16 @@
  * 
  * Integration test to verify that mortgage-se-household.bpmn generates
  * the correct number of documentation files:
- * - 1 Feature Goal for the process itself
  * - 1 Epic for the userTask "register-household-economy-information"
- * - NO Combined file-level doc (subprocesser genererar inte combined docs, bara root-processer)
+ * - 1 File-level documentation (mortgage-se-household.html)
+ * - NO Feature Goal (subprocess-filer genererar INTE Feature Goals längre - ersatta av file-level docs)
  */
 
 import { describe, it, expect } from 'vitest';
 import { generateAllFromBpmnWithGraph } from '@/lib/bpmnGenerators';
 
 describe('Household documentation generation', () => {
-  it('should generate 2 documentation files for mortgage-se-household.bpmn (no combined doc for subprocesses)', async () => {
+  it('should generate 2 documentation files for mortgage-se-household.bpmn (epic + file-level doc)', async () => {
     const result = await generateAllFromBpmnWithGraph(
       'mortgage-se-household.bpmn',
       ['mortgage-se-household.bpmn'],
@@ -43,29 +43,29 @@ describe('Household documentation generation', () => {
     console.log('Combined doc keys:', combinedDocKeys);
 
     // Verify we have:
-    // - Exactly 1 Feature Goal (for the process)
-    expect(featureGoalKeys.length).toBe(1);
+    // - NO Feature Goals (subprocess-filer genererar INTE Feature Goals längre)
+    expect(featureGoalKeys.length).toBe(0);
     
     // - Exactly 1 Epic (for the userTask)
     expect(epicKeys.length).toBe(1);
     
-    // - NO Combined doc for subprocesses (only root processes get combined docs)
-    expect(combinedDocKeys.length).toBe(0);
+    // - Exactly 1 File-level doc (mortgage-se-household.html)
+    expect(combinedDocKeys.length).toBe(1);
     
-    // Total should be exactly 2 (Feature Goal + Epic, no Combined for subprocesses)
+    // Total should be exactly 2 (Epic + File-level doc)
     expect(result.docs.size).toBe(2);
-    
-    // Verify Feature Goal is for the household process
-    const householdFeatureGoal = featureGoalKeys.find(key => 
-      key.includes('mortgage-se-household') && !key.includes('register-household')
-    );
-    expect(householdFeatureGoal).toBeDefined();
     
     // Verify Epic is for the userTask
     const householdEpic = epicKeys.find(key => 
       key.includes('register-household-economy-information')
     );
     expect(householdEpic).toBeDefined();
+    
+    // Verify File-level doc exists
+    const fileLevelDoc = combinedDocKeys.find(key => 
+      key === 'mortgage-se-household.html'
+    );
+    expect(fileLevelDoc).toBeDefined();
     
     console.log('\n✓ All assertions passed!');
   }, 30000);

@@ -391,25 +391,29 @@ export const RightPanel = ({
         const isCallActivity = selectedElementType === 'bpmn:CallActivity';
         const subprocessFile = mapping?.subprocess_bpmn_file || displaySubprocessFile;
         
-        const docStoragePath = isCallActivity 
-          ? null // Använd inte getNodeDocStoragePath för call activities
-          : getNodeDocStoragePath(bpmnFile, selectedElement);
+        let docStoragePath: string | null = null;
+        let featureGoalPath: string | null = null;
         
-        // Bygg Feature Goal-sökvägar för call activities (inkl. versioned paths)
-        let featureGoalPaths: string[] | undefined = undefined;
         if (isCallActivity && subprocessFile) {
           // VIKTIGT: Filen sparas under subprocess-filens version hash (inte parent-filens)
-          // Se kommentar i artifactUrls.ts rad 117-118 och 126
           const subprocessBpmnFileName = subprocessFile.endsWith('.bpmn') ? subprocessFile : `${subprocessFile}.bpmn`;
           const versionHash = await getCurrentVersionHash(subprocessBpmnFileName);
           
-          featureGoalPaths = getFeatureGoalDocStoragePaths(
-            subprocessFile,    // subprocess BPMN file
-            selectedElement,   // call activity element ID
-            bpmnFile,          // parent BPMN file (där call activity är definierad)
-            versionHash,       // version hash for versioned paths (från subprocess-filen)
-            subprocessBpmnFileName, // BPMN file name for versioned paths (subprocess-filen)
-          );
+          if (versionHash) {
+            featureGoalPath = await getFeatureGoalDocStoragePaths(
+              subprocessFile,    // subprocess BPMN file
+              selectedElement,   // call activity element ID
+              bpmnFile,          // parent BPMN file (där call activity är definierad)
+              versionHash,       // version hash for versioned paths (från subprocess-filen)
+              subprocessBpmnFileName, // BPMN file name for versioned paths (subprocess-filen)
+            );
+          }
+        } else {
+          // For other node types, use node doc storage path
+          const versionHash = await getCurrentVersionHash(bpmnFile);
+          if (versionHash) {
+            docStoragePath = await getNodeDocStoragePath(bpmnFile, selectedElement, versionHash);
+          }
         }
 
         const [docsAvailable, testReportAvailable] = await Promise.all([

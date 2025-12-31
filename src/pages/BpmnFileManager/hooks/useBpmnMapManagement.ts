@@ -204,6 +204,18 @@ export function useBpmnMapManagement({
         missing_subprocess_files: missingSubprocessFiles,
         map_inconsistencies: mapInconsistencies,
         orphan_processes: orphanProcesses,
+        currentMap: {
+          processes: mapProcesses.map((proc: any) => ({
+            bpmn_file: proc.bpmn_file,
+            process_id: proc.process_id,
+            alias: proc.alias,
+            call_activities: (proc.call_activities || []).map((ca: any) => ({
+              bpmn_id: ca.bpmn_id,
+              name: ca.name,
+              subprocess_bpmn_file: ca.subprocess_bpmn_file,
+            })),
+          })),
+        },
       };
 
       setMapValidationResult(result);

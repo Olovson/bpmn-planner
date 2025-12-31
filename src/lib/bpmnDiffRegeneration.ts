@@ -712,34 +712,17 @@ async function cleanupRemovedNodes(removedNodes: BpmnNodeSnapshot[]): Promise<vo
           filesToDelete.push(`docs/claude/${docFileName}`);
         }
       } else {
-        // For tasks (userTask, serviceTask, businessRuleTask), use node doc paths
-        const docFileKey = getNodeDocStoragePath(node.bpmnFile, node.bpmnElementId);
-        
-        // Get version hash
+        // Get version hash (required)
         const versionHash = await getCurrentVersionHash(node.bpmnFile);
         
-        // Build paths (versioned and non-versioned)
-        const { modePath } = buildDocStoragePaths(
-          docFileKey,
-          null, // no mode
-          'cloud', // Claude provider
-          node.bpmnFile,
-          versionHash
-        );
-        
-        filesToDelete.push(modePath);
-        
-        // Also add non-versioned path if version hash exists
-        if (versionHash) {
-          const { modePath: nonVersionedPath } = buildDocStoragePaths(
-            docFileKey,
-            null,
-            'cloud',
-            node.bpmnFile,
-            null // no version hash
-          );
-          filesToDelete.push(nonVersionedPath);
+        if (!versionHash) {
+          console.warn(`[bpmnDiffRegeneration] No version hash found for ${node.bpmnFile}, skipping`);
+          continue;
         }
+        
+        // Get storage path using unified approach
+        const docPath = await getNodeDocStoragePath(node.bpmnFile, node.bpmnElementId, versionHash);
+        filesToDelete.push(docPath);
       }
     } catch (error) {
       console.error(`[cleanupRemovedNodes] Error building paths for node ${node.nodeKey}:`, error);

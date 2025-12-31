@@ -107,7 +107,18 @@ export function useFileUpload(
       
       // Visa dialog endast för matchningar som behöver granskning
       if (needsReviewSuggestions.length > 0) {
-        onMapSuggestions?.(needsReviewSuggestions);
+        // Skicka suggestions med filinformation om callback stödjer det
+        if (typeof onMapSuggestions === 'function' && onMapSuggestions.length >= 2) {
+          (onMapSuggestions as (suggestions: any[], result?: { totalFiles?: number; hasEnoughFilesForReliableMatching?: boolean }) => void)(
+            needsReviewSuggestions,
+            {
+              totalFiles: suggestions.totalFiles,
+              hasEnoughFilesForReliableMatching: suggestions.hasEnoughFilesForReliableMatching,
+            }
+          );
+        } else {
+          onMapSuggestions?.(needsReviewSuggestions);
+        }
         onShowMapSuggestionsDialog?.(true);
         onSetAcceptedSuggestions?.(new Set());
         

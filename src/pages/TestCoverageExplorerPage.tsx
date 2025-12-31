@@ -11,8 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Search, X } from 'lucide-react';
+import { Download, Search, X, ChevronDown, ChevronUp, GitBranch } from 'lucide-react';
 import { TestCoverageTable } from '@/components/TestCoverageTable';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +54,7 @@ export default function TestCoverageExplorerPage() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'condensed' | 'hierarchical' | 'full'>('condensed');
+  const [expandedScenarioDetails, setExpandedScenarioDetails] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Sätt första scenariot som standard när e2eScenarios är tillgängligt
@@ -1028,6 +1031,199 @@ export default function TestCoverageExplorerPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* E2E Scenario Details Section */}
+          {e2eScenarios.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>E2E Scenario-detaljer</CardTitle>
+                <CardDescription>
+                  Detaljerad information om E2E-scenarierna. Expandera för att se given/when/then och subprocessSteps.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {e2eScenarios.map((scenario) => {
+                  const isExpanded = expandedScenarioDetails.has(scenario.id);
+                  const isSelected = selectedScenarioId === scenario.id;
+                  
+                  return (
+                    <Collapsible
+                      key={scenario.id}
+                      open={isExpanded}
+                      onOpenChange={(open) => {
+                        const newSet = new Set(expandedScenarioDetails);
+                        if (open) {
+                          newSet.add(scenario.id);
+                        } else {
+                          newSet.delete(scenario.id);
+                        }
+                        setExpandedScenarioDetails(newSet);
+                      }}
+                    >
+                      <div className={`border rounded-lg ${isSelected ? 'border-primary' : 'border-border'}`}>
+                        <CollapsibleTrigger asChild>
+                          <button className="w-full p-4 text-left hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <GitBranch className="h-4 w-4 text-muted-foreground" />
+                                  <h3 className="font-semibold text-base">{scenario.name}</h3>
+                                  {isSelected && (
+                                    <Badge variant="default" className="text-xs">Valt</Badge>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  <Badge variant="outline" className="text-xs">{scenario.id}</Badge>
+                                  <Badge variant="outline" className="text-xs">{scenario.priority}</Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {scenario.type === 'happy-path' ? 'Happy path' : scenario.type === 'alt-path' ? 'Alt path' : 'Error'}
+                                  </Badge>
+                                  {scenario.iteration && (
+                                    <Badge variant="outline" className="text-xs">{scenario.iteration}</Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{scenario.summary}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="p-4 pt-0 space-y-4 border-t">
+                            {/* Summary */}
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold">Beskrivning</h4>
+                              <p className="text-sm text-muted-foreground">{scenario.summary}</p>
+                            </div>
+
+                            {/* Given/When/Then på root-nivå */}
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-muted-foreground">Given</h4>
+                                <div className="text-sm whitespace-pre-line">{scenario.given}</div>
+                              </div>
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-muted-foreground">When</h4>
+                                <div className="text-sm whitespace-pre-line">{scenario.when}</div>
+                              </div>
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-muted-foreground">Then</h4>
+                                <div className="text-sm whitespace-pre-line">{scenario.then}</div>
+                              </div>
+                            </div>
+
+                            {/* SubprocessSteps */}
+                            {scenario.subprocessSteps && scenario.subprocessSteps.length > 0 && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold">
+                                  Subprocesser / Feature Goals i scenariot ({scenario.subprocessSteps.length} steg)
+                                </h4>
+                                <div className="overflow-x-auto">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="w-[50px]">#</TableHead>
+                                        <TableHead className="min-w-[200px]">BPMN-fil</TableHead>
+                                        <TableHead className="min-w-[150px]">Feature Goal</TableHead>
+                                        <TableHead className="min-w-[200px]">Beskrivning</TableHead>
+                                        <TableHead className="min-w-[200px]">Given</TableHead>
+                                        <TableHead className="min-w-[200px]">When</TableHead>
+                                        <TableHead className="min-w-[200px]">Then</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {scenario.subprocessSteps.map((step) => (
+                                        <TableRow key={`${scenario.id}-step-${step.order}`}>
+                                          <TableCell className="text-xs text-muted-foreground">{step.order}</TableCell>
+                                          <TableCell className="text-xs font-mono">{step.bpmnFile}</TableCell>
+                                          <TableCell className="text-xs">
+                                            {step.callActivityId ? (
+                                              <code className="text-[11px] font-mono">{step.callActivityId}</code>
+                                            ) : (
+                                              <span className="text-muted-foreground">–</span>
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="text-xs">{step.description || '–'}</TableCell>
+                                          <TableCell className="text-xs text-muted-foreground max-w-[200px]">
+                                            {step.given ? (
+                                              <div className="whitespace-pre-line line-clamp-3">{step.given}</div>
+                                            ) : (
+                                              '–'
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-muted-foreground max-w-[200px]">
+                                            {step.when ? (
+                                              <div className="whitespace-pre-line line-clamp-3">{step.when}</div>
+                                            ) : (
+                                              '–'
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-muted-foreground max-w-[200px]">
+                                            {step.then ? (
+                                              <div className="whitespace-pre-line line-clamp-3">{step.then}</div>
+                                            ) : (
+                                              '–'
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Bank Project Test Steps */}
+                            {scenario.bankProjectTestSteps && scenario.bankProjectTestSteps.length > 0 && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold">
+                                  Teststeg för bankprojektet ({scenario.bankProjectTestSteps.length} steg)
+                                </h4>
+                                <div className="space-y-2">
+                                  {scenario.bankProjectTestSteps.map((testStep, idx) => (
+                                    <div key={`${scenario.id}-teststep-${idx}`} className="border rounded p-3 bg-muted/30">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Badge variant="outline" className="text-xs">{testStep.bpmnNodeName}</Badge>
+                                        <span className="text-xs text-muted-foreground font-mono">{testStep.bpmnNodeId}</span>
+                                      </div>
+                                      <div className="grid gap-2 md:grid-cols-2 text-xs">
+                                        <div>
+                                          <span className="font-semibold text-muted-foreground">Action: </span>
+                                          <span>{testStep.action}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-semibold text-muted-foreground">Assertion: </span>
+                                          <span>{testStep.assertion}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Notes */}
+                            {scenario.notesForBankProject && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold">Implementeringsnoteringar</h4>
+                                <p className="text-sm text-muted-foreground whitespace-pre-line">{scenario.notesForBankProject}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>

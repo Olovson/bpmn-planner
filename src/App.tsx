@@ -34,6 +34,7 @@ import { LlmDebugView } from "./pages/LlmDebugView";
 import ConfigurationPage from "./pages/ConfigurationPage";
 import StyleGuidePage from "./pages/StyleGuidePage";
 import TestCoverageExplorerPage from "./pages/TestCoverageExplorerPage";
+import E2eTestsOverviewPage from "./pages/E2eTestsOverviewPage";
 import E2eQualityValidationPage from "./pages/E2eQualityValidationPage";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -118,6 +119,7 @@ const App = () => {
                   <Route path="/process-explorer" element={<ProcessExplorer />} />
                   <Route path="/e2e-quality-validation" element={<E2eQualityValidationPage />} />
                   <Route path="/test-coverage" element={<TestCoverageExplorerPage />} />
+                  <Route path="/e2e-tests" element={<E2eTestsOverviewPage />} />
                   <Route path="/node-matrix" element={<NodeMatrix />} />
                   <Route path="/test-report" element={<TestReport />} />
                   <Route path="/test-scripts" element={<TestScriptsPage />} />

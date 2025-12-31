@@ -65,22 +65,22 @@ describe('Household Generation Analysis', () => {
     combinedDocKeys.forEach(key => console.log(`  - ${key}`));
 
     // Expected counts
-    const totalFeatureGoalNodes = callActivities.length + embeddedSubProcesses.length;
-    const expectedFeatureGoals = 1 + totalFeatureGoalNodes; // Process + callActivities + embedded subProcesses
+    // VIKTIGT: Subprocess-filer genererar INTE Feature Goals längre (ersatta av file-level docs)
+    const expectedFeatureGoals = 0; // Subprocess-filer genererar INTE Feature Goals
     const expectedEpics = userTasks.length + serviceTasks.length + businessRuleTasks.length;
-    const expectedCombined = 0; // Subprocesser genererar INTE combined docs (bara root-processer)
-    const expectedTotal = expectedFeatureGoals + expectedEpics + expectedCombined;
+    const expectedFileLevelDocs = 1; // Subprocess-filer genererar file-level docs (mortgage-se-household.html)
+    const expectedTotal = expectedFeatureGoals + expectedEpics + expectedFileLevelDocs;
 
     console.log('\n=== Expected vs Actual ===');
     console.log(`Feature Goals: Expected ${expectedFeatureGoals}, Got ${featureGoalKeys.length}`);
     console.log(`Epics: Expected ${expectedEpics}, Got ${epicKeys.length}`);
-    console.log(`Combined: Expected ${expectedCombined}, Got ${combinedDocKeys.length}`);
+    console.log(`File-level docs: Expected ${expectedFileLevelDocs}, Got ${combinedDocKeys.length}`);
     console.log(`Total: Expected ${expectedTotal}, Got ${result.docs.size}`);
 
     // Assertions
     expect(featureGoalKeys.length).toBe(expectedFeatureGoals);
     expect(epicKeys.length).toBe(expectedEpics);
-    expect(combinedDocKeys.length).toBe(expectedCombined);
+    expect(combinedDocKeys.length).toBe(expectedFileLevelDocs);
     expect(result.docs.size).toBe(expectedTotal);
 
     console.log('\n✅ Isolated generation analysis complete');

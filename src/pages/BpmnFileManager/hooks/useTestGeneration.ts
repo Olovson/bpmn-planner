@@ -14,10 +14,12 @@ import type { BpmnFile } from '@/hooks/useBpmnFiles';
 import { generateTestsForFile, generateTestsForAllFiles } from '@/lib/testGenerators';
 import { getLlmModeConfig, type LlmGenerationMode } from '@/lib/llmMode';
 import type { LlmProvider } from '@/lib/llmClientAbstraction';
+import { getDefaultLlmProvider } from '@/lib/llmClients';
 import { buildHierarchySilently } from '../utils/hierarchyHelpers';
 import { invalidateArtifactQueries, invalidateStructureQueries } from '@/lib/queryInvalidation';
 import { pickRootBpmnFile } from '@/hooks/useRootBpmnFile';
 import { supabase } from '@/integrations/supabase/client';
+import type { GenerationProgress, GenerationResult } from '@/components/GenerationDialog';
 
 export interface UseTestGenerationProps {
   files: BpmnFile[];
@@ -27,6 +29,10 @@ export interface UseTestGenerationProps {
   // State setters from parent component
   setGeneratingFile: (fileName: string | null) => void;
   setCurrentGenerationStep: (step: { step: string; detail?: string } | null) => void;
+  // GenerationDialog state setters
+  setShowGenerationDialog: (show: boolean) => void;
+  setGenerationProgress: (progress: GenerationProgress | null) => void;
+  setGenerationDialogResult: (result: GenerationResult | null) => void;
 }
 
 export interface UseTestGenerationReturn {
@@ -88,6 +94,9 @@ export function useTestGeneration({
   selectedFile,
   setGeneratingFile,
   setCurrentGenerationStep,
+  setShowGenerationDialog,
+  setGenerationProgress,
+  setGenerationDialogResult,
 }: UseTestGenerationProps): UseTestGenerationReturn {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -139,29 +148,100 @@ export function useTestGeneration({
       }
     }
 
+    // FORBÄTTRING: Explicit LLM-tillgänglighetskontroll
+    const { isLlmEnabled } = await import('@/lib/llmClient');
+    if (!isLlmEnabled()) {
+      toast({
+        title: 'LLM inte tillgängligt',
+        description: 'Aktivera LLM för att generera tester. Testgenerering kräver LLM för att generera E2E scenarios.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setGeneratingFile(selectedFile.file_name);
-    const llmProvider = getLlmModeConfig(generationMode).provider;
+    const llmProvider = getDefaultLlmProvider();
+
+    if (!llmProvider) {
+      toast({
+        title: 'LLM provider saknas',
+        description: 'Kunde inte hitta LLM provider. Kontrollera LLM-konfigurationen.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Show generation dialog immediately
+    setShowGenerationDialog(true);
+    const startTime = Date.now();
 
     try {
-      toast({
-        title: 'Startar testgenerering',
-        description: `Genererar tester för ${selectedFile.file_name} med LLM läge.`,
+      // Initialize progress
+      setGenerationProgress({
+        totalProgress: 0,
+        currentStep: 'Förbereder testgenerering...',
+        docs: { completed: 0, total: 0 },
+        htmlUpload: { completed: 0, total: 0 },
+        tests: { completed: 0, total: 0 },
+        startTime,
       });
 
       const result = await generateTestsForFile(
         selectedFile.file_name,
         llmProvider,
         (progress) => {
+          // Update both currentGenerationStep (for TransitionOverlay) and GenerationProgress (for GenerationDialog)
           setCurrentGenerationStep({
             step: `Genererar tester: ${progress.currentElement || '...'}`,
             detail: `${progress.current}/${progress.total} noder`,
           });
+
+          // Calculate progress percentage
+          const progressPercent = progress.total > 0 
+            ? Math.round((progress.current / progress.total) * 100)
+            : 0;
+
+          // Map status to step text
+          let stepText = 'Förbereder...';
+          if (progress.status === 'parsing') {
+            stepText = 'Parsar BPMN-fil...';
+          } else if (progress.status === 'generating') {
+            stepText = `Genererar tester: ${progress.currentElement || '...'}`;
+          } else if (progress.status === 'uploading') {
+            stepText = 'Laddar upp tester...';
+          } else if (progress.status === 'complete') {
+            stepText = 'Klar!';
+          }
+
+          setGenerationProgress({
+            totalProgress: progressPercent,
+            currentStep: stepText,
+            currentStepDetail: `${progress.current}/${progress.total} steg`,
+            docs: { completed: 0, total: 0 },
+            htmlUpload: { completed: 0, total: 0 },
+            tests: { completed: progress.current, total: progress.total },
+            startTime,
+          });
         },
       );
 
+      // Convert TestGenerationResult to GenerationResult format
+      const dialogResult: GenerationResult = {
+        fileName: selectedFile.file_name,
+        filesAnalyzed: [selectedFile.file_name],
+        docFiles: [],
+        jiraMappings: [],
+        subprocessMappings: [],
+      };
+
+      // Show result in dialog
+      setGenerationProgress(null);
+      setGenerationDialogResult(dialogResult);
+
+      // Also show toast for quick feedback
       toast({
         title: 'Testgenerering klar',
-        description: `Genererade E2E-scenarios och Feature Goal-test scenarios för ${selectedFile.file_name}.`,
+        description: `Genererade ${result.totalScenarios || 0} E2E-scenarios för ${selectedFile.file_name}.`,
       });
 
       if (result.missingDocumentation && result.missingDocumentation.length > 0) {
@@ -236,6 +316,11 @@ export function useTestGeneration({
       await queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] });
       await queryClient.invalidateQueries({ queryKey: ['file-artifact-coverage'] });
     } catch (error) {
+      // Hide dialog on error
+      setShowGenerationDialog(false);
+      setGenerationProgress(null);
+      setGenerationDialogResult(null);
+      
       toast({
         title: 'Testgenerering misslyckades',
         description: error instanceof Error ? error.message : 'Ett okänt fel uppstod',
@@ -252,6 +337,9 @@ export function useTestGeneration({
     generationMode,
     setGeneratingFile,
     setCurrentGenerationStep,
+    setShowGenerationDialog,
+    setGenerationProgress,
+    setGenerationDialogResult,
     toast,
     queryClient,
   ]);
@@ -268,34 +356,88 @@ export function useTestGeneration({
       return;
     }
 
-    // Automatisk hierarki-byggning: Bygg hierarki automatiskt innan testgenerering
-    // Använd root-fil om den finns, annars använd första filen
-    const rootFile = await resolveRootBpmnFile(files, toast);
-    const hierarchyFile = rootFile || allBpmnFiles[0];
-    
-    if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
-      // Bygg hierarki tyst i bakgrunden (transparent för användaren)
-      try {
-        await buildHierarchySilently(hierarchyFile, queryClient);
-        // Invalidera queries så att UI uppdateras med ny hierarki
-        queryClient.invalidateQueries({ queryKey: ['process-tree'] });
-        queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
-      } catch (error) {
-        // Logga felet men fortsätt med testgenerering (hierarki är inte kritiskt)
-        console.warn('[handleGenerateTestsForAllFiles] Failed to build hierarchy automatically, continuing anyway:', error);
-      }
+    // FORBÄTTRING: Explicit LLM-tillgänglighetskontroll
+    const { isLlmEnabled } = await import('@/lib/llmClient');
+    if (!isLlmEnabled()) {
+      toast({
+        title: 'LLM inte tillgängligt',
+        description: 'Aktivera LLM för att generera tester. Testgenerering kräver LLM för att generera E2E scenarios.',
+        variant: 'destructive',
+      });
+      return;
     }
 
     setGeneratingFile('all');
-    const llmProvider = getLlmModeConfig(generationMode).provider;
+    const llmProvider = getDefaultLlmProvider();
+
+    if (!llmProvider) {
+      toast({
+        title: 'LLM provider saknas',
+        description: 'Kunde inte hitta LLM provider. Kontrollera LLM-konfigurationen.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
-      // För "alla filer": Generera EN gång för hela hierarkin istället för att loopa
-      // Om vi har root-fil, generera bara för root (hierarkin inkluderar alla subprocesser)
-      if (rootFile) {
+      // Automatisk hierarki-byggning: Bygg hierarki automatiskt innan testgenerering
+      // Använd root-fil om den finns, annars använd första filen
+      let rootFile: BpmnFile | null = null;
+      try {
+        rootFile = await resolveRootBpmnFile(files, toast);
+      } catch (error) {
+        console.error('[handleGenerateTestsForAllFiles] Error resolving root file:', error);
+        // Fortsätt med första filen som fallback
+      }
+      
+      const hierarchyFile = rootFile || allBpmnFiles[0];
+      
+      if (!hierarchyFile) {
         toast({
-          title: 'Startar testgenerering för alla filer',
-          description: `Genererar tester för hela hierarkin med ${rootFile.file_name} som toppfil.`,
+          title: 'Kunde inte hitta fil att generera tester för',
+          description: 'Ingen BPMN-fil kunde hittas för testgenerering.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (!hierarchyFile.storage_path) {
+        toast({
+          title: 'Filen är inte uppladdad än',
+          description: `BPMN-filen ${hierarchyFile.file_name} är inte uppladdad än. Ladda upp filen först.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
+        // Bygg hierarki tyst i bakgrunden (transparent för användaren)
+        try {
+          await buildHierarchySilently(hierarchyFile, queryClient);
+          // Invalidera queries så att UI uppdateras med ny hierarki
+          queryClient.invalidateQueries({ queryKey: ['process-tree'] });
+          queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
+        } catch (error) {
+          // Logga felet men fortsätt med testgenerering (hierarki är inte kritiskt)
+          console.warn('[handleGenerateTestsForAllFiles] Failed to build hierarchy automatically, continuing anyway:', error);
+        }
+      }
+
+      // För "alla filer": Generera EN gång för hela hierarkin istället för att loopa
+      // Om vi har root-fil, generera bara för root (hierarkin inkluderar alla subprocesser automatiskt)
+      if (rootFile) {
+        // Show generation dialog immediately
+        setShowGenerationDialog(true);
+        const startTime = Date.now();
+
+        // Initialize progress
+        setGenerationProgress({
+          totalProgress: 0,
+          currentStep: 'Förbereder testgenerering för alla filer...',
+          docs: { completed: 0, total: 0 },
+          htmlUpload: { completed: 0, total: 0 },
+          tests: { completed: 0, total: 0 },
+          startTime,
         });
 
         // Generera tester för root-filen (hierarkin inkluderar alla subprocesser automatiskt)
@@ -303,16 +445,68 @@ export function useTestGeneration({
           rootFile.file_name,
           llmProvider,
           (progress) => {
+            // Update both currentGenerationStep (for TransitionOverlay) and GenerationProgress (for GenerationDialog)
             setCurrentGenerationStep({
               step: `Genererar tester: ${progress.currentElement || '...'}`,
               detail: `${progress.current}/${progress.total} noder`,
             });
+
+            // Calculate progress percentage
+            const progressPercent = progress.total > 0 
+              ? Math.round((progress.current / progress.total) * 100)
+              : 0;
+
+            // Map status to step text
+            let stepText = 'Förbereder...';
+            if (progress.status === 'parsing') {
+              stepText = 'Parsar BPMN-fil...';
+            } else if (progress.status === 'generating') {
+              stepText = `Genererar tester: ${progress.currentElement || '...'}`;
+            } else if (progress.status === 'uploading') {
+              stepText = 'Laddar upp tester...';
+            } else if (progress.status === 'complete') {
+              stepText = 'Klar!';
+            }
+
+            setGenerationProgress({
+              totalProgress: progressPercent,
+              currentStep: stepText,
+              currentStepDetail: `${progress.current}/${progress.total} steg`,
+              docs: { completed: 0, total: 0 },
+              htmlUpload: { completed: 0, total: 0 },
+              tests: { completed: progress.current, total: progress.total },
+              startTime,
+            });
           },
         );
 
+        // Convert TestGenerationResult to GenerationResult format
+        const dialogResult: GenerationResult = {
+          fileName: rootFile.file_name,
+          filesAnalyzed: [rootFile.file_name],
+          docFiles: [],
+          jiraMappings: [],
+          subprocessMappings: [],
+        };
+
+        // Show result in dialog
+        setGenerationProgress(null);
+        setGenerationDialogResult(dialogResult);
+
+        // Also show toast for quick feedback
         toast({
           title: 'Testgenerering klar',
-          description: `Genererade E2E-scenarios och Feature Goal-test scenarios för hela hierarkin.`,
+          description: `Genererade ${result.totalScenarios || 0} E2E-scenarios för hela hierarkin.`,
+        });
+        
+        // Logga detaljerad information
+        console.log('[useTestGeneration] Test generation result:', {
+          totalScenarios: result.totalScenarios,
+          errors: result.errors.length,
+          e2eGenerationErrors: result.e2eGenerationErrors?.length || 0,
+          featureGoalTestErrors: result.featureGoalTestErrors?.length || 0,
+          warnings: result.warnings?.length || 0,
+          missingDocumentation: result.missingDocumentation?.length || 0,
         });
 
         // Visa alla fel och varningar på ett användarvänligt sätt
@@ -450,6 +644,11 @@ export function useTestGeneration({
       queryClient.invalidateQueries({ queryKey: ['node-test-links'] });
       queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
     } catch (error) {
+      // Hide dialog on error
+      setShowGenerationDialog(false);
+      setGenerationProgress(null);
+      setGenerationDialogResult(null);
+      
       toast({
         title: 'Testgenerering misslyckades',
         description: error instanceof Error ? error.message : 'Okänt fel',
@@ -464,6 +663,9 @@ export function useTestGeneration({
     generationMode,
     setGeneratingFile,
     setCurrentGenerationStep,
+    setShowGenerationDialog,
+    setGenerationProgress,
+    setGenerationDialogResult,
     toast,
     queryClient,
   ]);

@@ -531,6 +531,11 @@ export function validateFeatureGoalModelAfterMerge(
     warnings.push('Field "flowSteps" is empty - consider adding flow steps');
   }
 
+  // Warning if user stories are empty (Feature Goals should have user stories)
+  if (model.userStories.length === 0) {
+    warnings.push('Field "userStories" is empty - Feature Goals should have user stories (3-6 stories recommended)');
+  }
+
   // Warning if dependencies exist but no process-context dependencies found
   // Process-context dependencies (prerequisites) should be included in dependencies
   if (model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0) {

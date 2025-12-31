@@ -31,7 +31,7 @@ import type {
   NodeArtifactEntry,
   PlannedScenarioProvider,
 } from './types';
-import { generateDorDodForNodeType } from './dorDodGenerator';
+import { generateDorDodForNodeType } from './dorDodGenerators';
 import {
   generateDocumentationHTML,
   parseSubprocessFile,

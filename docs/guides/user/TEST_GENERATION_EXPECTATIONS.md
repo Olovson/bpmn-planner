@@ -292,14 +292,35 @@ Om du väljer noden "application" i BPMN-viewern:
 - **Orsak:** Feature Goal-dokumentation saknas för Call Activities
 - **Lösning:** Generera Feature Goal-dokumentation först, sedan testgenerering
 - **Viktigt:** Epic-dokumentation krävs inte längre för testgenerering
+- **Ny funktion:** Systemet genererar nu tester för Feature Goals som har dokumentation, även om några saknas
+
+### "Dokumentation saknas för alla X Feature Goal(s)"
+- **Orsak:** All Feature Goal-dokumentation saknas
+- **Lösning:** Generera Feature Goal-dokumentation först innan testgenerering
+- **Skillnad:** Detta stoppar genereringen (till skillnad från när bara några saknas)
 
 ### "0 testfiler genererade"
 - **Orsak:** Inga Feature Goals (Call Activities) finns i BPMN-filen, eller dokumentation saknas
 - **Lösning:** Kontrollera att BPMN-filen har Call Activities och att Feature Goal-dokumentation finns
+- **Ny funktion:** E2E-scenarios kan nu genereras även om det inte finns Call Activities (för processer som är subprocesser)
 
 ### "0 scenarios genererade"
 - **Orsak:** BPMN-filen har inga testbara paths, eller E2E-scenario-generering misslyckades
 - **Lösning:** Kontrollera att BPMN-filen har start- och end-events, och att Feature Goal-dokumentation finns
+- **Ny funktion:** Systemet visar nu tydlig feedback om vilka paths som hoppades över och varför
+
+### "Hoppade över X path(s)"
+- **Orsak:** Vissa paths hoppades över under E2E-generering
+- **Möjliga orsaker:**
+  - Path saknade dokumentation
+  - Path matchade inte prioriterade scenarios
+  - LLM-generering misslyckades för path
+- **Lösning:** Kontrollera varningar i konsolen för detaljerad information
+
+### "LLM inte tillgängligt"
+- **Orsak:** LLM är inte aktiverat eller konfigurerat
+- **Lösning:** Aktivera LLM i inställningar innan testgenerering
+- **Ny funktion:** Systemet kontrollerar nu LLM-tillgänglighet innan generering startar
 
 ### "Scenarios visas inte i UI"
 - **Orsak:** Cache-problem eller fel i databasen

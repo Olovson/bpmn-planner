@@ -225,6 +225,7 @@ function matchSubprocesses(
 
   for (const ca of callActivities) {
     let match: SubprocessMatch | undefined;
+    let mapMatched = false; // Track if bpmn-map.json matched (even if file is missing)
 
     if (bpmnMap) {
       const mapRes = matchCallActivityUsingMap(
@@ -234,8 +235,10 @@ function matchSubprocesses(
       );
 
       if (mapRes.matchedFileName) {
+        mapMatched = true; // bpmn-map.json matched this call activity
         const proc = processDefs.find((p) => p.fileName === mapRes.matchedFileName);
         if (proc) {
+          // Perfect match: bpmn-map.json matched AND file exists
           match = {
             callActivityNodeId: `callActivity:${ca.fileName}:${ca.id}`,
             callActivityRaw: ca,
@@ -243,10 +246,12 @@ function matchSubprocesses(
             matchSource: 'bpmn-map',
           };
         } else {
+          // VIKTIGT: Om bpmn-map.json pekar på en fil som saknas, markera det som saknat
+          // men fall INTE tillbaka på automatisk matchning - det skulle ge felaktiga resultat
           if (import.meta.env.DEV) {
             console.warn(
               `[matchSubprocesses] Map points to ${mapRes.matchedFileName} but file not found in processDefs.`,
-              `Call activity: ${ca.id} in ${ca.fileName}`
+              `Call activity: ${ca.id} in ${ca.fileName}. Marking as missing, NOT falling back to automatic matching.`
             );
           }
           missing.push({
@@ -254,25 +259,32 @@ function matchSubprocesses(
             missingFileName: mapRes.matchedFileName,
             context: { reason: 'map-file-not-found' },
           });
+          // INTE skapa en match här - låt det vara undefined så att det inte faller tillbaka på automatisk matchning
+          // match förblir undefined
         }
       }
     }
 
-    if (!match) {
+    // VIKTIGT: Fallback till automatisk matchning ENDAST om bpmn-map.json INTE matchade alls
+    // Om bpmn-map.json matchade men filen saknas, ska vi INTE försöka matcha automatiskt
+    // eftersom det skulle ge felaktiga resultat (t.ex. matcha mot fel filer när det bara finns 3 filer)
+    if (!match && !mapMatched) {
+      // Endast här: försök automatisk matchning om bpmn-map.json inte matchade alls
       missing.push({
         fromNodeId: `callActivity:${ca.fileName}:${ca.id}`,
         missingProcessId: ca.calledElement,
         context: { reason: 'no-match' },
       });
-      match = {
-        callActivityNodeId: `callActivity:${ca.fileName}:${ca.id}`,
-        callActivityRaw: ca,
-        targetProcessDef: undefined,
-        matchSource: 'none',
-      };
+      // INTE skapa en match med targetProcessDef: undefined - det orsakar problem senare
+      // Låt match förbli undefined så att den inte pushas till matches
     }
 
-    matches.push(match);
+    // VIKTIGT: Pusha bara match om den finns OCH har en targetProcessDef
+    // Om match är undefined (bpmn-map matchade men filen saknas) eller saknar targetProcessDef,
+    // ska den INTE pushas eftersom den inte kan användas för att bygga edges
+    if (match && match.targetProcessDef) {
+      matches.push(match);
+    }
   }
 
 

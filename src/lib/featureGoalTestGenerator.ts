@@ -174,66 +174,82 @@ async function loadFeatureGoalDocFromStorage(
       return null;
     }
 
-    // Försök ladda dokumentation från Storage
-    const storagePaths = getFeatureGoalDocStoragePaths(bpmnFile, elementId, resolvedParentBpmnFile);
+    // Get version hash (required)
+    const { getCurrentVersionHash } = await import('./bpmnVersioning');
+    const versionHash = await getCurrentVersionHash(bpmnFile);
     
-    for (const docPath of storagePaths) {
-      const { data, error } = await supabase.storage
-        .from('bpmn-files')
-        .download(docPath);
-      
-      if (error || !data) {
-        continue; // Försök nästa path
-      }
-      
-      const htmlContent = await data.text();
-      
-      // Extrahera JSON från HTML (samma logik som i docRendering.ts)
-      const jsonMatch = htmlContent.match(/<script[^>]*type=["']application\/json["'][^>]*>(.*?)<\/script>/s);
-      if (jsonMatch) {
-        try {
-          const docJson = JSON.parse(jsonMatch[1]);
-          
-          // Convert to FeatureGoalDocModel format
-          return {
-            summary: docJson.summary || '',
-            flowSteps: Array.isArray(docJson.flowSteps) ? docJson.flowSteps : [],
-            dependencies: Array.isArray(docJson.dependencies) ? docJson.dependencies : [], // Includes both process context (prerequisites) and technical systems
-            userStories: Array.isArray(docJson.userStories) ? docJson.userStories.map((us: any) => ({
-              id: us.id || '',
-              role: (us.role === 'Kund' || us.role === 'Handläggare' || us.role === 'Processägare') 
-                ? us.role 
-                : 'Kund',
-              goal: us.goal || '',
-              value: us.value || '',
-              acceptanceCriteria: Array.isArray(us.acceptanceCriteria) ? us.acceptanceCriteria : [],
-            })) : [],
-          };
-        } catch (parseError) {
-          console.warn(
-            `[loadFeatureGoalDocFromStorage] Failed to parse JSON from HTML for ${bpmnFile}::${elementId}:`,
-            parseError
-          );
-        }
-      }
-      
-      // Fallback: Försök ladda från llm-debug/docs-raw
-      const docInfo = await loadChildDocFromStorage(
-        bpmnFile,
-        elementId,
-        getFeatureGoalDocFileKey(bpmnFile, elementId, undefined, resolvedParentBpmnFile),
-        null,
-        'feature-goal-test-generation'
-      );
-      
-      if (docInfo) {
+    if (!versionHash) {
+      console.warn(`[featureGoalTestGenerator] No version hash found for ${bpmnFile}, cannot load Feature Goal doc`);
+      return null;
+    }
+    
+    // Get storage path using unified approach
+    const docPath = await getFeatureGoalDocStoragePaths(
+      bpmnFile,
+      elementId,
+      resolvedParentBpmnFile,
+      versionHash
+    );
+    
+    if (!docPath) {
+      return null;
+    }
+    
+    const { data, error } = await supabase.storage
+      .from('bpmn-files')
+      .download(docPath);
+    
+    if (error || !data) {
+      return null;
+    }
+    
+    const htmlContent = await data.text();
+    
+    // Extrahera JSON från HTML (samma logik som i docRendering.ts)
+    const jsonMatch = htmlContent.match(/<script[^>]*type=["']application\/json["'][^>]*>(.*?)<\/script>/s);
+    if (jsonMatch) {
+      try {
+        const docJson = JSON.parse(jsonMatch[1]);
+        
+        // Convert to FeatureGoalDocModel format
         return {
-          summary: docInfo.summary || '',
-          flowSteps: docInfo.flowSteps || [],
-          dependencies: [...(docInfo.inputs || []), ...(docInfo.outputs || [])], // Combine inputs (prerequisites) and outputs (technical systems) into dependencies
-          userStories: [], // Not available from this source
+          summary: docJson.summary || '',
+          flowSteps: Array.isArray(docJson.flowSteps) ? docJson.flowSteps : [],
+          dependencies: Array.isArray(docJson.dependencies) ? docJson.dependencies : [], // Includes both process context (prerequisites) and technical systems
+          userStories: Array.isArray(docJson.userStories) ? docJson.userStories.map((us: any) => ({
+            id: us.id || '',
+            role: (us.role === 'Kund' || us.role === 'Handläggare' || us.role === 'Processägare') 
+              ? us.role 
+              : 'Kund',
+            goal: us.goal || '',
+            value: us.value || '',
+            acceptanceCriteria: Array.isArray(us.acceptanceCriteria) ? us.acceptanceCriteria : [],
+          })) : [],
         };
+      } catch (parseError) {
+        console.warn(
+          `[loadFeatureGoalDocFromStorage] Failed to parse JSON from HTML for ${bpmnFile}::${elementId}:`,
+          parseError
+        );
       }
+    }
+    
+    // Fallback: Försök ladda från llm-debug/docs-raw
+    const docInfo = await loadChildDocFromStorage(
+      bpmnFile,
+      elementId,
+      getFeatureGoalDocFileKey(bpmnFile, elementId, undefined, resolvedParentBpmnFile),
+      null,
+      'feature-goal-test-generation'
+    );
+    
+    if (docInfo) {
+      return {
+        summary: docInfo.summary || '',
+        flowSteps: docInfo.flowSteps || [],
+        dependencies: [...(docInfo.inputs || []), ...(docInfo.outputs || [])], // Combine inputs (prerequisites) and outputs (technical systems) into dependencies
+        userStories: [], // Not available from this source
+      };
     }
     
     return null;

@@ -32,6 +32,9 @@ export interface HierarchicalTestNode {
   children?: HierarchicalTestNode[];
 }
 
+// Re-export for backward compatibility
+export type { HierarchicalTestNode };
+
 /**
  * DoR/DoD Criterion interface
  */
@@ -117,4 +120,9 @@ export type ProgressReporter = (
  * Planned scenario provider type
  */
 export type PlannedScenarioProvider = 'claude' | 'chatgpt' | 'ollama';
+
+/**
+ * Map of planned scenarios by node and provider
+ */
+export type PlannedScenarioMap = Map<string, Map<PlannedScenarioProvider, TestScenario[]>>;
 

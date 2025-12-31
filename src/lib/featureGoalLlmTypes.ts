@@ -8,6 +8,12 @@ import type { ScenarioPersona, ScenarioRiskLevel, ScenarioAssertionType, Scenari
  * 
  * Feature Goals använder nu samma struktur som Epics (prerequisites konsoliderat till dependencies).
  */
+export interface UsageCase {
+  parentProcess: string;
+  conditions?: string[];
+  differences?: string;
+}
+
 export interface FeatureGoalDocModel {
   summary: string;
   flowSteps: string[];
@@ -19,6 +25,7 @@ export interface FeatureGoalDocModel {
     value: string;
     acceptanceCriteria: string[]; // 2-4 acceptanskriterier per user story
   }>;
+  usageCases?: UsageCase[]; // Optional - only included if there are differences between parent processes
 }
 
 export type FeatureGoalLlmSections = FeatureGoalDocModel;

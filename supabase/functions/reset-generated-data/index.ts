@@ -250,6 +250,7 @@ Deno.serve(async (req) => {
         'generated-docs',
         'tests',
         'tests/e2e',
+        'e2e-scenarios', // E2E scenarios stored in Storage
         'test-reports',
         'reports',
         'llm-debug'
@@ -262,6 +263,9 @@ Deno.serve(async (req) => {
       if (shouldDeleteDocs) storagePrefixes.push('docs', 'generated-docs');
       if (shouldDeleteTests) {
         storagePrefixes.push('tests', 'tests/e2e');
+        // VIKTIGT: Rensa E2E scenarios från Storage när tester raderas
+        // E2E scenarios sparas i e2e-scenarios/ mappen (med version hash)
+        storagePrefixes.push('e2e-scenarios');
         // VIKTIGT: Rensa hela llm-debug mappen när tester raderas
         // eftersom llm-debug innehåller debug-artifacts från generering
         storagePrefixes.push('llm-debug');

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Loader2, X, CheckCircle2, FileText, FileCode, GitBranch, AlertTriangle } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
@@ -92,6 +92,11 @@ export function GenerationDialog({
             {view === 'progress' && 'Genererar Artefakter'}
             {view === 'result' && 'Generering Klar'}
           </DialogTitle>
+          <DialogDescription>
+            {view === 'plan' && 'Följande kommer att genereras baserat på dina BPMN-filer'}
+            {view === 'progress' && 'Genererar artefakter, vänligen vänta...'}
+            {view === 'result' && 'Alla artefakter har genererats framgångsrikt'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

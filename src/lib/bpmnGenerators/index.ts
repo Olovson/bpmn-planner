@@ -28,7 +28,7 @@ export {
   generateDocumentationFromTree,
 } from './testGenerators';
 
-export { generateDorDodForNodeType } from './dorDodGenerator';
+export { generateDorDodForNodeType } from './dorDodGenerators';
 
 export {
   generateDocumentationHTML,

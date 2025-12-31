@@ -85,109 +85,232 @@ export async function generateTestsForFile(
     const graph = await buildBpmnProcessGraphFromParseResults(bpmnFileName, parseResults);
     const allTestableNodes = getTestableNodes(graph);
     
+    console.log(`[testGenerators] Found ${allTestableNodes.length} testable nodes in ${bpmnFileName}`);
+    
     // Filter: Only generate test files for Feature Goals (callActivities)
     // Epic test generation has been removed - Epic information is already included
     // in Feature Goal documentation via childrenDocumentation
     const testableNodes = allTestableNodes.filter(node => node.type === 'callActivity');
 
-    if (testableNodes.length === 0) {
-      return result; // No Feature Goals to generate tests for
-    }
+    console.log(`[testGenerators] Found ${testableNodes.length} callActivities (Feature Goals) in ${bpmnFileName}`);
 
-    // Validate that documentation exists for all testable nodes before proceeding
-    progressCallback?.({
-      current: 0,
-      total: testableNodes.length,
-      status: 'parsing',
-      currentElement: 'Kontrollerar dokumentation...',
-    });
+    // Validate documentation for testable nodes (callActivities)
+    // FORBÄTTRING: Tillåt partiell generering - generera för Feature Goals som har dokumentation
+    // Istället för att stoppa hela genereringen om EN dokumentation saknas
+    if (testableNodes.length > 0) {
+      progressCallback?.({
+        current: 0,
+        total: testableNodes.length,
+        status: 'parsing',
+        currentElement: 'Kontrollerar dokumentation...',
+      });
 
-    const missingDocs: Array<{ elementId: string; elementName: string; docPath: string }> = [];
-    
-    for (const node of testableNodes) {
-      // Use bpmnElementId directly from BpmnProcessNode (element is optional and may be undefined)
-      const elementId = node.bpmnElementId;
-      const elementName = node.name || elementId;
-      let docExists = false;
-      let docPath = '';
+      const missingDocs: Array<{ elementId: string; elementName: string; docPath: string }> = [];
+      const validNodes: typeof testableNodes = [];
+      
+      for (const node of testableNodes) {
+        // Use bpmnElementId directly from BpmnProcessNode (element is optional and may be undefined)
+        const elementId = node.bpmnElementId;
+        const elementName = node.name || elementId;
+        let docExists = false;
+        let docPath = '';
 
-      // For callActivities, check Feature Goal documentation
-      if (node.type === 'callActivity' && node.subprocessFile) {
-        // Get version hash for the subprocess file (not the parent file)
-        // This is important because Feature Goal docs are stored under the subprocess file's version
-        const subprocessVersionHash = await getCurrentVersionHash(node.subprocessFile);
-        
-        const featureGoalPaths = getFeatureGoalDocStoragePaths(
-          node.subprocessFile,
-          elementId,
-          bpmnFileName, // parent BPMN file
-          subprocessVersionHash, // version hash for subprocess file
-          node.subprocessFile, // bpmnFileForVersion: use subprocess file for versioned paths
-        );
-        
-        // Check all possible paths (versioned and non-versioned)
-        for (const path of featureGoalPaths) {
-          if (await storageFileExists(path)) {
-            docExists = true;
-            docPath = path;
-            break;
+        // For callActivities, check Feature Goal documentation
+        if (node.type === 'callActivity' && node.subprocessFile) {
+          // Get version hash for the subprocess file (not the parent file)
+          // This is important because Feature Goal docs are stored under the subprocess file's version
+          const subprocessVersionHash = await getCurrentVersionHash(node.subprocessFile);
+          
+          if (!subprocessVersionHash) {
+            console.warn(`[testGenerators] No version hash found for ${node.subprocessFile}, cannot check documentation`);
+            docExists = false;
+          } else {
+            docPath = await getFeatureGoalDocStoragePaths(
+              node.subprocessFile,
+              elementId,
+              bpmnFileName, // parent BPMN file
+              subprocessVersionHash, // version hash for subprocess file
+              node.subprocessFile, // bpmnFileForVersion: use subprocess file for versioned paths
+            );
+            docExists = docPath ? await storageFileExists(docPath) : false;
+          }
+        } else {
+          // For other node types, check regular node documentation
+          const versionHash = await getCurrentVersionHash(bpmnFileName);
+          if (!versionHash) {
+            console.warn(`[testGenerators] No version hash found for ${bpmnFileName}, cannot check documentation`);
+            docExists = false;
+          } else {
+            docPath = await getNodeDocStoragePath(bpmnFileName, elementId, versionHash);
+            docExists = await storageFileExists(docPath);
           }
         }
         
         if (!docExists) {
-          docPath = featureGoalPaths[0] || `feature-goals/${node.subprocessFile}/${elementId}.html`;
+          missingDocs.push({
+            elementId: elementId,
+            elementName: elementName,
+            docPath: docPath,
+          });
+        } else {
+          // FORBÄTTRING: Lägg till noder med dokumentation i validNodes för partiell generering
+          validNodes.push(node);
         }
-      } else {
-        // For other node types, check regular node documentation
-        docPath = getNodeDocStoragePath(bpmnFileName, elementId);
-        docExists = await storageFileExists(docPath);
       }
-      
-      if (!docExists) {
-        missingDocs.push({
-          elementId: elementId,
-          elementName: elementName,
-          docPath: docPath,
-        });
-      }
-    }
 
-    // If any documentation is missing, return error immediately
-    if (missingDocs.length > 0) {
-      result.missingDocumentation = missingDocs;
-      const missingNames = missingDocs.map(d => d.elementName || d.elementId).join(', ');
-      throw new Error(
-        `Dokumentation saknas för ${missingDocs.length} nod(er): ${missingNames}. ` +
-        `Generera dokumentation först innan testgenerering.`
-      );
+      // FORBÄTTRING: Tillåt partiell generering - varna om dokumentation saknas men fortsätt ändå
+      if (missingDocs.length > 0) {
+        result.missingDocumentation = missingDocs;
+        const missingNames = missingDocs.map(d => d.elementName || d.elementId).join(', ');
+        const warning = `Dokumentation saknas för ${missingDocs.length} Feature Goal(s): ${missingNames}. ` +
+          `Genererar tester endast för Feature Goals med dokumentation (${validNodes.length} av ${testableNodes.length}).`;
+        
+        console.warn(`[testGenerators] ${warning}`);
+        if (!result.warnings) {
+          result.warnings = [];
+        }
+        result.warnings.push(warning);
+      }
+
+      // FORBÄTTRING: Om alla dokumentation saknas, ge tydligt felmeddelande
+      if (validNodes.length === 0 && testableNodes.length > 0) {
+        const missingNames = missingDocs.map(d => d.elementName || d.elementId).join(', ');
+        throw new Error(
+          `Dokumentation saknas för alla ${testableNodes.length} Feature Goal(s): ${missingNames}. ` +
+          `Generera dokumentation först innan testgenerering.`
+        );
+      }
+    } else {
+      console.log(`[testGenerators] No callActivities found in ${bpmnFileName}. Will generate E2E scenarios for the process itself.`);
     }
 
     // Playwright-testfiler genereras inte längre
     result.totalFiles = 0;
 
-    progressCallback?.({
-      current: 0,
-      total: testableNodes.length,
-      status: 'generating',
-      currentElement: `Found ${testableNodes.length} testable nodes`,
-    });
-
-    // Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte
-    // för att generera given/when/then. All testinformation finns nu i:
-    // - E2E scenarios (kompletta flöden, JSON i storage)
-    // - Feature Goal-test scenarios (extraherat från E2E scenarios, i databas)
-    
-    // Hoppa över Playwright-testfil-generering och gå direkt till E2E scenario-generering
-    progressCallback?.({
-      current: testableNodes.length,
-      total: testableNodes.length,
-      status: 'complete',
-    });
+    // E2E scenarios genereras även om det inte finns callActivities (för processer som är subprocesser)
+    // Om det inte finns callActivities, hoppa direkt till E2E scenario-generering
+    if (testableNodes.length > 0) {
+      progressCallback?.({
+        current: 0,
+        total: testableNodes.length,
+        status: 'generating',
+        currentElement: `Found ${testableNodes.length} testable nodes`,
+      });
+    }
 
     // Generate E2E scenarios for root process (if this is a root file)
     // Only generate E2E scenarios if LLM is enabled and we have a root process
-    if (isLlmEnabled() && llmProvider) {
+    const llmEnabled = isLlmEnabled();
+    console.log(`[testGenerators] LLM enabled: ${llmEnabled}, llmProvider: ${llmProvider ? llmProvider : 'undefined'}`);
+    
+    if (llmEnabled && llmProvider) {
       try {
+        // Check if E2E scenarios already exist for this file to avoid duplicate generation
+        // Use loadE2eScenariosFromStorage which handles versioned paths correctly
+        const { loadE2eScenariosFromStorage } = await import('./e2eScenarioStorage');
+        const existingScenarios = await loadE2eScenariosFromStorage(bpmnFileName);
+        
+        // FORBÄTTRING: Om E2E scenarios redan finns, hoppa över E2E-generering men tillåt Feature Goal-test-generering
+        if (existingScenarios.length > 0) {
+          console.log(`[testGenerators] E2E scenarios already exist for ${bpmnFileName} (${existingScenarios.length} scenarios), skipping E2E generation to avoid duplicates`);
+          result.totalScenarios = existingScenarios.length;
+          
+          // FORBÄTTRING: Försök regenerera Feature Goal-tester från befintliga E2E scenarios
+          // Vi behöver bygga paths från E2E scenarios för att kunna generera Feature Goal-tester
+          try {
+            // Bygg paths från befintliga E2E scenarios genom att extrahera pathMetadata
+            const pathsFromScenarios = existingScenarios
+              .filter(s => s.pathMetadata)
+              .map(s => {
+                // Rekonstruera ProcessPath från pathMetadata
+                // ProcessPath kräver type, gatewayConditions måste matcha GatewayCondition-interface
+                return {
+                  type: 'possible-path' as const,
+                  startEvent: s.pathMetadata?.startEvent || 'unknown',
+                  endEvent: s.pathMetadata?.endEvent || 'unknown',
+                  featureGoals: s.pathMetadata?.featureGoals || [],
+                  gatewayConditions: (s.pathMetadata?.gatewayConditions || []).map((gc: any) => ({
+                    gatewayId: gc.gatewayId || '',
+                    gatewayName: '', // Saknas i pathMetadata, men behövs inte för Feature Goal-test-generering
+                    condition: gc.conditionText || '',
+                    conditionText: gc.conditionText || '',
+                    flowId: '', // Saknas i pathMetadata, men behövs inte för Feature Goal-test-generering
+                    targetNodeId: '', // Saknas i pathMetadata, men behövs inte för Feature Goal-test-generering
+                  })),
+                  nodeIds: s.pathMetadata?.nodeIds || [],
+                };
+              });
+            
+            if (pathsFromScenarios.length > 0) {
+              console.log(`[testGenerators] Reconstructing ${pathsFromScenarios.length} paths from existing E2E scenarios for Feature Goal test generation`);
+              
+              // Generera Feature Goal-tester från befintliga E2E scenarios
+              progressCallback?.({
+                current: existingScenarios.length,
+                total: existingScenarios.length + 1,
+                status: 'generating',
+                currentElement: 'Genererar Feature Goal-tester från befintliga E2E-scenarios...',
+              });
+              
+              // Samla alla BPMN-filer som behövs
+              const bpmnFilesSet = new Set<string>([bpmnFileName]);
+              for (const scenario of existingScenarios) {
+                for (const step of scenario.subprocessSteps || []) {
+                  if (step.bpmnFile) {
+                    bpmnFilesSet.add(step.bpmnFile);
+                  }
+                }
+              }
+              
+              const featureGoalTestResult = await generateFeatureGoalTestsFromE2e({
+                e2eScenarios: existingScenarios,
+                paths: pathsFromScenarios, // Properly typed as ProcessPath[] after reconstruction
+                bpmnFiles: Array.from(bpmnFilesSet),
+              });
+              
+              console.log(
+                `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios from existing E2E scenarios, ` +
+                `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
+              );
+              
+              if (featureGoalTestResult.errors.length > 0) {
+                if (!result.featureGoalTestErrors) {
+                  result.featureGoalTestErrors = [];
+                }
+                result.featureGoalTestErrors.push(...featureGoalTestResult.errors);
+              }
+              
+              if (!result.warnings) {
+                result.warnings = [];
+              }
+              result.warnings.push(
+                `E2E scenarios already exist for ${bpmnFileName}, skipped E2E generation. ` +
+                `Regenerated ${featureGoalTestResult.generated} Feature Goal test scenarios from existing E2E scenarios.`
+              );
+            } else {
+              if (!result.warnings) {
+                result.warnings = [];
+              }
+              result.warnings.push(
+                `E2E scenarios already exist for ${bpmnFileName}, skipped generation. ` +
+                `Could not regenerate Feature Goal tests (no path metadata in scenarios).`
+              );
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[testGenerators] Failed to regenerate Feature Goal tests from existing E2E scenarios:`, error);
+            if (!result.warnings) {
+              result.warnings = [];
+            }
+            result.warnings.push(
+              `E2E scenarios already exist for ${bpmnFileName}, skipped generation. ` +
+              `Failed to regenerate Feature Goal tests: ${errorMessage}`
+            );
+          }
+          
+          return result;
+        }
+        
         progressCallback?.({
           current: 0,
           total: 1,
@@ -218,6 +341,29 @@ export async function generateTestsForFile(
           }
         );
 
+        console.log(`[testGenerators] E2E generation result: ${e2eResult.scenarios.length} scenarios, ${e2eResult.paths.length} paths`);
+        
+        // FORBÄTTRING: Visa tydlig feedback om hoppade över paths
+        if (e2eResult.skippedPaths && e2eResult.skippedPaths.total > 0) {
+          const skippedInfo = `Hoppade över ${e2eResult.skippedPaths.total} path(s): ` +
+            `${e2eResult.skippedPaths.noDocs} saknade dokumentation, ` +
+            `${e2eResult.skippedPaths.noMatch} matchade inte prioriterade scenarios, ` +
+            `${e2eResult.skippedPaths.noResult} misslyckades vid LLM-generering`;
+          
+          console.warn(`[testGenerators] ${skippedInfo}`);
+          if (!result.warnings) {
+            result.warnings = [];
+          }
+          result.warnings.push(skippedInfo);
+        }
+        
+        if (e2eResult.scenarios.length === 0 && e2eResult.paths.length === 0) {
+          console.warn(`[testGenerators] ⚠️ No E2E scenarios or paths generated for ${bpmnFileName}. This might indicate:`);
+          console.warn(`[testGenerators]   - No paths found in the BPMN file`);
+          console.warn(`[testGenerators]   - File-level documentation could not be loaded`);
+          console.warn(`[testGenerators]   - LLM generation failed for all paths`);
+        }
+
         if (e2eResult.scenarios.length > 0) {
           // Save E2E scenarios to storage as JSON
           await saveE2eScenariosToStorage(bpmnFileName, e2eResult.scenarios);
@@ -234,6 +380,7 @@ export async function generateTestsForFile(
             result.warnings.push(warning);
           } else {
             // Generate Feature Goal tests from E2E scenarios
+            // Note: savePlannedScenarios uses upsert with onConflict, so duplicates are automatically handled
             try {
               progressCallback?.({
                 current: e2eResult.scenarios.length,
@@ -313,6 +460,12 @@ export async function generateTestsForFile(
         });
         // Don't fail the entire test generation if E2E scenario generation fails
       }
+    } else {
+      console.warn(`[testGenerators] E2E scenario generation skipped: LLM enabled=${llmEnabled}, llmProvider=${llmProvider ? 'provided' : 'missing'}`);
+      if (!result.warnings) {
+        result.warnings = [];
+      }
+      result.warnings.push(`E2E scenario generation requires LLM to be enabled and a provider to be specified`);
     }
 
     return result;

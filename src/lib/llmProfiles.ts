@@ -82,7 +82,10 @@ const DEFAULT_PROFILES: LlmProfiles = {
   },
   testscript: {
     cloud: {
-      maxTokens: 900,
+      // Ökad från 900 till 10000 för E2E-scenarios som kan vara stora
+      // Efter optimering av input (förenklad Feature Goal-data) borde detta räcka
+      // OBS: Token budget risk varnar vid 85% av maxTokens, så 10000 ger ~8500 tokens innan varning
+      maxTokens: 10000,
       temperature: 0.3,
     },
     local: {

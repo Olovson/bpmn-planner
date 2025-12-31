@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { getTestFileUrl, getDocumentationUrl, getNodeTestReportUrl } from '@/lib/artifactUrls';
+import { getFileDocViewerPath } from '@/lib/nodeArtifactPaths';
 import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
 import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -69,6 +70,26 @@ const NodeMatrix = () => {
     const result = [...mergedNodes];
 
     result.sort((a, b) => {
+      // Prioritera root-processer först (Process-noder som INTE är subprocesser)
+      // Sedan subprocesser (Process-noder som ÄR subprocesser)
+      // Sedan andra noder (CallActivity, UserTask, etc.)
+      if (a.nodeType === 'process' && b.nodeType === 'process') {
+        // Båda är Process-noder: root-processer först
+        const aIsSubprocess = a.isSubprocess ?? false;
+        const bIsSubprocess = b.isSubprocess ?? false;
+        if (aIsSubprocess !== bIsSubprocess) {
+          // Root-processer (isSubprocess = false) kommer först
+          return aIsSubprocess ? 1 : -1;
+        }
+      } else if (a.nodeType === 'process' && b.nodeType !== 'process') {
+        // Process-noder kommer före andra noder
+        return -1;
+      } else if (a.nodeType !== 'process' && b.nodeType === 'process') {
+        // Process-noder kommer före andra noder
+        return 1;
+      }
+
+      // Inom samma kategori, använd normal sortering
       if (sortField === 'orderIndex') {
         const aVal = typeof a.orderIndex === 'number' ? a.orderIndex : Number.MAX_SAFE_INTEGER;
         const bVal = typeof b.orderIndex === 'number' ? b.orderIndex : Number.MAX_SAFE_INTEGER;
@@ -421,9 +442,19 @@ const NodeMatrix = () => {
                       {node.elementId}
                     </TableCell>
                     <TableCell className="text-xs">
-                      <span className="px-2 py-1 rounded bg-primary/10 text-primary">
-                        {node.nodeType}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="px-2 py-1 rounded bg-primary/10 text-primary">
+                          {node.nodeType}
+                        </span>
+                        {node.nodeType === 'process' && node.isSubprocess && (
+                          <span 
+                            className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            title="Denna fil är en subprocess (refereras av CallActivities)"
+                          >
+                            Subprocess
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell 
                       onDoubleClick={() => startEditingFigma(node)}
@@ -482,22 +513,40 @@ const NodeMatrix = () => {
                     </TableCell>
                     <TableCell>
                       {node.hasDocs ? (
-                        <a
-                          href={
-                            node.documentationUrl ??
-                            getDocumentationUrl(node.bpmnFile, node.elementId)
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline flex items-center gap-1"
-                          title={`Dokumentation för ${node.elementName}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span className="truncate max-w-[150px]">
-                            Visa docs
-                          </span>
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
+                        <div className="flex flex-col gap-1">
+                          <a
+                            href={
+                              node.documentationUrl ??
+                              getDocumentationUrl(node.bpmnFile, node.elementId)
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                            title={`Dokumentation för ${node.elementName}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className="truncate max-w-[150px]">
+                              Visa docs
+                            </span>
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </a>
+                          {/* Visa file-level docs länk för Process Feature Goal-noder */}
+                          {node.isProcessFeatureGoal && (
+                            <a
+                              href={`#/doc-viewer/${encodeURIComponent(getFileDocViewerPath(node.bpmnFile))}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-muted-foreground hover:underline flex items-center gap-1"
+                              title="File-level documentation (används för E2E-scenariogenerering)"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="truncate max-w-[150px]">
+                                File-level docs (för E2E-generering)
+                              </span>
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}

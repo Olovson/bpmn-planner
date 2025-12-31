@@ -281,15 +281,6 @@ async function interpretGatewayConditionsWithClaude(
     // För nu, returnera tom array (Claude-integration kommer senare)
     // TODO: Implementera Claude-tolkning när vi har rätt prompt-struktur
     return [];
-
-    if (!llmResult?.text) return [];
-
-    // Parse JSON från Claude
-    const jsonMatch = llmResult.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return [];
-
-    const result = JSON.parse(jsonMatch[0]);
-    return result.gatewayConditions || [];
   } catch (error) {
     console.warn('[interpretGatewayConditionsWithClaude] Claude-tolkning misslyckades:', error);
     return [];
@@ -441,19 +432,6 @@ async function generateFeatureGoalTestWithClaude(
   // För nu, kasta fel (Claude-integration kommer senare)
   // TODO: Implementera Claude-generering när vi har rätt prompt-struktur
   throw new Error('Claude generation not yet implemented');
-
-  if (!llmResult?.text) {
-    throw new Error('Claude returned no text');
-  }
-
-  // Parse JSON från Claude
-  const jsonMatch = llmResult.text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('No JSON found in Claude response');
-  }
-
-  const claudeTest = JSON.parse(jsonMatch[0]) as TestScenario;
-  return claudeTest;
 }
 
 /**

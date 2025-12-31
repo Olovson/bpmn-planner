@@ -178,8 +178,10 @@ export function validateE2eScenarioContent(parsed: any): ValidationResult {
   }
 
   // Validera att subprocessSteps inte är tomma
+  // OBS: subprocessSteps kan vara tomma endast om det är en process utan Feature Goals
+  // och file-level documentation saknas, men detta är ett edge case som bör hanteras
   if (!parsed.subprocessSteps || parsed.subprocessSteps.length === 0) {
-    errors.push('CRITICAL: subprocessSteps måste innehålla minst ett steg');
+    errors.push('CRITICAL: subprocessSteps måste innehålla minst ett steg. Om pathen saknar Feature Goals, generera ett subprocessStep baserat på file-level documentation.');
   }
 
   // Validera att varje subprocessStep har given/when/then (varning, inte fel)

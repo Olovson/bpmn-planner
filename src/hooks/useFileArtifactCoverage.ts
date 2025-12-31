@@ -63,13 +63,79 @@ export const hasHierarchicalTestsForFile = async (fileName: string): Promise<boo
 
 export const useFileArtifactCoverage = (fileName: string) => {
   const { data: files = [] } = useBpmnFiles();
-  const bpmnFiles = files.filter(f => f.file_type === 'bpmn').map(f => f.file_name);
+  const allBpmnFiles = files.filter(f => f.file_type === 'bpmn').map(f => f.file_name);
 
   return useQuery({
-    queryKey: ['file-artifact-coverage', fileName, bpmnFiles.join(',')],
+    queryKey: ['file-artifact-coverage', fileName, allBpmnFiles.join(',')],
     queryFn: async (): Promise<FileArtifactCoverage> => {
+      // VIKTIGT: Hämta bara filer som faktiskt är relevanta för hierarkin från denna fil
+      // Detta förhindrar att vi räknar noder från alla filer i databasen
+      // Men använd fallback till alla filer om hierarkin inte kan byggas korrekt
+      let relevantFiles: string[];
+      try {
+        const hierarchyFiles = new Set<string>([fileName]);
+        
+        // Hämta alla children rekursivt från filen
+        const getChildrenRecursively = async (parent: string) => {
+          const { data: children } = await supabase
+            .from('bpmn_dependencies')
+            .select('child_file')
+            .eq('parent_file', parent);
+          
+          if (children) {
+            for (const child of children) {
+              if (child.child_file && allBpmnFiles.includes(child.child_file)) {
+                if (!hierarchyFiles.has(child.child_file)) {
+                  hierarchyFiles.add(child.child_file);
+                  // Rekursivt hämta children till children
+                  await getChildrenRecursively(child.child_file);
+                }
+              }
+            }
+          }
+        };
+        
+        await getChildrenRecursively(fileName);
+        relevantFiles = Array.from(hierarchyFiles);
+        
+        // Fallback: om hierarkin bara innehåller root-filen och det finns fler filer,
+        // använd alla filer istället (hierarkin är förmodligen inte byggd ännu)
+        if (relevantFiles.length === 1 && allBpmnFiles.length > 1) {
+          if (import.meta.env.DEV) {
+            console.warn(
+              `[useFileArtifactCoverage] Hierarchy for ${fileName} only contains root file. ` +
+              `Using all ${allBpmnFiles.length} files as fallback.`
+            );
+          }
+          relevantFiles = allBpmnFiles;
+        } else if (import.meta.env.DEV && relevantFiles.length < allBpmnFiles.length) {
+          console.log(
+            `[useFileArtifactCoverage] Using ${relevantFiles.length} files in hierarchy for ${fileName} ` +
+            `(out of ${allBpmnFiles.length} total files in database)`
+          );
+        }
+      } catch (error) {
+        // Om något går fel med hierarki-byggandet, använd alla filer som fallback
+        console.warn(`[useFileArtifactCoverage] Error building hierarchy for ${fileName}, using all files:`, error);
+        relevantFiles = allBpmnFiles;
+      }
+      
       // Build process graph to get all nodes recursively (including subprocesses)
-      const graph = await buildBpmnProcessGraph(fileName, bpmnFiles);
+      // VIKTIGT: Om buildBpmnProcessGraph kastar ett fel, använd alla filer som fallback
+      let graph;
+      try {
+        graph = await buildBpmnProcessGraph(fileName, relevantFiles);
+      } catch (graphError) {
+        // Om grafen inte kan byggas med relevanta filer, försök med alla filer
+        console.warn(`[useFileArtifactCoverage] Error building graph for ${fileName} with relevant files, trying all files:`, graphError);
+        try {
+          graph = await buildBpmnProcessGraph(fileName, allBpmnFiles);
+        } catch (fallbackError) {
+          // Om det också misslyckas, kasta felet så att queryn misslyckas och komponenten kan hantera det
+          console.error(`[useFileArtifactCoverage] Error building graph for ${fileName} even with all files:`, fallbackError);
+          throw fallbackError;
+        }
+      }
       
       // Collect all descendant nodes recursively (including subprocesses and leaf nodes)
       const allDescendants = collectDescendants(graph.root);
@@ -275,20 +341,78 @@ export const useAllFilesArtifactCoverage = () => {
       }
       const coverageMap = new Map<string, FileArtifactCoverage>();
 
-      // Get all DoR/DoD data in one query
-      const { data: allDorDodData } = await supabase
-        .from('dor_dod_status')
-        .select('bpmn_file, bpmn_element_id, subprocess_name');
+      // VIKTIGT: Om något går fel, returnera åtminstone en tom Map istället för att låta queryn misslyckas
+      try {
+        // Get all DoR/DoD data in one query
+        const { data: allDorDodData } = await supabase
+          .from('dor_dod_status')
+          .select('bpmn_file, bpmn_element_id, subprocess_name');
 
-      // Get all test link data
-      const { data: allTestLinksData } = await supabase
-        .from('node_test_links')
-        .select('bpmn_file, bpmn_element_id');
+        // Get all test link data
+        const { data: allTestLinksData } = await supabase
+          .from('node_test_links')
+          .select('bpmn_file, bpmn_element_id');
 
       for (const file of bpmnFiles) {
         try {
+          // VIKTIGT: Hämta bara filer som faktiskt är relevanta för hierarkin från denna fil
+          // Detta förhindrar att vi räknar noder från alla filer i databasen
+          // Men använd fallback till alla filer om hierarkin inte kan byggas korrekt
+          let relevantFiles: string[];
+          try {
+            const hierarchyFiles = new Set<string>([file.file_name]);
+            
+            // Hämta alla children rekursivt från filen
+            const getChildrenRecursively = async (parent: string) => {
+              const { data: children } = await supabase
+                .from('bpmn_dependencies')
+                .select('child_file')
+                .eq('parent_file', parent);
+              
+              if (children) {
+                for (const child of children) {
+                  if (child.child_file && bpmnFiles.some(f => f.file_name === child.child_file)) {
+                    if (!hierarchyFiles.has(child.child_file)) {
+                      hierarchyFiles.add(child.child_file);
+                      // Rekursivt hämta children till children
+                      await getChildrenRecursively(child.child_file);
+                    }
+                  }
+                }
+              }
+            };
+            
+            await getChildrenRecursively(file.file_name);
+            relevantFiles = Array.from(hierarchyFiles);
+            
+            // Fallback: om hierarkin bara innehåller root-filen och det finns fler filer,
+            // använd alla filer istället (hierarkin är förmodligen inte byggd ännu)
+            const allFileNames = bpmnFiles.map(f => f.file_name);
+            if (relevantFiles.length === 1 && allFileNames.length > 1) {
+              if (import.meta.env.DEV) {
+                console.warn(
+                  `[useFileArtifactCoverage] Hierarchy for ${file.file_name} only contains root file. ` +
+                  `Using all ${allFileNames.length} files as fallback.`
+                );
+              }
+              relevantFiles = allFileNames;
+            }
+          } catch (error) {
+            // Om något går fel med hierarki-byggandet, använd alla filer som fallback
+            console.warn(`[useFileArtifactCoverage] Error building hierarchy for ${file.file_name}, using all files:`, error);
+            relevantFiles = bpmnFiles.map(f => f.file_name);
+          }
+          
           // Build process graph to get all nodes recursively (including subprocesses)
-          const graph = await buildBpmnProcessGraph(file.file_name, bpmnFiles.map(f => f.file_name));
+          // VIKTIGT: Om buildBpmnProcessGraph kastar ett fel, hoppa över denna fil
+          // istället för att låta hela queryn misslyckas
+          let graph;
+          try {
+            graph = await buildBpmnProcessGraph(file.file_name, relevantFiles);
+          } catch (graphError) {
+            console.error(`[useFileArtifactCoverage] Error building graph for ${file.file_name}, skipping:`, graphError);
+            continue; // Hoppa över denna fil och fortsätt med nästa
+          }
           
           // Graph built (logged only if verbose)
           
@@ -532,6 +656,12 @@ export const useAllFilesArtifactCoverage = () => {
         // Coverage query completed
       }
       return coverageMap;
+      } catch (error) {
+        // VIKTIGT: Om något går fel, returnera åtminstone en tom Map istället för att låta queryn misslyckas
+        // Detta säkerställer att komponenterna alltid får data (även om det är tomt) och kan rendera
+        console.error(`[useAllFilesArtifactCoverage] Error in coverage query, returning empty map:`, error);
+        return new Map<string, FileArtifactCoverage>();
+      }
     },
     enabled: bpmnFiles.length > 0,
   });

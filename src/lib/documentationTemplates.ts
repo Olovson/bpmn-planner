@@ -1,5 +1,6 @@
 import { NodeDocumentationContext } from './documentationContext';
-import { getNodeDocViewerPath } from './nodeArtifactPaths';
+import type { BpmnProcessNode } from './bpmnProcessGraph';
+import { getNodeDocViewerPath, getFeatureGoalDocFileKey } from './nodeArtifactPaths';
 import { mapFeatureGoalLlmToSections } from './featureGoalLlmMapper';
 import type { FeatureGoalDocModel, FeatureGoalLlmSections } from './featureGoalLlmTypes';
 import type {
@@ -422,8 +423,53 @@ interface EpicContextVars {
   processStep: string;
   isUserTask: boolean;
   isServiceTask: boolean;
-  swimlaneOwner: string;
   apiSlug: string;
+}
+
+/**
+ * Hittar nästa nod i sekvensflödet baserat på BPMN-elementets outgoing flows.
+ * Detta är mer korrekt än att använda childNodes (som är hierarkiska children, inte nästa steg i flödet).
+ */
+function findNextNodeInSequenceFlow(
+  context: NodeDocumentationContext
+): BpmnProcessNode | undefined {
+  const node = context.node;
+  
+  // Försök hitta nästa nod via BPMN-elementets outgoing flows
+  if (node.element?.businessObject?.outgoing) {
+    const outgoing = node.element.businessObject.outgoing;
+    // outgoing kan vara en array eller ett enskilt objekt
+    const outgoingFlows = Array.isArray(outgoing) ? outgoing : [outgoing];
+    
+    if (outgoingFlows.length > 0) {
+      // Ta första outgoing flow
+      const firstFlow = outgoingFlows[0];
+      // targetRef kan vara ett objekt med id eller en sträng
+      const targetRef = firstFlow?.targetRef?.id || firstFlow?.targetRef || firstFlow?.$?.targetRef;
+      
+      if (targetRef) {
+        // Hitta noden med samma element ID i samma fil
+        // Först kolla siblings (noder i samma process)
+        const nextSibling = context.siblingNodes.find(
+          (sibling) => sibling.bpmnElementId === targetRef && sibling.bpmnFile === node.bpmnFile
+        );
+        if (nextSibling) {
+          return nextSibling;
+        }
+        
+        // Om inte hittat i siblings, kolla children (kan vara en subprocess)
+        const nextChild = context.childNodes.find(
+          (child) => child.bpmnElementId === targetRef && child.bpmnFile === node.bpmnFile
+        );
+        if (nextChild) {
+          return nextChild;
+        }
+      }
+    }
+  }
+  
+  // Fallback: använd första child om det finns (för subprocesser)
+  return context.childNodes.length > 0 ? context.childNodes[0] : undefined;
 }
 
 function extractEpicContextVars(context: NodeDocumentationContext): EpicContextVars {
@@ -432,17 +478,13 @@ function extractEpicContextVars(context: NodeDocumentationContext): EpicContextV
   const previousNode = context.parentChain.length
     ? context.parentChain[context.parentChain.length - 1]
     : undefined;
-  const nextNode = context.childNodes.length ? context.childNodes[0] : undefined;
+  // Använd sequence flow för att hitta nästa steg istället för hierarkiska children
+  const nextNode = findNextNodeInSequenceFlow(context);
   const upstreamName = previousNode ? formatNodeName(previousNode) : 'Processstart';
   const downstreamName = nextNode ? formatNodeName(nextNode) : 'Nästa steg';
   const processStep = node.bpmnFile.replace('.bpmn', '');
   const isUserTask = node.type === 'userTask';
   const isServiceTask = node.type === 'serviceTask';
-  const swimlaneOwner = isUserTask
-    ? 'Kund / Rådgivare'
-    : isServiceTask
-    ? 'Backend & Integration'
-    : inferTeamForNode(node.type);
   const apiSlug = slugify(nodeName);
 
   return {
@@ -454,7 +496,6 @@ function extractEpicContextVars(context: NodeDocumentationContext): EpicContextV
     processStep,
     isUserTask,
     isServiceTask,
-    swimlaneOwner,
     apiSlug,
   };
 }
@@ -477,21 +518,6 @@ function identifyNodeType(nodeName: string): NodeTypeFlags {
   };
 }
 
-const inferTeamForNode = (type: NodeDocumentationContext['node']['type']) => {
-  switch (type) {
-    case 'userTask':
-      return 'Frontend & UX';
-    case 'serviceTask':
-      return 'Backend & Integration';
-    case 'businessRuleTask':
-      return 'Risk & Policy';
-    case 'callActivity':
-      return 'Process / Feature Team';
-    default:
-      return 'Tvärfunktionellt produktteam';
-  }
-};
-
 /**
  * Build Feature Goal base model from context - kopierad från Epic för konsistens.
  * 
@@ -509,6 +535,7 @@ export function buildFeatureGoalDocModelFromContext(
     flowSteps: [],
     dependencies: [],
     userStories: [],
+    usageCases: context.usageCases, // Include usageCases from context if available
   };
 }
 
@@ -572,7 +599,6 @@ function buildEpicDocHtmlFromModel(
       <ul>
         <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
         <li><strong>Kreditprocess-steg:</strong> ${ctx.processStep}</li>
-        <li><strong>Swimlane/ägare:</strong> ${ctx.swimlaneOwner}</li>
       </ul>
     </section>
 
@@ -647,7 +673,7 @@ function buildEpicDocHtmlFromModel(
  * - Beroenden
  * - User Stories
  */
-function buildFeatureGoalDocHtmlFromModel(
+export function buildFeatureGoalDocHtmlFromModel(
   context: NodeDocumentationContext,
   links: TemplateLinks,
   model: FeatureGoalDocModel,
@@ -670,9 +696,161 @@ function buildFeatureGoalDocHtmlFromModel(
     : [];
   const dependenciesSource = model.dependencies && Array.isArray(model.dependencies) && model.dependencies.length > 0 ? 'llm' : 'missing';
   
-  const userStories = model.userStories && model.userStories.length > 0 ? model.userStories : [];
+  const userStories = model.userStories || [];
   const userStoriesSource = model.userStories && model.userStories.length > 0 ? 'llm' : 'missing';
 
+  // Samla in ingående tasks från descendant nodes (för översiktlig lista)
+  // Lägg till länkar till Epic-dokumentationen för varje task/activity
+  // VIKTIGT: Deduplicera baserat på unik nyckel (bpmnFile + bpmnElementId) för att undvika duplicering
+  // när samma subprocess anropas flera gånger
+  
+  // Service Tasks: Deduplicera baserat på bpmnFile + bpmnElementId
+  // VIKTIGT: Spara även bpmnFile för att kunna deduplicera korrekt i allEpics
+  const serviceTasksMap = new Map<string, { id: string; name: string; docUrl: string; bpmnFile: string }>();
+  context.descendantNodes
+    .filter(n => n.type === 'serviceTask' && n.bpmnElementId && n.bpmnFile)
+    .forEach(n => {
+      if (!n.bpmnElementId || !n.bpmnFile) return;
+      const uniqueKey = `${n.bpmnFile}::${n.bpmnElementId}`;
+      if (!serviceTasksMap.has(uniqueKey)) {
+        const docPath = getNodeDocViewerPath(n.bpmnFile, n.bpmnElementId);
+        const docUrl = `#/doc-viewer/${encodeURIComponent(docPath)}`;
+        serviceTasksMap.set(uniqueKey, {
+          id: n.bpmnElementId,
+          name: n.name || n.bpmnElementId,
+          docUrl,
+          bpmnFile: n.bpmnFile,
+        });
+      }
+    });
+  const serviceTasks = Array.from(serviceTasksMap.values());
+  
+  // User Tasks: Deduplicera baserat på bpmnFile + bpmnElementId
+  // VIKTIGT: Spara även bpmnFile för att kunna deduplicera korrekt i allEpics
+  const userTasksMap = new Map<string, { id: string; name: string; docUrl: string; bpmnFile: string }>();
+  context.descendantNodes
+    .filter(n => n.type === 'userTask' && n.bpmnElementId && n.bpmnFile)
+    .forEach(n => {
+      if (!n.bpmnElementId || !n.bpmnFile) return;
+      const uniqueKey = `${n.bpmnFile}::${n.bpmnElementId}`;
+      if (!userTasksMap.has(uniqueKey)) {
+        const docPath = getNodeDocViewerPath(n.bpmnFile, n.bpmnElementId);
+        const docUrl = `#/doc-viewer/${encodeURIComponent(docPath)}`;
+        userTasksMap.set(uniqueKey, {
+          id: n.bpmnElementId,
+          name: n.name || n.bpmnElementId,
+          docUrl,
+          bpmnFile: n.bpmnFile,
+        });
+      }
+    });
+  const userTasks = Array.from(userTasksMap.values());
+  
+  // Call Activities: Deduplicera baserat på subprocessFile (eller bpmnFile + bpmnElementId som fallback)
+  const callActivitiesMap = new Map<string, { id: string; name: string; docUrl: string }>();
+  context.descendantNodes
+    .filter(n => n.type === 'callActivity' && n.bpmnElementId && n.bpmnFile && n.subprocessFile)
+    .forEach(n => {
+      // För call activities: länka till Process Feature Goal för subprocess-filen (non-hierarchical)
+      // VIKTIGT: CallActivities länkar till Process Feature Goal för subprocess-filen, INTE till CallActivity Feature Goal
+      // Process Feature Goals använder non-hierarchical naming: feature-goals/{subprocessBaseName}
+      if (!n.bpmnElementId || !n.bpmnFile || !n.subprocessFile) return;
+      
+      // Använd subprocessFile som unik nyckel (samma subprocess ska bara visas en gång)
+      const uniqueKey = n.subprocessFile;
+      if (!callActivitiesMap.has(uniqueKey)) {
+        const subprocessBaseName = n.subprocessFile.replace('.bpmn', '');
+        try {
+          // Använd non-hierarchical naming för Process Feature Goal (ingen parent)
+          const featureGoalPath = getFeatureGoalDocFileKey(
+            n.subprocessFile,
+            subprocessBaseName, // För Process Feature Goals är elementId = baseName
+            undefined, // no version suffix
+            undefined, // no parent (non-hierarchical)
+            false, // isRootProcess = false (detta är en subprocess)
+          );
+          const featureGoalViewerPath = featureGoalPath.replace('.html', '');
+          const docUrl = `#/doc-viewer/${encodeURIComponent(featureGoalViewerPath)}`;
+          callActivitiesMap.set(uniqueKey, {
+            id: n.bpmnElementId,
+            name: n.name || n.bpmnElementId,
+            docUrl,
+          });
+        } catch (error) {
+          // Logga varning men fortsätt (kan hända om subprocessFile saknas)
+          if (import.meta.env.DEV) {
+            console.warn(
+              `[buildFeatureGoalDocHtmlFromModel] Failed to generate Feature Goal link for call activity ${n.bpmnElementId}:`,
+              error
+            );
+          }
+        }
+      }
+    });
+  const callActivities = Array.from(callActivitiesMap.values());
+  
+  // Business Rule Tasks: Deduplicera baserat på bpmnFile + bpmnElementId
+  // VIKTIGT: Spara även bpmnFile för att kunna deduplicera korrekt i allEpics
+  const businessRuleTasksMap = new Map<string, { id: string; name: string; docUrl: string; bpmnFile: string }>();
+  context.descendantNodes
+    .filter(n => n.type === 'businessRuleTask' && n.bpmnElementId && n.bpmnFile)
+    .forEach(n => {
+      if (!n.bpmnElementId || !n.bpmnFile) return;
+      const uniqueKey = `${n.bpmnFile}::${n.bpmnElementId}`;
+      if (!businessRuleTasksMap.has(uniqueKey)) {
+        const docPath = getNodeDocViewerPath(n.bpmnFile, n.bpmnElementId);
+        const docUrl = `#/doc-viewer/${encodeURIComponent(docPath)}`;
+        businessRuleTasksMap.set(uniqueKey, {
+          id: n.bpmnElementId,
+          name: n.name || n.bpmnElementId,
+          docUrl,
+          bpmnFile: n.bpmnFile,
+        });
+      }
+    });
+  const businessRuleTasks = Array.from(businessRuleTasksMap.values());
+
+  const hasIncludedTasks = serviceTasks.length > 0 || userTasks.length > 0 || callActivities.length > 0 || businessRuleTasks.length > 0;
+
+  // Samla alla epics (serviceTasks, userTasks, businessRuleTasks) för att visa i BPMN-element-listan
+  // VIKTIGT: Deduplicera baserat på bpmnFile + id för att undvika duplicering när samma element-ID
+  // finns i olika filer eller när samma subprocess anropas flera gånger
+  const allEpicsMap = new Map<string, { id: string; name: string; type: string }>();
+  
+  // Lägg till service tasks (använd bpmnFile + id som unik nyckel)
+  serviceTasks.forEach(t => {
+    const uniqueKey = `${t.bpmnFile}::${t.id}`;
+    if (!allEpicsMap.has(uniqueKey)) {
+      allEpicsMap.set(uniqueKey, { id: t.id, name: t.name, type: 'serviceTask' });
+    }
+  });
+  
+  // Lägg till user tasks (använd bpmnFile + id som unik nyckel)
+  userTasks.forEach(t => {
+    const uniqueKey = `${t.bpmnFile}::${t.id}`;
+    if (!allEpicsMap.has(uniqueKey)) {
+      allEpicsMap.set(uniqueKey, { id: t.id, name: t.name, type: 'userTask' });
+    }
+  });
+  
+  // Lägg till business rule tasks (använd bpmnFile + id som unik nyckel)
+  businessRuleTasks.forEach(t => {
+    const uniqueKey = `${t.bpmnFile}::${t.id}`;
+    if (!allEpicsMap.has(uniqueKey)) {
+      allEpicsMap.set(uniqueKey, { id: t.id, name: t.name, type: 'businessRuleTask' });
+    }
+  });
+  
+  const allEpics = Array.from(allEpicsMap.values());
+
+  // Generera genereringsdatum
+  const generationDate = new Date().toLocaleString('sv-SE', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return `
     <section class="doc-section">
@@ -680,8 +858,13 @@ function buildFeatureGoalDocHtmlFromModel(
       <h1>${ctx.nodeName}</h1>
       <p class="muted">${node.type} i ${ctx.processStep} mellan ${ctx.upstreamName} → ${ctx.downstreamName}.</p>
       <ul>
-        <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
+        ${allEpics.length > 0 ? `
+          <li><strong>BPMN-element:</strong> ${allEpics.map(epic => `${epic.name} (${epic.id})`).join(', ')}</li>
+        ` : `
+          <li><strong>BPMN-element:</strong> ${node.bpmnElementId} (${node.type})</li>
+        `}
         <li><strong>Kreditprocess-steg:</strong> ${ctx.processStep}</li>
+        <li><strong>Genererat:</strong> ${generationDate}</li>
       </ul>
     </section>
 
@@ -689,6 +872,45 @@ function buildFeatureGoalDocHtmlFromModel(
     <section class="doc-section" data-source-summary="${summarySource}">
       <h2>Sammanfattning</h2>
       <p>${summaryText}</p>
+    </section>
+    ` : ''}
+
+    ${hasIncludedTasks ? `
+    <section class="doc-section" data-source-included-tasks="context">
+      <h2>Ingående komponenter</h2>
+      <p class="muted">Översikt över service tasks, user tasks, call activities och business rules som ingår i detta Feature Goal.</p>
+      ${serviceTasks.length > 0 ? `
+        <div style="margin-bottom: 1.5rem;">
+          <h3 style="margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">Service Tasks (${serviceTasks.length})</h3>
+          <ul style="margin-top: 0;">
+            ${serviceTasks.map(task => `<li><a href="${task.docUrl}" style="color: #3b82f6; text-decoration: none;">${task.name}</a> <code style="font-size: 0.875rem; color: #64748b;">(${task.id})</code></li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+      ${userTasks.length > 0 ? `
+        <div style="margin-bottom: 1.5rem;">
+          <h3 style="margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">User Tasks (${userTasks.length})</h3>
+          <ul style="margin-top: 0;">
+            ${userTasks.map(task => `<li><a href="${task.docUrl}" style="color: #3b82f6; text-decoration: none;">${task.name}</a> <code style="font-size: 0.875rem; color: #64748b;">(${task.id})</code></li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+      ${callActivities.length > 0 ? `
+        <div style="margin-bottom: 1.5rem;">
+          <h3 style="margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">Call Activities (${callActivities.length})</h3>
+          <ul style="margin-top: 0;">
+            ${callActivities.map(task => `<li><a href="${task.docUrl}" style="color: #3b82f6; text-decoration: none;">${task.name}</a> <code style="font-size: 0.875rem; color: #64748b;">(${task.id})</code></li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+      ${businessRuleTasks.length > 0 ? `
+        <div style="margin-bottom: 1.5rem;">
+          <h3 style="margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">Business Rules (${businessRuleTasks.length})</h3>
+          <ul style="margin-top: 0;">
+            ${businessRuleTasks.map(task => `<li><a href="${task.docUrl}" style="color: #3b82f6; text-decoration: none;">${task.name}</a> <code style="font-size: 0.875rem; color: #64748b;">(${task.id})</code></li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
     </section>
     ` : ''}
 
@@ -708,30 +930,80 @@ function buildFeatureGoalDocHtmlFromModel(
     </section>
     ` : ''}
 
-    ${userStories.length > 0 ? `
-    <section class="doc-section" data-source-user-stories="${userStoriesSource}">
-      <h2>User Stories</h2>
-      <p class="muted">User stories med acceptanskriterier som ska mappas till automatiska tester.</p>
-      ${userStories.map((story) => `
-        <div class="user-story" style="margin-bottom: 2rem; padding: 1rem; border-left: 3px solid #3b82f6; background: #f8fafc;">
-          <h3 style="margin-top: 0; margin-bottom: 0.5rem;">
-            <strong>${story.id}:</strong> Som <strong>${story.role}</strong> vill jag <strong>${story.goal}</strong> så att <strong>${story.value}</strong>
-          </h3>
-          <div style="margin-top: 1rem;">
-            <p style="margin-bottom: 0.5rem; font-weight: 600;">Acceptanskriterier:</p>
-            <ul style="margin-top: 0;">
-              ${story.acceptanceCriteria.map((ac) => `<li>${ac}</li>`).join('')}
+    ${model.usageCases && model.usageCases.length > 0 ? `
+    <section class="doc-section" data-source-usage-cases="llm">
+      <h2>Användningsfall</h2>
+      <p class="muted">Denna subprocess används i flera parent-processer med följande skillnader:</p>
+      ${(() => {
+        // VIKTIGT: Deduplicera usage cases baserat på parentProcess för att undvika duplicering
+        // även om LLM genererar duplicerade poster
+        const uniqueUsageCasesMap = new Map<string, typeof model.usageCases[0]>();
+        for (const uc of model.usageCases) {
+          const uniqueKey = uc.parentProcess;
+          if (!uniqueUsageCasesMap.has(uniqueKey)) {
+            uniqueUsageCasesMap.set(uniqueKey, uc);
+          } else {
+            // Om det redan finns, kombinera conditions (ta bort duplicering)
+            const existing = uniqueUsageCasesMap.get(uniqueKey)!;
+            const combinedConditions = existing.conditions && uc.conditions
+              ? [...new Set([...existing.conditions, ...uc.conditions])]
+              : existing.conditions || uc.conditions;
+            uniqueUsageCasesMap.set(uniqueKey, {
+              ...existing,
+              conditions: combinedConditions,
+              // Behåll differences från första förekomsten (eller kombinera om båda har)
+              differences: existing.differences || uc.differences,
+            });
+          }
+        }
+        const uniqueUsageCases = Array.from(uniqueUsageCasesMap.values());
+        return uniqueUsageCases.map((usageCase) => `
+          <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem;">
+            <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">
+              <strong>${usageCase.parentProcess}-processen:</strong>
+            </h3>
+            <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+              ${usageCase.conditions && usageCase.conditions.length > 0 ? `
+                <li><strong>Särskilda villkor:</strong> ${usageCase.conditions.join(', ')}</li>
+              ` : ''}
+              ${usageCase.differences ? `
+                <li>${usageCase.differences}</li>
+              ` : ''}
             </ul>
           </div>
-          ${
-            links.testLink
-              ? `<p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil: <code>${links.testLink}</code></p>`
-              : '<p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil länkas via node_test_links</p>'
-          }
-        </div>
-      `).join('')}
+        `).join('');
+      })()}
     </section>
     ` : ''}
+
+    <section class="doc-section" data-source-user-stories="${userStoriesSource}">
+      <h2>User Stories</h2>
+      ${userStories.length > 0 ? `
+        <p class="muted">User stories med acceptanskriterier som ska mappas till automatiska tester.</p>
+        ${userStories.map((story) => `
+          <div class="user-story" style="margin-bottom: 2rem; padding: 1rem; border-left: 3px solid #3b82f6; background: #f8fafc;">
+            <h3 style="margin-top: 0; margin-bottom: 0.5rem;">
+              <strong>${story.id}:</strong> Som <strong>${story.role}</strong> vill jag <strong>${story.goal}</strong> så att <strong>${story.value}</strong>
+            </h3>
+            <div style="margin-top: 1rem;">
+              <p style="margin-bottom: 0.5rem; font-weight: 600;">Acceptanskriterier:</p>
+              <ul style="margin-top: 0;">
+                ${story.acceptanceCriteria.map((ac) => `<li>${ac}</li>`).join('')}
+              </ul>
+            </div>
+            ${
+              links.testLink
+                ? `<p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil: <code>${links.testLink}</code></p>`
+                : '<p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil länkas via node_test_links</p>'
+            }
+          </div>
+        `).join('')}
+      ` : `
+        <p class="muted" style="color: #ef4444; font-style: italic;">
+          ⚠️ Inga user stories genererade. User stories är obligatoriska för Feature Goals och ska genereras av LLM.
+        </p>
+      `}
+    </section>
 
   `;
 }

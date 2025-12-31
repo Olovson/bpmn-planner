@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feature Goal - Internal Data Gathering</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --text-strong: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --accent: #dbeafe;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+      color: var(--text-strong);
+      line-height: 1.7;
+    }
+    .doc-shell {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .doc-section {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: var(--primary);
+      color: white;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin: 0.5rem 0 1rem;
+      color: var(--text-strong);
+    }
+    h2 {
+      color: var(--primary);
+      margin: 1.5rem 0 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    h3 {
+      color: var(--text-strong);
+      margin: 1rem 0 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    p {
+      margin: 0 0 1rem;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    ul, ol {
+      padding-left: 1.5rem;
+      margin: 0 0 1rem;
+    }
+    li {
+      margin-bottom: 0.5rem;
+    }
+    code {
+      background: #f1f5f9;
+      padding: 0.125rem 0.375rem;
+      border-radius: 3px;
+      font-size: 0.875em;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+    a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .user-story {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      border-left: 3px solid #3b82f6;
+      background: #f8fafc;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="doc-shell">
+    
+    <section class="doc-section">
+      <span class="doc-badge">Feature Goal</span>
+      <h1>Internal Data Gathering</h1>
+      <p class="muted">callActivity i mortgage-se-internal-data-gathering mellan Processstart → Nästa steg.</p>
+      <ul>
+        <li><strong>BPMN-element:</strong> mortgage-se-internal-data-gathering (callActivity)</li>
+        <li><strong>Kreditprocess-steg:</strong> mortgage-se-internal-data-gathering</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" data-source-summary="llm">
+      <h2>Sammanfattning</h2>
+      <p>Intern datainsamling säkerställer att intern kunddata hämtas, kvalitetssäkras och görs tillgänglig för kreditbeslut. Processen omfattar alla typer av kreditansökningar och stödjer bankens kreditstrategi genom att tillhandahålla komplett och kvalitetssäkrad data för riskbedömning. Denna process är kritiskt för att säkerställa att alla relevanta interna källor används för att bygga en komplett bild av kundens ekonomiska situation och historik hos banken.</p>
+    </section>
+
+    <section class="doc-section" data-source-included-tasks="context">
+      <h2>Ingående komponenter</h2>
+      <p class="muted">Översikt över service tasks, user tasks, call activities och business rules som ingår i detta Feature Goal.</p>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">Service Tasks (2)</h3>
+        <ul style="margin-top: 0;">
+          <li><a href="#/doc-viewer/nodes/mortgage-se-internal-data-gathering/fetch-party-information" style="color: #3b82f6; text-decoration: none;">Fetch party information</a> <code style="font-size: 0.875rem; color: #64748b;">(fetch-party-information)</code></li>
+          <li><a href="#/doc-viewer/nodes/mortgage-se-internal-data-gathering/fetch-engagements" style="color: #3b82f6; text-decoration: none;">Fetch engagements</a> <code style="font-size: 0.875rem; color: #64748b;">(fetch-engagements)</code></li>
+        </ul>
+      </div>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">Business Rules (1)</h3>
+        <ul style="margin-top: 0;">
+          <li><a href="#/doc-viewer/nodes/mortgage-se-internal-data-gathering/pre-screen-party" style="color: #3b82f6; text-decoration: none;">Pre-screen party</a> <code style="font-size: 0.875rem; color: #64748b;">(pre-screen-party)</code></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc-section" data-source-flow="llm">
+      <h2>Funktionellt flöde</h2>
+      <ol>
+        <li>Systemet startar automatiskt när ansökan är initierad och identifierar kunden i bankens interna system baserat på personnummer eller kundnummer.</li>
+        <li>Systemet hämtar partsinformation från alla relevanta interna källor, inklusive grundläggande kunddata, kontaktinformation och historisk information.</li>
+        <li>Systemet utför pre-screening av kunden baserat på grundläggande uppgifter från folkbokföringsregister och kundregister, inklusive ålder, bosättningsstatus, identitetsverifiering och betalningsanmärkningar.</li>
+        <li>Om pre-screening godkänns (Approved = Yes), hämtar systemet kundens befintliga engagemang från bankens interna system, inklusive lån, krediter, sparkonton och andra produkter.</li>
+        <li>Systemet sammanställer all hämtad data med information om saldo, villkor och betalningshistorik för varje engagemang.</li>
+        <li>Systemet validerar att hämtad data är komplett och korrekt formaterad innan den används i kreditbedömning.</li>
+        <li>Systemet sparar all sammanställd data och gör den tillgänglig för efterföljande riskbedömning och kreditbeslut.</li>
+      </ol>
+    </section>
+
+    <section class="doc-section" data-source-dependencies="llm">
+      <h2>Beroenden</h2>
+      <ul>
+        <li><strong>Process:</strong> Ansökan måste vara initierad innan intern datainsamling kan starta. Kunden måste ha godkänt att banken hämtar intern data.</li>
+        <li><strong>System:</strong> Interna kunddatabaser måste vara tillgängliga för att hämta partsinformation. Systemet behöver tillgång till folkbokföringsregister och kundregister.</li>
+        <li><strong>System:</strong> UC-integration (Upplysningscentralen) måste vara tillgänglig för kreditupplysningar om betalningsanmärkningar och konkurshistorik.</li>
+        <li><strong>System:</strong> Core System måste vara tillgängligt för att hämta engagemang (lån, krediter, sparkonton och andra produkter).</li>
+        <li><strong>System:</strong> Valideringsmotor måste vara tillgänglig för att validera att hämtad data är komplett och korrekt formaterad.</li>
+        <li><strong>Data:</strong> Personnummer eller kundnummer måste vara tillgängligt för att identifiera kunden i bankens system.</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" data-source-user-stories="llm">
+      <h2>User Stories</h2>
+      <p class="muted">User stories med acceptanskriterier som ska mappas till automatiska tester.</p>
+      
+      <div class="user-story">
+        <h3 style="margin-top: 0; margin-bottom: 0.5rem;">
+          <strong>US-1:</strong> Som <strong>Handläggare</strong> vill jag <strong>Få komplett partsinformation automatiskt</strong> så att <strong>Spara tid genom att inte behöva söka fram partsdata manuellt från olika system</strong>
+        </h3>
+        <div style="margin-top: 1rem;">
+          <p style="margin-bottom: 0.5rem; font-weight: 600;">Acceptanskriterier:</p>
+          <ul style="margin-top: 0;">
+            <li>Systemet ska automatiskt hämta partsinformation när ansökan är initierad</li>
+            <li>Systemet ska hämta data från alla relevanta interna källor baserat på partstyp</li>
+            <li>Systemet ska hantera fel och timeouts på ett kontrollerat sätt med tydliga felmeddelanden</li>
+            <li>Systemet ska presentera informationen på ett strukturerat sätt för enkel analys</li>
+          </ul>
+        </div>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil länkas via node_test_links</p>
+      </div>
+      
+      <div class="user-story">
+        <h3 style="margin-top: 0; margin-bottom: 0.5rem;">
+          <strong>US-2:</strong> Som <strong>Kund</strong> vill jag <strong>Få snabb bedömning av min ansökan</strong> så att <strong>Jag kan få svar på min kreditansökan så snabbt som möjligt</strong>
+        </h3>
+        <div style="margin-top: 1rem;">
+          <p style="margin-bottom: 0.5rem; font-weight: 600;">Acceptanskriterier:</p>
+          <ul style="margin-top: 0;">
+            <li>Systemet ska slutföra datainsamling inom rimlig tid för att inte fördröja processen</li>
+            <li>Systemet ska hantera tillfälliga systemfel med retry-logik för att säkerställa robusthet</li>
+            <li>Systemet ska ge tydlig status om datainsamlingens framsteg och resultat</li>
+            <li>Systemet ska logga alla viktiga steg för spårbarhet och felsökning</li>
+          </ul>
+        </div>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil länkas via node_test_links</p>
+      </div>
+      
+      <div class="user-story">
+        <h3 style="margin-top: 0; margin-bottom: 0.5rem;">
+          <strong>US-3:</strong> Som <strong>Processägare</strong> vill jag <strong>Säkerställa att all relevant intern data används i kreditbedömning</strong> så att <strong>Minimera risk genom att alltid ha fullständig bild av kundens engagemang hos banken</strong>
+        </h3>
+        <div style="margin-top: 1rem;">
+          <p style="margin-bottom: 0.5rem; font-weight: 600;">Acceptanskriterier:</p>
+          <ul style="margin-top: 0;">
+            <li>Systemet ska hämta alla typer av engagemang som är relevanta för kreditbedömning</li>
+            <li>Systemet ska logga alla hämtade engagemang för spårbarhet och revision</li>
+            <li>Systemet ska hantera edge cases som kunder med många engagemang eller komplexa produktstrukturer</li>
+            <li>Systemet ska validera att hämtad data är komplett innan den används i kreditbedömning</li>
+          </ul>
+        </div>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil länkas via node_test_links</p>
+      </div>
+      
+      <div class="user-story">
+        <h3 style="margin-top: 0; margin-bottom: 0.5rem;">
+          <strong>US-4:</strong> Som <strong>Handläggare</strong> vill jag <strong>Få validerad och kvalitetssäkrad partsdata automatiskt</strong> så att <strong>Kunna lita på att partsinformationen är korrekt och komplett utan att behöva manuellt kontrollera grundläggande fel</strong>
+        </h3>
+        <div style="margin-top: 1rem;">
+          <p style="margin-bottom: 0.5rem; font-weight: 600;">Acceptanskriterier:</p>
+          <ul style="margin-top: 0;">
+            <li>Systemet ska validera att hämtad data matchar förväntat format och innehåll</li>
+            <li>Systemet ska flagga avvikelser eller saknad data tydligt</li>
+            <li>Systemet ska hantera ofullständig eller felaktig data på ett kontrollerat sätt</li>
+            <li>Systemet ska inkludera information om befintliga krediter och betalningshistorik</li>
+          </ul>
+        </div>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil länkas via node_test_links</p>
+      </div>
+      
+      <div class="user-story">
+        <h3 style="margin-top: 0; margin-bottom: 0.5rem;">
+          <strong>US-5:</strong> Som <strong>Riskanalytiker</strong> vill jag <strong>Få tillgång till historisk information om parter</strong> så att <strong>Kunna fatta välgrundade kreditbeslut baserat på parternas historik och befintliga engagemang</strong>
+        </h3>
+        <div style="margin-top: 1rem;">
+          <p style="margin-bottom: 0.5rem; font-weight: 600;">Acceptanskriterier:</p>
+          <ul style="margin-top: 0;">
+            <li>Systemet ska hämta historisk information om parternas tidigare engagemang med banken</li>
+            <li>Systemet ska inkludera information om befintliga krediter och betalningshistorik</li>
+            <li>Systemet ska presentera informationen på ett strukturerat sätt för enkel analys</li>
+            <li>Systemet ska sammanställa engagemangsdata med saldo, villkor och betalningshistorik</li>
+          </ul>
+        </div>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">Testfil länkas via node_test_links</p>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>
+

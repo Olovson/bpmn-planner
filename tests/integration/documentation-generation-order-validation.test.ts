@@ -309,6 +309,9 @@ describe('Documentation Generation Order Validation (without Claude)', () => {
     console.log(`  Feature Goals: ${docsByType.featureGoals.length} (förväntat: 3)`);
     console.log(`  Epics: ${docsByType.epics.length} (förväntat: 4)`);
     console.log(`  Combined: ${docsByType.combined.length} (file-level documentation)`);
+    
+    // Validera totalt antal dokument
+    expect(result.docs.size).toBeGreaterThan(0);
 
     // Validera att callActivities med saknade subprocess-filer INTE genereras
     console.log('\n=== Validating Filtering (Missing Subprocess Files) ===');
@@ -411,6 +414,8 @@ describe('Documentation Generation Order Validation (without Claude)', () => {
     } else {
       console.log(`  ❌ ${correctFeatureGoals.length} Feature Goals (förväntat: 3)`);
     }
+    expect(correctFeatureGoals.length).toBe(3);
+    expect(docsByType.featureGoals.length).toBe(3);
     
     // Visa alla Feature Goals för analys
     console.log('\n=== All Generated Feature Goals (for analysis) ===');
@@ -430,7 +435,11 @@ describe('Documentation Generation Order Validation (without Claude)', () => {
     expectedEpics.forEach(expectedEpic => {
       const found = docsByType.epics.some(k => k.toLowerCase().includes(expectedEpic.toLowerCase()));
       console.log(`  ${expectedEpic}: ${found ? '✅' : '❌'}`);
+      expect(found).toBe(true);
     });
+    
+    // Validera totalt antal Epics
+    expect(docsByType.epics.length).toBe(4);
 
     console.log('\n=== Test Complete ===');
   }, 120000);
