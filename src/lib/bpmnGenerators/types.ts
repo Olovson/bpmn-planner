@@ -1,4 +1,3 @@
-import type { CriterionCategory, CriterionType } from '@/hooks/useDorDodStatus';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import type { TestScenario } from '@/data/testMapping';
 import type { BpmnElement, BpmnSubprocess } from '@/lib/bpmnParser';
@@ -32,31 +31,6 @@ export interface HierarchicalTestNode {
   children?: HierarchicalTestNode[];
 }
 
-// Re-export for backward compatibility
-export type { HierarchicalTestNode };
-
-/**
- * DoR/DoD Criterion interface
- */
-export interface DorDodCriterion {
-  criterion_type: CriterionType;
-  criterion_category: CriterionCategory;
-  criterion_key: string;
-  criterion_text: string;
-}
-
-/**
- * Generated Criterion with metadata
- */
-export interface GeneratedCriterion {
-  criterion_type: CriterionType;
-  criterion_category: CriterionCategory;
-  criterion_key: string;
-  criterion_text: string;
-  node_type?: string; // BPMN node type (UserTask, ServiceTask, etc.)
-  bpmn_element_id?: string; // BPMN element ID
-  bpmn_file?: string; // BPMN file name
-}
 
 /**
  * Subprocess summary information
@@ -92,7 +66,6 @@ export interface NodeArtifactEntry {
 export interface GenerationResult {
   tests: Map<string, string>;
   docs: Map<string, string>;
-  dorDod: Map<string, DorDodCriterion[]>;
   subprocessMappings: Map<string, string | null>;
   nodeArtifacts?: NodeArtifactEntry[];
   metadata?: {

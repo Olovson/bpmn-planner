@@ -18,7 +18,6 @@ export interface FileArtifactCoverage {
   total_nodes: number;
   docs: ArtifactCoverage;
   tests: ArtifactCoverage;
-  dorDod: ArtifactCoverage;
   hierarchy: ArtifactCoverage;
 }
 
@@ -98,16 +97,18 @@ export const useFileArtifactCoverage = (fileName: string) => {
         await getChildrenRecursively(fileName);
         relevantFiles = Array.from(hierarchyFiles);
         
-        // Fallback: om hierarkin bara innehåller root-filen och det finns fler filer,
-        // använd alla filer istället (hierarkin är förmodligen inte byggd ännu)
-        if (relevantFiles.length === 1 && allBpmnFiles.length > 1) {
+        // VIKTIGT: Om hierarkin bara innehåller root-filen, använd BARA root-filen
+        // Använd INTE alla filer som fallback, eftersom det inkluderar noder från andra filer
+        // vilket ger felaktig coverage-räkning (t.ex. "3/135" istället för "3/4")
+        if (relevantFiles.length === 1) {
           if (import.meta.env.DEV) {
             console.warn(
               `[useFileArtifactCoverage] Hierarchy for ${fileName} only contains root file. ` +
-              `Using all ${allBpmnFiles.length} files as fallback.`
+              `Using only root file for coverage calculation to avoid counting nodes from other files.`
             );
           }
-          relevantFiles = allBpmnFiles;
+          // Behåll bara root-filen - använd INTE alla filer som fallback
+          relevantFiles = [fileName];
         } else if (import.meta.env.DEV && relevantFiles.length < allBpmnFiles.length) {
           console.log(
             `[useFileArtifactCoverage] Using ${relevantFiles.length} files in hierarchy for ${fileName} ` +
@@ -115,24 +116,25 @@ export const useFileArtifactCoverage = (fileName: string) => {
           );
         }
       } catch (error) {
-        // Om något går fel med hierarki-byggandet, använd alla filer som fallback
-        console.warn(`[useFileArtifactCoverage] Error building hierarchy for ${fileName}, using all files:`, error);
-        relevantFiles = allBpmnFiles;
+        // Om något går fel med hierarki-byggandet, använd BARA den aktuella filen
+        // Använd INTE alla filer som fallback, eftersom det inkluderar noder från andra filer
+        console.warn(`[useFileArtifactCoverage] Error building hierarchy for ${fileName}, using only root file:`, error);
+        relevantFiles = [fileName];
       }
       
       // Build process graph to get all nodes recursively (including subprocesses)
-      // VIKTIGT: Om buildBpmnProcessGraph kastar ett fel, använd alla filer som fallback
+      // VIKTIGT: Om buildBpmnProcessGraph kastar ett fel, försök bara med root-filen
       let graph;
       try {
         graph = await buildBpmnProcessGraph(fileName, relevantFiles);
       } catch (graphError) {
-        // Om grafen inte kan byggas med relevanta filer, försök med alla filer
-        console.warn(`[useFileArtifactCoverage] Error building graph for ${fileName} with relevant files, trying all files:`, graphError);
+        // Om grafen inte kan byggas med relevanta filer, försök bara med root-filen
+        console.warn(`[useFileArtifactCoverage] Error building graph for ${fileName} with relevant files, trying only root file:`, graphError);
         try {
-          graph = await buildBpmnProcessGraph(fileName, allBpmnFiles);
+          graph = await buildBpmnProcessGraph(fileName, [fileName]);
         } catch (fallbackError) {
           // Om det också misslyckas, kasta felet så att queryn misslyckas och komponenten kan hantera det
-          console.error(`[useFileArtifactCoverage] Error building graph for ${fileName} even with all files:`, fallbackError);
+          console.error(`[useFileArtifactCoverage] Error building graph for ${fileName} even with only root file:`, fallbackError);
           throw fallbackError;
         }
       }
@@ -143,39 +145,28 @@ export const useFileArtifactCoverage = (fileName: string) => {
       // Filter to only relevant node types (userTask, serviceTask, businessRuleTask, callActivity)
       const relevantNodes = allDescendants.filter(isRelevantNodeType);
       
-      // Also include the root node if it's a relevant type (though it's usually 'process')
-      const rootIsRelevant = isRelevantNodeType(graph.root);
-      const total_nodes = relevantNodes.length + (rootIsRelevant ? 1 : 0);
+      // VIKTIGT: För coverage-räkning, räkna BARA noder från själva filen, inte från hela hierarkin
+      // Detta säkerställer att "4/4" visas istället för "4/220" när filen bara har 4 noder
+      const nodesInThisFile = relevantNodes.filter(n => n.bpmnFile === fileName);
+      
+      // Also include the root node if it's a relevant type and belongs to this file
+      const rootIsRelevant = isRelevantNodeType(graph.root) && graph.root.bpmnFile === fileName;
+      const total_nodes = nodesInThisFile.length + (rootIsRelevant ? 1 : 0);
 
 
-      // Get DoR/DoD coverage from database for all nodes in the process (including subprocesses)
-      // We need to check all files that are part of this process graph
-      const allFilesInGraph = Array.from(new Set(relevantNodes.map(n => n.bpmnFile)));
-      const { data: dorDodData } = await supabase
-        .from('dor_dod_status')
-        .select('bpmn_file, bpmn_element_id, subprocess_name')
-        .in('bpmn_file', allFilesInGraph);
+      // DoR/DoD generation has been removed - no longer used
+      const dorDod_covered = 0;
 
-      // Count unique nodes with DoR/DoD that belong to this process
-      const relevantNodeIds = new Set(
-        relevantNodes.map(n => `${n.bpmnFile}:${n.bpmnElementId}`)
-      );
-      const uniqueDoRDoDNodes = new Set(
-        dorDodData
-          ?.filter(d => {
-            const nodeId = `${d.bpmn_file}:${d.bpmn_element_id}`;
-            return relevantNodeIds.has(nodeId);
-          })
-          .map(d => `${d.bpmn_file}:${d.bpmn_element_id}`)
-          .filter(Boolean) || []
-      );
-      const dorDod_covered = uniqueDoRDoDNodes.size;
-
-      // Check test coverage from node_test_links for all nodes in the process
+      // Check test coverage from node_test_links for nodes in this file only
       const { data: testLinksData } = await supabase
         .from('node_test_links')
         .select('bpmn_file, bpmn_element_id')
-        .in('bpmn_file', allFilesInGraph);
+        .eq('bpmn_file', fileName);
+
+      // Create node IDs set for this file only
+      const relevantNodeIds = new Set(
+        nodesInThisFile.map(n => `${n.bpmnFile}:${n.bpmnElementId}`)
+      );
 
       const uniqueTestNodes = new Set(
         testLinksData
@@ -191,48 +182,45 @@ export const useFileArtifactCoverage = (fileName: string) => {
       const hasHierarchyTests = await hasHierarchicalTestsForFile(fileName);
       const hierarchyCovered = hasHierarchyTests ? 1 : 0;
 
-      // Docs: Check documentation for all nodes in the process (including subprocesses)
-      // We need to check all files that are part of this process graph
+      // Docs: Check documentation for nodes in this file only
+      // VIKTIGT: Räkna bara dokumentation för noder i själva filen, inte från hela hierarkin
       let docs_covered = 0;
       try {
-        // Check docs for each file in the graph
-        for (const fileInGraph of allFilesInGraph) {
-          // Get version hash for the file
-          const versionHash = await getCurrentVersionHash(fileInGraph);
+        // Get version hash for this file
+        const versionHash = await getCurrentVersionHash(fileName);
+        
+        // Try multiple paths: versioned path, legacy path
+        const pathsToTry = versionHash
+          ? [
+              `docs/claude/${fileName}/${versionHash}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/ollama/${fileName}/${versionHash}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/local/${fileName}/${versionHash}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/nodes/${fileName.replace('.bpmn', '')}`, // Legacy path
+            ]
+          : [
+              `docs/claude/${fileName}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/ollama/${fileName}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/local/${fileName}/nodes/${fileName.replace('.bpmn', '')}`,
+              `docs/nodes/${fileName.replace('.bpmn', '')}`, // Legacy path
+            ];
+        
+        let docNames = new Set<string>();
+        let foundPath: string | null = null;
+        for (const docFolder of pathsToTry) {
+          const { data: docEntries, error } = await supabase.storage
+            .from('bpmn-files')
+            .list(docFolder, { limit: 1000 });
           
-          // Try multiple paths: versioned path, legacy path
-          const pathsToTry = versionHash
-            ? [
-                `docs/claude/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/ollama/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/local/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
-              ]
-            : [
-                `docs/claude/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/ollama/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/local/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
-              ];
           
-          let docNames = new Set<string>();
-          let foundPath: string | null = null;
-          for (const docFolder of pathsToTry) {
-            const { data: docEntries, error } = await supabase.storage
-              .from('bpmn-files')
-              .list(docFolder, { limit: 1000 });
-            
-            
-            if (docEntries && docEntries.length > 0) {
-              docNames = new Set(docEntries.map(entry => entry.name));
-              foundPath = docFolder;
-              break; // Found docs, stop trying other paths
-            }
+          if (docEntries && docEntries.length > 0) {
+            docNames = new Set(docEntries.map(entry => entry.name));
+            foundPath = docFolder;
+            break; // Found docs, stop trying other paths
           }
-          
-          // Count docs for nodes that belong to this process
-          for (const node of relevantNodes) {
-            if (node.bpmnFile === fileInGraph) {
+        }
+        
+        // Count docs for nodes that belong to this file only
+        for (const node of nodesInThisFile) {
               let foundDoc = false;
               
               if (node.type === 'callActivity' && node.subprocessFile) {
@@ -250,7 +238,7 @@ export const useFileArtifactCoverage = (fileName: string) => {
                 
                 // Kolla feature-goals/ mappen separat
                 // VIKTIGT: För versioned paths, behåll .bpmn i filnamnet eftersom filen är sparad så
-                const fileForVersionedPath = fileInGraph.endsWith('.bpmn') ? fileInGraph : `${fileInGraph}.bpmn`;
+                const fileForVersionedPath = fileName.endsWith('.bpmn') ? fileName : `${fileName}.bpmn`;
                 const featureGoalPathsToTry = versionHash
                   ? [
                       `docs/claude/${fileForVersionedPath}/${versionHash}/feature-goals`,
@@ -290,10 +278,8 @@ export const useFileArtifactCoverage = (fileName: string) => {
                 foundDoc = docNames.has(fileName);
               }
               
-              if (foundDoc) {
-                docs_covered++;
-              }
-            }
+          if (foundDoc) {
+            docs_covered++;
           }
         }
       } catch (error) {
@@ -312,11 +298,6 @@ export const useFileArtifactCoverage = (fileName: string) => {
           status: getCoverageStatus(tests_covered, total_nodes),
           total: total_nodes,
           covered: tests_covered,
-        },
-        dorDod: {
-          status: getCoverageStatus(dorDod_covered, total_nodes),
-          total: total_nodes,
-          covered: dorDod_covered,
         },
         hierarchy: {
           status: getCoverageStatus(hierarchyCovered, 1),
@@ -343,10 +324,8 @@ export const useAllFilesArtifactCoverage = () => {
 
       // VIKTIGT: Om något går fel, returnera åtminstone en tom Map istället för att låta queryn misslyckas
       try {
-        // Get all DoR/DoD data in one query
-        const { data: allDorDodData } = await supabase
-          .from('dor_dod_status')
-          .select('bpmn_file, bpmn_element_id, subprocess_name');
+        // DoR/DoD generation has been removed - no longer used
+        const allDorDodData: never[] = [];
 
         // Get all test link data
         const { data: allTestLinksData } = await supabase
@@ -385,22 +364,25 @@ export const useAllFilesArtifactCoverage = () => {
             await getChildrenRecursively(file.file_name);
             relevantFiles = Array.from(hierarchyFiles);
             
-            // Fallback: om hierarkin bara innehåller root-filen och det finns fler filer,
-            // använd alla filer istället (hierarkin är förmodligen inte byggd ännu)
-            const allFileNames = bpmnFiles.map(f => f.file_name);
-            if (relevantFiles.length === 1 && allFileNames.length > 1) {
+            // VIKTIGT: Om hierarkin bara innehåller root-filen, använd BARA root-filen
+            // Använd INTE alla filer som fallback, eftersom det inkluderar noder från andra filer
+            // vilket ger felaktig coverage-räkning (t.ex. "3/135" istället för "3/4")
+            // Om hierarkin inte är byggd ännu, räkna bara noder från den aktuella filen
+            if (relevantFiles.length === 1) {
               if (import.meta.env.DEV) {
                 console.warn(
                   `[useFileArtifactCoverage] Hierarchy for ${file.file_name} only contains root file. ` +
-                  `Using all ${allFileNames.length} files as fallback.`
+                  `Using only root file for coverage calculation to avoid counting nodes from other files.`
                 );
               }
-              relevantFiles = allFileNames;
+              // Behåll bara root-filen - använd INTE alla filer som fallback
+              relevantFiles = [file.file_name];
             }
           } catch (error) {
-            // Om något går fel med hierarki-byggandet, använd alla filer som fallback
-            console.warn(`[useFileArtifactCoverage] Error building hierarchy for ${file.file_name}, using all files:`, error);
-            relevantFiles = bpmnFiles.map(f => f.file_name);
+            // Om något går fel med hierarki-byggandet, använd BARA den aktuella filen
+            // Använd INTE alla filer som fallback, eftersom det inkluderar noder från andra filer
+            console.warn(`[useFileArtifactCoverage] Error building hierarchy for ${file.file_name}, using only root file:`, error);
+            relevantFiles = [file.file_name];
           }
           
           // Build process graph to get all nodes recursively (including subprocesses)
@@ -422,34 +404,43 @@ export const useAllFilesArtifactCoverage = () => {
           // Filter to only relevant node types
           const relevantNodes = allDescendants.filter(isRelevantNodeType);
           
-          // Also include the root node if it's a relevant type
-          const rootIsRelevant = isRelevantNodeType(graph.root);
-          const total_nodes = relevantNodes.length + (rootIsRelevant ? 1 : 0);
+          // VIKTIGT: För coverage-räkning, räkna BARA noder från själva filen, inte från hela hierarkin
+          // Detta säkerställer att "4/4" visas istället för "4/220" när filen bara har 4 noder
+          const nodesInThisFile = relevantNodes.filter(n => n.bpmnFile === file.file_name);
           
-          // Get all files in the graph for this process
-          const allFilesInGraph = Array.from(new Set(relevantNodes.map(n => n.bpmnFile)));
+          // Also include the root node if it's a relevant type and belongs to this file
+          const rootIsRelevant = isRelevantNodeType(graph.root) && graph.root.bpmnFile === file.file_name;
+          const total_nodes = nodesInThisFile.length + (rootIsRelevant ? 1 : 0);
+          
+          // Debug logging för att identifiera problem med coverage-räkning
+          if (import.meta.env.DEV && (total_nodes > 50 || nodesInThisFile.length !== relevantNodes.filter(n => n.bpmnFile === file.file_name).length)) {
+            console.log(`[useAllFilesArtifactCoverage] Coverage calculation for ${file.file_name}:`, {
+              totalRelevantNodes: relevantNodes.length,
+              nodesInThisFile: nodesInThisFile.length,
+              total_nodes,
+              rootIsRelevant,
+              relevantFilesCount: relevantFiles.length,
+              nodesByFile: Array.from(new Set(relevantNodes.map(n => n.bpmnFile))).map(f => ({
+                file: f,
+                count: relevantNodes.filter(n => n.bpmnFile === f).length,
+              })),
+            });
+          }
+          
+          // Create node IDs set for this file only
           const relevantNodeIds = new Set(
-            relevantNodes.map(n => `${n.bpmnFile}:${n.bpmnElementId}`)
+            nodesInThisFile.map(n => `${n.bpmnFile}:${n.bpmnElementId}`)
           );
 
-          // Count DoR/DoD coverage for all nodes in the process (including subprocesses)
-          const uniqueDoRDoDNodes = new Set(
-            allDorDodData
-              ?.filter(d => {
-                const nodeId = `${d.bpmn_file}:${d.bpmn_element_id}`;
-                return relevantNodeIds.has(nodeId);
-              })
-              .map(d => `${d.bpmn_file}:${d.bpmn_element_id}`)
-              .filter(Boolean) || []
-          );
-          const dorDod_covered = uniqueDoRDoDNodes.size;
+          // DoR/DoD generation has been removed - no longer used
+          const dorDod_covered = 0;
 
-          // Check test coverage for all nodes in the process (including subprocesses)
+          // Check test coverage for nodes in this file only
           const uniqueTestNodes = new Set(
             allTestLinksData
               ?.filter(t => {
                 const nodeId = `${t.bpmn_file}:${t.bpmn_element_id}`;
-                return relevantNodeIds.has(nodeId);
+                return relevantNodeIds.has(nodeId) && t.bpmn_file === file.file_name;
               })
               .map(t => `${t.bpmn_file}:${t.bpmn_element_id}`)
               .filter(Boolean) || []
@@ -465,149 +456,140 @@ export const useAllFilesArtifactCoverage = () => {
             });
           }
 
-          // Check documentation for all nodes in the process (including subprocesses)
+          // Check documentation for nodes in this file only
+          // VIKTIGT: Räkna bara dokumentation för noder i själva filen, inte från hela hierarkin
           let docs_covered = 0;
           try {
-            // Check docs for each file in the graph
-            for (const fileInGraph of allFilesInGraph) {
-              // Get version hash for the file
-              const versionHash = await getCurrentVersionHash(fileInGraph);
+            // Get version hash for this file
+            const versionHash = await getCurrentVersionHash(file.file_name);
+            
+            // Try multiple paths: versioned path, legacy path
+            const pathsToTry = versionHash
+              ? [
+                  `docs/claude/${file.file_name}/${versionHash}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/ollama/${file.file_name}/${versionHash}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/local/${file.file_name}/${versionHash}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/nodes/${file.file_name.replace('.bpmn', '')}`, // Legacy path
+                ]
+              : [
+                  `docs/claude/${file.file_name}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/ollama/${file.file_name}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/local/${file.file_name}/nodes/${file.file_name.replace('.bpmn', '')}`,
+                  `docs/nodes/${file.file_name.replace('.bpmn', '')}`, // Legacy path
+                ];
+            
+            let docNames = new Set<string>();
+            let foundPath: string | null = null;
+            for (const docFolder of pathsToTry) {
+              const { data: docEntries, error } = await supabase.storage
+                .from('bpmn-files')
+                .list(docFolder, { limit: 1000 });
               
-              // Try multiple paths: versioned path, legacy path
-              const pathsToTry = versionHash
-                ? [
-                    `docs/claude/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/ollama/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/local/${fileInGraph}/${versionHash}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
-                  ]
-                : [
-                    `docs/claude/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/ollama/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/local/${fileInGraph}/nodes/${fileInGraph.replace('.bpmn', '')}`,
-                    `docs/nodes/${fileInGraph.replace('.bpmn', '')}`, // Legacy path
-                  ];
               
-              let docNames = new Set<string>();
-              let foundPath: string | null = null;
-              for (const docFolder of pathsToTry) {
-                const { data: docEntries, error } = await supabase.storage
-                  .from('bpmn-files')
-                  .list(docFolder, { limit: 1000 });
+              if (docEntries && docEntries.length > 0) {
+                docNames = new Set(docEntries.map(entry => entry.name));
+                foundPath = docFolder;
+                break; // Found docs, stop trying other paths
+              }
+            }
+            
+            // För call activities, kolla också feature-goals/ mappen
+            // VIKTIGT: För versioned paths, behåll .bpmn i filnamnet eftersom filen är sparad så
+            const fileForVersionedPath = file.file_name.endsWith('.bpmn') ? file.file_name : `${file.file_name}.bpmn`;
+            const featureGoalPathsToTry = versionHash
+              ? [
+                  `docs/claude/${fileForVersionedPath}/${versionHash}/feature-goals`,
+                  `docs/ollama/${fileForVersionedPath}/${versionHash}/feature-goals`,
+                  `docs/local/${fileForVersionedPath}/${versionHash}/feature-goals`,
+                  `docs/claude/feature-goals`,
+                  `docs/ollama/feature-goals`,
+                  `docs/local/feature-goals`,
+                  `docs/feature-goals`,
+                ]
+              : [
+                  `docs/claude/feature-goals`,
+                  `docs/ollama/feature-goals`,
+                  `docs/local/feature-goals`,
+                  `docs/feature-goals`,
+                ];
+            
+            let featureGoalNames = new Set<string>();
+            for (const featureGoalPath of featureGoalPathsToTry) {
+              const { data: featureGoalEntries, error } = await supabase.storage
+                .from('bpmn-files')
+                .list(featureGoalPath, { limit: 1000 });
+              
+              if (!error && featureGoalEntries && featureGoalEntries.length > 0) {
+                featureGoalNames = new Set(featureGoalEntries.map(e => e.name));
+                break;
+              }
+            }
+            
+            // First, try to match each doc file to a node in this file
+            const matchedDocs = new Set<string>();
+            
+            // Match call activities against feature-goals/ files
+            for (const node of nodesInThisFile) {
+              if (node.type === 'callActivity' && node.subprocessFile) {
+                const hierarchicalKey = getFeatureGoalDocFileKey(
+                  node.subprocessFile,
+                  node.bpmnElementId,
+                  undefined, // no version suffix
+                  node.bpmnFile,
+                );
+                // Process Feature Goals genereras INTE längre (ersatta av file-level docs)
+                const hierarchicalFileName = hierarchicalKey.replace('feature-goals/', '');
                 
-                
-                if (docEntries && docEntries.length > 0) {
-                  docNames = new Set(docEntries.map(entry => entry.name));
-                  foundPath = docFolder;
-                  break; // Found docs, stop trying other paths
+                if (featureGoalNames.has(hierarchicalFileName)) {
+                  matchedDocs.add(`${node.bpmnFile}:${node.bpmnElementId}`);
+                  docs_covered++;
                 }
               }
+            }
+            
+            // Debug: Log nodes and docs for Household only if there's a mismatch
+            if (import.meta.env.DEV && file.file_name === 'mortgage-se-household.bpmn' && docNames.size > 0) {
+              if (nodesInThisFile.length === 0) {
+                console.warn(`[Coverage] ⚠️ Household: Found ${docNames.size} docs but 0 nodes with bpmnFile='mortgage-se-household.bpmn'`);
+              }
+            }
+            
+            for (const docName of docNames) {
+              const docBase = docName.replace('.html', '');
+              let matched = false;
               
-              
-              // Count docs for nodes that belong to this process
-              // För call activities, kolla också feature-goals/ mappen
-              // VIKTIGT: För versioned paths, behåll .bpmn i filnamnet eftersom filen är sparad så
-              const fileForVersionedPath = fileInGraph.endsWith('.bpmn') ? fileInGraph : `${fileInGraph}.bpmn`;
-              const featureGoalPathsToTry = versionHash
-                ? [
-                    `docs/claude/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                    `docs/ollama/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                    `docs/local/${fileForVersionedPath}/${versionHash}/feature-goals`,
-                    `docs/claude/feature-goals`,
-                    `docs/ollama/feature-goals`,
-                    `docs/local/feature-goals`,
-                    `docs/feature-goals`,
-                  ]
-                : [
-                    `docs/claude/feature-goals`,
-                    `docs/ollama/feature-goals`,
-                    `docs/local/feature-goals`,
-                    `docs/feature-goals`,
-                  ];
-              
-              let featureGoalNames = new Set<string>();
-              for (const featureGoalPath of featureGoalPathsToTry) {
-                const { data: featureGoalEntries, error } = await supabase.storage
-                  .from('bpmn-files')
-                  .list(featureGoalPath, { limit: 1000 });
-                
-                if (!error && featureGoalEntries && featureGoalEntries.length > 0) {
-                  featureGoalNames = new Set(featureGoalEntries.map(e => e.name));
+              // Try exact match first
+              for (const node of nodesInThisFile) {
+                const safeId = sanitizeElementId(node.bpmnElementId);
+                if (docBase === safeId || docBase.toLowerCase() === safeId.toLowerCase()) {
+                  matchedDocs.add(docName);
+                  matched = true;
+                  docs_covered++;
                   break;
                 }
               }
               
-              // First, try to match each doc file to a node
-              const matchedDocs = new Set<string>();
-              
-              // Match call activities against feature-goals/ files
-              for (const node of relevantNodes) {
-                if (node.bpmnFile === fileInGraph && node.type === 'callActivity' && node.subprocessFile) {
-                  const hierarchicalKey = getFeatureGoalDocFileKey(
-                    node.subprocessFile,
-                    node.bpmnElementId,
-                    undefined, // no version suffix
-                    node.bpmnFile,
-                  );
-                  // Process Feature Goals genereras INTE längre (ersatta av file-level docs)
-                  const hierarchicalFileName = hierarchicalKey.replace('feature-goals/', '');
-                  
-                  if (featureGoalNames.has(hierarchicalFileName)) {
-                    matchedDocs.add(`${node.bpmnFile}:${node.bpmnElementId}`);
+              // If no exact match, try partial match (check if doc name contains elementId or vice versa)
+              if (!matched) {
+                for (const node of nodesInThisFile) {
+                  const safeId = sanitizeElementId(node.bpmnElementId);
+                  // Check if doc name contains elementId or vice versa
+                  if (docBase.includes(safeId) || safeId.includes(docBase) ||
+                      docBase.toLowerCase().includes(safeId.toLowerCase()) ||
+                      safeId.toLowerCase().includes(docBase.toLowerCase())) {
+                    matchedDocs.add(docName);
+                    matched = true;
                     docs_covered++;
+                    // Doc matched with partial match (logged only if verbose)
+                    break;
                   }
                 }
               }
               
-              // Debug: Log nodes and docs for Household only if there's a mismatch
-              if (import.meta.env.DEV && fileInGraph === file.file_name && file.file_name === 'mortgage-se-household.bpmn' && docNames.size > 0) {
-                const householdNodes = relevantNodes.filter(n => n.bpmnFile === fileInGraph);
-                if (householdNodes.length === 0) {
-                  console.warn(`[Coverage] ⚠️ Household: Found ${docNames.size} docs but 0 nodes with bpmnFile='mortgage-se-household.bpmn'`);
-                }
-              }
-              
-              for (const docName of docNames) {
-                const docBase = docName.replace('.html', '');
-                let matched = false;
-                
-                // Try exact match first
-                for (const node of relevantNodes) {
-                  if (node.bpmnFile === fileInGraph) {
-                    const safeId = sanitizeElementId(node.bpmnElementId);
-                    if (docBase === safeId || docBase.toLowerCase() === safeId.toLowerCase()) {
-                      matchedDocs.add(docName);
-                      matched = true;
-                      docs_covered++;
-                      break;
-                    }
-                  }
-                }
-                
-                // If no exact match, try partial match (check if doc name contains elementId or vice versa)
-                if (!matched) {
-                  for (const node of relevantNodes) {
-                    if (node.bpmnFile === fileInGraph) {
-                      const safeId = sanitizeElementId(node.bpmnElementId);
-                      // Check if doc name contains elementId or vice versa
-                      if (docBase.includes(safeId) || safeId.includes(docBase) ||
-                          docBase.toLowerCase().includes(safeId.toLowerCase()) ||
-                          safeId.toLowerCase().includes(docBase.toLowerCase())) {
-                        matchedDocs.add(docName);
-                        matched = true;
-                        docs_covered++;
-                        // Doc matched with partial match (logged only if verbose)
-                        break;
-                      }
-                    }
-                  }
-                }
-                
-                // Doc file doesn't match any node (logged only if verbose)
-              }
-              
-              // Debug logging disabled for cleaner output
+              // Doc file doesn't match any node (logged only if verbose)
             }
+            
+            // Debug logging disabled for cleaner output
           } catch (error) {
             console.error(`[Coverage Debug] Error checking docs for ${file.file_name}:`, error);
           }
@@ -632,11 +614,6 @@ export const useAllFilesArtifactCoverage = () => {
               status: getCoverageStatus(tests_covered, total_nodes),
               total: total_nodes,
               covered: tests_covered,
-            },
-            dorDod: {
-              status: getCoverageStatus(dorDod_covered, total_nodes),
-              total: total_nodes,
-              covered: dorDod_covered,
             },
             hierarchy: {
               status: getCoverageStatus(hierarchyCovered, 1),

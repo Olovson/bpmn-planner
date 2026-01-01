@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { getTestFileUrl, getDocumentationUrl, getNodeTestReportUrl } from '@/lib/artifactUrls';
-import { getFileDocViewerPath } from '@/lib/nodeArtifactPaths';
+import { getFileDocViewerPath, getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
 import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
 import { navigateToView } from '@/utils/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,7 +35,7 @@ const NodeMatrix = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { nodes, loading } = useAllBpmnNodes();
-  const { hasDorDod, hasTests } = useArtifactAvailability();
+  const { hasTests } = useArtifactAvailability();
   const { toast } = useToast();
   const [sortField, setSortField] = useState<SortField>('orderIndex');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -530,6 +530,29 @@ const NodeMatrix = () => {
                             </span>
                             <ExternalLink className="h-3 w-3 shrink-0" />
                           </a>
+                          {/* Visa Feature Goal länk för Call Activities (används för E2E-scenariogenerering) */}
+                          {node.nodeType === 'CallActivity' && node.subprocessFile && (
+                            <a
+                              href={`#/doc-viewer/${encodeURIComponent(
+                                getFeatureGoalDocFileKey(
+                                  node.subprocessFile,
+                                  node.elementId,
+                                  undefined, // no version suffix
+                                  node.bpmnFile, // parent BPMN file
+                                ).replace('.html', '')
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-muted-foreground hover:underline flex items-center gap-1"
+                              title="Feature Goal documentation (används för E2E-scenariogenerering)"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="truncate max-w-[150px]">
+                                Feature Goal (för E2E-generering)
+                              </span>
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          )}
                           {/* Visa file-level docs länk för Process Feature Goal-noder */}
                           {node.isProcessFeatureGoal && (
                             <a

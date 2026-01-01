@@ -4,7 +4,7 @@
  */
 
 import { parseBpmnFile } from '@/lib/bpmnParser';
-import { buildBpmnProcessGraphFromParseResults, getTestableNodes } from '@/lib/bpmnProcessGraph';
+import { buildBpmnProcessGraph, buildBpmnProcessGraphFromParseResults, getTestableNodes } from '@/lib/bpmnProcessGraph';
 import { storageFileExists, getNodeDocStoragePath, getFeatureGoalDocStoragePaths } from '@/lib/artifactUrls';
 import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 import type { LlmProvider } from '@/lib/llmClientAbstraction';
@@ -12,6 +12,7 @@ import { isLlmEnabled } from '@/lib/llmClient';
 import { generateE2eScenariosForProcess } from '@/lib/e2eScenarioGenerator';
 import { saveE2eScenariosToStorage } from '@/lib/e2eScenarioStorage';
 import { generateFeatureGoalTestsFromE2e } from '@/lib/featureGoalTestGenerator';
+import { topologicalSortFiles } from './bpmnGenerators/fileSorting';
 
 export interface TestGenerationResult {
   // Playwright-testfiler har tagits bort - de innehöll bara stubbar
@@ -48,7 +49,7 @@ export interface TestGenerationProgress {
 }
 
 /**
- * Generate tests for a single BPMN file
+ * Generate tests for a single BPMN file or all files in hierarchy
  */
 export async function generateTestsForFile(
   bpmnFileName: string,
@@ -56,6 +57,9 @@ export async function generateTestsForFile(
   progressCallback?: (progress: TestGenerationProgress) => void,
   checkCancellation?: () => void,
   abortSignal?: AbortSignal,
+  useHierarchy: boolean = false,
+  existingBpmnFiles: string[] = [],
+  isActualRootFile?: boolean,
 ): Promise<TestGenerationResult> {
   const result: TestGenerationResult = {
     totalFiles: 0,
@@ -64,25 +68,183 @@ export async function generateTestsForFile(
   };
 
   try {
-    // Parse BPMN file
-    progressCallback?.({
-      current: 0,
-      total: 100,
-      status: 'parsing',
-      currentElement: 'Parsing BPMN file...',
-    });
-
-    const parseResult = await parseBpmnFile(bpmnFileName);
-    if (!parseResult) {
-      throw new Error(`Failed to parse BPMN file: ${bpmnFileName}`);
-    }
-
-    // Build graph from parse result
-    // Use buildBpmnProcessGraphFromParseResults since we already have the parsed result
-    const parseResults = new Map<string, typeof parseResult>();
-    parseResults.set(bpmnFileName, parseResult);
+    // Determine which files to generate tests for
+    const graphFileScope = useHierarchy && existingBpmnFiles.length > 0 
+      ? existingBpmnFiles 
+      : [bpmnFileName];
     
-    const graph = await buildBpmnProcessGraphFromParseResults(bpmnFileName, parseResults);
+    // Build graph with all files in hierarchy if useHierarchy is true
+    let graph;
+    let filesToGenerate: string[];
+    
+    if (useHierarchy && existingBpmnFiles.length > 0) {
+      // Build graph with all files in hierarchy (same logic as documentation generation)
+      progressCallback?.({
+        current: 0,
+        total: 100,
+        status: 'parsing',
+        currentElement: 'Bygger hierarki...',
+      });
+
+      // Get version hashes for all files in scope
+      const versionHashes = new Map<string, string | null>();
+      for (const fileName of graphFileScope) {
+        try {
+          const versionHash = await getCurrentVersionHash(fileName);
+          versionHashes.set(fileName, versionHash);
+        } catch (error) {
+          console.warn(`[testGenerators] Failed to get version hash for ${fileName}:`, error);
+          versionHashes.set(fileName, null);
+        }
+      }
+
+      graph = await buildBpmnProcessGraph(bpmnFileName, graphFileScope, versionHashes);
+      
+      // Determine which files to generate tests for (same logic as documentation generation)
+      // If this is root file generation, generate for all files in hierarchy
+      const allFilesInGraph = Array.from(graph.fileNodes.keys());
+      const isRootFileGeneration = isActualRootFile === true || 
+        (graphFileScope.length > 1 && allFilesInGraph.length > 1);
+      
+      if (isRootFileGeneration) {
+        // Generate tests for all files in hierarchy, sorted topologically
+        // Build dependencies map from graph
+        const dependencies = new Map<string, Set<string>>();
+        for (const [file, nodes] of graph.fileNodes.entries()) {
+          const deps = new Set<string>();
+          for (const node of nodes) {
+            if (node.type === 'callActivity' && node.subprocessFile) {
+              deps.add(node.subprocessFile);
+            }
+          }
+          dependencies.set(file, deps);
+        }
+        
+        filesToGenerate = topologicalSortFiles(Array.from(allFilesInGraph) as string[], dependencies);
+        
+        if (import.meta.env.DEV) {
+          console.log(`[testGenerators] Root file generation: generating tests for ${filesToGenerate.length} files in hierarchy:`, filesToGenerate);
+        }
+      } else {
+        // Generate tests only for the selected file
+        filesToGenerate = [bpmnFileName];
+      }
+    } else {
+      // Build graph from single file
+      progressCallback?.({
+        current: 0,
+        total: 100,
+        status: 'parsing',
+        currentElement: 'Parsing BPMN file...',
+      });
+
+      const parseResult = await parseBpmnFile(bpmnFileName);
+      if (!parseResult) {
+        throw new Error(`Failed to parse BPMN file: ${bpmnFileName}`);
+      }
+
+      const parseResults = new Map<string, typeof parseResult>();
+      parseResults.set(bpmnFileName, parseResult);
+      
+      graph = await buildBpmnProcessGraphFromParseResults(bpmnFileName, parseResults);
+      filesToGenerate = [bpmnFileName];
+    }
+    
+    // If generating for multiple files in hierarchy, loop over each file
+    if (filesToGenerate.length > 1) {
+      console.log(`[testGenerators] Generating tests for ${filesToGenerate.length} files in hierarchy:`, filesToGenerate);
+      
+      const aggregatedResult: TestGenerationResult = {
+        totalFiles: 0,
+        totalScenarios: 0,
+        errors: [],
+      };
+      
+      for (let i = 0; i < filesToGenerate.length; i++) {
+        const fileName = filesToGenerate[i];
+        
+        if (checkCancellation) {
+          checkCancellation();
+        }
+        if (abortSignal?.aborted) {
+          throw new Error('Test generation cancelled');
+        }
+        
+        progressCallback?.({
+          current: i,
+          total: filesToGenerate.length,
+          status: 'generating',
+          currentElement: `Genererar tester för ${fileName}...`,
+        });
+        
+        try {
+          // Recursively call generateTestsForFile for each file (with useHierarchy=false to avoid infinite recursion)
+          const fileResult = await generateTestsForFile(
+            fileName,
+            llmProvider,
+            (progress) => {
+              progressCallback?.({
+                current: i + (progress.current / progress.total),
+                total: filesToGenerate.length,
+                status: progress.status,
+                currentElement: `${fileName}: ${progress.currentElement || '...'}`,
+              });
+            },
+            checkCancellation,
+            abortSignal,
+            false, // useHierarchy = false (already in hierarchy loop)
+            [], // existingBpmnFiles = [] (not needed for single file)
+            false, // isActualRootFile = false (only root file in hierarchy should be true)
+          );
+          
+          // Aggregate results
+          aggregatedResult.totalFiles += fileResult.totalFiles;
+          aggregatedResult.totalScenarios += fileResult.totalScenarios;
+          aggregatedResult.errors.push(...fileResult.errors);
+          if (fileResult.missingDocumentation) {
+            if (!aggregatedResult.missingDocumentation) {
+              aggregatedResult.missingDocumentation = [];
+            }
+            aggregatedResult.missingDocumentation.push(...fileResult.missingDocumentation);
+          }
+          if (fileResult.e2eGenerationErrors) {
+            if (!aggregatedResult.e2eGenerationErrors) {
+              aggregatedResult.e2eGenerationErrors = [];
+            }
+            aggregatedResult.e2eGenerationErrors.push(...fileResult.e2eGenerationErrors);
+          }
+          if (fileResult.featureGoalTestErrors) {
+            if (!aggregatedResult.featureGoalTestErrors) {
+              aggregatedResult.featureGoalTestErrors = [];
+            }
+            aggregatedResult.featureGoalTestErrors.push(...fileResult.featureGoalTestErrors);
+          }
+          if (fileResult.warnings) {
+            if (!aggregatedResult.warnings) {
+              aggregatedResult.warnings = [];
+            }
+            aggregatedResult.warnings.push(...fileResult.warnings);
+          }
+        } catch (error) {
+          aggregatedResult.errors.push({
+            elementId: fileName,
+            elementName: fileName,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+      
+      progressCallback?.({
+        current: filesToGenerate.length,
+        total: filesToGenerate.length,
+        status: 'complete',
+        currentElement: 'Klar!',
+      });
+      
+      return aggregatedResult;
+    }
+    
+    // Single file generation (original logic)
     const allTestableNodes = getTestableNodes(graph);
     
     console.log(`[testGenerators] Found ${allTestableNodes.length} testable nodes in ${bpmnFileName}`);
@@ -115,24 +277,127 @@ export async function generateTestsForFile(
         let docExists = false;
         let docPath = '';
 
-        // For callActivities, check Feature Goal documentation
-        if (node.type === 'callActivity' && node.subprocessFile) {
-          // Get version hash for the subprocess file (not the parent file)
-          // This is important because Feature Goal docs are stored under the subprocess file's version
-          const subprocessVersionHash = await getCurrentVersionHash(node.subprocessFile);
+        // For callActivities, check Process Feature Goal documentation (non-hierarchical)
+        // VIKTIGT: CallActivity Feature Goals genereras INTE längre.
+        // Istället genereras Process Feature Goals för subprocess-filen (non-hierarchical naming).
+        // Process Feature Goals använder format: feature-goals/{subprocessBaseName}.html
+        // (inte hierarchical: feature-goals/{parent}-{elementId}.html)
+        if (node.type === 'callActivity') {
+          let subprocessFile = node.subprocessFile;
           
-          if (!subprocessVersionHash) {
-            console.warn(`[testGenerators] No version hash found for ${node.subprocessFile}, cannot check documentation`);
+          // Fallback: Om subprocessFile saknas, försök hitta den via bpmn-map.json eller genom att leta efter filer
+          if (!subprocessFile) {
+            try {
+              // Försök hitta via bpmn-map.json
+              const { loadBpmnMapFromStorage } = await import('./bpmn/bpmnMapStorage');
+              const { matchCallActivityUsingMap } = await import('./bpmn/bpmnMapLoader');
+              
+              const bpmnMapResult = await loadBpmnMapFromStorage();
+              if (bpmnMapResult.valid && bpmnMapResult.map) {
+                const mapResult = matchCallActivityUsingMap(
+                  { id: elementId, name: elementName },
+                  bpmnFileName,
+                  bpmnMapResult.map
+                );
+                
+                if (mapResult.matchedFileName) {
+                  subprocessFile = mapResult.matchedFileName;
+                  if (import.meta.env.DEV) {
+                    console.log(`[testGenerators] Found subprocessFile via bpmn-map.json for ${elementId}: ${subprocessFile}`);
+                  }
+                }
+              }
+              
+              // Ytterligare fallback: Försök hitta fil baserat på elementId-namnet
+              if (!subprocessFile) {
+                // Försök hitta filer som matchar elementId (t.ex. "credit-evaluation" -> "mortgage-se-credit-evaluation.bpmn")
+                const normalizedElementId = elementId.toLowerCase().replace(/\s+/g, '-');
+                const possibleFileNames = [
+                  `mortgage-se-${normalizedElementId}.bpmn`,
+                  `${normalizedElementId}.bpmn`,
+                ];
+                
+                // Hämta lista över tillgängliga BPMN-filer
+                const { supabase } = await import('@/integrations/supabase/client');
+                const { data: files } = await supabase.storage
+                  .from('bpmn-files')
+                  .list('bpmn', { search: '.bpmn' });
+                
+                if (files) {
+                  const fileNames = files.map(f => f.name);
+                  for (const possibleFileName of possibleFileNames) {
+                    if (fileNames.includes(possibleFileName)) {
+                      subprocessFile = possibleFileName;
+                      if (import.meta.env.DEV) {
+                        console.log(`[testGenerators] Found subprocessFile via filename matching for ${elementId}: ${subprocessFile}`);
+                      }
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              if (import.meta.env.DEV) {
+                console.warn(`[testGenerators] Failed to find subprocessFile for ${elementId}:`, error);
+              }
+            }
+          }
+          
+          if (!subprocessFile) {
+            console.warn(`[testGenerators] CallActivity ${elementId} has no subprocessFile, cannot check documentation`);
             docExists = false;
           } else {
-            docPath = await getFeatureGoalDocStoragePaths(
-              node.subprocessFile,
-              elementId,
-              bpmnFileName, // parent BPMN file
-              subprocessVersionHash, // version hash for subprocess file
-              node.subprocessFile, // bpmnFileForVersion: use subprocess file for versioned paths
-            );
-            docExists = docPath ? await storageFileExists(docPath) : false;
+            // Get version hash for the subprocess file (not the parent file)
+            // This is important because Feature Goal docs are stored under the subprocess file's version
+            const subprocessVersionHash = await getCurrentVersionHash(subprocessFile);
+            
+            if (!subprocessVersionHash) {
+              console.warn(`[testGenerators] No version hash found for ${subprocessFile}, cannot check documentation`);
+              docExists = false;
+            } else {
+              // VIKTIGT: Använd Process Feature Goal (non-hierarchical) istället för CallActivity Feature Goal (hierarchical)
+              // Process Feature Goals använder subprocess-filens baseName som elementId och ingen parent
+              const subprocessBaseName = subprocessFile.replace('.bpmn', '');
+              const { getFeatureGoalDocFileKey } = await import('./nodeArtifactPaths');
+              const { buildDocStoragePaths } = await import('./artifactPaths');
+              
+              // Non-hierarchical naming för Process Feature Goal (ingen parent)
+              const processFeatureGoalKey = getFeatureGoalDocFileKey(
+                subprocessFile,
+                subprocessBaseName, // För Process Feature Goals är elementId = baseName
+                undefined, // no version suffix
+                undefined, // no parent (non-hierarchical)
+                false, // isRootProcess = false (detta är en subprocess)
+              );
+              
+              const { modePath } = buildDocStoragePaths(
+                processFeatureGoalKey,
+                'slow', // mode
+                'cloud', // provider (claude är cloud provider)
+                subprocessFile, // bpmnFileForVersion: use subprocess file for versioned paths
+                subprocessVersionHash,
+              );
+              
+              docPath = modePath;
+              
+              if (import.meta.env.DEV) {
+                console.log(`[testGenerators] Checking Process Feature Goal doc for ${bpmnFileName}::${elementId}:`, {
+                  subprocessFile,
+                  subprocessBaseName,
+                  elementId,
+                  parentBpmnFile: bpmnFileName,
+                  versionHash: subprocessVersionHash,
+                  processFeatureGoalKey,
+                  docPath,
+                });
+              }
+              
+              docExists = docPath ? await storageFileExists(docPath) : false;
+              
+              if (import.meta.env.DEV && !docExists) {
+                console.warn(`[testGenerators] Process Feature Goal doc not found at: ${docPath}`);
+              }
+            }
           }
         } else {
           // For other node types, check regular node documentation
@@ -213,7 +478,7 @@ export async function generateTestsForFile(
         // FORBÄTTRING: Om E2E scenarios redan finns, hoppa över E2E-generering men tillåt Feature Goal-test-generering
         if (existingScenarios.length > 0) {
           console.log(`[testGenerators] E2E scenarios already exist for ${bpmnFileName} (${existingScenarios.length} scenarios), skipping E2E generation to avoid duplicates`);
-          result.totalScenarios = existingScenarios.length;
+          result.totalScenarios += existingScenarios.length; // Add existing E2E scenarios to total
           
           // FORBÄTTRING: Försök regenerera Feature Goal-tester från befintliga E2E scenarios
           // Vi behöver bygga paths från E2E scenarios för att kunna generera Feature Goal-tester
@@ -320,8 +585,13 @@ export async function generateTestsForFile(
 
         // Try to determine process name and initiative from BPMN file
         // Get process name from meta (first process) or use filename
-        const firstProcess = parseResult.meta?.processes?.[0] || parseResult.meta;
-        const processName = firstProcess?.name || parseResult.meta?.name || bpmnFileName.replace('.bpmn', '');
+        // Need to parse the file to get meta (parseResult may not be available if useHierarchy=true)
+        const fileParseResult = await parseBpmnFile(bpmnFileName);
+        if (!fileParseResult) {
+          throw new Error(`Failed to parse BPMN file: ${bpmnFileName}`);
+        }
+        const firstProcess = fileParseResult.meta?.processes?.[0] || fileParseResult.meta;
+        const processName = firstProcess?.name || fileParseResult.meta?.name || bpmnFileName.replace('.bpmn', '');
         const initiative = processName.includes('mortgage') ? 'Mortgage' : processName;
 
         const e2eResult = await generateE2eScenariosForProcess(
@@ -369,6 +639,7 @@ export async function generateTestsForFile(
           await saveE2eScenariosToStorage(bpmnFileName, e2eResult.scenarios);
           
           console.log(`[testGenerators] Generated ${e2eResult.scenarios.length} E2E scenarios for ${bpmnFileName}`);
+          result.totalScenarios += e2eResult.scenarios.length; // Add E2E scenarios to total
           
           // Explicit kontroll: Om paths är tomma, hoppa över Feature Goal-test-generering
           if (e2eResult.paths.length === 0) {
@@ -390,12 +661,16 @@ export async function generateTestsForFile(
               });
               
               // Collect all BPMN files that contain Feature Goals from the paths
+              // Need to parse the file to get elements (parseResult may not be available if useHierarchy=true)
+              const fileParseResultForPaths = await parseBpmnFile(bpmnFileName);
               const bpmnFilesSet = new Set<string>([bpmnFileName]);
-              for (const path of e2eResult.paths) {
-                for (const featureGoalId of path.featureGoals) {
-                  const element = parseResult.elements.find(e => e.id === featureGoalId);
-                  if (element?.bpmnFile) {
-                    bpmnFilesSet.add(element.bpmnFile);
+              if (fileParseResultForPaths) {
+                for (const path of e2eResult.paths) {
+                  for (const featureGoalId of path.featureGoals) {
+                    const element = fileParseResultForPaths.elements.find(e => e.id === featureGoalId);
+                    if (element && 'bpmnFile' in element && element.bpmnFile && typeof element.bpmnFile === 'string') {
+                      bpmnFilesSet.add(element.bpmnFile as string);
+                    }
                   }
                 }
               }
@@ -410,6 +685,9 @@ export async function generateTestsForFile(
                 `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios, ` +
                 `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
               );
+              
+              // Uppdatera totalScenarios med antalet genererade Feature Goal-tester (lägg till, inte ersätt)
+              result.totalScenarios += featureGoalTestResult.generated;
               
               if (featureGoalTestResult.errors.length > 0) {
                 // Spara fel för feedback till användaren

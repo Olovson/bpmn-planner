@@ -957,21 +957,39 @@ export function buildFeatureGoalDocHtmlFromModel(
           }
         }
         const uniqueUsageCases = Array.from(uniqueUsageCasesMap.values());
-        return uniqueUsageCases.map((usageCase) => `
+        
+        // VIKTIGT: Visa sektionen ENDAST om det finns flera parent-processer
+        // Om LLM genererar usageCases för bara en parent-process, dölj sektionen
+        if (uniqueUsageCases.length <= 1) {
+          return ''; // Dölj sektionen om det bara finns en parent-process
+        }
+        return uniqueUsageCases.map((usageCase) => {
+          const hasConditions = usageCase.conditions && usageCase.conditions.length > 0;
+          const hasDifferences = usageCase.differences && usageCase.differences.trim().length > 0;
+          const hasContent = hasConditions || hasDifferences;
+          
+          return `
           <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem;">
             <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">
               <strong>${usageCase.parentProcess}-processen:</strong>
             </h3>
-            <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
-              ${usageCase.conditions && usageCase.conditions.length > 0 ? `
-                <li><strong>Särskilda villkor:</strong> ${usageCase.conditions.join(', ')}</li>
-              ` : ''}
-              ${usageCase.differences ? `
-                <li>${usageCase.differences}</li>
-              ` : ''}
-            </ul>
+            ${hasContent ? `
+              <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                ${hasConditions ? `
+                  <li><strong>Särskilda villkor:</strong> ${usageCase.conditions.join(', ')}</li>
+                ` : ''}
+                ${hasDifferences ? `
+                  <li>${usageCase.differences}</li>
+                ` : ''}
+              </ul>
+            ` : `
+              <p style="margin-top: 0.5rem; color: #64748b; font-style: italic;">
+                Subprocessen anropas från ${usageCase.parentProcess}-processen utan särskilda villkor eller skillnader.
+              </p>
+            `}
           </div>
-        `).join('');
+        `;
+        }).join('');
       })()}
     </section>
     ` : ''}

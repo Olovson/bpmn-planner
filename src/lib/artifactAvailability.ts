@@ -91,16 +91,5 @@ export const checkTestReportAvailable = async (
   return true;
 };
 
-export const checkDorDodAvailable = (
-  rows: Array<{ bpmn_element_id?: string | null; subprocess_name?: string | null }> | null | undefined,
-  elementId?: string | null,
-  elementName?: string | null,
-) => {
-  if (!rows?.length || (!elementId && !elementName)) return false;
-  return rows.some(
-    (row) =>
-      (elementId && row.bpmn_element_id === elementId) ||
-      (elementName && row.subprocess_name === elementName),
-  );
-};
+// DoR/DoD generation has been removed - checkDorDodAvailable is no longer used
 

@@ -353,6 +353,10 @@ function createTestScenarioWithGatewayContext(
     description,
     status: 'pending',
     category: mapE2eTypeToCategory(e2eScenario.type),
+    // Spara given/when/then som separata fält för att kunna visa i test-coverage tabellen
+    given: subprocessStep.given || undefined,
+    when: subprocessStep.when || undefined,
+    then: subprocessStep.then || undefined,
   };
 }
 
@@ -399,16 +403,17 @@ async function createTestScenarioWithGatewayContextHybrid(
 
 /**
  * Kontrollerar om test är komplett
+ * Uppdaterad: Använder nu separata given/when/then-fält istället för att parsa description
  */
 function isTestComplete(
   test: TestScenario,
   featureGoalDoc?: FeatureGoalDocModel
 ): boolean {
   // Test är komplett om:
-  // 1. Description innehåller Given, When, Then
-  const hasGiven = test.description.includes('Given:');
-  const hasWhen = test.description.includes('When:');
-  const hasThen = test.description.includes('Then:');
+  // 1. Separata given/when/then-fält finns (ny struktur)
+  const hasGiven = !!(test.given && test.given.trim().length > 0);
+  const hasWhen = !!(test.when && test.when.trim().length > 0);
+  const hasThen = !!(test.then && test.then.trim().length > 0);
 
   // 2. Feature Goal-dokumentation finns (om tillgänglig)
   const hasFeatureGoalDoc = featureGoalDoc !== undefined;

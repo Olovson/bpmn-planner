@@ -13,7 +13,6 @@ interface ResetOptions {
   deleteDocs?: boolean;
   deleteTests?: boolean;
   deleteReports?: boolean;
-  deleteDorDod?: boolean;
   deleteMappings?: boolean;
   deleteAllTables?: boolean;
   deleteGitHub?: boolean;
@@ -77,10 +76,7 @@ export const useResetAndRegenerate = () => {
         }, 1500);
       } else {
         // Selective invalidation based on what was deleted
-        if (options.deleteDorDod) {
-          queryClient.invalidateQueries({ queryKey: ['all-dor-dod-criteria'] });
-          queryClient.invalidateQueries({ queryKey: ['dor-dod-status'] });
-        }
+        // DoR/DoD generation has been removed - no longer used
         if (options.deleteTests) {
           queryClient.invalidateQueries({ queryKey: ['node-test-links'] });
           queryClient.invalidateQueries({ queryKey: ['e2e-scenarios'] });
@@ -189,22 +185,7 @@ export const useResetAndRegenerate = () => {
             true, // forceRegenerate: Always regenerate when resetting
           );
 
-          // Save DoR/DoD
-          if (result.dorDod.size > 0) {
-            const criteriaToInsert: any[] = [];
-            result.dorDod.forEach((criteria, subprocessName) => {
-              criteria.forEach(criterion => {
-                criteriaToInsert.push({
-                  subprocess_name: subprocessName,
-                  ...criterion,
-                });
-              });
-            });
-
-            await supabase.from('dor_dod_status').upsert(criteriaToInsert, {
-              onConflict: 'subprocess_name,criterion_key,criterion_type',
-            });
-          }
+          // DoR/DoD generation has been removed - no longer used
 
           // Save test links
           if (result.tests.size > 0) {

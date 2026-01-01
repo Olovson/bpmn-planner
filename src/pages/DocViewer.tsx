@@ -215,35 +215,110 @@ const DocViewer = () => {
           // Format: feature-goals/{baseName} eller feature-goals/{parent}-{elementId}
           const featureGoalName = baseName.replace('feature-goals/', '');
           
-          // För nu, försök behandla det som Process Feature Goal (non-hierarchical)
-          // Om det är hierarchical (parent-elementId), måste vi extrahera elementId och parent senare
-          const bpmnFile = featureGoalName + '.bpmn';
-          const versionHash = await getVersionHashForFile(bpmnFile);
+          // Detektera om det är hierarchical naming (parent-elementId) eller non-hierarchical (baseName)
+          // Hierarchical: feature-goals/mortgage-se-application-internal-data-gathering
+          // Non-hierarchical: feature-goals/mortgage-se-application
           
-          if (!versionHash) {
-            throw new Error(`No version hash found for ${bpmnFile}`);
+          // Försök hitta parent och elementId genom att leta efter callActivities i alla filer
+          let isHierarchical = false;
+          let parentBpmnFile: string | undefined = undefined;
+          let elementId: string | undefined = undefined;
+          let subprocessBpmnFile: string | undefined = undefined;
+          
+          // Försök matcha mot alla callActivities för att hitta parent och subprocess
+          try {
+            for (const bpmnFile of bpmnFiles) {
+              try {
+                const versionHash = await getVersionHashForFile(bpmnFile);
+                const versionHashes = new Map<string, string | null>();
+                versionHashes.set(bpmnFile, versionHash);
+                const graph = await buildBpmnProcessGraph(bpmnFile, bpmnFiles, versionHashes);
+                
+                // Leta efter callActivity som matchar featureGoalName
+                for (const node of graph.allNodes.values()) {
+                  if (node.type === 'callActivity' && node.subprocessFile) {
+                    // Bygg Feature Goal key för denna callActivity
+                    const featureGoalKey = getFeatureGoalDocFileKey(
+                      node.subprocessFile,
+                      node.bpmnElementId,
+                      undefined,
+                      node.bpmnFile,
+                    ).replace('.html', '');
+                    
+                    // Jämför med featureGoalName (utan 'feature-goals/' prefix)
+                    if (featureGoalKey === `feature-goals/${featureGoalName}`) {
+                      isHierarchical = true;
+                      parentBpmnFile = node.bpmnFile;
+                      elementId = node.bpmnElementId;
+                      subprocessBpmnFile = node.subprocessFile;
+                      break;
+                    }
+                  }
+                }
+                
+                if (isHierarchical) break;
+              } catch (error) {
+                // Fortsätt med nästa fil
+                continue;
+              }
+            }
+          } catch (error) {
+            // Fallback till non-hierarchical
           }
           
-          // Process Feature Goal: non-hierarchical naming
-          // getFeatureGoalDocFileKey ignores elementId when parentBpmnFile is undefined,
-          // it uses getBaseName(bpmnFile) instead, so we can pass anything as elementId
-          const processFeatureGoalKey = getFeatureGoalDocFileKey(
-            bpmnFile,
-            featureGoalName, // Will be ignored, getBaseName(bpmnFile) is used instead
-            undefined, // no version suffix
-            undefined, // no parent (non-hierarchical)
-            false, // isRootProcess = false (detta är en subprocess)
-          );
-          
-          const { modePath } = buildDocStoragePaths(
-            processFeatureGoalKey,
-            'slow',
-            'cloud', // 'cloud' is the ArtifactProvider type for Claude
-            bpmnFile,
-            versionHash
-          );
-          
-          tryPaths.push(modePath);
+          if (isHierarchical && subprocessBpmnFile && parentBpmnFile && elementId) {
+            // CallActivity Feature Goal (hierarchical naming)
+            // Använd subprocess-filens version hash
+            const versionHash = await getVersionHashForFile(subprocessBpmnFile);
+            
+            if (!versionHash) {
+              throw new Error(`No version hash found for ${subprocessBpmnFile}`);
+            }
+            
+            const featureGoalKey = getFeatureGoalDocFileKey(
+              subprocessBpmnFile,
+              elementId,
+              undefined,
+              parentBpmnFile,
+            );
+            
+            const { modePath } = buildDocStoragePaths(
+              featureGoalKey,
+              'slow',
+              'cloud',
+              subprocessBpmnFile,
+              versionHash
+            );
+            
+            tryPaths.push(modePath);
+          } else {
+            // Process Feature Goal (non-hierarchical naming)
+            const bpmnFile = featureGoalName + '.bpmn';
+            const versionHash = await getVersionHashForFile(bpmnFile);
+            
+            if (!versionHash) {
+              throw new Error(`No version hash found for ${bpmnFile}`);
+            }
+            
+            // Process Feature Goal: non-hierarchical naming
+            const processFeatureGoalKey = getFeatureGoalDocFileKey(
+              bpmnFile,
+              featureGoalName, // Will be ignored, getBaseName(bpmnFile) is used instead
+              undefined, // no version suffix
+              undefined, // no parent (non-hierarchical)
+              false, // isRootProcess = false (detta är en subprocess)
+            );
+            
+            const { modePath } = buildDocStoragePaths(
+              processFeatureGoalKey,
+              'slow',
+              'cloud',
+              bpmnFile,
+              versionHash
+            );
+            
+            tryPaths.push(modePath);
+          }
         } else if (!isNodeDoc) {
           // File-level documentation (root-filer)
           const bpmnFile = baseName + '.bpmn';

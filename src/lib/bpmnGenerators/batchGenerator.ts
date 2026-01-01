@@ -31,7 +31,7 @@ import type {
   NodeArtifactEntry,
   PlannedScenarioProvider,
 } from './types';
-import { generateDorDodForNodeType } from './dorDodGenerators';
+// DoR/DoD generation has been removed - no longer used
 import {
   generateDocumentationHTML,
   parseSubprocessFile,

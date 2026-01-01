@@ -23,7 +23,6 @@ export interface GenerationProgress {
   docs: { completed: number; total: number };
   htmlUpload: { completed: number; total: number };
   tests: { completed: number; total: number };
-  dorDod?: { completed: number; total: number };
   // Time estimation
   startTime?: number; // Timestamp when generation started
   estimatedTotalTime?: number; // Estimated total time in seconds

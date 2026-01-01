@@ -440,7 +440,8 @@ export function useTestGeneration({
           startTime,
         });
 
-        // Generera tester för root-filen (hierarkin inkluderar alla subprocesser automatiskt)
+        // Generera tester för root-filen med hierarki (hierarkin inkluderar alla subprocesser automatiskt)
+        const allBpmnFileNames = allBpmnFiles.map(f => f.file_name);
         const result = await generateTestsForFile(
           rootFile.file_name,
           llmProvider,
@@ -478,6 +479,11 @@ export function useTestGeneration({
               startTime,
             });
           },
+          undefined, // checkCancellation
+          undefined, // abortSignal
+          true, // useHierarchy = true (generate for all files in hierarchy)
+          allBpmnFileNames, // existingBpmnFiles
+          true, // isActualRootFile = true (this is the root file)
         );
 
         // Convert TestGenerationResult to GenerationResult format

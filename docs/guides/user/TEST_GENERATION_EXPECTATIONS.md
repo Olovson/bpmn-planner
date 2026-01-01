@@ -174,6 +174,30 @@ Om du väljer noden "application" i BPMN-viewern:
 
 ## 📊 Vad Innehåller Varje Test Scenario?
 
+### Feature Goal-test scenario (från E2E-scenarios):
+
+**Uppdaterad struktur (2025-01-01):** Feature Goal-tester använder nu separata `given`, `when`, `then`-fält för enklare visning i Test Coverage-tabellen.
+
+```typescript
+{
+  id: "application-e2e-happy-path-1-step-1",
+  name: "Application - Komplett ansökan (happy path)",
+  description: "Given: En person ansöker om bolån...\nWhen: Kunden går in i ansökningsflödet...\nThen: Alla relevanta steg har körts...",
+  status: "pending",
+  category: "happy-path", // eller "error-case", "edge-case"
+  // Separata fält för Feature Goal-tester (ny struktur)
+  given: "En person ansöker om bolån för köp av bostadsrätt...",
+  when: "Kunden går in i ansökningsflödet (Application)...",
+  then: "Alla relevanta steg i Application-processen har körts...",
+  origin: "e2e-to-feature-goal"
+}
+```
+
+**Viktigt:**
+- `description`-fältet behålls för bakåtkompatibilitet och innehåller fortfarande fullständig beskrivning
+- Separata `given`, `when`, `then`-fält gör det enklare att visa testinformation i Test Coverage-tabellen
+- Feature Goal-tester kan nu visas i Test Coverage-tabellen även när E2E-scenarios saknas
+
 ### User Story-scenario:
 
 ```typescript

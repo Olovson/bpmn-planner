@@ -32,7 +32,6 @@ export function useReset({
       deleteDocs: true,
       deleteTests: true,
       deleteReports: true,
-      deleteDorDod: true,
       deleteMappings: true,
       deleteAllTables: true,
       deleteGitHub: false,

@@ -132,7 +132,7 @@ describe('testScenarioLlmGenerator', () => {
     expect(result?.scenarios[0].name).toBe('Happy Path: Skapa ansökan');
     expect(result?.scenarios[0].category).toBe('happy-path');
     expect(result?.scenarios[0].priority).toBe('P1');
-    expect(result?.scenarios[0].steps).toHaveLength(2);
+    expect(result?.scenarios[0].steps).toHaveLength(2); // LLM output still uses steps structure
     expect(result?.provider).toBe('claude');
     expect(result?.fallbackUsed).toBe(false);
   });

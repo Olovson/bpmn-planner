@@ -5,7 +5,6 @@ import { invalidateStructureQueries, invalidateArtifactQueries } from '@/lib/que
 import { calculateAndSaveDiff } from '@/lib/bpmnDiffRegeneration';
 
 export interface BpmnFileUsage {
-  dorDodCount: number;
   testsCount: number;
 }
 

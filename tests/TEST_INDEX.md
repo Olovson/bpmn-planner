@@ -61,14 +61,10 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 - **Integration:** `subprocess-first-then-parent-storage.test.ts` - ⭐ **NYTT** - Validerar att dokumentation laddas från Storage när parent genereras efter subprocess
 
 ### LLM Integration
-- **Integration:** `claude-api-simple.test.ts` - Enkel Claude API-test
-- **Integration:** `claude-api-direct-http.test.ts` - Direkt HTTP-test
-- **Integration:** `claude-basic.test.ts` - Grundläggande Claude-test
-- **Integration:** `claude-complex.test.ts` - Komplex Claude-test
 - **Integration:** `claude-application.test.ts` - Application med Claude
 - **Integration:** `claude-application-object-info.test.ts` - Application object info
 - **Integration:** `claude-object-information.test.ts` - Object information
-- **Integration:** `llm.real.smoke.test.ts` - Riktig LLM smoke test
+- **Integration:** `llm.real.smoke.test.ts` - Riktig LLM smoke test (cloud + ollama)
 - **Integration:** `llm.health.local.test.ts` - LLM health check (lokal)
 - **Unit:** `llmClientAbstraction.test.ts` - LLM client abstraction
 - **Unit:** `llmDocumentationShared.test.ts` - Delad LLM-dokumentation
@@ -344,7 +340,13 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 - **E2E Tests (Vitest):** 1 fil
 - **Playwright E2E Tests:** 36 filer (22 huvudfiler + 3 A-Ö flöden + 5 scenario-filer + 6 nya tester)
 
-**Totalt:** ~114 testfiler (utvecklartester)
+**Totalt:** ~109 testfiler (utvecklartester)
+
+**Uppdateringar (2025-01-01):**
+- Tog bort utdaterade Claude API-tester (`claude-api-simple.test.ts`, `claude-api-direct-http.test.ts`, `claude-basic.test.ts`, `claude-complex.test.ts`)
+- Tog bort DoR/DoD-tester (`dorDodTemplates.test.ts`) - DoR/DoD-funktionalitet har tagits bort
+- Uppdaterade tester för att använda nya `FeatureGoalDocModel` (dependencies istället för prerequisites)
+- Uppdaterade tester för att använda nya `TestScenario`-struktur (given/when/then som separata fält)
 
 **Notera:** Test generation-tester (5 filer) är skapade, varav 4 är implementerade. Vissa integrationstester är fortfarande placeholders.
 
@@ -399,5 +401,5 @@ find tests -name "*.test.ts" -o -name "*.spec.ts" | sort
 
 ---
 
-**Senast uppdaterad:** 2025-12-29
+**Senast uppdaterad:** 2025-01-01
 

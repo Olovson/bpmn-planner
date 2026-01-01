@@ -5,7 +5,7 @@ import { useProcessTree } from './useProcessTree';
 import { ProcessTreeNode } from '@/lib/processTree';
 import { getDocumentationUrl, storageFileExists, getNodeDocStoragePath, getTestFileUrl, getFeatureGoalDocStoragePaths } from '@/lib/artifactUrls';
 import { getNodeDocFileKey, getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
-import { checkDocsAvailable, checkDorDodAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
+import { checkDocsAvailable, checkTestReportAvailable } from '@/lib/artifactAvailability';
 import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 // Removed buildJiraName import - no longer using fallback logic
 
@@ -19,10 +19,8 @@ export interface BpmnNodeData {
   testFilePath?: string;
   jiraIssues?: Array<{ id: string; url: string; title?: string }>;
   testReportUrl?: string;
-  dorDodUrl?: string;
   hasDocs?: boolean;
   hasTestReport?: boolean;
-  hasDorDod?: boolean;
   documentationUrl?: string;
   jiraType?: 'feature goal' | 'epic' | null;
   jiraName?: string | null;
@@ -101,9 +99,7 @@ export const useAllBpmnNodes = () => {
           .from('node_test_links')
           .select('*');
 
-        const { data: allDorDod } = await supabase
-          .from('dor_dod_status')
-          .select('bpmn_file, bpmn_element_id, subprocess_name');
+        // DoR/DoD generation has been removed - no longer used
 
         // Helper function to get all BPMN files from process tree
         const getAllFilesFromTree = (node: ProcessTreeNode): string[] => {
@@ -191,13 +187,7 @@ export const useAllBpmnNodes = () => {
           // Only use data from database - no fallback to generated names
           // This makes it clear when Jira names need to be generated via handleBuildHierarchy
 
-          const dorDodUrl = `/subprocess/${encodeURIComponent(elementId)}`;
           const diagnosticsSummary = collectDiagnosticsSummary(node);
-          const hasDorDod = checkDorDodAvailable(
-            allDorDod,
-            elementId,
-            node.label,
-          );
 
           // För call activities, använd Feature Goal-sökvägar istället för vanliga node-sökvägar
           // Note: docPath is not used for call activities, they use Feature Goal paths
@@ -222,11 +212,9 @@ export const useAllBpmnNodes = () => {
             testFilePath: testLink?.test_file_path || undefined,
             jiraIssues: (mapping?.jira_issues as any) || undefined,
             testReportUrl: mapping?.test_report_url || undefined,
-            dorDodUrl,
             hasDocs: false, // resolved below
             documentationUrl: docUrl,
             hasTestReport: false, // resolved below
-            hasDorDod,
             jiraType: (mapping?.jira_type as 'feature goal' | 'epic' | null) || null,
             jiraName: mapping?.jira_name || null,
             hierarchyPath: null, // Deprecated - no longer used, kept for backward compatibility
@@ -344,7 +332,6 @@ export const useAllBpmnNodes = () => {
             hasDocs: false, // resolved below
             documentationUrl: getDocumentationUrl(processFeatureGoalFile), // Process Feature Goal URL
             hasTestReport: false,
-            hasDorDod: false,
             jiraType: (mapping?.jira_type as 'feature goal' | 'epic' | null) || 'feature goal', // Default till 'feature goal' om ingen mapping finns
             jiraName: jiraName, // Använd mapping från databasen eller process-nodens label som fallback
             hierarchyPath: null,

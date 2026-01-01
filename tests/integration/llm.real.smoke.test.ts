@@ -7,8 +7,6 @@ import type { NodeDocumentationContext } from '@/lib/documentationContext';
 import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
 import type { LlmProvider } from '@/lib/llmClientAbstraction';
 import {
-  renderFeatureGoalDocFromLlm,
-  renderEpicDocFromLlm,
   renderBusinessRuleDocFromLlm,
   renderFeatureGoalDoc,
   renderEpicDoc,
@@ -233,22 +231,13 @@ if (!isLlmEnabled()) {
             '<!-- LLM_SECTION_ORIGIN: ' +
             [
               `summary=${sections.summary ? 'llm' : 'fallback'}`,
-              `effectGoals=${sections.effectGoals.length ? 'llm' : 'fallback'}`,
-              `scopeIncluded=${sections.scopeIncluded.length ? 'llm' : 'fallback'}`,
-              `scopeExcluded=${sections.scopeExcluded.length ? 'llm' : 'fallback'}`,
-              `epics=${sections.epics.length ? 'llm' : 'fallback'}`,
               `flowSteps=${sections.flowSteps.length ? 'llm' : 'fallback'}`,
               `dependencies=${sections.dependencies.length ? 'llm' : 'fallback'}`,
-              `scenarios=${sections.scenarios.length ? 'llm' : 'fallback'}`,
-              `testDescription=${sections.testDescription ? 'llm' : 'fallback'}`,
-              `implementationNotes=${sections.implementationNotes.length ? 'llm' : 'fallback'}`,
-              `relatedItems=${sections.relatedItems.length ? 'llm' : 'fallback'}`,
-              // Tekniska & externa beroenden saknar eget LLM-fält och är alltid fallback i HTML-buildern
-              'technicalDependencies=fallback',
+              `userStories=${sections.userStories.length ? 'llm' : 'fallback'}`,
             ].join(', ') +
             ' -->';
 
-          const llmHtmlRaw = renderFeatureGoalDocFromLlm(context, links, raw || '');
+          const llmHtmlRaw = await renderFeatureGoalDoc(context, links, raw || '');
           const llmHtml = injectOriginComment(llmHtmlRaw, originComment);
           expect(llmHtml).toContain('Feature Goal');
           expect(llmHtml).toContain('Sammanfattning');
@@ -261,10 +250,10 @@ if (!isLlmEnabled()) {
           const errorHtml =
             provider === 'cloud'
               ? buildCloudErrorHtml(title, error)
-              : buildOllamaErrorHtml(title, error);
+              : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
-          if (provider === 'local' && error instanceof LlmValidationError) {
+          if (provider === 'ollama' && error instanceof LlmValidationError) {
             const rawJsonPath = join(
               dir,
               'json',
@@ -283,12 +272,7 @@ if (!isLlmEnabled()) {
       }
 
       // Lokalt genererad dokumentation (utan LLM) för diff jämförelse – samma för alla providers
-      const ollamaHtml = await renderFeatureGoalDoc(context, links);
-      writeFileSync(
-        join(dir, 'html', 'llm-feature-goal-fallback.html'),
-        localHtml,
-        'utf8',
-      );
+      // Note: renderFeatureGoalDoc requires llmContent, so we skip fallback rendering
     }, 720000);
 
     it('genererar Epic-dokumentation med riktig LLM (cloud & ollama)', async () => {
@@ -349,22 +333,14 @@ if (!isLlmEnabled()) {
             '<!-- LLM_SECTION_ORIGIN: ' +
             [
               `summary=${sections.summary ? 'llm' : 'fallback'}`,
-              `prerequisites=${sections.prerequisites.length ? 'llm' : 'fallback'}`,
-              `inputs=${sections.inputs.length ? 'llm' : 'fallback'}`,
               `flowSteps=${sections.flowSteps.length ? 'llm' : 'fallback'}`,
-              `interactions=${sections.interactions.length ? 'llm' : 'fallback'}`,
-              `dataContracts=${sections.dataContracts.length ? 'llm' : 'fallback'}`,
-              `businessRulesPolicy=${sections.businessRulesPolicy.length ? 'llm' : 'fallback'}`,
-              `scenarios=${sections.scenarios.length ? 'llm' : 'fallback'}`,
-              `testDescription=${sections.testDescription ? 'llm' : 'fallback'}`,
-              `implementationNotes=${sections.implementationNotes.length ? 'llm' : 'fallback'}`,
-              `relatedItems=${sections.relatedItems.length ? 'llm' : 'fallback'}`,
-              // Tekniska & externa beroenden-sektionen har ingen dedikerad LLM-del i modellen
-              'technicalDependencies=fallback',
+              `interactions=${sections.interactions && sections.interactions.length ? 'llm' : 'fallback'}`,
+              `dependencies=${sections.dependencies && sections.dependencies.length ? 'llm' : 'fallback'}`,
+              `userStories=${sections.userStories.length ? 'llm' : 'fallback'}`,
             ].join(', ') +
             ' -->';
 
-          const llmHtmlRaw = renderEpicDocFromLlm(context, links, raw || '');
+          const llmHtmlRaw = await renderEpicDoc(context, links, raw || '');
           const llmHtml = injectOriginComment(llmHtmlRaw, originComment);
           expect(llmHtml).toContain('Epic');
           expect(llmHtml).toContain('Syfte');
@@ -377,10 +353,10 @@ if (!isLlmEnabled()) {
           const errorHtml =
             provider === 'cloud'
               ? buildCloudErrorHtml(title, error)
-              : buildOllamaErrorHtml(title, error);
+              : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
-          if (provider === 'local' && error instanceof LlmValidationError) {
+          if (provider === 'ollama' && error instanceof LlmValidationError) {
             const rawJsonPath = join(
               dir,
               'json',
@@ -398,12 +374,7 @@ if (!isLlmEnabled()) {
         }
       }
 
-      const localHtml = await renderEpicDoc(context, links);
-      writeFileSync(
-        join(dir, 'html', 'llm-epic-fallback.html'),
-        localHtml,
-        'utf8',
-      );
+      // Note: renderEpicDoc requires llmContent, so we skip fallback rendering
     }, 720000);
 
     it('genererar Business Rule-dokumentation med riktig LLM (cloud & local)', async () => {
@@ -468,14 +439,10 @@ if (!isLlmEnabled()) {
               `decisionLogic=${sections.decisionLogic.length ? 'llm' : 'fallback'}`,
               `outputs=${sections.outputs.length ? 'llm' : 'fallback'}`,
               `businessRulesPolicy=${sections.businessRulesPolicy.length ? 'llm' : 'fallback'}`,
-              `scenarios=${sections.scenarios.length ? 'llm' : 'fallback'}`,
-              `testDescription=${sections.testDescription ? 'llm' : 'fallback'}`,
-              `implementationNotes=${sections.implementationNotes.length ? 'llm' : 'fallback'}`,
-              `relatedItems=${sections.relatedItems.length ? 'llm' : 'fallback'}`,
             ].join(', ') +
             ' -->';
 
-          const llmHtmlRaw = renderBusinessRuleDocFromLlm(context, links, raw || '');
+          const llmHtmlRaw = await renderBusinessRuleDocFromLlm(context, links, raw || '');
           const llmHtml = injectOriginComment(llmHtmlRaw, originComment);
           expect(llmHtml).toContain('Business Rule');
           expect(llmHtml).toContain('Sammanfattning');
@@ -488,10 +455,10 @@ if (!isLlmEnabled()) {
           const errorHtml =
             provider === 'cloud'
               ? buildCloudErrorHtml(title, error)
-              : buildOllamaErrorHtml(title, error);
+              : buildLocalErrorHtml(title, error);
           writeFileSync(htmlPath, errorHtml, 'utf8');
           writeErrorJson(jsonPath, provider, error);
-          if (provider === 'local' && error instanceof LlmValidationError) {
+          if (provider === 'ollama' && error instanceof LlmValidationError) {
             const rawJsonPath = join(
               dir,
               'json',
@@ -509,12 +476,7 @@ if (!isLlmEnabled()) {
         }
       }
 
-      const localHtml = await renderBusinessRuleDoc(context, links);
-      writeFileSync(
-        join(dir, 'html', 'llm-business-rule-fallback.html'),
-        localHtml,
-        'utf8',
-      );
+      // Note: renderBusinessRuleDoc requires llmContent, so we skip fallback rendering
     }, 720000);
   });
 }

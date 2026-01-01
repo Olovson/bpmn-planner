@@ -156,9 +156,11 @@ describe('Test Generation with Claude (Integration)', () => {
       mockElementId
     );
     expect(testScenarios).toHaveLength(1);
-    expect(testScenarios[0].steps).toBeDefined();
-    expect(testScenarios[0].steps.when).toHaveLength(2);
-    expect(testScenarios[0].steps.then).toHaveLength(2);
+    expect(testScenarios[0].given).toBeUndefined(); // No prerequisites in mock
+    expect(testScenarios[0].when).toBeDefined();
+    expect(testScenarios[0].then).toBeDefined();
+    expect(testScenarios[0].when).toContain('Kunden öppnar ansökningsformuläret');
+    expect(testScenarios[0].then).toContain('Formuläret visas');
 
     // Step 7: Save to database
     const mockUpsert = vi.fn().mockResolvedValue({ data: [], error: null });
@@ -177,9 +179,9 @@ describe('Test Generation with Claude (Integration)', () => {
         category: s.category,
         riskLevel: s.riskLevel,
         assertionType: s.assertionType,
-        steps: s.steps,
-        expectedResult: s.expectedResult,
-        acceptanceCriteria: s.acceptanceCriteria,
+        given: s.given,
+        when: s.when,
+        then: s.then,
       })),
     };
 

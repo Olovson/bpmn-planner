@@ -11,8 +11,6 @@ export * from '../bpmnGenerators';
 export type {
   GenerationPhaseKey,
   HierarchicalTestNode,
-  DorDodCriterion,
-  GeneratedCriterion,
   SubprocessSummary,
   NodeArtifactEntry,
   GenerationResult,
@@ -27,8 +25,6 @@ export {
   generateHierarchicalTestFileFromTree,
   generateDocumentationFromTree,
 } from './testGenerators';
-
-export { generateDorDodForNodeType } from './dorDodGenerators';
 
 export {
   generateDocumentationHTML,

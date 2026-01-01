@@ -126,11 +126,15 @@ describe('testScenarioValidator', () => {
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('scenario-1');
     expect(result[0].name).toBe('Happy Path: Skapa ansökan');
-    expect(result[0].description).toBe('Kunden skapar ansökan');
     expect(result[0].status).toBe('pending');
     expect(result[0].category).toBe('happy-path');
     expect(result[0].riskLevel).toBe('P1');
     expect(result[0].assertionType).toBe('functional');
+    expect(result[0].given).toBeUndefined(); // No prerequisites in test data
+    expect(result[0].when).toBeDefined();
+    expect(result[0].then).toBeDefined();
+    expect(result[0].when).toContain('Kunden öppnar formuläret');
+    expect(result[0].then).toContain('Formuläret visas');
   });
 });
 

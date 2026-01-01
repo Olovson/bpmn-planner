@@ -48,9 +48,9 @@ describe('testScenarioSaver', () => {
         category: s.category,
         riskLevel: s.riskLevel,
         assertionType: s.assertionType,
-        steps: s.steps,
-        expectedResult: s.expectedResult,
-        acceptanceCriteria: s.acceptanceCriteria,
+        given: s.given,
+        when: s.when,
+        then: s.then,
       })),
     };
     
@@ -85,9 +85,9 @@ describe('testScenarioSaver', () => {
     expect(row.scenarios[0]).toHaveProperty('category', 'happy-path');
     expect(row.scenarios[0]).toHaveProperty('riskLevel', 'P1');
     expect(row.scenarios[0]).toHaveProperty('assertionType', 'functional');
-    expect(row.scenarios[0]).toHaveProperty('steps');
-    expect(row.scenarios[0]).toHaveProperty('expectedResult', 'Alla fält är ifyllda');
-    expect(row.scenarios[0]).toHaveProperty('acceptanceCriteria');
+    expect(row.scenarios[0]).toHaveProperty('given', 'Kunden är identifierad');
+    expect(row.scenarios[0]).toHaveProperty('when', 'Kunden öppnar ansökningsformuläret och fyller i personuppgifter');
+    expect(row.scenarios[0]).toHaveProperty('then', 'Formuläret visas och alla fält är ifyllda');
   });
   
   it('should handle database errors gracefully', async () => {

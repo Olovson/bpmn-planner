@@ -22,6 +22,10 @@ export interface TestScenario {
   persona?: ScenarioPersona;
   riskLevel?: ScenarioRiskLevel;
   assertionType?: ScenarioAssertionType;
+  // Given/When/Then för Feature Goal-tester (extraheras från E2E-scenarios)
+  given?: string;
+  when?: string;
+  then?: string;
 }
 
 export interface TestInfo {

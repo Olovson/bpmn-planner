@@ -1,7 +1,6 @@
 import type { BpmnElement } from '@/lib/bpmnParser';
 import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
 import { parseBpmnFile } from '@/lib/bpmnParser';
-import type { DorDodCriterion } from './types';
 
 /**
  * Subprocess summary information
@@ -27,7 +26,6 @@ export function generateDocumentationHTML(
   element: BpmnElement, 
   subprocessFile?: string,
   subprocessSummary?: SubprocessSummary,
-  dorDodCriteria: DorDodCriterion[] = [],
 ): string {
   const nodeType = element.type.replace('bpmn:', '');
   const documentation = element.businessObject.documentation?.[0]?.text || 'Ingen dokumentation tillgänglig.';
@@ -327,25 +325,6 @@ export function generateDocumentationHTML(
             </div>
         </section>
 
-        ${dorDodCriteria.length ? `
-        <section>
-            <h2>✅ Definition of Ready / Definition of Done – krav</h2>
-            <div class="card">
-                <p style="margin-bottom: 10px;">
-                    Nedan listas statiska DoR/DoD-krav kopplade till denna nods typ och sammanhang. 
-                    Dessa är avsedda som stöd vid planering, utveckling och kvalitetssäkring.
-                </p>
-                <ul style="margin-left: 1.5rem; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
-                    ${dorDodCriteria.map((criterion) => `
-                        <li>
-                            <strong>[${criterion.criterion_type.toUpperCase()} – ${criterion.criterion_category}]</strong>
-                            &nbsp;${criterion.criterion_text}
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
-        </section>
-        ` : ''}
     </div>
 </body>
 </html>`;

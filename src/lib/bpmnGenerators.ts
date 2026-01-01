@@ -1,5 +1,4 @@
 import { BpmnElement, BpmnSubprocess, parseBpmnFile } from '@/lib/bpmnParser';
-import { CriterionCategory, CriterionType } from '@/hooks/useDorDodStatus';
 import { generateTestCode } from '@/tests/meta/jiraBpmnMeta';
 import { buildNodeDocumentationContext, type NodeDocumentationContext } from '@/lib/documentationContext';
 import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
@@ -60,8 +59,6 @@ import { buildProcessTreeFromGraph } from '@/lib/bpmn/buildProcessTreeFromGraph'
 import type { EpicUserStory } from './epicDocTypes';
 import type {
   GenerationPhaseKey,
-  DorDodCriterion,
-  GeneratedCriterion,
   SubprocessSummary,
   NodeArtifactEntry,
   GenerationResult,
@@ -72,7 +69,6 @@ import type {
 
 export type { GenerationPhaseKey };
 import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
-import { buildDorDodCriteria, type DorDodNodeType } from '@/lib/templates/dorDodTemplates';
 
 // Legacy test generators have been moved to bpmnGenerators/legacyTestGenerators.ts
 // Import and re-export for backward compatibility
@@ -99,12 +95,6 @@ import {
   generateDocumentationHTML,
 } from './bpmnGenerators/documentationGenerator';
 
-// DOR/DOD generators moved to bpmnGenerators/dorDodGenerators.ts
-import {
-  generateDorDodCriteria,
-  generateDorDodForNodeType,
-} from './bpmnGenerators/dorDodGenerators';
-
 // Scenario builders moved to bpmnGenerators/scenarioBuilders.ts
 import {
   mapProviderToScenarioProvider,
@@ -113,12 +103,8 @@ import {
   buildTestSkeletonScenariosFromDocJson,
 } from './bpmnGenerators/scenarioBuilders';
 
-// DoR/DoD criteria are sourced from static templates in src/lib/templates/dorDodTemplates.ts
-// to ensure the LLM never rewrites or invents definitions.
-
 // Re-export types for backward compatibility
 export type {
-  GeneratedCriterion,
   SubprocessSummary,
   GenerationResult,
   ProgressReporter,
@@ -405,9 +391,22 @@ export async function generateAllFromBpmnWithGraph(
     // VIKTIGT: Räkna Process Feature Goals som kommer att genereras för subprocess-filer
     // Dessa genereras separat och måste inkluderas i progress-räkningen
     // VIKTIGT: Logiken måste matcha EXAKT logiken för när Process Feature Goals faktiskt genereras (rad 2198-2201)
+    // 
+    // Om nodeFilter används, räkna bara Process Feature Goals för filer som faktiskt har noder som ska genereras
+    // Samla först vilka filer som har noder som ska genereras
+    const filesWithNodesToGenerate = new Set<string>();
+    for (const node of nodesToGenerate) {
+      filesWithNodesToGenerate.add(node.bpmnFile);
+    }
+    
     let processNodesToGenerate = 0;
     const processNodesToGenerateDetails: Array<{ file: string; reason: string }> = [];
     for (const file of analyzedFiles) {
+      // Om nodeFilter används, hoppa över filer som inte har noder som ska genereras
+      if (nodeFilter && !filesWithNodesToGenerate.has(file)) {
+        continue;
+      }
+      
       const hasCallActivityPointingToFile = Array.from(testableNodes.values()).some(
         node => node.type === 'callActivity' && node.subprocessFile === file
       );
@@ -445,19 +444,6 @@ export async function generateAllFromBpmnWithGraph(
       }
     }
     
-    // VIKTIGT: Skicka total:init med korrekt antal filer och noder för progress-räkning
-    // Använd nodesToGenerate.length (faktiskt antal noder som genereras) istället för totalNodesFromFiles
-    // Detta säkerställer att progress visar korrekt antal, exkluderar noder som hoppas över
-    // (t.ex. call activities med saknade subprocess-filer, redan genererade noder, nodeFilter)
-    // 
-    // För filräkning: Använd graphFileScope.length (antal filer som analyseras) istället för analyzedFiles.length
-    // För subprocess-generering analyseras fler filer (parent + subprocess + siblings) än vad som genereras dokumentation för
-    // Användaren förväntar sig att se antal filer som analyseras, inte bara antal filer som genereras dokumentation för
-    // 
-    // VIKTIGT: File-level documentation genereras för ALLA filer i analyzedFiles (en per fil)
-    // Detta måste räknas med i totalNodesToGenerate för korrekt progress-räkning
-    const fileLevelDocsCount = analyzedFiles.length; // En file-level doc per fil
-    
     // VIKTIGT: Räkna Root Process Feature Goal om det ska genereras
     // Detta måste matcha exakt logiken för när Root Process Feature Goal faktiskt genereras (rad 1658-1664)
     let rootFeatureGoalCount = 0;
@@ -492,6 +478,33 @@ export async function generateAllFromBpmnWithGraph(
         }
       }
     }
+    
+    // VIKTIGT: Skicka total:init med korrekt antal filer och noder för progress-räkning
+    // Använd nodesToGenerate.length (faktiskt antal noder som genereras) istället för totalNodesFromFiles
+    // Detta säkerställer att progress visar korrekt antal, exkluderar noder som hoppas över
+    // (t.ex. call activities med saknade subprocess-filer, redan genererade noder, nodeFilter)
+    // 
+    // För filräkning: Använd graphFileScope.length (antal filer som analyseras) istället för analyzedFiles.length
+    // För subprocess-generering analyseras fler filer (parent + subprocess + siblings) än vad som genereras dokumentation för
+    // Användaren förväntar sig att se antal filer som analyseras, inte bara antal filer som genereras dokumentation för
+    // 
+    // VIKTIGT: File-level documentation genereras för filer som faktiskt får dokumentation genererad
+    // Om nodeFilter används, kan analyzedFiles innehålla fler filer än vad som faktiskt genereras
+    // Räkna bara filer som har noder som ska genereras ELLER som behöver Process Feature Goals
+    // (filesWithNodesToGenerate är redan beräknat ovan)
+    // Lägg till filer som behöver Process Feature Goals
+    for (const detail of processNodesToGenerateDetails) {
+      filesWithNodesToGenerate.add(detail.file);
+    }
+    // Lägg till root-filen om Root Process Feature Goal ska genereras
+    if (rootFeatureGoalCount > 0) {
+      filesWithNodesToGenerate.add(bpmnFileName);
+    }
+    // Om ingen nodeFilter används, använd analyzedFiles (alla filer ska genereras)
+    // Om nodeFilter används, använd bara filer som faktiskt har noder som ska genereras
+    const fileLevelDocsCount = nodeFilter 
+      ? filesWithNodesToGenerate.size 
+      : analyzedFiles.length; // En file-level doc per fil
     
     // Debug logging för progress-räkning
     if (import.meta.env.DEV) {
@@ -585,7 +598,6 @@ export async function generateAllFromBpmnWithGraph(
     const result: GenerationResult = {
       tests: new Map(),
       docs: new Map(),
-      dorDod: new Map(),
       subprocessMappings: new Map(),
       metadata: {
         hierarchyUsed: true,
@@ -627,42 +639,14 @@ export async function generateAllFromBpmnWithGraph(
     // Testfiler och testscenarion genereras inte längre i dokumentationssteget.
     // Använd separat testgenereringsfunktion istället.
 
-    // === DOR/DOD OCH SUBPROCESS MAPPINGS ===
-    // Testbara noder från hela grafen (för DoR/DoD och subprocess mappings)
+    // === SUBPROCESS MAPPINGS ===
+    // Testbara noder från hela grafen (för subprocess mappings)
     await reportProgress('node-analysis:start', 'Analyserar noder för artefakter', `${testableNodes.length} noder`);
     
     for (const node of testableNodes) {
       if (!node.element) continue;
       await reportProgress('node-analysis:node', 'Analyserar nod', node.name || node.bpmnElementId);
       
-      const nodeType = node.type as 'userTask' | 'serviceTask' | 'businessRuleTask' | 'callActivity';
-      
-      // Generera DoR/DoD
-      const normalizedName = (node.name || node.bpmnElementId)
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-]/g, '');
-      
-      const typeMap: Record<string, 'ServiceTask' | 'UserTask' | 'BusinessRuleTask' | 'CallActivity'> = {
-        'userTask': 'UserTask',
-        'serviceTask': 'ServiceTask',
-        'businessRuleTask': 'BusinessRuleTask',
-        'callActivity': 'CallActivity',
-      };
-      
-      const mappedType = typeMap[nodeType];
-      if (mappedType) {
-        const criteria = generateDorDodForNodeType(mappedType, normalizedName);
-        const enrichedCriteria = criteria.map(c => ({
-          ...c,
-          node_type: mappedType,
-          bpmn_element_id: node.bpmnElementId,
-          bpmn_file: node.bpmnFile,
-        }));
-        result.dorDod.set(`${node.bpmnFile}:${node.bpmnElementId}`, enrichedCriteria);
-      }
-
       // Subprocess mappings
       // VIKTIGT: Visa bara mappningar för filer som faktiskt finns i existingBpmnFiles
       // Om filen saknas (t.ex. från bpmn-map.json men inte uppladdad), ska den INTE visas
@@ -1068,9 +1052,6 @@ export async function generateAllFromBpmnWithGraph(
             dorLink: undefined,
             testLink: undefined, // Testfiler genereras inte längre i dokumentationssteget
           };
-
-          const dorDodKey = `${node.bpmnFile}:${node.bpmnElementId}`;
-          const dorDodForNode = result.dorDod.get(dorDodKey) || [];
 
           let nodeDocContent: string;
           let lastDocJson: unknown | undefined;
@@ -1505,7 +1486,7 @@ export async function generateAllFromBpmnWithGraph(
             }
           } else {
             // useLlm is false - use template-based documentation
-            nodeDocContent = generateDocumentationHTML(node.element, undefined, undefined, dorDodForNode);
+            nodeDocContent = generateDocumentationHTML(node.element, undefined, undefined);
           }
 
           // VIKTIGT: callActivities har redan lagts till med Feature Goal-path (rad 2006-2009)
@@ -2061,10 +2042,12 @@ export async function generateAllFromBpmnWithGraph(
           } else {
             // VIKTIGT: Samla usage cases (parent callActivities) för att identifiera skillnader
             // Hitta alla callActivities som anropar denna subprocess-fil
+            // VIKTIGT: Filtrera bort callActivities från filer som inte finns (saknade BPMN-filer)
             const parentCallActivities = Array.from(graph.allNodes.values())
               .filter(node => 
                 node.type === 'callActivity' && 
-                node.subprocessFile === file
+                node.subprocessFile === file &&
+                existingBpmnFiles.includes(node.bpmnFile) // ✅ Bara inkludera callActivities från filer som faktiskt finns
               );
             
             // Samla information om varje parent callActivity för att identifiera skillnader
@@ -2126,8 +2109,9 @@ export async function generateAllFromBpmnWithGraph(
             }>();
             
             for (const uc of usageCasesData) {
-              // Använd parentProcessName som unik nyckel (eller parentBpmnFile som fallback)
-              const uniqueKey = uc.parentProcessName || uc.parentBpmnFile;
+              // VIKTIGT: Använd parentBpmnFile som unik nyckel (inte parentProcessName)
+              // Detta säkerställer att flera callActivities från samma fil räknas som en parent-process
+              const uniqueKey = uc.parentBpmnFile;
               if (!uniqueUsageCasesMap.has(uniqueKey)) {
                 uniqueUsageCasesMap.set(uniqueKey, uc);
               } else {
@@ -2143,15 +2127,22 @@ export async function generateAllFromBpmnWithGraph(
             }
             
             const uniqueUsageCasesData = Array.from(uniqueUsageCasesMap.values());
+            // VIKTIGT: Räkna unika parent-filer (inte parent-processer), eftersom samma fil kan ha flera callActivities
             const hasMultipleParents = uniqueUsageCasesData.length > 1;
-            const hasDifferentConditions = uniqueUsageCasesData.some(uc => uc.conditions.length > 0) && 
+            
+            // Kolla om det finns skillnader mellan parent-processer
+            // Detta kräver att det finns flera parent-processer OCH att de har olika conditions
+            const hasDifferentConditions = hasMultipleParents && 
+                                          uniqueUsageCasesData.some(uc => uc.conditions.length > 0) && 
                                           !uniqueUsageCasesData.every(uc => 
                                             uc.conditions.length === uniqueUsageCasesData[0].conditions.length &&
                                             uc.conditions.every((c, i) => c === uniqueUsageCasesData[0].conditions[i])
                                           );
             
-            // Lägg till usageCases i context ENDAST om det finns skillnader
-            const usageCases = (hasMultipleParents || hasDifferentConditions) && uniqueUsageCasesData.length > 0
+            // Lägg till usageCases i context ENDAST om det finns flera parent-processer OCH skillnader
+            // VIKTIGT: Om det bara finns en parent-process (en fil), visa INTE "Användningsfall"-sektionen
+            // OBS: hasDifferentConditions kräver redan hasMultipleParents, så vi behöver bara kolla hasMultipleParents
+            const usageCases = hasMultipleParents && hasDifferentConditions
               ? uniqueUsageCasesData.map(uc => ({
                   parentProcess: uc.parentProcessName,
                   conditions: uc.conditions.length > 0 ? uc.conditions : undefined,

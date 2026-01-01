@@ -760,52 +760,7 @@ export function useFileGeneration({
           variant: 'destructive',
         });
       }
-      // Spara DoR/DoD till databasen (endast för dokumentations-HTML, ingen separat UI-visning)
-      let dorDodCount = 0;
-      const detailedDorDod: Array<{ subprocess: string; category: string; type: string; text: string }> = [];
-      
-      logGenerationProgress(modeLabel, 'Skapar DoR/DoD-kriterier', file.file_name);
-      checkCancel();
-
-      if (result.dorDod.size > 0) {
-        const criteriaToInsert: any[] = [];
-        
-        result.dorDod.forEach((criteria, subprocessName) => {
-          checkCancel();
-          if (missingDependencies.some(dep => dep.childProcess === subprocessName)) {
-            skippedSubprocesses.add(subprocessName);
-            console.warn('[Generation] Hoppar över DoR/DoD för', subprocessName, '- saknar BPMN-fil');
-            return;
-          }
-          criteria.forEach(criterion => {
-            criteriaToInsert.push({
-              subprocess_name: subprocessName,
-              ...criterion,
-            });
-            detailedDorDod.push({
-              subprocess: subprocessName,
-              category: criterion.criterion_category,
-              type: criterion.criterion_type,
-              text: criterion.criterion_text,
-            });
-          });
-        });
-
-        const { error: dbError } = await supabase
-          .from('dor_dod_status')
-          .upsert(criteriaToInsert, {
-            onConflict: 'subprocess_name,criterion_key,criterion_type',
-            ignoreDuplicates: false,
-          });
-
-        if (dbError) {
-          console.error('Auto-save DoR/DoD error:', dbError);
-        } else {
-          dorDodCount = criteriaToInsert.length;
-        }
-        checkCancel();
-      }
-      await incrementJobProgress('Skapar DoR/DoD-kriterier');
+      // DoR/DoD generering har tagits bort - används inte längre
 
       // Spara subprocess mappings (dependencies) till databasen.
       // Detta steg är gemensamt för lokal och LLM‑generering men beter sig olika
@@ -816,12 +771,15 @@ export function useFileGeneration({
       logGenerationProgress(modeLabel, 'Synkar subprocess-kopplingar', file.file_name);
       checkCancel();
 
-      if (generationScope === 'file') {
-        if (result.subprocessMappings.size > 0) {
-          const dependenciesToInsert: any[] = [];
-
-          checkCancel();
-          result.subprocessMappings.forEach((childFile, elementId) => {
+      // VIKTIGT: Spara subprocess mappings till bpmn_dependencies-tabellen
+      // Detta säkerställer att hierarkin kan byggas korrekt senare
+      if (result.subprocessMappings.size > 0) {
+        const dependenciesToInsert: Array<{ parent_file: string; child_process: string; child_file: string }> = [];
+        
+        result.subprocessMappings.forEach((childFile, elementId) => {
+          if (childFile) {
+            // Hitta parent-filen genom att leta efter callActivity i grafen
+            // eller använd file.file_name som parent (eftersom callActivity är i den filen)
             dependenciesToInsert.push({
               parent_file: file.file_name,
               child_process: elementId,
@@ -831,41 +789,29 @@ export function useFileGeneration({
               callActivity: elementId,
               subprocessFile: childFile,
             });
-          });
-
-          if (dependenciesToInsert.length > 0) {
-            try {
-              checkCancel();
-              const { error: depError } = await supabase
-                .from('bpmn_dependencies')
-                .upsert(dependenciesToInsert, {
-                  onConflict: 'parent_file,child_process',
-                  ignoreDuplicates: false,
-                });
-
-              if (depError) {
-                console.error('Save dependencies error:', depError);
-              }
-            } catch (error) {
-              console.error('Unexpected error while saving subprocess mappings:', error);
-            }
           }
-          checkCancel();
-        } else {
-          // Inga mappings att synka i fil-scope – behandla som no-op men behåll framsteg.
-        }
-      } else {
-        // Node-scope: global subprocess-synk är best-effort och kan hoppas över
-        // eftersom vi primärt genererar artefakter för ett nod-centrerat flöde.
-        if (result.subprocessMappings.size > 0) {
-          result.subprocessMappings.forEach((childFile, elementId) => {
-            detailedSubprocessMappings.push({
-              callActivity: elementId,
-              subprocessFile: childFile,
+        });
+
+        if (dependenciesToInsert.length > 0) {
+          const { error: depError } = await supabase
+            .from('bpmn_dependencies')
+            .upsert(dependenciesToInsert, {
+              onConflict: 'parent_file,child_process',
+              ignoreDuplicates: false,
             });
-          });
+
+          if (depError) {
+            console.error('[Generation] Error saving subprocess mappings to bpmn_dependencies:', depError);
+          } else if (import.meta.env.DEV) {
+            console.log(`[Generation] Saved ${dependenciesToInsert.length} subprocess mappings to bpmn_dependencies`);
+          }
         }
+        checkCancel();
       }
+
+      // Subprocess mappings har redan sparats ovan (rad 774-810)
+      // Denna sektion behålls för att samla detailedSubprocessMappings för resultatet
+      // men sparandet till databasen sker ovan oavsett scope
 
       await incrementJobProgress('Synkar subprocess-kopplingar');
 
@@ -1432,7 +1378,6 @@ export function useFileGeneration({
       if (useHierarchy && result.metadata) {
         resultMessage.push(`Hierarkisk analys: ${result.metadata.totalFilesAnalyzed} filer`);
       }
-      resultMessage.push(`${dorDodCount} DoR/DoD-kriterier`);
       resultMessage.push(`${totalDocCount} dokumentationsfiler`);
       if (skippedList.length) {
         resultMessage.push(`Hoppade över ${skippedList.length} saknade subprocesser`);
@@ -1448,7 +1393,6 @@ export function useFileGeneration({
       const generationResult: DetailedGenerationResult = {
         fileName: file.file_name,
         filesAnalyzed,
-        dorDodCriteria: detailedDorDod,
         // Playwright-testfiler har tagits bort
         docFiles: detailedDocFiles,
         jiraMappings: detailedJiraMappings,
@@ -1532,7 +1476,6 @@ export function useFileGeneration({
               progress: jobProgressCount,
               total: jobTotalCount,
               result: {
-                dorDod: dorDodCount,
                 tests: totalTestCount,
                 docs: totalDocCount,
                 filesAnalyzed,
@@ -1734,7 +1677,6 @@ export function useFileGeneration({
       const aggregatedResult: AggregatedGenerationResult = {
         totalFiles: allBpmnFiles.length,
         allFilesAnalyzed: new Set<string>(),
-        allDorDodCriteria: [],
         // Playwright-testfiler har tagits bort
         allDocFiles: [],
         allJiraMappings: [],
@@ -1752,7 +1694,6 @@ export function useFileGeneration({
           if (result) {
             // Aggregera resultat
             result.filesAnalyzed.forEach(f => aggregatedResult.allFilesAnalyzed.add(f));
-            aggregatedResult.allDorDodCriteria.push(...result.dorDodCriteria);
             // Playwright-testfiler har tagits bort
             aggregatedResult.allDocFiles.push(...result.docFiles);
             aggregatedResult.allJiraMappings.push(...result.jiraMappings);
@@ -1781,7 +1722,6 @@ export function useFileGeneration({
       const summaryResult: DetailedGenerationResult = {
         fileName: `Alla filer (${aggregatedResult.totalFiles})`,
         filesAnalyzed: Array.from(aggregatedResult.allFilesAnalyzed),
-        dorDodCriteria: aggregatedResult.allDorDodCriteria,
         // Playwright-testfiler har tagits bort
         docFiles: aggregatedResult.allDocFiles,
         jiraMappings: aggregatedResult.allJiraMappings,

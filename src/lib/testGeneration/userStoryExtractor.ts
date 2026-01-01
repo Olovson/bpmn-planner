@@ -65,23 +65,6 @@ async function loadDocFromStorage(
   docType: 'epic' | 'feature-goal'
 ): Promise<string | null> {
   try {
-    // För feature-goal, hitta parentBpmnFile från bpmn-map
-    let parentBpmnFile: string | undefined = undefined;
-    if (docType === 'feature-goal') {
-      try {
-        const bpmnMapResult = await loadBpmnMapFromStorage();
-        if (bpmnMapResult.valid && bpmnMapResult.map) {
-          parentBpmnFile = findParentBpmnFileForSubprocess(
-            bpmnFile,
-            elementId,
-            bpmnMapResult.map
-          ) || undefined;
-        }
-      } catch (error) {
-        console.warn(`[userStoryExtractor] Could not load bpmn-map to find parent for ${bpmnFile}::${elementId}:`, error);
-      }
-    }
-
     // Get version hash (required)
     const { getCurrentVersionHash } = await import('@/lib/bpmnVersioning');
     const versionHash = await getCurrentVersionHash(bpmnFile);
@@ -92,9 +75,35 @@ async function loadDocFromStorage(
     }
     
     // Get storage path using unified approach
-    const docPath = docType === 'epic'
-      ? await getEpicDocStoragePaths(bpmnFile, elementId, versionHash)
-      : await getFeatureGoalDocStoragePaths(bpmnFile, elementId, parentBpmnFile, versionHash);
+    let docPath: string;
+    if (docType === 'epic') {
+      docPath = await getEpicDocStoragePaths(bpmnFile, elementId, versionHash);
+    } else {
+      // VIKTIGT: För feature-goal, använd Process Feature Goal (non-hierarchical) istället för CallActivity Feature Goal (hierarchical)
+      // Process Feature Goals använder subprocess-filens baseName som elementId och ingen parent
+      const subprocessBaseName = bpmnFile.replace('.bpmn', '');
+      const { getFeatureGoalDocFileKey } = await import('@/lib/nodeArtifactPaths');
+      const { buildDocStoragePaths } = await import('@/lib/artifactPaths');
+      
+      // Non-hierarchical naming för Process Feature Goal (ingen parent)
+      const processFeatureGoalKey = getFeatureGoalDocFileKey(
+        bpmnFile,
+        subprocessBaseName, // För Process Feature Goals är elementId = baseName
+        undefined, // no version suffix
+        undefined, // no parent (non-hierarchical)
+        false, // isRootProcess = false (detta är en subprocess)
+      );
+      
+      const { modePath } = buildDocStoragePaths(
+        processFeatureGoalKey,
+        'slow', // mode
+        'cloud', // provider (claude är cloud provider)
+        bpmnFile, // bpmnFileForVersion: use subprocess file for versioned paths
+        versionHash,
+      );
+      
+      docPath = modePath;
+    }
     
     if (!docPath) {
       return null;

@@ -206,7 +206,6 @@ describe('E2E to Feature Goal Test Extraction - Real BPMN Files', () => {
           if (!featureGoalDocs.has(key)) {
             featureGoalDocs.set(key, {
               summary: `Summary for ${fgId}`,
-              prerequisites: [`Prerequisite for ${fgId}`],
               flowSteps: [`Step 1 for ${fgId}`, `Step 2 for ${fgId}`],
               userStories: [
                 {
@@ -217,7 +216,7 @@ describe('E2E to Feature Goal Test Extraction - Real BPMN Files', () => {
                   acceptanceCriteria: [`Acceptance criteria for ${fgId}`],
                 },
               ],
-              dependencies: [],
+              dependencies: [`Prerequisite for ${fgId}`],
             });
           }
         }

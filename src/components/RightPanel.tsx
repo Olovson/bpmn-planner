@@ -392,7 +392,7 @@ export const RightPanel = ({
         const subprocessFile = mapping?.subprocess_bpmn_file || displaySubprocessFile;
         
         let docStoragePath: string | null = null;
-        let featureGoalPath: string | null = null;
+        const allFeatureGoalPaths: string[] = [];
         
         if (isCallActivity && subprocessFile) {
           // VIKTIGT: Filen sparas under subprocess-filens version hash (inte parent-filens)
@@ -400,13 +400,39 @@ export const RightPanel = ({
           const versionHash = await getCurrentVersionHash(subprocessBpmnFileName);
           
           if (versionHash) {
-            featureGoalPath = await getFeatureGoalDocStoragePaths(
+            // 1. Försök CallActivity Feature Goal (hierarchical naming med parent)
+            const hierarchicalPath = await getFeatureGoalDocStoragePaths(
               subprocessFile,    // subprocess BPMN file
               selectedElement,   // call activity element ID
               bpmnFile,          // parent BPMN file (där call activity är definierad)
               versionHash,       // version hash for versioned paths (från subprocess-filen)
               subprocessBpmnFileName, // BPMN file name for versioned paths (subprocess-filen)
             );
+            if (hierarchicalPath) {
+              allFeatureGoalPaths.push(hierarchicalPath);
+            }
+            
+            // 2. Försök Process Feature Goal (non-hierarchical naming, för subprocess-filen)
+            // Process Feature Goals använder subprocess-filens baseName utan parent
+            const { getFeatureGoalDocFileKey } = await import('@/lib/nodeArtifactPaths');
+            const { buildDocStoragePaths } = await import('@/lib/artifactPaths');
+            const processFeatureGoalKey = getFeatureGoalDocFileKey(
+              subprocessFile,
+              subprocessFile.replace('.bpmn', ''), // Använd baseName som elementId för Process Feature Goals
+              undefined, // no version suffix
+              undefined, // no parent (non-hierarchical)
+              false, // isRootProcess = false (detta är en subprocess)
+            );
+            const { modePath: processFeatureGoalPath } = buildDocStoragePaths(
+              processFeatureGoalKey,
+              'slow', // mode
+              'cloud', // provider (claude is cloud)
+              subprocessBpmnFileName,
+              versionHash
+            );
+            if (processFeatureGoalPath) {
+              allFeatureGoalPaths.push(processFeatureGoalPath);
+            }
           }
         } else {
           // For other node types, use node doc storage path
@@ -415,13 +441,13 @@ export const RightPanel = ({
             docStoragePath = await getNodeDocStoragePath(bpmnFile, selectedElement, versionHash);
           }
         }
-
+        
         const [docsAvailable, testReportAvailable] = await Promise.all([
           checkDocsAvailable(
             mapping?.confluence_url,
             docStoragePath,
             undefined, // storageFileExists (default)
-            featureGoalPaths, // ✅ Skicka med Feature Goal-sökvägar för call activities
+            allFeatureGoalPaths.length > 0 ? allFeatureGoalPaths : undefined, // ✅ Skicka alla Feature Goal-sökvägar
           ),
           checkTestReportAvailable(mapping?.test_report_url),
         ]);

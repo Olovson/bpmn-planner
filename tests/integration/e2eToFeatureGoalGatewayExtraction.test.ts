@@ -219,7 +219,6 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::application',
           {
             summary: 'Application process collects customer information',
-            prerequisites: ['Customer is identified'],
             flowSteps: [
               'System initiates application process',
               'Customer fills in application form',
@@ -241,7 +240,7 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::credit-evaluation',
           {
             summary: 'Credit evaluation process evaluates creditworthiness',
-            prerequisites: ['Household data is complete'],
+            dependencies: ['Household data is complete'],
             flowSteps: [
               'System evaluates credit',
               'System generates credit decision',
@@ -262,7 +261,7 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::mortgage-commitment',
           {
             summary: 'Mortgage commitment process creates commitment',
-            prerequisites: ['Credit evaluation is complete'],
+            dependencies: ['Credit evaluation is complete'],
             flowSteps: [
               'System creates mortgage commitment',
               'System validates commitment',
@@ -401,7 +400,7 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::application',
           {
             summary: 'Application process',
-            prerequisites: ['Customer is identified'],
+            dependencies: ['Customer is identified'],
             flowSteps: ['Customer fills in application'],
             userStories: [],
             dependencies: [],
@@ -531,7 +530,7 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::credit-evaluation',
           {
             summary: 'Credit evaluation',
-            prerequisites: ['Household data is complete'],
+            dependencies: ['Household data is complete'],
             flowSteps: ['System evaluates credit'],
             userStories: [],
             dependencies: [],
@@ -662,7 +661,7 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::application',
           {
             summary: 'Application',
-            prerequisites: ['Customer is identified'],
+            dependencies: ['Customer is identified'],
             flowSteps: ['Customer fills in application'],
             userStories: [],
             dependencies: [],
@@ -672,7 +671,7 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::credit-evaluation',
           {
             summary: 'Credit evaluation',
-            prerequisites: ['Application is validated'],
+            dependencies: ['Application is validated'],
             flowSteps: ['System evaluates credit'],
             userStories: [],
             dependencies: [],
@@ -682,7 +681,7 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::mortgage-commitment',
           {
             summary: 'Mortgage commitment',
-            prerequisites: ['Credit evaluation is complete'],
+            dependencies: ['Credit evaluation is complete'],
             flowSteps: ['System creates mortgage commitment'],
             userStories: [],
             dependencies: [],
@@ -765,7 +764,7 @@ describe('E2E to Feature Goal Test Extraction - Gateway Complexity', () => {
           'mortgage-se-application.bpmn::application',
           {
             summary: 'Application',
-            prerequisites: ['Customer is identified'],
+            dependencies: ['Customer is identified'],
             flowSteps: ['Customer fills in application'],
             userStories: [],
             dependencies: [],

@@ -28,7 +28,6 @@ export function JobQueue({ generationJobs, onAbortJob }: JobQueueProps) {
                 const jobResult = (job.result || {}) as {
                   docs?: number;
                   tests?: number;
-                  dorDod?: number;
                   filesAnalyzed?: string[];
                   mode?: string;
                   skippedSubprocesses?: string[];

@@ -526,10 +526,13 @@ async function loadFeatureGoalDocFromStorage(
       }
     }
 
-    // Om parentBpmnFile fortfarande saknas, kan vi inte ladda Feature Goal
-    if (!resolvedParentBpmnFile) {
-      return null;
-    }
+    // VIKTIGT: CallActivity Feature Goals genereras INTE längre.
+    // Istället genereras Process Feature Goals för subprocess-filen (non-hierarchical naming).
+    // Process Feature Goals använder format: feature-goals/{subprocessBaseName}.html
+    // (inte hierarchical: feature-goals/{parent}-{elementId}.html)
+    // 
+    // För att ladda Process Feature Goal, använd subprocess-filens baseName och ingen parent.
+    // resolvedParentBpmnFile behövs INTE längre för att ladda Process Feature Goals.
 
     // Get version hash (required)
     const { getCurrentVersionHash } = await import('./bpmnVersioning');
@@ -540,12 +543,27 @@ async function loadFeatureGoalDocFromStorage(
       return null;
     }
     
-    // Get storage path using unified approach
-    const docPath = await getFeatureGoalDocStoragePaths(
+    // VIKTIGT: Använd Process Feature Goal (non-hierarchical) istället för CallActivity Feature Goal (hierarchical)
+    // Process Feature Goals använder subprocess-filens baseName som elementId och ingen parent
+    const subprocessBaseName = bpmnFile.replace('.bpmn', '');
+    const { getFeatureGoalDocFileKey } = await import('./nodeArtifactPaths');
+    const { buildDocStoragePaths } = await import('./artifactPaths');
+    
+    // Non-hierarchical naming för Process Feature Goal (ingen parent)
+    const processFeatureGoalKey = getFeatureGoalDocFileKey(
       bpmnFile,
-      elementId,
-      resolvedParentBpmnFile,
-      versionHash
+      subprocessBaseName, // För Process Feature Goals är elementId = baseName
+      undefined, // no version suffix
+      undefined, // no parent (non-hierarchical)
+      false, // isRootProcess = false (detta är en subprocess)
+    );
+    
+    const { modePath: docPath } = buildDocStoragePaths(
+      processFeatureGoalKey,
+      'slow', // mode
+      'cloud', // provider (claude är cloud provider)
+      bpmnFile, // bpmnFileForVersion: use subprocess file for versioned paths
+      versionHash,
     );
     
     if (!docPath) {
@@ -588,10 +606,12 @@ async function loadFeatureGoalDocFromStorage(
     }
     
     // Fallback: Försök ladda från llm-debug/docs-raw
+    // VIKTIGT: Använd Process Feature Goal key (non-hierarchical) istället för CallActivity Feature Goal key (hierarchical)
+    // Använd samma processFeatureGoalKey som redan beräknats ovan
     const docInfo = await loadChildDocFromStorage(
       bpmnFile,
       elementId,
-      getFeatureGoalDocFileKey(bpmnFile, elementId, undefined, resolvedParentBpmnFile),
+      processFeatureGoalKey,
       null,
       'e2e-scenario-generation'
     );

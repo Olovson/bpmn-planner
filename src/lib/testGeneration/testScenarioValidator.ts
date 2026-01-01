@@ -120,24 +120,43 @@ export function convertLlmScenariosToTestScenarios(
   bpmnFile: string,
   bpmnElementId: string
 ): TestScenario[] {
-  return llmOutput.scenarios.map(scenario => ({
-    id: scenario.id,
-    name: scenario.name,
-    description: scenario.description,
-    status: 'pending',
-    category: scenario.category,
-    riskLevel: scenario.priority,
-    assertionType: 'functional',
-    steps: {
-      when: scenario.steps.map(step => step.action),
-      then: scenario.steps.map(step => step.expectedResult),
-    },
-    expectedResult: scenario.steps[scenario.steps.length - 1]?.expectedResult || scenario.description,
-    acceptanceCriteria: scenario.acceptanceCriteria,
-    // Optional fields
-    ...(scenario.prerequisites && scenario.prerequisites.length > 0 && {
-      // Prerequisites kan sparas som metadata om TestScenario stödjer det
-    }),
-  }));
+  return llmOutput.scenarios.map(scenario => {
+    // Konvertera steps till given/when/then-format
+    const whenActions = scenario.steps.map(step => step.action);
+    const thenResults = scenario.steps.map(step => step.expectedResult);
+    
+    // Bygg given från prerequisites om de finns
+    const givenParts: string[] = [];
+    if (scenario.prerequisites && scenario.prerequisites.length > 0) {
+      givenParts.push(...scenario.prerequisites);
+    }
+    const given = givenParts.length > 0 ? givenParts.join('\n') : undefined;
+    
+    // Bygg when från alla actions
+    const when = whenActions.join('\n');
+    
+    // Bygg then från alla expected results
+    const then = thenResults.join('\n');
+    
+    // Bygg description för bakåtkompatibilitet
+    const descriptionParts: string[] = [];
+    if (given) descriptionParts.push(`Given: ${given}`);
+    descriptionParts.push(`When: ${when}`);
+    descriptionParts.push(`Then: ${then}`);
+    const description = descriptionParts.join('\n\n');
+    
+    return {
+      id: scenario.id,
+      name: scenario.name,
+      description,
+      status: 'pending',
+      category: scenario.category,
+      riskLevel: scenario.priority,
+      assertionType: 'functional',
+      given,
+      when,
+      then,
+    };
+  });
 }
 

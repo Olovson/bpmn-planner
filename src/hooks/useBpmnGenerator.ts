@@ -10,7 +10,6 @@ import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
 export interface GenerateOptions {
   overwriteDocs?: boolean;
   overwriteTests?: boolean;
-  overwriteDorDod?: boolean;
 }
 
 // Helper function to generate Playwright test content
@@ -131,7 +130,7 @@ export const useBpmnGenerator = (bpmnFilePath: string | null) => {
   const queryClient = useQueryClient();
 
   const generateAll = async (options: GenerateOptions = {}) => {
-    const { overwriteDocs = true, overwriteTests = false, overwriteDorDod = false } = options;
+    const { overwriteDocs = true, overwriteTests = false } = options;
     if (!parseResult) {
       toast({
         title: 'Fel',
@@ -187,47 +186,7 @@ export const useBpmnGenerator = (bpmnFilePath: string | null) => {
 
       setGenerationResult(result);
 
-      // Save DoR/DoD to database based on options
-      let dorDodSaved = 0;
-      if (result.dorDod.size > 0) {
-        if (overwriteDorDod) {
-          // Overwrite: delete existing criteria for this file and insert new ones
-          const subprocessNames = Array.from(result.dorDod.keys());
-          const { error: deleteError } = await supabase
-            .from('dor_dod_status')
-            .delete()
-            .in('subprocess_name', subprocessNames)
-            .eq('bpmn_file', parseResult.fileName);
-
-          if (deleteError) {
-            console.error('Error deleting old DoR/DoD:', deleteError);
-          }
-        }
-
-        const criteriaToInsert: any[] = [];
-        
-        result.dorDod.forEach((criteria, subprocessName) => {
-          criteria.forEach(criterion => {
-            criteriaToInsert.push({
-              subprocess_name: subprocessName,
-              ...criterion,
-            });
-          });
-        });
-
-        const { error: dbError, data } = await supabase
-          .from('dor_dod_status')
-          .upsert(criteriaToInsert, {
-            onConflict: 'subprocess_name,criterion_key,criterion_type',
-            ignoreDuplicates: !overwriteDorDod,
-          });
-
-        if (dbError) {
-          console.error('Auto-save DoR/DoD error:', dbError);
-        } else {
-          dorDodSaved = criteriaToInsert.length;
-        }
-      }
+      // DoR/DoD generation has been removed - no longer used
 
       // Save test links to database
       let testLinksSaved = 0;
@@ -434,9 +393,6 @@ export const useBpmnGenerator = (bpmnFilePath: string | null) => {
       if (result.docs.size > 0) {
         parts.push(`${result.docs.size} dokumentationssid${result.docs.size === 1 ? 'a' : 'or'}${overwriteDocs ? ' (överskrivna)' : ''}`);
       }
-      if (dorDodSaved > 0) {
-        parts.push(`${dorDodSaved} DoR/DoD-kriterier${overwriteDorDod ? ' (överskrivna)' : ''}`);
-      }
 
       let message = `Genererade ${parts.join(', ')}`;
       
@@ -463,58 +419,7 @@ export const useBpmnGenerator = (bpmnFilePath: string | null) => {
     }
   };
 
-  const saveDoRDoDToDatabase = async (silent = false) => {
-    if (!generationResult?.dorDod.size) {
-      if (!silent) {
-        toast({
-          title: 'Inget att spara',
-          description: 'Generera DoR/DoD först',
-          variant: 'destructive',
-        });
-      }
-      return false;
-    }
-
-    try {
-      const criteriaToInsert: any[] = [];
-
-      generationResult.dorDod.forEach((criteria, subprocessName) => {
-        criteria.forEach(criterion => {
-          criteriaToInsert.push({
-            subprocess_name: subprocessName,
-            ...criterion,
-          });
-        });
-      });
-
-      const { error } = await supabase
-        .from('dor_dod_status')
-        .upsert(criteriaToInsert, {
-          onConflict: 'subprocess_name,criterion_key,criterion_type',
-        });
-
-      if (error) throw error;
-
-      if (!silent) {
-        toast({
-          title: 'Sparat!',
-          description: `${criteriaToInsert.length} DoR/DoD-kriterier sparades till databasen`,
-        });
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Save DoR/DoD error:', error);
-      if (!silent) {
-        toast({
-          title: 'Sparfel',
-          description: error instanceof Error ? error.message : 'Kunde inte spara DoR/DoD',
-          variant: 'destructive',
-        });
-      }
-      return false;
-    }
-  };
+  // DoR/DoD generation has been removed - no longer used
 
   const downloadTests = () => {
     if (!generationResult?.tests.size) {
@@ -570,7 +475,6 @@ export const useBpmnGenerator = (bpmnFilePath: string | null) => {
 
   return {
     generateAll,
-    saveDoRDoDToDatabase,
     downloadTests,
     downloadDocs,
     generating,

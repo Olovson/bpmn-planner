@@ -36,7 +36,6 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
   const [validationScope, setValidationScope] = useState<ValidationScope>('file');
   const [overwriteDocs, setOverwriteDocs] = useState(true);
   const [overwriteTests, setOverwriteTests] = useState(false);
-  const [overwriteDorDod, setOverwriteDorDod] = useState(false);
   const { toast } = useToast();
   const { data: availableBpmnFiles = [] } = useDynamicBpmnFiles();
   const [fileUrl, setFileUrl] = useState<string | null>(null);
@@ -155,7 +154,6 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
     await generateAll({
       overwriteDocs,
       overwriteTests,
-      overwriteDorDod,
     });
     // Re-run validation after generation
     setValidation(null);
@@ -174,7 +172,7 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
         <DialogHeader>
           <DialogTitle>Automatisk generering från BPMN</DialogTitle>
           <DialogDescription>
-            Generera automatiskt tester, dokumentation och DoR/DoD-checklistor från {bpmnFile}
+            Generera automatiskt tester och dokumentation från {bpmnFile}
           </DialogDescription>
         </DialogHeader>
 
@@ -210,8 +208,8 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
             </RadioGroup>
             <p className="text-xs text-muted-foreground mt-2">
               {validationScope === 'file' 
-                ? 'Validerar endast DoR/DoD för den valda BPMN-filen' 
-                : 'Validerar DoR/DoD för alla BPMN-filer i projektet (mortgage + subprocesser)'}
+                ? 'Validerar endast dokumentation för den valda BPMN-filen' 
+                : 'Validerar dokumentation för alla BPMN-filer i projektet (mortgage + subprocesser)'}
             </p>
           </div>
 
@@ -229,7 +227,7 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
                 <Alert>
                   <CheckSquare className="h-4 w-4 text-green-500" />
                   <AlertDescription>
-                    <strong>✅ {validation.newNodes.length} nya noder</strong> kommer att få DoR/DoD-kriterier
+                    <strong>✅ {validation.newNodes.length} nya noder</strong> kommer att få dokumentation
                     <div className="mt-2 text-xs text-muted-foreground">
                       {validation.newNodes.join(', ')}
                     </div>
@@ -284,7 +282,7 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
             <div>
               <h4 className="font-semibold mb-2">Genereringsalternativ</h4>
               <p className="text-xs text-muted-foreground mb-3">
-                Välj vad som ska skrivas över. Tester och DoR/DoD skrivs inte över om du inte aktivt väljer det, 
+                Välj vad som ska skrivas över. Tester skrivs inte över om du inte aktivt väljer det, 
                 vilket skyddar manuellt gjorda ändringar. Dokumentation är normalt säkert att skriva över varje gång.
               </p>
             </div>
@@ -309,17 +307,6 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
                 />
                 <Label htmlFor="overwrite-tests" className="cursor-pointer font-normal text-sm">
                   Skriv över befintliga testskelett
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="overwrite-dor-dod"
-                  checked={overwriteDorDod}
-                  onCheckedChange={(checked) => setOverwriteDorDod(checked as boolean)}
-                />
-                <Label htmlFor="overwrite-dor-dod" className="cursor-pointer font-normal text-sm">
-                  Skriv över befintliga DoR/DoD-kriterier
                 </Label>
               </div>
             </div>
@@ -389,29 +376,6 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
                 </ScrollArea>
               </div>
 
-              {/* DoR/DoD */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckSquare className="h-5 w-5 text-purple-500" />
-                  <h3 className="font-semibold">DoR/DoD Checklistor</h3>
-                  <Badge variant="secondary">{generationResult.dorDod.size}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  ✅ DoR/DoD-kriterierna nedan har uppdaterats i databasen baserat på BPMN-filen
-                </p>
-                <ScrollArea className="h-32">
-                  <div className="space-y-2 text-sm">
-                    {Array.from(generationResult.dorDod.entries()).map(([subprocess, criteria]) => (
-                      <div key={subprocess}>
-                        <div className="font-medium">{subprocess}</div>
-                        <div className="text-muted-foreground text-xs ml-2">
-                          {criteria.length} kriterier ({criteria.filter(c => c.criterion_type === 'dor').length} DoR, {criteria.filter(c => c.criterion_type === 'dod').length} DoD)
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
 
               {/* Subprocess Mappings */}
               {generationResult.subprocessMappings.size > 0 && (
@@ -450,7 +414,6 @@ export const BpmnGeneratorDialog = ({ bpmnFile }: BpmnGeneratorDialogProps) => {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckSquare className="h-4 w-4 mt-0.5 text-purple-500" />
-                  <span><strong>DoR/DoD:</strong> Definition of Ready och Definition of Done kriterier för subprocesser</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Wand2 className="h-4 w-4 mt-0.5 text-orange-500" />

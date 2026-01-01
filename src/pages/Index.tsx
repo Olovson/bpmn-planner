@@ -32,7 +32,7 @@ const Index = () => {
   const baseNavigate = useNavigate();
   const { toast } = useToast();
   const { mappings, saveMapping, reload } = useBpmnMappings(currentBpmnFile);
-  const { hasDorDod, hasTests } = useArtifactAvailability();
+  const { hasTests } = useArtifactAvailability();
 
   const urlFile = searchParams.get('file');
   const urlElement = searchParams.get('el');

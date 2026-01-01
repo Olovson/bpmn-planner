@@ -7,7 +7,6 @@ export type GenerationScope = 'file' | 'node';
 export interface DetailedGenerationResult {
   fileName: string;
   filesAnalyzed: string[];
-  dorDodCriteria: Array<{ subprocess: string; category: string; type: string; text: string }>;
   docFiles: string[];
   jiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }>;
   subprocessMappings: Array<{ callActivity: string; subprocessFile: string }>;
@@ -19,7 +18,6 @@ export interface DetailedGenerationResult {
 export interface AggregatedGenerationResult {
   totalFiles: number;
   allFilesAnalyzed: Set<string>;
-  allDorDodCriteria: Array<{ subprocess: string; category: string; type: string; text: string }>;
   allDocFiles: string[];
   allJiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }>;
   allSubprocessMappings: Array<{ callActivity: string; subprocessFile: string }>;

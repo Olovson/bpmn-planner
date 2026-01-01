@@ -29,13 +29,16 @@ const totalNodesToGenerate =
 
 **Räknas för:**
 - Subprocess-filer i `analyzedFiles` som har en process node i grafen
+- **VIKTIGT:** Om `nodeFilter` används, räknas bara filer som faktiskt har noder som ska genereras
 
 ### 3. `fileLevelDocsCount`
 **Innehåller:**
-- ✅ File-level docs (en per fil i `analyzedFiles`)
+- ✅ File-level docs (en per fil)
 
 **Räknas:**
-- `analyzedFiles.length` (3 filer = 3 file-level docs)
+- **Utan `nodeFilter`:** `analyzedFiles.length` (alla filer i `analyzedFiles`)
+- **Med `nodeFilter`:** Antal unika filer som faktiskt har noder som ska genereras (från `nodesToGenerate`) + filer som behöver Process Feature Goals + root-filen om Root Process Feature Goal ska genereras
+- Detta säkerställer att progress-räknaren visar korrekt antal när bara vissa filer genereras (t.ex. diff-baserad regenerering)
 
 ### 4. `rootFeatureGoalCount`
 **Innehåller:**
@@ -53,23 +56,23 @@ const totalNodesToGenerate =
 - `rootFeatureGoalCount`: 1 (mortgage root)
 - **Totalt**: 4 + 2 + 3 + 1 = **10 noder**
 
-### Om Det Visar 26 Noder:
+### Om Det Visar Fler Noder Än Förväntat:
 **Möjliga orsaker:**
 
 1. **CallActivities räknas också:**
    - Om `mortgage.bpmn` har många CallActivities (t.ex. 20+)
    - Dessa räknas i `nodesToGenerate.length` om subprocess-filerna finns
-   - Men användaren sa bara 4 epics, så detta är osannolikt
 
 2. **Fler filer än förväntat:**
-   - Om `analyzedFiles` innehåller fler filer än 3
-   - T.ex. om `graphFileScope` innehåller fler filer
+   - Om `analyzedFiles` innehåller fler filer än förväntat
+   - T.ex. om `graphFileScope` innehåller fler filer än de som faktiskt ska genereras
+   - **FIXAT:** När `nodeFilter` används, räknas bara filer med faktiska noder som ska genereras
 
 3. **Fler process nodes:**
    - Om fler subprocess-filer har process nodes än förväntat
 
-4. **File-level docs räknas dubbelt:**
-   - Om `fileLevelDocsCount` räknas felaktigt
+4. **File-level docs räknas felaktigt:**
+   - **FIXAT:** När `nodeFilter` används, räknas bara filer som faktiskt får dokumentation genererad
 
 ## Rekommendation: Debug-logging
 

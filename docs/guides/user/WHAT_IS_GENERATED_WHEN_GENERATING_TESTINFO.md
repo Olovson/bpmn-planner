@@ -142,6 +142,7 @@ När du klickar på **"Generera testinfo"** i Files-sidan (`/files`) genereras f
 - Tester inkluderar gateway-kontext
 - Tester sparas i `node_planned_scenarios` tabellen
 - Origin: `e2e-to-feature-goal` (indikerar att de kommer från E2E-scenarios)
+- **Ny struktur (2025-01-01):** Tester använder separata `given`, `when`, `then`-fält för enklare visning i Test Coverage-tabellen
 
 **Var sparas:**
 - Databas: `node_planned_scenarios` tabellen

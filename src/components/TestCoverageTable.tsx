@@ -138,11 +138,11 @@ interface GroupedRow {
 }
 
 // Hjälpfunktion för att samla alla aktiviteter per callActivity
-function collectActivitiesPerCallActivity(
+async function collectActivitiesPerCallActivity(
   tree: ProcessTreeNode,
   scenarios: E2eScenario[],
   selectedScenarioId?: string,
-): Map<string, {
+): Promise<Map<string, {
   callActivityNode: ProcessTreeNode;
   activities: {
     serviceTasks: ProcessTreeNode[];
@@ -151,16 +151,16 @@ function collectActivitiesPerCallActivity(
     businessRules: ProcessTreeNode[];
   };
   testInfo: TestInfo | null;
-}> {
+}>> {
   const result = new Map();
   
   // Rekursivt gå igenom trädet och samla aktiviteter per callActivity
-  function traverse(node: ProcessTreeNode, currentCallActivity: ProcessTreeNode | null = null) {
+  async function traverse(node: ProcessTreeNode, currentCallActivity: ProcessTreeNode | null = null) {
     // Om detta är en callActivity, använd den som ny currentCallActivity
     if (node.type === 'callActivity' && node.bpmnElementId) {
       // Kontrollera om denna callActivity har test-info
-      const testInfoArray = findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId);
-      if (testInfoArray.length > 0) {
+      const testInfoArray = await findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId, node.bpmnFile);
+      if (testInfoArray && testInfoArray.length > 0) {
         // Skapa entry för denna callActivity om den inte redan finns
         if (!result.has(node.bpmnElementId)) {
           result.set(node.bpmnElementId, {
@@ -197,11 +197,13 @@ function collectActivitiesPerCallActivity(
       }
     }
     
-    // Rekursivt gå igenom barnen
-    node.children.forEach(child => traverse(child, currentCallActivity));
+    // Rekursivt gå igenom barnen (await alla)
+    for (const child of node.children) {
+      await traverse(child, currentCallActivity);
+    }
   }
   
-  traverse(tree);
+  await traverse(tree);
   return result;
 }
 
@@ -215,15 +217,82 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
   const maxDepth = useMemo(() => calculateMaxDepth(tree), [tree]);
 
   // Samla aktiviteter per callActivity
-  const activitiesPerCallActivity = useMemo(() => {
-    return collectActivitiesPerCallActivity(tree, scenarios, selectedScenarioId);
+  // VIKTIGT: collectActivitiesPerCallActivity är nu async, så vi behöver använda useState + useEffect
+  const [activitiesPerCallActivity, setActivitiesPerCallActivity] = useState<Map<string, {
+    callActivityNode: ProcessTreeNode;
+    activities: {
+      serviceTasks: ProcessTreeNode[];
+      userTasksCustomer: ProcessTreeNode[];
+      userTasksEmployee: ProcessTreeNode[];
+      businessRules: ProcessTreeNode[];
+    };
+    testInfo: TestInfo | null;
+  }>>(new Map());
+  const [isLoadingActivities, setIsLoadingActivities] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    
+    const loadActivities = async () => {
+      setIsLoadingActivities(true);
+      try {
+        const activities = await collectActivitiesPerCallActivity(tree, scenarios, selectedScenarioId);
+        if (!cancelled) {
+          setActivitiesPerCallActivity(activities);
+        }
+      } catch (error) {
+        console.error('[TestCoverageTable] Failed to load activities:', error);
+        if (!cancelled) {
+          setActivitiesPerCallActivity(new Map());
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingActivities(false);
+        }
+      }
+    };
+    
+    loadActivities();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [tree, scenarios, selectedScenarioId]);
 
   // Flattena trädet till paths och sortera baserat på ProcessTree-ordningen
-  const pathRows = useMemo(() => {
-    const rows = flattenToPaths(tree, scenarios, selectedScenarioId);
-    // Sortera paths baserat på ProcessTree-ordningen (samma som Process Explorer)
-    return sortPathsByProcessTreeOrder(rows);
+  // VIKTIGT: flattenToPaths är nu async, så vi behöver använda useState + useEffect
+  const [pathRows, setPathRows] = useState<PathRow[]>([]);
+  const [isLoadingPathRows, setIsLoadingPathRows] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    
+    const loadPathRows = async () => {
+      setIsLoadingPathRows(true);
+      try {
+        const rows = await flattenToPaths(tree, scenarios, selectedScenarioId);
+        if (!cancelled) {
+          // Sortera paths baserat på ProcessTree-ordningen (samma som Process Explorer)
+          const sorted = sortPathsByProcessTreeOrder(rows);
+          setPathRows(sorted);
+        }
+      } catch (error) {
+        console.error('[TestCoverageTable] Failed to load path rows:', error);
+        if (!cancelled) {
+          setPathRows([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingPathRows(false);
+        }
+      }
+    };
+    
+    loadPathRows();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [tree, scenarios, selectedScenarioId]);
 
   // Filtrera pathRows baserat på searchQuery
@@ -260,12 +329,12 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
       const testInfoValues = Array.from(pathRow.testInfoByCallActivity.values())
         .flat()
         .map((info) => [
-          info.given?.toLowerCase(),
-          info.when?.toLowerCase(),
-          info.then?.toLowerCase(),
-          info.ui?.toLowerCase(),
-          info.api?.toLowerCase(),
-          info.dmn?.toLowerCase(),
+          info.subprocessStep.given?.toLowerCase(),
+          info.subprocessStep.when?.toLowerCase(),
+          info.subprocessStep.then?.toLowerCase(),
+          info.bankProjectStep?.uiInteraction?.toLowerCase(),
+          info.bankProjectStep?.apiCall?.toLowerCase(),
+          info.bankProjectStep?.dmnDecision?.toLowerCase(),
         ])
         .flat()
         .filter((text): text is string => !!text);
@@ -566,95 +635,134 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
   // Skapa en lista över alla callActivities i hierarkisk ordning (för hierarkisk vy)
   // Använder samma logik som collectActivitiesPerCallActivity men för alla callActivities
   // Behåller hierarkisk ordning genom att samla i rätt ordning direkt från trädet
-  const hierarchicalCallActivitiesList = useMemo(() => {
-    const result = new Map<string, {
-      callActivityNode: ProcessTreeNode;
-      activities: {
-        serviceTasks: ProcessTreeNode[];
-        userTasksCustomer: ProcessTreeNode[];
-        userTasksEmployee: ProcessTreeNode[];
-        businessRules: ProcessTreeNode[];
-      };
-      testInfo: TestInfo | null;
-      depth: number;
-      path: ProcessTreeNode[]; // Behåll path för att kunna sortera hierarkiskt
-    }>();
-    const orderedList: Array<{
-      callActivityNode: ProcessTreeNode;
-      activities: {
-        serviceTasks: ProcessTreeNode[];
-        userTasksCustomer: ProcessTreeNode[];
-        userTasksEmployee: ProcessTreeNode[];
-        businessRules: ProcessTreeNode[];
-      };
-      testInfo: TestInfo | null;
-      depth: number;
-      path: ProcessTreeNode[];
-    }> = [];
+  // VIKTIGT: Denna är nu async, så vi behöver använda useState + useEffect
+  const [hierarchicalCallActivitiesList, setHierarchicalCallActivitiesList] = useState<Array<{
+    callActivityNode: ProcessTreeNode;
+    activities: {
+      serviceTasks: ProcessTreeNode[];
+      userTasksCustomer: ProcessTreeNode[];
+      userTasksEmployee: ProcessTreeNode[];
+      businessRules: ProcessTreeNode[];
+    };
+    testInfo: TestInfo | null;
+    depth: number;
+    path: ProcessTreeNode[];
+  }>>([]);
+  const [isLoadingHierarchical, setIsLoadingHierarchical] = useState(true);
 
-    // Rekursivt samla alla callActivities med deras aktiviteter i hierarkisk ordning
-    function traverse(node: ProcessTreeNode, currentCallActivity: ProcessTreeNode | null = null, depth: number = 0, path: ProcessTreeNode[] = []) {
-      const currentPath = [...path, node];
-      
-      // Om detta är en callActivity
-      if (node.type === 'callActivity' && node.bpmnElementId) {
-        const testInfoArray = findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId);
-        const testInfo = testInfoArray.length > 0 ? testInfoArray[0] : null;
-        
-        // Skapa entry för denna callActivity om den inte redan finns
-        if (!result.has(node.bpmnElementId)) {
-          const entry = {
-            callActivityNode: node,
-            activities: {
-              serviceTasks: [] as ProcessTreeNode[],
-              userTasksCustomer: [] as ProcessTreeNode[],
-              userTasksEmployee: [] as ProcessTreeNode[],
-              businessRules: [] as ProcessTreeNode[],
-            },
-            testInfo,
-            depth,
-            path: currentPath,
+  useEffect(() => {
+    let cancelled = false;
+    
+    const loadHierarchical = async () => {
+      setIsLoadingHierarchical(true);
+      try {
+        const result = new Map<string, {
+          callActivityNode: ProcessTreeNode;
+          activities: {
+            serviceTasks: ProcessTreeNode[];
+            userTasksCustomer: ProcessTreeNode[];
+            userTasksEmployee: ProcessTreeNode[];
+            businessRules: ProcessTreeNode[];
           };
-          result.set(node.bpmnElementId, entry);
-          orderedList.push(entry);
-        }
-        
-        // Fortsätt med denna callActivity som ny currentCallActivity
-        currentCallActivity = node;
-      }
-      
-      // Om vi har en currentCallActivity och detta är en aktivitet (inte callActivity eller process)
-      if (currentCallActivity && currentCallActivity.bpmnElementId) {
-        const entry = result.get(currentCallActivity.bpmnElementId);
-        if (entry) {
-          if (node.type === 'serviceTask') {
-            entry.activities.serviceTasks.push(node);
-          } else if (node.type === 'userTask') {
-            if (isCustomerUserTask(node)) {
-              entry.activities.userTasksCustomer.push(node);
-            } else {
-              entry.activities.userTasksEmployee.push(node);
+          testInfo: TestInfo | null;
+          depth: number;
+          path: ProcessTreeNode[];
+        }>();
+        const orderedList: Array<{
+          callActivityNode: ProcessTreeNode;
+          activities: {
+            serviceTasks: ProcessTreeNode[];
+            userTasksCustomer: ProcessTreeNode[];
+            userTasksEmployee: ProcessTreeNode[];
+            businessRules: ProcessTreeNode[];
+          };
+          testInfo: TestInfo | null;
+          depth: number;
+          path: ProcessTreeNode[];
+        }> = [];
+
+        // Rekursivt samla alla callActivities med deras aktiviteter i hierarkisk ordning
+        async function traverse(node: ProcessTreeNode, currentCallActivity: ProcessTreeNode | null = null, depth: number = 0, path: ProcessTreeNode[] = []) {
+          const currentPath = [...path, node];
+          
+          // Om detta är en callActivity
+          if (node.type === 'callActivity' && node.bpmnElementId) {
+            const testInfoArray = await findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId, node.bpmnFile);
+            const testInfo = testInfoArray && testInfoArray.length > 0 ? testInfoArray[0] : null;
+            
+            // Skapa entry för denna callActivity om den inte redan finns
+            if (!result.has(node.bpmnElementId)) {
+              const entry = {
+                callActivityNode: node,
+                activities: {
+                  serviceTasks: [] as ProcessTreeNode[],
+                  userTasksCustomer: [] as ProcessTreeNode[],
+                  userTasksEmployee: [] as ProcessTreeNode[],
+                  businessRules: [] as ProcessTreeNode[],
+                },
+                testInfo,
+                depth,
+                path: currentPath,
+              };
+              result.set(node.bpmnElementId, entry);
+              orderedList.push(entry);
             }
-          } else if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
-            entry.activities.businessRules.push(node);
+            
+            // Fortsätt med denna callActivity som ny currentCallActivity
+            currentCallActivity = node;
+          }
+          
+          // Om vi har en currentCallActivity och detta är en aktivitet (inte callActivity eller process)
+          if (currentCallActivity && currentCallActivity.bpmnElementId) {
+            const entry = result.get(currentCallActivity.bpmnElementId);
+            if (entry) {
+              if (node.type === 'serviceTask') {
+                entry.activities.serviceTasks.push(node);
+              } else if (node.type === 'userTask') {
+                if (isCustomerUserTask(node)) {
+                  entry.activities.userTasksCustomer.push(node);
+                } else {
+                  entry.activities.userTasksEmployee.push(node);
+                }
+              } else if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
+                entry.activities.businessRules.push(node);
+              }
+            }
+          }
+          
+          // Sortera barnen med sortCallActivities för att behålla rätt ordning
+          const sortedChildren = sortCallActivities(node.children, node.type === 'process' ? 'root' : 'subprocess');
+          
+          // Rekursivt gå igenom barnen i sorterad ordning (await alla)
+          for (const child of sortedChildren) {
+            const newDepth = (node.type === 'callActivity' && node.bpmnElementId) ? depth + 1 : depth;
+            await traverse(child, currentCallActivity, newDepth, currentPath);
           }
         }
-      }
-      
-      // Sortera barnen med sortCallActivities för att behålla rätt ordning
-      const sortedChildren = sortCallActivities(node.children, node.type === 'process' ? 'root' : 'subprocess');
-      
-      // Rekursivt gå igenom barnen i sorterad ordning
-      sortedChildren.forEach(child => {
-        const newDepth = (node.type === 'callActivity' && node.bpmnElementId) ? depth + 1 : depth;
-        traverse(child, currentCallActivity, newDepth, currentPath);
-      });
-    }
 
-    traverse(tree);
+        await traverse(tree);
+        
+        if (!cancelled) {
+          // Returnera i samma ordning som de hittades (hierarkisk ordning bevarad)
+          setHierarchicalCallActivitiesList(orderedList);
+        }
+      } catch (error) {
+        console.error('[TestCoverageTable] Failed to load hierarchical call activities:', error);
+        if (!cancelled) {
+          setHierarchicalCallActivitiesList([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHierarchical(false);
+        }
+      }
+    };
     
-    // Returnera i samma ordning som de hittades (hierarkisk ordning bevarad)
-    return orderedList;
+    loadHierarchical();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [tree, scenarios, selectedScenarioId]);
 
   // Förbered data för kondenserad vy (en kolumn per callActivity med grupperade aktiviteter)

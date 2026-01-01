@@ -1,7 +1,6 @@
 import { BpmnElement, BpmnSubprocess } from '@/lib/bpmnParser';
 import type { GenerationResult, NodeArtifactEntry } from './types';
 import { generateDocumentationHTML, parseDmnSummary, type SubprocessSummary } from '../bpmnGenerators/documentationGenerator';
-import { generateDorDodCriteria, generateDorDodForNodeType } from '../bpmnGenerators/dorDodGenerators';
 import { insertGenerationMeta } from '../bpmnGenerators/docRendering';
 import { getNodeDocFileKey } from '@/lib/nodeArtifactPaths';
 import type { LlmProvider } from '../llmClientAbstraction';
@@ -23,7 +22,6 @@ export async function generateAllFromBpmn(
   const result: GenerationResult = {
     tests: new Map(),
     docs: new Map(),
-    dorDod: new Map(),
     subprocessMappings: new Map(),
   };
   const docSource = generationSourceLabel || (useLlm ? 'llm' : 'local');
@@ -67,31 +65,6 @@ export async function generateAllFromBpmn(
     // Testfiler och testscenarion genereras inte längre i dokumentationssteget.
     // Använd separat testgenereringsfunktion istället.
     nodeTestFileKey = undefined;
-      
-    // Generate DoR/DoD criteria for individual elements
-    // Use hyphen for normalization (consistent with subprocess IDs)
-    const normalizedName = (element.name || element.id)
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-      
-    if (nodeType === 'ServiceTask' || nodeType === 'UserTask' || nodeType === 'BusinessRuleTask' || nodeType === 'CallActivity') {
-      const criteria = generateDorDodForNodeType(
-        nodeType as 'ServiceTask' | 'UserTask' | 'BusinessRuleTask' | 'CallActivity',
-        normalizedName
-      );
-      
-      // Add node metadata to each criterion
-      const enrichedCriteria = criteria.map(c => ({
-        ...c,
-        node_type: nodeType,
-        bpmn_element_id: element.id,
-        bpmn_file: bpmnFileName
-      }));
-      
-      result.dorDod.set(normalizedName, enrichedCriteria);
-    }
 
     // Generate documentation with subprocess/DMN info
     let subprocessFile: string | undefined;
@@ -152,21 +125,7 @@ export async function generateAllFromBpmn(
     result.docs.set(docFileName, insertGenerationMeta(combinedDoc, docSource));
   }
 
-  // Generate DoR/DoD for subprocesses (legacy support)
-  subprocesses.forEach(subprocess => {
-    const criteria = generateDorDodCriteria(subprocess.name, 'CallActivity');
-    // Use hyphen for normalization
-    const normalizedName = subprocess.name
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-    
-    // Only add if not already added from elements loop
-    if (!result.dorDod.has(normalizedName)) {
-      result.dorDod.set(normalizedName, criteria);
-    }
-  });
+  // DoR/DoD generation has been removed - no longer used
 
   return result;
 }

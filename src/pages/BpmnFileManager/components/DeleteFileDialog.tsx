@@ -26,7 +26,7 @@ export function DeleteFileDialog({ deleteFile, onOpenChange, onConfirm }: Delete
           <AlertDialogDescription>
             Är du säker på att du vill ta bort <strong>{deleteFile?.file_name}</strong>?
           </AlertDialogDescription>
-          {deleteFile?.usage && (deleteFile.usage.dorDodCount > 0 || deleteFile.usage.testsCount > 0) && (
+          {deleteFile?.usage && deleteFile.usage.testsCount > 0 && (
             <div className="mt-4 p-3 bg-destructive/10 rounded-md">
               <p className="font-medium text-destructive flex items-center gap-2">
                 <XCircle className="w-4 h-4" />
@@ -35,9 +35,6 @@ export function DeleteFileDialog({ deleteFile, onOpenChange, onConfirm }: Delete
               <ul className="mt-2 text-sm space-y-1">
                 {deleteFile.usage.testsCount > 0 && (
                   <li>• {deleteFile.usage.testsCount} tester</li>
-                )}
-                {deleteFile.usage.dorDodCount > 0 && (
-                  <li>• {deleteFile.usage.dorDodCount} DoR/DoD-kriterier</li>
                 )}
               </ul>
             </div>

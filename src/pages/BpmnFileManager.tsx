@@ -379,6 +379,17 @@ export default function BpmnFileManager() {
     return () => clearInterval(interval);
   }, [files, loadUnresolvedDiffsCount]);
 
+  // Invalidera och refetch coverage cache när komponenten mountar för att säkerställa korrekt räkning
+  // Detta behövs efter kodändringar som påverkar coverage-räkningen
+  useEffect(() => {
+    // Invalidera och refetch coverage queries för att hämta ny data med korrekt räkning
+    // Använd removeQueries för att tvinga bort gammal cache, sedan refetch
+    queryClient.removeQueries({ queryKey: ['all-files-artifact-coverage'] });
+    queryClient.removeQueries({ queryKey: ['file-artifact-coverage'] });
+    // Force refetch för att säkerställa att ny data hämtas
+    queryClient.refetchQueries({ queryKey: ['all-files-artifact-coverage'] });
+  }, []); // Kör bara en gång när komponenten mountar
+
   // Check if hierarchy has been built when files or rootFileName changes
   useEffect(() => {
     const checkHierarchyStatus = async () => {
