@@ -80,3 +80,4 @@ Baserat på BPMN-filen finns:
 - ✅ INTE hitta på "folkbokföringsregister", "kundregister", "Valideringsmotor", "UC-integration" (som inte finns)
 - ✅ Beskriva Business Rule Tasks generiskt (t.ex. "Systemet utför pre-screening") utan att hitta på specifika system
 
+

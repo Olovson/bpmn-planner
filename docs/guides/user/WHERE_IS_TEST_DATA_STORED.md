@@ -133,3 +133,4 @@ För att se vad som händer, öppna konsolen (F12) och leta efter:
 
 Om du ser `hasGiven: false, hasWhen: false, hasThen: false`, betyder det att testscenarios saknar dessa fält och du behöver regenerera testinformationen.
 
+

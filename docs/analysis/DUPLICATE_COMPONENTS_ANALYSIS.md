@@ -108,3 +108,4 @@ Samma logik för:
 - Det är korrekt att visa den bara en gång
 - Ingen information går förlorad (vi visar bara unika komponenter)
 
+

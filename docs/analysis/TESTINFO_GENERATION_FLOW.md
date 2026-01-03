@@ -117,3 +117,4 @@ Vad behöver göras:
 3. Implementera Claude-generering för given/when/then (ordentligt denna gång)
 4. Spara direkt i `node_planned_scenarios`
 
+

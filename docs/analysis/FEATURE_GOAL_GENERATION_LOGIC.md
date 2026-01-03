@@ -245,3 +245,4 @@ För en subprocess-fil (t.ex. `mortgage-se-internal-data-gathering.bpmn`) kan de
 - ✅ Standalone-dokumentation för subprocess-filer
 - ✅ JSON-data separerad från användardokumentation
 
+

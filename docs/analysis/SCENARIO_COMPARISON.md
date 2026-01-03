@@ -116,3 +116,4 @@
 - **Visas för användare:** Process Feature Goal (subprocess) eller Root Process Feature Goal (root)
 - **Kontext:** Hela hierarkin (parent-kontext för callActivities)
 
+

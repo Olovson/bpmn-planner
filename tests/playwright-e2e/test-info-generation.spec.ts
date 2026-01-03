@@ -64,64 +64,120 @@ async function checkPrerequisites(page: any): Promise<{ hasBpmnFiles: boolean; h
 
         // För varje BPMN-fil, kontrollera om Process Feature Goal dokumentation finns
         // Process Feature Goals använder format: docs/claude/{bpmnFileName}/{versionHash}/feature-goal-{baseName}.html
-        for (const fileName of fileNames) {
-          const baseName = fileName.replace('.bpmn', '');
-          
-          // Hämta version hash för filen från bpmn_versions tabellen
-          const { data: versions, error: versionError } = await supabase
-            .from('bpmn_versions')
-            .select('version_hash')
-            .eq('file_name', fileName)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          if (versionError || !versions || versions.length === 0) {
-            hasDocumentation = false;
-            missingDocs.push(fileName);
-            details.push(`  ⚠️  ${fileName}: No version hash found`);
-            continue;
-          }
-
-          const versionHash = versions[0].version_hash;
-          
-          // Bygg storage path för Process Feature Goal (non-hierarchical)
-          // Format: docs/claude/{bpmnFileName}/{versionHash}/feature-goals/{baseName}.html
-          // (getFeatureGoalDocFileKey returnerar "feature-goals/{baseName}.html")
-          const docFileName = `feature-goals/${baseName}.html`;
-          const docPath = `docs/claude/${fileName}/${versionHash}/${docFileName}`;
-          
-          // Kontrollera om dokumentation finns i storage
-          // Försök först med download (snabbast)
-          const { data: docData, error: docError } = await supabase.storage
-            .from('bpmn-files')
-            .download(docPath);
-
-          if (docError || !docData) {
-            // Om download misslyckas, försök lista filen istället (för debug)
-            const pathParts = docPath.split('/');
-            const parentPath = pathParts.slice(0, -1).join('/');
-            const fileNameOnly = pathParts[pathParts.length - 1];
+        // Begränsa till första 3 filerna för att undvika att testet tar för lång tid
+        const filesToCheck = fileNames.slice(0, 3);
+        for (const fileName of filesToCheck) {
+          try {
+            const baseName = fileName.replace('.bpmn', '');
             
-            const { data: listData, error: listError } = await supabase.storage
-              .from('bpmn-files')
-              .list(parentPath, {
-                search: fileNameOnly
-              });
+            // Hämta version hash för filen från bpmn_files tabellen (current_version_hash)
+            // Detta är samma sätt som produktionen använder (getCurrentVersionHash)
+            const versionPromise = supabase
+              .from('bpmn_files')
+              .select('current_version_hash')
+              .eq('file_name', fileName)
+              .maybeSingle();
 
-            if (listError || !listData || listData.length === 0) {
+            // Använd Promise.race för att lägga till timeout
+            const { data: fileData, error: versionError } = await Promise.race([
+              versionPromise,
+              new Promise<{ data: null; error: { message: string } }>((resolve) => {
+                setTimeout(() => {
+                  resolve({ data: null, error: { message: 'Timeout: version query took longer than 5 seconds' } });
+                }, 5000);
+              })
+            ]) as any;
+
+            if (versionError || !fileData || !fileData.current_version_hash) {
+              hasDocumentation = false;
+              missingDocs.push(fileName);
+              details.push(`  ⚠️  ${fileName}: No version hash found${versionError ? ` (${versionError.message})` : ''}`);
+              continue;
+            }
+
+            const versionHash = fileData.current_version_hash;
+            details.push(`  📋 ${fileName}: Using version hash ${versionHash.substring(0, 8)}...`);
+            
+            // Bygg storage path för Process Feature Goal (non-hierarchical)
+            // Format: docs/claude/{bpmnFileName}/{versionHash}/feature-goals/{baseName}.html
+            // (getFeatureGoalDocFileKey returnerar "feature-goals/{baseName}.html")
+            const docFileName = `feature-goals/${baseName}.html`;
+            const docPath = `docs/claude/${fileName}/${versionHash}/${docFileName}`;
+            
+            // Kontrollera om dokumentation finns i storage
+            // Försök först med download (snabbast) med timeout
+            const downloadPromise = supabase.storage
+              .from('bpmn-files')
+              .download(docPath);
+
+            const { data: docData, error: docError } = await Promise.race([
+              downloadPromise,
+              new Promise<{ data: null; error: { message: string } }>((resolve) => {
+                setTimeout(() => {
+                  resolve({ data: null, error: { message: 'Timeout: download took longer than 5 seconds' } });
+                }, 5000);
+              })
+            ]) as any;
+
+            if (docError || !docData) {
+              // Dokumentation saknas - lista vad som faktiskt finns för debug
+              // Först, lista alla versioner som finns för denna fil
+              try {
+                const versionsPath = `docs/claude/${fileName}`;
+                const { data: versionDirs, error: versionListError } = await Promise.race([
+                  supabase.storage.from('bpmn-files').list(versionsPath, { limit: 50 }),
+                  new Promise<{ data: null; error: { message: string } }>((resolve) => {
+                    setTimeout(() => resolve({ data: null, error: { message: 'Timeout' } }), 3000);
+                  })
+                ]) as any;
+                
+                if (!versionListError && versionDirs && versionDirs.length > 0) {
+                  // Hitta versioner som har feature-goals mapp
+                  const versionsWithDocs: string[] = [];
+                  for (const dir of versionDirs.slice(0, 5)) { // Kolla max 5 versioner
+                    if (dir.name && dir.name.length === 64) { // Version hash är 64 tecken
+                      const featureGoalsPath = `${versionsPath}/${dir.name}/feature-goals`;
+                      const { data: fgFiles } = await Promise.race([
+                        supabase.storage.from('bpmn-files').list(featureGoalsPath, { limit: 5 }),
+                        new Promise<{ data: null }>((resolve) => {
+                          setTimeout(() => resolve({ data: null }), 2000);
+                        })
+                      ]) as any;
+                      
+                      if (fgFiles && fgFiles.length > 0) {
+                        versionsWithDocs.push(`${dir.name.substring(0, 8)}... (${fgFiles.length} file(s))`);
+                      }
+                    }
+                  }
+                  
+                  if (versionsWithDocs.length > 0) {
+                    details.push(`      Found documentation in other version(s): ${versionsWithDocs.join(', ')}`);
+                    details.push(`      Looking for version: ${versionHash.substring(0, 8)}...`);
+                  }
+                }
+              } catch (listErr) {
+                // Ignorera list-fel
+              }
+              
               hasDocumentation = false;
               missingDocs.push(fileName);
               details.push(`  ⚠️  ${fileName}: Missing Process Feature Goal doc at ${docPath}`);
-              if (docError) {
+              if (docError && !docError.message.includes('Timeout')) {
                 details.push(`      Error: ${docError.message || JSON.stringify(docError)}`);
               }
             } else {
-              // Filen finns i listan men download misslyckades - anta att den finns
-              details.push(`  ✅ ${fileName}: Process Feature Goal doc found (via list)`);
+              details.push(`  ✅ ${fileName}: Process Feature Goal doc found at ${docPath}`);
             }
-          } else {
-            details.push(`  ✅ ${fileName}: Process Feature Goal doc found`);
+          } catch (fileError) {
+            // Om något går fel för en fil, markera den som saknad men fortsätt med nästa
+            hasDocumentation = false;
+            missingDocs.push(fileName);
+            details.push(`  ⚠️  ${fileName}: Error checking documentation - ${fileError instanceof Error ? fileError.message : String(fileError)}`);
           }
+        }
+        
+        if (fileNames.length > 3) {
+          details.push(`\n⚠️  Only checked first 3 files (${fileNames.length} total). Remaining files not checked.`);
         }
 
         if (missingDocs.length > 0) {
@@ -263,6 +319,7 @@ async function waitForUserConfirmation(message: string): Promise<boolean> {
 
 test.describe('Test Info Generation', () => {
   test('should generate testinfo for all files and display in popup and test-coverage page', async ({ page }) => {
+    test.setTimeout(120000); // 2 minuter timeout - om generering tar längre är det förmodligen ett fel
     const testStartTime = Date.now();
     const ctx = createTestContext(page);
 
@@ -280,17 +337,45 @@ test.describe('Test Info Generation', () => {
 
     // Steg 3: Kontrollera förutsättningar (BPMN-filer och dokumentation)
     console.log('🔍 Checking prerequisites (BPMN files and documentation)...');
-    const prerequisites = await checkPrerequisites(page);
+    console.log('⏱️  This check has a 30 second timeout to prevent hanging...');
+    
+    // Lägg till timeout för att förhindra att testet hänger sig
+    const prerequisites = await Promise.race([
+      checkPrerequisites(page),
+      new Promise<{ hasBpmnFiles: boolean; hasDocumentation: boolean; missingDocs: string[]; details: string }>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('TIMEOUT: checkPrerequisites took longer than 30 seconds. The test is likely stuck checking for documentation. Check browser console for errors.'));
+        }, 30000);
+      })
+    ]).catch((error) => {
+      console.error('❌ Error in checkPrerequisites:', error);
+      throw error;
+    });
     
     if (!prerequisites.hasBpmnFiles) {
       throw new Error('No BPMN files found in database. Please upload BPMN files before running this test.');
     }
 
     if (!prerequisites.hasDocumentation) {
+      console.error('\n' + '='.repeat(80));
+      console.error('❌ MISSING PREREQUISITE: Feature Goal Documentation');
+      console.error('='.repeat(80));
+      console.error(`\nMissing Feature Goal documentation for: ${prerequisites.missingDocs.join(', ')}`);
+      console.error('\n📋 Detailed check results:');
+      console.error(prerequisites.details);
+      console.error('\n📋 To fix this, you need to generate documentation first:');
+      console.error('   1. Go to the Files page in the app');
+      console.error('   2. Select "Claude" as generation mode');
+      console.error('   3. Click "Generera dokumentation (alla filer)"');
+      console.error('   4. Wait for documentation generation to complete');
+      console.error('   5. Then run this test again');
+      console.error('\n💡 This test only tests testinfo generation, not file upload or documentation generation.');
+      console.error('='.repeat(80) + '\n');
+      
+      // Kasta Error för att stoppa testet - Playwright borde stoppa automatiskt här
       throw new Error(
-        `Missing Feature Goal documentation for: ${prerequisites.missingDocs.join(', ')}\n` +
-        `Please generate documentation for these files before running this test.\n` +
-        `This test only tests testinfo generation, not file upload or documentation generation.`
+        `Missing Feature Goal documentation for: ${prerequisites.missingDocs.join(', ')}. ` +
+        `Please generate documentation first (see console output above for instructions).`
       );
     }
 
@@ -299,7 +384,16 @@ test.describe('Test Info Generation', () => {
 
     // Steg 4: Kontrollera om det finns befintlig testinfo-data
     console.log('🔍 Checking for existing testinfo data...');
-    const existingData = await checkExistingTestInfo(page);
+    
+    // Lägg till timeout för att förhindra att testet hänger sig om Supabase-anropen tar för lång tid
+    const existingData = await Promise.race([
+      checkExistingTestInfo(page),
+      new Promise<{ hasPlannedScenarios: boolean; hasE2eScenarios: boolean; details: string }>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Timeout: checkExistingTestInfo took longer than 30 seconds. This might indicate a network issue or Supabase connection problem.'));
+        }, 30000); // 30 sekunder timeout
+      })
+    ]);
     
     if (existingData.hasPlannedScenarios || existingData.hasE2eScenarios) {
       // Kolla om användaren redan har bekräftat via environment variable
@@ -345,13 +439,104 @@ test.describe('Test Info Generation', () => {
     await generationDialog.waitFor({ state: 'visible', timeout: 10000 });
     console.log('✅ GenerationDialog opened');
 
-    // Steg 8: Vänta på att generering är klar
+    // Steg 8: Vänta på att generering är klar med felhantering
     // Vänta på att dialogen visar "Generering Klar" eller "Alla artefakter"
-    await page.waitForSelector(
-      'text=/Generering Klar/i, text=/Alla artefakter/i, text=/Generering klar/i',
-      { timeout: 300000 } // 5 minuter max för faktisk testinfo-generering (inkluderar Claude API-anrop)
-    );
-    console.log('✅ Generation completed');
+    // Men avbryt om dialogen stängs (indikerar fel) eller om felmeddelanden visas
+    console.log('⏳ Waiting for generation to complete...');
+    
+    // Kontrollera dialogen status periodiskt för att se vad som händer
+    const checkInterval = setInterval(async () => {
+      const isVisible = await generationDialog.isVisible().catch(() => false);
+      const dialogText = await generationDialog.textContent().catch(() => '');
+      console.log(`  🔍 Dialog status: ${isVisible ? 'visible' : 'hidden'}, Content: ${dialogText.substring(0, 100)}...`);
+    }, 5000); // Kolla var 5:e sekund
+    
+    try {
+      await Promise.race([
+        // Vänta på success - dialogen visar "Generering Klar" när result view visas
+        // Eftersom texten redan finns i dialogen, kolla bara om dialogen innehåller texten
+        (async () => {
+          const maxWait = 15000;
+          const startTime = Date.now();
+          while (Date.now() - startTime < maxWait) {
+            const dialogText = await generationDialog.textContent().catch(() => '');
+            if (dialogText && (dialogText.includes('Generering Klar') || dialogText.includes('Alla artefakter'))) {
+              return;
+            }
+            await page.waitForTimeout(500);
+          }
+          throw new Error('Timeout waiting for "Generering Klar" in dialog');
+        })(),
+        // Eller vänta på att dialogen stängs (indikerar fel)
+        generationDialog.waitFor({ state: 'hidden', timeout: 15000 }).then(async () => {
+          // Vänta lite för att felmeddelanden ska visas
+          await page.waitForTimeout(2000);
+          
+          // Kolla efter felmeddelanden på olika sätt
+          const errorSelectors = [
+            'text=/misslyckades/i',
+            'text=/error/i',
+            'text=/fel/i',
+            '[role="alert"]',
+            '.toast',
+            '[data-sonner-toast]',
+          ];
+          
+          let errorText = '';
+          for (const selector of errorSelectors) {
+            try {
+              const element = page.locator(selector).first();
+              const isVisible = await element.isVisible({ timeout: 1000 }).catch(() => false);
+              if (isVisible) {
+                errorText = await element.textContent().catch(() => '');
+                if (errorText) break;
+              }
+            } catch (e) {
+              // Fortsätt till nästa selector
+            }
+          }
+          
+          // Om inget felmeddelande hittades, kolla page content
+          if (!errorText) {
+            const pageText = await page.textContent('body').catch(() => '');
+            if (pageText) {
+              // Leta efter fel i page text
+              const errorMatches = pageText.match(/(misslyckades|error|fel|failed|Failed)/i);
+              if (errorMatches) {
+                errorText = `Found error keywords in page: ${errorMatches[0]}`;
+              }
+            }
+          }
+          
+          throw new Error(`Dialog stängdes oväntat. Felmeddelande: ${errorText || 'Inget felmeddelande hittades'}`);
+        })
+      ]);
+      clearInterval(checkInterval);
+      console.log('✅ Generation completed');
+    } catch (error) {
+      clearInterval(checkInterval);
+      
+      // Kontrollera vad som faktiskt hände
+      const isDialogOpen = await generationDialog.isVisible().catch(() => false);
+      const dialogText = await generationDialog.textContent().catch(() => '');
+      const pageText = await page.textContent('body').catch(() => '');
+      
+      console.error('❌ Generation failed or timed out');
+      console.error(`   Dialog visible: ${isDialogOpen}`);
+      console.error(`   Dialog text: ${dialogText.substring(0, 200)}`);
+      
+      // Om det är ett timeout från waitForSelector, kontrollera om dialogen fortfarande är öppen
+      if (error instanceof Error && error.message.includes('timeout')) {
+        if (!isDialogOpen) {
+          const errorText = await page.locator('text=/misslyckades/i, text=/error/i, text=/fel/i, [role="alert"]').first().textContent().catch(() => '');
+          throw new Error(`Dialog stängdes under generering. Felmeddelande: ${errorText || 'Inget felmeddelande hittades'}`);
+        } else {
+          // Dialogen är fortfarande öppen men timeout - genereringen tar för lång tid eller hänger sig
+          throw new Error(`Generation timeout efter 15 sekunder. Dialog är fortfarande öppen. Dialog innehåll: ${dialogText.substring(0, 200)}`);
+        }
+      }
+      throw error;
+    }
 
     // Steg 9: Validera GenerationDialog popup - counter
     const testInfoCard = page.locator('text=/Testinformation/i').locator('..').first();

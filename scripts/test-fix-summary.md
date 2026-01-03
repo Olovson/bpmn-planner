@@ -85,3 +85,4 @@ npm test -- tests/unit/documentationRendering.regression.test.ts
 
 Testet kan nu köras och validerar att rendering-logiken fungerar korrekt med mock LLM-innehåll, och snapshots är uppdaterade för att matcha den nya dokumentationsstrukturen (utan "Swimlane/ägare").
 
+

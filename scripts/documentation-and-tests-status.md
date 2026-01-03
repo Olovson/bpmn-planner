@@ -74,3 +74,4 @@ npm test -- tests/unit/documentationRendering.regression.test.ts -u
 
 **Status:** Dokumentationen är uppdaterad, men ett test behöver fixas för att fungera med de nya kraven på LLM-innehåll.
 
+

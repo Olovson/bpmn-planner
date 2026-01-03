@@ -119,3 +119,4 @@ for (const file of analyzedFiles) {
 
 **Lösning**: Filtrera `analyzedFiles` mot `existingBpmnFiles` innan räkning, eller lägg till samma check i räkningslogiken.
 
+

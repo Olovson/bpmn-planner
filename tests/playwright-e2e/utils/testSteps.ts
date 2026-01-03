@@ -174,8 +174,8 @@ export async function stepLogin(ctx: TestContext) {
   // Vänta på att antingen sidan laddas eller vi redirectas
   try {
     const result = await Promise.race([
-      // Success: Vi ser innehåll från /files-sidan
-      page.waitForSelector('input[type="file"], button:has-text("Ladda upp"), h1:has-text("Filer"), text="BPMN & DMN Filhantering"', { timeout: 10000 }).then(() => {
+      // Success: Vi ser innehåll från /files-sidan (använd generella selectors, inte uppladdnings-specifika)
+      page.waitForSelector('h1:has-text("Filer"), text="BPMN & DMN Filhantering"', { timeout: 10000 }).then(() => {
         console.log('✅ [stepLogin] /files page loaded successfully');
         return 'success';
       }),

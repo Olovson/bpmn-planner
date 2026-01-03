@@ -157,3 +157,4 @@ const isIsolatedSubprocessFile = !useHierarchy &&
 
 **Risk-nivå:** LÅG - Fallback-logik skyddar mot de flesta problem, men vi bör först kontrollera bpmn-map.
 
+

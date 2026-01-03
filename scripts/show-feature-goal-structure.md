@@ -136,3 +136,4 @@
 
 Allt utom "Ingående komponenter" genereras av LLM baserat på BPMN-strukturen och kontexten.
 
+

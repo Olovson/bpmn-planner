@@ -144,3 +144,4 @@ const matchesPrioritizedScenario = true; // Generera för alla paths
 2. ✅ Ta bort eller försvaga `checkIfPathMatchesPrioritizedScenario`-filtret
 3. ✅ Implementera Claude-generering för given/when/then
 
+

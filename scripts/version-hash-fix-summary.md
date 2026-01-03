@@ -101,3 +101,4 @@ Lade till flera fallback-nivåer i `getVersionHashForDoc()`:
 
 ⚠️ **Men det underliggande problemet** (filen saknar version) bör undersökas och fixas i upload-processen.
 
+

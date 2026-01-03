@@ -179,3 +179,4 @@ Lägg till en kolumn i NodeMatrix för tekniska länkar (file-level docs, JSON-d
 3. **Bör det visas?**
    - Rekommendation: Lägg till en länk som alternativ (t.ex. "File-level docs (för E2E-generering)") om användaren vill se tekniskt innehåll
 
+

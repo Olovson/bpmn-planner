@@ -229,3 +229,4 @@ Applikationen fungerar **mycket bra** och har en tydlig arkitektur. De flesta pr
 
 **Status:** ✅ **Allt verkar fungera som tänkt**
 
+

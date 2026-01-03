@@ -188,3 +188,4 @@ Båda Feature Goals har samma kapitelstruktur:
 - **CallActivity Feature Goal**: När användaren klickar på callActivity i parent-processen
 - **Process Feature Goal**: När användaren öppnar subprocess-filen direkt
 
+

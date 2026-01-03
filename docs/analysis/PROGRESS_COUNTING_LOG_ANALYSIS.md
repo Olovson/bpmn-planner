@@ -121,3 +121,4 @@ Baserat på loggen:
 3. Fixa Process Feature Goal-räkning för att exkludera root-filer
 4. Fixa Root Feature Goal-räkning för att inkludera root-filer
 
+

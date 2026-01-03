@@ -113,3 +113,4 @@ isRootProcessFromMap: true, hasCallActivityPointingToFile: true}
 - Exkludera CallActivities med saknade subprocess-filer från räkning
 - Exkludera redan genererade filer från räkning (om `forceRegenerate: false`)
 
+

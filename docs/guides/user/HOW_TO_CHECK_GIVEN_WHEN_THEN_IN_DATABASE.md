@@ -139,3 +139,4 @@ Om du ser `hasGiven: false, hasWhen: false, hasThen: false` i loggarna eller i d
 
 Kör "Generera testinformation (alla filer)" igen för att skapa nya testscenarios med `given/when/then`-fält.
 
+

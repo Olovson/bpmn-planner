@@ -151,3 +151,4 @@ US-2 (Kund - Hastighet):
 4. **Unika acceptanskriterier**: Olika fokus per story, specifika aspekter
 5. **Använd BPMN-kontext**: Gateway-conditions, flödeslogik, system-kontext
 
+

@@ -243,3 +243,4 @@ function limitFlowSteps(steps: string[], firstN: number, lastM: number): string[
 2. Begränsa FlowSteps (medel påverkan, ~50-70% minskning)
 3. Kategorisera Dependencies (låg påverkan, ~60-70% minskning)
 
+
