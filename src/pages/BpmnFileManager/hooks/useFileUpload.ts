@@ -89,7 +89,7 @@ export function useFileUpload(
         const result = await saveBpmnMapToStorage(updatedMap, false);
         
         if (result.success) {
-          console.log(`[useFileUpload] Automatically updated bpmn-map.json with ${highConfidenceSuggestions.length} high-confidence matches`);
+          // Automatically updated bpmn-map.json with high-confidence matches
           
           if (highConfidenceSuggestions.length > 0 || suggestions.newFiles.length > 0) {
             toast({

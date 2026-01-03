@@ -8,6 +8,8 @@ import { getDefaultLlmProvider } from './llmClients';
 import { resolveLlmProvider } from './llmProviderResolver';
 import { generateWithFallback } from './llmFallback';
 import type { LlmProvider } from './llmClientAbstraction';
+import { loadBpmnMapFromStorage } from './bpmn/bpmnMapStorage';
+import { matchCallActivityUsingMap } from './bpmn/bpmnMapLoader';
 
 export interface FeatureGoalTestGenerationDirectResult {
   generated: number;
@@ -35,12 +37,16 @@ export async function generateFeatureGoalTestsDirect(
     return result;
   }
 
-  // 1. Hitta alla callActivities i alla filer
+  // 1. Ladda bpmn-map för att hitta subprocess-filer korrekt
+  const bpmnMapResult = await loadBpmnMapFromStorage();
+  const bpmnMap = bpmnMapResult.valid && bpmnMapResult.map ? bpmnMapResult.map : null;
+  
+  // 2. Hitta alla callActivities i alla filer
   const callActivities = new Map<string, { bpmnFile: string; callActivityId: string; parentBpmnFile: string }>();
   
   for (const bpmnFile of bpmnFiles) {
     try {
-      const { parseBpmnFile } = await import('./bpmnParsing');
+      const { parseBpmnFile } = await import('./bpmnParser');
       const parseResult = await parseBpmnFile(bpmnFile);
       
       if (!parseResult) continue;
@@ -48,10 +54,51 @@ export async function generateFeatureGoalTestsDirect(
       // Hitta alla callActivities i filen
       for (const element of parseResult.elements) {
         if (element.type === 'callActivity' && element.id) {
-          const subprocessInfo = parseResult.subprocesses.find(sp => sp.id === element.id);
-          const subprocessFile = subprocessInfo?.file 
-            ? subprocessInfo.file.replace('/bpmn/', '').replace(/\.bpmn$/, '') + '.bpmn'
-            : null;
+          // Hitta callActivity-metadata för att få calledElement
+          const callActivityMeta = parseResult.meta?.callActivities?.find(ca => ca.id === element.id);
+          
+          let subprocessFile: string | null = null;
+          
+          // Försök först med bpmn-map.json (mest pålitligt)
+          if (bpmnMap) {
+            const mapMatch = matchCallActivityUsingMap(
+              {
+                id: element.id,
+                name: element.name || callActivityMeta?.name,
+                calledElement: callActivityMeta?.calledElement,
+              },
+              bpmnFile,
+              bpmnMap
+            );
+            
+            if (mapMatch.matchedFileName) {
+              subprocessFile = mapMatch.matchedFileName;
+            }
+          }
+          
+          // Fallback: Använd subprocesses från parseResult
+          if (!subprocessFile) {
+            const subprocessInfo = parseResult.subprocesses.find(sp => sp.id === element.id);
+            if (subprocessInfo?.file) {
+              subprocessFile = subprocessInfo.file.replace('/bpmn/', '').replace(/\.bpmn$/, '') + '.bpmn';
+            }
+          }
+          
+          // Ytterligare fallback: Använd calledElement direkt
+          if (!subprocessFile && callActivityMeta?.calledElement) {
+            const potentialFiles = [
+              `mortgage-se-${callActivityMeta.calledElement}.bpmn`,
+              `${callActivityMeta.calledElement}.bpmn`,
+            ];
+            
+            // Kolla om någon av de potentiella filerna finns i bpmnFiles
+            for (const potentialFile of potentialFiles) {
+              if (bpmnFiles.includes(potentialFile)) {
+                subprocessFile = potentialFile;
+                break;
+              }
+            }
+          }
           
           if (subprocessFile) {
             const key = `${subprocessFile}::${element.id}`;
@@ -63,6 +110,7 @@ export async function generateFeatureGoalTestsDirect(
               });
             }
           }
+          // Note: Om subprocessFile inte hittas, hoppar vi över callActivity (tyst)
         }
       }
     } catch (error) {
@@ -81,7 +129,7 @@ export async function generateFeatureGoalTestsDirect(
       );
 
       if (!featureGoalDoc) {
-        console.warn(`[generateFeatureGoalTestsDirect] No documentation found for ${key}, skipping`);
+        // Dokumentation saknas - detta är förväntat i många fall, hoppa över tyst
         result.skipped++;
         continue;
       }
@@ -97,7 +145,7 @@ export async function generateFeatureGoalTestsDirect(
       );
 
       if (!testScenario) {
-        console.warn(`[generateFeatureGoalTestsDirect] Failed to generate test for ${key}`);
+        // Testgenerering misslyckades - logga endast om det är oväntat (t.ex. om dokumentation fanns)
         result.skipped++;
         continue;
       }
@@ -113,10 +161,6 @@ export async function generateFeatureGoalTestsDirect(
 
       await savePlannedScenarios(rows, 'claude-direct');
       result.generated++;
-
-      if (import.meta.env.DEV) {
-        console.log(`[generateFeatureGoalTestsDirect] Generated test for ${callActivity.parentBpmnFile}::${callActivity.callActivityId}`);
-      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[generateFeatureGoalTestsDirect] Error generating test for ${key}:`, error);

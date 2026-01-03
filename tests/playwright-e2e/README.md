@@ -134,7 +134,10 @@ För snabba och pålitliga tester använder vi mockade Claude API-anrop:
 
 - **`fixtures/claudeApiMocks.ts`** - Mockar Claude API-anrop
 - **`documentation-generation-from-scratch.spec.ts`** - Använder mocked API för dokumentationsgenerering
-- **`test-info-generation.spec.ts`** - Använder mocked API för testinfo-generering, validerar GenerationDialog och test-coverage sida
+- **`test-info-generation.spec.ts`** - Använder mocked API för testinfo-generering
+  - Validerar GenerationDialog med testinfo-kort och detaljerad rapport
+  - Validerar att testinfo faktiskt visas på test-coverage sida (E2E scenario-knappar och tabell-data)
+  - Använder produktionsfunktioner via `window.__TEST_HELPERS__` för prerequisites check (ingen duplicerad logik)
 - **`feature-goal-documentation.spec.ts`** - Använder mocked API för Feature Goal-dokumentation
 
 **Fördelar:**

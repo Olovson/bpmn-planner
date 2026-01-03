@@ -217,9 +217,10 @@ export function useHierarchyBuilding({
           const jiraName = buildJiraName(node, tree, []);
 
           // Debug logging for specific node
+          // Jira name generation debug (DEV only)
           if (import.meta.env.DEV && node.bpmnElementId === 'calculate-household-affordability') {
             const fullPath = buildParentPath(node, tree);
-            console.log('[handleBuildHierarchy] Jira name generation for calculate-household-affordability:', {
+            console.log('[handleBuildHierarchy] Jira name generation:', {
               nodeLabel: node.label,
               nodeType: node.type,
               bpmnFile: node.bpmnFile,

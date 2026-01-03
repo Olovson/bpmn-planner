@@ -135,7 +135,7 @@ export async function buildHierarchySilently(
           mappingsError.message?.includes('user_id');
         
         if (isForeignKeyError) {
-          console.warn('Save element mappings error (user session invalid - mappings saved but version creation skipped):', mappingsError.message);
+          // Save element mappings error (user session invalid - mappings saved but version creation skipped)
           // Mappings are still saved, but version creation failed - this is ok
         } else {
           console.error('Save element mappings error:', mappingsError);

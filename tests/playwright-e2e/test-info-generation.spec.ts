@@ -40,9 +40,15 @@ async function checkPrerequisites(page: any): Promise<{ hasBpmnFiles: boolean; h
   return await page.evaluate(async () => {
     // @ts-ignore
     const supabase = window.__SUPABASE_CLIENT__;
+    // @ts-ignore
+    const testHelpers = window.__TEST_HELPERS__;
+    
     if (!supabase) {
       return { hasBpmnFiles: false, hasDocumentation: false, missingDocs: [], details: 'Supabase client not available' };
     }
+    
+    // Om testHelpers inte finns, använd fallback (men detta borde inte hända eftersom vi importerar dem i App.tsx)
+    const useProductionCode = !!testHelpers;
 
     let hasBpmnFiles = false;
     let hasDocumentation = true;
@@ -69,102 +75,88 @@ async function checkPrerequisites(page: any): Promise<{ hasBpmnFiles: boolean; h
         for (const fileName of filesToCheck) {
           try {
             const baseName = fileName.replace('.bpmn', '');
+            let versionHash: string | null = null;
+            let docPath = '';
+            let docExists = false;
             
-            // Hämta version hash för filen från bpmn_files tabellen (current_version_hash)
-            // Detta är samma sätt som produktionen använder (getCurrentVersionHash)
-            const versionPromise = supabase
-              .from('bpmn_files')
-              .select('current_version_hash')
-              .eq('file_name', fileName)
-              .maybeSingle();
+            if (useProductionCode) {
+              // Använd produktionsfunktioner - INGEN duplicerad logik
+              versionHash = await Promise.race([
+                testHelpers.getCurrentVersionHash(fileName),
+                new Promise<string | null>((resolve) => {
+                  setTimeout(() => resolve(null), 5000);
+                })
+              ]);
 
-            // Använd Promise.race för att lägga till timeout
-            const { data: fileData, error: versionError } = await Promise.race([
-              versionPromise,
-              new Promise<{ data: null; error: { message: string } }>((resolve) => {
-                setTimeout(() => {
-                  resolve({ data: null, error: { message: 'Timeout: version query took longer than 5 seconds' } });
-                }, 5000);
-              })
-            ]) as any;
+              if (!versionHash) {
+                hasDocumentation = false;
+                missingDocs.push(fileName);
+                details.push(`  ⚠️  ${fileName}: No version hash found`);
+                continue;
+              }
 
-            if (versionError || !fileData || !fileData.current_version_hash) {
-              hasDocumentation = false;
-              missingDocs.push(fileName);
-              details.push(`  ⚠️  ${fileName}: No version hash found${versionError ? ` (${versionError.message})` : ''}`);
-              continue;
+              details.push(`  📋 ${fileName}: Using version hash ${versionHash.substring(0, 8)}...`);
+              
+              // Använd produktionsfunktioner för att bygga storage path
+              // Process Feature Goal använder non-hierarchical naming (ingen parent, baseName som elementId)
+              const processFeatureGoalKey = testHelpers.getFeatureGoalDocFileKey(
+                fileName,
+                baseName, // För Process Feature Goals är elementId = baseName
+                undefined, // no version suffix
+                undefined, // no parent (non-hierarchical)
+                false, // isRootProcess = false (detta är en subprocess)
+              );
+              
+              const { modePath } = testHelpers.buildDocStoragePaths(
+                processFeatureGoalKey,
+                'slow', // mode
+                'cloud', // provider (claude är cloud provider)
+                fileName, // bpmnFileForVersion
+                versionHash,
+              );
+              
+              docPath = modePath;
+              
+              // Använd produktionsfunktion storageFileExists
+              docExists = await Promise.race([
+                testHelpers.storageFileExists(docPath),
+                new Promise<boolean>((resolve) => {
+                  setTimeout(() => resolve(false), 5000);
+                })
+              ]);
+            } else {
+              // Fallback om testHelpers inte finns (borde inte hända)
+              const { data: fileData, error: versionError } = await Promise.race([
+                supabase.from('bpmn_files').select('current_version_hash').eq('file_name', fileName).maybeSingle(),
+                new Promise<{ data: null; error: { message: string } }>((resolve) => {
+                  setTimeout(() => resolve({ data: null, error: { message: 'Timeout' } }), 5000);
+                })
+              ]) as any;
+
+              if (versionError || !fileData || !fileData.current_version_hash) {
+                hasDocumentation = false;
+                missingDocs.push(fileName);
+                details.push(`  ⚠️  ${fileName}: No version hash found (fallback)`);
+                continue;
+              }
+
+              versionHash = fileData.current_version_hash;
+              docPath = `docs/claude/${fileName}/${versionHash}/feature-goals/${baseName}.html`;
+              
+              const { data: docData } = await Promise.race([
+                supabase.storage.from('bpmn-files').download(docPath),
+                new Promise<{ data: null }>((resolve) => {
+                  setTimeout(() => resolve({ data: null }), 5000);
+                })
+              ]) as any;
+              
+              docExists = !!docData;
             }
 
-            const versionHash = fileData.current_version_hash;
-            details.push(`  📋 ${fileName}: Using version hash ${versionHash.substring(0, 8)}...`);
-            
-            // Bygg storage path för Process Feature Goal (non-hierarchical)
-            // Format: docs/claude/{bpmnFileName}/{versionHash}/feature-goals/{baseName}.html
-            // (getFeatureGoalDocFileKey returnerar "feature-goals/{baseName}.html")
-            const docFileName = `feature-goals/${baseName}.html`;
-            const docPath = `docs/claude/${fileName}/${versionHash}/${docFileName}`;
-            
-            // Kontrollera om dokumentation finns i storage
-            // Försök först med download (snabbast) med timeout
-            const downloadPromise = supabase.storage
-              .from('bpmn-files')
-              .download(docPath);
-
-            const { data: docData, error: docError } = await Promise.race([
-              downloadPromise,
-              new Promise<{ data: null; error: { message: string } }>((resolve) => {
-                setTimeout(() => {
-                  resolve({ data: null, error: { message: 'Timeout: download took longer than 5 seconds' } });
-                }, 5000);
-              })
-            ]) as any;
-
-            if (docError || !docData) {
-              // Dokumentation saknas - lista vad som faktiskt finns för debug
-              // Först, lista alla versioner som finns för denna fil
-              try {
-                const versionsPath = `docs/claude/${fileName}`;
-                const { data: versionDirs, error: versionListError } = await Promise.race([
-                  supabase.storage.from('bpmn-files').list(versionsPath, { limit: 50 }),
-                  new Promise<{ data: null; error: { message: string } }>((resolve) => {
-                    setTimeout(() => resolve({ data: null, error: { message: 'Timeout' } }), 3000);
-                  })
-                ]) as any;
-                
-                if (!versionListError && versionDirs && versionDirs.length > 0) {
-                  // Hitta versioner som har feature-goals mapp
-                  const versionsWithDocs: string[] = [];
-                  for (const dir of versionDirs.slice(0, 5)) { // Kolla max 5 versioner
-                    if (dir.name && dir.name.length === 64) { // Version hash är 64 tecken
-                      const featureGoalsPath = `${versionsPath}/${dir.name}/feature-goals`;
-                      const { data: fgFiles } = await Promise.race([
-                        supabase.storage.from('bpmn-files').list(featureGoalsPath, { limit: 5 }),
-                        new Promise<{ data: null }>((resolve) => {
-                          setTimeout(() => resolve({ data: null }), 2000);
-                        })
-                      ]) as any;
-                      
-                      if (fgFiles && fgFiles.length > 0) {
-                        versionsWithDocs.push(`${dir.name.substring(0, 8)}... (${fgFiles.length} file(s))`);
-                      }
-                    }
-                  }
-                  
-                  if (versionsWithDocs.length > 0) {
-                    details.push(`      Found documentation in other version(s): ${versionsWithDocs.join(', ')}`);
-                    details.push(`      Looking for version: ${versionHash.substring(0, 8)}...`);
-                  }
-                }
-              } catch (listErr) {
-                // Ignorera list-fel
-              }
-              
+            if (!docExists) {
               hasDocumentation = false;
               missingDocs.push(fileName);
               details.push(`  ⚠️  ${fileName}: Missing Process Feature Goal doc at ${docPath}`);
-              if (docError && !docError.message.includes('Timeout')) {
-                details.push(`      Error: ${docError.message || JSON.stringify(docError)}`);
-              }
             } else {
               details.push(`  ✅ ${fileName}: Process Feature Goal doc found at ${docPath}`);
             }
@@ -205,6 +197,10 @@ async function checkPrerequisites(page: any): Promise<{ hasBpmnFiles: boolean; h
 
 /**
  * Kontrollerar om det finns befintlig testinfo-data i databasen och storage
+ * 
+ * OBS: Denna funktion gör enkel kontroll av befintlig data - detta är specifikt för testet.
+ * Det finns ingen motsvarande produktionsfunktion eftersom detta bara behövs för testet.
+ * Funktionen använder direkt Supabase-anrop (minimal logik, ingen duplicering av produktionskod).
  */
 async function checkExistingTestInfo(page: any): Promise<{ hasPlannedScenarios: boolean; hasE2eScenarios: boolean; details: string }> {
   return await page.evaluate(async () => {
@@ -594,43 +590,65 @@ test.describe('Test Info Generation', () => {
     console.log('✅ Navigated to test-coverage page');
 
     // Steg 13: Validera att testinfo visas på test-coverage sidan
-    // Kolla om det finns en scenario selector (indikerar att E2E scenarios finns)
-    const scenarioSelector = page.locator('select, [role="combobox"]').first();
-    const hasScenarioSelector = await scenarioSelector.isVisible().catch(() => false);
-
-    // Kolla om det finns en TestCoverageTable
+    // Kontrollera att det faktiskt finns testinfo-data, inte bara tomma element
+    
+    // Vänta på att sidan har laddat klart (scenarios kan laddas asynkront)
+    await page.waitForTimeout(2000);
+    
+    // Kolla om det finns E2E scenario-knappar (detta indikerar att scenarios faktiskt finns)
+    const scenarioButtons = page.locator('button:has-text("e2e-"), button:has-text("E2E")');
+    const scenarioButtonCount = await scenarioButtons.count();
+    const hasScenarioButtons = scenarioButtonCount > 0;
+    
+    // Kolla om det finns en TestCoverageTable med faktiskt innehåll
     const testCoverageTable = page.locator('table').first();
     const hasTable = await testCoverageTable.isVisible().catch(() => false);
+    
+    // Om tabell finns, kontrollera att den har rader med data (inte bara headers)
+    let hasTableData = false;
+    if (hasTable) {
+      const tableRows = testCoverageTable.locator('tbody tr, tbody > tr');
+      const rowCount = await tableRows.count();
+      hasTableData = rowCount > 0;
+      
+      // Kolla om det finns Feature Goal-test information (Given/When/Then kolumner)
+      const givenColumn = page.locator('text=/Given/i, text=/Givet/i').first();
+      const whenColumn = page.locator('text=/When/i, text=/När/i').first();
+      const thenColumn = page.locator('text=/Then/i, text=/Då/i').first();
 
-    // Kolla om det finns Feature Goal-test information (Given/When/Then kolumner)
-    const givenColumn = page.locator('text=/Given/i, text=/Givet/i').first();
-    const whenColumn = page.locator('text=/When/i, text=/När/i').first();
-    const thenColumn = page.locator('text=/Then/i, text=/Då/i').first();
+      const hasGiven = await givenColumn.isVisible().catch(() => false);
+      const hasWhen = await whenColumn.isVisible().catch(() => false);
+      const hasThen = await thenColumn.isVisible().catch(() => false);
 
-    const hasGiven = await givenColumn.isVisible().catch(() => false);
-    const hasWhen = await whenColumn.isVisible().catch(() => false);
-    const hasThen = await thenColumn.isVisible().catch(() => false);
-
-    // Validera att antingen scenario selector eller table finns
-    expect(hasScenarioSelector || hasTable).toBe(true);
-    console.log('✅ Test coverage page shows test information');
-
-    // Om table finns, validera att Given/When/Then kolumner finns (om Feature Goal-tester genererades)
-    if (hasTable && (hasGiven || hasWhen || hasThen)) {
-      console.log('✅ Feature Goal test information (Given/When/Then) found in test coverage table');
+      if (hasTableData && (hasGiven || hasWhen || hasThen)) {
+        console.log('✅ Feature Goal test information (Given/When/Then) found in test coverage table');
+      }
     }
 
-    // Steg 14: Validera att testinfo faktiskt innehåller data
+    // Validera att antingen scenario buttons eller table med data finns
+    expect(hasScenarioButtons || hasTableData).toBe(true);
+    
+    if (hasScenarioButtons) {
+      console.log(`✅ Found ${scenarioButtonCount} E2E scenario(s) on test-coverage page`);
+    }
+    if (hasTableData) {
+      console.log('✅ Test coverage table contains data');
+    }
+    
+    // Ytterligare validering: kontrollera att page content faktiskt innehåller testinfo
     const pageContent = await page.textContent('body');
     expect(pageContent).toBeTruthy();
     
-    // Kolla om det finns test-scenario data (inte bara tomma tabeller)
-    const hasTestData = pageContent?.includes('scenario') || 
-                       pageContent?.includes('test') ||
-                       hasTable;
+    // Kolla om det finns specifik testinfo-data (scenario-namn, test-steg, etc.)
+    const hasSpecificTestData = pageContent?.includes('scenario') || 
+                                pageContent?.includes('Happy Path') ||
+                                pageContent?.includes('Given') ||
+                                pageContent?.includes('When') ||
+                                pageContent?.includes('Then') ||
+                                hasScenarioButtons ||
+                                hasTableData;
     
-    // Om inga scenarios finns, ska det finnas ett meddelande om det
-    if (!hasTestData) {
+    if (!hasSpecificTestData) {
       const noScenariosMessage = pageContent?.includes('Inga E2E-scenarier') || 
                                 pageContent?.includes('No scenarios');
       // Det är okej om det inte finns scenarios ännu, men sidan ska laddas korrekt

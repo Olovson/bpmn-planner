@@ -27,6 +27,8 @@ import { buildDocStoragePaths } from '@/lib/artifactPaths';
 import { invalidateArtifactQueries, invalidateStructureQueries } from '@/lib/queryInvalidation';
 import type { GenerationPlan, GenerationProgress, GenerationResult } from '@/components/GenerationDialog';
 import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
+import { loadDependenciesMap, buildMappingsForFile, saveElementMappings } from '../utils/mappingHelpers';
+import { uploadDocumentation } from '../utils/docUploadHelpers';
 
 const JOB_PHASE_TOTAL = 5; // Base number of phases (graph, hierTests, dor, dependencies, mappings)
 
@@ -495,7 +497,7 @@ export function useFileGeneration({
         queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
       } catch (error) {
         // Logga felet men fortsätt med generering (hierarki är inte kritiskt)
-        console.warn('[handleGenerateArtifacts] Failed to build hierarchy automatically, continuing anyway:', error);
+        // Failed to build hierarchy automatically, continuing anyway
       }
     }
     
@@ -595,9 +597,7 @@ export function useFileGeneration({
           variant: 'destructive',
         });
 
-        console.warn(
-          `Skipping artifact generation for ${file.file_name} because user is not authenticated against Supabase.`
-        );
+        // Skipping artifact generation - user not authenticated
         return null;
       }
       checkCancel();
@@ -632,7 +632,7 @@ export function useFileGeneration({
         });
       } else if (!showReport && missingUploads.length) {
         // Log for batch generation instead of showing toast
-        console.warn(`[Batch generation] Hoppar över ${missingUploads.length} filer som inte finns i Supabase Storage: ${missingUploads.join(', ')}`);
+        // Skipping files that don't exist in Supabase Storage
       }
 
       const existingBpmnFiles = (allFiles || [])
@@ -719,7 +719,7 @@ export function useFileGeneration({
             // Ingen diff-data: fallback till att regenerera allt (säkrast)
           }
         } catch (error) {
-          console.warn('[BpmnFileManager] Error setting up diff filter, falling back to regenerate all:', error);
+          // Error setting up diff filter, falling back to regenerate all
           // Fallback: regenerera allt om diff-logik failar
         }
       }
@@ -802,8 +802,6 @@ export function useFileGeneration({
 
           if (depError) {
             console.error('[Generation] Error saving subprocess mappings to bpmn_dependencies:', depError);
-          } else if (import.meta.env.DEV) {
-            console.log(`[Generation] Saved ${dependenciesToInsert.length} subprocess mappings to bpmn_dependencies`);
           }
         }
         checkCancel();
@@ -821,53 +819,7 @@ export function useFileGeneration({
       const detailedJiraMappings: Array<{ elementId: string; elementName: string; jiraType: string; jiraName: string }> = [];
       
       // Hämta dependencies för att bygga fullständig hierarki
-      const { data: allDependencies } = await supabase
-        .from('bpmn_dependencies')
-        .select('parent_file, child_process, child_file');
-      
-      const depsMap = new Map<string, { parentFile: string; callActivityName: string }>();
-      if (allDependencies) {
-        for (const dep of allDependencies) {
-          if (dep.child_file) {
-            depsMap.set(dep.child_file, {
-              parentFile: dep.parent_file,
-              callActivityName: dep.child_process,
-            });
-          }
-        }
-      }
-      
-      // Helper: Bygg parentPath rekursivt från dependencies.
-      // Robust mot saknade subprocess-filer och eventuella cycles i bpmn_dependencies.
-      const buildParentPath = async (
-        fileName: string,
-        visited: Set<string> = new Set(),
-      ): Promise<string[]> => {
-        if (visited.has(fileName)) {
-          console.warn(
-            '[Generation] Cykel upptäckt i bpmn_dependencies när parentPath byggdes för',
-            fileName,
-          );
-          return [];
-        }
-        visited.add(fileName);
-
-        const dep = depsMap.get(fileName);
-        if (!dep) return []; // Toppnivåfil utan registrerad parent
-
-        const parentRoot = dep.parentFile
-          .replace('.bpmn', '')
-          .replace(/^mortgage-se-/, '')
-          .replace(/-/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase());
-
-        const capitalizedRoot =
-          parentRoot.charAt(0).toUpperCase() + parentRoot.slice(1);
-
-        const grandparentPath = await buildParentPath(dep.parentFile, visited);
-
-        return [...grandparentPath, capitalizedRoot];
-      };
+      const depsMap = await loadDependenciesMap();
       
       // NOTE: Jira-namn (jira_name) genereras INTE här längre.
       // De genereras istället av handleBuildHierarchy() som använder hela ProcessTree
@@ -878,98 +830,18 @@ export function useFileGeneration({
       if (useHierarchy && result.metadata) {
         // För hierarkiska filer: extrahera jira_type för noder som saknar det
         for (const bpmnFileName of result.metadata.filesIncluded) {
-          try {
-            const bpmnUrl = `/bpmn/${bpmnFileName}`;
-            const { buildBpmnHierarchy } = await import('@/lib/bpmnHierarchy');
-            
-            // Bygg parentPath från dependencies
-            const parentPath = await buildParentPath(bpmnFileName);
-            const hierarchy = await buildBpmnHierarchy(bpmnFileName, bpmnUrl, parentPath);
-            
-            // Extrahera alla noder från hierarkin (hierarchy.allNodes är redan en flat lista)
-            const allNodes = hierarchy.allNodes;
-            
-            // Skapa mappings för varje nod (bara jira_type, inte jira_name)
-            for (const node of allNodes) {
-              mappingsToInsert.push({
-                bpmn_file: node.bpmnFile,
-                element_id: node.id,
-                jira_type: node.jiraType || null,
-                // jira_name: INTE satt här - genereras av handleBuildHierarchy istället
-              });
-              
-              if (node.jiraType) {
-                detailedJiraMappings.push({
-                  elementId: node.id,
-                  elementName: node.name,
-                  jiraType: node.jiraType,
-                  jiraName: '', // Tomt - kommer från handleBuildHierarchy
-                });
-              }
-            }
-          } catch (error) {
-            console.error(`Error building mappings for ${bpmnFileName}:`, error);
-          }
+          const result = await buildMappingsForFile(bpmnFileName, depsMap);
+          mappingsToInsert.push(...result.mappingsToInsert);
+          detailedJiraMappings.push(...result.detailedJiraMappings);
         }
       } else {
         // För icke-hierarkiska filer: bygg basic hierarki för denna fil
-        try {
-          const bpmnUrl = `/bpmn/${file.file_name}`;
-          const { buildBpmnHierarchy } = await import('@/lib/bpmnHierarchy');
-          
-          // Bygg parentPath från dependencies
-          const parentPath = await buildParentPath(file.file_name);
-          const hierarchy = await buildBpmnHierarchy(file.file_name, bpmnUrl, parentPath);
-          
-          // Extrahera alla noder från hierarkin (hierarchy.allNodes är redan en flat lista)
-          const allNodes = hierarchy.allNodes;
-          
-          // Skapa mappings för varje nod (bara jira_type, inte jira_name)
-          for (const node of allNodes) {
-            mappingsToInsert.push({
-              bpmn_file: node.bpmnFile,
-              element_id: node.id,
-              jira_type: node.jiraType || null,
-              // jira_name: INTE satt här - genereras av handleBuildHierarchy istället
-            });
-            
-            if (node.jiraType) {
-              detailedJiraMappings.push({
-                elementId: node.id,
-                elementName: node.name,
-                jiraType: node.jiraType,
-                jiraName: '', // Tomt - kommer från handleBuildHierarchy
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Error building mappings for ${file.file_name}:`, error);
-        }
+        const result = await buildMappingsForFile(file.file_name, depsMap);
+        mappingsToInsert.push(...result.mappingsToInsert);
+        detailedJiraMappings.push(...result.detailedJiraMappings);
       }
       
-      if (mappingsToInsert.length > 0) {
-        const { error: mappingsError } = await supabase
-          .from('bpmn_element_mappings')
-          .upsert(mappingsToInsert, {
-            onConflict: 'bpmn_file,element_id',
-            ignoreDuplicates: false,
-          });
-
-        if (mappingsError) {
-          // Check if it's a foreign key constraint error (user_id doesn't exist)
-          // This can happen after database reset when user session is invalid
-          const isForeignKeyError = mappingsError.code === '23503' || 
-            mappingsError.message?.includes('foreign key constraint') ||
-            mappingsError.message?.includes('user_id');
-          
-          if (isForeignKeyError) {
-            console.warn('Save element mappings error (user session invalid - mappings saved but version creation skipped):', mappingsError.message);
-            // Mappings are still saved, but version creation failed - this is ok
-          } else {
-            console.error('Save element mappings error:', mappingsError);
-          }
-        }
-      }
+      await saveElementMappings(mappingsToInsert);
       await incrementJobProgress('Bygger Jira-mappningar');
 
       // OBS: Testgenerering har separerats till ett eget steg (handleGenerateTestsForSelectedFile/handleGenerateTestsForAllFiles)
@@ -995,357 +867,45 @@ export function useFileGeneration({
       );
       checkCancel();
 
-      // Helper function to extract BPMN file from docFileName
-      // VIKTIGT: Varje dokument ska använda sin egen BPMN-fils version hash
-      const extractBpmnFileFromDocFileName = (docFileName: string, filesIncluded?: string[]): string | null => {
-        // For node docs: nodes/{bpmnFile}/{elementId}.html
-        const nodeMatch = docFileName.match(/^nodes\/([^\/]+)\/[^\/]+\.html$/);
-        if (nodeMatch) {
-          const baseName = nodeMatch[1];
-          // If it doesn't have .bpmn, add it
-          const bpmnFile = baseName.includes('.bpmn') ? baseName : `${baseName}.bpmn`;
-          // Verify it's in filesIncluded if available
-          if (filesIncluded && !filesIncluded.includes(bpmnFile)) {
-            // Try without .bpmn extension
-            if (filesIncluded.includes(baseName)) {
-              return baseName;
-            }
-          }
-          return bpmnFile;
-        }
-        
-        // For feature goals: feature-goals/{...}.html
-        // Feature goals can be:
-        // 1. Hierarchical naming (parent-elementId) for callActivities: "mortgage-se-application-internal-data-gathering"
-        // 2. Non-hierarchical naming for Process Feature Goals: "mortgage-se-internal-data-gathering"
-        // VIKTIGT: För hierarchical naming måste vi hitta subprocess-filen, inte parent-filen
-        // eftersom filen sparas under subprocess-filens version hash
-        if (docFileName.startsWith('feature-goals/')) {
-          const featureGoalName = docFileName.replace('feature-goals/', '').replace('.html', '');
-          
-          // FIRST: Check if featureGoalName matches a file directly (non-hierarchical Process Feature Goal)
-          // For Process Feature Goals, the featureGoalName IS the baseName of the file
-          if (filesIncluded && filesIncluded.length > 0) {
-            const directMatch = filesIncluded.find(f => {
-              const baseName = f.replace('.bpmn', '');
-              return baseName === featureGoalName;
-            });
-            
-            if (directMatch) {
-              if (import.meta.env.DEV) {
-                console.log(`[extractBpmnFileFromDocFileName] Direct match for Process Feature Goal "${featureGoalName}": ${directMatch}`);
-              }
-              return directMatch;
-            }
-          }
-          
-          // Continue with hierarchical matching for callActivities
-          if (filesIncluded && filesIncluded.length > 0) {
-            // For hierarchical naming (parent-elementId), try to extract elementId
-            // Pattern: "mortgage-se-application-internal-data-gathering" eller "test-{timestamp}-test-parent-call-activity-test-call-activity"
-            // We want to find the subprocess file that matches the elementId part
-            // VIKTIGT: Prioritera subprocess-filen (som slutar med elementId) över parent-filen
-            
-            // Special handling for test files with timestamps: extract timestamp prefix
-            const testTimestampMatch = featureGoalName.match(/^(test-\d+-\d+-)/);
-            if (testTimestampMatch) {
-              const timestampPrefix = testTimestampMatch[1];
-              // For test files, try to find subprocess file with same timestamp prefix
-              // Pattern: "test-{timestamp}-{parent}-{elementId}" -> "test-{timestamp}-{subprocess}"
-              const partsAfterTimestamp = featureGoalName.substring(timestampPrefix.length).split('-');
-              
-              // VIKTIGT: För hierarchical naming, elementId är vanligtvis de sista delarna
-              // T.ex. "test-xxx-mortgage-se-application-internal-data-gathering" -> elementId = "internal-data-gathering"
-              // Subprocess-filen är "test-xxx-mortgage-se-internal-data-gathering.bpmn"
-              
-              // Try to extract elementId from hierarchical name
-              // Pattern: "mortgage-se-application-internal-data-gathering" -> elementId = "internal-data-gathering"
-              // We need to find where "mortgage-se-application" ends and elementId begins
-              const mortgageSeIndex = partsAfterTimestamp.indexOf('mortgage');
-              if (mortgageSeIndex >= 0 && partsAfterTimestamp[mortgageSeIndex + 1] === 'se') {
-                // Found "mortgage-se", now find where parent file name ends
-                // Parent is typically "mortgage-se-{name}" (e.g., "mortgage-se-application")
-                // ElementId starts after parent (e.g., "internal-data-gathering")
-                const parentEndIndex = mortgageSeIndex + 3; // After "mortgage-se-{name}"
-                if (parentEndIndex < partsAfterTimestamp.length) {
-                  const elementId = partsAfterTimestamp.slice(parentEndIndex).join('-');
-                  
-                  // Now try to find subprocess file that ends with this elementId
-                  for (const includedFile of filesIncluded) {
-                    const baseName = includedFile.replace('.bpmn', '');
-                    // Check if file starts with same timestamp prefix and ends with elementId
-                    if (baseName.startsWith(timestampPrefix)) {
-                      const baseNameWithoutPrefix = baseName.substring(timestampPrefix.length);
-                      // Check if baseName ends with elementId (subprocess file)
-                      // T.ex. "mortgage-se-internal-data-gathering" ends with "internal-data-gathering"
-                      if (baseNameWithoutPrefix.endsWith(`-${elementId}`) || 
-                          baseNameWithoutPrefix === elementId ||
-                          baseNameWithoutPrefix.endsWith(`mortgage-se-${elementId}`) ||
-                          baseNameWithoutPrefix === `mortgage-se-${elementId}`) {
-                        if (import.meta.env.DEV) {
-                          console.log(`[extractBpmnFileFromDocFileName] Matched test subprocess file for "${featureGoalName}": ${includedFile} (elementId: ${elementId})`);
-                        }
-                        return includedFile;
-                      }
-                    }
-                  }
-                }
-              }
-              
-              // Fallback: try to find subprocess file using last 2-3 parts as elementId
-              const possibleElementIds = [
-                partsAfterTimestamp.slice(-3).join('-'), // Last 3 parts (e.g., "internal-data-gathering")
-                partsAfterTimestamp.slice(-2).join('-'), // Last 2 parts (e.g., "data-gathering")
-              ];
-              
-              for (const includedFile of filesIncluded) {
-                const baseName = includedFile.replace('.bpmn', '');
-                // Check if file starts with same timestamp prefix
-                if (baseName.startsWith(timestampPrefix)) {
-                  const baseNameWithoutPrefix = baseName.substring(timestampPrefix.length);
-                  // Check if file ends with elementId (subprocess file)
-                  for (const elementId of possibleElementIds) {
-                    if (elementId && (
-                      baseNameWithoutPrefix.endsWith(`-${elementId}`) || 
-                      baseNameWithoutPrefix === elementId ||
-                      baseNameWithoutPrefix.endsWith(`mortgage-se-${elementId}`) ||
-                      baseNameWithoutPrefix === `mortgage-se-${elementId}`
-                    )) {
-                      if (import.meta.env.DEV) {
-                        console.log(`[extractBpmnFileFromDocFileName] Matched test subprocess file (fallback) for "${featureGoalName}": ${includedFile} (elementId: ${elementId})`);
-                      }
-                      return includedFile;
-                    }
-                  }
-                }
-              }
-            }
-            
-            // Special handling for test files: if featureGoalName contains "parent", look for files with "subprocess"
-            if (featureGoalName.includes('parent') && !featureGoalName.includes('subprocess')) {
-              for (const includedFile of filesIncluded) {
-                const baseName = includedFile.replace('.bpmn', '');
-                // For test files, if parent file is in the name, look for corresponding subprocess file
-                if (baseName.includes('subprocess') && !baseName.includes('parent')) {
-                  // Extract timestamp prefix if present (e.g., "test-{timestamp}-")
-                  const parentMatch = featureGoalName.match(/^(test-\d+-\d+-)/);
-                  if (parentMatch) {
-                    const timestampPrefix = parentMatch[1];
-                    // Check if subprocess file has the same timestamp prefix
-                    if (baseName.startsWith(timestampPrefix)) {
-                      return includedFile;
-                    }
-                  } else if (baseName.includes('subprocess') && baseName.includes('call-activity')) {
-                    // Fallback: if both have "call-activity" but one has "subprocess", use that
-                    return includedFile;
-                  }
-                }
-              }
-            }
-            
-            const parts = featureGoalName.split('-');
-            if (parts.length > 3) {
-              // Likely hierarchical: try to match last 2-3 parts as elementId
-              // E.g., "internal-data-gathering" -> "mortgage-se-internal-data-gathering.bpmn"
-              const possibleElementId = parts.slice(-3).join('-'); // Last 3 parts (e.g., "internal-data-gathering")
-              const possibleElementId2 = parts.slice(-2).join('-'); // Last 2 parts (e.g., "data-gathering")
-              
-              // PRIORITERA: Först sök efter filer som slutar med elementId (subprocess-filer)
-              // Detta är viktigt för att undvika att matcha parent-filen
-              const subprocessMatches: string[] = [];
-              for (const includedFile of filesIncluded) {
-                const baseName = includedFile.replace('.bpmn', '');
-                // Check if baseName ends with the elementId (subprocess-fil)
-                // T.ex. "mortgage-se-internal-data-gathering" ends with "internal-data-gathering"
-                if (baseName.endsWith(`-${possibleElementId}`) || 
-                    baseName.endsWith(`-${possibleElementId2}`) ||
-                    baseName === `mortgage-se-${possibleElementId}` ||
-                    baseName === `mortgage-se-${possibleElementId2}`) {
-                  subprocessMatches.push(includedFile);
-                }
-              }
-              
-              // Om vi hittade subprocess-filer, returnera den första (bör bara finnas en)
-              if (subprocessMatches.length > 0) {
-                if (import.meta.env.DEV) {
-                  console.log(`[extractBpmnFileFromDocFileName] Matched subprocess file for "${featureGoalName}": ${subprocessMatches[0]}`);
-                }
-                return subprocessMatches[0];
-              }
-              
-              // VIKTIGT: För test-filer med hierarchical naming, kan vi behöva matcha mot filer
-              // som innehåller elementId men inte nödvändigtvis slutar med det
-              // T.ex. "test-xxx-mortgage-se-application-internal-data-gathering" -> "test-xxx-mortgage-se-internal-data-gathering.bpmn"
-              for (const includedFile of filesIncluded) {
-                const baseName = includedFile.replace('.bpmn', '');
-                // Check if baseName contains elementId and is likely a subprocess file
-                // (not the parent file, which would be shorter)
-                if ((baseName.includes(`-${possibleElementId}`) || baseName.includes(`-${possibleElementId2}`)) &&
-                    !baseName.includes('application') && // Exclude parent file
-                    baseName.length > parts.slice(0, 3).join('-').length) { // Subprocess files are usually longer
-                  if (import.meta.env.DEV) {
-                    console.log(`[extractBpmnFileFromDocFileName] Matched subprocess file (fallback) for "${featureGoalName}": ${includedFile}`);
-                  }
-                  return includedFile;
-                }
-              }
-            }
-          }
-          
-          // FALLBACK for Process Feature Goals (non-hierarchical): 
-          // If filesIncluded is empty or doesn't contain the file, construct the filename
-          // For Process Feature Goals, featureGoalName IS the baseName of the file
-          const constructedFileName = `${featureGoalName}.bpmn`;
-          if (import.meta.env.DEV) {
-            console.log(`[extractBpmnFileFromDocFileName] No match found for "${featureGoalName}", using constructed filename: ${constructedFileName}`);
-          }
-          return constructedFileName;
-        }
-        
-        // For combined file docs: {bpmnFile}.html (both root and subprocess files)
-        // Pattern: "mortgage-se-application.bpmn.html" -> "mortgage-se-application.bpmn"
-        if (docFileName.endsWith('.html') && !docFileName.includes('/')) {
-          // Remove .html extension and check if it ends with .bpmn
-          const withoutHtml = docFileName.replace('.html', '');
-          if (withoutHtml.endsWith('.bpmn')) {
-            return withoutHtml;
-          }
-          // If not .bpmn, assume it's a base name and add .bpmn
-          return `${withoutHtml}.bpmn`;
-        }
-        
-        return null;
-      };
-
-      // Get version hashes for all files that might be in the result
-      const versionHashCache = new Map<string, string | null>();
-      const getVersionHashForDoc = async (bpmnFileName: string | null): Promise<string | null> => {
-        const targetFile = bpmnFileName || file.file_name;
-        if (versionHashCache.has(targetFile)) {
-          return versionHashCache.get(targetFile) || null;
-        }
-        
-        // Try 1: Use getVersionHashForFile (respects user's version selection)
-        let hash = await getVersionHashForFile(targetFile);
-        
-        // Try 2: If null, try getCurrentVersionHash directly (bypasses version selection)
-        if (!hash) {
-          try {
-            hash = await getCurrentVersionHash(targetFile);
-            if (import.meta.env.DEV && hash) {
-              console.log(`[BpmnFileManager] Fallback: Got version hash for ${targetFile} via getCurrentVersionHash`);
-            }
-          } catch (error) {
-            if (import.meta.env.DEV) {
-              console.warn(`[BpmnFileManager] Failed to get current version hash for ${targetFile}:`, error);
-            }
-          }
-        }
-        
-        // Try 3: If still null and it's a subprocess, try root file's hash as last resort
-        if (!hash && targetFile !== file.file_name) {
-          try {
-            const rootHash = await getVersionHashForFile(file.file_name);
-            if (rootHash) {
-              hash = rootHash;
-              if (import.meta.env.DEV) {
-                console.log(`[BpmnFileManager] Fallback: Using root file's version hash for subprocess ${targetFile}`);
-              }
-            }
-          } catch (error) {
-            if (import.meta.env.DEV) {
-              console.warn(`[BpmnFileManager] Failed to get root file's version hash for fallback:`, error);
-            }
-          }
-        }
-        
-        versionHashCache.set(targetFile, hash);
-        return hash;
-      };
-
       if (result.docs.size > 0) {
-        if (import.meta.env.DEV) {
-          console.log(`[BpmnFileManager] Uploading ${result.docs.size} docs for ${file.file_name}`);
-        }
         // Get filesIncluded from result metadata for better file matching
         const filesIncluded = result.metadata?.filesIncluded || [];
         
-        for (const [docFileName, docContent] of result.docs.entries()) {
-          checkCancel();
-          
-          // Extract BPMN file from docFileName
-          const docBpmnFile = extractBpmnFileFromDocFileName(docFileName, filesIncluded) || file.file_name;
-          const docVersionHash = await getVersionHashForDoc(docBpmnFile);
-          
-          if (import.meta.env.DEV) {
-            if (docBpmnFile !== file.file_name) {
-              console.log(`[BpmnFileManager] Doc ${docFileName} belongs to ${docBpmnFile} (not root ${file.file_name})`);
-            }
-            if (docFileName.startsWith('feature-goals/')) {
-              console.log(`[BpmnFileManager] Feature Goal doc "${docFileName}" -> BPMN file: ${docBpmnFile}, version hash: ${docVersionHash}`);
-            }
-          }
-          
-          // Validate version hash before proceeding
-          if (!docVersionHash) {
-            const errorMsg = `Missing version hash for BPMN file "${docBpmnFile}" (doc: ${docFileName}). Cannot upload documentation.`;
+        const versionHashCache = new Map<string, string | null>();
+        
+        const uploadResult = await uploadDocumentation(
+          result.docs,
+          file,
+          filesIncluded,
+          effectiveLlmMode,
+          llmProvider,
+          getVersionHashForFile,
+          (progress) => {
+            docUploadsCompleted = progress.completed;
+            setDocUploadProgress({
+              planned: progress.planned,
+              completed: progress.completed,
+            });
+          },
+          checkCancel,
+          (errorMsg) => {
             console.error(`[BpmnFileManager] ${errorMsg}`);
             toast({
               title: 'Fel: Saknad version hash',
-              description: `Kunde inte hitta version hash för filen "${docBpmnFile}". Dokumentationen kunde inte laddas upp.`,
+              description: errorMsg,
               variant: 'destructive',
             });
-            continue; // Skip this document and continue with others
-          }
-          
-          const { modePath: docPath } = buildDocStoragePaths(
-            docFileName,
-            effectiveLlmMode ?? null,
-            llmProvider,
-            docBpmnFile, // Use the extracted BPMN file, not the root file
-            docVersionHash // Use the version hash for that specific file
-          );
-          if (import.meta.env.DEV) {
-            console.log(`[BpmnFileManager] Uploading doc: ${docFileName} -> ${docPath}`);
-          }
-          const htmlBlob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
-          const { error: uploadError } = await supabase.storage
-            .from('bpmn-files')
-            .upload(docPath, htmlBlob, {
-              upsert: true,
-              contentType: 'text/html; charset=utf-8',
-              cacheControl: '3600',
-            });
-
-          if (uploadError) {
-            console.error(`[BpmnFileManager] Error uploading ${docFileName} to ${docPath}:`, uploadError);
-          } else {
-            if (import.meta.env.DEV) {
-              console.log(`[BpmnFileManager] ✓ Successfully uploaded ${docFileName} to ${docPath}`);
-            }
-            docsCount++;
-            detailedDocFiles.push(docFileName);
-          }
-          checkCancel();
-          docUploadsCompleted += 1;
-          setDocUploadProgress((prev) => ({
-            planned: prev.planned || docUploadsPlanned,
-            completed: docUploadsCompleted,
-          }));
-          const label =
-            docUploadsPlanned > 0
-              ? `Dokumentation ${docUploadsCompleted} av ${docUploadsPlanned} filer`
-              : `Dokumentation: ${docFileName}`;
-          await incrementJobProgress(label);
-          // Uppdatera progress med detaljerad information
-          const uploadDetail = docUploadsPlanned > 0
-            ? `Laddar upp: ${docUploadsCompleted}/${docUploadsPlanned} filer`
-            : `Laddar upp: ${docFileName}`;
-          setCurrentGenerationStep({ step: 'Laddar upp dokumentation', detail: uploadDetail });
-          updateGenerationProgressWithStep('Laddar upp dokumentation', uploadDetail);
-        }
+          },
+          (step, detail) => {
+            setCurrentGenerationStep({ step, detail });
+            updateGenerationProgressWithStep(step, detail);
+          },
+          incrementJobProgress
+        );
+        
+        docsCount = uploadResult.docsCount;
+        detailedDocFiles.push(...uploadResult.detailedDocFiles);
       }
-
       // Clear structure change flag after successful generation
       if (file.has_structure_changes) {
         await supabase
@@ -1466,7 +1026,7 @@ export function useFileGeneration({
               }
             } catch (error) {
               // Don't fail generation if marking diffs as resolved fails
-              console.warn('[BpmnFileManager] Error marking diffs as resolved:', error);
+              // Error marking diffs as resolved - non-critical
             }
           }
           
@@ -1505,7 +1065,7 @@ export function useFileGeneration({
           window.dispatchEvent(new CustomEvent('bpmn-artifacts-updated'));
         } catch (error) {
           // Don't fail generation if background operations fail
-          console.warn('[BpmnFileManager] Error in background operations:', error);
+          // Error in background operations - non-critical
         }
       })();
       
@@ -1649,8 +1209,7 @@ export function useFileGeneration({
         queryClient.invalidateQueries({ queryKey: ['process-tree'] });
         queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
       } catch (error) {
-        // Logga felet men fortsätt med generering (hierarki är inte kritiskt)
-        console.warn('[handleGenerateAllArtifacts] Failed to build hierarchy automatically, continuing anyway:', error);
+        // Failed to build hierarchy automatically, continuing anyway (hierarchy is not critical)
       }
     }
 

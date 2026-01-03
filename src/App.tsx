@@ -37,6 +37,8 @@ import TestCoverageExplorerPage from "./pages/TestCoverageExplorerPage";
 import E2eTestsOverviewPage from "./pages/E2eTestsOverviewPage";
 import E2eQualityValidationPage from "./pages/E2eQualityValidationPage";
 import { supabase } from "@/integrations/supabase/client";
+// Importera test helpers för att exponera produktionsfunktioner via window
+import "@/lib/testHelpers";
 
 const queryClient = new QueryClient();
 

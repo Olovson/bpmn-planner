@@ -63,7 +63,15 @@
 - ✅ **`documentation-generation-from-scratch.spec.ts`** - ⭐ **NYTT** - Dokumentationsgenerering från scratch med mocked Claude API (identifiera BPMN-filer → hierarki → generering → visas i appen)
   - **Fokus:** Generell dokumentationsgenerering och att resultatet visas i GenerationDialog
   - **Testar:** En fil → hierarki → generering → resultat-dialog
-- ✅ **`test-info-generation.spec.ts`** - ⭐ **UPPDATERAT** - Testinfo-generering med förutsättningar (filer och dokumentation redan uppladdade/genererade → generera testinfo → validera popup och test-coverage sida)
+- ✅ **`test-info-generation.spec.ts`** - ⭐ **UPPDATERAT** - Testinfo-generering med förutsättningar
+  - **Fokus:** Testinfo-generering med mocked API, validerar att resultat visas i GenerationDialog och test-coverage sida
+  - **Testar:** 
+    - Prerequisites check (Feature Goal dokumentation måste finnas) - använder produktionsfunktioner via `window.__TEST_HELPERS__`
+    - Generering av testinfo (E2E scenarios + Feature Goal-test scenarios)
+    - Validerar GenerationDialog med testinfo-kort och detaljerad rapport
+    - Navigerar till test-coverage sida och validerar att testinfo faktiskt visas (E2E scenario-knappar och tabell-data)
+  - **Viktigt:** Använder produktionsfunktioner (`getCurrentVersionHash`, `getFeatureGoalDocFileKey`, `buildDocStoragePaths`, `storageFileExists`) - INGEN duplicerad logik
+  - **Skillnad från `documentation-generation-from-scratch.spec.ts`:** Testar testinfo-generering, inte dokumentationsgenerering
 
 #### Konfiguration & Style Guide
 - ✅ **`configuration.spec.ts`** - Projektkonfiguration

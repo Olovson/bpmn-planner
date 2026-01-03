@@ -144,7 +144,7 @@ export function useTestGeneration({
         queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
       } catch (error) {
         // Logga felet men fortsätt med testgenerering (hierarki är inte kritiskt)
-        console.warn('[handleGenerateTestsForSelectedFile] Failed to build hierarchy automatically, continuing anyway:', error);
+        // Failed to build hierarchy automatically, continuing anyway
       }
     }
 
@@ -202,9 +202,7 @@ export function useTestGeneration({
       // använd alla BPMN-filer som fallback för att säkerställa att vi genererar för hela kedjan
       if (result.length === 1 && files.filter(f => f.file_type === 'bpmn').length > 1) {
         if (import.meta.env.DEV) {
-          console.warn(
-            `[useTestGeneration] Hierarchy not built yet for ${startFile}, using all BPMN files as fallback`
-          );
+          // Hierarchy not built yet, using all BPMN files as fallback
         }
         // Använd alla BPMN-filer som fallback
         return files.filter(f => f.file_type === 'bpmn').map(f => f.file_name);
@@ -519,7 +517,7 @@ export function useTestGeneration({
           queryClient.invalidateQueries({ queryKey: ['bpmn-element-mappings'] });
         } catch (error) {
           // Logga felet men fortsätt med testgenerering (hierarki är inte kritiskt)
-          console.warn('[handleGenerateTestsForAllFiles] Failed to build hierarchy automatically, continuing anyway:', error);
+          // Failed to build hierarchy automatically, continuing anyway
         }
       }
 
@@ -610,15 +608,10 @@ export function useTestGeneration({
           description: `Genererade ${result.totalScenarios || 0} E2E-scenarios för hela hierarkin.`,
         });
         
-        // Logga detaljerad information
-        console.log('[useTestGeneration] Test generation result:', {
-          totalScenarios: result.totalScenarios,
-          errors: result.errors.length,
-          e2eGenerationErrors: result.e2eGenerationErrors?.length || 0,
-          featureGoalTestErrors: result.featureGoalTestErrors?.length || 0,
-          warnings: result.warnings?.length || 0,
-          missingDocumentation: result.missingDocumentation?.length || 0,
-        });
+        // Test generation completed
+        if (import.meta.env.DEV && result.totalScenarios > 0) {
+          console.log(`[useTestGeneration] Generated ${result.totalScenarios} test scenarios`);
+        }
 
         // Visa alla fel och varningar på ett användarvänligt sätt
         const hasErrors = result.errors.length > 0 || 

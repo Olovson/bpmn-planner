@@ -409,7 +409,7 @@ export default function BpmnFileManager() {
           setHierarchyBuilt(false);
         }
       } catch (err) {
-        console.warn('[BpmnFileManager] Error checking hierarchy status:', err);
+        // Error checking hierarchy status - non-critical
         setHierarchyBuilt(false);
       }
     };

@@ -12,6 +12,7 @@ import { isLlmEnabled } from '@/lib/llmClient';
 import { generateE2eScenariosForProcess } from '@/lib/e2eScenarioGenerator';
 import { saveE2eScenariosToStorage } from '@/lib/e2eScenarioStorage';
 // Removed: generateFeatureGoalTestsFromE2e - Feature Goal-tester genereras nu direkt från dokumentation med Claude
+import { generateFeatureGoalTestsDirect } from './featureGoalTestGeneratorDirect';
 import { topologicalSortFiles } from './bpmnGenerators/fileSorting';
 
 export interface TestGenerationResult {
@@ -337,7 +338,7 @@ export async function generateTestsForFile(
     // in Feature Goal documentation via childrenDocumentation
     const testableNodes = allTestableNodes.filter(node => node.type === 'callActivity');
 
-    console.log(`[testGenerators] Found ${testableNodes.length} callActivities (Feature Goals) in ${bpmnFileName}`);
+    // Found testableNodes.length callActivities (Feature Goals) in bpmnFileName
 
     // Validate documentation for testable nodes (callActivities)
     // FORBÄTTRING: Tillåt partiell generering - generera för Feature Goals som har dokumentation
@@ -477,9 +478,7 @@ export async function generateTestsForFile(
               
               docExists = docPath ? await storageFileExists(docPath) : false;
               
-              if (import.meta.env.DEV && !docExists) {
-                console.warn(`[testGenerators] Process Feature Goal doc not found at: ${docPath}`);
-              }
+              // Process Feature Goal doc not found - detta är förväntat om dokumentation saknas
             }
           }
         } else {
@@ -589,17 +588,16 @@ export async function generateTestsForFile(
             }
             
             // Generera Feature Goal-tester direkt från dokumentation med Claude
-            const { generateFeatureGoalTestsDirect } = await import('./featureGoalTestGeneratorDirect');
             const featureGoalTestResult = await generateFeatureGoalTestsDirect(
               Array.from(bpmnFilesSet),
               llmProvider,
               abortSignal
             );
             
-            console.log(
-              `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios directly from documentation, ` +
-              `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
-            );
+              // Generated featureGoalTestResult.generated Feature Goal test scenarios
+              if (featureGoalTestResult.generated > 0 && import.meta.env.DEV) {
+                console.log(`[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios`);
+              }
             
             result.featureGoalScenarios = (result.featureGoalScenarios || 0) + featureGoalTestResult.generated;
             
@@ -789,17 +787,16 @@ export async function generateTestsForFile(
               
               // Generera Feature Goal-tester direkt från dokumentation med Claude
               // Istället för att extrahera från E2E-scenarios
-              const { generateFeatureGoalTestsDirect } = await import('./featureGoalTestGeneratorDirect');
               const featureGoalTestResult = await generateFeatureGoalTestsDirect(
                 Array.from(bpmnFilesSet),
                 llmProvider,
                 abortSignal
               );
               
-              console.log(
-                `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios, ` +
-                `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
-              );
+              // Generated featureGoalTestResult.generated Feature Goal test scenarios
+              if (featureGoalTestResult.generated > 0 && import.meta.env.DEV) {
+                console.log(`[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios`);
+              }
               
               // Uppdatera totalScenarios med antalet genererade Feature Goal-tester (lägg till, inte ersätt)
               result.totalScenarios += featureGoalTestResult.generated;
