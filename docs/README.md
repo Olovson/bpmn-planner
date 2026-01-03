@@ -47,6 +47,7 @@ Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BP
 - **`FEATURE_ROADMAP.md`** - Feature roadmap
 
 ### 🧪 Testing (`testing/`)
+- ⭐ **`TEST_GENERATION.md`** - **Komplett guide för testgenerering** - Hur E2E-scenarios och Feature Goal-tester genereras
 - **`TESTING.md`** - Testguide, best practices
 - **`TEST_EXPORT.md`** - Test export guide
 - **`TEST_SCENARIOS.md`** - Test-scenarion och design-scenarion

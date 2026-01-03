@@ -8,7 +8,7 @@ import { loadAllBpmnParseResults, loadBpmnMap } from '@/lib/bpmn/debugDataLoader
 import { buildProcessGraph } from '@/lib/bpmn/processGraphBuilder';
 import { buildProcessTreeFromGraph } from '@/lib/bpmn/processTreeBuilder';
 import { buildJiraName } from '@/lib/jiraNaming';
-import { createPlannedScenariosFromTree, savePlannedScenarios } from '@/lib/plannedScenariosHelper';
+import { savePlannedScenarios } from '@/lib/plannedScenariosHelper';
 import type { ProcessTreeNode } from '@/lib/bpmn/processTreeTypes';
 import { invalidateStructureQueries } from '@/lib/queryInvalidation';
 import type { QueryClient } from '@tanstack/react-query';
@@ -100,15 +100,14 @@ export async function buildHierarchySilently(
 
     collectMappings(tree);
 
-    // Create base planned scenarios for all testable nodes in ProcessTree
-    const scenariosToInsert = createPlannedScenariosFromTree(tree);
-    const result = await savePlannedScenarios(scenariosToInsert, 'buildHierarchySilently');
-
-    if (!result.success) {
-      console.warn('Could not save all planned scenarios:', result.error?.message);
-    } else if (result.count > 0) {
-      queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
-    }
+    // DISABLED: Create base planned scenarios for all testable nodes in ProcessTree
+    // Detta skapar testscenarios med origin: 'design' som saknar given/when/then.
+    // Testscenarios ska istället genereras via testgenerering (origin: 'claude-direct'). 
+    // if (!result.success) {
+    //   console.warn('Could not save all planned scenarios:', result.error?.message);
+    // } else if (result.count > 0) {
+    //   queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
+    // }
 
     // Deduplicate mappings
     const uniqueMappings = new Map<string, typeof mappingsToInsert[0]>();

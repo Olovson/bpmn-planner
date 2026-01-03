@@ -1,171 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
-import { testMapping, type TestScenario } from '@/data/testMapping';
-import type { ProcessTreeNode } from '@/lib/bpmn/processTreeTypes';
-import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
+import type { TestScenario } from '@/data/testMapping';
 
 /**
- * Creates base planned scenarios for testable nodes.
- * This is a shared function used by both bpmnGenerators and handleBuildHierarchy
- * to avoid code duplication.
+ * Planned scenario row interface for database storage
  */
 export interface PlannedScenarioRow {
   bpmn_file: string;
   bpmn_element_id: string;
   provider: 'claude' | 'chatgpt' | 'ollama';
-  origin: 'design' | 'llm-doc' | 'spec-parsed';
+  origin: 'design' | 'llm-doc' | 'spec-parsed' | 'claude-direct';
   scenarios: TestScenario[];
-}
-
-/**
- * Creates planned scenario rows from ProcessTree nodes
- */
-export function createPlannedScenariosFromTree(
-  tree: ProcessTreeNode,
-): PlannedScenarioRow[] {
-  const rows: PlannedScenarioRow[] = [];
-  const seen = new Set<string>();
-
-  const collectScenarios = (node: ProcessTreeNode): void => {
-    // Only create scenarios for testable node types
-    if (
-      node.type === 'callActivity' ||
-      node.type === 'userTask' ||
-      node.type === 'serviceTask' ||
-      node.type === 'businessRuleTask'
-    ) {
-      if (!node.bpmnFile || !node.bpmnElementId) {
-        console.warn(
-          '[createPlannedScenariosFromTree] Skipping node without bpmnFile or bpmnElementId:',
-          { label: node.label, type: node.type, bpmnFile: node.bpmnFile, bpmnElementId: node.bpmnElementId },
-        );
-        return;
-      }
-
-      const key = `${node.bpmnFile}::${node.bpmnElementId}`;
-      if (seen.has(key)) {
-        // Expected: same node can appear in multiple contexts (parent/subprocess, different flows)
-        // We deduplicate by keeping the first occurrence
-        console.debug(
-          '[createPlannedScenariosFromTree] Duplicate node key skipped (expected in hierarchical BPMN):',
-          key,
-          { label: node.label, type: node.type },
-        );
-        return;
-      }
-      seen.add(key);
-
-      const nodeId = node.bpmnElementId;
-      const name = node.label || nodeId;
-
-      // Try to find template in testMapping first
-      const template = testMapping[nodeId];
-      let scenarios: TestScenario[] = [];
-
-      if (template && template.scenarios && template.scenarios.length > 0) {
-        scenarios = template.scenarios;
-      } else {
-        // Fallback: create a simple "happy path" scenario
-        scenarios = [
-          {
-            id: `${nodeId}-auto`,
-            name: `Happy path – ${name}`,
-            description: 'Automatiskt genererat scenario baserat på nodens testskelett.',
-            status: 'pending',
-            category: 'happy-path',
-          },
-        ];
-      }
-
-      // Add the row to the results array
-      rows.push({
-        bpmn_file: node.bpmnFile,
-        bpmn_element_id: nodeId,
-        provider: 'claude', // Default provider
-        origin: 'design', // Default origin
-        scenarios,
-      });
-
-      // Note: Design scenarios are no longer automatically created
-      // They should be generated via LLM instead
-    }
-
-    // Recursively process children
-    for (const child of node.children) {
-      collectScenarios(child);
-    }
-  };
-
-  collectScenarios(tree);
-  return rows;
-}
-
-/**
- * Creates planned scenario rows from BpmnProcessGraph nodes
- */
-export function createPlannedScenariosFromGraph(
-  nodes: BpmnProcessNode[],
-): PlannedScenarioRow[] {
-  const rows: PlannedScenarioRow[] = [];
-  const seen = new Set<string>();
-
-  for (const node of nodes) {
-    if (!node.bpmnFile || !node.bpmnElementId) {
-      console.warn(
-        '[createPlannedScenariosFromGraph] Skipping node without bpmnFile or bpmnElementId:',
-        { name: node.name, type: node.type, bpmnFile: node.bpmnFile, bpmnElementId: node.bpmnElementId },
-      );
-      continue;
-    }
-
-    const key = `${node.bpmnFile}::${node.bpmnElementId}`;
-    if (seen.has(key)) {
-      // Expected: same node can appear in multiple contexts (parent/subprocess, different flows)
-      // We deduplicate by keeping the first occurrence
-      console.debug(
-        '[createPlannedScenariosFromGraph] Duplicate node key skipped (expected in hierarchical BPMN):',
-        key,
-        { name: node.name, type: node.type },
-      );
-      continue;
-    }
-    seen.add(key);
-
-    const nodeId = node.bpmnElementId;
-    const name = node.name || nodeId;
-
-    // Try to find template in testMapping first
-    const template = testMapping[nodeId];
-    let scenarios: TestScenario[] = [];
-
-    if (template && template.scenarios && template.scenarios.length > 0) {
-      scenarios = template.scenarios;
-    } else {
-      // Fallback: create a simple "happy path" scenario
-      scenarios = [
-        {
-          id: `${nodeId}-auto`,
-          name: `Happy path – ${name}`,
-          description: 'Automatiskt genererat scenario baserat på nodens testskelett.',
-          status: 'pending',
-          category: 'happy-path',
-        },
-      ];
-    }
-
-    // Add the row to the results array
-    rows.push({
-      bpmn_file: node.bpmnFile,
-      bpmn_element_id: nodeId,
-      provider: 'claude', // Default provider
-      origin: 'design', // Default origin
-      scenarios,
-    });
-
-    // Note: Design scenarios are no longer automatically created
-    // They should be generated via LLM instead
-  }
-
-  return rows;
 }
 
 /**
@@ -180,7 +24,31 @@ export async function savePlannedScenarios(
     return { success: true, count: 0 };
   }
 
-  const { data, error } = await supabase.from('node_planned_scenarios').upsert(rows, {
+  // DEBUG: Logga första scenariot för att se om given/when/then finns
+  if (import.meta.env.DEV && rows.length > 0 && rows[0].scenarios.length > 0) {
+    const firstRow = rows[0];
+    const firstScenario = firstRow.scenarios[0];
+    console.log(`[savePlannedScenarios] Saving scenarios for ${firstRow.bpmn_file}::${firstRow.bpmn_element_id} (context: ${context}):`, {
+      origin: firstRow.origin,
+      provider: firstRow.provider,
+      scenarioCount: firstRow.scenarios.length,
+      firstScenario: {
+        id: firstScenario.id,
+        name: firstScenario.name,
+        hasGiven: !!firstScenario.given,
+        hasWhen: !!firstScenario.when,
+        hasThen: !!firstScenario.then,
+        givenPreview: firstScenario.given?.substring(0, 100),
+        whenPreview: firstScenario.when?.substring(0, 100),
+        thenPreview: firstScenario.then?.substring(0, 100),
+      },
+    });
+  }
+
+  // VIKTIGT: Använd upsert med onConflict för att skriva över gamla rader
+  // Vi tar redan bort alla gamla rader innan vi sparar nya (i featureGoalTestGenerator),
+  // men upsert säkerställer att vi inte får dubbletter om något går fel
+  const { data, error } = await (supabase as any).from('node_planned_scenarios').upsert(rows, {
     onConflict: 'bpmn_file,bpmn_element_id,provider',
   });
 

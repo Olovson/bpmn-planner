@@ -8,7 +8,7 @@ import { loadAllBpmnParseResults, loadBpmnMap } from '@/lib/bpmn/debugDataLoader
 import type { ProcessGraph } from '@/lib/bpmn/processGraph';
 import type { ProcessTreeNode } from '@/lib/bpmn/processTreeTypes';
 import { buildJiraName, buildParentPath } from '@/lib/jiraNaming';
-import { createPlannedScenariosFromTree, savePlannedScenarios } from '@/lib/plannedScenariosHelper';
+import { savePlannedScenarios } from '@/lib/plannedScenariosHelper';
 import { invalidateStructureQueries } from '@/lib/queryInvalidation';
 import { createGenerationJob, updateGenerationJob, setJobStatus } from '@/pages/BpmnFileManager/utils/jobHelpers';
 import type { GenerationJob, GenerationStatus } from '@/hooks/useGenerationJobs';
@@ -246,17 +246,24 @@ export function useHierarchyBuilding({
 
       collectMappings(tree);
 
-      // Create base planned scenarios for all testable nodes in ProcessTree
-      const scenariosToInsert = createPlannedScenariosFromTree(tree);
-      const result = await savePlannedScenarios(scenariosToInsert, 'handleBuildHierarchy');
+      // DISABLED: Create base planned scenarios for all testable nodes in ProcessTree
+      // Detta skapar testscenarios med origin: 'design' som saknar given/when/then.
+      // Testscenarios ska istället genereras via testgenerering (origin: 'claude-direct').
+      const result = { success: true, count: 0 };
 
-      if (!result.success) {
-        toast({
-          title: 'Varning',
-          description: `Kunde inte spara alla planerade scenarion: ${result.error?.message || 'Okänt fel'}`,
-          variant: 'destructive',
-        });
-      } else if (result.count > 0) {
+      // OLD CODE (disabled - scenarios are no longer created here):
+      // if (!result.success) {
+      //   toast({
+      //     title: 'Varning',
+      //     description: `Kunde inte spara alla planerade scenarion: ${result.error?.message || 'Okänt fel'}`,
+      //     variant: 'destructive',
+      //   });
+      // } else if (result.count > 0) {
+      //   queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
+      // }
+      
+      // Scenarios are now generated via test generation, not during hierarchy building
+      if (false) {
         // Invalidate planned scenarios queries
         queryClient.invalidateQueries({ queryKey: ['global-planned-scenarios'] });
       }

@@ -1494,7 +1494,6 @@ export function useFileGeneration({
             queryClient.invalidateQueries({ queryKey: ['bpmn-files'] }),
             queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] }),
             queryClient.invalidateQueries({ queryKey: ['file-artifact-coverage'] }),
-            queryClient.invalidateQueries({ queryKey: ['all-dor-dod-criteria'] }),
             queryClient.invalidateQueries({ queryKey: ['process-tree'] }),
             queryClient.invalidateQueries({ queryKey: ['bpmn-dependencies'] }),
             queryClient.invalidateQueries({ queryKey: ['node-test-links'] }),

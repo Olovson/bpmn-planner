@@ -35,8 +35,8 @@ npm run dev              # Starta dev-server (http://localhost:8080/)
 - **API Reference**: [`docs/architecture/guides/API_REFERENCE.md`](docs/architecture/guides/API_REFERENCE.md)
 
 ### För Test Lead
+- ⭐ **Testgenerering**: [`docs/testing/TEST_GENERATION.md`](docs/testing/TEST_GENERATION.md) - Komplett guide för hur testgenerering fungerar
 - **Test Lead Guide**: [`docs/guides/user/README_FOR_TESTLEAD.md`](docs/guides/user/README_FOR_TESTLEAD.md)
-- **Test Export**: [`docs/testing/TEST_EXPORT.md`](docs/testing/TEST_EXPORT.md)
 - **Test Coverage Guide**: [`docs/guides/user/TEST_COVERAGE_USER_GUIDE.md`](docs/guides/user/TEST_COVERAGE_USER_GUIDE.md)
 
 ### Funktioner & Funktionalitet

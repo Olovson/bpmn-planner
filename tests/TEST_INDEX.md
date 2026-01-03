@@ -240,7 +240,7 @@ Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
 - **`file-upload-versioning.spec.ts`** - Fil-upload och versioning
 - **`claude-generation.spec.ts`** - Claude-generering för application-processen (använder faktiska API-anrop)
 - **`documentation-generation-from-scratch.spec.ts`** - Dokumentationsgenerering från scratch med mocked Claude API
-- **`test-generation-from-scratch.spec.ts`** - Testgenerering från scratch med mocked Claude API
+- **`test-info-generation.spec.ts`** - Testinfo-generering med förutsättningar (filer och dokumentation redan uppladdade/genererade)
 - **`hierarchy-building-from-scratch.spec.ts`** - Hierarki-byggnad från scratch (isolerat test)
 - **`bpmn-map-validation-workflow.spec.ts`** - BPMN Map-validering och uppdatering (komplett flöde)
 - **`github-sync-workflow.spec.ts`** - ⭐ **NYTT** - GitHub Sync workflow (synka från GitHub → visa sync-rapport)

@@ -50,7 +50,6 @@ import {
 } from '@/lib/bpmnFlowExtractor';
 import { testMapping, type TestScenario } from '@/data/testMapping';
 import {
-  createPlannedScenariosFromGraph,
   savePlannedScenarios,
   type PlannedScenarioRow,
 } from '@/lib/plannedScenariosHelper';
@@ -677,26 +676,8 @@ export async function generateAllFromBpmnWithGraph(
     // Detta undviker förvirring och onödig databasaktivitet.
     // 
     // Om du vill skapa planned scenarios, gör det i testgenereringssteget istället.
-    // 
-    // DISABLED: Skipping planned scenario creation during documentation generation
-    // Uncomment below if you want to re-enable this (not recommended):
-    /*
-    try {
-      const rows = createPlannedScenariosFromGraph(nodesToGenerate);
-      // Lägg till i map för fallback, men prioritera inte dessa över LLM-genererade
-      hydrateScenarioMapFromRows(rows);
-      // Spara endast om det inte redan finns scenarion i databasen (för att inte skriva över manuellt skapade)
-      // Men när vi genererar dokumentation, kommer LLM-scenarion alltid prioriteras
-      await savePlannedScenarios(rows, 'bpmnGenerators');
-    } catch (e) {
-      console.error(
-        '[bpmnGenerators] Failed to seed planned scenarios from hierarchy',
-        e,
-        'Testable nodes:',
-        testableNodes.length,
-      );
-    }
-    */
+    // REMOVED: Planned scenario creation during documentation generation
+    // Feature Goal tests are now generated directly from documentation via featureGoalTestGeneratorDirect.ts
 
     // OBS: total:init har flyttats till EFTER nodesToGenerate beräkning (se rad ~1636)
     // Detta säkerställer att progress visar korrekt antal noder som faktiskt genereras,

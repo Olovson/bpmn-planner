@@ -42,7 +42,7 @@ export const useGlobalPlannedScenarios = () => {
           elementId: string;
           byProvider: {
             provider: ScenarioProvider;
-            origin: 'design' | 'llm-doc' | 'spec-parsed';
+            origin: 'design' | 'llm-doc' | 'spec-parsed' | 'claude-direct';
             scenarios: TestScenario[];
           }[];
         }
@@ -59,7 +59,7 @@ export const useGlobalPlannedScenarios = () => {
           ((row as any).provider as ScenarioProvider | null) ??
           'claude';
         const origin =
-          ((row as any).origin as 'design' | 'llm-doc' | 'spec-parsed' | null) ??
+          ((row as any).origin as 'design' | 'llm-doc' | 'spec-parsed' | 'claude-direct' | null) ??
           'design';
         const scenarios =
           (((row as any).scenarios || []) as unknown as TestScenario[]) || [];

@@ -37,13 +37,22 @@ export async function findTestInfoForCallActivity(
       continue;
     }
 
+    // VIKTIGT: Matcha både callActivityId OCH bpmnFile för att få rätt subprocessStep
     const subprocessStep = scenario.subprocessSteps.find(
-      (step) => step.callActivityId === callActivityId,
+      (step) => step.callActivityId === callActivityId && 
+                (bpmnFile ? step.bpmnFile === bpmnFile : true), // Om bpmnFile är angivet, matcha på det också
     );
     if (subprocessStep) {
       const bankProjectStep = scenario.bankProjectTestSteps.find(
         (step) => step.bpmnNodeId === callActivityId,
       );
+
+      if (import.meta.env.DEV) {
+        console.log(`[testCoverageHelpers] Found E2E subprocessStep for ${bpmnFile || 'unknown'}::${callActivityId}:`, {
+          hasDescription: !!subprocessStep.description,
+          descriptionPreview: subprocessStep.description?.substring(0, 100),
+        });
+      }
 
       testInfo.push({
         scenarioId: scenario.id,
@@ -54,13 +63,40 @@ export async function findTestInfoForCallActivity(
     }
   }
 
-  // 2. Om inga E2E-scenarios hittades, hämta Feature Goal-tester från databasen
-  if (testInfo.length === 0 && bpmnFile && callActivityId) {
+  // 2. Om inga E2E-scenarios hittades ELLER om E2E-scenarios saknar description,
+  // hämta Feature Goal-tester från databasen som fallback
+  const hasE2eTestInfo = testInfo.length > 0 && testInfo.some(
+    info => info.subprocessStep?.description
+  );
+  
+  if (!hasE2eTestInfo && bpmnFile && callActivityId) {
     try {
+      if (import.meta.env.DEV) {
+        console.log(`[testCoverageHelpers] Fetching Feature Goal tests for ${bpmnFile}::${callActivityId}`);
+      }
+      
       const plannedScenarios = await fetchPlannedScenarios(bpmnFile, callActivityId);
+      
+      if (import.meta.env.DEV) {
+        if (plannedScenarios && plannedScenarios.scenarios.length > 0) {
+          console.log(`[testCoverageHelpers] Found ${plannedScenarios.scenarios.length} scenarios for ${bpmnFile}::${callActivityId}`);
+        } else {
+          console.log(`[testCoverageHelpers] No scenarios found in database for ${bpmnFile}::${callActivityId}`);
+        }
+      }
+      
       if (plannedScenarios && plannedScenarios.scenarios.length > 0) {
         // Använd första scenariot (eller aggregera alla)
         const firstScenario = plannedScenarios.scenarios[0];
+        
+        if (import.meta.env.DEV) {
+          console.log(`[testCoverageHelpers] Found Feature Goal test for ${bpmnFile}::${callActivityId}:`, {
+            id: firstScenario.id,
+            name: firstScenario.name,
+            hasDescription: !!firstScenario.description,
+            descriptionPreview: firstScenario.description?.substring(0, 100) + '...',
+          });
+        }
         
         // Skapa subprocessStep från Feature Goal-test
         const subprocessStep: E2eScenario['subprocessSteps'][0] = {
@@ -68,9 +104,9 @@ export async function findTestInfoForCallActivity(
           bpmnFile: bpmnFile,
           callActivityId: callActivityId,
           description: firstScenario.description || firstScenario.name || '',
-          given: firstScenario.given || '',
-          when: firstScenario.when || '',
-          then: firstScenario.then || '',
+          given: firstScenario.given,
+          when: firstScenario.when,
+          then: firstScenario.then,
         };
 
         testInfo.push({
@@ -79,6 +115,10 @@ export async function findTestInfoForCallActivity(
           subprocessStep,
           featureGoalScenario: firstScenario,
         });
+      } else {
+        if (import.meta.env.DEV) {
+          console.log(`[testCoverageHelpers] No Feature Goal tests found for ${bpmnFile}::${callActivityId}`);
+        }
       }
     } catch (error) {
       console.warn(`[testCoverageHelpers] Failed to fetch Feature Goal tests for ${bpmnFile}::${callActivityId}:`, error);
@@ -99,10 +139,18 @@ export async function buildTestInfoMap(
   const testInfoMap = new Map<string, TestInfo[]>();
 
   for (const node of path) {
-    if (node.type === 'callActivity' && node.bpmnElementId && node.bpmnFile) {
-      const testInfo = await findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId, node.bpmnFile);
-      if (testInfo.length > 0) {
-        testInfoMap.set(node.bpmnElementId, testInfo);
+    if (node.type === 'callActivity' && node.bpmnElementId) {
+      // För callActivities: bpmnFile är parent-filen där callActivity är definierad
+      // Men testscenarios sparas med parent-filen, så vi använder node.bpmnFile direkt
+      const bpmnFile = node.bpmnFile;
+      if (bpmnFile) {
+        const testInfo = await findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId, bpmnFile);
+        if (testInfo.length > 0) {
+          testInfoMap.set(node.bpmnElementId, testInfo);
+        } else if (import.meta.env.DEV) {
+          // Debug: logga om vi inte hittar testinfo
+          console.log(`[testCoverageHelpers] No test info found for ${bpmnFile}::${node.bpmnElementId}`);
+        }
       }
     }
   }

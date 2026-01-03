@@ -54,27 +54,33 @@ const MOCK_DOCUMENTATION_RESPONSE = {
 };
 
 /**
- * Mock-respons för testgenerering
+ * Mock-respons för Feature Goal test-generering (direkt från dokumentation)
+ * Detta matchar FeatureGoalTestModel JSON schema
  */
-const MOCK_TEST_SCENARIOS_RESPONSE = {
+const MOCK_FEATURE_GOAL_TEST_RESPONSE = {
+  name: "Application - Hanterar ansökan",
+  description: "Feature Goal för att hantera kreditansökan från kunden.",
+  given: "Kunden har fyllt i komplett ansökan med personuppgifter. Systemet har validerat att alla obligatoriska fält är ifyllda. Ansökan är redo för bearbetning.",
+  when: "Systemet validerar ansökan och samlar in nödvändig data. Processen genomför kreditutvärdering baserat på angivna uppgifter. Systemet genererar beslutsunderlag för handläggare.",
+  then: "Ansökan är komplett och klar för kreditutvärdering. Alla nödvändiga data har samlats in. Beslutsunderlag är genererat och redo för handläggning.",
+  category: "happy-path"
+};
+
+/**
+ * Mock-respons för E2E scenario-generering
+ */
+const MOCK_E2E_SCENARIO_RESPONSE = {
   scenarios: [
     {
       name: "Happy Path Scenario",
-      description: "Detta är ett mockat test-scenario för happy path",
-      given: ["Systemet är igång", "BPMN-filer är uppladdade"],
-      when: ["Användaren genererar tester"],
-      then: ["Tester genereras korrekt", "Tester visas i appen"],
-      priority: "P1",
-      riskLevel: "LOW"
-    },
-    {
-      name: "Error Handling Scenario",
-      description: "Detta är ett mockat test-scenario för error handling",
-      given: ["Systemet är igång", "Ett fel uppstår"],
-      when: ["Användaren försöker generera tester"],
-      then: ["Fel hanteras korrekt", "Användaren får feedback"],
-      priority: "P2",
-      riskLevel: "MEDIUM"
+      description: "Detta är ett mockat E2E-scenario för happy path",
+      type: "happy-path",
+      steps: [
+        "Start process",
+        "Validate input",
+        "Process request",
+        "Complete process"
+      ]
     }
   ]
 };
@@ -126,7 +132,7 @@ export async function setupClaudeApiMocks(page: Page, options: ClaudeApiMockOpti
       }
     }
     
-    // Kolla om det är dokumentationsgenerering eller testgenerering
+    // Kolla om det är dokumentationsgenerering, Feature Goal test-generering eller E2E scenario-generering
     // Förbättrad detektering: kolla både user prompt och system prompt
     const userPrompt = (typeof postData?.messages?.[0]?.content === 'string' 
       ? postData.messages[0].content 
@@ -134,34 +140,64 @@ export async function setupClaudeApiMocks(page: Page, options: ClaudeApiMockOpti
     const systemPrompt = postData?.system || '';
     const combinedPrompt = `${systemPrompt} ${userPrompt}`.toLowerCase();
     
-    const isTestGeneration = 
-      combinedPrompt.includes('test scenario') ||
-      combinedPrompt.includes('generate test') ||
-      combinedPrompt.includes('test generation') ||
-      (userPrompt.toLowerCase().includes('test') && userPrompt.toLowerCase().includes('scenario'));
+    // Detektera Feature Goal test-generering (direkt från dokumentation)
+    const isFeatureGoalTestGeneration = 
+      combinedPrompt.includes('feature goal test') ||
+      combinedPrompt.includes('featuregoal') ||
+      (combinedPrompt.includes('given') && combinedPrompt.includes('when') && combinedPrompt.includes('then') && combinedPrompt.includes('feature goal'));
+    
+    // Detektera E2E scenario-generering
+    const isE2eScenarioGeneration = 
+      combinedPrompt.includes('e2e scenario') ||
+      combinedPrompt.includes('end-to-end') ||
+      (combinedPrompt.includes('e2e') && combinedPrompt.includes('scenario'));
     
     // Mock response baserat på typ
-    if (isTestGeneration) {
-      // Mock test scenario generation response
+    if (isFeatureGoalTestGeneration) {
+      // Mock Feature Goal test generation response (direkt från dokumentation)
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          id: 'msg-mock-test-123',
+          id: 'msg-mock-feature-goal-test-123',
           type: 'message',
           role: 'assistant',
           content: [
             {
               type: 'text',
-              text: JSON.stringify(MOCK_TEST_SCENARIOS_RESPONSE)
+              text: JSON.stringify(MOCK_FEATURE_GOAL_TEST_RESPONSE)
             }
           ],
           model: 'claude-sonnet-4-5-20250929',
           stop_reason: 'end_turn',
           stop_sequence: null,
           usage: {
-            input_tokens: 100,
-            output_tokens: 200
+            input_tokens: 150,
+            output_tokens: 250
+          }
+        })
+      });
+    } else if (isE2eScenarioGeneration) {
+      // Mock E2E scenario generation response
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'msg-mock-e2e-scenario-123',
+          type: 'message',
+          role: 'assistant',
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(MOCK_E2E_SCENARIO_RESPONSE)
+            }
+          ],
+          model: 'claude-sonnet-4-5-20250929',
+          stop_reason: 'end_turn',
+          stop_sequence: null,
+          usage: {
+            input_tokens: 200,
+            output_tokens: 400
           }
         })
       });

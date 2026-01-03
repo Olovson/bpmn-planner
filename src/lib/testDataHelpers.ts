@@ -12,7 +12,7 @@ export type ScenarioProvider = 'cloud' | 'claude' | 'ollama' | 'chatgpt';
 
 export interface TestScenarioData {
   provider: ScenarioProvider;
-  origin: 'design' | 'llm-doc' | 'spec-parsed';
+  origin: 'design' | 'llm-doc' | 'spec-parsed' | 'claude-direct';
   scenarios: TestScenario[];
 }
 
@@ -34,6 +34,10 @@ export async function fetchPlannedScenarios(
   preferredProvider?: ScenarioProvider,
 ): Promise<TestScenarioData | null> {
   try {
+    if (import.meta.env.DEV) {
+      console.log(`[fetchPlannedScenarios] Querying for ${bpmnFile}::${elementId}`);
+    }
+    
     const { data, error } = await supabase
       .from('node_planned_scenarios')
       .select('provider, origin, scenarios')
@@ -48,32 +52,79 @@ export async function fetchPlannedScenarios(
       return null;
     }
 
+    if (import.meta.env.DEV) {
+      if (data && data.length > 0) {
+        console.log(`[fetchPlannedScenarios] Found ${data.length} row(s) for ${bpmnFile}::${elementId}`);
+        const firstRow = data[0];
+        if (firstRow.scenarios && Array.isArray(firstRow.scenarios) && firstRow.scenarios.length > 0) {
+          const firstScenario = firstRow.scenarios[0] as any;
+          console.log(`[fetchPlannedScenarios] First scenario:`, {
+            id: firstScenario.id,
+            name: firstScenario.name,
+            hasDescription: !!firstScenario.description,
+            descriptionPreview: firstScenario.description?.substring(0, 100),
+          });
+        }
+      } else {
+        console.log(`[fetchPlannedScenarios] No data found for ${bpmnFile}::${elementId}`);
+      }
+    }
+
     if (!data || data.length === 0) {
       return null;
     }
 
     // If preferred provider is specified, try to find it first
     if (preferredProvider) {
-      const preferred = data.find((row) => row.provider === preferredProvider);
-      if (preferred) {
-        return {
-          provider: preferred.provider as ScenarioProvider,
-          origin: preferred.origin as 'design' | 'llm-doc' | 'spec-parsed',
-          scenarios: (preferred.scenarios || []) as unknown as TestScenario[],
-        };
+      const rowsWithProvider = data.filter((row) => row.provider === preferredProvider);
+      if (rowsWithProvider.length > 0) {
+        // Prioritera origin: 'claude-direct' över 'design'
+        const originPriority: Array<'claude-direct' | 'llm-doc' | 'spec-parsed' | 'design'> = [
+          'claude-direct',
+          'llm-doc',
+          'spec-parsed',
+          'design',
+        ];
+        for (const origin of originPriority) {
+          const match = rowsWithProvider.find((row) => row.origin === origin);
+          if (match) {
+            return {
+              provider: match.provider as ScenarioProvider,
+              origin: match.origin as 'design' | 'llm-doc' | 'spec-parsed' | 'claude-direct',
+              scenarios: (match.scenarios || []) as unknown as TestScenario[],
+            };
+          }
+        }
       }
     }
 
+    // VIKTIGT: Prioritera origin: 'claude-direct' över 'design'
+    // Detta säkerställer att nya testscenarios (med given/when/then från Claude) prioriteras över gamla
+    const originPriority: Array<'claude-direct' | 'llm-doc' | 'spec-parsed' | 'design'> = [
+      'claude-direct',
+      'llm-doc',
+      'spec-parsed',
+      'design',
+    ];
+    
     // Otherwise, prefer cloud/chatgpt > ollama
-    const priority: ScenarioProvider[] = ['cloud', 'claude', 'chatgpt', 'ollama'];
-    for (const provider of priority) {
-      const match = data.find((row) => row.provider === provider);
-      if (match) {
-        return {
-          provider: match.provider as ScenarioProvider,
-          origin: match.origin as 'design' | 'llm-doc' | 'spec-parsed',
-          scenarios: (match.scenarios || []) as unknown as TestScenario[],
-        };
+    const providerPriority: ScenarioProvider[] = ['cloud', 'claude', 'chatgpt', 'ollama'];
+    
+    // Först: Försök hitta rad med högsta provider-prioritet OCH högsta origin-prioritet
+    for (const provider of providerPriority) {
+      const rowsWithProvider = data.filter((row) => row.provider === provider);
+      if (rowsWithProvider.length > 0) {
+        // Hitta rad med högsta origin-prioritet
+        for (const origin of originPriority) {
+          const match = rowsWithProvider.find((row) => row.origin === origin);
+          if (match) {
+            return {
+              provider: match.provider as ScenarioProvider,
+              origin: match.origin as 'design' | 'llm-doc' | 'spec-parsed' | 'claude-direct',
+              scenarios: (match.scenarios || []) as unknown as TestScenario[],
+            };
+          }
+        }
       }
     }
 
@@ -81,7 +132,7 @@ export async function fetchPlannedScenarios(
     const first = data[0];
     return {
       provider: first.provider as ScenarioProvider,
-      origin: first.origin as 'design' | 'llm-doc' | 'spec-parsed',
+      origin: first.origin as 'design' | 'llm-doc' | 'spec-parsed' | 'claude-direct',
       scenarios: (first.scenarios || []) as unknown as TestScenario[],
     };
   } catch (error) {

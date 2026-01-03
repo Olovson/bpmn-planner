@@ -11,7 +11,7 @@ import type { LlmProvider } from '@/lib/llmClientAbstraction';
 import { isLlmEnabled } from '@/lib/llmClient';
 import { generateE2eScenariosForProcess } from '@/lib/e2eScenarioGenerator';
 import { saveE2eScenariosToStorage } from '@/lib/e2eScenarioStorage';
-import { generateFeatureGoalTestsFromE2e } from '@/lib/featureGoalTestGenerator';
+// Removed: generateFeatureGoalTestsFromE2e - Feature Goal-tester genereras nu direkt från dokumentation med Claude
 import { topologicalSortFiles } from './bpmnGenerators/fileSorting';
 
 export interface TestGenerationResult {
@@ -19,6 +19,20 @@ export interface TestGenerationResult {
   // All test information is now in E2E scenarios and Feature Goal-test scenarios
   totalFiles: number;
   totalScenarios: number;
+  e2eScenarios?: number; // Number of E2E scenarios generated
+  featureGoalScenarios?: number; // Number of Feature Goal test scenarios generated
+  filesGenerated?: string[]; // List of files that were actually processed
+  e2eScenarioDetails?: Array<{ // Detailed info about E2E scenarios
+    bpmnFile: string;
+    scenarioName: string;
+    scenarioId: string;
+  }>;
+  featureGoalScenarioDetails?: Array<{ // Detailed info about Feature Goal test scenarios
+    bpmnFile: string;
+    callActivityId: string;
+    scenarioName: string;
+    scenarioId: string;
+  }>;
   errors: Array<{
     elementId: string;
     elementName: string;
@@ -61,9 +75,39 @@ export async function generateTestsForFile(
   existingBpmnFiles: string[] = [],
   isActualRootFile?: boolean,
 ): Promise<TestGenerationResult> {
+  // VIKTIGT: Ta bort alla gamla testscenarios med origin: 'design' innan testgenerering
+  // Dessa skapas av buildHierarchySilently och saknar given/when/then-fält
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const filesToClean = useHierarchy && existingBpmnFiles.length > 0 
+      ? existingBpmnFiles 
+      : [bpmnFileName];
+    
+    for (const file of filesToClean) {
+      const { error: deleteError } = await (supabase as any)
+        .from('node_planned_scenarios')
+        .delete()
+        .eq('bpmn_file', file)
+        .eq('origin', 'design');
+      
+      if (deleteError) {
+        console.warn(`[testGenerators] Failed to delete old 'design' scenarios for ${file}:`, deleteError);
+      } else if (import.meta.env.DEV) {
+        console.log(`[testGenerators] Cleaned up old 'design' scenarios for ${file}`);
+      }
+    }
+  } catch (error) {
+    console.warn('[testGenerators] Error cleaning up old design scenarios:', error);
+  }
+
   const result: TestGenerationResult = {
     totalFiles: 0,
     totalScenarios: 0,
+    e2eScenarios: 0,
+    featureGoalScenarios: 0,
+    filesGenerated: [],
+    e2eScenarioDetails: [],
+    featureGoalScenarioDetails: [],
     errors: [],
   };
 
@@ -157,11 +201,17 @@ export async function generateTestsForFile(
       const aggregatedResult: TestGenerationResult = {
         totalFiles: 0,
         totalScenarios: 0,
+        e2eScenarios: 0,
+        featureGoalScenarios: 0,
+        filesGenerated: [],
+        e2eScenarioDetails: [],
+        featureGoalScenarioDetails: [],
         errors: [],
       };
       
       for (let i = 0; i < filesToGenerate.length; i++) {
         const fileName = filesToGenerate[i];
+        const isRootFileInHierarchy = i === 0; // First file in hierarchy is root (generates E2E scenarios)
         
         if (checkCancellation) {
           checkCancellation();
@@ -179,6 +229,7 @@ export async function generateTestsForFile(
         
         try {
           // Recursively call generateTestsForFile for each file (with useHierarchy=false to avoid infinite recursion)
+          // Only root file (first file) should generate E2E scenarios
           const fileResult = await generateTestsForFile(
             fileName,
             llmProvider,
@@ -194,12 +245,35 @@ export async function generateTestsForFile(
             abortSignal,
             false, // useHierarchy = false (already in hierarchy loop)
             [], // existingBpmnFiles = [] (not needed for single file)
-            false, // isActualRootFile = false (only root file in hierarchy should be true)
+            isRootFileInHierarchy, // isActualRootFile = true only for first file (root) - generates E2E scenarios
           );
           
           // Aggregate results
           aggregatedResult.totalFiles += fileResult.totalFiles;
           aggregatedResult.totalScenarios += fileResult.totalScenarios;
+          aggregatedResult.e2eScenarios = (aggregatedResult.e2eScenarios || 0) + (fileResult.e2eScenarios || 0);
+          aggregatedResult.featureGoalScenarios = (aggregatedResult.featureGoalScenarios || 0) + (fileResult.featureGoalScenarios || 0);
+          
+          // Track which files were generated
+          if (!aggregatedResult.filesGenerated) {
+            aggregatedResult.filesGenerated = [];
+          }
+          aggregatedResult.filesGenerated.push(fileName);
+          
+          // Aggregate scenario details
+          if (fileResult.e2eScenarioDetails) {
+            if (!aggregatedResult.e2eScenarioDetails) {
+              aggregatedResult.e2eScenarioDetails = [];
+            }
+            aggregatedResult.e2eScenarioDetails.push(...fileResult.e2eScenarioDetails);
+          }
+          if (fileResult.featureGoalScenarioDetails) {
+            if (!aggregatedResult.featureGoalScenarioDetails) {
+              aggregatedResult.featureGoalScenarioDetails = [];
+            }
+            aggregatedResult.featureGoalScenarioDetails.push(...fileResult.featureGoalScenarioDetails);
+          }
+          
           aggregatedResult.errors.push(...fileResult.errors);
           if (fileResult.missingDocumentation) {
             if (!aggregatedResult.missingDocumentation) {
@@ -241,10 +315,19 @@ export async function generateTestsForFile(
         currentElement: 'Klar!',
       });
       
+      // Ensure filesGenerated is set
+      if (!aggregatedResult.filesGenerated || aggregatedResult.filesGenerated.length === 0) {
+        aggregatedResult.filesGenerated = filesToGenerate;
+      }
+      
       return aggregatedResult;
     }
     
     // Single file generation (original logic)
+    // Ensure filesGenerated is set for single file
+    if (!result.filesGenerated || result.filesGenerated.length === 0) {
+      result.filesGenerated = [bpmnFileName];
+    }
     const allTestableNodes = getTestableNodes(graph);
     
     console.log(`[testGenerators] Found ${allTestableNodes.length} testable nodes in ${bpmnFileName}`);
@@ -463,12 +546,16 @@ export async function generateTestsForFile(
       });
     }
 
-    // Generate E2E scenarios for root process (if this is a root file)
-    // Only generate E2E scenarios if LLM is enabled and we have a root process
+    // Generate E2E scenarios ONLY for root process (not for subprocesses)
+    // Only generate E2E scenarios if:
+    // 1. LLM is enabled
+    // 2. This is the root file (isActualRootFile === true)
     const llmEnabled = isLlmEnabled();
-    console.log(`[testGenerators] LLM enabled: ${llmEnabled}, llmProvider: ${llmProvider ? llmProvider : 'undefined'}`);
+    const isRootFile = isActualRootFile === true;
     
-    if (llmEnabled && llmProvider) {
+    console.log(`[testGenerators] LLM enabled: ${llmEnabled}, llmProvider: ${llmProvider ? llmProvider : 'undefined'}, isRootFile: ${isRootFile}`);
+    
+    if (llmEnabled && llmProvider && isRootFile) {
       try {
         // Check if E2E scenarios already exist for this file to avoid duplicate generation
         // Use loadE2eScenariosFromStorage which handles versioned paths correctly
@@ -479,97 +566,110 @@ export async function generateTestsForFile(
         if (existingScenarios.length > 0) {
           console.log(`[testGenerators] E2E scenarios already exist for ${bpmnFileName} (${existingScenarios.length} scenarios), skipping E2E generation to avoid duplicates`);
           result.totalScenarios += existingScenarios.length; // Add existing E2E scenarios to total
+          result.e2eScenarios = (result.e2eScenarios || 0) + existingScenarios.length;
           
-          // FORBÄTTRING: Försök regenerera Feature Goal-tester från befintliga E2E scenarios
-          // Vi behöver bygga paths från E2E scenarios för att kunna generera Feature Goal-tester
+          // Generera Feature Goal-tester direkt från dokumentation med Claude
+          // även om E2E scenarios redan finns
           try {
-            // Bygg paths från befintliga E2E scenarios genom att extrahera pathMetadata
-            const pathsFromScenarios = existingScenarios
-              .filter(s => s.pathMetadata)
-              .map(s => {
-                // Rekonstruera ProcessPath från pathMetadata
-                // ProcessPath kräver type, gatewayConditions måste matcha GatewayCondition-interface
-                return {
-                  type: 'possible-path' as const,
-                  startEvent: s.pathMetadata?.startEvent || 'unknown',
-                  endEvent: s.pathMetadata?.endEvent || 'unknown',
-                  featureGoals: s.pathMetadata?.featureGoals || [],
-                  gatewayConditions: (s.pathMetadata?.gatewayConditions || []).map((gc: any) => ({
-                    gatewayId: gc.gatewayId || '',
-                    gatewayName: '', // Saknas i pathMetadata, men behövs inte för Feature Goal-test-generering
-                    condition: gc.conditionText || '',
-                    conditionText: gc.conditionText || '',
-                    flowId: '', // Saknas i pathMetadata, men behövs inte för Feature Goal-test-generering
-                    targetNodeId: '', // Saknas i pathMetadata, men behövs inte för Feature Goal-test-generering
-                  })),
-                  nodeIds: s.pathMetadata?.nodeIds || [],
-                };
-              });
+            progressCallback?.({
+              current: existingScenarios.length,
+              total: existingScenarios.length + 1,
+              status: 'generating',
+              currentElement: 'Genererar Feature Goal-tester från dokumentation...',
+            });
             
-            if (pathsFromScenarios.length > 0) {
-              console.log(`[testGenerators] Reconstructing ${pathsFromScenarios.length} paths from existing E2E scenarios for Feature Goal test generation`);
+            // Samla alla BPMN-filer som behövs
+            const bpmnFilesSet = new Set<string>([bpmnFileName]);
+            for (const scenario of existingScenarios) {
+              for (const step of scenario.subprocessSteps || []) {
+                if (step.bpmnFile) {
+                  bpmnFilesSet.add(step.bpmnFile);
+                }
+              }
+            }
+            
+            // Generera Feature Goal-tester direkt från dokumentation med Claude
+            const { generateFeatureGoalTestsDirect } = await import('./featureGoalTestGeneratorDirect');
+            const featureGoalTestResult = await generateFeatureGoalTestsDirect(
+              Array.from(bpmnFilesSet),
+              llmProvider,
+              abortSignal
+            );
+            
+            console.log(
+              `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios directly from documentation, ` +
+              `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
+            );
+            
+            result.featureGoalScenarios = (result.featureGoalScenarios || 0) + featureGoalTestResult.generated;
+            
+            // Track Feature Goal scenario details
+            try {
+              const { fetchPlannedScenarios } = await import('./testDataHelpers');
+              if (!result.featureGoalScenarioDetails) {
+                result.featureGoalScenarioDetails = [];
+              }
               
-              // Generera Feature Goal-tester från befintliga E2E scenarios
-              progressCallback?.({
-                current: existingScenarios.length,
-                total: existingScenarios.length + 1,
-                status: 'generating',
-                currentElement: 'Genererar Feature Goal-tester från befintliga E2E-scenarios...',
-              });
-              
-              // Samla alla BPMN-filer som behövs
-              const bpmnFilesSet = new Set<string>([bpmnFileName]);
+              // Collect unique call activities from existing scenarios
+              const callActivities = new Set<string>();
               for (const scenario of existingScenarios) {
                 for (const step of scenario.subprocessSteps || []) {
-                  if (step.bpmnFile) {
-                    bpmnFilesSet.add(step.bpmnFile);
+                  if (step.callActivityId && step.bpmnFile) {
+                    callActivities.add(`${step.bpmnFile}::${step.callActivityId}`);
                   }
                 }
               }
               
-              const featureGoalTestResult = await generateFeatureGoalTestsFromE2e({
-                e2eScenarios: existingScenarios,
-                paths: pathsFromScenarios, // Properly typed as ProcessPath[] after reconstruction
-                bpmnFiles: Array.from(bpmnFilesSet),
-              });
-              
-              console.log(
-                `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios from existing E2E scenarios, ` +
-                `skipped ${featureGoalTestResult.skipped}, errors: ${featureGoalTestResult.errors.length}`
-              );
-              
-              if (featureGoalTestResult.errors.length > 0) {
-                if (!result.featureGoalTestErrors) {
-                  result.featureGoalTestErrors = [];
+              // Fetch scenario details for each call activity
+              for (const key of callActivities) {
+                const [bpmnFile, callActivityId] = key.split('::');
+                const plannedScenarios = await fetchPlannedScenarios(bpmnFile, callActivityId);
+                if (plannedScenarios && plannedScenarios.scenarios.length > 0) {
+                  const firstScenario = plannedScenarios.scenarios[0];
+                  // Check if we already have this scenario
+                  const exists = result.featureGoalScenarioDetails.some(
+                    d => d.bpmnFile === bpmnFile && d.callActivityId === callActivityId
+                  );
+                  if (!exists) {
+                    result.featureGoalScenarioDetails.push({
+                      bpmnFile,
+                      callActivityId,
+                      scenarioName: firstScenario.name || callActivityId,
+                      scenarioId: firstScenario.id || callActivityId,
+                    });
+                  }
                 }
-                result.featureGoalTestErrors.push(...featureGoalTestResult.errors);
               }
-              
-              if (!result.warnings) {
-                result.warnings = [];
+            } catch (error) {
+              // Silent fail - details are optional
+              if (import.meta.env.DEV) {
+                console.warn('[testGenerators] Failed to fetch Feature Goal scenario details from existing scenarios:', error);
               }
-              result.warnings.push(
-                `E2E scenarios already exist for ${bpmnFileName}, skipped E2E generation. ` +
-                `Regenerated ${featureGoalTestResult.generated} Feature Goal test scenarios from existing E2E scenarios.`
-              );
-            } else {
-              if (!result.warnings) {
-                result.warnings = [];
-              }
-              result.warnings.push(
-                `E2E scenarios already exist for ${bpmnFileName}, skipped generation. ` +
-                `Could not regenerate Feature Goal tests (no path metadata in scenarios).`
-              );
             }
+            
+            if (featureGoalTestResult.errors.length > 0) {
+              if (!result.featureGoalTestErrors) {
+                result.featureGoalTestErrors = [];
+              }
+              result.featureGoalTestErrors.push(...featureGoalTestResult.errors);
+            }
+            
+            if (!result.warnings) {
+              result.warnings = [];
+            }
+            result.warnings.push(
+              `E2E scenarios already exist for ${bpmnFileName}, skipped E2E generation. ` +
+              `Generated ${featureGoalTestResult.generated} Feature Goal test scenarios from documentation.`
+            );
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.warn(`[testGenerators] Failed to regenerate Feature Goal tests from existing E2E scenarios:`, error);
+            console.warn(`[testGenerators] Failed to generate Feature Goal tests from documentation:`, error);
             if (!result.warnings) {
               result.warnings = [];
             }
             result.warnings.push(
               `E2E scenarios already exist for ${bpmnFileName}, skipped generation. ` +
-              `Failed to regenerate Feature Goal tests: ${errorMessage}`
+              `Failed to generate Feature Goal tests: ${errorMessage}`
             );
           }
           
@@ -617,7 +717,6 @@ export async function generateTestsForFile(
         if (e2eResult.skippedPaths && e2eResult.skippedPaths.total > 0) {
           const skippedInfo = `Hoppade över ${e2eResult.skippedPaths.total} path(s): ` +
             `${e2eResult.skippedPaths.noDocs} saknade dokumentation, ` +
-            `${e2eResult.skippedPaths.noMatch} matchade inte prioriterade scenarios, ` +
             `${e2eResult.skippedPaths.noResult} misslyckades vid LLM-generering`;
           
           console.warn(`[testGenerators] ${skippedInfo}`);
@@ -640,6 +739,19 @@ export async function generateTestsForFile(
           
           console.log(`[testGenerators] Generated ${e2eResult.scenarios.length} E2E scenarios for ${bpmnFileName}`);
           result.totalScenarios += e2eResult.scenarios.length; // Add E2E scenarios to total
+          result.e2eScenarios = (result.e2eScenarios || 0) + e2eResult.scenarios.length;
+          
+          // Track E2E scenario details
+          if (!result.e2eScenarioDetails) {
+            result.e2eScenarioDetails = [];
+          }
+          for (const scenario of e2eResult.scenarios) {
+            result.e2eScenarioDetails.push({
+              bpmnFile: bpmnFileName,
+              scenarioName: scenario.name,
+              scenarioId: scenario.id,
+            });
+          }
           
           // Explicit kontroll: Om paths är tomma, hoppa över Feature Goal-test-generering
           if (e2eResult.paths.length === 0) {
@@ -650,14 +762,14 @@ export async function generateTestsForFile(
             }
             result.warnings.push(warning);
           } else {
-            // Generate Feature Goal tests from E2E scenarios
+            // Generate Feature Goal tests directly from documentation with Claude
             // Note: savePlannedScenarios uses upsert with onConflict, so duplicates are automatically handled
             try {
               progressCallback?.({
                 current: e2eResult.scenarios.length,
                 total: e2eResult.scenarios.length + 1,
                 status: 'generating',
-                currentElement: 'Genererar Feature Goal-tester från E2E-scenarios...',
+                currentElement: 'Genererar Feature Goal-tester från dokumentation...',
               });
               
               // Collect all BPMN files that contain Feature Goals from the paths
@@ -675,11 +787,14 @@ export async function generateTestsForFile(
                 }
               }
               
-              const featureGoalTestResult = await generateFeatureGoalTestsFromE2e({
-                e2eScenarios: e2eResult.scenarios,
-                paths: e2eResult.paths,
-                bpmnFiles: Array.from(bpmnFilesSet),
-              });
+              // Generera Feature Goal-tester direkt från dokumentation med Claude
+              // Istället för att extrahera från E2E-scenarios
+              const { generateFeatureGoalTestsDirect } = await import('./featureGoalTestGeneratorDirect');
+              const featureGoalTestResult = await generateFeatureGoalTestsDirect(
+                Array.from(bpmnFilesSet),
+                llmProvider,
+                abortSignal
+              );
               
               console.log(
                 `[testGenerators] Generated ${featureGoalTestResult.generated} Feature Goal test scenarios, ` +
@@ -688,6 +803,72 @@ export async function generateTestsForFile(
               
               // Uppdatera totalScenarios med antalet genererade Feature Goal-tester (lägg till, inte ersätt)
               result.totalScenarios += featureGoalTestResult.generated;
+              result.featureGoalScenarios = (result.featureGoalScenarios || 0) + featureGoalTestResult.generated;
+              
+              // Track Feature Goal scenario details by loading from database
+              // We need to fetch the scenarios we just saved to get their details
+              // VIKTIGT: Hämta ALLA callActivities som genererades, inte bara de i E2E paths
+              try {
+                const { fetchPlannedScenarios } = await import('./testDataHelpers');
+                if (!result.featureGoalScenarioDetails) {
+                  result.featureGoalScenarioDetails = [];
+                }
+                
+                // Hitta alla callActivities i alla filer som genererades
+                const callActivities = new Set<string>();
+                
+                // Lägg till ALLA callActivities från alla filer i hierarkin
+                // Detta säkerställer att vi får alla Feature Goal-tester som genererades
+                // Detta säkerställer att vi får alla Feature Goal-tester som genererades
+                for (const bpmnFile of Array.from(bpmnFilesSet)) {
+                  try {
+                    const { parseBpmnFile } = await import('./bpmnParser');
+                    const parseResult = await parseBpmnFile(bpmnFile);
+                    if (parseResult) {
+                      for (const element of parseResult.elements) {
+                        if (element.type === 'callActivity' && element.id) {
+                          // Hitta parent-filen där callActivity är definierad
+                          // För callActivities i subprocesser, parent-filen är filen som innehåller callActivity
+                          const parentFile = bpmnFile; // I hierarkin är parent-filen samma som filen där callActivity är
+                          callActivities.add(`${parentFile}::${element.id}`);
+                        }
+                      }
+                    }
+                  } catch (error) {
+                    // Silent fail för individuella filer
+                    if (import.meta.env.DEV) {
+                      console.warn(`[testGenerators] Failed to parse ${bpmnFile} for callActivities:`, error);
+                    }
+                  }
+                }
+                
+                // Fetch scenario details for each call activity
+                for (const key of callActivities) {
+                  const [bpmnFile, callActivityId] = key.split('::');
+                  const plannedScenarios = await fetchPlannedScenarios(bpmnFile, callActivityId);
+                  if (plannedScenarios && plannedScenarios.scenarios.length > 0) {
+                    // Check if we already have this scenario
+                    const exists = result.featureGoalScenarioDetails.some(
+                      d => d.bpmnFile === bpmnFile && d.callActivityId === callActivityId
+                    );
+                    if (!exists) {
+                      // Add details for first scenario (or all if needed)
+                      const firstScenario = plannedScenarios.scenarios[0];
+                      result.featureGoalScenarioDetails.push({
+                        bpmnFile,
+                        callActivityId,
+                        scenarioName: firstScenario.name || callActivityId,
+                        scenarioId: firstScenario.id || callActivityId,
+                      });
+                    }
+                  }
+                }
+              } catch (error) {
+                // Silent fail - details are optional
+                if (import.meta.env.DEV) {
+                  console.warn('[testGenerators] Failed to fetch Feature Goal scenario details:', error);
+                }
+              }
               
               if (featureGoalTestResult.errors.length > 0) {
                 // Spara fel för feedback till användaren
@@ -703,7 +884,7 @@ export async function generateTestsForFile(
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error);
               console.warn(
-                `[testGenerators] Failed to generate Feature Goal tests from E2E scenarios:`,
+                `[testGenerators] Failed to generate Feature Goal tests from documentation:`,
                 error
               );
               // Spara fel för feedback till användaren
@@ -718,12 +899,68 @@ export async function generateTestsForFile(
           }
         } else {
           // Om inga E2E scenarios genererades, ge tydlig feedback
-          const warning = `Inga E2E scenarios genererades för ${bpmnFileName}. Feature Goal-tester kan inte extraheras.`;
+          const warning = `Inga E2E scenarios genererades för ${bpmnFileName}. Feature Goal-tester genereras direkt från dokumentation.`;
           console.warn(`[testGenerators] ${warning}`);
           if (!result.warnings) {
             result.warnings = [];
           }
           result.warnings.push(warning);
+          
+          // FORBÄTTRING: Hämta befintliga Feature Goal-tester från databasen även när E2E-generering misslyckas
+          // Detta säkerställer att befintliga Feature Goal-tester visas i resultatet
+          try {
+            const { fetchPlannedScenarios } = await import('./testDataHelpers');
+            if (!result.featureGoalScenarioDetails) {
+              result.featureGoalScenarioDetails = [];
+            }
+            
+            // Hitta alla callActivities i filen från graph
+            const callActivitiesInFile = testableNodes.filter(node => 
+              node.type === 'callActivity' && 
+              node.bpmnFile === bpmnFileName &&
+              node.bpmnElementId
+            );
+            
+            // Hämta Feature Goal-tester från databasen för varje callActivity
+            for (const callActivity of callActivitiesInFile) {
+              if (!callActivity.bpmnElementId) continue;
+              
+              const plannedScenarios = await fetchPlannedScenarios(
+                bpmnFileName, 
+                callActivity.bpmnElementId
+              );
+              
+              if (plannedScenarios && plannedScenarios.scenarios.length > 0) {
+                const firstScenario = plannedScenarios.scenarios[0];
+                // Check if we already have this scenario
+                const exists = result.featureGoalScenarioDetails.some(
+                  d => d.bpmnFile === bpmnFileName && d.callActivityId === callActivity.bpmnElementId
+                );
+                if (!exists) {
+                  result.featureGoalScenarioDetails.push({
+                    bpmnFile: bpmnFileName,
+                    callActivityId: callActivity.bpmnElementId,
+                    scenarioName: firstScenario.name || callActivity.bpmnElementId,
+                    scenarioId: firstScenario.id || callActivity.bpmnElementId,
+                  });
+                  // Uppdatera räknare
+                  result.featureGoalScenarios = (result.featureGoalScenarios || 0) + plannedScenarios.scenarios.length;
+                  result.totalScenarios = (result.totalScenarios || 0) + plannedScenarios.scenarios.length;
+                }
+              }
+            }
+            
+            if (result.featureGoalScenarioDetails.length > 0) {
+              console.log(
+                `[testGenerators] Found ${result.featureGoalScenarioDetails.length} existing Feature Goal test scenarios in database for ${bpmnFileName}`
+              );
+            }
+          } catch (error) {
+            // Silent fail - details are optional
+            if (import.meta.env.DEV) {
+              console.warn('[testGenerators] Failed to fetch existing Feature Goal test scenarios:', error);
+            }
+          }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);

@@ -700,7 +700,6 @@ export async function generateE2eScenariosForProcess(
     // Store paths that were used for generation (for Feature Goal test extraction)
     const usedPaths: ProcessPath[] = [];
     let skippedNoDocs = 0;
-    let skippedNoMatch = 0;
     let skippedNoResult = 0;
     
     // 5. Generate E2E scenario for each path
@@ -740,41 +739,90 @@ export async function generateE2eScenariosForProcess(
         }
       } else {
         // Process with callActivities: Load Feature Goal documentation
+        const missingFeatureGoals: string[] = [];
+        
         for (const featureGoalId of path.featureGoals) {
           // Hitta BPMN-fil för Feature Goal (behöver hitta från graph)
           const featureGoalNode = flowGraph.nodes.get(featureGoalId);
           if (!featureGoalNode) {
             console.warn(`[e2eScenarioGenerator] Feature Goal node not found: ${featureGoalId}`);
+            missingFeatureGoals.push(featureGoalId);
             continue;
           }
           
-          // Försök hitta BPMN-fil från parseResult
-          // BpmnElement har inte bpmnFile, men vi kan använda parseResult.fileName
-          // eller hitta subprocess-filen från graph
-          const bpmnFile = rootBpmnFile; // Use root file as default, subprocess file should be found via graph
+          // Hitta subprocess-filen från parseResult
+          // Försök hitta callActivity-elementet i parseResult för att få subprocess-filen
+          let subprocessFile: string | undefined = undefined;
+          
+          // Försök hitta från parseResult.subprocesses
+          const subprocessInfo = parseResult.subprocesses.find(
+            (sp) => sp.id === featureGoalId
+          );
+          if (subprocessInfo?.file) {
+            // Extrahera filnamnet från path (t.ex. "/bpmn/mortgage-se-application.bpmn" -> "mortgage-se-application.bpmn")
+            subprocessFile = subprocessInfo.file.replace(/^\/bpmn\//, '').replace(/\.bpmn$/, '') + '.bpmn';
+          }
+          
+          // Fallback: Försök hitta via bpmn-map.json
+          if (!subprocessFile) {
+            try {
+              const { loadBpmnMapFromStorage } = await import('./bpmn/bpmnMapStorage');
+              const { matchCallActivityUsingMap } = await import('./bpmn/bpmnMapLoader');
+              
+              const bpmnMapResult = await loadBpmnMapFromStorage();
+              if (bpmnMapResult.valid && bpmnMapResult.map) {
+                const mapResult = matchCallActivityUsingMap(
+                  { id: featureGoalId, name: featureGoalNode.name },
+                  rootBpmnFile,
+                  bpmnMapResult.map
+                );
+                
+                if (mapResult.matchedFileName) {
+                  subprocessFile = mapResult.matchedFileName;
+                }
+              }
+            } catch (error) {
+              // Silent fail
+            }
+          }
+          
+          if (!subprocessFile) {
+            console.warn(`[e2eScenarioGenerator] Could not find subprocess file for Feature Goal ${featureGoalId}`);
+            missingFeatureGoals.push(featureGoalId);
+            continue;
+          }
+          
           // bpmnFile är subprocess-filen, parent-filen är rootBpmnFile (där callActivity är definierad)
           const parentBpmnFile = rootBpmnFile;
           
-          const doc = await loadFeatureGoalDocFromStorage(bpmnFile, featureGoalId, parentBpmnFile);
+          const doc = await loadFeatureGoalDocFromStorage(subprocessFile, featureGoalId, parentBpmnFile);
           if (doc) {
             featureGoalDocs.push(doc);
           } else {
-            console.warn(`[e2eScenarioGenerator] Could not load Feature Goal doc for ${bpmnFile}::${featureGoalId}`);
+            console.warn(`[e2eScenarioGenerator] Could not load Feature Goal doc for ${subprocessFile}::${featureGoalId}`);
+            missingFeatureGoals.push(featureGoalId);
           }
         }
-      }
-      
-      // FORBÄTTRING: Samla information om misslyckade dokumentationsladdningar för tydlig feedback
-      if (featureGoalDocs.length === 0) {
-        const missingFeatureGoals = path.featureGoals.length > 0 
-          ? path.featureGoals.join(', ')
-          : 'file-level documentation';
-        console.warn(
-          `[e2eScenarioGenerator] No documentation loaded for path ${path.startEvent} → ${path.endEvent}. ` +
-          `Missing: ${missingFeatureGoals}`
-        );
-        skippedNoDocs++;
-        continue;
+        
+        // FORBÄTTRING: Tillåt partiell dokumentation - generera scenario om minst en Feature Goal har dokumentation
+        if (featureGoalDocs.length === 0) {
+          const missingFeatureGoalsStr = missingFeatureGoals.length > 0 
+            ? missingFeatureGoals.join(', ')
+            : path.featureGoals.join(', ');
+          console.warn(
+            `[e2eScenarioGenerator] No documentation loaded for path ${path.startEvent} → ${path.endEvent}. ` +
+            `Missing: ${missingFeatureGoalsStr}`
+          );
+          skippedNoDocs++;
+          continue;
+        } else if (missingFeatureGoals.length > 0) {
+          // Varna om vissa Feature Goals saknar dokumentation, men fortsätt ändå
+          console.warn(
+            `[e2eScenarioGenerator] Partial documentation for path ${path.startEvent} → ${path.endEvent}. ` +
+            `Missing docs for: ${missingFeatureGoals.join(', ')}. ` +
+            `Generating scenario with ${featureGoalDocs.length} of ${path.featureGoals.length} Feature Goals.`
+          );
+        }
       }
 
       // FORBÄTTRING: Validera dokumentationskvalitet innan generering
@@ -808,20 +856,9 @@ export async function generateE2eScenariosForProcess(
         );
       }
       
-      // 7. Check if path matches one of the three prioritized scenarios
-      // For processes without callActivities (using file-level docs), always allow generation
-      // The prioritized scenario check is mainly for processes with Feature Goals
-      const matchesPrioritizedScenario = path.featureGoals.length === 0 
-        ? true // Always allow for processes without callActivities
-        : checkIfPathMatchesPrioritizedScenario(path, featureGoalDocs);
-      
-      if (!matchesPrioritizedScenario) {
-        console.log(`[e2eScenarioGenerator] Path ${path.startEvent} → ${path.endEvent} does not match prioritized scenarios, skipping`);
-        skippedNoMatch++;
-        continue;
-      }
-      
-      // 8. Generate E2E scenario with Claude
+      // 7. Generate E2E scenario with Claude
+      // Note: Claude will identify relevant scenarios (e.g., "En sökande", "Medsökande") based on gateway-conditions
+      // No pre-filtering needed - Claude analyzes gateway-conditions dynamically
       const context: E2eScenarioContext = {
         path,
         featureGoals: featureGoalDocs,
@@ -857,7 +894,7 @@ export async function generateE2eScenariosForProcess(
       }
     }
     
-    console.log(`[e2eScenarioGenerator] Summary: ${scenarios.length} scenarios generated, ${skippedNoDocs} skipped (no docs), ${skippedNoMatch} skipped (no match), ${skippedNoResult} skipped (no result)`);
+    console.log(`[e2eScenarioGenerator] Summary: ${scenarios.length} scenarios generated, ${skippedNoDocs} skipped (no docs), ${skippedNoResult} skipped (no result)`);
     
     progressCallback?.({ current: allPaths.length, total: allPaths.length });
     
@@ -867,9 +904,9 @@ export async function generateE2eScenariosForProcess(
       paths: usedPaths, // Return only paths that were actually used for generation
       skippedPaths: {
         noDocs: skippedNoDocs,
-        noMatch: skippedNoMatch,
+        noMatch: 0, // Removed prioritized scenario filter - Claude identifies relevant scenarios dynamically
         noResult: skippedNoResult,
-        total: skippedNoDocs + skippedNoMatch + skippedNoResult,
+        total: skippedNoDocs + skippedNoResult,
       }
     };
   } catch (error) {
@@ -878,73 +915,7 @@ export async function generateE2eScenariosForProcess(
   }
 }
 
-/**
- * Kontrollerar om en path matchar en av de tre prioriterade scenarios.
- * 
- * De tre scenarios:
- * 1. Lyckad sökning för en sökare (bostadsrätt) - happy path, en sökande
- * 2. Lyckad sökning för en sökare med en medsökare (bostadsrätt) - happy path, medsökande
- * 3. En sökare som behöver genomgå mest möjliga steg (bostadsrätt) - alt path med manuella steg
- */
-function checkIfPathMatchesPrioritizedScenario(
-  path: ProcessPath,
-  featureGoalDocs: FeatureGoalDoc[]
-): boolean {
-  // Kontrollera om det är en error path (inte en av de tre)
-  const isErrorPath = path.endEvent.toLowerCase().includes('error') || 
-                      path.endEvent.toLowerCase().includes('reject') ||
-                      path.endEvent.toLowerCase().includes('fail');
-  
-  if (isErrorPath) {
-    return false;
-  }
-  
-  // Kontrollera gateway-conditions för att identifiera en sökande vs medsökande
-  const hasSingleStakeholder = path.gatewayConditions.some(gc => 
-    gc.conditionText.toLowerCase().includes('stakeholders.length === 1') ||
-    gc.conditionText.toLowerCase().includes('stakeholders.length == 1') ||
-    gc.conditionText.toLowerCase().includes('stakeholder.length === 1')
-  );
-  
-  const hasMultipleStakeholders = path.gatewayConditions.some(gc => 
-    gc.conditionText.toLowerCase().includes('stakeholders.length > 1') ||
-    gc.conditionText.toLowerCase().includes('stakeholders.length >= 2') ||
-    gc.conditionText.toLowerCase().includes('stakeholder.length > 1')
-  );
-  
-  // Kontrollera om det finns manuella steg (scenario 3)
-  const hasManualSteps = featureGoalDocs.some(doc => 
-    doc.summary.toLowerCase().includes('manuell') ||
-    doc.summary.toLowerCase().includes('manual') ||
-    doc.flowSteps.some(step => 
-      step.toLowerCase().includes('manuell') ||
-      step.toLowerCase().includes('manual') ||
-      step.toLowerCase().includes('granskning') ||
-      step.toLowerCase().includes('review')
-    )
-  );
-  
-  // Scenario 1: En sökande, happy path, inga manuella steg
-  if (hasSingleStakeholder && !hasManualSteps) {
-    return true;
-  }
-  
-  // Scenario 2: Medsökande, happy path, inga manuella steg
-  if (hasMultipleStakeholders && !hasManualSteps) {
-    return true;
-  }
-  
-  // Scenario 3: En sökande, med manuella steg
-  if (hasSingleStakeholder && hasManualSteps) {
-    return true;
-  }
-  
-  // Om ingen tydlig match, acceptera happy paths (kan vara scenario 1 eller 2)
-  // Men hoppa över om det är tydligt att det inte är en av de tre
-  if (!hasManualSteps && (hasSingleStakeholder || hasMultipleStakeholders)) {
-    return true;
-  }
-  
-  return false;
-}
+// Removed checkIfPathMatchesPrioritizedScenario function
+// Claude now identifies relevant scenarios (e.g., "En sökande", "Medsökande") dynamically
+// based on gateway-conditions in the prompt, making the hardcoded filter unnecessary
 

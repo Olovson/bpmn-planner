@@ -1,0 +1,220 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img "BPMN Planner" [ref=e7]
+        - navigation "Huvudnavigering" [ref=e8]:
+          - button "BPMN-diagram" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Strukturträd" [ref=e14] [cursor=pointer]:
+            - img [ref=e15]
+          - button "Listvy" [ref=e20] [cursor=pointer]:
+            - img [ref=e21]
+          - button "Timeline" [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+          - button "Tests" [disabled] [ref=e25]:
+            - img [ref=e26]
+          - button "Test Coverage" [ref=e29] [cursor=pointer]:
+            - img [ref=e30]
+          - button "Projektkonfiguration" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+          - button "Analysera Lokal Mapp" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+          - button "Filer" [ref=e39] [cursor=pointer]:
+            - img [ref=e40]
+          - button "Styleguide" [ref=e43] [cursor=pointer]:
+            - img [ref=e44]
+      - generic [ref=e50]:
+        - generic [ref=e51]: test-bot@local.test
+        - button "Versioner" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+        - button "Logga ut" [ref=e57] [cursor=pointer]:
+          - img [ref=e58]
+    - main [ref=e61]:
+      - generic [ref=e62]:
+        - generic [ref=e64]:
+          - heading "BPMN & DMN Filhantering" [level=1] [ref=e65]
+          - paragraph [ref=e66]: Hantera dina BPMN- och DMN-filer, registrera status och generera artefakter för hela hierarkin.
+        - generic [ref=e68]:
+          - generic [ref=e70]:
+            - heading "Versionsval" [level=3] [ref=e71]
+            - paragraph [ref=e72]: Välj vilken version av BPMN-filer som ska användas i hela appen
+          - combobox [ref=e74] [cursor=pointer]:
+            - generic: Välj BPMN-fil för versionsval
+            - img [ref=e75]
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - heading "Ladda upp filer" [level=2] [ref=e80]
+              - paragraph [ref=e81]: Dra och släpp eller välj filer att ladda upp
+            - button "📥 Synka från GitHub" [ref=e82] [cursor=pointer]:
+              - generic [ref=e83]: 📥
+              - text: Synka från GitHub
+          - generic [ref=e84]:
+            - img [ref=e85]
+            - heading "Släpp .bpmn eller .dmn filer här" [level=3] [ref=e88]
+            - paragraph [ref=e89]: eller klicka för att välja filer eller en mapp
+            - generic [ref=e90]:
+              - generic [ref=e91] [cursor=pointer]: Välj filer
+              - generic [ref=e92] [cursor=pointer]: Välj mapp (rekursivt)
+            - paragraph [ref=e93]: Mappval hittar automatiskt alla .bpmn och .dmn filer rekursivt i vald mapp
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - img [ref=e97]
+            - heading "Genereringsläge" [level=2] [ref=e99]
+            - generic [ref=e100]: Claude (moln-LLM)
+          - button "Visa avancerade verktyg" [ref=e102] [cursor=pointer]:
+            - img
+            - text: Visa avancerade verktyg
+          - generic [ref=e103]:
+            - button "Claude (moln-LLM)" [pressed] [ref=e104] [cursor=pointer]:
+              - img
+              - text: Claude (moln-LLM)
+            - button "Ollama (lokal LLM) Tillgänglig (1816ms)" [ref=e105] [cursor=pointer]:
+              - img
+              - text: Ollama (lokal LLM)
+              - generic [ref=e106]: Tillgänglig (1816ms)
+          - generic [ref=e107]:
+            - button "Generera information för vald fil" [disabled]:
+              - img
+              - text: Generera information för vald fil
+            - button "Generera information (alla filer)" [ref=e108] [cursor=pointer]:
+              - img
+              - text: Generera information (alla filer)
+          - generic [ref=e109]:
+            - button "Generera testinformation för vald fil" [disabled]:
+              - img
+              - text: Generera testinformation för vald fil
+            - button "Generera testinformation (alla filer)" [ref=e110] [cursor=pointer]:
+              - img
+              - text: Generera testinformation (alla filer)
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - img [ref=e114]
+              - generic [ref=e116]: "Filtrera:"
+              - combobox [ref=e117] [cursor=pointer]:
+                - generic: Alla filer
+                - img [ref=e118]
+            - generic [ref=e120]: Visar 3 av 3 filer
+          - table [ref=e122]:
+            - rowgroup [ref=e123]:
+              - row "Filnamn Storlek Senast uppdaterad Struktur & artefakter Åtgärder" [ref=e124]:
+                - cell "Filnamn" [ref=e125] [cursor=pointer]:
+                  - generic [ref=e126]:
+                    - text: Filnamn
+                    - img [ref=e127]
+                - cell "Storlek" [ref=e129] [cursor=pointer]:
+                  - generic [ref=e130]: Storlek
+                - cell "Senast uppdaterad" [ref=e131] [cursor=pointer]:
+                  - generic [ref=e132]: Senast uppdaterad
+                - cell "Struktur & artefakter" [ref=e133] [cursor=pointer]:
+                  - generic [ref=e134]: Struktur & artefakter
+                - cell "Åtgärder" [ref=e135]
+            - rowgroup [ref=e136]:
+              - 'row "mortgage-se-application.bpmn 15.9 KB 31 dec. 2025 14:52 📄 Dok: 1/10 🧪 Test: Saknas Hierarki Dokumentation" [ref=e137] [cursor=pointer]':
+                - cell "mortgage-se-application.bpmn" [ref=e138]:
+                  - generic [ref=e139]:
+                    - img [ref=e140]
+                    - text: mortgage-se-application.bpmn
+                - cell "15.9 KB" [ref=e143]
+                - cell "31 dec. 2025 14:52" [ref=e144]
+                - 'cell "📄 Dok: 1/10 🧪 Test: Saknas" [ref=e145]':
+                  - generic [ref=e146]:
+                    - 'generic "Dok: 1 av 10 noder har artefakten" [ref=e147]':
+                      - generic [ref=e148]: 📄
+                      - generic [ref=e149]: "Dok:"
+                      - generic [ref=e150]: 1/10
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e151]:
+                      - generic [ref=e152]: 🧪
+                      - generic [ref=e153]: "Test:"
+                      - generic [ref=e154]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e155]:
+                  - generic [ref=e156]:
+                    - button "Hierarki" [ref=e157]:
+                      - img
+                      - generic [ref=e158]: Hierarki
+                    - button "Dokumentation" [ref=e159]:
+                      - img
+                      - generic [ref=e160]: Dokumentation
+                    - button [ref=e161]:
+                      - img
+                    - button [ref=e162]:
+                      - img
+              - 'row "mortgage-se-internal-data-gathering.bpmn 9.5 KB 31 dec. 2025 14:52 📄 Dok: Komplett 🧪 Test: Saknas Hierarki Dokumentation" [ref=e163] [cursor=pointer]':
+                - cell "mortgage-se-internal-data-gathering.bpmn" [ref=e164]:
+                  - generic [ref=e165]:
+                    - img [ref=e166]
+                    - text: mortgage-se-internal-data-gathering.bpmn
+                - cell "9.5 KB" [ref=e169]
+                - cell "31 dec. 2025 14:52" [ref=e170]
+                - 'cell "📄 Dok: Komplett 🧪 Test: Saknas" [ref=e171]':
+                  - generic [ref=e172]:
+                    - 'generic "Dok: Alla 3 noder har artefakten" [ref=e173]':
+                      - generic [ref=e174]: 📄
+                      - generic [ref=e175]: "Dok:"
+                      - generic [ref=e176]: Komplett
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e177]:
+                      - generic [ref=e178]: 🧪
+                      - generic [ref=e179]: "Test:"
+                      - generic [ref=e180]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e181]:
+                  - generic [ref=e182]:
+                    - button "Hierarki" [ref=e183]:
+                      - img
+                      - generic [ref=e184]: Hierarki
+                    - button "Dokumentation" [ref=e185]:
+                      - img
+                      - generic [ref=e186]: Dokumentation
+                    - button [ref=e187]:
+                      - img
+                    - button [ref=e188]:
+                      - img
+              - 'row "mortgage.bpmn 57.6 KB 31 dec. 2025 14:52 📄 Dok: Saknas 🧪 Test: Saknas Hierarki Dokumentation" [ref=e189] [cursor=pointer]':
+                - cell "mortgage.bpmn" [ref=e190]:
+                  - generic [ref=e191]:
+                    - img [ref=e192]
+                    - text: mortgage.bpmn
+                - cell "57.6 KB" [ref=e195]
+                - cell "31 dec. 2025 14:52" [ref=e196]
+                - 'cell "📄 Dok: Saknas 🧪 Test: Saknas" [ref=e197]':
+                  - generic [ref=e198]:
+                    - generic "Dok saknas för alla 30 noder" [ref=e199]:
+                      - generic [ref=e200]: 📄
+                      - generic [ref=e201]: "Dok:"
+                      - generic [ref=e202]: Saknas
+                    - generic "Det finns testbara noder, men inga testkopplingar" [ref=e203]:
+                      - generic [ref=e204]: 🧪
+                      - generic [ref=e205]: "Test:"
+                      - generic [ref=e206]: Saknas
+                - cell "Hierarki Dokumentation" [ref=e207]:
+                  - generic [ref=e208]:
+                    - button "Hierarki" [ref=e209]:
+                      - img
+                      - generic [ref=e210]: Hierarki
+                    - button "Dokumentation" [ref=e211]:
+                      - img
+                      - generic [ref=e212]: Dokumentation
+                    - button [ref=e213]:
+                      - img
+                    - button [ref=e214]:
+                      - img
+        - generic [ref=e215]:
+          - heading "Jobb & historik" [level=3] [ref=e217]
+          - list [ref=e220]:
+            - listitem [ref=e221]:
+              - generic [ref=e222]:
+                - generic [ref=e223]: mortgage.bpmn · LLM (Claude) · Klar
+                - paragraph [ref=e224]: "Dok/Test (LLM) · Start: 14:53:26 · Körtid: 4m 59s"
+                - generic [ref=e225]:
+                  - paragraph [ref=e226]: 4 dok · 0 tester
+                  - paragraph [ref=e227]: "Filer: mortgage.bpmn, mortgage-se-application.bpmn, mortgage-se-internal-data-gathering.bpmn"
+                  - paragraph [ref=e228]: Hoppade över 2 subprocesser
+              - generic [ref=e230]: Klar
+```

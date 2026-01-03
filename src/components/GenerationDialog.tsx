@@ -37,6 +37,21 @@ export interface GenerationResult {
   jiraMappings: Array<{ elementName: string; jiraType: string; jiraName: string }>;
   subprocessMappings: Array<{ callActivity: string; subprocessFile: string }>;
   skippedSubprocesses?: string[];
+  // Test information
+  testScenarios?: number; // Total number of test scenarios generated (E2E + Feature Goal)
+  e2eScenarios?: number; // Number of E2E scenarios
+  featureGoalScenarios?: number; // Number of Feature Goal test scenarios
+  e2eScenarioDetails?: Array<{ // Detailed info about E2E scenarios
+    bpmnFile: string;
+    scenarioName: string;
+    scenarioId: string;
+  }>;
+  featureGoalScenarioDetails?: Array<{ // Detailed info about Feature Goal test scenarios
+    bpmnFile: string;
+    callActivityId: string;
+    scenarioName: string;
+    scenarioId: string;
+  }>;
 }
 
 interface GenerationDialogProps {
@@ -354,7 +369,7 @@ export function GenerationDialog({
               </div>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid gap-4 ${result.docFiles.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <Card className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <FileText className="h-5 w-5 text-blue-500" />
@@ -364,15 +379,48 @@ export function GenerationDialog({
                   <p className="text-xs text-muted-foreground mt-1">Analyserade</p>
                 </Card>
 
-                <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-5 w-5 text-orange-500" />
-                    <h4 className="font-semibold text-sm">Dokumentation</h4>
-                  </div>
-                  <div className="text-2xl font-bold">{result.docFiles.length}</div>
-                  <p className="text-xs text-muted-foreground mt-1">HTML-filer</p>
-                </Card>
+                {/* Only show documentation card if there are actually documentation files */}
+                {result.docFiles.length > 0 && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-5 w-5 text-orange-500" />
+                      <h4 className="font-semibold text-sm">Dokumentation</h4>
+                    </div>
+                    <div className="text-2xl font-bold">{result.docFiles.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">HTML-filer</p>
+                  </Card>
+                )}
               </div>
+
+              {/* Test Information */}
+              {(result.testScenarios !== undefined || result.e2eScenarios !== undefined || result.featureGoalScenarios !== undefined) && (
+                <Card className="p-4 bg-green-50 border-green-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <h4 className="font-semibold text-sm text-green-900">Testinformation</h4>
+                  </div>
+                  <div className="space-y-2">
+                    {result.testScenarios !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-green-800">Totalt testscenarios</span>
+                        <span className="text-lg font-bold text-green-900">{result.testScenarios}</span>
+                      </div>
+                    )}
+                    {result.e2eScenarios !== undefined && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-green-700">E2E-scenarios</span>
+                        <span className="font-medium text-green-800">{result.e2eScenarios}</span>
+                      </div>
+                    )}
+                    {result.featureGoalScenarios !== undefined && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-green-700">Feature Goal-test scenarios</span>
+                        <span className="font-medium text-green-800">{result.featureGoalScenarios}</span>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
 
               {/* Detailed Report */}
               <Collapsible>
@@ -420,6 +468,50 @@ export function GenerationDialog({
                   )}
 
                   {/* Playwright-testfiler har tagits bort - all testinformation finns nu i E2E scenarios och Feature Goal-test scenarios */}
+
+                  {/* E2E Scenario Details */}
+                  {result.e2eScenarioDetails && result.e2eScenarioDetails.length > 0 && (
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-2 text-sm flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        E2E-scenarios ({result.e2eScenarioDetails.length})
+                      </h3>
+                      <ul className="text-sm space-y-2 text-muted-foreground">
+                        {result.e2eScenarioDetails.map((scenario, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-green-600 mt-0.5">•</span>
+                            <div className="flex-1">
+                              <div className="font-medium text-foreground">{scenario.scenarioName}</div>
+                              <div className="text-xs text-muted-foreground">{scenario.bpmnFile}</div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
+
+                  {/* Feature Goal Test Scenario Details */}
+                  {result.featureGoalScenarioDetails && result.featureGoalScenarioDetails.length > 0 && (
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-2 text-sm flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                        Feature Goal-test scenarios ({result.featureGoalScenarioDetails.length})
+                      </h3>
+                      <ul className="text-sm space-y-2 text-muted-foreground">
+                        {result.featureGoalScenarioDetails.map((scenario, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-blue-600 mt-0.5">•</span>
+                            <div className="flex-1">
+                              <div className="font-medium text-foreground">{scenario.scenarioName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {scenario.bpmnFile}::{scenario.callActivityId}
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
 
                   {/* Documentation Files */}
                   {result.docFiles.length > 0 && (

@@ -17,7 +17,6 @@ import {
   getTestableNodes,
 } from '@/lib/bpmnProcessGraph';
 import {
-  createPlannedScenariosFromGraph,
   savePlannedScenarios,
   type PlannedScenarioRow,
 } from '@/lib/plannedScenariosHelper';

@@ -100,11 +100,12 @@ export const useFileArtifactCoverage = (fileName: string) => {
         // VIKTIGT: Om hierarkin bara innehåller root-filen, använd BARA root-filen
         // Använd INTE alla filer som fallback, eftersom det inkluderar noder från andra filer
         // vilket ger felaktig coverage-räkning (t.ex. "3/135" istället för "3/4")
+        // Detta är förväntat beteende för subprocess-filer utan egna subprocesser
         if (relevantFiles.length === 1) {
           if (import.meta.env.DEV) {
-            console.warn(
+            console.debug(
               `[useFileArtifactCoverage] Hierarchy for ${fileName} only contains root file. ` +
-              `Using only root file for coverage calculation to avoid counting nodes from other files.`
+              `Using only root file for coverage calculation (expected for subprocess files without children).`
             );
           }
           // Behåll bara root-filen - använd INTE alla filer som fallback
@@ -368,11 +369,12 @@ export const useAllFilesArtifactCoverage = () => {
             // Använd INTE alla filer som fallback, eftersom det inkluderar noder från andra filer
             // vilket ger felaktig coverage-räkning (t.ex. "3/135" istället för "3/4")
             // Om hierarkin inte är byggd ännu, räkna bara noder från den aktuella filen
+            // Detta är förväntat beteende för subprocess-filer utan egna subprocesser
             if (relevantFiles.length === 1) {
               if (import.meta.env.DEV) {
-                console.warn(
+                console.debug(
                   `[useFileArtifactCoverage] Hierarchy for ${file.file_name} only contains root file. ` +
-                  `Using only root file for coverage calculation to avoid counting nodes from other files.`
+                  `Using only root file for coverage calculation (expected for subprocess files without children).`
                 );
               }
               // Behåll bara root-filen - använd INTE alla filer som fallback

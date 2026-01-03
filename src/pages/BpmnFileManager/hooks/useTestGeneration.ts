@@ -148,6 +148,71 @@ export function useTestGeneration({
       }
     }
 
+    // Hämta alla filer i hierarkin från bpmn_dependencies
+    // Detta säkerställer att vi genererar testinfo för hela kedjan
+    const getAllFilesInHierarchy = async (startFile: string): Promise<string[]> => {
+      const hierarchyFiles = new Set<string>([startFile]);
+      
+      // Hämta alla children rekursivt från filen
+      const getChildrenRecursively = async (parent: string) => {
+        const { data: children } = await supabase
+          .from('bpmn_dependencies')
+          .select('child_file')
+          .eq('parent_file', parent);
+        
+        if (children) {
+          for (const child of children) {
+            if (child.child_file && files.some(f => f.file_name === child.child_file)) {
+              if (!hierarchyFiles.has(child.child_file)) {
+                hierarchyFiles.add(child.child_file);
+                // Rekursivt hämta children till children
+                await getChildrenRecursively(child.child_file);
+              }
+            }
+          }
+        }
+      };
+      
+      // Hämta alla parents rekursivt från filen
+      const getParentsRecursively = async (child: string) => {
+        const { data: parents } = await supabase
+          .from('bpmn_dependencies')
+          .select('parent_file')
+          .eq('child_file', child);
+        
+        if (parents) {
+          for (const parent of parents) {
+            if (parent.parent_file && files.some(f => f.file_name === parent.parent_file)) {
+              if (!hierarchyFiles.has(parent.parent_file)) {
+                hierarchyFiles.add(parent.parent_file);
+                // Rekursivt hämta parents till parents
+                await getParentsRecursively(parent.parent_file);
+              }
+            }
+          }
+        }
+      };
+      
+      await getChildrenRecursively(startFile);
+      await getParentsRecursively(startFile);
+      
+      const result = Array.from(hierarchyFiles);
+      
+      // FALLBACK: Om hierarkin inte är byggd ännu (bara en fil hittades) och det finns fler filer,
+      // använd alla BPMN-filer som fallback för att säkerställa att vi genererar för hela kedjan
+      if (result.length === 1 && files.filter(f => f.file_type === 'bpmn').length > 1) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            `[useTestGeneration] Hierarchy not built yet for ${startFile}, using all BPMN files as fallback`
+          );
+        }
+        // Använd alla BPMN-filer som fallback
+        return files.filter(f => f.file_type === 'bpmn').map(f => f.file_name);
+      }
+      
+      return result;
+    };
+
     // FORBÄTTRING: Explicit LLM-tillgänglighetskontroll
     const { isLlmEnabled } = await import('@/lib/llmClient');
     if (!isLlmEnabled()) {
@@ -169,6 +234,31 @@ export function useTestGeneration({
         variant: 'destructive',
       });
       return;
+    }
+
+    // Hämta alla filer i hierarkin
+    const allFilesInHierarchy = await getAllFilesInHierarchy(selectedFile.file_name);
+    
+    // Förbättrad root-fil-detektering:
+    // 1. Om rootFileName är satt och matchar selectedFile, är det root
+    // 2. Om selectedFile är första filen i hierarkin, är det troligen root
+    // 3. Om selectedFile inte finns som child i bpmn_dependencies, är det troligen root
+    let isRootFile = false;
+    if (rootFileName && selectedFile.file_name === rootFileName) {
+      isRootFile = true;
+    } else if (allFilesInHierarchy.length > 0 && allFilesInHierarchy[0] === selectedFile.file_name) {
+      // Kolla om filen finns som child i dependencies
+      const { data: asChild } = await supabase
+        .from('bpmn_dependencies')
+        .select('parent_file')
+        .eq('child_file', selectedFile.file_name)
+        .limit(1);
+      
+      // Om filen inte finns som child, är den troligen root
+      isRootFile = !asChild || asChild.length === 0;
+    } else if (allFilesInHierarchy.length === 1) {
+      // Om bara en fil i hierarkin, är den root
+      isRootFile = true;
     }
 
     // Show generation dialog immediately
@@ -222,16 +312,26 @@ export function useTestGeneration({
             tests: { completed: progress.current, total: progress.total },
             startTime,
           });
-        },
-      );
+          },
+          undefined, // checkCancellation
+          undefined, // abortSignal
+          allFilesInHierarchy.length > 1, // useHierarchy: true om det finns fler filer i hierarkin
+          allFilesInHierarchy, // existingBpmnFiles: alla filer i hierarkin
+          isRootFile, // isActualRootFile: true om detta är root-filen
+        );
 
       // Convert TestGenerationResult to GenerationResult format
       const dialogResult: GenerationResult = {
         fileName: selectedFile.file_name,
-        filesAnalyzed: [selectedFile.file_name],
+        filesAnalyzed: result.filesGenerated || allFilesInHierarchy, // Använd filesGenerated från resultatet
         docFiles: [],
         jiraMappings: [],
         subprocessMappings: [],
+        testScenarios: result.totalScenarios,
+        e2eScenarios: result.e2eScenarios,
+        featureGoalScenarios: result.featureGoalScenarios,
+        e2eScenarioDetails: result.e2eScenarioDetails,
+        featureGoalScenarioDetails: result.featureGoalScenarioDetails,
       };
 
       // Show result in dialog
@@ -489,10 +589,15 @@ export function useTestGeneration({
         // Convert TestGenerationResult to GenerationResult format
         const dialogResult: GenerationResult = {
           fileName: rootFile.file_name,
-          filesAnalyzed: [rootFile.file_name],
+          filesAnalyzed: result.filesGenerated || [rootFile.file_name], // Use filesGenerated if available
           docFiles: [],
           jiraMappings: [],
           subprocessMappings: [],
+          testScenarios: result.totalScenarios,
+          e2eScenarios: result.e2eScenarios,
+          featureGoalScenarios: result.featureGoalScenarios,
+          e2eScenarioDetails: result.e2eScenarioDetails,
+          featureGoalScenarioDetails: result.featureGoalScenarioDetails,
         };
 
         // Show result in dialog

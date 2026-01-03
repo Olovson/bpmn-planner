@@ -63,7 +63,7 @@
 - ✅ **`documentation-generation-from-scratch.spec.ts`** - ⭐ **NYTT** - Dokumentationsgenerering från scratch med mocked Claude API (identifiera BPMN-filer → hierarki → generering → visas i appen)
   - **Fokus:** Generell dokumentationsgenerering och att resultatet visas i GenerationDialog
   - **Testar:** En fil → hierarki → generering → resultat-dialog
-- ✅ **`test-generation-from-scratch.spec.ts`** - ⭐ **NYTT** - Testgenerering från scratch med mocked Claude API (identifiera BPMN-filer → hierarki → generera tester → visas i appen)
+- ✅ **`test-info-generation.spec.ts`** - ⭐ **UPPDATERAT** - Testinfo-generering med förutsättningar (filer och dokumentation redan uppladdade/genererade → generera testinfo → validera popup och test-coverage sida)
 
 #### Konfiguration & Style Guide
 - ✅ **`configuration.spec.ts`** - Projektkonfiguration
@@ -338,7 +338,7 @@ För snabba och pålitliga tester använder vi mockade Claude API-anrop:
 - **`fixtures/claudeApiMocks.ts`** - Mockar Claude API-anrop
 - **`documentation-generation-from-scratch.spec.ts`** - Använder mocked API för generell dokumentationsgenerering
 - **`feature-goal-documentation.spec.ts`** - Använder mocked API för Feature Goal-dokumentation
-- **`test-generation-from-scratch.spec.ts`** - Använder mocked API för testgenerering
+- **`test-info-generation.spec.ts`** - Använder mocked API för testinfo-generering, validerar GenerationDialog och test-coverage sida
 
 **Fördelar:**
 - ✅ Snabba tester (ingen väntan på externa API:er)

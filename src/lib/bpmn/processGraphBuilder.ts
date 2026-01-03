@@ -248,8 +248,9 @@ function matchSubprocesses(
         } else {
           // VIKTIGT: Om bpmn-map.json pekar på en fil som saknas, markera det som saknat
           // men fall INTE tillbaka på automatisk matchning - det skulle ge felaktiga resultat
+          // Detta är förväntat beteende när filer inte är uppladdade ännu, så använd debug istället för warn
           if (import.meta.env.DEV) {
-            console.warn(
+            console.debug(
               `[matchSubprocesses] Map points to ${mapRes.matchedFileName} but file not found in processDefs.`,
               `Call activity: ${ca.id} in ${ca.fileName}. Marking as missing, NOT falling back to automatic matching.`
             );

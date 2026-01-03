@@ -134,7 +134,7 @@ För snabba och pålitliga tester använder vi mockade Claude API-anrop:
 
 - **`fixtures/claudeApiMocks.ts`** - Mockar Claude API-anrop
 - **`documentation-generation-from-scratch.spec.ts`** - Använder mocked API för dokumentationsgenerering
-- **`test-generation-from-scratch.spec.ts`** - Använder mocked API för testgenerering
+- **`test-info-generation.spec.ts`** - Använder mocked API för testinfo-generering, validerar GenerationDialog och test-coverage sida
 - **`feature-goal-documentation.spec.ts`** - Använder mocked API för Feature Goal-dokumentation
 
 **Fördelar:**

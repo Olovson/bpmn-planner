@@ -63,10 +63,7 @@ import { loadAllBpmnParseResults, loadBpmnMap } from '@/lib/bpmn/debugDataLoader
 import type { ProcessGraph } from '@/lib/bpmn/processGraph';
 import type { ProcessTreeNode } from '@/lib/bpmn/processTreeTypes';
 import { buildJiraName, buildParentPath } from '@/lib/jiraNaming';
-import {
-  createPlannedScenariosFromTree,
-  savePlannedScenarios,
-} from '@/lib/plannedScenariosHelper';
+import { savePlannedScenarios } from '@/lib/plannedScenariosHelper';
 import { useGenerationJobs, type GenerationJob, type GenerationOperation, type GenerationStatus } from '@/hooks/useGenerationJobs';
 import { AppHeaderWithTabs, type ViewKey } from '@/components/AppHeaderWithTabs';
 import { navigateToView } from '@/utils/navigation';

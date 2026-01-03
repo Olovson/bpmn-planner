@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle, AlertCircle, Database, Settings } from "lucide-react";
-import { useAllSubprocesses } from "@/hooks/useDorDodStatus";
+import { useAllSubprocesses } from "@/hooks/useAllSubprocesses";
 import { SUBPROCESS_REGISTRY } from "@/data/subprocessRegistry";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

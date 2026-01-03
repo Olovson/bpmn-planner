@@ -15,6 +15,13 @@ export interface TestScenario {
   duration?: number;
   category: 'happy-path' | 'error-case' | 'edge-case';
   /**
+   * Given/When/Then för Feature Goal-tester (genererade med Claude)
+   * Kortfattade (1-2 meningar vardera)
+   */
+  given?: string;
+  when?: string;
+  then?: string;
+  /**
    * Markerar scenarion som inte verkar använda känd nod-/processkontext
    * (sätts av LLM-valideringen, påverkar inte körning utan bara UI).
    */
@@ -22,10 +29,6 @@ export interface TestScenario {
   persona?: ScenarioPersona;
   riskLevel?: ScenarioRiskLevel;
   assertionType?: ScenarioAssertionType;
-  // Given/When/Then för Feature Goal-tester (extraheras från E2E-scenarios)
-  given?: string;
-  when?: string;
-  then?: string;
 }
 
 export interface TestInfo {

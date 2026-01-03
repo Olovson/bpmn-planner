@@ -14,14 +14,13 @@ export const invalidateStructureQueries = (queryClient: QueryClient) => {
 
 /**
  * Helper function to invalidate artifact-related queries
- * Use this when tests, documentation, or DoR/DoD change
+ * Use this when tests or documentation change
  */
 export const invalidateArtifactQueries = (queryClient: QueryClient) => {
   queryClient.invalidateQueries({ queryKey: ['node-test-links'] });
   queryClient.invalidateQueries({ queryKey: ['test-results'] });
-  queryClient.invalidateQueries({ queryKey: ['all-dor-dod-criteria'] });
-  queryClient.invalidateQueries({ queryKey: ['dor-dod-status'] });
   queryClient.invalidateQueries({ queryKey: ['file-artifact-status'] });
+  queryClient.invalidateQueries({ queryKey: ['all-subprocesses'] });
   // Invalidate coverage queries (single-file and all-files)
   queryClient.invalidateQueries({ queryKey: ['file-artifact-coverage'] });
   queryClient.invalidateQueries({ queryKey: ['all-files-artifact-coverage'] });
