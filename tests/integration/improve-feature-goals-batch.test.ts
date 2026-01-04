@@ -37,9 +37,21 @@ dotenv.config({ path: resolve(__dirname, '../../.env.local') });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const appEnv = process.env.VITE_APP_ENV || 'production';
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
+}
+
+// SAFETY CHECK: Ensure tests use the test Supabase project when in test mode
+const KNOWN_TEST_SUPABASE_URL = 'https://jxtlfdanzclcmtsgsrdd.supabase.co';
+if (appEnv === 'test' && !supabaseUrl.includes('jxtlfdanzclcmtsgsrdd')) {
+  throw new Error(
+    `SAFETY CHECK FAILED: VITE_APP_ENV=test but VITE_SUPABASE_URL does not point to test project!\n` +
+    `  Expected: ${KNOWN_TEST_SUPABASE_URL}\n` +
+    `  Got: ${supabaseUrl}\n` +
+    `  Check your .env.test file.`
+  );
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);

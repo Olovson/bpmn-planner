@@ -4,13 +4,43 @@ import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const APP_ENV = (import.meta.env.VITE_APP_ENV || 'production') as 'production' | 'test' | string;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Provide fallback values to prevent crashes if env vars are missing
+// Known test Supabase project URL (hardcoded for safety)
+const KNOWN_TEST_SUPABASE_URL = 'https://jxtlfdanzclcmtsgsrdd.supabase.co';
+
+// Provide fallback values to prevent crashes if env vars are missing,
+// but enforce stricter checks when running in the dedicated test environment.
 const supabaseUrl = SUPABASE_URL || '';
 const supabaseKey = SUPABASE_PUBLISHABLE_KEY || '';
+
+// SAFETY GUARDRAILS: Prevent tests from accidentally hitting production
+if (APP_ENV === 'test') {
+  if (!supabaseUrl) {
+    throw new Error(
+      '[supabase] VITE_APP_ENV=test but VITE_SUPABASE_URL is empty. ' +
+        'Configure .env.test with your test Supabase URL: ' + KNOWN_TEST_SUPABASE_URL,
+    );
+  }
+
+  if (!supabaseUrl.includes('jxtlfdanzclcmtsgsrdd')) {
+    throw new Error(
+      '[supabase] SAFETY CHECK FAILED: VITE_APP_ENV=test but VITE_SUPABASE_URL does not point to the test project!\n' +
+        '  Expected: ' + KNOWN_TEST_SUPABASE_URL + '\n' +
+        '  Got: ' + supabaseUrl + '\n' +
+        '  Tests must use the dedicated test Supabase project, not production.\n' +
+        '  Check your .env.test file.',
+    );
+  }
+
+  // Log confirmation in development
+  if (import.meta.env.DEV) {
+    console.log('[supabase] ✅ Running in TEST mode with test Supabase project:', supabaseUrl);
+  }
+}
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {

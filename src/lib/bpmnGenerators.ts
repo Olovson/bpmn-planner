@@ -1,7 +1,7 @@
 import { BpmnElement, BpmnSubprocess, parseBpmnFile } from '@/lib/bpmnParser';
 import { generateTestCode } from '@/tests/meta/jiraBpmnMeta';
 import { buildNodeDocumentationContext, type NodeDocumentationContext } from '@/lib/documentationContext';
-import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
+import type { BpmnProcessGraph, BpmnProcessNode } from '@/lib/bpmnProcessGraph';
 import {
   renderFeatureGoalDoc,
   renderEpicDoc,
@@ -10,16 +10,8 @@ import {
 } from '@/lib/documentationTemplates';
 import { wrapLlmContentAsDocument } from '@/lib/wrapLlmContent';
 import { getNodeDocFileKey, getNodeTestFileKey, getFeatureGoalDocFileKey } from '@/lib/nodeArtifactPaths';
-import { generateDocumentationWithLlm, type DocumentationDocType, type ChildNodeDocumentation } from '@/lib/llmDocumentation';
-import { generateTestSpecWithLlm } from '@/lib/llmTests';
-import type { LlmProvider } from './llmClientAbstraction';
-import { getLlmClient, getDefaultLlmProvider } from './llmClients';
-import { supabase } from '@/integrations/supabase/client';
-import { storageFileExists, getDocumentationUrl } from '@/lib/artifactUrls';
-import { buildDocStoragePaths } from '@/lib/artifactPaths';
+import type { DocumentationDocType, ChildNodeDocumentation } from '@/lib/llmDocumentation';
 import { isLlmEnabled } from '@/lib/llmClient';
-import { logLlmFallback } from '@/lib/llmMonitoring';
-import { saveLlmDebugArtifact } from '@/lib/llmDebugStorage';
 import { CloudLlmAccountInactiveError } from '@/lib/llmClients/cloudLlmClient';
 import {
   buildProcessHierarchy,
@@ -49,10 +41,7 @@ import {
   type FlowGraph,
 } from '@/lib/bpmnFlowExtractor';
 import { testMapping, type TestScenario } from '@/data/testMapping';
-import {
-  savePlannedScenarios,
-  type PlannedScenarioRow,
-} from '@/lib/plannedScenariosHelper';
+import type { PlannedScenarioRow } from '@/lib/plannedScenariosHelper';
 import type { ProcessTreeNode } from '@/lib/processTree';
 import { buildProcessTreeFromGraph } from '@/lib/bpmn/buildProcessTreeFromGraph';
 import type { EpicUserStory } from './epicDocTypes';
@@ -68,6 +57,8 @@ import type {
 
 export type { GenerationPhaseKey };
 import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
+import { createDefaultEngineAdapters } from '@/lib/engine/defaultAdapters';
+import { GenerationError } from '@/lib/engine/types';
 
 // Legacy test generators have been moved to bpmnGenerators/legacyTestGenerators.ts
 // Import and re-export for backward compatibility
@@ -121,6 +112,146 @@ const mapTestScenarioToSkeleton = (scenario: TestScenario) => ({
       : scenario.name || scenario.id || 'Scenario',
   description: scenario.description || '',
 });
+
+function sortFilesForGeneration(
+  graph: BpmnProcessGraph,
+  analyzedFiles: string[],
+): string[] {
+  const fileOrder: string[] = [];
+  const visitedFiles = new Set<string>();
+
+  const rootCallActivities = graph.root.children.filter(
+    (child): child is BpmnProcessNode =>
+      child.type === 'callActivity' &&
+      child.subprocessFile !== undefined &&
+      !child.missingDefinition &&
+      analyzedFiles.includes(child.subprocessFile),
+  );
+
+  const sortedRootCallActivities = [...rootCallActivities].sort((a, b) =>
+    compareNodesByVisualOrder(a, b, true),
+  );
+
+  if (import.meta.env.DEV && sortedRootCallActivities.length > 0) {
+    console.log('\n[bpmnGenerators] 📋 Root callActivities ordning (samma som UI:n):');
+    sortedRootCallActivities.forEach((ca, idx) => {
+      console.log(
+        `  ${idx + 1}. ${ca.name || ca.bpmnElementId} → ${ca.subprocessFile} (visual:${
+          ca.visualOrderIndex ?? 'N/A'
+        }, order:${ca.orderIndex ?? 'N/A'})`,
+      );
+    });
+  }
+
+  const processFile = (callActivity: BpmnProcessNode) => {
+    if (!callActivity.subprocessFile || visitedFiles.has(callActivity.subprocessFile)) {
+      return;
+    }
+
+    visitedFiles.add(callActivity.subprocessFile);
+
+    const subprocessNodes = graph.fileNodes.get(callActivity.subprocessFile) || [];
+    const subprocessProcessNode = subprocessNodes.find((n) => n.type === 'process');
+
+    if (subprocessProcessNode) {
+      const subprocessCallActivities = subprocessProcessNode.children.filter(
+        (child): child is BpmnProcessNode =>
+          child.type === 'callActivity' &&
+          child.subprocessFile !== undefined &&
+          !child.missingDefinition &&
+          analyzedFiles.includes(child.subprocessFile),
+      );
+
+      const sortedSubprocessCallActivities = [...subprocessCallActivities].sort((a, b) =>
+        compareNodesByVisualOrder(a, b, false),
+      );
+
+      for (const subCa of sortedSubprocessCallActivities) {
+        processFile(subCa);
+      }
+
+      fileOrder.push(callActivity.subprocessFile);
+    }
+  };
+
+  for (const callActivity of sortedRootCallActivities) {
+    processFile(callActivity);
+  }
+
+  if (!visitedFiles.has(graph.root.bpmnFile) && analyzedFiles.includes(graph.root.bpmnFile)) {
+    fileOrder.push(graph.root.bpmnFile);
+    visitedFiles.add(graph.root.bpmnFile);
+  }
+
+  for (const fileName of analyzedFiles) {
+    if (!visitedFiles.has(fileName)) {
+      fileOrder.push(fileName);
+      visitedFiles.add(fileName);
+    }
+  }
+
+  const sortedAnalyzedFiles = fileOrder;
+
+  if (import.meta.env.DEV && sortedAnalyzedFiles.length > 0) {
+    console.log('\n[bpmnGenerators] 📋 Filordning för dokumentationsgenerering (traversal-order):');
+    sortedAnalyzedFiles.forEach((fileName, index) => {
+      console.log(`  ${index + 1}. ${fileName}`);
+    });
+    console.log('');
+  }
+
+  if (import.meta.env.DEV && sortedAnalyzedFiles.length !== analyzedFiles.length) {
+    console.warn(
+      `[bpmnGenerators] ⚠️ File order changed: ${analyzedFiles.length} → ${sortedAnalyzedFiles.length} files`,
+    );
+  }
+
+  return sortedAnalyzedFiles;
+}
+
+function sortNodesForGeneration(
+  nodes: BpmnProcessNode[],
+  nodeDepthMap: Map<string, number>,
+): BpmnProcessNode[] {
+  return [...nodes].sort((a, b) => {
+    const orderA = a.orderIndex ?? a.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.orderIndex ?? b.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    const visualA = a.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+    const visualB = b.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
+
+    if (visualA !== visualB) {
+      return visualA - visualB;
+    }
+
+    const typeOrder: Record<string, number> = {
+      userTask: 1,
+      serviceTask: 1,
+      businessRuleTask: 1,
+      callActivity: 2,
+      process: 3,
+    };
+    const typeOrderA = typeOrder[a.type as keyof typeof typeOrder] ?? 99;
+    const typeOrderB = typeOrder[b.type as keyof typeof typeOrder] ?? 99;
+
+    if (typeOrderA !== typeOrderB) {
+      return typeOrderA - typeOrderB;
+    }
+
+    const depthA = nodeDepthMap.get(a.id) ?? 0;
+    const depthB = nodeDepthMap.get(b.id) ?? 0;
+
+    if (depthA !== depthB) {
+      return depthA - depthB;
+    }
+
+    return (a.name || a.bpmnElementId || '').localeCompare(b.name || b.bpmnElementId || '');
+  });
+}
 
 /**
  * Genererar alla artefakter från en BPMN-processgraf.
@@ -194,6 +325,8 @@ export async function generateAllFromBpmnWithGraph(
   const generationSourceLabel = generationSource ?? (useLlm ? 'llm' : 'local');
   const graphFileScope =
     useHierarchy && existingBpmnFiles.length > 0 ? existingBpmnFiles : [bpmnFileName];
+
+  const { llm: llmService, storage: storageService } = createDefaultEngineAdapters();
 
   try {
     await reportProgress('graph:start', 'Analyserar BPMN-struktur', bpmnFileName);
@@ -714,113 +847,7 @@ export async function generateAllFromBpmnWithGraph(
     // Key format: för callActivities: `subprocess:${subprocessFile}`, för tasks/epics: `${bpmnFile}::${bpmnElementId}`
     const globalProcessedDocNodes = new Set<string>();
 
-    // VIKTIGT: Sortera filer baserat på hur de visas i ProcessExplorer/test-coverage
-    // Ordningen ska matcha när callActivities anropas i root-processen (mortgage.bpmn)
-    // Samma logik som sortCallActivities: visualOrderIndex → orderIndex → branchId → alfabetisk
-    
-    const fileOrder: string[] = [];
-    const visitedFiles = new Set<string>();
-    
-    // Steg 1: Hitta alla callActivities i root-processen och sortera dem med samma logik som UI:n
-    const rootCallActivities = graph.root.children.filter(
-      (child): child is BpmnProcessNode => 
-        child.type === 'callActivity' && 
-        child.subprocessFile !== undefined && 
-        !child.missingDefinition &&
-        analyzedFiles.includes(child.subprocessFile)
-    );
-    
-    // Sortera root callActivities med samma logik som sortCallActivities (visualOrderIndex → orderIndex → branchId)
-    const sortedRootCallActivities = [...rootCallActivities].sort((a, b) => 
-      compareNodesByVisualOrder(a, b, true) // isRoot = true för root-processen
-    );
-    
-    // Debug: Visa root callActivities ordning
-    if (import.meta.env.DEV && sortedRootCallActivities.length > 0) {
-      console.log('\n[bpmnGenerators] 📋 Root callActivities ordning (samma som UI:n):');
-      sortedRootCallActivities.forEach((ca, idx) => {
-        console.log(`  ${idx + 1}. ${ca.name || ca.bpmnElementId} → ${ca.subprocessFile} (visual:${ca.visualOrderIndex ?? 'N/A'}, order:${ca.orderIndex ?? 'N/A'})`);
-      });
-    }
-    
-    // Steg 2: För varje callActivity i root (i sorterad ordning), lägg till dess subprocess-fil FÖRE parent
-    // VIKTIGT: Varje root callActivity och dess subprocesser ska processas i sin tur
-    // Ordningen ska matcha UI:n: Application subprocesser → Application → Credit Evaluation subprocesser → Credit Evaluation, etc.
-    const processFile = (callActivity: BpmnProcessNode) => {
-      if (!callActivity.subprocessFile || visitedFiles.has(callActivity.subprocessFile)) {
-        return;
-      }
-      
-      // VIKTIGT: Lägg till filen i visitedFiles INNAN rekursion för att undvika oändlig rekursion
-      // vid cirkulära referenser (t.ex. A → B → C → A)
-      visitedFiles.add(callActivity.subprocessFile);
-      
-      // Hitta subprocess-noden
-      const subprocessNodes = graph.fileNodes.get(callActivity.subprocessFile) || [];
-      const subprocessProcessNode = subprocessNodes.find(n => n.type === 'process');
-      
-      if (subprocessProcessNode) {
-        // Rekursivt: processera subprocessens callActivities först (topologisk ordning)
-        const subprocessCallActivities = subprocessProcessNode.children.filter(
-          (child): child is BpmnProcessNode => 
-            child.type === 'callActivity' && 
-            child.subprocessFile !== undefined && 
-            !child.missingDefinition &&
-            analyzedFiles.includes(child.subprocessFile)
-        );
-        
-        // Sortera subprocess callActivities (isRoot = false för subprocesser)
-        const sortedSubprocessCallActivities = [...subprocessCallActivities].sort((a, b) => 
-          compareNodesByVisualOrder(a, b, false)
-        );
-        
-        // Processera subprocessens callActivities rekursivt
-        for (const subCa of sortedSubprocessCallActivities) {
-          processFile(subCa);
-        }
-        
-        // Lägg till subprocess-filen i fileOrder EFTER att dess subprocesser har processats
-        fileOrder.push(callActivity.subprocessFile);
-      }
-    };
-    
-    // Processera alla root callActivities i sorterad ordning (samma ordning som UI:n visar)
-    // Detta säkerställer att Application och dess subprocesser kommer FÖRE Credit Evaluation, etc.
-    // Ordningen: Application subprocesser → Application → Credit Evaluation subprocesser → Credit Evaluation, etc.
-    for (const callActivity of sortedRootCallActivities) {
-      processFile(callActivity);
-    }
-    
-    // Lägg till root-processen sist (efter alla subprocesser)
-    if (!visitedFiles.has(graph.root.bpmnFile) && analyzedFiles.includes(graph.root.bpmnFile)) {
-      fileOrder.push(graph.root.bpmnFile);
-      visitedFiles.add(graph.root.bpmnFile);
-    }
-    
-    // Lägg till eventuella filer som inte hittades i traversal (säkerhetsåtgärd)
-    for (const fileName of analyzedFiles) {
-      if (!visitedFiles.has(fileName)) {
-        fileOrder.push(fileName);
-        visitedFiles.add(fileName);
-      }
-    }
-    
-    const sortedAnalyzedFiles = fileOrder;
-    
-    // Debug-logging: Visa filordning (endast i DEV)
-    if (import.meta.env.DEV && sortedAnalyzedFiles.length > 0) {
-      console.log('\n[bpmnGenerators] 📋 Filordning för dokumentationsgenerering (traversal-order):');
-      sortedAnalyzedFiles.forEach((fileName, index) => {
-        console.log(`  ${index + 1}. ${fileName}`);
-      });
-      console.log('');
-    }
-    
-    if (import.meta.env.DEV && sortedAnalyzedFiles.length !== analyzedFiles.length) {
-      console.warn(
-        `[bpmnGenerators] ⚠️ File order changed: ${analyzedFiles.length} → ${sortedAnalyzedFiles.length} files`
-      );
-    }
+    const sortedAnalyzedFiles = sortFilesForGeneration(graph, analyzedFiles);
 
     for (const file of sortedAnalyzedFiles) {
       await reportProgress('docgen:file', 'Genererar dokumentation/testinstruktioner', file);
@@ -870,61 +897,7 @@ export async function generateAllFromBpmnWithGraph(
       }
       
       if (nodesInFile.length > 0) {
-        // Sortera noder baserat på anropsordning (samma som test-coverage sidan visar från vänster till höger)
-        // Primärt: orderIndex (exekveringsordning från sequence flows)
-        // Sekundärt: visualOrderIndex (visuell ordning från BPMN-diagrammet)
-        // Tertiärt: node type (tasks/epics före callActivities för att säkerställa leaf nodes före Feature Goals)
-        // Kvartärt: depth (lägre depth först, för att säkerställa subprocesser före parent)
-        // Detta säkerställer att dokumentation genereras i samma ordning som noder anropas i BPMN-filerna
-        const sortedNodesInFile = [...nodesInFile].sort((a, b) => {
-          // Primär sortering: orderIndex (anropsordning från sequence flows)
-          // Detta matchar hur test-coverage sidan visar ordningen (från vänster till höger)
-          const orderA = a.orderIndex ?? a.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
-          const orderB = b.orderIndex ?? b.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
-          
-          if (orderA !== orderB) {
-            return orderA - orderB; // Lägre orderIndex först (tidigare i anropsordningen)
-          }
-          
-          // Sekundär sortering: visualOrderIndex (visuell ordning från BPMN-diagrammet)
-          // Detta säkerställer konsistens med test-coverage sidan som använder visualOrderIndex som primär sortering
-          const visualA = a.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
-          const visualB = b.visualOrderIndex ?? Number.MAX_SAFE_INTEGER;
-          
-          if (visualA !== visualB) {
-            return visualA - visualB;
-          }
-          
-          // Tertiär sortering: node type (tasks/epics före callActivities)
-          // Detta säkerställer att leaf nodes (epics) genereras FÖRE Feature Goals
-          // även om de har samma orderIndex (vilket kan hända om de är i olika filer)
-          const typeOrder: Record<string, number> = {
-            'userTask': 1,
-            'serviceTask': 1,
-            'businessRuleTask': 1,
-            'callActivity': 2,
-            'process': 3,
-          };
-          const typeOrderA = typeOrder[a.type as keyof typeof typeOrder] ?? 99;
-          const typeOrderB = typeOrder[b.type as keyof typeof typeOrder] ?? 99;
-          
-          if (typeOrderA !== typeOrderB) {
-            return typeOrderA - typeOrderB; // Tasks/epics (1) före callActivities (2)
-          }
-          
-          // Kvartär sortering: depth (lägre depth först)
-          // Detta säkerställer att subprocesser genereras FÖRE parent nodes
-          // (användbart när orderIndex/visualOrderIndex saknas eller är samma)
-          const depthA = nodeDepthMap.get(a.id) ?? 0;
-          const depthB = nodeDepthMap.get(b.id) ?? 0;
-          
-          if (depthA !== depthB) {
-            return depthA - depthB; // Lägre depth först (subprocesser före parent)
-          }
-          
-          // Kvintär sortering: alfabetiskt för determinism
-          return (a.name || a.bpmnElementId || '').localeCompare(b.name || b.bpmnElementId || '');
-        });
+        const sortedNodesInFile = sortNodesForGeneration(nodesInFile, nodeDepthMap);
         
         // Skapa en sammanslagen dokumentation för hela filen – med fokus på innehåll.
         // Själva app-layouten hanteras i DocViewer och den gemensamma wrappern.
@@ -1068,16 +1041,15 @@ export async function generateAllFromBpmnWithGraph(
               console.warn(`[bpmnGenerators] No version hash for ${node.bpmnFile}, cannot check if doc exists`);
               docExists = false;
             } else {
-              // Claude-only: Always use 'cloud' provider (maps to 'claude' in storage paths)
-              const pathResult = buildDocStoragePaths(
+              const existsResult = await storageService.docExists({
                 docFileKey,
-                generationSourceLabel?.includes('slow') ? 'slow' : null,
-                'cloud', // Claude-only: always use cloud provider
-                node.bpmnFile,
-                versionHash
-              );
-              modePath = pathResult.modePath;
-              docExists = await storageFileExists(modePath);
+                generationSourceLabel,
+                provider: 'cloud',
+                bpmnFile: node.bpmnFile,
+                versionHash,
+              });
+              docExists = existsResult.exists;
+              modePath = existsResult.modePath;
             }
             
             // If nodeFilter says to generate this node, override Storage check
@@ -1086,13 +1058,12 @@ export async function generateAllFromBpmnWithGraph(
               // VIKTIGT: Validera dokumentationskvalitet innan vi hoppar över regenerering
               // Om dokumentationen är minimal (från en tidigare generering när LLM misslyckades),
               // måste vi regenerera för att få korrekt innehåll
-              const existingDocInfo = await loadChildDocFromStorage(
-                node.bpmnFile,
-                node.bpmnElementId,
-                docFileKey,
+              const existingDocInfo = await storageService.loadExistingNodeDoc({
+                bpmnFile: node.bpmnFile,
+                bpmnElementId: node.bpmnElementId,
                 versionHash,
-                generationSourceLabel
-              );
+                generationSourceLabel,
+              });
               
               // Validera kvalitet: om dokumentationen saknar summary eller flowSteps, är den minimal
               const isMinimalDoc = !existingDocInfo || 
@@ -1287,78 +1258,64 @@ export async function generateAllFromBpmnWithGraph(
               continue;
             } else if (node.type === 'businessRuleTask') {
               try {
-                nodeDocContent = await renderDocWithLlm(
+                const llmResult = await llmService.generateNodeDocumentation(
                   'businessRule',
                   nodeContext,
                   docLinks,
                   useLlm,
                   llmProvider,
-                  async (provider, fallbackUsed, docJson) => {
-                    if (fallbackUsed) {
-                      llmFallbackUsed = true;
-                      llmFinalProvider = provider;
-                    }
-                    const scenarioProvider = mapProviderToScenarioProvider(
-                      provider,
-                      fallbackUsed,
-                    );
-                    if (docJson) {
-                      lastDocJson = docJson;
-                      
-                      // Spara child node dokumentation för att använda i parent node prompts
-                      // För callActivities: använd subprocessFile som key (för återkommande subprocesser)
-                      // För tasks/epics: använd node.id som key
-                      // VIKTIGT: För återkommande noder sparar vi bara första gången
-                      // (för att använda i parent node prompts), men genererar dokumentation per instans
-                      if (docJson && typeof docJson === 'object') {
-                        const childDocKey = node.type === 'callActivity' && node.subprocessFile
-                          ? `subprocess:${node.subprocessFile}`
-                          : node.id;
-                        
-                        // Spara bara om det inte redan finns (första gången noden genereras)
-                        if (!generatedChildDocs.has(childDocKey)) {
-                          const childDocInfo: {
-                            summary: string;
-                            flowSteps: string[];
-                            inputs?: string[];
-                            outputs?: string[];
-                            scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
-                            userStories?: Array<{
-                              id: string;
-                              role: string;
-                              goal: string;
-                              value: string;
-                              acceptanceCriteria: string[];
-                            }>;
-                          } = {
-                            summary: (docJson as any).summary || '',
-                            flowSteps: Array.isArray((docJson as any).decisionLogic) ? (docJson as any).decisionLogic : [],
-                            inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
-                            outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
-                            scenarios: Array.isArray((docJson as any).scenarios) ? (docJson as any).scenarios : [],
-                          };
-                          // Lägg till userStories om de finns (för Epic-dokumentation)
-                          if (Array.isArray((docJson as any).userStories)) {
-                            childDocInfo.userStories = (docJson as any).userStories.map((us: any) => ({
-                              id: us.id || '',
-                              role: us.role || 'Kund',
-                              goal: us.goal || '',
-                              value: us.value || '',
-                              acceptanceCriteria: Array.isArray(us.acceptanceCriteria) ? us.acceptanceCriteria : [],
-                            }));
-                          }
-                          generatedChildDocs.set(childDocKey, childDocInfo);
-                        }
-                      }
-                    }
-                    // OBS: Testscenarion (scenarios) genereras inte längre i dokumentationssteget.
-                    // Testinformation genereras i ett separat steg och ska inte sparas här.
-                  },
-                  undefined, // childrenDocumentation (not applicable for businessRule/epic)
-                  undefined, // structuralInfo (not applicable for businessRule)
                   checkCancellation,
                   abortSignal,
                 );
+                nodeDocContent = llmResult.content;
+                llmFinalProvider = llmResult.provider;
+                llmFallbackUsed = llmResult.fallbackUsed;
+                const docJson = llmResult.docJson;
+
+                if (docJson && typeof docJson === 'object') {
+                  const childDocKey = node.type === 'callActivity' && node.subprocessFile
+                    ? `subprocess:${node.subprocessFile}`
+                    : node.id;
+
+                  if (!generatedChildDocs.has(childDocKey)) {
+                    const childDocInfo: {
+                      summary: string;
+                      flowSteps: string[];
+                      inputs?: string[];
+                      outputs?: string[];
+                      scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+                      userStories?: Array<{
+                        id: string;
+                        role: string;
+                        goal: string;
+                        value: string;
+                        acceptanceCriteria: string[];
+                      }>;
+                    } = {
+                      summary: (docJson as any).summary || '',
+                      flowSteps: Array.isArray((docJson as any).decisionLogic)
+                        ? (docJson as any).decisionLogic
+                        : [],
+                      inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
+                      outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
+                      scenarios: Array.isArray((docJson as any).scenarios)
+                        ? (docJson as any).scenarios
+                        : [],
+                    };
+                    if (Array.isArray((docJson as any).userStories)) {
+                      childDocInfo.userStories = (docJson as any).userStories.map((us: any) => ({
+                        id: us.id || '',
+                        role: us.role || 'Kund',
+                        goal: us.goal || '',
+                        value: us.value || '',
+                        acceptanceCriteria: Array.isArray(us.acceptanceCriteria)
+                          ? us.acceptanceCriteria
+                          : [],
+                      }));
+                    }
+                    generatedChildDocs.set(childDocKey, childDocInfo);
+                  }
+                }
                 if (!(docLinks as any).dmnLink) {
                   nodeDocContent +=
                     '\n<p>Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell när den finns.</p>';
@@ -1379,89 +1336,73 @@ export async function generateAllFromBpmnWithGraph(
             } else {
               // Epic documentation (userTask, serviceTask)
               try {
-                nodeDocContent = await renderDocWithLlm(
+                const llmResult = await llmService.generateNodeDocumentation(
                   'epic',
                   nodeContext,
                   docLinks,
                   useLlm,
                   llmProvider,
-                  async (provider, fallbackUsed, docJson) => {
-                    if (fallbackUsed) {
-                      llmFallbackUsed = true;
-                      llmFinalProvider = provider;
-                    }
-                    const scenarioProvider = mapProviderToScenarioProvider(
-                      provider,
-                      fallbackUsed,
-                    );
-                    if (docJson) {
-                      lastDocJson = docJson;
-                      
-                      // Spara child node dokumentation för att använda i parent node prompts
-                      // För callActivities: använd subprocessFile som key (för återkommande subprocesser)
-                      // För tasks/epics: använd node.id som key
-                      // VIKTIGT: För återkommande subprocesser sparar vi bara första gången
-                      // (för att använda i parent node prompts), men genererar dokumentation per instans
-                      if (docJson && typeof docJson === 'object') {
-                        const childDocKey = node.type === 'callActivity' && node.subprocessFile
-                          ? `subprocess:${node.subprocessFile}`
-                          : node.id;
-                        
-                        // Spara bara om det inte redan finns (första gången subprocessen genereras)
-                        if (!generatedChildDocs.has(childDocKey)) {
-                          const childDocInfo: {
-                            summary: string;
-                            flowSteps: string[];
-                            inputs?: string[];
-                            outputs?: string[];
-                            scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
-                            userStories?: Array<{
-                              id: string;
-                              role: string;
-                              goal: string;
-                              value: string;
-                              acceptanceCriteria: string[];
-                            }>;
-                          } = {
-                            summary: (docJson as any).summary || '',
-                            flowSteps: Array.isArray((docJson as any).flowSteps) ? (docJson as any).flowSteps : [],
-                            inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
-                            outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
-                            scenarios: Array.isArray((docJson as any).scenarios) ? (docJson as any).scenarios : [],
-                          };
-                          // Lägg till userStories om de finns (för Epic-dokumentation)
-                          if (Array.isArray((docJson as any).userStories)) {
-                            childDocInfo.userStories = (docJson as any).userStories.map((us: any) => ({
-                              id: us.id || '',
-                              role: us.role || 'Kund',
-                              goal: us.goal || '',
-                              value: us.value || '',
-                              acceptanceCriteria: Array.isArray(us.acceptanceCriteria) ? us.acceptanceCriteria : [],
-                            }));
-                          }
-                          generatedChildDocs.set(childDocKey, childDocInfo);
-                        }
-                      }
-                    }
-                    // OBS: Testscenarion (scenarios) genereras inte längre i dokumentationssteget.
-                    // Testinformation genereras i ett separat steg och ska inte sparas här.
-                  },
-                  undefined, // childrenDocumentation (not applicable for epic)
-                  undefined, // structuralInfo (not applicable for epic)
                   checkCancellation,
                   abortSignal,
                 );
+                nodeDocContent = llmResult.content;
+                llmFinalProvider = llmResult.provider;
+                llmFallbackUsed = llmResult.fallbackUsed;
+                const docJson = llmResult.docJson;
+
+                if (docJson && typeof docJson === 'object') {
+                  const childDocKey = node.type === 'callActivity' && node.subprocessFile
+                    ? `subprocess:${node.subprocessFile}`
+                    : node.id;
+
+                  if (!generatedChildDocs.has(childDocKey)) {
+                    const childDocInfo: {
+                      summary: string;
+                      flowSteps: string[];
+                      inputs?: string[];
+                      outputs?: string[];
+                      scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+                      userStories?: Array<{
+                        id: string;
+                        role: string;
+                        goal: string;
+                        value: string;
+                        acceptanceCriteria: string[];
+                      }>;
+                    } = {
+                      summary: (docJson as any).summary || '',
+                      flowSteps: Array.isArray((docJson as any).flowSteps)
+                        ? (docJson as any).flowSteps
+                        : [],
+                      inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
+                      outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
+                      scenarios: Array.isArray((docJson as any).scenarios)
+                        ? (docJson as any).scenarios
+                        : [],
+                    };
+                    if (Array.isArray((docJson as any).userStories)) {
+                      childDocInfo.userStories = (docJson as any).userStories.map((us: any) => ({
+                        id: us.id || '',
+                        role: us.role || 'Kund',
+                        goal: us.goal || '',
+                        value: us.value || '',
+                        acceptanceCriteria: Array.isArray(us.acceptanceCriteria)
+                          ? us.acceptanceCriteria
+                          : [],
+                      }));
+                    }
+                    generatedChildDocs.set(childDocKey, childDocInfo);
+                  }
+                }
               } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 console.error(
                   `[bpmnGenerators] LLM documentation generation failed for ${node.bpmnElementId} (${node.type}):`,
-                  errorMessage
+                  errorMessage,
                 );
-                // Don't silently fallback - this is a critical error
-                // Re-throw the error so the user knows LLM generation failed
                 throw new Error(
                   `Failed to generate ${node.type} documentation for ${node.bpmnElementId}: ${errorMessage}. ` +
-                  `Please ensure LLM is enabled (VITE_USE_LLM=true and VITE_ANTHROPIC_API_KEY is set).`
+                  `Please ensure LLM is enabled (VITE_USE_LLM=true and VITE_ANTHROPIC_API_KEY is set).`,
                 );
               }
             }
@@ -1526,9 +1467,16 @@ export async function generateAllFromBpmnWithGraph(
             nodeDocUrl = `#/doc-viewer/${encodeURIComponent(featureGoalViewerPath)}`;
             nodeTypeLabel = 'Feature Goal';
           } else {
-            // För Epics och Business Rules: använd vanlig node-dokumentation
-            nodeDocUrl = getDocumentationUrl(node.bpmnFile, node.bpmnElementId);
-            nodeTypeLabel = node.type === 'serviceTask' ? 'Service Task' 
+            const versionHash = versionHashes.get(node.bpmnFile) || null;
+            const url = await storageService.getDocumentationUrlForNode({
+              bpmnFile: node.bpmnFile,
+              bpmnElementId: node.bpmnElementId,
+              docFileKey,
+              versionHash,
+              generationSourceLabel,
+            });
+            nodeDocUrl = url ?? getDocumentationUrl(node.bpmnFile, node.bpmnElementId);
+            nodeTypeLabel = node.type === 'serviceTask' ? 'Service Task'
               : node.type === 'userTask' ? 'User Task'
               : node.type === 'businessRuleTask' ? 'Business Rule'
               : node.type;
@@ -2273,7 +2221,15 @@ export async function generateAllFromBpmnWithGraph(
         llmProvider,
       );
     }
-    throw error;
+    throw new GenerationError('generation', 'BPMN generation pipeline failed', {
+      cause: error,
+      context: {
+        bpmnFileName,
+        useHierarchy,
+        useLlm,
+        generationSourceLabel,
+      },
+    });
   }
 }
 
