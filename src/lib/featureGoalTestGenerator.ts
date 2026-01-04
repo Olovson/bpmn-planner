@@ -77,15 +77,15 @@ export async function loadFeatureGoalDocFromStorage(
       bpmnFile, // bpmnFileForVersion: use subprocess file for versioned paths
       versionHash,
     );
-    
+
     if (!docPath) {
       return null;
     }
-    
+
     const { data, error } = await supabase.storage
       .from('bpmn-files')
       .download(docPath);
-    
+
     if (error || !data) {
       return null;
     }

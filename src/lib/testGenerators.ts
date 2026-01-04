@@ -63,6 +63,42 @@ export interface TestGenerationProgress {
   status: 'parsing' | 'generating' | 'uploading' | 'complete';
 }
 
+async function resolveRootBpmnFileNameFromMap(): Promise<string | null> {
+  try {
+    const { loadBpmnMapFromStorage } = await import('./bpmn/bpmnMapStorage');
+    const { resolveRootBpmnFileFromMap } = await import('./bpmn/bpmnMapLoader');
+    const bpmnMapResult = await loadBpmnMapFromStorage();
+    if (bpmnMapResult.valid && bpmnMapResult.map) {
+      return resolveRootBpmnFileFromMap(bpmnMapResult.map);
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[testGenerators] Could not load bpmn-map root, falling back to heuristics:', error);
+    }
+  }
+  return null;
+}
+
+async function collectFeatureGoalElementIdsForFile(bpmnFileName: string): Promise<string[]> {
+  try {
+    const parseResult = await parseBpmnFile(bpmnFileName);
+    const callActivityIds = (parseResult?.elements || [])
+      .filter((element) => element.type === 'callActivity' && element.id)
+      .map((element) => element.id as string);
+
+    if (callActivityIds.length > 0) {
+      return callActivityIds;
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[testGenerators] Failed to parse for feature goal element IDs:', error);
+    }
+  }
+
+  const baseName = bpmnFileName.replace('.bpmn', '');
+  return [baseName];
+}
+
 /**
  * Generate tests for a single BPMN file or all files in hierarchy
  */
@@ -212,7 +248,9 @@ export async function generateTestsForFile(
       
       for (let i = 0; i < filesToGenerate.length; i++) {
         const fileName = filesToGenerate[i];
-        const isRootFileInHierarchy = i === 0; // First file in hierarchy is root (generates E2E scenarios)
+        // VIKTIGT: Topological sort puts dependencies FIRST (leaves first, root last)
+        // So the LAST file in the sorted list is the actual root that should generate E2E scenarios
+        const isRootFileInHierarchy = i === filesToGenerate.length - 1;
         
         if (checkCancellation) {
           checkCancellation();
@@ -231,6 +269,7 @@ export async function generateTestsForFile(
         try {
           // Recursively call generateTestsForFile for each file (with useHierarchy=false to avoid infinite recursion)
           // Only root file (first file) should generate E2E scenarios
+          // Pass filesToGenerate so Feature Goal generation can access all hierarchy files
           const fileResult = await generateTestsForFile(
             fileName,
             llmProvider,
@@ -245,7 +284,7 @@ export async function generateTestsForFile(
             checkCancellation,
             abortSignal,
             false, // useHierarchy = false (already in hierarchy loop)
-            [], // existingBpmnFiles = [] (not needed for single file)
+            filesToGenerate, // Pass all files in hierarchy for Feature Goal generation
             isRootFileInHierarchy, // isActualRootFile = true only for first file (root) - generates E2E scenarios
           );
           
@@ -550,7 +589,8 @@ export async function generateTestsForFile(
     // 1. LLM is enabled
     // 2. This is the root file (isActualRootFile === true)
     const llmEnabled = isLlmEnabled();
-    const isRootFile = isActualRootFile === true;
+    const rootFromMap = await resolveRootBpmnFileNameFromMap();
+    const isRootFile = rootFromMap ? rootFromMap === bpmnFileName : isActualRootFile === true;
     
     console.log(`[testGenerators] LLM enabled: ${llmEnabled}, llmProvider: ${llmProvider ? llmProvider : 'undefined'}, isRootFile: ${isRootFile}`);
     
@@ -577,21 +617,17 @@ export async function generateTestsForFile(
               currentElement: 'Genererar Feature Goal-tester från dokumentation...',
             });
             
-            // Samla alla BPMN-filer som behövs
-            const bpmnFilesSet = new Set<string>([bpmnFileName]);
-            for (const scenario of existingScenarios) {
-              for (const step of scenario.subprocessSteps || []) {
-                if (step.bpmnFile) {
-                  bpmnFilesSet.add(step.bpmnFile);
-                }
-              }
-            }
-            
             // Generera Feature Goal-tester direkt från dokumentation med Claude
+            const featureGoalParseFiles = [bpmnFileName];
+            const availableFiles =
+              existingBpmnFiles && existingBpmnFiles.length > 0
+                ? existingBpmnFiles
+                : featureGoalParseFiles;
             const featureGoalTestResult = await generateFeatureGoalTestsDirect(
-              Array.from(bpmnFilesSet),
+              featureGoalParseFiles,
               llmProvider,
-              abortSignal
+              abortSignal,
+              availableFiles,
             );
             
               // Generated featureGoalTestResult.generated Feature Goal test scenarios
@@ -787,10 +823,16 @@ export async function generateTestsForFile(
               
               // Generera Feature Goal-tester direkt från dokumentation med Claude
               // Istället för att extrahera från E2E-scenarios
+              const featureGoalParseFiles = [bpmnFileName];
+              const availableFiles =
+                existingBpmnFiles && existingBpmnFiles.length > 0
+                  ? existingBpmnFiles
+                  : featureGoalParseFiles;
               const featureGoalTestResult = await generateFeatureGoalTestsDirect(
-                Array.from(bpmnFilesSet),
+                featureGoalParseFiles,
                 llmProvider,
-                abortSignal
+                abortSignal,
+                availableFiles,
               );
               
               // Generated featureGoalTestResult.generated Feature Goal test scenarios
@@ -977,7 +1019,82 @@ export async function generateTestsForFile(
       if (!result.warnings) {
         result.warnings = [];
       }
-      result.warnings.push(`E2E scenario generation requires LLM to be enabled and a provider to be specified`);
+      if (rootFromMap && rootFromMap !== bpmnFileName) {
+        result.warnings.push(`E2E-scenarios genereras endast för root-filen (${rootFromMap}).`);
+      } else {
+        result.warnings.push(`E2E scenario generation requires LLM to be enabled and a provider to be specified`);
+      }
+    }
+
+    // För subprocesser (icke-root) ska vi alltid försöka generera Feature Goal-tester direkt från dokumentation.
+    if (llmEnabled && llmProvider && !isRootFile) {
+      try {
+        progressCallback?.({
+          current: 0,
+          total: 1,
+          status: 'generating',
+          currentElement: 'Genererar Feature Goal-tester från dokumentation...',
+        });
+
+        const featureGoalTestResult = await generateFeatureGoalTestsDirect(
+          [bpmnFileName],
+          llmProvider,
+          abortSignal,
+          existingBpmnFiles && existingBpmnFiles.length > 0 ? existingBpmnFiles : [bpmnFileName],
+        );
+
+        result.featureGoalScenarios =
+          (result.featureGoalScenarios || 0) + featureGoalTestResult.generated;
+        result.totalScenarios =
+          (result.totalScenarios || 0) + featureGoalTestResult.generated;
+
+        if (featureGoalTestResult.errors.length > 0) {
+          if (!result.featureGoalTestErrors) {
+            result.featureGoalTestErrors = [];
+          }
+          result.featureGoalTestErrors.push(...featureGoalTestResult.errors);
+        }
+
+        // Försök hämta detaljer för genererade scenarios
+        try {
+          const { fetchPlannedScenarios } = await import('./testDataHelpers');
+          if (!result.featureGoalScenarioDetails) {
+            result.featureGoalScenarioDetails = [];
+          }
+
+          const elementIds = await collectFeatureGoalElementIdsForFile(bpmnFileName);
+          for (const elementId of elementIds) {
+            const plannedScenarios = await fetchPlannedScenarios(bpmnFileName, elementId);
+            if (plannedScenarios && plannedScenarios.scenarios.length > 0) {
+              const firstScenario = plannedScenarios.scenarios[0];
+              const exists = result.featureGoalScenarioDetails.some(
+                (d) => d.bpmnFile === bpmnFileName && d.callActivityId === elementId,
+              );
+              if (!exists) {
+                result.featureGoalScenarioDetails.push({
+                  bpmnFile: bpmnFileName,
+                  callActivityId: elementId,
+                  scenarioName: firstScenario.name || elementId,
+                  scenarioId: firstScenario.id || elementId,
+                });
+              }
+            }
+          }
+        } catch (error) {
+          if (import.meta.env.DEV) {
+            console.warn('[testGenerators] Failed to fetch Feature Goal scenario details for non-root:', error);
+          }
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (!result.featureGoalTestErrors) {
+          result.featureGoalTestErrors = [];
+        }
+        result.featureGoalTestErrors.push({
+          callActivityId: 'unknown',
+          error: `Failed to generate Feature Goal tests: ${errorMessage}`,
+        });
+      }
     }
 
     return result;
@@ -1054,10 +1171,6 @@ export async function generateTestsForAllFiles(
 
   return aggregatedResult;
 }
-
-
-
-
 
 
 

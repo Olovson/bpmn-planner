@@ -15,7 +15,7 @@ analysis/
 ## Kategorier
 
 ### Aktuella Analyser (root-nivå)
-Analyser som är relevanta och aktuella, t.ex.:
+Analyser som kan vara relevanta, men inte alltid uppdaterade, t.ex.:
 - `TESTINFO_GENERATION_COMPLETE_ANALYSIS.md` - Komplett analys av testinfo-generering
 - `TESTINFO_VS_DOCUMENTATION_VALIDATION.md` - Validering av testinfo vs dokumentation
 - `CONSOLIDATION_PLAN.md` - Plan för konsolidering av storage paths
@@ -26,7 +26,6 @@ Analyser som är relevanta och aktuella, t.ex.:
 
 ## När ska du läsa dessa?
 
-- **Aktuella analyser** - När du behöver förstå nuvarande implementation eller logik
+- **Analyser** – När du behöver historik eller resonemang bakom beslut. Verifiera alltid mot koden.
 - Se [`../guides/user/`](../guides/user/) för användarguider
-
 

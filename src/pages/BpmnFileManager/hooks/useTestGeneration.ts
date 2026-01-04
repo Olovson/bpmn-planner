@@ -56,6 +56,23 @@ async function resolveRootBpmnFile(
     return null;
   }
 
+  try {
+    const { loadBpmnMapFromStorage } = await import('@/lib/bpmn/bpmnMapStorage');
+    const { resolveRootBpmnFileFromMap } = await import('@/lib/bpmn/bpmnMapLoader');
+    const bpmnMapResult = await loadBpmnMapFromStorage();
+    if (bpmnMapResult.valid && bpmnMapResult.map) {
+      const rootFromMap = resolveRootBpmnFileFromMap(bpmnMapResult.map);
+      if (rootFromMap) {
+        const rootFromMapFile = files.find((f) => f.file_name === rootFromMap) ?? null;
+        if (rootFromMapFile) {
+          return rootFromMapFile;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('[resolveRootBpmnFile] Could not load bpmn-map root, falling back to dependencies:', error);
+  }
+
   const allFileRows = files.map((f) => ({ file_name: f.file_name }));
   const { data: deps, error } = await supabase
     .from('bpmn_dependencies')
@@ -85,6 +102,20 @@ async function resolveRootBpmnFile(
     });
   }
   return rootFile;
+}
+
+async function resolveRootBpmnFileNameFromMap(): Promise<string | null> {
+  try {
+    const { loadBpmnMapFromStorage } = await import('@/lib/bpmn/bpmnMapStorage');
+    const { resolveRootBpmnFileFromMap } = await import('@/lib/bpmn/bpmnMapLoader');
+    const bpmnMapResult = await loadBpmnMapFromStorage();
+    if (bpmnMapResult.valid && bpmnMapResult.map) {
+      return resolveRootBpmnFileFromMap(bpmnMapResult.map);
+    }
+  } catch (error) {
+    console.warn('[resolveRootBpmnFileNameFromMap] Could not load bpmn-map root:', error);
+  }
+  return null;
 }
 
 export function useTestGeneration({
@@ -237,12 +268,13 @@ export function useTestGeneration({
     // Hämta alla filer i hierarkin
     const allFilesInHierarchy = await getAllFilesInHierarchy(selectedFile.file_name);
     
-    // Förbättrad root-fil-detektering:
-    // 1. Om rootFileName är satt och matchar selectedFile, är det root
-    // 2. Om selectedFile är första filen i hierarkin, är det troligen root
-    // 3. Om selectedFile inte finns som child i bpmn_dependencies, är det troligen root
+    // Root-fil-detektering: föredra bpmn-map.json om den finns.
+    // Om bpmn-map saknas, använd tidigare heuristik.
     let isRootFile = false;
-    if (rootFileName && selectedFile.file_name === rootFileName) {
+    const rootFromMap = await resolveRootBpmnFileNameFromMap();
+    if (rootFromMap) {
+      isRootFile = selectedFile.file_name === rootFromMap;
+    } else if (rootFileName && selectedFile.file_name === rootFileName) {
       isRootFile = true;
     } else if (allFilesInHierarchy.length > 0 && allFilesInHierarchy[0] === selectedFile.file_name) {
       // Kolla om filen finns som child i dependencies
@@ -330,6 +362,10 @@ export function useTestGeneration({
         featureGoalScenarios: result.featureGoalScenarios,
         e2eScenarioDetails: result.e2eScenarioDetails,
         featureGoalScenarioDetails: result.featureGoalScenarioDetails,
+        warnings: result.warnings,
+        missingDocumentation: result.missingDocumentation,
+        e2eGenerationErrors: result.e2eGenerationErrors,
+        featureGoalTestErrors: result.featureGoalTestErrors,
       };
 
       // Show result in dialog
@@ -596,6 +632,10 @@ export function useTestGeneration({
           featureGoalScenarios: result.featureGoalScenarios,
           e2eScenarioDetails: result.e2eScenarioDetails,
           featureGoalScenarioDetails: result.featureGoalScenarioDetails,
+          warnings: result.warnings,
+          missingDocumentation: result.missingDocumentation,
+          e2eGenerationErrors: result.e2eGenerationErrors,
+          featureGoalTestErrors: result.featureGoalTestErrors,
         };
 
         // Show result in dialog
@@ -779,8 +819,5 @@ export function useTestGeneration({
     handleGenerateTestsForAllFiles,
   };
 }
-
-
-
 
 

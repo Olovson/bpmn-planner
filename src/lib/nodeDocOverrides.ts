@@ -103,6 +103,7 @@ export async function loadFeatureGoalOverrides(
 
   try {
     const overridePath = getOverrideImportPath('feature-goal', bpmnFile, bpmnElementId);
+    /* @vite-ignore */
     const module = await import(overridePath);
     const overrides = module.overrides as FeatureGoalDocOverrides | undefined;
     
@@ -146,6 +147,7 @@ export async function loadEpicOverrides(
 
   try {
     const overridePath = getOverrideImportPath('epic', bpmnFile, bpmnElementId);
+    /* @vite-ignore */
     const module = await import(overridePath);
     const overrides = module.overrides as EpicDocOverrides | undefined;
     
@@ -189,6 +191,7 @@ export async function loadBusinessRuleOverrides(
 
   try {
     const overridePath = getOverrideImportPath('business-rule', bpmnFile, bpmnElementId);
+    /* @vite-ignore */
     const module = await import(overridePath);
     const overrides = module.overrides as BusinessRuleDocOverrides | undefined;
     

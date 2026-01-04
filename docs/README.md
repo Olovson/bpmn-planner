@@ -1,142 +1,66 @@
 # BPMN Planner – Dokumentation (översikt)
 
-Det här `docs/`‑trädet samlar den interna dokumentation som kompletterar koden.  
-Det är främst riktat till utvecklare, arkitekter och testare som jobbar med BPMN Planner.
+Det här `docs/`‑trädet samlar **aktuell** dokumentation som är spårbar till koden.
+Om något inte stämmer ska dokumenten uppdateras eller länkas om.
 
-> 📋 **Struktur:** Se [`architecture/STRUCTURE.md`](./architecture/STRUCTURE.md) för dokumentationsstrukturen
+> 📋 **Struktur:** Se `docs/architecture/STRUCTURE.md` för aktuell dokumentationsstruktur.
 
 ---
 
 ## 🚀 Snabbstart
 
-**Nya användare bör börja här:**
-- **Snabbstart & Utveckling**: [`guides/user/QUICKSTART_AND_DEVELOPMENT.md`](./guides/user/QUICKSTART_AND_DEVELOPMENT.md)
-- **Funktionalitet & Arkitektur**: [`architecture/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`](./architecture/FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md)
-- **Dataflöden**: [`architecture/DATAFLOW_OVERVIEW.md`](./architecture/DATAFLOW_OVERVIEW.md)
+- **Snabbstart & Utveckling:** `docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md`
+- **Arkitekturöversikt:** `docs/architecture/ARCHITECTURE_OVERVIEW.md`
+- **Dataflöden:** `docs/architecture/DATAFLOW_OVERVIEW.md`
 
 ---
 
 ## 📚 Dokumentationskategorier
 
 ### 🎯 Användarguider (`guides/user/`)
-- **`QUICKSTART_AND_DEVELOPMENT.md`** - Snabbstart och utvecklingsguide
-- **`README_FOR_TESTLEAD.md`** - Guide för test lead
-- **`TEST_COVERAGE_USER_GUIDE.md`** - Test coverage guide
-- **`LOCAL_DIFF_ANALYSIS_GUIDE.md`** - Guide för lokal diff-analys i appen
+- `QUICKSTART_AND_DEVELOPMENT.md` – Snabbstart och utvecklingsguide
+- `README_FOR_TESTLEAD.md` – Guide för test lead
+- `TEST_COVERAGE_USER_GUIDE.md` – Hur Test Coverage‑vyn fungerar
+- `WHAT_IS_GENERATED_WHEN_GENERATING_TESTINFO.md` – Vad som genereras vid testinfo
 
 ### ✅ Validering (`guides/validation/`)
-- **`VALIDATE_NEW_BPMN_FILES.md`** - **Komplett guide för att validera nya BPMN-filer från A till Ö** (hitta filer, diff, parsing, graph, tree, dokumentationsgenerering)
-
-### 🔧 Guides (`guides/`)
-- **`BPMN_MAP_UPDATE_GUIDE.md`** - ⚠️ **Steg-för-steg guide för att uppdatera bpmn-map.json från template handlers** (viktigt att läsa innan uppdatering!)
+- `VALIDATE_NEW_BPMN_FILES.md` – Bas‑validering av nya BPMN‑filer
 
 ### 🏗️ Arkitektur (`architecture/`)
-- **`bpmn-hierarchy-architecture.md`** - Detaljerad hierarki-arkitektur
-- **`ARCHITECTURE_OVERVIEW.md`** - Översikt över hierarki, dokumentation och LLM
-- **`DATAFLOW_OVERVIEW.md`** - Dataflödesöversikt
-- **`FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md`** - Komplett funktionalitetsöversikt
-- **`BPMN_VERSIONING_STRATEGY.md`** - BPMN-versionering strategi
-- **`VERSIONING_FINAL_DECISION.md`** - Versionslösning - slutgiltigt beslut
-- **`VERSIONING_IMPLEMENTATION_COMPLETE.md`** - Versionslösning - implementeringsstatus
-- **`guides/API_REFERENCE.md`** - API-referens
-
-### ✨ Funktioner (`features/`)
-- **`FEATURES_AND_FUNCTIONALITY.md`** - Funktioner och arbetsflöde
-- **`JIRA_NAMING.md`** - Jira-namngivning
-- **`INTEGRATIONS.md`** - Integrationer
-- **`FEATURE_ROADMAP.md`** - Feature roadmap
+- `ARCHITECTURE_OVERVIEW.md` – Systemöversikt
+- `DATAFLOW_OVERVIEW.md` – Dataflöden
+- `FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md` – Funktioner mappade till kod
 
 ### 🧪 Testing (`testing/`)
-- ⭐ **`TEST_GENERATION.md`** - **Komplett guide för testgenerering** - Hur E2E-scenarios och Feature Goal-tester genereras
-- **`TESTING.md`** - Testguide, best practices
-- **`TEST_EXPORT.md`** - Test export guide
-- **`TEST_SCENARIOS.md`** - Test-scenarion och design-scenarion
-- **`test-report-views.md`** - Testrapportvyer
-- **`TEST_SCENARIO_GENERATION.md`** - Test scenario generation
-- **`TEST_MAPPING_DESIGN_SCENARIOS.md`** - Test mapping design scenarios
-- **`strategy/TEST_OVERVIEW_AND_GAPS.md`** - Testanalys och gaps
-- **`strategy/TEST_IMPLEMENTATION_PLAN.md`** - Test implementeringsplan
+- `TEST_GENERATION.md` – Hur testgenerering fungerar just nu
 
 ### 📝 Templates (`templates/`)
-- **`BATCH_GENERATION.md`** - Batch-generering
-- **`CODEX_BATCH_AUTO.md`** - Codex batch-generering (detaljerad)
-- **`PROMPT_VERSIONING.md`** - Prompt-versionering
-- **`FALLBACK_SAFETY.md`** - Fallback-säkerhet
-- **`BUSINESS_RULE_TEMPLATE_CONTENT.md`** - Business Rule template content
-- **`EPIC_TEMPLATE_CONTENT.md`** - Epic template content
-- **`FEATURE_GOAL_TEMPLATE_CONTENT.md`** - Feature Goal template content
-- **`html/`** - HTML-mallar (feature-goals, epics, rules)
+- Innehåller mallar och prompt‑stöd för dokumentationsgenerering
 
 ### 📋 Confluence (`confluence/`)
-- **`README.md`** - Confluence-dokumentation översikt
-- **`template.md`** - Mall för Confluence-sidor
-- **`application.md`** - Exempel på Confluence-dokumentation
-
-### 📊 Projektorganisation (`project-organization/`)
-- Ways of working, teststrategi, roller, projektstruktur
+- Mallar och exempel på Confluence‑sidor (se `docs/confluence/`)
 
 ### 📁 Analysis (`analysis/`)
-- **`FEATURE_GOAL_GENERATION_IMPROVEMENT.md`** - ✅ Förbättring: Använd BPMN-strukturell information för Feature Goal-generering (implementerad)
-- **`FILE_LEVEL_DOCUMENTATION_IMPLEMENTATION.md`** - ✅ File-level dokumentation: Implementation och användning (implementerad)
-- **`DIFF_FUNCTIONALITY_ANALYSIS.md`** - Analys av diff-funktionalitet för selektiv regenerering
-- **`DIFF_FUNCTIONALITY_EXPLANATION.md`** - Förklaring av diff-funktionalitet
-- **`BPMN_MAP_FROM_TEMPLATE_ANALYSIS.md`** - Analys: Extrahera BPMN Map från mortgage-template-main handlers
-- **`BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md`** - ⚠️ Viktig: Analys av missmatch mellan handlers och BPMN-filer
-- **`historical/`** - Historiska analyser och temporära dokument (43 filer arkiverade)
+- Historiska analyser och utredningar. Dessa kan vara **utdaterade**.
 
 ---
 
-## Nyckelidéer att ha i huvudet
+## Nyckelidéer (nuvarande beteende)
 
-- **En hierarki, många konsumenter**  
-  BPMN‑hierarkin byggs en gång och kör sedan:
-  - Process Explorer / trädet,
-  - dokumentationsgeneratorn (med strukturell BPMN-information för Feature Goals),
-  - testgeneratorn (Playwright),
-  - testrapportvyerna,
-  - Timeline / Planning View (Gantt),
-  - samt Jira‑namngivning och DoR/DoD.
+- **Processgrafen är central**
+  Processgrafen byggs client‑side och används för dokumentation, testinfo, UI‑hierarki och coverage.
 
-- **Strukturell BPMN-information för Feature Goals**  
-  Feature Goal-generering använder nu strukturell BPMN-information (gateway-conditions, process paths, flödesinformation) för att förbättra dokumentationskvaliteten. Se [`analysis/FEATURE_GOAL_GENERATION_IMPROVEMENT.md`](./analysis/FEATURE_GOAL_GENERATION_IMPROVEMENT.md) för detaljer.
+- **Filordning för dokumentationsgenerering**
+  Ordningen byggs via traversal av callActivities i UI‑ordning (inte en ren topologisk sort över dependency‑graph).
+  Se `src/lib/bpmnGenerators.ts` för faktisk logik.
 
-- **Topologisk fil-sortering för dokumentationsgenerering**  
-  Filer sorteras topologiskt baserat på dependency-grafer (vilka filer anropar vilka) för att säkerställa att subprocess-filer genereras FÖRE parent-filer. Detta garanterar att child documentation (epics) finns tillgänglig när parent Feature Goals genereras. Se [`analysis/TOPOLOGICAL_SORT_IMPLEMENTATION_COMPLETE.md`](./analysis/TOPOLOGICAL_SORT_IMPLEMENTATION_COMPLETE.md) för detaljer.
+- **E2E‑scenarier**
+  Genereras med LLM (om aktiverat) och sparas i versionerade storage‑paths:
+  `e2e-scenarios/{bpmnFile}/{versionHash}/{baseName}-scenarios.json`.
 
-- **File-level dokumentation med processstruktur**  
-  File-level dokumentation genereras för alla filer och använder processens struktur (flow graph, paths) för att skapa en intelligent sammanfattning av hela processen baserat på alla noders dokumentation. Innehåller JSON-data för E2E-scenariogenerering. Se [`analysis/FILE_LEVEL_DOCUMENTATION_IMPLEMENTATION.md`](./analysis/FILE_LEVEL_DOCUMENTATION_IMPLEMENTATION.md) för detaljer.
+- **Feature Goal‑tester**
+  Genereras direkt från Feature Goal‑dokumentation med Claude och sparas i `node_planned_scenarios` (origin `claude-direct`).
 
-- **Planerade scenarier i `node_planned_scenarios`**  
-  Alla "planerade scenarion" i UI kommer från tabellen `node_planned_scenarios`:
-  - LLM‑flöden (ChatGPT/Ollama) skriver in scenarier per nod/provider när dokumentation/testunderlag genereras.
-  - Den hierarkiska generatorn seedar även bas‑scenarion för test-scenarion per nod (antingen från `testMapping` eller ett auto‑genererat happy‑path).
-
-- **Lokala mallar vs. genererad dokumentation**  
-  Mallarna i `templates/html/` är referensmallar för manuell dokumentation. Den dokumentation som slutanvändaren ser i appen genereras och lagras som HTML i Supabase Storage och visas via `DocViewer`.
-
----
-
-## När ska du läsa vad?
-
-- Du ska **komma igång** → börja med `guides/user/QUICKSTART_AND_DEVELOPMENT.md`
-- Du ska **förstå hur hierarkin fungerar** → börja med `architecture/bpmn-hierarchy-architecture.md`
-- Du ska **analysera diff för lokala filer** → läs `guides/user/LOCAL_DIFF_ANALYSIS_GUIDE.md`
-- Du ska **validera nya BPMN-filer från A till Ö** → läs `guides/validation/VALIDATE_NEW_BPMN_FILES.md` ⭐
-- Du ska **uppdatera bpmn-map.json från template handlers** → läs `guides/BPMN_MAP_UPDATE_GUIDE.md` ⚠️
-- Du ska **validera att bpmn-map.json fungerar efter uppdatering** → kör testprocessen (A-Ö valideringsprocessen) enligt [`guides/validation/VALIDATE_NEW_BPMN_FILES.md`](guides/validation/VALIDATE_NEW_BPMN_FILES.md) (detta är "testprocessen")
-- Du ska **förstå testrapporten** → läs `testing/test-report-views.md`
-- Du ska **skriva/uppdatera Confluence‑sidor** → använd `confluence/template.md` och `confluence/README.md`
-- Du ska **förstå teststrategi** → läs `testing/strategy/TEST_OVERVIEW_AND_GAPS.md`
-
----
-
-## Praktiska npm‑kommandon
-
-> 📋 **För komplett lista med alla kommandon och detaljerad guide, se [`guides/user/QUICKSTART_AND_DEVELOPMENT.md`](./guides/user/QUICKSTART_AND_DEVELOPMENT.md)**
-
-**Snabböversikt:**
-- `npm run dev` – startar Vite‑devservern
-- `npm run start:supabase` – starta Supabase (guidad)
-- `npm test` – kör alla Vitest‑tester
-- `npx playwright test` – kör Playwright E2E-tester
-- `npm run print:bpmn-tree` – exportera BPMN-träd
+- **Dokumentation i storage**
+  HTML‑dokument sparas per BPMN‑version:
+  `docs/claude/{bpmnFile}/{versionHash}/{docFileName}`.

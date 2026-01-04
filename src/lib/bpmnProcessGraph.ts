@@ -203,7 +203,8 @@ async function parseAllBpmnFiles(
       const isMissingFile = error instanceof Error && 
         (error.message.includes('Failed to load') || 
          error.message.includes('400') ||
-         error.message.includes('Bad Request'));
+         error.message.includes('Bad Request') ||
+         error.message.includes('File not found')); // ✅ Lägg till "File not found" check
       
       // För filer med mappstruktur (t.ex. "mortgage-se 2025.11.29/file.bpmn"),
       // kan det vara att filen precis laddats upp och databasen inte hunnit uppdateras
@@ -221,10 +222,17 @@ async function parseAllBpmnFiles(
         if (import.meta.env.DEV) {
           console.warn(`[bpmnProcessGraph] File with folder structure ${file} not found in Storage, may need to wait for database update`);
         }
+      } else if (isMissingFile) {
+        // ✅ För alla saknade filer (inte bara test-filer), hoppa över gracefully
+        // Detta säkerställer att generation inte hänger på saknade filer
+        if (import.meta.env.DEV) {
+          console.warn(`[bpmnProcessGraph] File ${file} not found in Storage, skipping (file may not be uploaded yet)`);
+        }
       } else {
         // För produktionsfiler eller andra fel, logga som vanligt
         console.error(`Kunde inte parsa ${file}:`, error);
       }
+      // ✅ Fortsätt loopa även om filen saknas - hoppa över filen men fortsätt med andra
     }
   }
   return results;

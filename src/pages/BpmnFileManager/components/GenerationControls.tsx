@@ -290,7 +290,7 @@ export function GenerationControls({
             }
             onClick={onGenerateTestsSelected}
             className="gap-2"
-            title={!selectedFile ? 'Välj en BPMN-fil i listan för att generera tester' : 'Generera testfiler och testscenarion för vald fil. Kräver att dokumentation redan är genererad.'}
+            title={!selectedFile ? 'Välj en BPMN-fil i listan för att generera tester' : 'Genererar Feature Goal‑testscenarier för vald fil. E2E‑scenarier genereras endast om vald fil är root enligt bpmn‑map.json. Kräver att dokumentation redan är genererad.'}
           >
             {generatingFile && selectedFile ? (
               <>
@@ -310,14 +310,16 @@ export function GenerationControls({
             disabled={generatingFile !== null || isLoading || files.length === 0}
             onClick={onGenerateTestsAll}
             className="gap-2"
-            title="Generera E2E-scenarios och Feature Goal-test scenarios för alla BPMN-filer. Kräver att dokumentation redan är genererad."
+            title="Generera Feature Goal‑testscenarier för alla uppladdade BPMN‑filer. E2E‑scenarier genereras endast för root‑filen enligt bpmn‑map.json. Kräver att dokumentation redan är genererad."
           >
             <FileCode className="w-4 h-4" />
             Generera testinformation (alla filer)
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          E2E‑scenarier skapas endast för root‑filen enligt bpmn‑map.json. Feature Goal‑scenarier genereras för de filer du kör testgenerering på.
+        </p>
       </div>
     </Card>
   );
 }
-

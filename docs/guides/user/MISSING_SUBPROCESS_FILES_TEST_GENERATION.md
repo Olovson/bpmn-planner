@@ -44,37 +44,35 @@ Om `mortgage-se-application.bpmn` har callActivities:
 
 ### Vad händer:
 
-1. **Feature Goal-tester extraheras från E2E-scenarios:**
-   - Systemet går igenom alla `subprocessStep` i E2E-scenarios
-   - För varje `subprocessStep` skapas en Feature Goal-test
+1. **Feature Goal-tester genereras direkt från Feature Goal‑dokumentation (LLM):**
+   - Ingen extraktion från E2E‑scenarier längre.
+   - Varje subprocess‑fil har sin egen Process Feature Goal‑doc som används som källa.
 
-2. **Om `subprocessStep` saknas i E2E-scenario:**
-   - Ingen Feature Goal-test genereras för den callActivity
-   - Detta är korrekt beteende - om subprocess-filen saknas, kan vi inte generera Feature Goal-tester
+2. **Om subprocess‑filen saknas:**
+   - Ingen Feature Goal‑doc kan laddas → ingen Feature Goal‑test genereras.
 
-3. **Om `subprocessStep` finns men saknar `given/when/then`:**
-   - Feature Goal-test genereras ändå (med `given/when/then` från Feature Goal-dokumentation om tillgänglig)
-   - Men om Feature Goal-dokumentation också saknas, kommer testet att sakna `given/when/then`
+3. **Om subprocess‑filen finns men dokumentation saknas:**
+   - Feature Goal‑test genereras inte (dokumentation krävs).
 
 ### Exempel:
 
-Om E2E-scenario har:
-- `subprocessStep` för `internal-data-gathering` ✓
-- `subprocessStep` för `household` ✓
-- Inget `subprocessStep` för `object` ✗ (saknades i E2E-generering)
-- Inget `subprocessStep` för `stakeholder` ✗ (saknades i E2E-generering)
+Om subprocess‑filerna:
+- `internal-data-gathering` finns + har dokumentation ✓
+- `household` finns + har dokumentation ✓
+- `object` saknas ✗
+- `stakeholder` saknas ✗
 
 **Resultat:**
-- Feature Goal-test genereras för `internal-data-gathering`
-- Feature Goal-test genereras för `household`
-- Inga Feature Goal-tester genereras för `object` eller `stakeholder`
+- Feature Goal‑test genereras för `internal-data-gathering`
+- Feature Goal‑test genereras för `household`
+- Inga Feature Goal‑tester genereras för `object` eller `stakeholder`
 
 ## Sammanfattning
 
 | Situation | E2E-scenario | Feature Goal-test |
 |-----------|--------------|-------------------|
-| Subprocess-fil saknas | Genereras med partiell dokumentation (om minst en Feature Goal har dokumentation) | Genereras INTE (eftersom `subprocessStep` saknas i E2E-scenario) |
-| Subprocess-fil finns men dokumentation saknas | Genereras med partiell dokumentation (om minst en Feature Goal har dokumentation) | Genereras INTE (eftersom dokumentation saknas) |
+| Subprocess-fil saknas | Genereras med partiell dokumentation (om minst en Feature Goal har dokumentation) | Genereras INTE (ingen dokumentation finns) |
+| Subprocess-fil finns men dokumentation saknas | Genereras med partiell dokumentation (om minst en Feature Goal har dokumentation) | Genereras INTE (dokumentation krävs) |
 | Subprocess-fil finns och dokumentation finns | Genereras normalt | Genereras normalt |
 
 ## Rekommendationer
@@ -86,10 +84,9 @@ Om E2E-scenario har:
 2. **För att få Feature Goal-tester för alla callActivities:**
    - Se till att subprocess-filen finns
    - Se till att dokumentation genererats för subprocess-filen
-   - Se till att E2E-scenario genererades framgångsrikt (med `subprocessStep` för callActivity)
 
 3. **Om vissa subprocess-filer saknas:**
-   - Systemet kommer fortfarande att generera E2E-scenarios och Feature Goal-tester för callActivities som har dokumentation
+   - Systemet genererar E2E-scenarios (root) och Feature Goal‑tester för subprocesser som har dokumentation
    - Du kommer att se varningar i konsolen om vilka Feature Goals som saknar dokumentation
    - Du kan senare lägga till saknade subprocess-filer och regenerera för att få kompletta testscenarios
 
@@ -101,5 +98,4 @@ För att se vad som händer, öppna konsolen (F12) och leta efter:
 - `[e2eScenarioGenerator] No documentation loaded for path... Missing: {missingFeatureGoals}`
 
 Dessa meddelanden visar vilka callActivities som saknar subprocess-filer eller dokumentation.
-
 

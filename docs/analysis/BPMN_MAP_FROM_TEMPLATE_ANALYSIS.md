@@ -165,7 +165,7 @@ Dessa behöver specialhantering i extraktionsscriptet.
 4. ✅ Verifiera mot faktiska BPMN-filer (KLAR)
 5. ✅ Generera `bpmn-map.json` automatiskt (KLAR)
 6. ✅ Integrera som manuellt script (KLAR)
-7. ⚠️ **VIKTIGT:** Identifierat missmatch mellan handlers och BPMN-filer (se `BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md`)
+7. ⚠️ **VIKTIGT:** Identifierat missmatch mellan handlers och BPMN-filer (se separat analys – ej inkluderad i repo)
 
 ## ⚠️ Viktig Varning: Handler-baserad Mappning är INTE Komplett
 
@@ -183,7 +183,7 @@ Dessa behöver specialhantering i extraktionsscriptet.
 3. **Nya call activities kan saknas handlers:**
    - Call activities som lagts till i BPMN-filer men inte implementerats ännu saknas handlers
 
-**Rekommendation:** Använd **hybrid-approach** som kombinerar handlers + BPMN-parsing. Se [`BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md`](./BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md) för detaljerad analys.
+**Rekommendation:** Använd **hybrid-approach** som kombinerar handlers + BPMN-parsing. (Detaljerad analys saknas i repo.)
 
 ## Användning
 
@@ -220,7 +220,7 @@ npx tsx scripts/generate-bpmn-map-from-template.ts /path/to/mortgage-template-ma
 
 ### Automatiserad Kombinering
 
-För att automatisera steg 2-3, se `docs/analysis/BPMN_MAP_HANDLER_VS_BPMN_ANALYSIS.md` för hybrid-approach implementation.
+För att automatisera steg 2-3, använd hybrid‑approach (handlers + BPMN‑parsing). (Detaljerad analys saknas i repo.)
 
 ## Resultat
 

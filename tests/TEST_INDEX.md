@@ -22,8 +22,8 @@ Dessa tester körs av utvecklare för att säkerställa att appens kod fungerar 
 
 ### 2. Tester som **appen genererar och använder** (användartester)
 Dessa tester genereras av appen från BPMN-filer och sparas i Supabase Storage:
-- **E2E-scenarios** - Genereras från BPMN-processgraf och Feature Goals med Claude, sparas i Supabase Storage (`e2e-scenarios/{bpmnFile}-scenarios.json`)
-- **Feature Goal-test scenarios** - Extraheras från E2E-scenarios och sparas i `node_planned_scenarios`
+- **E2E-scenarios** - Genereras via LLM **endast för root‑filen** enligt `bpmn-map.json`, sparas i Storage (`e2e-scenarios/{bpmnFile}/{versionHash}/{baseName}-scenarios.json`)
+- **Feature Goal-test scenarios** - Genereras direkt från Feature Goal‑dokumentation (LLM) och sparas i `node_planned_scenarios`
 - **Test Coverage-data** - Visas i Test Coverage Explorer
 
 **Viktigt:** Playwright-testfiler har tagits bort - de innehöll bara stubbar och användes inte för att generera given/when/then. Detta sparar tid och pengar (färre LLM-anrop).
@@ -363,20 +363,20 @@ npx playwright test tests/playwright-e2e/bpmn-file-manager.spec.ts
 - **Hur genereras:** Via "Generera testinfo" i BPMN File Manager
 - **Struktur:** JSON-filer med kompletta E2E-scenarios för root-processen
 
-### Feature Goal-test scenarios (extraherat från E2E-scenarios)
+### Feature Goal-test scenarios (direkt från Feature Goal‑dokumentation)
 - **Var:** Sparas i databasen (`node_planned_scenarios` tabellen)
-- **Hur genereras:** Automatiskt extraherat från E2E-scenarios
-- **Struktur:** Test scenarios per Feature Goal med gateway-kontext
+- **Hur genereras:** Direkt från Feature Goal‑dokumentation (LLM), ingen extraktion från E2E
+- **Struktur:** Test scenarios per Feature Goal (given/when/then)
 - **Syfte:** Används av användare för att testa sina BPMN-processer
 - **Se:** [`docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md`](../docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md) - Test Generation implementeringsplan
 
 **Viktigt:** Epic-testgenerering har tagits bort. Endast Feature Goals (Call Activities) genererar testfiler. Epic-information finns redan inkluderad i Feature Goal-dokumentation via `childrenDocumentation`.
 
-### Test-scenarion (extraherade från E2E-scenarios)
+### Test-scenarion (Feature Goal‑tester)
 - **Var:** Sparas i `node_planned_scenarios` tabellen i Supabase
-- **Hur genereras:** Extraheras från E2E-scenarios (som genereras från Feature Goal-dokumentation)
+- **Hur genereras:** Direkt från Feature Goal‑dokumentation (LLM)
 - **Syfte:** Används för att visa test-scenarion i Test Coverage Explorer
-- **Se:** [`docs/analysis/TEST_INFORMATION_GENERATION_ANALYSIS.md`](../docs/analysis/TEST_INFORMATION_GENERATION_ANALYSIS.md)
+- **Se:** [`docs/analysis/TESTINFO_GENERATION_ANALYSIS.md`](../docs/analysis/TESTINFO_GENERATION_ANALYSIS.md)
 - **Se:** [`docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md`](../docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md) - Implementeringsplan
 - **Se:** [`docs/analysis/TEST_GENERATION_UI_VALIDATION.md`](../docs/analysis/TEST_GENERATION_UI_VALIDATION.md) - UI-validering
 - **Se:** [`docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md`](../docs/analysis/TEST_GENERATION_IMPLEMENTATION_PLAN_V2.md) - Implementeringsplan
@@ -401,5 +401,4 @@ find tests -name "*.test.ts" -o -name "*.spec.ts" | sort
 
 ---
 
-**Senast uppdaterad:** 2025-01-01
-
+**Senast uppdaterad:** 2026-01-03

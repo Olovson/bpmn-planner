@@ -521,13 +521,33 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
         return null; // Silent fail, Storage will handle it
       }
       
-      const response = await fetch(fileUrl, { cache: 'no-store' });
-      const contentType = response.headers.get('content-type') || '';
-      if (response.ok && contentType.toLowerCase().includes('xml')) {
-        const xml = await response.text();
-        return { xml, cacheKey };
+      // ✅ Add timeout to prevent hanging on missing files
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const response = await fetch(fileUrl, { 
+          cache: 'no-store',
+          signal: controller.signal 
+        });
+        clearTimeout(timeoutId);
+        
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && contentType.toLowerCase().includes('xml')) {
+          const xml = await response.text();
+          return { xml, cacheKey };
+        }
+        return null;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        // If aborted due to timeout or other network error, return null to try Storage
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          if (import.meta.env.DEV) {
+            console.warn(`[bpmnParser] Timeout loading ${fileUrl}, trying Storage fallback`);
+          }
+        }
+        return null;
       }
-      return null;
     } catch (error) {
       // I Node.js kastar fetch ett fel för relativa URLs - returnera null så tryStorage kan köras
       // För test-filer, hoppa över fel-logging (Storage fallback hanterar det)

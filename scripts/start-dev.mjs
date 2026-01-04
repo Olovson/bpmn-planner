@@ -3,13 +3,10 @@
 /**
  * Script som startar hela utvecklingsmiljön:
  * - Supabase (om den inte redan körs)
- * - Edge functions (llm-health och build-process-tree)
+ * - Edge functions (alla i en process)
  * - Dev-server (npm run dev)
- * 
- * Användning:
- *   node scripts/start-dev.mjs
- *   eller
- *   npm run start:dev
+ *
+ * Ctrl+C stoppar alla processer.
  */
 
 import { execSync, spawn } from 'child_process';
@@ -20,12 +17,41 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, '..');
 
-function log(message) {
-  console.log(`[Start Dev] ${message}`);
+// Track child processes for cleanup
+const childProcesses = [];
+
+// Colors for terminal output
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  red: '\x1b[31m',
+};
+
+function log(message, color = '') {
+  const timestamp = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  console.log(`${colors.dim}${timestamp}${colors.reset} ${color}${message}${colors.reset}`);
 }
 
-function error(message) {
-  console.error(`[Start Dev] ERROR: ${message}`);
+function logSection(title) {
+  console.log('');
+  console.log(`${colors.bright}${colors.cyan}━━━ ${title} ━━━${colors.reset}`);
+}
+
+function logSuccess(message) {
+  log(`✓ ${message}`, colors.green);
+}
+
+function logError(message) {
+  log(`✗ ${message}`, colors.red);
+}
+
+function logInfo(message) {
+  log(`  ${message}`, colors.dim);
 }
 
 function checkSupabaseRunning() {
@@ -38,181 +64,245 @@ function checkSupabaseRunning() {
 }
 
 async function startSupabase() {
-  log('Kontrollerar Supabase-status...');
+  log('Checking Supabase status...');
   const isRunning = checkSupabaseRunning();
 
-  if (isRunning) {
-    log('✅ Supabase körs redan.');
-    return true;
+  if (!isRunning) {
+    log('Starting Supabase (this may take 1-2 minutes on first run)...');
+    try {
+      // Use spawn instead of execSync to avoid timeout issues
+      const result = await new Promise((resolve, reject) => {
+        const proc = spawn('supabase', ['start'], {
+          cwd: projectRoot,
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        proc.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        proc.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        proc.on('close', (code) => {
+          if (code === 0) {
+            resolve({ success: true });
+          } else {
+            reject(new Error(stderr || `Exit code ${code}`));
+          }
+        });
+
+        proc.on('error', (err) => {
+          reject(err);
+        });
+      });
+
+      logSuccess('Supabase containers started');
+    } catch (err) {
+      logError(`Failed to start Supabase: ${err.message}`);
+      return false;
+    }
+  } else {
+    logSuccess('Supabase already running');
   }
 
-  log('Supabase körs inte. Startar...');
-  try {
-    execSync('supabase start', { stdio: 'inherit', cwd: projectRoot });
-    log('✅ Supabase startad.');
-    
-    // Vänta lite för att PostgREST ska hinna läsa schemat
-    log('Väntar på att PostgREST ska läsa schemat...');
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    
-    return true;
-  } catch (err) {
-    error(`Kunde inte starta Supabase: ${err.message}`);
-    return false;
+  // Verify API is responding (allow longer on first run / image pulls)
+  log('Verifying Supabase API (this can take a while on first run)...');
+  const maxRetries = 90;
+  let warnedStoppedServices = false;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const status = execSync('supabase status', { encoding: 'utf-8', stdio: 'pipe' });
+      if (status.includes('Stopped services') && !warnedStoppedServices) {
+        warnedStoppedServices = true;
+        logInfo('Supabase services are still starting (some services stopped). Waiting...');
+      }
+    } catch {
+      // ignore status errors while starting
+    }
+
+    try {
+      execSync('curl -s http://127.0.0.1:54321/rest/v1/', {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        timeout: 2000
+      });
+      logSuccess('Supabase API responding');
+      return true;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   }
+
+  logError('Supabase API not responding after waiting. Check `supabase status` for stopped services.');
+  return false;
 }
 
-function startEdgeFunction(name) {
-  log(`Startar edge function: ${name}...`);
-  
+function startEdgeFunctions() {
+  log('Starting edge functions...');
+
   const proc = spawn(
     'supabase',
-    ['functions', 'serve', name, '--no-verify-jwt', '--env-file', 'supabase/.env'],
+    ['functions', 'serve', '--no-verify-jwt', '--env-file', 'supabase/.env'],
     {
       cwd: projectRoot,
-      detached: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe']
     }
   );
 
-  // Logga output
+  childProcesses.push(proc);
+
+  // Log edge output to show readiness + errors
   proc.stdout.on('data', (data) => {
-    process.stdout.write(`[${name}] ${data}`);
+    const msg = data.toString().trim();
+    if (msg) log(`[Edge] ${msg}`, colors.dim);
   });
-  
   proc.stderr.on('data', (data) => {
-    process.stderr.write(`[${name}] ${data}`);
+    const msg = data.toString().trim();
+    if (msg) logError(`[Edge] ${msg}`);
   });
 
   proc.on('error', (err) => {
-    error(`Kunde inte starta ${name}: ${err.message}`);
+    logError(`Edge functions error: ${err.message}`);
   });
 
-  // Låt processen köra i bakgrunden
-  proc.unref();
-  
-  log(`✅ ${name} startad (PID: ${proc.pid})`);
-  return proc.pid;
+  return proc;
+}
+
+async function verifyEdgeFunctions() {
+  const maxRetries = 10;
+  const retryDelay = 500;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      execSync('curl -s http://127.0.0.1:54321/functions/v1/llm-health', {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        timeout: 2000
+      });
+      logSuccess('Edge functions responding');
+      return true;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    }
+  }
+
+  logError('Edge functions not responding (may still be starting)');
+  return false;
 }
 
 function startDevServer() {
-  log('Startar dev-server...');
-  
+  log('Starting Vite dev server...');
+
   const proc = spawn('npm', ['run', 'dev'], {
     cwd: projectRoot,
-    detached: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['pipe', 'pipe', 'pipe'],
     shell: true
   });
 
-  // Logga output
+  childProcesses.push(proc);
+
+  let serverReady = false;
+
   proc.stdout.on('data', (data) => {
-    process.stdout.write(`[Dev Server] ${data}`);
+    const msg = data.toString().trimEnd();
+    if (msg) {
+      // Echo Vite output for visibility
+      log(`[Vite] ${msg}`, colors.dim);
+    }
+    // Show the Vite ready message
+    if (msg.includes('Local:') && !serverReady) {
+      serverReady = true;
+      logSuccess('Dev server ready');
+      showFinalStatus();
+    }
   });
-  
+
   proc.stderr.on('data', (data) => {
-    process.stderr.write(`[Dev Server] ${data}`);
+    const msg = data.toString().trim();
+    if (msg) logError(`[Vite] ${msg}`);
   });
 
   proc.on('error', (err) => {
-    error(`Kunde inte starta dev-server: ${err.message}`);
+    logError(`Dev server error: ${err.message}`);
   });
 
-  // Låt processen köra i bakgrunden
-  proc.unref();
-  
-  log(`✅ Dev-server startad (PID: ${proc.pid})`);
-  return proc.pid;
+  return proc;
 }
 
-async function main() {
+function showFinalStatus() {
   console.log('');
-  log('═══════════════════════════════════════════════════════════');
-  log('Startar utvecklingsmiljö...');
-  log('═══════════════════════════════════════════════════════════');
+  console.log(`${colors.bright}${colors.green}━━━ Development Environment Ready ━━━${colors.reset}`);
   console.log('');
+  console.log(`  ${colors.bright}App:${colors.reset}      http://localhost:8080`);
+  console.log(`  ${colors.bright}Supabase:${colors.reset} http://127.0.0.1:54323 (Studio)`);
+  console.log('');
+  console.log(`  ${colors.dim}Press Ctrl+C to stop all services${colors.reset}`);
+  console.log('');
+}
 
-  // 1. Starta Supabase
+function cleanup() {
+  console.log('');
+  log('Stopping services...');
+
+  // Kill child processes
+  for (const proc of childProcesses) {
+    try {
+      proc.kill('SIGTERM');
+    } catch (e) {
+      // Process might already be dead
+    }
+  }
+
+  logSuccess('Services stopped');
+  console.log('');
+  process.exit(0);
+}
+
+// Handle Ctrl+C
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+
+async function main() {
+  console.clear();
+  logSection('BPMN Planner Dev Environment');
+
+  // 1. Start Supabase
   const supabaseOk = await startSupabase();
   if (!supabaseOk) {
-    error('Kunde inte starta Supabase. Avslutar.');
+    logError('Could not start Supabase. Exiting.');
     process.exit(1);
   }
 
-  // 2. Verifiera schema
-  log('Verifierar schema...');
+  // 2. Verify schema (quietly)
+  log('Verifying database schema...');
   try {
-    execSync('npm run check:db-schema', { stdio: 'inherit', cwd: projectRoot });
-    log('✅ Schema verifierat.');
+    execSync('npm run check:db-schema', { stdio: 'pipe', cwd: projectRoot });
+    logSuccess('Schema verified');
   } catch (err) {
-    error('Schema-verifiering misslyckades. Kör "npm run supabase:reset" för att fixa.');
+    logError('Schema verification failed. Run: npm run supabase:reset');
     process.exit(1);
   }
 
-  // 3. Starta edge functions
-  console.log('');
-  log('Startar edge functions...');
-  const llmHealthPid = startEdgeFunction('llm-health');
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  
-  const buildProcessTreePid = startEdgeFunction('build-process-tree');
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // 3. Start edge functions
+  startEdgeFunctions();
+  await verifyEdgeFunctions();
 
-  // 5. Starta dev-server
-  console.log('');
-  log('Startar dev-server...');
-  const devServerPid = startDevServer();
+  // 4. Start dev server
+  startDevServer();
 
-  // 6. Sammanfattning
-  console.log('');
-  log('═══════════════════════════════════════════════════════════');
-  log('✅ Allt är igång!');
-  log('═══════════════════════════════════════════════════════════');
-  console.log('');
-  log('Processer som körs:');
-  log(`  - Supabase: körs`);
-  log(`  - llm-health: PID ${llmHealthPid}`);
-  log(`  - build-process-tree: PID ${buildProcessTreePid}`);
-  log(`  - Dev-server: PID ${devServerPid}`);
-  console.log('');
-  log('🌐 Öppna http://localhost:8080/ i din webbläsare');
-  console.log('');
-  log('💡 För att stoppa processerna:');
-  log(`   kill ${llmHealthPid} ${buildProcessTreePid} ${devServerPid}`);
-  log('   eller stäng Cursor (processerna stängs automatiskt)');
-  console.log('');
-  
-  // Vänta lite för att processerna ska starta
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  
-  // Verifiera att edge functions svarar
-  log('Verifierar edge functions...');
-  try {
-    const response = execSync('curl -s http://127.0.0.1:54321/functions/v1/llm-health', { 
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 5000
-    });
-    log('✅ llm-health svarar korrekt');
-  } catch (err) {
-    log('⚠️  llm-health svarar inte ännu (kan ta några sekunder att starta)');
-  }
-  
-  console.log('');
-  log('Klar! Processerna körs i bakgrunden.');
-  log('Tryck Ctrl+C för att avsluta detta script (processerna fortsätter köra).');
-  console.log('');
+  // Keep the process running
+  await new Promise(() => {});
 }
 
 main().catch((err) => {
-  error(`Oväntat fel: ${err.message}`);
+  logError(`Unexpected error: ${err.message}`);
   process.exit(1);
 });
-
-
-
-
-
 
 
 

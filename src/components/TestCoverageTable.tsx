@@ -158,41 +158,54 @@ async function collectActivitiesPerCallActivity(
   async function traverse(node: ProcessTreeNode, currentCallActivity: ProcessTreeNode | null = null) {
     // Om detta är en callActivity, använd den som ny currentCallActivity
     if (node.type === 'callActivity' && node.bpmnElementId) {
-      // Kontrollera om denna callActivity har test-info
-      const testInfoArray = await findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId, node.bpmnFile);
-      if (testInfoArray && testInfoArray.length > 0) {
-        // Skapa entry för denna callActivity om den inte redan finns
-        if (!result.has(node.bpmnElementId)) {
-          result.set(node.bpmnElementId, {
-            callActivityNode: node,
-            activities: {
-              serviceTasks: [],
-              userTasksCustomer: [],
-              userTasksEmployee: [],
-              businessRules: [],
-            },
-            testInfo: testInfoArray[0],
-          });
-        }
-        // Fortsätt med denna callActivity som ny currentCallActivity
-        currentCallActivity = node;
+      let testInfo: TestInfo | null = null;
+      if (node.subprocessFile) {
+        const testInfoArray = await findTestInfoForCallActivity(
+          node.bpmnElementId,
+          scenarios,
+          selectedScenarioId,
+          node.bpmnFile,
+          node.subprocessFile,
+        );
+        testInfo = testInfoArray && testInfoArray.length > 0 ? testInfoArray[0] : null;
       }
+
+      if (!result.has(node.bpmnElementId)) {
+        result.set(node.bpmnElementId, {
+          callActivityNode: node,
+          activities: {
+            serviceTasks: [],
+            userTasksCustomer: [],
+            userTasksEmployee: [],
+            businessRules: [],
+          },
+          testInfo,
+        });
+      }
+
+      currentCallActivity = node;
     }
     
     // Om vi har en currentCallActivity och detta är en aktivitet (inte callActivity eller process)
-    if (currentCallActivity && currentCallActivity.bpmnElementId) {
-      const entry = result.get(currentCallActivity.bpmnElementId);
-      if (entry) {
-        if (node.type === 'serviceTask') {
-          entry.activities.serviceTasks.push(node);
-        } else if (node.type === 'userTask') {
-          if (isCustomerUserTask(node)) {
-            entry.activities.userTasksCustomer.push(node);
-          } else {
-            entry.activities.userTasksEmployee.push(node);
+    if (currentCallActivity) {
+      const entryKey =
+        currentCallActivity.type === 'process'
+          ? currentCallActivity.bpmnFile.replace('.bpmn', '')
+          : currentCallActivity.bpmnElementId;
+      if (entryKey) {
+        const entry = result.get(entryKey);
+        if (entry) {
+          if (node.type === 'serviceTask') {
+            entry.activities.serviceTasks.push(node);
+          } else if (node.type === 'userTask') {
+            if (isCustomerUserTask(node)) {
+              entry.activities.userTasksCustomer.push(node);
+            } else {
+              entry.activities.userTasksEmployee.push(node);
+            }
+          } else if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
+            entry.activities.businessRules.push(node);
           }
-        } else if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
-          entry.activities.businessRules.push(node);
         }
       }
     }
@@ -204,6 +217,27 @@ async function collectActivitiesPerCallActivity(
   }
   
   await traverse(tree);
+
+  // Fallback: om inga callActivities finns, använd process-noden som kolumn
+  if (result.size === 0) {
+    const processKey = tree.bpmnFile.replace('.bpmn', '');
+    const testInfoArray = await findTestInfoForCallActivity(processKey, scenarios, selectedScenarioId, tree.bpmnFile);
+    if (testInfoArray && testInfoArray.length > 0) {
+      result.set(processKey, {
+        callActivityNode: tree,
+        activities: {
+          serviceTasks: [],
+          userTasksCustomer: [],
+          userTasksEmployee: [],
+          businessRules: [],
+        },
+        testInfo: testInfoArray[0],
+      });
+
+      // Samla aktiviteter från hela trädet under process-noden
+      await traverse(tree, tree);
+    }
+  }
   return result;
 }
 
@@ -215,6 +249,17 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
   
   // Beräkna max djup för att veta hur många kolumner vi behöver
   const maxDepth = useMemo(() => calculateMaxDepth(tree), [tree]);
+  const findPathToNode = useCallback((node: ProcessTreeNode, targetId: string, currentPath: ProcessTreeNode[] = []): ProcessTreeNode[] | null => {
+    const newPath = [...currentPath, node];
+    if (node.id === targetId) {
+      return newPath;
+    }
+    for (const child of node.children) {
+      const found = findPathToNode(child, targetId, newPath);
+      if (found) return found;
+    }
+    return null;
+  }, []);
 
   // Samla aktiviteter per callActivity
   // VIKTIGT: collectActivitiesPerCallActivity är nu async, så vi behöver använda useState + useEffect
@@ -344,22 +389,6 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
     });
   }, [pathRows, searchQuery]);
 
-  // Bygg en set över alla callActivityIds som faktiskt har entries i subprocessSteps
-  const callActivityIdsWithTestInfo = useMemo(() => {
-    const ids = new Set<string>();
-    scenarios.forEach((scenario) => {
-      if (selectedScenarioId && scenario.id !== selectedScenarioId) {
-        return;
-      }
-      scenario.subprocessSteps.forEach((step) => {
-        if (step.callActivityId) {
-          ids.add(step.callActivityId);
-        }
-      });
-    });
-    return ids;
-  }, [scenarios, selectedScenarioId]);
-
   // Gruppera rader efter den lägsta callActivity med test-information (närmast leaf-noden)
   // VIKTIGT: Vi visar bara test-information för callActivities som faktiskt har en entry i subprocessSteps
   // För varje leaf-nod, gå igenom sökvägen från lägsta till högsta nivå och hitta den första callActivity med test-info
@@ -372,21 +401,25 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
       let callActivityNode: ProcessTreeNode | null = null;
       let testInfo: TestInfo | null = null;
 
-      // Gå igenom sökvägen från slutet (leaf-noden) och hitta den första callActivity med test-information
-      // OCH som finns i callActivityIdsWithTestInfo (dvs. har en entry i subprocessSteps)
+      // Gå igenom sökvägen från slutet (leaf-noden) och hitta den närmaste callActivity.
+      // Koppla testInfo endast om den callActivityn faktiskt har testinfo (ingen fallback till parent).
       for (let i = pathRow.path.length - 1; i >= 0; i--) {
         const node = pathRow.path[i];
         if (node.type === 'callActivity' && node.bpmnElementId) {
-          // Kontrollera att denna callActivity faktiskt har en entry i subprocessSteps
-          if (callActivityIdsWithTestInfo.has(node.bpmnElementId)) {
-            const testInfoArray = pathRow.testInfoByCallActivity.get(node.bpmnElementId);
-            if (testInfoArray && testInfoArray.length > 0) {
-              // Hittat den första (lägsta, närmast leaf-noden) callActivity med test-information
-              callActivityNode = node;
-              testInfo = testInfoArray[0];
-              break; // Stoppa här - vi vill bara ha den lägsta
-            }
-          }
+          callActivityNode = node;
+          const testInfoArray = pathRow.testInfoByCallActivity.get(node.bpmnElementId);
+          testInfo = testInfoArray && testInfoArray.length > 0 ? testInfoArray[0] : null;
+          break;
+        }
+      }
+
+      if (!callActivityNode) {
+        const processNode = pathRow.path.find((n) => n.type === 'process');
+        if (processNode) {
+          const processKey = processNode.bpmnFile.replace('.bpmn', '');
+          callActivityNode = processNode;
+          const testInfoArray = pathRow.testInfoByCallActivity.get(processKey);
+          testInfo = testInfoArray && testInfoArray.length > 0 ? testInfoArray[0] : null;
         }
       }
 
@@ -407,6 +440,8 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
           const parentPath = pathRow.path.slice(0, callActivityDepth).map((n) => n.id).join('-');
           groupKey = `${callActivityNode.bpmnElementId}-${parentPath}`;
         }
+      } else if (callActivityNode && callActivityNode.type === 'process') {
+        groupKey = `process-${callActivityNode.bpmnFile}`;
       } else {
         groupKey = `no-test-info-${pathRow.path.map((n) => n.id).join('-')}`;
       }
@@ -463,7 +498,7 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
     });
 
     return groups;
-  }, [filteredPathRows, callActivityIdsWithTestInfo]);
+  }, [filteredPathRows]);
 
   // Beräkna rowspan för varje grupp
   const rowspanByGroup = useMemo(() => {
@@ -630,6 +665,13 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
     });
   }, [activitiesPerCallActivity]);
 
+  const condensedCallActivitiesList = useMemo(() => {
+    return callActivitiesList.filter((callActivityData) => {
+      const path = findPathToNode(tree, callActivityData.callActivityNode.id);
+      return path && path.length > 1 && path[1].id === callActivityData.callActivityNode.id;
+    });
+  }, [callActivitiesList, findPathToNode, tree]);
+
   // Skapa en lista över alla callActivities i hierarkisk ordning (för hierarkisk vy)
   // Använder samma logik som collectActivitiesPerCallActivity men för alla callActivities
   // Behåller hierarkisk ordning genom att samla i rätt ordning direkt från trädet
@@ -685,10 +727,16 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
           
           // Om detta är en callActivity
           if (node.type === 'callActivity' && node.bpmnElementId) {
-            const testInfoArray = await findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId, node.bpmnFile);
-            const testInfo = testInfoArray && testInfoArray.length > 0 ? testInfoArray[0] : null;
-            
-            // Skapa entry för denna callActivity om den inte redan finns
+            let testInfo: TestInfo | null = null;
+            const testInfoArray = await findTestInfoForCallActivity(
+              node.bpmnElementId,
+              scenarios,
+              selectedScenarioId,
+              node.bpmnFile,
+              node.subprocessFile,
+            );
+            testInfo = testInfoArray && testInfoArray.length > 0 ? testInfoArray[0] : null;
+
             if (!result.has(node.bpmnElementId)) {
               const entry = {
                 callActivityNode: node,
@@ -705,27 +753,32 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
               result.set(node.bpmnElementId, entry);
               orderedList.push(entry);
             }
-            
-            // Fortsätt med denna callActivity som ny currentCallActivity
+
             currentCallActivity = node;
           }
           
           // Om vi har en currentCallActivity och detta är en aktivitet (inte callActivity eller process)
-          if (currentCallActivity && currentCallActivity.bpmnElementId) {
-            const entry = result.get(currentCallActivity.bpmnElementId);
-            if (entry) {
-              if (node.type === 'serviceTask') {
-                entry.activities.serviceTasks.push(node);
-              } else if (node.type === 'userTask') {
-                if (isCustomerUserTask(node)) {
-                  entry.activities.userTasksCustomer.push(node);
-                } else {
-                  entry.activities.userTasksEmployee.push(node);
-                }
-              } else if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
-                entry.activities.businessRules.push(node);
-              }
+    if (currentCallActivity) {
+      const entryKey =
+        currentCallActivity.type === 'process'
+          ? currentCallActivity.bpmnFile.replace('.bpmn', '')
+          : currentCallActivity.bpmnElementId;
+      if (entryKey) {
+        const entry = result.get(entryKey);
+        if (entry) {
+          if (node.type === 'serviceTask') {
+            entry.activities.serviceTasks.push(node);
+          } else if (node.type === 'userTask') {
+            if (isCustomerUserTask(node)) {
+              entry.activities.userTasksCustomer.push(node);
+            } else {
+              entry.activities.userTasksEmployee.push(node);
             }
+          } else if (node.type === 'businessRuleTask' || node.type === 'dmnDecision') {
+            entry.activities.businessRules.push(node);
+          }
+        }
+      }
           }
           
           // Sortera barnen med sortCallActivities för att behålla rätt ordning
@@ -739,6 +792,25 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
         }
 
         await traverse(tree);
+
+        if (orderedList.length === 0) {
+          const processKey = tree.bpmnFile.replace('.bpmn', '');
+          const testInfoArray = await findTestInfoForCallActivity(processKey, scenarios, selectedScenarioId, tree.bpmnFile);
+          if (testInfoArray && testInfoArray.length > 0) {
+            orderedList.push({
+              callActivityNode: tree,
+              activities: {
+                serviceTasks: [],
+                userTasksCustomer: [],
+                userTasksEmployee: [],
+                businessRules: [],
+              },
+              testInfo: testInfoArray[0],
+              depth: 0,
+              path: [tree],
+            });
+          }
+        }
         
         if (!cancelled) {
           // Returnera i samma ordning som de hittades (hierarkisk ordning bevarad)
@@ -783,21 +855,9 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
     }
     
     // Fyll i data för varje kolumn (callActivity)
-    callActivitiesList.forEach((callActivityData, colIdx) => {
+    condensedCallActivitiesList.forEach((callActivityData, colIdx) => {
       const { callActivityNode, activities, testInfo } = callActivityData;
       
-      // Hitta path för denna callActivity (för att kunna visa hierarki)
-      const findPathToNode = (node: ProcessTreeNode, targetId: string, currentPath: ProcessTreeNode[] = []): ProcessTreeNode[] | null => {
-        const newPath = [...currentPath, node];
-        if (node.id === targetId) {
-          return newPath;
-        }
-        for (const child of node.children) {
-          const found = findPathToNode(child, targetId, newPath);
-          if (found) return found;
-        }
-        return null;
-      };
       const path = findPathToNode(tree, callActivityNode.id) || [callActivityNode];
       
       // Fyll i hierarki-kolumner (Nivå 0, Nivå 1, etc.) - visa bara callActivity-noden
@@ -964,7 +1024,7 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
     });
     
     return rows;
-  }, [callActivitiesList, maxDepth, topLevelCallActivities, getCallActivityColor, tree, scenarios, selectedScenarioId]);
+  }, [condensedCallActivitiesList, maxDepth, topLevelCallActivities, getCallActivityColor, tree, scenarios, selectedScenarioId, findPathToNode]);
 
   // Förbered data för hierarkisk vy (en kolumn per callActivity i hierarkin, med grupperade aktiviteter)
   const transposedDataHierarchical = useMemo(() => {
@@ -1113,6 +1173,28 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
         content: activityGroups.length > 0 ? <div className="space-y-1">{activityGroups}</div> : <span className="text-xs text-muted-foreground">–</span>,
         backgroundColor: cellBackgroundColor,
       });
+
+      // Fyll i Given/When/Then
+      if (testInfo) {
+        rows[givenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep?.given || testInfo.featureGoalScenario?.given),
+          backgroundColor: cellBackgroundColor,
+        });
+        
+        rows[whenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep?.when || testInfo.featureGoalScenario?.when),
+          backgroundColor: cellBackgroundColor,
+        });
+        
+        rows[thenRowIdx].push({
+          content: renderBulletList(testInfo.subprocessStep?.then || testInfo.featureGoalScenario?.then),
+          backgroundColor: cellBackgroundColor,
+        });
+      } else {
+        rows[givenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+        rows[whenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+        rows[thenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span>, backgroundColor: cellBackgroundColor });
+      }
       
       // Fyll i UI/API/DMN - samma som condensed
       if (testInfo) {
@@ -1150,14 +1232,15 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
   const transposedDataFull = useMemo(() => {
     const rows: Array<Array<{ content: React.ReactNode; backgroundColor?: string; colspan?: number; skip?: boolean }>> = [];
     
-    // Skapa rader för varje nivå + Given + When + Then + UI-interaktion + API-anrop + DMN-beslut
-    const rowCount = maxDepth + 6; // maxDepth nivåer + 3 (Given/When/Then) + 3 (UI/API/DMN)
-    const givenRowIdx = maxDepth;
-    const whenRowIdx = maxDepth + 1;
-    const thenRowIdx = maxDepth + 2;
-    const uiRowIdx = maxDepth + 3;
-    const apiRowIdx = maxDepth + 4;
-    const dmnRowIdx = maxDepth + 5;
+    // Skapa rader för varje nivå + Aktiviteter (grupperade) + Given + When + Then + UI-interaktion + API-anrop + DMN-beslut
+    const rowCount = maxDepth + 7; // maxDepth nivåer + 1 (Aktiviteter) + 3 (Given/When/Then) + 3 (UI/API/DMN)
+    const activitiesRowIdx = maxDepth;
+    const givenRowIdx = maxDepth + 1;
+    const whenRowIdx = maxDepth + 2;
+    const thenRowIdx = maxDepth + 3;
+    const uiRowIdx = maxDepth + 4;
+    const apiRowIdx = maxDepth + 5;
+    const dmnRowIdx = maxDepth + 6;
     
     // Initiera rader
     for (let i = 0; i < rowCount; i++) {
@@ -1239,8 +1322,9 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
         }
       }
       
-      // För Given/When/Then/UI/API/DMN, vi hanterar dem separat nedan med colspan
+      // För Aktiviteter/Given/When/Then/UI/API/DMN, vi hanterar dem separat nedan med colspan
       // Sätt placeholder för nu (kommer att skrivas över)
+      rows[activitiesRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
       rows[givenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
       rows[whenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
       rows[thenRowIdx].push({ content: <span className="text-xs text-muted-foreground">–</span> });
@@ -1270,12 +1354,82 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
         }
       }
       
-      const givenRowIdx = maxDepth;
-      const whenRowIdx = maxDepth + 1;
-      const thenRowIdx = maxDepth + 2;
-      const uiRowIdx = maxDepth + 3;
-      const apiRowIdx = maxDepth + 4;
-      const dmnRowIdx = maxDepth + 5;
+      const activitiesRowIdx = maxDepth;
+      const givenRowIdx = maxDepth + 1;
+      const whenRowIdx = maxDepth + 2;
+      const thenRowIdx = maxDepth + 3;
+      const uiRowIdx = maxDepth + 4;
+      const apiRowIdx = maxDepth + 5;
+      const dmnRowIdx = maxDepth + 6;
+
+      // Aktiviteter-raden (grupperad per callActivity)
+      let activityGroups: React.ReactNode[] = [];
+      if (callActivityNode?.bpmnElementId) {
+        const activitiesEntry = activitiesPerCallActivity.get(callActivityNode.bpmnElementId);
+        const activities = activitiesEntry?.activities;
+        if (activities) {
+          if (activities.serviceTasks.length > 0) {
+            activityGroups.push(
+              <div key={`${callActivityNode.bpmnElementId}-serviceTasks`} className="mb-2">
+                <div className="text-xs font-semibold text-amber-600 mb-1">Service Tasks:</div>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  {activities.serviceTasks.map((task, idx) => (
+                    <li key={`${callActivityNode.bpmnElementId}-serviceTask-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+          
+          if (activities.userTasksCustomer.length > 0) {
+            activityGroups.push(
+              <div key={`${callActivityNode.bpmnElementId}-userTasksCustomer`} className="mb-2">
+                <div className="text-xs font-semibold text-red-600 mb-1">User Tasks (kund):</div>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  {activities.userTasksCustomer.map((task, idx) => (
+                    <li key={`${callActivityNode.bpmnElementId}-userTaskCustomer-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+          
+          if (activities.userTasksEmployee.length > 0) {
+            activityGroups.push(
+              <div key={`${callActivityNode.bpmnElementId}-userTasksEmployee`} className="mb-2">
+                <div className="text-xs font-semibold text-red-800 mb-1">User Tasks (handläggare):</div>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  {activities.userTasksEmployee.map((task, idx) => (
+                    <li key={`${callActivityNode.bpmnElementId}-userTaskEmployee-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+          
+          if (activities.businessRules.length > 0) {
+            activityGroups.push(
+              <div key={`${callActivityNode.bpmnElementId}-businessRules`} className="mb-2">
+                <div className="text-xs font-semibold text-cyan-600 mb-1">Business Rules / DMN:</div>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  {activities.businessRules.map((task, idx) => (
+                    <li key={`${callActivityNode.bpmnElementId}-businessRule-${task.id}-${idx}`} className="text-xs text-muted-foreground">{task.label}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+        }
+      }
+
+      rows[activitiesRowIdx][startColIdx] = {
+        content: activityGroups.length > 0 ? <div className="space-y-1">{activityGroups}</div> : <span className="text-xs text-muted-foreground">–</span>,
+        backgroundColor: testInfoBackgroundColor,
+        colspan,
+      };
+      for (let i = 1; i < colspan; i++) {
+        rows[activitiesRowIdx][startColIdx + i] = { content: <></>, skip: true };
+      }
 
       if (testInfo) {
 
@@ -1415,7 +1569,7 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
     });
     
     return rows;
-  }, [groupedRows, maxDepth, topLevelCallActivities, getCallActivityColor, groupedColumns]);
+  }, [groupedRows, maxDepth, topLevelCallActivities, getCallActivityColor, groupedColumns, activitiesPerCallActivity]);
 
   // Välj rätt data baserat på viewMode
   const transposedData = viewMode === 'condensed' 
@@ -1427,16 +1581,15 @@ export function TestCoverageTable({ tree, scenarios, selectedScenarioId, viewMod
   // Skapa rad-headers baserat på viewMode
   const rowHeaders = useMemo(() => {
     const headers = Array.from({ length: maxDepth }, (_, i) => `Nivå ${i}`);
-    if (viewMode === 'condensed' || viewMode === 'hierarchical') {
+    if (viewMode === 'condensed' || viewMode === 'hierarchical' || viewMode === 'full') {
       return [...headers, 'Aktiviteter', 'Given', 'When', 'Then', 'UI-interaktion', 'API-anrop', 'DMN-beslut'];
-    } else {
-      return [...headers, 'Given', 'When', 'Then', 'UI-interaktion', 'API-anrop', 'DMN-beslut'];
     }
+    return [...headers, 'Given', 'When', 'Then', 'UI-interaktion', 'API-anrop', 'DMN-beslut'];
   }, [maxDepth, viewMode]);
 
   // Kolumner baserat på viewMode
   const columns = viewMode === 'condensed' 
-    ? callActivitiesList.map((callActivityData) => ({
+    ? condensedCallActivitiesList.map((callActivityData) => ({
         callActivityNode: callActivityData.callActivityNode,
         label: callActivityData.callActivityNode.label,
         bpmnFile: callActivityData.callActivityNode.bpmnFile,
