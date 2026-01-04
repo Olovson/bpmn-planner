@@ -36,6 +36,23 @@ export function loadBpmnMap(raw: unknown): BpmnMap {
   return map;
 }
 
+export function resolveRootBpmnFileFromMap(bpmnMap: BpmnMap): string | null {
+  const rootProcessId = bpmnMap.orchestration?.root_process?.trim();
+  if (!rootProcessId) return null;
+
+  const processMatch = bpmnMap.processes.find(
+    (process) =>
+      process.id === rootProcessId ||
+      process.process_id === rootProcessId ||
+      process.bpmn_file === rootProcessId ||
+      process.bpmn_file === `${rootProcessId}.bpmn`,
+  );
+
+  if (processMatch?.bpmn_file) return processMatch.bpmn_file;
+  if (rootProcessId.endsWith('.bpmn')) return rootProcessId;
+  return `${rootProcessId}.bpmn`;
+}
+
 export function matchCallActivityUsingMap(
   callActivity: { id: string; name?: string; calledElement?: string },
   bpmnFile: string,
@@ -155,4 +172,3 @@ export function findParentBpmnFileForSubprocess(
 
   return null;
 }
-

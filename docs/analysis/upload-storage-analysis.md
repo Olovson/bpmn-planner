@@ -27,8 +27,7 @@ Denna analys dokumenterar hur BPMN/DMN filer sparas när de laddas upp, och hur 
 ### Dokumentation Storage
 - **Versioned Path**: `docs/claude/{bpmnFileName}/{versionHash}/{docFileName}`
   - Exempel: `docs/claude/mortgage.bpmn/abc123.../epics/mortgage-se-application.html`
-- **Non-versioned Path** (fallback): `docs/claude/{docFileName}`
-  - Exempel: `docs/claude/epics/mortgage-se-application.html`
+- **Obs:** Nuvarande kod kräver version hash (ingen generell fallback‑path).
 
 ## Upload Flow
 
@@ -147,4 +146,3 @@ Upload-funktionaliteten är korrekt implementerad:
 1. Verifiera storage path consistency mellan upload och seed
 2. Lägg till tester för storage path verification
 3. Förbättra version tracking i dokumentation metadata
-

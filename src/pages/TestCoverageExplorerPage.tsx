@@ -51,6 +51,23 @@ export default function TestCoverageExplorerPage() {
     loadScenarios();
   }, []);
 
+  const rootScenarioKey = useMemo(() => {
+    if (!rootFile) return null;
+    const base = rootFile.replace('.bpmn', '');
+    return { file: rootFile, base };
+  }, [rootFile]);
+
+  const visibleE2eScenarios = useMemo(() => {
+    if (!rootScenarioKey) return e2eScenarios;
+    return e2eScenarios.filter((scenario) => {
+      return (
+        scenario.bpmnProcess === rootScenarioKey.file ||
+        scenario.bpmnProcess === rootScenarioKey.base ||
+        scenario.bpmnProcess === `${rootScenarioKey.base}.bpmn`
+      );
+    });
+  }, [e2eScenarios, rootScenarioKey]);
+
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'condensed' | 'hierarchical' | 'full'>('condensed');
@@ -59,10 +76,14 @@ export default function TestCoverageExplorerPage() {
 
   // Sätt första scenariot som standard när e2eScenarios är tillgängligt
   useEffect(() => {
-    if (e2eScenarios.length > 0 && !selectedScenarioId) {
-      setSelectedScenarioId(e2eScenarios[0].id);
+    if (visibleE2eScenarios.length > 0) {
+      if (!selectedScenarioId || !visibleE2eScenarios.some((s) => s.id === selectedScenarioId)) {
+        setSelectedScenarioId(visibleE2eScenarios[0].id);
+      }
+    } else if (selectedScenarioId) {
+      setSelectedScenarioId('');
     }
-  }, [e2eScenarios, selectedScenarioId]);
+  }, [visibleE2eScenarios, selectedScenarioId]);
 
 
   // Beräkna max djup
@@ -188,15 +209,15 @@ export default function TestCoverageExplorerPage() {
       copyStylesForTable(fullTableElement, clonedFullTable, 'full');
 
       // Hämta valt scenario-namn (använd första scenariot om inget är valt)
-      const effectiveScenarioId = selectedScenarioId || (e2eScenarios.length > 0 ? e2eScenarios[0].id : '');
-      const selectedScenario = e2eScenarios.find((s) => s.id === effectiveScenarioId);
+      const effectiveScenarioId = selectedScenarioId || (visibleE2eScenarios.length > 0 ? visibleE2eScenarios[0].id : '');
+      const selectedScenario = visibleE2eScenarios.find((s) => s.id === effectiveScenarioId);
       const scenarioName = selectedScenario ? `${selectedScenario.id} – ${selectedScenario.name}` : '';
       
       // Standardvy är condensed
       const defaultViewMode = 'condensed';
 
       // Förbered scenario-data för export (endast nödvändig data)
-      const scenariosData = e2eScenarios.map((s) => ({
+      const scenariosData = visibleE2eScenarios.map((s) => ({
         id: s.id,
         name: s.name,
       }));
@@ -546,23 +567,10 @@ export default function TestCoverageExplorerPage() {
       const viewMode = tableElement?.getAttribute('data-view-mode') || 'condensed';
       
       const maxDepth = calculateMaxDepth(tree);
-      let pathRows = flattenToPaths(tree, e2eScenarios, selectedScenarioId);
+      let pathRows = flattenToPaths(tree, visibleE2eScenarios, selectedScenarioId);
       
       // Sortera paths baserat på ProcessTree-ordningen (samma som Process Explorer)
       pathRows = sortPathsByProcessTreeOrder(pathRows);
-
-      // Bygg en set över alla callActivityIds som faktiskt har entries i subprocessSteps
-      const callActivityIdsWithTestInfo = new Set<string>();
-      e2eScenarios.forEach((scenario) => {
-        if (selectedScenarioId && scenario.id !== selectedScenarioId) {
-          return;
-        }
-        scenario.subprocessSteps.forEach((step) => {
-          if (step.callActivityId) {
-            callActivityIdsWithTestInfo.add(step.callActivityId);
-          }
-        });
-      });
 
       // Gruppera rader efter den lägsta callActivity med test-information
       const groupedRows = pathRows.map((pathRow) => {
@@ -572,18 +580,27 @@ export default function TestCoverageExplorerPage() {
         for (let i = pathRow.path.length - 1; i >= 0; i--) {
           const node = pathRow.path[i];
           if (node.type === 'callActivity' && node.bpmnElementId) {
-            if (callActivityIdsWithTestInfo.has(node.bpmnElementId)) {
-              const testInfoFromMap = pathRow.testInfoByCallActivity.get(node.bpmnElementId);
-              if (testInfoFromMap) {
-                callActivityNode = node;
-                testInfo = testInfoFromMap;
-                break;
-              }
-            }
+            callActivityNode = node;
+            const testInfoFromMap = pathRow.testInfoByCallActivity.get(node.bpmnElementId);
+            testInfo = testInfoFromMap || null;
+            break;
           }
         }
 
-        const groupKey = callActivityNode?.bpmnElementId || `no-test-info-${pathRow.path.map((n) => n.id).join('-')}`;
+        if (!callActivityNode) {
+          const processNode = pathRow.path.find((n) => n.type === 'process');
+          if (processNode) {
+            const processKey = processNode.bpmnFile.replace('.bpmn', '');
+            callActivityNode = processNode;
+            const testInfoFromMap = pathRow.testInfoByCallActivity.get(processKey);
+            testInfo = testInfoFromMap || null;
+          }
+        }
+
+        const groupKey =
+          callActivityNode?.bpmnElementId ||
+          (callActivityNode?.type === 'process' ? `process-${callActivityNode.bpmnFile}` : null) ||
+          `no-test-info-${pathRow.path.map((n) => n.id).join('-')}`;
 
         return {
           pathRow,
@@ -966,7 +983,7 @@ export default function TestCoverageExplorerPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Scenario:</span>
                       <div className="flex flex-wrap gap-2">
-                        {e2eScenarios.map((s) => (
+                        {visibleE2eScenarios.map((s) => (
                           <Button
                             key={s.id}
                             variant={selectedScenarioId === s.id ? 'default' : 'outline'}
@@ -995,7 +1012,7 @@ export default function TestCoverageExplorerPage() {
               <div className="px-6 pb-6 overflow-x-auto">
                 <TestCoverageTable
                   tree={tree}
-                  scenarios={e2eScenarios}
+                  scenarios={visibleE2eScenarios}
                   selectedScenarioId={selectedScenarioId}
                 />
               </div>
@@ -1004,7 +1021,7 @@ export default function TestCoverageExplorerPage() {
                 <div data-export-view="condensed">
                   <TestCoverageTable
                     tree={tree}
-                    scenarios={e2eScenarios}
+                    scenarios={visibleE2eScenarios}
                     selectedScenarioId={selectedScenarioId}
                     viewMode="condensed"
                     searchQuery={searchQuery}
@@ -1013,7 +1030,7 @@ export default function TestCoverageExplorerPage() {
                 <div data-export-view="hierarchical">
                   <TestCoverageTable
                     tree={tree}
-                    scenarios={e2eScenarios}
+                    scenarios={visibleE2eScenarios}
                     selectedScenarioId={selectedScenarioId}
                     viewMode="hierarchical"
                     searchQuery={searchQuery}
@@ -1022,7 +1039,7 @@ export default function TestCoverageExplorerPage() {
                 <div data-export-view="full">
                   <TestCoverageTable
                     tree={tree}
-                    scenarios={e2eScenarios}
+                    scenarios={visibleE2eScenarios}
                     selectedScenarioId={selectedScenarioId}
                     viewMode="full"
                     searchQuery={searchQuery}
@@ -1033,7 +1050,7 @@ export default function TestCoverageExplorerPage() {
           </Card>
 
           {/* E2E Scenario Details Section */}
-          {e2eScenarios.length > 0 && (
+          {visibleE2eScenarios.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>E2E Scenario-detaljer</CardTitle>
@@ -1042,7 +1059,7 @@ export default function TestCoverageExplorerPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {e2eScenarios.map((scenario) => {
+                {visibleE2eScenarios.map((scenario) => {
                   const isExpanded = expandedScenarioDetails.has(scenario.id);
                   const isSelected = selectedScenarioId === scenario.id;
                   
@@ -1229,5 +1246,3 @@ export default function TestCoverageExplorerPage() {
     </div>
   );
 }
-
-

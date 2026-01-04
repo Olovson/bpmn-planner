@@ -1,87 +1,99 @@
 #!/usr/bin/env node
 
 /**
- * Script som stoppar alla utvecklingsprocesser.
- * 
- * Användning:
+ * Stops all development services.
+ *
+ * Usage:
  *   node scripts/stop-dev.mjs
- *   eller
  *   npm run stop:dev
  */
 
 import { execSync } from 'child_process';
 
-function log(message) {
-  console.log(`[Stop Dev] ${message}`);
+// Colors for terminal output
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  cyan: '\x1b[36m',
+  red: '\x1b[31m',
+};
+
+function log(message, color = '') {
+  const timestamp = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  console.log(`${colors.dim}${timestamp}${colors.reset} ${color}${message}${colors.reset}`);
 }
 
-function error(message) {
-  console.error(`[Stop Dev] ERROR: ${message}`);
+function logSection(title) {
+  console.log('');
+  console.log(`${colors.bright}${colors.cyan}━━━ ${title} ━━━${colors.reset}`);
+}
+
+function logSuccess(message) {
+  log(`✓ ${message}`, colors.green);
+}
+
+function logWarning(message) {
+  log(`○ ${message}`, colors.yellow);
+}
+
+function logError(message) {
+  log(`✗ ${message}`, colors.red);
+}
+
+function checkSupabaseRunning() {
+  try {
+    const output = execSync('supabase status', { encoding: 'utf-8', stdio: 'pipe' });
+    return output.includes('API URL:');
+  } catch {
+    return false;
+  }
 }
 
 async function main() {
-  log('Stoppar utvecklingsprocesser...');
+  console.clear();
+  logSection('Stopping Development Environment');
+
+  // Stop edge functions
+  log('Stopping edge functions...');
+  try {
+    execSync("pkill -f 'supabase functions serve'", { stdio: 'pipe' });
+    logSuccess('Edge functions stopped');
+  } catch {
+    logWarning('No edge functions running');
+  }
+
+  // Stop Vite dev server
+  log('Stopping Vite dev server...');
+  try {
+    execSync("pkill -f 'vite'", { stdio: 'pipe' });
+    logSuccess('Dev server stopped');
+  } catch {
+    logWarning('No dev server running');
+  }
+
+  // Stop Supabase
+  log('Stopping Supabase...');
+  if (checkSupabaseRunning()) {
+    try {
+      execSync('supabase stop', { stdio: 'pipe' });
+      logSuccess('Supabase stopped');
+    } catch (err) {
+      logError('Failed to stop Supabase');
+    }
+  } else {
+    logWarning('Supabase not running');
+  }
+
+  // Final status
   console.log('');
-
-  // Stoppa Supabase
-  log('Stoppar Supabase...');
-  try {
-    execSync('supabase stop', { stdio: 'inherit' });
-    log('✅ Supabase stoppad.');
-  } catch (err) {
-    log('⚠️  Supabase körde inte eller kunde inte stoppas.');
-  }
-
-  // Stoppa edge functions och dev-server (de körs i bakgrunden)
-  log('Stoppar edge functions och dev-server...');
-  try {
-    // Hitta processer som kör supabase functions serve
-    execSync("pkill -f 'supabase functions serve'", { stdio: 'ignore' });
-    log('✅ Edge functions stoppade.');
-  } catch (err) {
-    log('⚠️  Inga edge functions hittades att stoppa.');
-  }
-
-  try {
-    // Hitta processer som kör npm run dev eller vite
-    execSync("pkill -f 'vite'", { stdio: 'ignore' });
-    log('✅ Dev-server stoppad.');
-  } catch (err) {
-    log('⚠️  Ingen dev-server hittades att stoppa.');
-  }
-
-  console.log('');
-  log('✅ Alla processer stoppade.');
+  console.log(`${colors.bright}${colors.green}━━━ All Services Stopped ━━━${colors.reset}`);
   console.log('');
 }
 
 main().catch((err) => {
-  error(`Oväntat fel: ${err.message}`);
+  logError(`Unexpected error: ${err.message}`);
   process.exit(1);
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

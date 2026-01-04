@@ -52,6 +52,20 @@ export interface GenerationResult {
     scenarioName: string;
     scenarioId: string;
   }>;
+  warnings?: string[];
+  missingDocumentation?: Array<{
+    elementId: string;
+    elementName: string;
+    docPath: string;
+  }>;
+  e2eGenerationErrors?: Array<{
+    path: string;
+    error: string;
+  }>;
+  featureGoalTestErrors?: Array<{
+    callActivityId: string;
+    error: string;
+  }>;
 }
 
 interface GenerationDialogProps {
@@ -78,9 +92,34 @@ export function GenerationDialog({
   showCancel = false,
 }: GenerationDialogProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [closeCountdown, setCloseCountdown] = useState<number | null>(null);
 
   // Determine which view to show
   const view = result ? 'result' : progress ? 'progress' : plan ? 'plan' : 'plan';
+  const hasWarnings =
+    !!result &&
+    ((result.warnings?.length ?? 0) > 0 ||
+      (result.missingDocumentation?.length ?? 0) > 0 ||
+      (result.e2eGenerationErrors?.length ?? 0) > 0 ||
+      (result.featureGoalTestErrors?.length ?? 0) > 0);
+
+  // Start a non-blocking countdown when result view is shown.
+  useEffect(() => {
+    if (!open || view !== 'result') {
+      setCloseCountdown(null);
+      return;
+    }
+
+    setCloseCountdown(10);
+    const timer = setInterval(() => {
+      setCloseCountdown((prev) => {
+        if (prev === null) return prev;
+        return prev > 0 ? prev - 1 : 0;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [open, view]);
 
   // Format time in seconds to human-readable string
   const formatTime = (seconds: number): string => {
@@ -104,12 +143,15 @@ export function GenerationDialog({
           <DialogTitle className="text-xl font-bold">
             {view === 'plan' && 'Generera Artefakter'}
             {view === 'progress' && 'Genererar Artefakter'}
-            {view === 'result' && 'Generering Klar'}
+            {view === 'result' && (hasWarnings ? 'Generering Klar (med varningar)' : 'Generering Klar')}
           </DialogTitle>
           <DialogDescription>
             {view === 'plan' && 'Följande kommer att genereras baserat på dina BPMN-filer'}
             {view === 'progress' && 'Genererar artefakter, vänligen vänta...'}
-            {view === 'result' && 'Alla artefakter har genererats framgångsrikt'}
+            {view === 'result' &&
+              (hasWarnings
+                ? 'Genereringen är klar, men vissa artefakter saknas eller hoppades över.'
+                : 'Alla artefakter har genererats framgångsrikt')}
           </DialogDescription>
         </DialogHeader>
 
@@ -358,15 +400,43 @@ export function GenerationDialog({
           {view === 'result' && result && (
             <div className="space-y-4">
               <div className="flex items-center justify-center">
-                <CheckCircle2 className="h-12 w-12 text-green-500" />
+                {hasWarnings ? (
+                  <AlertTriangle className="h-12 w-12 text-amber-500" />
+                ) : (
+                  <CheckCircle2 className="h-12 w-12 text-green-500" />
+                )}
               </div>
 
               <div className="text-center">
                 <div className="text-lg font-semibold mb-2">Generering Klar!</div>
                 <div className="text-sm text-muted-foreground">
-                  Alla artefakter har genererats framgångsrikt.
+                  {hasWarnings
+                    ? 'Genereringen är klar, men vissa artefakter saknas eller hoppades över.'
+                    : 'Alla artefakter har genererats framgångsrikt.'}
                 </div>
               </div>
+
+              {hasWarnings && (
+                <Card className="p-4 bg-amber-50">
+                  <h3 className="font-semibold mb-2 text-sm flex items-center gap-2 text-amber-700">
+                    <AlertTriangle className="h-4 w-4" />
+                    Varningar och begränsningar
+                  </h3>
+                  <ul className="text-sm space-y-1 text-amber-800">
+                    {(result.warnings || []).slice(0, 4).map((warning, i) => (
+                      <li key={i}>• {warning}</li>
+                    ))}
+                    {(result.warnings?.length ?? 0) > 4 && (
+                      <li className="text-xs text-amber-700">
+                        ...och {result.warnings!.length - 4} till
+                      </li>
+                    )}
+                    {(!result.warnings || result.warnings.length === 0) && (
+                      <li>• Se detaljerad rapport för mer information.</li>
+                    )}
+                  </ul>
+                </Card>
+              )}
 
               {/* Summary Cards */}
               <div className={`grid gap-4 ${result.docFiles.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -406,6 +476,9 @@ export function GenerationDialog({
                         <span className="text-lg font-bold text-green-900">{result.testScenarios}</span>
                       </div>
                     )}
+                    <p className="text-xs text-muted-foreground">
+                      E2E‑scenarier skapas endast för root‑filen enligt bpmn‑map.json. Feature Goal‑scenarier genereras för de filer du kör testgenerering på.
+                    </p>
                     {result.e2eScenarios !== undefined && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-green-700">E2E-scenarios</span>
@@ -429,6 +502,55 @@ export function GenerationDialog({
                   Visa Detaljerad Rapport
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-4 space-y-4">
+                  {result.missingDocumentation && result.missingDocumentation.length > 0 && (
+                    <Card className="p-4 bg-amber-50">
+                      <h3 className="font-semibold mb-2 text-sm flex items-center gap-2 text-amber-700">
+                        <AlertTriangle className="h-4 w-4" />
+                        Dokumentation saknas ({result.missingDocumentation.length})
+                      </h3>
+                      <p className="text-sm text-amber-800 mb-2">
+                        Feature Goal‑tester genererades endast för noder med dokumentation.
+                      </p>
+                      <ul className="text-sm space-y-1 text-amber-800">
+                        {result.missingDocumentation.slice(0, 10).map((doc, i) => (
+                          <li key={i}>• {doc.elementName || doc.elementId}</li>
+                        ))}
+                      </ul>
+                      {result.missingDocumentation.length > 10 && (
+                        <p className="text-xs text-amber-700 mt-1">
+                          ...och {result.missingDocumentation.length - 10} till
+                        </p>
+                      )}
+                    </Card>
+                  )}
+
+                  {result.e2eGenerationErrors && result.e2eGenerationErrors.length > 0 && (
+                    <Card className="p-4 bg-amber-50">
+                      <h3 className="font-semibold mb-2 text-sm flex items-center gap-2 text-amber-700">
+                        <AlertTriangle className="h-4 w-4" />
+                        E2E‑generering misslyckades ({result.e2eGenerationErrors.length})
+                      </h3>
+                      <ul className="text-sm space-y-1 text-amber-800">
+                        {result.e2eGenerationErrors.slice(0, 5).map((entry, i) => (
+                          <li key={i}>• {entry.path}: {entry.error}</li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
+
+                  {result.featureGoalTestErrors && result.featureGoalTestErrors.length > 0 && (
+                    <Card className="p-4 bg-amber-50">
+                      <h3 className="font-semibold mb-2 text-sm flex items-center gap-2 text-amber-700">
+                        <AlertTriangle className="h-4 w-4" />
+                        Feature Goal‑tester misslyckades ({result.featureGoalTestErrors.length})
+                      </h3>
+                      <ul className="text-sm space-y-1 text-amber-800">
+                        {result.featureGoalTestErrors.slice(0, 5).map((entry, i) => (
+                          <li key={i}>• {entry.callActivityId}: {entry.error}</li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
                   {/* Analyzed Files */}
                   {result.filesAnalyzed.length > 0 && (
                     <Card className="p-4">
@@ -581,8 +703,13 @@ export function GenerationDialog({
               </Collapsible>
 
               <Button onClick={onClose || (() => onOpenChange(false))} className="w-full">
-                Stäng
+                {closeCountdown && closeCountdown > 0 ? `Stäng (${closeCountdown}s)` : 'Stäng'}
               </Button>
+              {closeCountdown !== null && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Dialogen stängs inte automatiskt – stäng när du vill.
+                </p>
+              )}
             </div>
           )}
         </div>

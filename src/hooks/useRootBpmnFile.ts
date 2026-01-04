@@ -21,6 +21,20 @@ export const useRootBpmnFile = () => {
         return null;
       }
 
+      try {
+        const { loadBpmnMapFromStorage } = await import('@/lib/bpmn/bpmnMapStorage');
+        const { resolveRootBpmnFileFromMap } = await import('@/lib/bpmn/bpmnMapLoader');
+        const bpmnMapResult = await loadBpmnMapFromStorage();
+        if (bpmnMapResult.valid && bpmnMapResult.map) {
+          const rootFromMap = resolveRootBpmnFileFromMap(bpmnMapResult.map);
+          if (rootFromMap && allFiles.some((f) => f.file_name === rootFromMap)) {
+            return rootFromMap;
+          }
+        }
+      } catch (error) {
+        console.warn('[useRootBpmnFile] Could not load bpmn-map root, falling back to dependencies:', error);
+      }
+
       const mortgageExists = allFiles.some((f) => f.file_name === 'mortgage.bpmn');
 
       // Get all dependencies

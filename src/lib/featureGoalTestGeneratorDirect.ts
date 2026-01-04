@@ -24,7 +24,8 @@ export interface FeatureGoalTestGenerationDirectResult {
 export async function generateFeatureGoalTestsDirect(
   bpmnFiles: string[],
   llmProvider?: LlmProvider,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  availableBpmnFiles?: string[]
 ): Promise<FeatureGoalTestGenerationDirectResult> {
   const result: FeatureGoalTestGenerationDirectResult = {
     generated: 0,
@@ -43,7 +44,8 @@ export async function generateFeatureGoalTestsDirect(
   
   // 2. Hitta alla callActivities i alla filer
   const callActivities = new Map<string, { bpmnFile: string; callActivityId: string; parentBpmnFile: string }>();
-  
+  const knownBpmnFiles = availableBpmnFiles && availableBpmnFiles.length > 0 ? availableBpmnFiles : bpmnFiles;
+
   for (const bpmnFile of bpmnFiles) {
     try {
       const { parseBpmnFile } = await import('./bpmnParser');
@@ -51,9 +53,13 @@ export async function generateFeatureGoalTestsDirect(
       
       if (!parseResult) continue;
       
+      let foundCallActivity = false;
+
       // Hitta alla callActivities i filen
       for (const element of parseResult.elements) {
         if (element.type === 'callActivity' && element.id) {
+          foundCallActivity = true;
+
           // Hitta callActivity-metadata för att få calledElement
           const callActivityMeta = parseResult.meta?.callActivities?.find(ca => ca.id === element.id);
           
@@ -93,7 +99,7 @@ export async function generateFeatureGoalTestsDirect(
             
             // Kolla om någon av de potentiella filerna finns i bpmnFiles
             for (const potentialFile of potentialFiles) {
-              if (bpmnFiles.includes(potentialFile)) {
+              if (knownBpmnFiles.includes(potentialFile)) {
                 subprocessFile = potentialFile;
                 break;
               }
@@ -110,7 +116,18 @@ export async function generateFeatureGoalTestsDirect(
               });
             }
           }
-          // Note: Om subprocessFile inte hittas, hoppar vi över callActivity (tyst)
+        }
+      }
+
+      if (!foundCallActivity) {
+        const baseName = bpmnFile.replace('.bpmn', '');
+        const key = `${bpmnFile}::${baseName}`;
+        if (!callActivities.has(key)) {
+          callActivities.set(key, {
+            bpmnFile,
+            callActivityId: baseName,
+            parentBpmnFile: bpmnFile,
+          });
         }
       }
     } catch (error) {
@@ -129,7 +146,6 @@ export async function generateFeatureGoalTestsDirect(
       );
 
       if (!featureGoalDoc) {
-        // Dokumentation saknas - detta är förväntat i många fall, hoppa över tyst
         result.skipped++;
         continue;
       }
@@ -317,4 +333,3 @@ function buildFeatureGoalTestJsonSchema() {
     },
   };
 }
-

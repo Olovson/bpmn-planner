@@ -236,6 +236,10 @@ export interface LlmHtmlRenderOptions {
    * Slutlig provider efter eventuell fallback.
    */
   finalProvider?: 'cloud' | 'local';
+  /**
+   * JSON-data som ska bäddas in i dokumentet (för testinfo/automation).
+   */
+  jsonData?: unknown;
 }
 
 const escapeHtmlForBadge = (value: string): string =>
@@ -256,6 +260,7 @@ export const wrapDocument = (
   let fallbackReason: string | undefined;
   let fallbackUsed: boolean | undefined;
   let finalProvider: 'cloud' | 'local' | undefined;
+  let jsonData: unknown = undefined;
 
   if (options) {
     if ('provider' in options) {
@@ -266,6 +271,7 @@ export const wrapDocument = (
       fallbackReason = options.fallbackReason;
       fallbackUsed = options.fallbackUsed;
       finalProvider = options.finalProvider;
+      jsonData = options.jsonData;
     }
   }
 
@@ -287,12 +293,16 @@ export const wrapDocument = (
   const fallbackBadgeHtml = '';
   const fallbackBannerHtml = '';
   
+  const jsonScript = jsonData
+    ? `\n  <script type="application/json">${JSON.stringify(jsonData, null, 2).replaceAll('</script>', '<\\\\/script>')}</script>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="sv">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${title}</title>
+  <title>${title}</title>${jsonScript}
   <style>
     :root {
       color-scheme: light;
@@ -1221,7 +1231,20 @@ export async function renderFeatureGoalDoc(
     // 5. Render HTML via unified renderer
     const body = buildFeatureGoalDocHtmlFromModel(context, links, model);
     const title = context.node.name || context.node.bpmnElementId || 'Feature Goal';
-    return wrapDocument(title, body, llmMetadata);
+
+    const docJson = {
+      summary: model.summary,
+      flowSteps: Array.isArray(model.flowSteps) ? model.flowSteps : [],
+      dependencies: Array.isArray(model.dependencies) ? model.dependencies : [],
+      userStories: Array.isArray(model.userStories) ? model.userStories : [],
+      usageCases: Array.isArray(model.usageCases) ? model.usageCases : undefined,
+    };
+
+    const wrapOptions: LlmHtmlRenderOptions = llmMetadata && 'provider' in llmMetadata
+      ? { llmMetadata: llmMetadata as LlmMetadata, jsonData: docJson }
+      : { ...(llmMetadata as LlmHtmlRenderOptions | undefined), jsonData: docJson };
+
+    return wrapDocument(title, body, wrapOptions);
   } catch (error) {
     // Kasta fel vidare - inga fallbacks
     console.error(

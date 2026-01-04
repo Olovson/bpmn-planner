@@ -27,6 +27,7 @@ export async function findTestInfoForCallActivity(
   scenarios: E2eScenario[],
   selectedScenarioId?: string,
   bpmnFile?: string,
+  subprocessFile?: string,
 ): Promise<TestInfo[]> {
   const testInfo: TestInfo[] = [];
 
@@ -63,10 +64,13 @@ export async function findTestInfoForCallActivity(
     }
   }
 
-  // 2. Om inga E2E-scenarios hittades ELLER om E2E-scenarios saknar description,
+  // 2. Om inga E2E-scenarios hittades ELLER om E2E-scenarios saknar given/when/then,
   // hämta Feature Goal-tester från databasen som fallback
   const hasE2eTestInfo = testInfo.length > 0 && testInfo.some(
-    info => info.subprocessStep?.description
+    info =>
+      info.subprocessStep?.given ||
+      info.subprocessStep?.when ||
+      info.subprocessStep?.then
   );
   
   if (!hasE2eTestInfo && bpmnFile && callActivityId) {
@@ -109,7 +113,7 @@ export async function findTestInfoForCallActivity(
           then: firstScenario.then,
         };
 
-        testInfo.push({
+        testInfo.unshift({
           scenarioId: firstScenario.id || callActivityId,
           scenarioName: firstScenario.name || callActivityId,
           subprocessStep,
@@ -118,6 +122,35 @@ export async function findTestInfoForCallActivity(
       } else {
         if (import.meta.env.DEV) {
           console.log(`[testCoverageHelpers] No Feature Goal tests found for ${bpmnFile}::${callActivityId}`);
+        }
+        if (subprocessFile) {
+          try {
+            const subprocessBaseName = subprocessFile.replace('.bpmn', '');
+            const fallbackScenarios = await fetchPlannedScenarios(subprocessFile, subprocessBaseName);
+            if (fallbackScenarios && fallbackScenarios.scenarios.length > 0) {
+              const firstScenario = fallbackScenarios.scenarios[0];
+              const subprocessStep: E2eScenario['subprocessSteps'][0] = {
+                order: 1,
+                bpmnFile: subprocessFile,
+                callActivityId: callActivityId,
+                description: firstScenario.description || firstScenario.name || '',
+                given: firstScenario.given,
+                when: firstScenario.when,
+                then: firstScenario.then,
+              };
+
+              testInfo.unshift({
+                scenarioId: firstScenario.id || callActivityId,
+                scenarioName: firstScenario.name || callActivityId,
+                subprocessStep,
+                featureGoalScenario: firstScenario,
+              });
+            }
+          } catch (error) {
+            if (import.meta.env.DEV) {
+              console.warn(`[testCoverageHelpers] Fallback lookup failed for ${bpmnFile}::${callActivityId}:`, error);
+            }
+          }
         }
       }
     } catch (error) {
@@ -143,13 +176,30 @@ export async function buildTestInfoMap(
       // För callActivities: bpmnFile är parent-filen där callActivity är definierad
       // Men testscenarios sparas med parent-filen, så vi använder node.bpmnFile direkt
       const bpmnFile = node.bpmnFile;
-      if (bpmnFile) {
-        const testInfo = await findTestInfoForCallActivity(node.bpmnElementId, scenarios, selectedScenarioId, bpmnFile);
+      if (bpmnFile && node.subprocessFile) {
+        const testInfo = await findTestInfoForCallActivity(
+          node.bpmnElementId,
+          scenarios,
+          selectedScenarioId,
+          bpmnFile,
+          node.subprocessFile,
+        );
         if (testInfo.length > 0) {
           testInfoMap.set(node.bpmnElementId, testInfo);
         } else if (import.meta.env.DEV) {
           // Debug: logga om vi inte hittar testinfo
           console.log(`[testCoverageHelpers] No test info found for ${bpmnFile}::${node.bpmnElementId}`);
+        }
+      }
+    }
+
+    if (node.type === 'process') {
+      const bpmnFile = node.bpmnFile;
+      if (bpmnFile) {
+        const processKey = bpmnFile.replace('.bpmn', '');
+        const testInfo = await findTestInfoForCallActivity(processKey, scenarios, selectedScenarioId, bpmnFile);
+        if (testInfo.length > 0) {
+          testInfoMap.set(processKey, testInfo);
         }
       }
     }
@@ -232,5 +282,3 @@ export function sortPathsByProcessTreeOrder(
     return a.path.length - b.path.length;
   });
 }
-
-

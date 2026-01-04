@@ -26,7 +26,6 @@
 - Versioned: `docs/claude/{fileName}/{versionHash}/nodes/{fileBaseName}/{elementId}.html`
 
 **Feature goals:**
-- Non-versioned: `docs/claude/feature-goals/{parentBaseName}-{elementId}.html`
 - Versioned: `docs/claude/{fileName}/{versionHash}/feature-goals/{parentBaseName}-{elementId}.html`
 
 ### Räkningslogik (efter fix)
@@ -40,9 +39,6 @@
 
 **Feature goals - letar i:**
 1. `docs/claude/{fileName}/{versionHash}/feature-goals` ✓ (versioned)
-2. `docs/claude/feature-goals` ✓ (non-versioned, mest vanliga)
-3. `docs/ollama/feature-goals` (fallback)
-4. `docs/local/feature-goals` (fallback)
 5. `docs/feature-goals` (legacy)
 
 ### Matchning
@@ -77,4 +73,3 @@
 Räkningslogiken matchar exakt hur filer faktiskt sparas vid generering. Fixen är korrekt och kommer fungera även när filer genereras från scratch. Call activities räknas korrekt i parent-filen som Feature Goals.
 
 Se även `docs/analysis/DOCUMENTATION_COVERAGE_COUNTING_RULES.md` för fullständig dokumentation av räkningsreglerna.
-
