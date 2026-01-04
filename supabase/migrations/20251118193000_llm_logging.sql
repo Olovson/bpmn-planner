@@ -1,5 +1,5 @@
 create table if not exists public.llm_generation_logs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   event_type text not null,
   doc_type text,

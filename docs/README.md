@@ -42,6 +42,7 @@ Om något inte stämmer ska dokumenten uppdateras eller länkas om.
 
 ### 📁 Analysis (`analysis/`)
 - Historiska analyser och utredningar. Dessa kan vara **utdaterade**.
+- **CURRENT**: `TEST_ENVIRONMENT_PLAN.md` – Test environment setup and implementation plan (active)
 
 ---
 

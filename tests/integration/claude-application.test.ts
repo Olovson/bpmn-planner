@@ -26,12 +26,24 @@ try {
 const supabaseUrl = process.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+const appEnv = process.env.VITE_APP_ENV || import.meta.env.VITE_APP_ENV || 'production';
 
 const useLlmEnv = process.env.VITE_USE_LLM || import.meta.env.VITE_USE_LLM;
 const anthropicKey = process.env.VITE_ANTHROPIC_API_KEY || import.meta.env.VITE_ANTHROPIC_API_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY måste vara satta i .env eller som miljövariabler');
+}
+
+// SAFETY CHECK: Ensure tests use the test Supabase project
+const KNOWN_TEST_SUPABASE_URL = 'https://jxtlfdanzclcmtsgsrdd.supabase.co';
+if (appEnv === 'test' && !supabaseUrl.includes('jxtlfdanzclcmtsgsrdd')) {
+  throw new Error(
+    `SAFETY CHECK FAILED: VITE_APP_ENV=test but VITE_SUPABASE_URL does not point to test project!\n` +
+    `  Expected: ${KNOWN_TEST_SUPABASE_URL}\n` +
+    `  Got: ${supabaseUrl}\n` +
+    `  Check your .env.test file.`
+  );
 }
 
 if (!useLlmEnv || useLlmEnv !== 'true') {

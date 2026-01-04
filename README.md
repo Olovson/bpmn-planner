@@ -39,13 +39,18 @@ npm run dev             # Starta dev-server (http://localhost:8080/)
 npm run dev
 npm run build
 
-# Supabase
+# Test-miljö (Supabase TEST-projekt)
+npm run seed:test-db     # Seed test database (user + BPMN fixtures)
+npm run reset:test-db    # Reset and re-seed test database
+npm run dev:test         # Starta dev-server mot TEST-Supabase (http://localhost:8080/)
+
+# Supabase (lokal)
 npm run start:supabase
 npm run supabase:reset
 
 # Tester
-npm test
-npx playwright test
+npm test                 # Vitest (använder .env.test)
+npx playwright test      # Playwright E2E (använder test environment)
 ```
 
 ---
@@ -59,4 +64,3 @@ npx playwright test
 ## 🧭 TODO & Framtida förbättringar
 
 Se `TODO.md` och `docs/status/*`.
-

@@ -16,12 +16,17 @@ async function ensureSeedUser() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const projectRoot = path.join(__dirname, '../..');
-  
-  // Load .env.local
-  const envPath = path.join(projectRoot, '.env.local');
+
+  // Determine which env file to use based on VITE_APP_ENV
+  // Default to "test" to avoid accidentally using production for E2E runs.
+  const appEnv = process.env.VITE_APP_ENV || 'test';
+  const envFile = appEnv === 'test' ? '.env.test' : '.env.local';
+  const envPath = path.join(projectRoot, envFile);
+
   let SUPABASE_URL = 'http://127.0.0.1:54321';
   let SERVICE_ROLE_KEY: string | undefined;
-  
+  let APP_ENV = 'production';
+
   try {
     const envContents = readFileSync(envPath, 'utf-8');
     for (const line of envContents.split('\n')) {
@@ -32,8 +37,10 @@ async function ensureSeedUser() {
       const value = rest.join('=');
       if (key === 'VITE_SUPABASE_URL') {
         SUPABASE_URL = value;
-      } else if (key === 'SUPABASE_SERVICE_ROLE_KEY') {
+      } else if (key === 'SUPABASE_SERVICE_ROLE_KEY' || key === 'SUPABASE_SERVICE_ROLE_KEY_TEST') {
         SERVICE_ROLE_KEY = value;
+      } else if (key === 'VITE_APP_ENV') {
+        APP_ENV = value;
       }
     }
   } catch {
@@ -41,9 +48,22 @@ async function ensureSeedUser() {
   }
 
   if (!SERVICE_ROLE_KEY) {
-    console.warn('⚠️  SUPABASE_SERVICE_ROLE_KEY saknas i .env.local - hoppar över seed-användare');
+    console.warn(`⚠️  SUPABASE_SERVICE_ROLE_KEY saknas i ${envFile} - hoppar över seed-användare`);
     return;
   }
+
+  // SAFETY CHECK: Ensure tests use the test Supabase project
+  const KNOWN_TEST_SUPABASE_URL = 'https://jxtlfdanzclcmtsgsrdd.supabase.co';
+  if (APP_ENV === 'test' && !SUPABASE_URL.includes('jxtlfdanzclcmtsgsrdd')) {
+    throw new Error(
+      `SAFETY CHECK FAILED: VITE_APP_ENV=test but VITE_SUPABASE_URL does not point to test project!\n` +
+      `  Expected: ${KNOWN_TEST_SUPABASE_URL}\n` +
+      `  Got: ${SUPABASE_URL}\n` +
+      `  Check your ${envFile} file.`
+    );
+  }
+
+  console.log(`📋 Using ${envFile} (${APP_ENV} mode)`);
 
   const SEED_USER_EMAIL = 'seed-bot@local.test';
   const SEED_USER_PASSWORD = 'Passw0rd!';
@@ -146,4 +166,3 @@ async function globalSetup(config: FullConfig) {
 }
 
 export default globalSetup;
-
