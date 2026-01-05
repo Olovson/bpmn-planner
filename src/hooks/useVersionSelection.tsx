@@ -4,7 +4,13 @@
  */
 
 import { createContext, useContext, useState, ReactNode } from 'react';
-import { getAllVersions, getCurrentVersion, getVersionByHash, type BpmnFileVersion } from '@/lib/bpmnVersioning';
+import {
+  getAllVersions,
+  getCurrentVersion,
+  getCurrentVersionHash,
+  getVersionByHash,
+  type BpmnFileVersion,
+} from '@/lib/bpmnVersioning';
 
 interface VersionSelection {
   selectedVersionHash: string | null;
@@ -62,9 +68,22 @@ export function VersionSelectionProvider({ children }: { children: ReactNode }) 
     if (selection.selectedFileName === fileName && selection.selectedVersionHash) {
       return selection.selectedVersionHash;
     }
-    // Otherwise, use current version
+    // Otherwise, prefer current version if it exists
     const currentVersion = await getCurrentVersion(fileName);
-    return currentVersion?.content_hash || null;
+    if (currentVersion?.content_hash) {
+      return currentVersion.content_hash;
+    }
+    // Fallback 1: read current_version_hash from bpmn_files
+    const hashFromFiles = await getCurrentVersionHash(fileName);
+    if (hashFromFiles) {
+      return hashFromFiles;
+    }
+    // Fallback 2: pick latest version if any exist
+    const allVersions = await getAllVersions(fileName);
+    if (allVersions.length > 0) {
+      return allVersions[0].content_hash;
+    }
+    return null;
   };
 
   // Get full version object for a file
@@ -124,7 +143,18 @@ export function useVersionSelection() {
       setSelection: () => {},
       getVersionHashForFile: async (fileName: string) => {
         const currentVersion = await getCurrentVersion(fileName);
-        return currentVersion?.content_hash || null;
+        if (currentVersion?.content_hash) {
+          return currentVersion.content_hash;
+        }
+        const hashFromFiles = await getCurrentVersionHash(fileName);
+        if (hashFromFiles) {
+          return hashFromFiles;
+        }
+        const allVersions = await getAllVersions(fileName);
+        if (allVersions.length > 0) {
+          return allVersions[0].content_hash;
+        }
+        return null;
       },
       getVersionForFile: async (fileName: string) => {
         return await getCurrentVersion(fileName);
@@ -135,4 +165,3 @@ export function useVersionSelection() {
   }
   return context;
 }
-

@@ -14,10 +14,7 @@
 # 1. Analysera skillnader mellan BPMN-filer och dokumentation
 npx tsx scripts/analyze-feature-goal-sync.ts
 
-# 2. Uppdatera automatiskt filer med saknade aktiviteter
-npx tsx scripts/auto-update-feature-goal-docs.ts
-
-# 3. Generera status-lista över alla filer
+# 2. Generera status-lista över alla filer
 npx tsx scripts/generate-feature-goal-status.ts
 ```
 
@@ -124,19 +121,13 @@ docs/feature-goals/MANUAL_HTML_WORKFLOW.md      # Fullständig dokumentation
 ## 🔧 Scripts
 
 ```bash
-# Analysera skillnader
+# Analysera skillnader (read-only analys)
 npx tsx scripts/analyze-feature-goal-sync.ts
 
-# Uppdatera automatiskt
-npx tsx scripts/auto-update-feature-goal-docs.ts
-
-# Generera status-lista
+# Generera status-lista (vilka Feature Goals som behöver förbättras)
 npx tsx scripts/generate-feature-goal-status.ts
 
-# Förbättra läsbarhet (collapsible sections)
-npx tsx scripts/improve-feature-goal-readability.ts
-
-# Arkivera BPMN-filer
+# Arkivera BPMN-filer (om du vill spara snapshotar)
 npx tsx scripts/archive-bpmn-files.ts <source-dir>
 ```
 
@@ -159,4 +150,3 @@ npx tsx scripts/archive-bpmn-files.ts <source-dir>
 2. Öppna `FEATURE_GOAL_STATUS.md`
 3. Välj första filen som inte är markerad med `[x]`
 4. Följ checklistan ovan
-

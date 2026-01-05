@@ -52,42 +52,61 @@ export function createLlmGenerationService(): LlmGenerationService {
       checkCancellation,
       abortSignal,
     ) {
-      let finalProvider = preferredProvider ?? getDefaultLlmProvider();
-      let fallbackUsed = false;
-      let lastDocJson: unknown | undefined;
+      // Om LLM är avstängt för denna körning, returnera tomt resultat
+      if (!useLlm) {
+        const provider = preferredProvider ?? getDefaultLlmProvider();
+        return {
+          content: '',
+          docJson: undefined,
+          provider,
+          fallbackUsed: false,
+        };
+      }
 
-      const content = await generateDocumentationWithLlm(
+      const result = await generateDocumentationWithLlm(
         docType,
         context,
         docLinks,
-        useLlm,
-        finalProvider,
-        async (provider, didFallback, docJson) => {
-          finalProvider = provider;
-          fallbackUsed = didFallback;
-          lastDocJson = docJson;
-
-          if (didFallback) {
-            logLlmFallback('documentation', provider);
-          }
-          if (docJson && useLlm) {
-            try {
-              await saveLlmDebugArtifact('documentation-json', JSON.stringify(docJson, null, 2));
-            } catch {
-              // Best-effort debug logging; ignore failures
-            }
-          }
-        },
-        undefined,
-        undefined,
-        checkCancellation,
+        preferredProvider,
+        false, // localAvailable (används inte längre)
+        true, // allowFallback
+        undefined, // childrenDocumentation hanteras i bpmnGenerators/docRendering
         abortSignal,
+        undefined, // structuralInfo hanteras i docRendering
       );
 
+      // Om LLM är avstängt globalt eller misslyckas hårt, returnera tomt resultat
+      if (!result) {
+        const provider = preferredProvider ?? getDefaultLlmProvider();
+        return {
+          content: '',
+          docJson: undefined,
+          provider,
+          fallbackUsed: false,
+        };
+      }
+
+      const { text, provider, fallbackUsed, docJson } = result as any;
+
+      if (docJson && useLlm) {
+        try {
+          await saveLlmDebugArtifact(
+            'documentation-json',
+            JSON.stringify(docJson, null, 2),
+          );
+        } catch {
+          // Best-effort debug logging; ignore failures
+        }
+      }
+
+      if (fallbackUsed) {
+        logLlmFallback('documentation', provider);
+      }
+
       return {
-        content,
-        docJson: lastDocJson,
-        provider: finalProvider,
+        content: text,
+        docJson,
+        provider,
         fallbackUsed,
       };
     },
@@ -96,4 +115,3 @@ export function createLlmGenerationService(): LlmGenerationService {
     },
   };
 }
-

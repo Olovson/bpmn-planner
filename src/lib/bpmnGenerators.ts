@@ -57,6 +57,7 @@ import type {
 
 export type { GenerationPhaseKey };
 import { getBpmnFileUrl } from '@/hooks/useDynamicBpmnFiles';
+import { getDocumentationUrl } from '@/lib/artifactUrls';
 import { createDefaultEngineAdapters } from '@/lib/engine/defaultAdapters';
 import { GenerationError } from '@/lib/engine/types';
 
@@ -1258,64 +1259,67 @@ export async function generateAllFromBpmnWithGraph(
               continue;
             } else if (node.type === 'businessRuleTask') {
               try {
-                const llmResult = await llmService.generateNodeDocumentation(
+                nodeDocContent = await renderDocWithLlm(
                   'businessRule',
                   nodeContext,
                   docLinks,
                   useLlm,
                   llmProvider,
+                  (provider, fallbackUsed, docJson) => {
+                    llmFinalProvider = provider;
+                    if (fallbackUsed) {
+                      llmFallbackUsed = true;
+                    }
+                    if (docJson && typeof docJson === 'object') {
+                      const childDocKey = node.type === 'callActivity' && node.subprocessFile
+                        ? `subprocess:${node.subprocessFile}`
+                        : node.id;
+
+                      if (!generatedChildDocs.has(childDocKey)) {
+                        const childDocInfo: {
+                          summary: string;
+                          flowSteps: string[];
+                          inputs?: string[];
+                          outputs?: string[];
+                          scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+                          userStories?: Array<{
+                            id: string;
+                            role: string;
+                            goal: string;
+                            value: string;
+                            acceptanceCriteria: string[];
+                          }>;
+                        } = {
+                          summary: (docJson as any).summary || '',
+                          flowSteps: Array.isArray((docJson as any).decisionLogic)
+                            ? (docJson as any).decisionLogic
+                            : [],
+                          inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
+                          outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
+                          scenarios: Array.isArray((docJson as any).scenarios)
+                            ? (docJson as any).scenarios
+                            : [],
+                        };
+                        if (Array.isArray((docJson as any).userStories)) {
+                          childDocInfo.userStories = (docJson as any).userStories.map((us: any) => ({
+                            id: us.id || '',
+                            role: us.role || 'Kund',
+                            goal: us.goal || '',
+                            value: us.value || '',
+                            acceptanceCriteria: Array.isArray(us.acceptanceCriteria)
+                              ? us.acceptanceCriteria
+                              : [],
+                          }));
+                        }
+                        generatedChildDocs.set(childDocKey, childDocInfo);
+                      }
+                    }
+                  },
+                  convertedChildDocs,
+                  undefined,
                   checkCancellation,
                   abortSignal,
                 );
-                nodeDocContent = llmResult.content;
-                llmFinalProvider = llmResult.provider;
-                llmFallbackUsed = llmResult.fallbackUsed;
-                const docJson = llmResult.docJson;
-
-                if (docJson && typeof docJson === 'object') {
-                  const childDocKey = node.type === 'callActivity' && node.subprocessFile
-                    ? `subprocess:${node.subprocessFile}`
-                    : node.id;
-
-                  if (!generatedChildDocs.has(childDocKey)) {
-                    const childDocInfo: {
-                      summary: string;
-                      flowSteps: string[];
-                      inputs?: string[];
-                      outputs?: string[];
-                      scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
-                      userStories?: Array<{
-                        id: string;
-                        role: string;
-                        goal: string;
-                        value: string;
-                        acceptanceCriteria: string[];
-                      }>;
-                    } = {
-                      summary: (docJson as any).summary || '',
-                      flowSteps: Array.isArray((docJson as any).decisionLogic)
-                        ? (docJson as any).decisionLogic
-                        : [],
-                      inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
-                      outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
-                      scenarios: Array.isArray((docJson as any).scenarios)
-                        ? (docJson as any).scenarios
-                        : [],
-                    };
-                    if (Array.isArray((docJson as any).userStories)) {
-                      childDocInfo.userStories = (docJson as any).userStories.map((us: any) => ({
-                        id: us.id || '',
-                        role: us.role || 'Kund',
-                        goal: us.goal || '',
-                        value: us.value || '',
-                        acceptanceCriteria: Array.isArray(us.acceptanceCriteria)
-                          ? us.acceptanceCriteria
-                          : [],
-                      }));
-                    }
-                    generatedChildDocs.set(childDocKey, childDocInfo);
-                  }
-                }
                 if (!(docLinks as any).dmnLink) {
                   nodeDocContent +=
                     '\n<p>Ingen DMN-länk konfigurerad ännu – lägg till beslutstabell när den finns.</p>';
@@ -1333,64 +1337,67 @@ export async function generateAllFromBpmnWithGraph(
             } else {
               // Epic documentation (userTask, serviceTask)
               try {
-                const llmResult = await llmService.generateNodeDocumentation(
+                nodeDocContent = await renderDocWithLlm(
                   'epic',
                   nodeContext,
                   docLinks,
                   useLlm,
                   llmProvider,
+                  (provider, fallbackUsed, docJson) => {
+                    llmFinalProvider = provider;
+                    if (fallbackUsed) {
+                      llmFallbackUsed = true;
+                    }
+                    if (docJson && typeof docJson === 'object') {
+                      const childDocKey = node.type === 'callActivity' && node.subprocessFile
+                        ? `subprocess:${node.subprocessFile}`
+                        : node.id;
+
+                      if (!generatedChildDocs.has(childDocKey)) {
+                        const childDocInfo: {
+                          summary: string;
+                          flowSteps: string[];
+                          inputs?: string[];
+                          outputs?: string[];
+                          scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
+                          userStories?: Array<{
+                            id: string;
+                            role: string;
+                            goal: string;
+                            value: string;
+                            acceptanceCriteria: string[];
+                          }>;
+                        } = {
+                          summary: (docJson as any).summary || '',
+                          flowSteps: Array.isArray((docJson as any).flowSteps)
+                            ? (docJson as any).flowSteps
+                            : [],
+                          inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
+                          outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
+                          scenarios: Array.isArray((docJson as any).scenarios)
+                            ? (docJson as any).scenarios
+                            : [],
+                        };
+                        if (Array.isArray((docJson as any).userStories)) {
+                          childDocInfo.userStories = (docJson as any).userStories.map((us: any) => ({
+                            id: us.id || '',
+                            role: us.role || 'Kund',
+                            goal: us.goal || '',
+                            value: us.value || '',
+                            acceptanceCriteria: Array.isArray(us.acceptanceCriteria)
+                              ? us.acceptanceCriteria
+                              : [],
+                          }));
+                        }
+                        generatedChildDocs.set(childDocKey, childDocInfo);
+                      }
+                    }
+                  },
+                  convertedChildDocs,
+                  undefined,
                   checkCancellation,
                   abortSignal,
                 );
-                nodeDocContent = llmResult.content;
-                llmFinalProvider = llmResult.provider;
-                llmFallbackUsed = llmResult.fallbackUsed;
-                const docJson = llmResult.docJson;
-
-                if (docJson && typeof docJson === 'object') {
-                  const childDocKey = node.type === 'callActivity' && node.subprocessFile
-                    ? `subprocess:${node.subprocessFile}`
-                    : node.id;
-
-                  if (!generatedChildDocs.has(childDocKey)) {
-                    const childDocInfo: {
-                      summary: string;
-                      flowSteps: string[];
-                      inputs?: string[];
-                      outputs?: string[];
-                      scenarios?: Array<{ id: string; name: string; type: string; outcome: string }>;
-                      userStories?: Array<{
-                        id: string;
-                        role: string;
-                        goal: string;
-                        value: string;
-                        acceptanceCriteria: string[];
-                      }>;
-                    } = {
-                      summary: (docJson as any).summary || '',
-                      flowSteps: Array.isArray((docJson as any).flowSteps)
-                        ? (docJson as any).flowSteps
-                        : [],
-                      inputs: Array.isArray((docJson as any).inputs) ? (docJson as any).inputs : [],
-                      outputs: Array.isArray((docJson as any).outputs) ? (docJson as any).outputs : [],
-                      scenarios: Array.isArray((docJson as any).scenarios)
-                        ? (docJson as any).scenarios
-                        : [],
-                    };
-                    if (Array.isArray((docJson as any).userStories)) {
-                      childDocInfo.userStories = (docJson as any).userStories.map((us: any) => ({
-                        id: us.id || '',
-                        role: us.role || 'Kund',
-                        goal: us.goal || '',
-                        value: us.value || '',
-                        acceptanceCriteria: Array.isArray(us.acceptanceCriteria)
-                          ? us.acceptanceCriteria
-                          : [],
-                      }));
-                    }
-                    generatedChildDocs.set(childDocKey, childDocInfo);
-                  }
-                }
               } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 console.error(
