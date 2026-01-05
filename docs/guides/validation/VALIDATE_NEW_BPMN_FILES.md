@@ -36,6 +36,11 @@ BPMN_TEST_DIR=/path/to/bpmn npm test -- tests/integration/local-folder-diff.test
 
 ## 5) Vanliga fel och åtgärder
 
-- **Saknade subprocess‑filer:** Kontrollera `bpmn-map.json` i storage och att filerna finns i bucket `bpmn-files`.
+- **Saknade subprocess‑filer / felaktiga mappningar:**  
+  - Gå till `/files` och använd BPMN‑mappningskortet:
+    - se vilka callActivities som har status “Otydlig” eller “Saknas”,
+    - justera subprocess via dropdown eller låt Claude hjälpa till,
+    - klicka “Spara mappningar” så uppdateras `bpmn-map.json` i storage.
+  - Vid behov kan du även öppna den detaljerade mappningsdialogen för att se alla rader.
 - **Fel i ordning/coverage:** Kör om generering och använd test‑suite ovan.
 - **LLM‑fel:** Kontrollera `VITE_USE_LLM` + API‑nyckel samt `/api/llm/health`.

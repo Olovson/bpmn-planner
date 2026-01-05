@@ -33,6 +33,7 @@ export interface GenerationControlsProps {
   showAdvancedTools: boolean;
   onToggleAdvancedTools: (open: boolean) => void;
   onValidateBpmnMap: () => void;
+  onOpenMappingDialog: () => void;
   onReset: () => void;
   onDeleteAll: () => void;
   validatingMap: boolean;
@@ -58,6 +59,7 @@ export function GenerationControls({
   showAdvancedTools,
   onToggleAdvancedTools,
   onValidateBpmnMap,
+  onOpenMappingDialog,
   onReset,
   onDeleteAll,
   validatingMap,
@@ -120,6 +122,16 @@ export function GenerationControls({
                     Validera BPMN-karta
                   </>
                 )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onOpenMappingDialog}
+                className="gap-2"
+                title="Granska och justera hur call activities är kopplade till subprocess‑filer"
+              >
+                <Sparkles className="w-3 h-3" />
+                Hantera BPMN‑mappning
               </Button>
               <Button
                 variant="outline"

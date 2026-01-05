@@ -97,6 +97,8 @@ import { MapSuggestionsDialog } from '@/pages/BpmnFileManager/components/MapSugg
 import { DeleteFileDialog } from '@/pages/BpmnFileManager/components/DeleteFileDialog';
 import { DeleteAllFilesDialog } from '@/pages/BpmnFileManager/components/DeleteAllFilesDialog';
 import { ResetRegistryDialog } from '@/pages/BpmnFileManager/components/ResetRegistryDialog';
+import { BpmnMappingDialog } from '@/pages/BpmnFileManager/components/BpmnMappingDialog';
+import { BpmnMappingCard } from '@/pages/BpmnFileManager/components/BpmnMappingCard';
 import type { DetailedGenerationResult, AggregatedGenerationResult, HierarchyBuildResult } from '@/pages/BpmnFileManager/types';
 import type { MapSuggestion } from '@/lib/bpmn/bpmnMapSuggestions';
 
@@ -196,6 +198,7 @@ export default function BpmnFileManager() {
   const [mapSuggestionHasEnoughFiles, setMapSuggestionHasEnoughFiles] = useState<boolean>(true);
   const [showMapValidationDialog, setShowMapValidationDialog] = useState(false);
   const [mapValidationResult, setMapValidationResult] = useState<any | null>(null);
+  const [showMappingDialog, setShowMappingDialog] = useState(false);
 
   // Callback för att hantera map suggestions med filinformation
   const handleMapSuggestions = useCallback((suggestions: MapSuggestion[], result?: { totalFiles?: number; hasEnoughFilesForReliableMatching?: boolean }) => {
@@ -868,11 +871,17 @@ export default function BpmnFileManager() {
         showAdvancedTools={showAdvancedTools}
         onToggleAdvancedTools={setShowAdvancedTools}
         onValidateBpmnMap={handleValidateBpmnMap}
+        onOpenMappingDialog={() => setShowMappingDialog(true)}
         onReset={() => setShowResetDialog(true)}
         onDeleteAll={() => setShowDeleteAllDialog(true)}
         validatingMap={validatingMap}
         isResetting={isResetting}
         currentGenerationLabel={currentGenerationLabel}
+      />
+
+      <BpmnMappingCard
+        filesCount={files.length}
+        onOpenDialog={() => setShowMappingDialog(true)}
       />
 
       {/* Generation Dialog - Consolidated popup */}
@@ -977,10 +986,17 @@ export default function BpmnFileManager() {
         open={showMapSuggestionsDialog}
         onOpenChange={setShowMapSuggestionsDialog}
         mapSuggestions={mapSuggestions}
+        onSuggestionsChange={setMapSuggestions}
         acceptedSuggestions={acceptedSuggestions}
         onAcceptedSuggestionsChange={setAcceptedSuggestions}
-        onExport={handleExportUpdatedMap}
         onSave={handleSaveUpdatedMap}
+        totalFiles={mapSuggestionTotalFiles}
+        hasEnoughFilesForReliableMatching={mapSuggestionHasEnoughFiles}
+        canUseLlm={import.meta.env.VITE_USE_LLM === 'true'}
+      />
+      <BpmnMappingDialog
+        open={showMappingDialog}
+        onOpenChange={setShowMappingDialog}
       />
       </div>
       </main>

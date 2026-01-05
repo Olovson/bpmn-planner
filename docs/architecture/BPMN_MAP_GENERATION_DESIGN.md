@@ -4,7 +4,8 @@
 > - Källa: BPMN‑filer läses från Supabase, heuristik bygger en första `bpmn-map.json`.  
 > - LLM: Claude används endast för callActivities som heuristiken är osäker på och föreslår förbättrade `subprocess_bpmn_file`‑mappningar.  
 > - Merge: Manuell mappning vinner alltid över heuristik/LLM; LLM kan bara fylla luckor eller förbättra icke‑manuella förslag.  
-> - Skydd: Scriptet `scripts/generate-bpmn-map.mjs` har `--preview` och `--force` så att vi inte råkar skriva över en bra map utan att märka det.  
+> - Skydd (CLI): Scriptet `scripts/generate-bpmn-map.mjs` har `--preview` och `--force` så att vi inte råkar skriva över en bra map utan att märka det.  
+> - UI‑flöde: I appen (Files‑sidan) finns ett BPMN‑mappningskort + en detaljerad dialog där användaren kan se problemrader, låta Claude hjälpa till och spara mappningar.  
 > - Validering: Den nya mappen måste gå att bygga processgraf av (`buildBpmnProcessGraph`), annars skrivs den inte tillbaka.
 
 Resten av dokumentet är en mer detaljerad designreferens. Det är okej att bara använda sammanfattningen ovan för vardagligt arbete.
@@ -19,7 +20,7 @@ Resten av dokumentet är en mer detaljerad designreferens. Det är okej att bara
 - Inte skriva över manuellt kuraterade maps i tysthet.
 
 **Icke‑mål (nu):**
-- Bygga ett fullständigt UI för att editera `bpmn-map.json` (kan komma senare).
+- Bygga ett fullständigt, avancerat UI med alla expertfunktioner direkt (vi har en första enkel mappningsvy i Files‑sidan).
 - Lösa alla tänkbara edge‑cases för alla typer av BPMN‑modellering.
 - Göra LLM till “single source of truth” – LLM är alltid ett förslag, aldrig ensam sanning.
 
@@ -254,21 +255,38 @@ Existerande edge function `update-github-file` kan användas, men bara när:
   - lokal fil används som fallback.
 - CLI/orchestrator ska bygga på samma prioriteringslogik, så att runtime och skript alltid ser samma “source of truth” och vi undviker divergerande map‑versioner.
 
-## 7. UX‑konsekvenser och framtida UI
+## 7. UX‑konsekvenser och nuvarande UI
 
-Den här designen förbereder för, men kräver inte direkt:
+Den här designen används idag både från CLI och i appen.
 
-- En enkel vy (t.ex. “BPMN Map Editor”) där man kan:
-  - se alla callActivities med `needs_manual_review=true`,
-  - se heuristikens och LLM:s förslag + reason,
-  - manuellt välja rätt subprocess och spara,
-  - visualisera root‑process och hierarki.
+**I appen (Files‑sidan):**
 
-I nuläget kan vi nöja oss med:
+- Ett **BPMN‑mappningskort** visar:
+  - hur många callActivities som är klara vs otydliga/saknas,
+  - en tabell med enbart problemrader (status ≠ OK),
+  - dropdown per rad för att välja eller ta bort `subprocess_bpmn_file`,
+  - en Claude‑knapp som försöker förbättra otydliga mappningar,
+  - en “Spara mappningar”‑knapp som uppdaterar `bpmn-map.json` i storage och invaliderar struktur‑queries.
 
-- CLI‑output (stats + lista på osäkra mappningar),
-- loggar i `note`‑fältet,
-- ev. en enkel markdown‑rapport.
+- En **detaljerad mappningsdialog** ger:
+  - full lista över alla callActivities,
+  - samma dropdown‑logik och sparflöde,
+  - men utan extra LLM‑knapp (expertvy).
+
+- “Validera BPMN‑karta” använder samma `bpmn-map.json` och rapporterar:
+  - omatchade callActivities,
+  - saknade subprocess‑filer,
+  - orphan‑processer,
+  - inkonsekvenser mellan map och BPMN‑metadata.
+
+**Från CLI:**
+
+- `scripts/generate-bpmn-map.mjs` använder `bpmnMapGenerationOrchestrator.ts`:
+  - genererar en ny map (heuristik + ev. LLM),
+  - respekterar `source = 'manual'` i befintlig map,
+  - kan köras i `--preview`‑läge (ingen skrivning) eller med `--force` (overwrite).
+
+UI:t är alltså redan kopplat till samma arkitektur – skillnaden är att användaren i appen alltid bekräftar ändringar via kort/dialog, medan CLI‑flödet är avsett för utvecklare/administratörer.
 
 ## 8. Merge‑ och valideringslogik (per callActivity)
 
