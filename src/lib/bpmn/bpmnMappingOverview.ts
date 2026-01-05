@@ -44,6 +44,8 @@ export function buildBpmnMappingOverview(
 ): BpmnMappingOverviewResult {
   const rows: BpmnMappingRow[] = [];
 
+  const existingBpmnFiles = new Set(files.map((f) => f.file_name));
+
   const processesByKey = new Map<string, (typeof map.processes)[number]>();
   for (const proc of map.processes) {
     const key = `${proc.bpmn_file}::${proc.process_id}`;
@@ -73,12 +75,22 @@ export function buildBpmnMappingOverview(
           (entry) => entry.bpmn_id === ca.id,
         );
 
+        const subprocessFile = (mapped as any)?.subprocess_bpmn_file ?? null;
+        const hasSubprocess = !!subprocessFile;
+        const subprocessExists =
+          !subprocessFile || existingBpmnFiles.has(subprocessFile);
+
         let status: BpmnMappingStatus;
-        if (!mapped || !mapped.subprocess_bpmn_file) {
+        if (!mapped || !hasSubprocess) {
+          // Ingen mappning alls till subprocess-fil
+          status = 'missing';
+        } else if (!subprocessExists) {
+          // Mappning pekar på en fil som inte finns i registret – behandla som problem
           status = 'missing';
         } else if (
-          mapped.needs_manual_review ||
-          (mapped.match_status && mapped.match_status !== 'matched')
+          (mapped as any).needs_manual_review ||
+          ((mapped as any).match_status &&
+            (mapped as any).match_status !== 'matched')
         ) {
           status = 'unclear';
         } else {
@@ -93,7 +105,7 @@ export function buildBpmnMappingOverview(
           callActivityId: ca.id,
           callActivityName: ca.name,
           calledElement: ca.calledElement,
-          subprocessFile: mapped?.subprocess_bpmn_file ?? null,
+          subprocessFile,
           status,
           source: (mapped as any)?.source,
           matchStatus: (mapped as any)?.match_status,
@@ -126,4 +138,3 @@ export function buildBpmnMappingOverview(
     subprocessCandidates,
   };
 }
-
