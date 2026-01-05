@@ -39,8 +39,12 @@ export function enrichNodeContextWithStructuralInfo(
   }
 
   // 1. Hitta paths som går genom Feature Goal
+  if (!Array.isArray(paths)) {
+    return nodeContext;
+  }
+  
   const pathsThroughFeatureGoal = paths.filter(p => 
-    p.featureGoals.includes(featureGoalId)
+    p && p.featureGoals && Array.isArray(p.featureGoals) && p.featureGoals.includes(featureGoalId)
   );
 
   if (pathsThroughFeatureGoal.length === 0) {
@@ -89,13 +93,17 @@ function extractGatewayConditionsForFeatureGoal(
   const seen = new Set<string>();
 
   for (const path of paths) {
+    if (!path || !Array.isArray(path.featureGoals)) continue;
+    
     // Hitta positionen av Feature Goal i pathen
     const featureGoalIndex = path.featureGoals.indexOf(featureGoalId);
     if (featureGoalIndex === -1) continue;
 
     // Hitta gateway-conditions FÖRE denna Feature Goal
-    for (const condition of path.gatewayConditions) {
+    const gatewayConditions = Array.isArray(path.gatewayConditions) ? path.gatewayConditions : [];
+    for (const condition of gatewayConditions) {
       // Kontrollera om gateway är FÖRE Feature Goal i pathen
+      if (!Array.isArray(path.nodeIds)) continue;
       const gatewayIndex = path.nodeIds.indexOf(condition.gatewayId);
       const currentFeatureGoalIndex = path.nodeIds.indexOf(featureGoalId);
       
@@ -128,6 +136,8 @@ function extractFlowContext(
   const nextFeatureGoals = new Set<string>();
 
   for (const path of paths) {
+    if (!path || !Array.isArray(path.featureGoals)) continue;
+    
     const featureGoalIndex = path.featureGoals.indexOf(featureGoalId);
     if (featureGoalIndex === -1) continue;
 
@@ -169,6 +179,8 @@ function extractEndEventsForFeatureGoal(
   }> = new Map();
 
   for (const path of paths) {
+    if (!path || !Array.isArray(path.featureGoals)) continue;
+    
     const featureGoalIndex = path.featureGoals.indexOf(featureGoalId);
     if (featureGoalIndex === -1) continue;
 
@@ -178,7 +190,9 @@ function extractEndEventsForFeatureGoal(
 
     // Hitta gateway-conditions EFTER Feature Goal (som leder till end event)
     const gatewayConditionsAfter: GatewayCondition[] = [];
-    for (const condition of path.gatewayConditions) {
+    const gatewayConditions = Array.isArray(path.gatewayConditions) ? path.gatewayConditions : [];
+    for (const condition of gatewayConditions) {
+      if (!Array.isArray(path.nodeIds)) continue;
       const gatewayIndex = path.nodeIds.indexOf(condition.gatewayId);
       const currentFeatureGoalIndex = path.nodeIds.indexOf(featureGoalId);
       const endEventIndex = path.nodeIds.indexOf(endEventId);

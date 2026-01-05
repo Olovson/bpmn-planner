@@ -8,10 +8,17 @@ const VITE_ENV =
     ? ((import.meta as any).env as Record<string, any>)
     : ({} as Record<string, any>);
 
-const SUPABASE_URL = VITE_ENV.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const NODE_ENV: Record<string, any> =
+  typeof process !== 'undefined' && (process as any).env
+    ? ((process as any).env as Record<string, any>)
+    : {};
+
+const SUPABASE_URL =
+  VITE_ENV.VITE_SUPABASE_URL || NODE_ENV.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY =
-  VITE_ENV.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const APP_ENV = (VITE_ENV.VITE_APP_ENV || process.env.VITE_APP_ENV || 'production') as
+  VITE_ENV.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  NODE_ENV.VITE_SUPABASE_PUBLISHABLE_KEY;
+const APP_ENV = (VITE_ENV.VITE_APP_ENV || NODE_ENV.VITE_APP_ENV || 'production') as
   | 'production'
   | 'test'
   | string;
@@ -47,7 +54,7 @@ if (APP_ENV === 'test') {
   }
 
   // Log confirmation in development
-  const isDev = VITE_ENV.DEV || process.env.NODE_ENV === 'development';
+  const isDev = VITE_ENV.DEV || NODE_ENV.NODE_ENV === 'development';
   if (isDev) {
     console.log('[supabase] ✅ Running in TEST mode with test Supabase project:', supabaseUrl);
   }

@@ -85,15 +85,20 @@ export async function generateDocumentationWithLlm(
   const basePrompt = getPromptForDocType(docType);
 
   // Resolvera provider med smart logik
-  const globalDefault = getDefaultLlmProvider();
+  // Viktigt: För dokumentation (feature/epic/businessRule) vill vi i första hand använda cloud/Claude
+  const globalDefaultRaw = getDefaultLlmProvider();
+  const profileDocType: DocType =
+    docType === 'businessRule' ? 'businessRule' : docType === 'feature' ? 'feature' : 'epic';
+  const globalDefault: LlmProvider =
+    profileDocType === 'feature' || profileDocType === 'epic' || profileDocType === 'businessRule'
+      ? 'cloud'
+      : globalDefaultRaw;
+
   const resolution = resolveLlmProvider({
     userChoice: llmProvider,
     globalDefault,
     allowFallback,
   });
-
-  const profileDocType: DocType =
-    docType === 'businessRule' ? 'businessRule' : docType === 'feature' ? 'feature' : 'epic';
 
   // JSON-input som skickas till LLM enligt promptdefinitionerna.
   // Inkludera strukturell information om den finns
@@ -127,7 +132,9 @@ export async function generateDocumentationWithLlm(
     const preview = response.length > 2000 
       ? response.slice(0, 1000) + '\n\n...[trunkated ' + (response.length - 2000) + ' chars]...\n\n' + response.slice(-1000)
       : response;
-    console.log(`[LLM Raw Response] ${docType} for ${identifier}:`, preview);
+    if (import.meta.env.MODE === 'test') {
+      console.log(`[LLM Raw Response] ${docType} for ${identifier}:`, preview);
+    }
     
     try {
       let jsonText = response.trim();
@@ -624,7 +631,7 @@ export function buildContextPayload(
   links: TemplateLinks,
   childrenDocumentation?: Map<string, ChildNodeDocumentation>
 ) {
-  const parentChain = context.parentChain || [];
+  const parentChain = Array.isArray(context.parentChain) ? context.parentChain : [];
   const trail = [...parentChain, context.node];
   const hierarchyTrail = trail.map((node) => ({
     id: node.bpmnElementId,
@@ -634,7 +641,7 @@ export function buildContextPayload(
   }));
   const hierarchyPath = hierarchyTrail.map((node) => `${node.name} (${node.type})`).join(' → ');
   const featureGoalAncestor = findAncestorOfType(trail, 'callActivity');
-  const descendantTypeCounts = context.descendantNodes.reduce<Record<string, number>>((acc, node) => {
+  const descendantTypeCounts = (Array.isArray(context.descendantNodes) ? context.descendantNodes : []).reduce<Record<string, number>>((acc, node) => {
     acc[node.type] = (acc[node.type] || 0) + 1;
     return acc;
   }, {});
@@ -665,12 +672,12 @@ export function buildContextPayload(
     endPoints: [], // kan utökas senare vid behov
     keyNodes: [
       ...hierarchyTrail,
-      ...context.childNodes.map((node) => ({
+      ...(Array.isArray(context.childNodes) ? context.childNodes.map((node) => ({
         id: node.bpmnElementId,
         name: formatNodeName(node),
         type: node.type,
         file: node.bpmnFile,
-      })),
+      })) : []),
     ]
       .filter((n, index, arr) => n && n.id && arr.findIndex((m) => m.id === n.id) === index)
       .map((n) => ({
@@ -678,8 +685,8 @@ export function buildContextPayload(
         ...mapPhaseAndLane(
           n.id === context.node.bpmnElementId
             ? context.node
-            : context.childNodes.find((c) => c.bpmnElementId === n.id) ||
-              context.parentChain.find((p) => p.bpmnElementId === n.id) ||
+            : (Array.isArray(context.childNodes) ? context.childNodes.find((c) => c.bpmnElementId === n.id) : undefined) ||
+              (Array.isArray(context.parentChain) ? context.parentChain.find((p) => p.bpmnElementId === n.id) : undefined) ||
               context.node,
         ),
       }))
@@ -702,17 +709,17 @@ export function buildContextPayload(
       featureGoalAncestor,
       parentProcess: hierarchyTrail[0],
     },
-    parents: context.parentChain.map((node) => ({
+    parents: (Array.isArray(context.parentChain) ? context.parentChain : []).map((node) => ({
       id: node.bpmnElementId,
       name: node.name,
       type: node.type,
     })),
-    siblings: context.siblingNodes.map((node) => ({
+    siblings: (Array.isArray(context.siblingNodes) ? context.siblingNodes : []).map((node) => ({
       id: node.bpmnElementId,
       name: node.name,
       type: node.type,
     })),
-    children: context.childNodes.map((node) => ({
+    children: (Array.isArray(context.childNodes) ? context.childNodes : []).map((node) => ({
       id: node.bpmnElementId,
       name: node.name,
       type: node.type,
@@ -731,11 +738,11 @@ export function buildContextPayload(
             (() => {
               // Skapa en Map för snabb lookup av descendant index
               const descendantIndexMap = new Map<string, number>();
-              context.descendantNodes.forEach((desc, idx) => {
+              (Array.isArray(context.descendantNodes) ? context.descendantNodes : []).forEach((desc, idx) => {
                 descendantIndexMap.set(desc.id, idx);
               });
               
-              const allDocs = context.descendantNodes
+              const allDocs = (Array.isArray(context.descendantNodes) ? context.descendantNodes : [])
                 .map((descendant, index) => {
                   const descendantDoc = childrenDocumentation && childrenDocumentation instanceof Map 
                     ? childrenDocumentation.get(descendant.id)
@@ -757,8 +764,8 @@ export function buildContextPayload(
                     inputs: descendantDoc.inputs,
                     outputs: descendantDoc.outputs,
                     // Metadata för prioritetsordning
-                    _isDirectChild: context.childNodes.some(c => c.id === descendant.id),
-                    _isLeafNode: descendant.children.length === 0,
+                    _isDirectChild: Array.isArray(context.childNodes) ? context.childNodes.some(c => c.id === descendant.id) : false,
+                    _isLeafNode: Array.isArray(descendant.children) ? descendant.children.length === 0 : true,
                     _index: index,
                   };
                 })
@@ -789,7 +796,7 @@ export function buildContextPayload(
               return limited;
             })()
           : // För Epics/Tasks: mappa bara mot direkta children
-            context.childNodes
+            (Array.isArray(context.childNodes) ? context.childNodes : [])
               .map((child) => {
                 const childDoc = childrenDocumentation && childrenDocumentation instanceof Map
                   ? childrenDocumentation.get(child.id)
@@ -902,6 +909,9 @@ function buildDescendantPathSummaries(node: BpmnProcessNode, maxItems = 25) {
 }
 
 function buildJiraNameFromTrail(trail: BpmnProcessNode[]) {
+  if (!Array.isArray(trail)) {
+    return '';
+  }
   const relevant = trail.filter(
     (node) => node.type !== 'process' && node.type !== 'gateway' && node.type !== 'event'
   );

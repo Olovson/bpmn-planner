@@ -100,7 +100,9 @@ export async function generateLlmText(
   const llmClient = getLlmClient(chosenProvider);
   const profile = getLlmProfile(docType, chosenProvider);
 
-  const fullSystemPrompt = buildSystemPrompt(systemPrompt, profile.extraSystemPrefix);
+  // extraSystemPrefix är optional – skydda mot undefined
+  const extraPrefix = (profile as any)?.extraSystemPrefix || '';
+  const fullSystemPrompt = buildSystemPrompt(systemPrompt, extraPrefix);
   const response = await llmClient.generateText({
     systemPrompt: fullSystemPrompt,
     userPrompt,

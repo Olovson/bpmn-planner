@@ -22,14 +22,14 @@ export interface LlmProfile {
 }
 
 export type LlmProfiles = {
-  [K in DocType]: Record<LlmProvider, LlmProfile>;
+  [K in DocType]: Partial<Record<LlmProvider, LlmProfile>>;
 };
 
 /**
  * Default LLM-profiler per dokumenttyp och provider.
  * 
  * Cloud: högre maxTokens, lägre temperature (mer förutsägbart)
- * Local: lägre maxTokens, mer konservativ temperature (för bättre stabilitet)
+ * Ollama (lokal): lägre maxTokens, mer konservativ temperature (för bättre stabilitet)
  */
 const DEFAULT_PROFILES: LlmProfiles = {
   businessRule: {
@@ -37,7 +37,7 @@ const DEFAULT_PROFILES: LlmProfiles = {
       maxTokens: 1800,
       temperature: 0.35,
     },
-    local: {
+    ollama: {
       maxTokens: 900,
       temperature: 0.3,
       // Lokal modell behöver extra tydlighet om JSON-format
@@ -55,7 +55,7 @@ const DEFAULT_PROFILES: LlmProfiles = {
       maxTokens: 6000, // Ökad från 2000 för att säkerställa fullständig JSON för komplexa Feature Goals
       temperature: 0.35,
     },
-    local: {
+    ollama: {
       maxTokens: 900,
       temperature: 0.3,
       extraSystemPrefix:
@@ -70,7 +70,7 @@ const DEFAULT_PROFILES: LlmProfiles = {
       maxTokens: 1800,
       temperature: 0.35,
     },
-    local: {
+    ollama: {
       maxTokens: 900,
       temperature: 0.3,
       extraSystemPrefix:
@@ -88,7 +88,7 @@ const DEFAULT_PROFILES: LlmProfiles = {
       maxTokens: 10000,
       temperature: 0.3,
     },
-    local: {
+    ollama: {
       maxTokens: 600,
       temperature: 0.25,
       extraSystemPrefix:
@@ -108,7 +108,11 @@ const DEFAULT_PROFILES: LlmProfiles = {
  * @returns LlmProfile med maxTokens, temperature och ev. extraSystemPrefix
  */
 export function getLlmProfile(docType: DocType, provider: LlmProvider): LlmProfile {
-  return DEFAULT_PROFILES[docType][provider];
+  const profile = DEFAULT_PROFILES[docType][provider];
+  if (!profile) {
+    throw new Error(`No LLM profile configured for docType="${docType}" and provider="${provider}"`);
+  }
+  return profile;
 }
 
 /**
