@@ -23,14 +23,14 @@ describe('bpmnFlowExtractor', () => {
     // Ladda riktiga BPMN-filer
     const applicationPath = path.resolve(
       __dirname,
-      '../fixtures/bpmn/mortgage-se 2025.12.11 18:11/mortgage-se-application.bpmn'
+      '../fixtures/bpmn/mortgage-se 2026.01.04 16:30/mortgage-se-application.bpmn'
     );
     const applicationXml = readFileSync(applicationPath, 'utf-8');
     applicationParseResult = await parseBpmnFileContent(applicationXml, 'mortgage-se-application.bpmn');
     
     const internalDataGatheringPath = path.resolve(
       __dirname,
-      '../fixtures/bpmn/mortgage-se 2025.12.11 18:11/mortgage-se-internal-data-gathering.bpmn'
+      '../fixtures/bpmn/mortgage-se 2026.01.04 16:30/mortgage-se-internal-data-gathering.bpmn'
     );
     const internalDataGatheringXml = readFileSync(internalDataGatheringPath, 'utf-8');
     internalDataGatheringParseResult = await parseBpmnFileContent(internalDataGatheringXml, 'mortgage-se-internal-data-gathering.bpmn');
@@ -407,4 +407,3 @@ describe('bpmnFlowExtractor', () => {
     });
   });
 });
-

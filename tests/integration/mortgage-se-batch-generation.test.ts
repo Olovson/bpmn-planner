@@ -19,7 +19,7 @@ import { generateAllFromBpmn } from '@/lib/bpmnGenerators';
 import { readdir, readFile } from 'fs/promises';
 import { resolve } from 'path';
 
-const FIXTURE_DIR = resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.12.11 18:11');
+const FIXTURE_DIR = resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2026.01.04 16:30');
 
 /**
  * Creates a data URL from XML content for parseBpmnFile to use

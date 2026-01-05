@@ -26,6 +26,14 @@ import {
   stepSelectGenerationMode,
 } from './utils/testSteps';
 
+// Säkerhet: detta test använder riktiga Claude-anrop och ska bara köras manuellt
+// när vi uttryckligen vill verifiera fullskalig LLM-generering.
+// Styr via env-flagga:
+//   CLAUDE_E2E_ENABLE=true npx playwright test tests/playwright-e2e/test-info-generation.spec.ts
+const CLAUDE_E2E_ENABLED = process.env.CLAUDE_E2E_ENABLE === 'true';
+
+test.skip(!CLAUDE_E2E_ENABLED, 'Claude E2E-test (test-info-generation) är inaktiverat (sätt CLAUDE_E2E_ENABLE=true för att köra).');
+
 test.use({ storageState: 'playwright/.auth/user.json' });
 
 /**

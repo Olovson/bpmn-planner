@@ -280,17 +280,33 @@ export function useBpmnMapManagement({
   const handleRegenerateBpmnMap = useCallback(async () => {
     try {
       setRegeneratingMap(true);
-      
-      const { generateBpmnMapFromFiles } = await import('@/lib/bpmn/bpmnMapAutoGenerator');
-      const generatedMap = await generateBpmnMapFromFiles();
-      
-      const { saveBpmnMapToStorage } = await import('@/lib/bpmn/bpmnMapStorage');
-      const result = await saveBpmnMapToStorage(generatedMap, false);
-      
-      if (result.success) {
+      const { generateAndMaybeSaveBpmnMap } = await import('@/lib/bpmn/bpmnMapGenerationOrchestrator');
+
+      // Full pipeline: befintlig map + heuristik + LLM-refinement + persistens
+      const report = await generateAndMaybeSaveBpmnMap({
+        useLlm: true,
+        noLlm: false,
+        preview: false,
+        forceOverwrite: true,
+        syncToGitHub: false,
+      });
+
+      if (report.saved) {
+        const manualReviewCount =
+          report.mergedMap.processes.reduce(
+            (sum, p) =>
+              sum +
+              (p.call_activities?.filter(
+                (ca) => ca.needs_manual_review,
+              ).length || 0),
+            0,
+          );
+
         toast({
           title: 'bpmn-map.json genererad',
-          description: `Map genererad från ${generatedMap.processes.length} processer. ${generatedMap.processes.reduce((sum, p) => sum + (p.call_activities?.filter(ca => ca.needs_manual_review).length || 0), 0)} matchningar behöver granskning.`,
+          description: `Map uppdaterad från ${
+            report.mergedMap.processes.length
+          } processer (heuristik + LLM). ${manualReviewCount} matchningar behöver granskning.`,
         });
         
         // Invalidera queries och validera map igen
@@ -304,13 +320,14 @@ export function useBpmnMapManagement({
         setBpmnMapValidation({
           valid: validationResult.valid,
           error: validationResult.error,
-          details: validationResult.details,
+          details: validationResult.details || undefined,
           source: validationResult.source,
         });
       } else {
         toast({
           title: 'Generering misslyckades',
-          description: result.error || 'Kunde inte spara den genererade map:en',
+          description:
+            'Kunde inte spara den genererade map:en (se konsolloggar för detaljer).',
           variant: 'destructive',
         });
       }
@@ -357,4 +374,3 @@ export function useBpmnMapManagement({
     handleExportUpdatedMap,
   };
 }
-

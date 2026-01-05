@@ -40,13 +40,23 @@ try {
 const useLlmEnv = process.env.VITE_USE_LLM || import.meta.env.VITE_USE_LLM;
 const anthropicKey = process.env.VITE_ANTHROPIC_API_KEY || import.meta.env.VITE_ANTHROPIC_API_KEY;
 
-if (!useLlmEnv || useLlmEnv !== 'true') {
-  throw new Error('VITE_USE_LLM måste vara "true"');
-}
+// Extra skydd: kör bara detta test när vi uttryckligen tillåter riktiga Claude-anrop i integrationstester.
+// Använd t.ex.:
+//   CLAUDE_INTEGRATION_ENABLE=true npx vitest tests/integration/claude-object-information.test.ts
+const CLAUDE_INTEGRATION_ENABLED = process.env.CLAUDE_INTEGRATION_ENABLE === 'true';
 
-if (!anthropicKey) {
-  throw new Error('VITE_ANTHROPIC_API_KEY måste vara satt i .env/.env.local eller som miljövariabel');
-}
+if (!CLAUDE_INTEGRATION_ENABLED) {
+  describe.skip('Claude-generering för Object information (skippad – CLAUDE_INTEGRATION_ENABLE != true)', () => {
+    it('skipped', () => {});
+  });
+} else {
+  if (!useLlmEnv || useLlmEnv !== 'true') {
+    throw new Error('VITE_USE_LLM måste vara "true"');
+  }
+
+  if (!anthropicKey) {
+    throw new Error('VITE_ANTHROPIC_API_KEY måste vara satt i .env/.env.local eller som miljövariabel');
+  }
 
 // Använd Supabase-klienten från appen (den hanterar konfigurationen automatiskt)
 
@@ -232,4 +242,3 @@ describe('Claude-generering för Object information-noden', () => {
     expect(hasClaudeMetadata || htmlContent.length > 1000).toBeTruthy(); // Antingen Claude-metadata eller betydande innehåll
   }, 300000); // 5 minuter timeout för LLM-generering
 });
-

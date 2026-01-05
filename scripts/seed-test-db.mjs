@@ -158,12 +158,14 @@ async function ensureStorageBucket() {
 }
 
 /**
- * Seed BPMN fixtures from tests/fixtures/bpmn/mortgage-se 2025.12.11 18:11
+ * Seed BPMN fixtures from tests/fixtures/bpmn/mortgage-se directories
  *
- * Seeds the mortgage process BPMN files with proper subprocess relationships:
- * - mortgage.bpmn (root process, contains subprocess callActivity to application)
- * - mortgage-se-application.bpmn (subprocess, contains callActivity to internal-data-gathering)
- * - mortgage-se-internal-data-gathering.bpmn (subprocess)
+ * Seeds ALL mortgage process BPMN files from two fixture sets:
+ * - mortgage-se 2026.01.04 16:30 (22 files - aktuell struktur för tester)
+ *
+ * För nu använder vi endast 2026-snapshoten i test-Supabase. Äldre BPMN-filer
+ * i test-projektet rensas bort innan seeding, så att endast den aktuella
+ * strukturen finns i databasen och i Storage.
  */
 async function seedBpmnFixtures() {
   if (skipBpmn) {
@@ -171,48 +173,144 @@ async function seedBpmnFixtures() {
     return;
   }
 
-  console.log('📄 Seeding BPMN fixtures...');
+  console.log('📄 Seeding BPMN fixtures from mortgage-se fixture directories...');
 
-  // Use the correct mortgage-se directory with proper subprocess relationships
-  const bpmnDir = resolve(__dirname, '../tests/fixtures/bpmn/mortgage-se 2025.12.11 18:11');
-
-  // Seed these key files that have subprocess relationships
-  const filesToSeed = [
-    'mortgage.bpmn',                              // Root process
-    'mortgage-se-application.bpmn',               // Subprocess of mortgage
-    'mortgage-se-internal-data-gathering.bpmn',   // Subprocess of application
-    'simple-process.bpmn',                        // Simple test file (if it exists)
+  // För nu använder vi bara 2026-snapshoten som källa till test-Supabase
+  const fixtureDirectories = [
+    {
+      path: resolve(__dirname, '../tests/fixtures/bpmn/mortgage-se 2026.01.04 16:30'),
+      label: '2026.01.04 (alternative structure)',
+    },
   ];
 
-  let seededCount = 0;
-  let skippedCount = 0;
+  let totalSeeded = 0;
+  let totalSkipped = 0;
 
-  for (const fileName of filesToSeed) {
-    const filePath = join(bpmnDir, fileName);
+  // Rensa befintliga BPMN-filer i test-Supabase så vi inte blandar gamla snapshots
+  console.log('🧹 Clearing existing BPMN files from test database/storage...');
+  try {
+    const { data: existingFiles, error: existingError } = await adminClient
+      .from('bpmn_files')
+      .select('file_name, storage_path')
+      .eq('file_type', 'bpmn');
 
-    // Check if file exists
-    let fileContents;
-    try {
-      fileContents = await readFile(filePath);
-    } catch (err) {
-      // Try parent directory for simple-process.bpmn
-      if (fileName === 'simple-process.bpmn') {
-        try {
-          const parentDir = resolve(__dirname, '../tests/fixtures/bpmn');
-          fileContents = await readFile(join(parentDir, fileName));
-        } catch {
-          console.log(`   ⏭️  ${fileName} (not found, skipping)`);
-          continue;
+    if (existingError) {
+      console.warn('   ⚠️  Could not list existing BPMN files:', existingError.message);
+    } else if (existingFiles && existingFiles.length > 0) {
+      const pathsToRemove = existingFiles
+        .map((f) => f.storage_path)
+        .filter((p) => typeof p === 'string');
+
+      if (pathsToRemove.length > 0) {
+        const { error: removeError } = await adminClient.storage
+          .from(bucketName)
+          .remove(pathsToRemove);
+        if (removeError) {
+          console.warn('   ⚠️  Could not remove BPMN files from storage:', removeError.message);
         }
+      }
+
+      const { error: deleteError } = await adminClient
+        .from('bpmn_files')
+        .delete()
+        .eq('file_type', 'bpmn');
+      if (deleteError) {
+        console.warn('   ⚠️  Could not delete BPMN rows from database:', deleteError.message);
       } else {
+        console.log(`   ✅ Removed ${existingFiles.length} existing BPMN row(s) from database.`);
+      }
+    } else {
+      console.log('   ✅ No existing BPMN files to clear.');
+    }
+  } catch (err) {
+    console.warn('   ⚠️  Error while clearing existing BPMN files:', err.message);
+  }
+
+  for (const { path: dirPath, label } of fixtureDirectories) {
+    console.log(`\n  📁 Processing: ${label}`);
+
+    let files;
+    try {
+      files = await readdir(dirPath);
+    } catch (err) {
+      console.error(`   ❌ Could not read directory:`, err.message);
+      continue;
+    }
+
+    // Filter to only .bpmn files (exclude .json, .md, .DS_Store, etc)
+    const bpmnFiles = files.filter(f => f.endsWith('.bpmn'));
+
+    console.log(`   Found ${bpmnFiles.length} BPMN file(s)`);
+
+    for (const fileName of bpmnFiles) {
+      const filePath = join(dirPath, fileName);
+
+      let fileContents;
+      try {
+        fileContents = await readFile(filePath);
+      } catch (err) {
         console.warn(`   ⚠️  Could not read ${fileName}:`, err.message);
         continue;
       }
+
+      const storagePath = fileName; // Store at root level
+
+      // Check if file already exists in database
+      const { data: existingFile } = await adminClient
+        .from('bpmn_files')
+        .select('file_name')
+        .eq('storage_path', storagePath)
+        .single();
+
+      if (existingFile) {
+        totalSkipped++;
+        console.log(`   ⏭️  ${fileName} (already exists)`);
+        continue;
+      }
+
+      // Upload to storage
+      const { error: uploadError } = await adminClient.storage
+        .from(bucketName)
+        .upload(storagePath, fileContents, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'application/xml',
+        });
+
+      if (uploadError) {
+        console.error(`   ❌ Failed to upload ${fileName}:`, uploadError.message);
+        continue;
+      }
+
+      // Save metadata to database
+      const { error: dbError } = await adminClient.from('bpmn_files').insert({
+        file_name: fileName,
+        storage_path: storagePath,
+        file_type: 'bpmn',
+        size_bytes: fileContents.byteLength,
+        github_synced: false,
+        has_structure_changes: false,
+        meta: null,
+      });
+
+      if (dbError) {
+        console.error(`   ❌ Failed to save metadata for ${fileName}:`, dbError.message);
+      } else {
+        totalSeeded++;
+        console.log(`   ✅ ${fileName}`);
+      }
     }
+  }
 
-    const storagePath = fileName; // Store at root level
+  // Also seed simple-process.bpmn from parent directory if it exists
+  console.log(`\n  📁 Processing: Additional fixtures`);
+  const parentDir = resolve(__dirname, '../tests/fixtures/bpmn');
+  const simpleProcessPath = join(parentDir, 'simple-process.bpmn');
 
-    // Check if file already exists
+  try {
+    const fileContents = await readFile(simpleProcessPath);
+    const storagePath = 'simple-process.bpmn';
+
     const { data: existingFile } = await adminClient
       .from('bpmn_files')
       .select('file_name')
@@ -220,45 +318,65 @@ async function seedBpmnFixtures() {
       .single();
 
     if (existingFile) {
-      skippedCount++;
-      console.log(`   ⏭️  ${fileName} (already exists)`);
-      continue;
-    }
-
-    // Upload to storage
-    const { error: uploadError } = await adminClient.storage
-      .from(bucketName)
-      .upload(storagePath, fileContents, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: 'application/xml',
-      });
-
-    if (uploadError) {
-      console.error(`   ❌ Failed to upload ${fileName}:`, uploadError.message);
-      continue;
-    }
-
-    // Save metadata to database
-    const { error: dbError } = await adminClient.from('bpmn_files').insert({
-      file_name: fileName,
-      storage_path: storagePath,
-      file_type: 'bpmn',
-      size_bytes: fileContents.byteLength,
-      github_synced: false,
-      has_structure_changes: false,
-      meta: null,
-    });
-
-    if (dbError) {
-      console.error(`   ❌ Failed to save metadata for ${fileName}:`, dbError.message);
+      totalSkipped++;
+      console.log(`   ⏭️  simple-process.bpmn (already exists)`);
     } else {
-      seededCount++;
-      console.log(`   ✅ ${fileName}`);
+      const { error: uploadError } = await adminClient.storage
+        .from(bucketName)
+        .upload(storagePath, fileContents, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'application/xml',
+        });
+
+      if (!uploadError) {
+        const { error: dbError } = await adminClient.from('bpmn_files').insert({
+          file_name: 'simple-process.bpmn',
+          storage_path: storagePath,
+          file_type: 'bpmn',
+          size_bytes: fileContents.byteLength,
+          github_synced: false,
+          has_structure_changes: false,
+          meta: null,
+        });
+
+        if (!dbError) {
+          totalSeeded++;
+          console.log(`   ✅ simple-process.bpmn`);
+        }
+      }
     }
+  } catch (err) {
+    console.log(`   ⏭️  simple-process.bpmn (not found, skipping)`);
   }
 
-  console.log(`\n✅ Seeded ${seededCount} BPMN file(s), skipped ${skippedCount} existing file(s).`);
+  // Also upload bpmn-map.json from projektroten (source of truth för aktuell mapping)
+  console.log(`\n  📁 Processing: bpmn-map.json`);
+  const bpmnMapPath = resolve(__dirname, '../bpmn-map.json');
+
+  try {
+    const bpmnMapContents = await readFile(bpmnMapPath);
+    const storagePath = 'bpmn-map.json';
+
+    // Upload to storage (always upsert to ensure latest version)
+    const { error: uploadError } = await adminClient.storage
+      .from(bucketName)
+      .upload(storagePath, bpmnMapContents, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: 'application/json',
+      });
+
+    if (!uploadError) {
+      console.log(`   ✅ bpmn-map.json (uploaded to storage)`);
+    } else {
+      console.warn(`   ⚠️  Could not upload bpmn-map.json:`, uploadError.message);
+    }
+  } catch (err) {
+    console.log(`   ⏭️  bpmn-map.json (not found, skipping)`);
+  }
+
+  console.log(`\n✅ Seeded ${totalSeeded} BPMN file(s), skipped ${totalSkipped} existing file(s).`);
 }
 
 /**

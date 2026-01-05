@@ -18,7 +18,7 @@ import { readdir } from 'fs/promises';
 import { resolve } from 'path';
 import { loadAndParseBpmnFromFixtures } from '../helpers/bpmnTestHelpers';
 
-const FIXTURE_DIR = resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.12.11 18:11');
+const FIXTURE_DIR = resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2026.01.04 16:30');
 
 // Mock endast Storage-checks för dokumentation (storageFileExists)
 // BPMN-filer laddas via faktisk kod (parseBpmnFile med data URLs)

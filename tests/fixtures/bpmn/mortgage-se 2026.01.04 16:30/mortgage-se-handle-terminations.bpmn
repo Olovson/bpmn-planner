@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1p8injy" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.23.0">
+  <bpmn:escalation id="Escalation_0cu3ag9" name="escalate-has-new-hits" escalationCode="escalate-has-new-hits" />
+  <bpmn:escalation id="Escalation_1prqh5e" name="escalate-unsupported-hit" escalationCode="escalate-unsupported-hit" />
+  <bpmn:collaboration id="Collaboration_04my1y7">
+    <bpmn:participant id="Participant_1uvfl46" name="Handle terminations" processRef="mortgage-se-handle-terminations" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-handle-terminations" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:startEvent id="Event_1ftsn0f">
+      <bpmn:outgoing>Flow_112ev1y</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_112ev1y" sourceRef="Event_1ftsn0f" targetRef="Event_1n8q4h7" />
+    <bpmn:endEvent id="Event_1n8q4h7">
+      <bpmn:incoming>Flow_112ev1y</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_04my1y7">
+      <bpmndi:BPMNShape id="Participant_1uvfl46_di" bpmnElement="Participant_1uvfl46" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="600" height="250" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ftsn0f_di" bpmnElement="Event_1ftsn0f">
+        <dc:Bounds x="212" y="192" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1n8q4h7_di" bpmnElement="Event_1n8q4h7">
+        <dc:Bounds x="692" y="192" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_112ev1y_di" bpmnElement="Flow_112ev1y">
+        <di:waypoint x="248" y="210" />
+        <di:waypoint x="692" y="210" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

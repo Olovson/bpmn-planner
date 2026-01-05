@@ -4,12 +4,17 @@ Det här är en **koncis och korrekt** snabbstart som matchar nuvarande kodbas.
 
 ## Förutsättningar
 
-- Node.js + npm
+- **Node.js 20+** (rekommenderat: v20.18.1 LTS) + npm
 - Supabase lokalt (startas via script)
+
+**OBS:** Node.js 20+ krävs för att köra integration tests med jsdom och bpmn-js.
 
 ## Starta lokalt
 
 ```bash
+# Om du använder nvm:
+nvm use 20  # eller: nvm install 20
+
 npm install
 npm run start:supabase
 npm run dev
@@ -47,12 +52,12 @@ seed-bot@local.test / Passw0rd!
 
 **What gets seeded:**
 - Test user (seed-bot@local.test)
-- 4 BPMN fixture files with subprocess relationships:
-  - `mortgage.bpmn` (root process)
-  - `mortgage-se-application.bpmn` (subprocess)
-  - `mortgage-se-internal-data-gathering.bpmn` (subprocess)
-  - `simple-process.bpmn` (simple test file)
-- Storage bucket `bpmn-files`
+- BPMN‑fixturefiler för hela mortgage‑domänen (2026‑snapshot):
+  - Alla `.bpmn`‑filer i `tests/fixtures/bpmn/mortgage-se 2026.01.04 16:30`
+    (t.ex. `mortgage.bpmn`, `mortgage-se-application.bpmn`, `mortgage-se-object-information.bpmn`, m.fl.)
+  - `simple-process.bpmn` (extra enkel testfil)
+- Storage‑bucket `bpmn-files`
+- En `bpmn-map.json` i storage baserad på den manuella mappen från 2025‑snapshoten
 
 ### Running Tests
 
@@ -63,12 +68,10 @@ npx playwright test          # Playwright E2E tests
 ```
 
 **Environment separation:**
-- **Production:** `.env.local` → production Supabase (for local dev)
-- **Test:** `.env.test` → test Supabase (for all tests)
+- **Production (lokal):** `.env.local` → Supabase som körs lokalt via CLI (`npm run start:supabase`)
+- **Test (moln):** `.env.test` → Supabase‑projektet i molnet (`bpmn-planner-test`) för alla tester
 
 Both seed and reset scripts include safety checks to prevent accidentally running against production.
-
-For more details, see [docs/analysis/TEST_ENVIRONMENT_PLAN.md](../../analysis/TEST_ENVIRONMENT_PLAN.md).
 
 ## Local Development Commands
 

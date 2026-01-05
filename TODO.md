@@ -3,25 +3,31 @@
 Detta dokument innehåller en prioriterad lista över uppgifter och förbättringar för BPMN Planner.
 
 > **Se även:** [Feature Roadmap](docs/FEATURE_ROADMAP.md) för strategiska funktioner och långsiktiga visioner.
+> **Miljöer:** Just nu körs **”production”‑Supabase lokalt** via Supabase CLI (`npm run start:supabase`), medan **test‑Supabase** ligger i molnet (`bpmn-planner-test`).
 
 ---
 
 ## 🎯 Snabböversikt: De 3 Kritiska Punkterna
 
-**Fokus just nu:** Dessa tre punkter måste lösas för att appen ska vara stabil och utvecklingsbar:
+**Uppdatering 2026‑01‑04:** Testmiljö (se punkt 1) är i stort sett klar – vi har nu ett separat Supabase-testprojekt, seed/reset-script, Vite test‑mode och Playwright/Vitest som kör mot testmiljön. Preview deployments återstår.
 
-1. **🚨 Testmiljö** (KRITISK - 1-2 dagar)
-   - Preview deployments (Vercel/Netlify)
-   - Test Supabase-projekt
+**Fokus just nu:** Dessa tre punkter är viktigast för stabilitet, automatiserad mapping och vidare utveckling:
+
+1. **🤖 Claude‑stödd bpmn-map.json generering (LLM-refinement)** (HÖG – pågående)
+   - **Status:** Heuristik + merge + validering är implementerat och testat; LLM‑refinementlagret (`refineBpmnMapWithLlm`) finns och är enhetstestat (mockad Claude), men vi har ännu inte gjort en full end‑to‑end‑körning mot riktig Claude i ett skarpt flöde.
+   - **Problem just nu:** CLI‑scriptet `scripts/generate-bpmn-map.mjs` med `--llm` faller i Node/`tsx` p.g.a. `path-intersection`/ESM‑exports; detta påverkar inte Vitest‑tester eller appen, men gör att vi inte kan köra hela pipeline + grafvalidering via CLI.
+   - **Nästa steg:** 
+     - Använd experiment‑scriptet `scripts/experiment-bpmn-map-llm-refinement.ts` (via `npx tsx`) för att köra riktig Claude mot lokala `bpmn-map.json` och skriva `bpmn-map.llm.generated.json` för manuell review (ingen skrivning till Supabase).
+     - När vi är nöjda med beteendet: antingen förenkla CLI‑valideringen (tillfälligt utan `buildGraph`) eller lägga till ett litet opt‑in integrationstest som använder riktig Claude för att verifiera att refinement‑flödet fungerar.
+   - **Varför:** Ger bättre automatisk mappning med bibehållen säkerhet och manuell kontroll
+
+2. **🚨 Testmiljö & Preview Deployments** (HÖG – pågående)
+   - Preview deployments (Vercel/Netlify eller motsv.)
+   - Test Supabase‑projekt, säker test‑miljö (✅ klart)
    - Möjlighet att testa kodändringar säkert innan merge
    - **Varför:** Förhindrar att vi förstör fungerande funktionalitet
 
-2. **🤖 bpmn-map.json generering** (HÖG - 1-2 dagar)
-   - Claude-baserad automatisk generering
-   - Eller förbättrad heuristik-baserad mappning
-   - **Varför:** Eliminerar manuell process och risk för fel
-
-3. **🔧 Files-sidan analys/fixar** (HÖG - 2-3 dagar analys + fixar)
+3. **🔧 Files-sidan analys/fixar** (HÖG – 2–3 dagar analys + fixar)
    - Systematisk analys av vad som fungerar/inte fungerar
    - Fixa kritiska buggar
    - **Varför:** Kärnfunktionalitet måste fungera korrekt
@@ -45,38 +51,38 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
     4. Testa att varje feature branch får egen isolerad URL
   - **Referens:** Se `docs/analysis/HOW_OTHERS_HANDLE_TEST_ENVIRONMENTS.md`
   - **Tid:** 1-2 timmar
-- [ ] **SÄTT UPP: Test Supabase-projekt**
+- [x] **SÄTT UPP: Test Supabase-projekt**
   - **Problem:** Vi kan INTE testa faktisk Storage-integration säkert - risk för att korrumpera produktionsdata
   - **Påverkan:** Kan inte testa kärnfunktionalitet (upload, hierarki, generering, visning) säkert
   - **Lösning:** Skapa separat Supabase-projekt för tester (gratis tier räcker)
   - **Steg:**
-    1. Skapa nytt Supabase-projekt för tester
-    2. Kopiera schema från produktion (migrations)
-    3. Skapa `.env.test` med test-projekt credentials
-    4. Konfigurera Vite för att använda `.env.test` i test-mode
-    5. Verifiera isolering från produktion
-  - **Referens:** Se `docs/analysis/CRITICAL_TESTING_GAP_ANALYSIS.md`
+    1. Skapa nytt Supabase-projekt för tester ✅ `bpmn-planner-test` finns
+    2. Kopiera schema från produktion (migrations) ✅ migrations körs mot test
+    3. Skapa `.env.test` med test-projekt credentials ✅ finns och används
+    4. Konfigurera Vite för att använda `.env.test` i test-mode ✅ `vite --mode test`, `npm test --mode test`
+    5. Verifiera isolering från produktion ✅ guardrails i `src/integrations/supabase/client.ts`
+  - **Referens:** Se `docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md` (Test Environment)
   - **Tid:** 2-3 timmar
-- [ ] **KONFIGURERA: Environment Variables för Test-Miljö**
+- [x] **KONFIGURERA: Environment Variables för Test-Miljö**
   - **Steg:**
-    1. Skapa `.env.test` med test-Supabase credentials
-    2. Uppdatera `vite.config.ts` för att stödja `test` mode
-    3. Konfigurera Vercel/Netlify att använda `.env.test` för preview deployments
-    4. Verifiera att test-miljö är isolerad från produktion
+    1. Skapa `.env.test` med test-Supabase credentials ✅
+    2. Uppdatera `vite.config.ts` för att stödja `test` mode ✅ (loadEnv, `dev:test`)
+    3. (Preview config kvar att göra – se föregående punkt)
+    4. Verifiera att test-miljö är isolerad från produktion ✅ via guardrails + separat projekt
   - **Tid:** 1 timme
-- [ ] **DOKUMENTERA: Test-Miljö Workflow**
+- [x] **DOKUMENTERA: Test-Miljö Workflow**
   - **Steg:**
-    1. Dokumentera workflow: Feature branch → Preview deployment → Test → Merge
-    2. Skapa guide för hur man testar i isolerad miljö
-    3. Dokumentera cleanup-process
+    1. Dokumentera workflow: Feature branch → Testmiljö (Supabase test) → Tester → Merge ✅
+    2. Skapa guide för hur man testar i isolerad miljö ✅ `docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md`
+    3. Dokumentera cleanup-process ✅ `npm run reset:test-db` mm.
   - **Tid:** 1 timme
-- [ ] **MIGRERA: E2E-tester till Test-Miljö**
+- [x] **MIGRERA: E2E-tester till Test-Miljö**
   - **Steg:**
-    1. Uppdatera Playwright config för att använda test-Supabase
-    2. Verifiera att alla tester fungerar i isolerad miljö
-    3. Lägg till automatisk cleanup efter tester
+    1. Uppdatera Playwright config för att använda test-Supabase ✅ `webServer.command: npm run dev:test`
+    2. Verifiera att alla tester fungerar i isolerad miljö ✅ design + guardrails; löpande validering vid körning
+    3. Lägg till automatisk cleanup efter tester ✅ reset/seed-skript finns för testmiljön
   - **Tid:** 2-3 timmar
-- [ ] **VALIDERA: Hela Flödet i Isolerad Miljö**
+- [ ] **VALIDERA: Hela Flödet i Isolerad Miljö (manuell check kvar)**
   - **Steg:**
     1. Testa filuppladdning i test-miljö
     2. Testa hierarki-byggnad i test-miljö
@@ -86,31 +92,29 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
   - **Tid:** 2-3 timmar
 - **Total tid:** 9-13 timmar (1-2 dagar)
 - **Kostnad:** Gratis (gratis tiers räcker)
-- **Prioritet:** KRITISK - Måste göras innan större kodändringar
+- **Prioritet:** HÖG – Preview deployments + manuell end‑to‑end validering kvar
 
 ### 🤖 Automatisk Generering av bpmn-map.json från BPMN-filer
-- [ ] **FORSKA: Claude-baserad bpmn-map.json generering**
-  - **Problem:** Vi kan INTE via kod/regex automatiskt deducera korrekt `bpmn-map.json` från nya BPMN-filer som laddas upp
-  - **Påverkan:** Manuell process att uppdatera `bpmn-map.json` när nya filer laddas upp, risk för fel och inkonsistens
-  - **Lösning:** Utforska att använda Claude för att analysera BPMN-filer och generera/uppdatera `bpmn-map.json` automatiskt
-  - **Steg:**
-    1. Analysera nuvarande problem med automatisk mappning (regex/heuristik)
-    2. Designa Claude-prompt för att analysera BPMN-filer och extrahera call activities
-    3. Designa JSON-schema för Claude-output (strukturerad output)
-    4. Implementera Claude-integration för bpmn-map.json generering
-    5. Validera att genererad bpmn-map.json är korrekt
-    6. Integrera med upload-process (automatisk generering vid uppladdning)
-  - **Referens:** Se tidigare analys om Claude för bpmn-map generering
-  - **Tid:** 1-2 dagar
-  - **Prioritet:** HÖG - Förbättrar användarupplevelse och minskar risk för fel
-- [ ] **ALTERNATIV: Förbättra nuvarande heuristik-baserad mappning**
-  - **Om Claude-lösning inte fungerar:**
-    1. Analysera varför nuvarande heuristik misslyckas
-    2. Förbättra fuzzy matching algoritmer
-    3. Förbättra confidence scoring
-    4. Lägg till fler heuristik-regler
-  - **Tid:** 2-3 dagar
-  - **Prioritet:** MEDIUM - Fallback om Claude-lösning inte fungerar
+- [ ] **IMPLEMENTERA: BPMN-map pipeline enligt design/plan**
+  - **Problem:** Nuvarande auto-generering/heuristik räcker inte för att robust hålla `bpmn-map.json` uppdaterad när BPMN-filer ändras eller tillkommer.
+  - **Påverkan:** Manuell, felbenägen uppdatering av `bpmn-map.json` och risk för trasig hierarki/graf vid ändringar.
+  - **Lösning:** Genomför faserna i `docs/analysis/BPMN_MAP_GENERATION_IMPLEMENTATION_PLAN.md` baserat på analysen (`docs/analysis/BPMN_MAP_GENERATION_ANALYSIS.md`) och designen (`docs/architecture/BPMN_MAP_GENERATION_DESIGN.md`).
+  - **Steg (hög nivå, se plan‑dokumentet för detaljer):**
+    1. Fas 1 – Utöka datamodell/JSON‑schema för `bpmn-map.json` (`process_id`, `match_status`, `needs_manual_review`, `source`) med bakåtkompatibilitet.
+    2. Fas 2 – Städa heuristiken i `bpmnMapAutoGenerator` (per‑process callActivities, korrekt `process_id`, normaliserade filnamn, tydlig `match_status`).
+    3. Fas 3 – Skapa `bpmnMapGenerationOrchestrator` + CLI‑script `scripts/generate-bpmn-map.mjs` med merge‑regler där `source='manual'` alltid vinner.
+    4. Fas 4 – Koppla in LLM‑refinement för svåra fall (`lowConfidence/ambiguous/unresolved`) via befintlig LLM‑infrastruktur med strikt JSON‑output och confidence‑baserad beslutslogik.
+    5. Fas 5 – Inför säkra persistensregler (preview‑läge, `--force` krävs för overwrite, aldrig tyst skriva över manuella maps).
+    6. Fas 6 – Lägg till validering och 1–2 “guldtester” (t.ex. mortgage‑kedjan) som bygger grafen med ny map och verifierar förväntade subprocess‑kopplingar.
+    7. Fas 7 – Uppdatera dokumentation/guider (hur man kör scriptet, hur man tolkar `match_status/needs_manual_review` i UI) och uppdatera TODO‑status.
+    8. Lägg till minst ett manuellt Claude‑integrationstest för bpmn‑map‑refinement (se Fas 4 i implementeringsplanen) som körs med separat npm‑script och sparar svar i `tests/llm-output/`.
+    9. Använd mortgage‑snapshot‑mapparna som primära fixtures när du skriver tester för heuristik/graf/validering:
+       - `tests/fixtures/bpmn/mortgage-se 2025.12.11 18:11`
+       - `tests/fixtures/bpmn/mortgage-se 2026.01.04 16:30`
+    10. Gör hela arbetet på en separat feature‑branch (t.ex. `feature/bpmn-map-generation`); när faserna du genomfört är klara och testerna går igenom, merg:a branchen till `main` och push:a till GitHub så att ändringar och dokumentation synkas.
+  - **Referens:** `docs/analysis/BPMN_MAP_GENERATION_ANALYSIS.md`, `docs/architecture/BPMN_MAP_GENERATION_DESIGN.md`, `docs/analysis/BPMN_MAP_GENERATION_IMPLEMENTATION_PLAN.md`
+  - **Tid:** Ca 3–5 dagar (kan tas fas för fas; minsta värdefulla subset är faserna 1–3/5 utan LLM)
+  - **Prioritet:** HÖG – Kritisk för robust hierarki och framtida automation
 
 ### 🔧 Files-sidan: Grundfunktionalitet fungerar inte korrekt
 - [ ] **ANALYSERA: Vad fungerar och inte fungerar på Files-sidan**
@@ -225,6 +229,28 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 ---
 
 ## 🔧 LLM-förbättringar
+
+### Claude-testgenomgång (riktiga API-anrop)
+- [x] **Gå igenom tester som använder verkliga Claude-anrop**
+  - **Syfte:** Minimera onödig Claude‑användning i tester (kostnad/tid), och säkerställa att endast ett litet antal manuella/verifierande tester använder riktiga API‑anrop.
+  - **Varning:** Kör **inte** dessa tester utan att först uttryckligen ta ställning till att använda Claude (kostnad, rate limits, API‑nycklar). Innan de körs i framtiden ska vi ha sett över dem så att de:
+    - körs endast manuellt (inte i standard‑CI), och
+    - har tydliga env‑flaggor/`describe.skipIf`‑skydd.  
+    **Status:** Implementerat. För att köra de här testerna krävs nu explicita env‑flaggor (`CLAUDE_E2E_ENABLE` för Playwright, `CLAUDE_INTEGRATION_ENABLE` för integrationstester).
+  - **Tester att gå igenom (använder/kan använda verklig Claude):**
+    - Playwright E2E:
+      - `tests/playwright-e2e/test-info-generation.spec.ts`
+      - `tests/playwright-e2e/claude-generation.spec.ts`
+    - Vitest integration:
+      - `tests/integration/claude-application.test.ts`
+      - `tests/integration/claude-object-information.test.ts`
+      - `tests/integration/claude-application-object-info.test.ts`
+      - `tests/integration/hierarchy-llm-generation.test.ts`
+  - **Steg:**
+    1. Bekräfta vilka av dessa som verkligen behöver riktiga Claude‑anrop (t.ex. manuella smoke‑tester) och vilka som kan använda mocks utan att tappa värde.
+    2. Märk tydligt vilka som är “manually run only” (t.ex. via `describe.skipIf`/env‑flaggor) och exkludera dem från normal CI‑körning.
+    3. Där det är möjligt: byt till befintliga Claude‑mocks eller strukturera testen så att LLM‑delen kan mockas separat från resten av flödet.
+  - **Prioritet:** MEDIUM – bra för kostnad/stabilitet, men inte blockerande
 
 ### Lokal LLM-profil / modellbyte
 - [ ] Utvärdera alternativ lokal modell (t.ex. `mistral:latest`) som kanske är snabbare/stabilare än `llama3:latest` på svagare hårdvara
@@ -373,7 +399,7 @@ Se [Feature Roadmap](docs/FEATURE_ROADMAP.md) för detaljerade beskrivningar av:
 
 ---
 
-**Senast uppdaterad:** 2025-12-27
+**Senast uppdaterad:** 2026-01-04
 
 ## ✅ Nyligen slutförda uppgifter
 
@@ -397,4 +423,3 @@ Se [Feature Roadmap](docs/FEATURE_ROADMAP.md) för detaljerade beskrivningar av:
 - [x] Gruppering av aktiviteter per subprocess
 - [x] BPMN version comparison script (`compare-bpmn-versions.ts`)
 - [x] Dokumentation: API Reference, User Guide, Maintenance Guide
-

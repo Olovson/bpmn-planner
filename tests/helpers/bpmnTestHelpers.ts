@@ -30,8 +30,10 @@ export async function loadAndParseBpmnFromFixtures(
 ): Promise<BpmnParseResult> {
   const defaultDirs = [
     resolve(__dirname, '..', 'fixtures', 'bpmn'),
-    // VIKTIGT: mortgage-se 2025.12.11 18:11 måste komma FÖRE analytics
-    // eftersom analytics-versionen av vissa filer saknar callActivities (t.ex. object-control)
+    // VIKTIGT: mortgage-se 2026.01.04 16:30 kommer FÖRE äldre snapshots och analytics
+    // så att vi använder den aktuella strukturen för tester.
+    resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2026.01.04 16:30'),
+    // Äldre snapshots finns kvar som fallback om filer bara finns där
     resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.12.11 18:11'),
     resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.12.11 17:44'),
     resolve(__dirname, '..', 'fixtures', 'bpmn', 'mortgage-se 2025.12.08'),

@@ -30,6 +30,7 @@ Om något inte stämmer ska dokumenten uppdateras eller länkas om.
 - `ARCHITECTURE_OVERVIEW.md` – Systemöversikt
 - `DATAFLOW_OVERVIEW.md` – Dataflöden
 - `FUNCTIONALITY_AND_ARCHITECTURE_OVERVIEW.md` – Funktioner mappade till kod
+- `BPMN_MAP_GENERATION_DESIGN.md` – Design för automatisk bpmn-map.json‑generering (heuristik + Claude)
 
 ### 🧪 Testing (`testing/`)
 - `TEST_GENERATION.md` – Hur testgenerering fungerar just nu
@@ -42,7 +43,8 @@ Om något inte stämmer ska dokumenten uppdateras eller länkas om.
 
 ### 📁 Analysis (`analysis/`)
 - Historiska analyser och utredningar. Dessa kan vara **utdaterade**.
-- **CURRENT**: `TEST_ENVIRONMENT_PLAN.md` – Test environment setup and implementation plan (active)
+- **CURRENT**: Test environment setup – see `docs/guides/user/QUICKSTART_AND_DEVELOPMENT.md` (Test Environment section)
+- `BPMN_MAP_GENERATION_ANALYSIS.md` – Analys av bpmn-map.json och subprocess‑mappning
 
 ---
 

@@ -36,8 +36,10 @@ vi.mock('@/integrations/supabase/client', () => ({
 }));
 
 const USE_LLM = process.env.VITE_USE_LLM === 'true' && process.env.VITE_ANTHROPIC_API_KEY;
+// Extra flagga: kör bara detta real-LLM-test när vi uttryckligen tillåter det.
+const CLAUDE_INTEGRATION_ENABLED = process.env.CLAUDE_INTEGRATION_ENABLE === 'true';
 
-describe.skipIf(!USE_LLM)('LLM generation with hierarchy', () => {
+describe.skipIf(!USE_LLM || !CLAUDE_INTEGRATION_ENABLED)('LLM generation with hierarchy', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: filer finns INTE i Storage

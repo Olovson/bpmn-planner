@@ -74,6 +74,78 @@ function validateBpmnMapStructure(raw: unknown): { valid: boolean; error?: strin
         details: `processes[${i}].call_activities måste vara en array`,
       };
     }
+
+    // Validera call_activities-fält (minimikrav)
+    for (let j = 0; j < proc.call_activities.length; j++) {
+      const ca = proc.call_activities[j];
+      if (!ca || typeof ca !== 'object') {
+        return {
+          valid: false,
+          error: `Call activity ${j} i process ${i} är ogiltig`,
+          details: `processes[${i}].call_activities[${j}] måste vara ett objekt`,
+        };
+      }
+      if (!ca.bpmn_id || typeof ca.bpmn_id !== 'string') {
+        return {
+          valid: false,
+          error: `Call activity ${j} i process ${i} saknar "bpmn_id"`,
+          details: `processes[${i}].call_activities[${j}].bpmn_id måste vara en sträng`,
+        };
+      }
+      if (ca.name !== undefined && typeof ca.name !== 'string') {
+        return {
+          valid: false,
+          error: `Call activity ${j} i process ${i} har ogiltigt "name"`,
+          details: `processes[${i}].call_activities[${j}].name måste vara en sträng om det finns`,
+        };
+      }
+      if (
+        ca.called_element !== undefined &&
+        typeof ca.called_element !== 'string' &&
+        ca.called_element !== null
+      ) {
+        return {
+          valid: false,
+          error: `Call activity ${j} i process ${i} har ogiltigt "called_element"`,
+          details: `processes[${i}].call_activities[${j}].called_element måste vara en sträng eller null om det finns`,
+        };
+      }
+      if (
+        ca.subprocess_bpmn_file !== undefined &&
+        typeof ca.subprocess_bpmn_file !== 'string'
+      ) {
+        return {
+          valid: false,
+          error: `Call activity ${j} i process ${i} har ogiltigt "subprocess_bpmn_file"`,
+          details: `processes[${i}].call_activities[${j}].subprocess_bpmn_file måste vara en sträng om det finns`,
+        };
+      }
+      if (
+        ca.needs_manual_review !== undefined &&
+        typeof ca.needs_manual_review !== 'boolean'
+      ) {
+        return {
+          valid: false,
+          error: `Call activity ${j} i process ${i} har ogiltigt "needs_manual_review"`,
+          details: `processes[${i}].call_activities[${j}].needs_manual_review måste vara en boolean om det finns`,
+        };
+      }
+      // Nya fält: match_status & source är frivilliga, men om de finns ska de vara strängar
+      if (ca.match_status !== undefined && typeof ca.match_status !== 'string') {
+        return {
+          valid: false,
+          error: `Call activity ${j} i process ${i} har ogiltigt "match_status"`,
+          details: `processes[${i}].call_activities[${j}].match_status måste vara en sträng om det finns`,
+        };
+      }
+      if (ca.source !== undefined && typeof ca.source !== 'string') {
+        return {
+          valid: false,
+          error: `Call activity ${j} i process ${i} har ogiltigt "source"`,
+          details: `processes[${i}].call_activities[${j}].source måste vara en sträng om det finns`,
+        };
+      }
+    }
   }
 
   return { valid: true };
@@ -387,4 +459,3 @@ export async function bpmnMapExistsInStorage(): Promise<boolean> {
     return false;
   }
 }
-

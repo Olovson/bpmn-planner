@@ -28,7 +28,7 @@ interface BpmnFileInfo {
 async function loadAllBpmnFiles(): Promise<BpmnFileInfo[]> {
   // Lista alla BPMN-filer från fixtures (för test) eller från Supabase (för produktion)
   // För nu, använd fixtures
-  const fixturesPath = resolve(__dirname, '../tests/fixtures/bpmn/mortgage-se 2025.12.11 18:11');
+  const fixturesPath = resolve(__dirname, '../tests/fixtures/bpmn/mortgage-se 2026.01.04 16:30');
   
   // Hårdkodad lista för nu - kan förbättras att läsa från filsystemet
   const bpmnFiles = [

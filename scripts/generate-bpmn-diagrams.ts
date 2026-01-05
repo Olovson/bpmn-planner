@@ -22,7 +22,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const FEATURE_GOALS_DIR = path.join(__dirname, '../public/local-content/feature-goals');
-const BPMN_FIXTURES_DIR = path.join(__dirname, '../tests/fixtures/bpmn/mortgage-se 2025.12.11 18:11');
+const BPMN_FIXTURES_DIR = path.join(__dirname, '../tests/fixtures/bpmn/mortgage-se 2026.01.04 16:30');
 const TEMP_HTML_DIR = path.join(__dirname, '../temp/bpmn-renderer');
 
 // Skapa temp-mapp om den inte finns
@@ -385,4 +385,3 @@ main().catch(error => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
-

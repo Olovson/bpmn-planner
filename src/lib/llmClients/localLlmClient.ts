@@ -1,8 +1,8 @@
 /**
  * Local LLM Client (Llama 3.1 8B via Ollama)
- * 
+ *
  * Implementerar LlmClient-interface för lokala LLM-instanser via Ollama API.
- * 
+ *
  * Konfiguration via env-variabler:
  * - VITE_LLM_LOCAL_BASE_URL (t.ex. http://localhost:11434)
  * - VITE_LLM_LOCAL_MODEL (t.ex. llama3.1:8b-instruct)
@@ -10,13 +10,33 @@
 
 export type LlmProvider = 'cloud' | 'ollama';
 
+// Stöd både Vite (import.meta.env) och Node/skript (process.env)
+const VITE_ENV: Record<string, any> =
+  typeof import.meta !== 'undefined' && (import.meta as any).env
+    ? ((import.meta as any).env as Record<string, any>)
+    : {};
+
+const NODE_ENV: Record<string, any> =
+  typeof process !== 'undefined' && (process as any).env
+    ? ((process as any).env as Record<string, any>)
+    : {};
+
 const LOCAL_BASE_URL =
-  import.meta.env.VITE_LLM_LOCAL_BASE_URL?.trim() || 'http://localhost:11434';
+  (VITE_ENV.VITE_LLM_LOCAL_BASE_URL as string | undefined)?.trim() ||
+  (NODE_ENV.VITE_LLM_LOCAL_BASE_URL as string | undefined)?.trim() ||
+  'http://localhost:11434';
+
 const LOCAL_MODEL =
-  import.meta.env.VITE_LLM_LOCAL_MODEL?.trim() || 'llama3.1:8b-instruct';
+  (VITE_ENV.VITE_LLM_LOCAL_MODEL as string | undefined)?.trim() ||
+  (NODE_ENV.VITE_LLM_LOCAL_MODEL as string | undefined)?.trim() ||
+  'llama3.1:8b-instruct';
+
 const LOCAL_TIMEOUT_MS = (() => {
-  const raw = import.meta.env.VITE_LLM_LOCAL_TIMEOUT_MS?.toString().trim();
-  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  const raw =
+    (VITE_ENV.VITE_LLM_LOCAL_TIMEOUT_MS as string | number | undefined) ??
+    NODE_ENV.VITE_LLM_LOCAL_TIMEOUT_MS;
+  const str = raw !== undefined ? String(raw).trim() : '';
+  const parsed = str ? Number.parseInt(str, 10) : NaN;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 600000;
 })();
 

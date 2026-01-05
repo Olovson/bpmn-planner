@@ -1,0 +1,854 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1dzbrd5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:escalation id="Escalation_2pcn2ga" name="signing-expired" escalationCode="signing-expired" />
+  <bpmn:escalation id="Escalation_0kbvbpi" name="signing-task-expired" escalationCode="signing-task-expired" />
+  <bpmn:collaboration id="Collaboration_0x4jsi5">
+    <bpmn:participant id="Participant_0nhwa6b" name="Signing" processRef="mortgage-se-signing" />
+    <bpmn:textAnnotation id="TextAnnotation_16ia6g1">
+      <bpmn:text>We assume all is PADES in SE, but this needs to be verified</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1vd66k4" associationDirection="None" sourceRef="per-digital-document-package" targetRef="TextAnnotation_16ia6g1" />
+  </bpmn:collaboration>
+  <bpmn:process id="mortgage-se-signing" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:laneSet id="LaneSet_0aj4x2a">
+      <bpmn:lane id="Lane_1y565h5" name="System">
+        <bpmn:flowNodeRef>start-event</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>signing-methods</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>store-signed-document</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0lxhh2n</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>per-digital-document-package</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>per-signee</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0s6m51u</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_00w320y</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_0zppwas" name="Caseworker">
+        <bpmn:flowNodeRef>Gateway_1k5snsd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1esbspy</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>distribute-manual-documents</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0ymo975</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>upload-manual-document</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0wx7dpc</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_05x01qe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_09r2ivu</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1a83wo2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_0l982v2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1kyqkxc</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_19xtk5u</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:sequenceFlow id="Flow_0q1vus5" sourceRef="per-signee" targetRef="store-signed-document" />
+    <bpmn:sequenceFlow id="Flow_02jphgx" sourceRef="store-signed-document" targetRef="Event_0lxhh2n" />
+    <bpmn:sequenceFlow id="Flow_167ptk0" sourceRef="Event_1esbspy" targetRef="Gateway_1k5snsd" />
+    <bpmn:sequenceFlow id="Flow_032558r" sourceRef="distribute-manual-documents" targetRef="Gateway_1k5snsd" />
+    <bpmn:sequenceFlow id="Flow_0s5m5vx" sourceRef="Event_1a83wo2" targetRef="Gateway_1k5snsd" />
+    <bpmn:sequenceFlow id="Flow_10bstre" sourceRef="Event_1kyqkxc" targetRef="Event_1esbspy" />
+    <bpmn:sequenceFlow id="Flow_0glqft1" sourceRef="Gateway_0ymo975" targetRef="distribute-manual-documents" />
+    <bpmn:sequenceFlow id="Flow_1m38vha" sourceRef="Event_05x01qe" targetRef="Gateway_0ymo975" />
+    <bpmn:sequenceFlow id="manual" name="Manual" sourceRef="signing-methods" targetRef="Gateway_0s6m51u" />
+    <bpmn:sequenceFlow id="Flow_1khnauh" sourceRef="start-event" targetRef="signing-methods" />
+    <bpmn:sequenceFlow id="digital" name="Digital" sourceRef="signing-methods" targetRef="per-digital-document-package" />
+    <bpmn:sequenceFlow id="Flow_16sv59a" sourceRef="per-digital-document-package" targetRef="per-signee" />
+    <bpmn:sequenceFlow id="Flow_02lpd9k" sourceRef="Gateway_1k5snsd" targetRef="upload-manual-document" />
+    <bpmn:sequenceFlow id="Flow_04p4yq5" sourceRef="Event_19xtk5u" targetRef="Event_1a83wo2" />
+    <bpmn:sequenceFlow id="Flow_08fvsdr" sourceRef="upload-manual-document" targetRef="Gateway_09r2ivu" />
+    <bpmn:sequenceFlow id="Flow_13l1fkt" sourceRef="Gateway_09r2ivu" targetRef="Event_0wx7dpc" />
+    <bpmn:sequenceFlow id="Flow_1kzsd2g" sourceRef="Event_0wx7dpc" targetRef="Event_0l982v2" />
+    <bpmn:sequenceFlow id="Flow_03i8qf5" sourceRef="Gateway_09r2ivu" targetRef="Event_05x01qe" />
+    <bpmn:startEvent id="start-event">
+      <bpmn:outgoing>Flow_1khnauh</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:inclusiveGateway id="signing-methods" name="Signing methods?">
+      <bpmn:incoming>Flow_1khnauh</bpmn:incoming>
+      <bpmn:outgoing>digital</bpmn:outgoing>
+      <bpmn:outgoing>manual</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_1k5snsd">
+      <bpmn:incoming>Flow_032558r</bpmn:incoming>
+      <bpmn:incoming>Flow_0s5m5vx</bpmn:incoming>
+      <bpmn:incoming>Flow_167ptk0</bpmn:incoming>
+      <bpmn:outgoing>Flow_02lpd9k</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:intermediateThrowEvent id="Event_1esbspy" name="Send reminder">
+      <bpmn:incoming>Flow_10bstre</bpmn:incoming>
+      <bpmn:outgoing>Flow_167ptk0</bpmn:outgoing>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_03vdjcu" escalationRef="Escalation_09ck85f" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:userTask id="distribute-manual-documents" name="Distribute documents">
+      <bpmn:incoming>Flow_0glqft1</bpmn:incoming>
+      <bpmn:outgoing>Flow_032558r</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_0ymo975">
+      <bpmn:incoming>Flow_1m38vha</bpmn:incoming>
+      <bpmn:incoming>Flow_1au354b</bpmn:incoming>
+      <bpmn:outgoing>Flow_0glqft1</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="upload-manual-document" name="Upload document">
+      <bpmn:incoming>Flow_02lpd9k</bpmn:incoming>
+      <bpmn:outgoing>Flow_08fvsdr</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics />
+    </bpmn:userTask>
+    <bpmn:intermediateCatchEvent id="Event_0wx7dpc" name="Documents verified">
+      <bpmn:incoming>Flow_13l1fkt</bpmn:incoming>
+      <bpmn:outgoing>Flow_1kzsd2g</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0j8u94c" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="Event_05x01qe" name="Documents Not verified">
+      <bpmn:incoming>Flow_03i8qf5</bpmn:incoming>
+      <bpmn:outgoing>Flow_1m38vha</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1rtfmsf" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:eventBasedGateway id="Gateway_09r2ivu">
+      <bpmn:incoming>Flow_08fvsdr</bpmn:incoming>
+      <bpmn:outgoing>Flow_13l1fkt</bpmn:outgoing>
+      <bpmn:outgoing>Flow_03i8qf5</bpmn:outgoing>
+    </bpmn:eventBasedGateway>
+    <bpmn:intermediateThrowEvent id="Event_1a83wo2" name="Send reminder">
+      <bpmn:incoming>Flow_04p4yq5</bpmn:incoming>
+      <bpmn:outgoing>Flow_0s5m5vx</bpmn:outgoing>
+      <bpmn:escalationEventDefinition id="EscalationEventDefinition_1o86czr" escalationRef="Escalation_09ck85f" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:endEvent id="Event_0l982v2">
+      <bpmn:incoming>Flow_1kzsd2g</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="store-signed-document" name="Store signed documents">
+      <bpmn:documentation>
+## Store Signed Documents
+
+Stores the completed signed documents in the system.
+- Input: Digitally signed documents from signing provider
+- System: Retrieves and stores signed documents securely
+- Outcome: Signed documents stored and task completed
+          </bpmn:documentation>
+      <bpmn:incoming>Flow_0q1vus5</bpmn:incoming>
+      <bpmn:outgoing>Flow_02jphgx</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="true" />
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Event_0lxhh2n">
+      <bpmn:incoming>Flow_02jphgx</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="per-digital-document-package" name="Per digital document package">
+      <bpmn:incoming>digital</bpmn:incoming>
+      <bpmn:outgoing>Flow_16sv59a</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics />
+      <bpmn:startEvent id="Event_0flhrnk">
+        <bpmn:outgoing>Flow_0xhnpss</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="Flow_0xhnpss" sourceRef="Event_0flhrnk" targetRef="upload-document" />
+      <bpmn:serviceTask id="upload-document" name="Upload document">
+        <bpmn:incoming>Flow_0xhnpss</bpmn:incoming>
+        <bpmn:outgoing>Flow_1o2arhq</bpmn:outgoing>
+        <bpmn:dataOutputAssociation id="DataOutputAssociation_00o5q6b">
+          <bpmn:targetRef>DataStoreReference_0e9iwhm</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:multiInstanceLoopCharacteristics />
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="Flow_1o2arhq" sourceRef="upload-document" targetRef="create-signing-order" />
+      <bpmn:serviceTask id="create-signing-order" name="Create sign order">
+        <bpmn:incoming>Flow_1o2arhq</bpmn:incoming>
+        <bpmn:outgoing>Flow_0lw2bde</bpmn:outgoing>
+        <bpmn:dataOutputAssociation id="DataOutputAssociation_168tcu6">
+          <bpmn:targetRef>DataStoreReference_04j5szu</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="Event_0ltwo7b">
+        <bpmn:incoming>Flow_0lw2bde</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_0lw2bde" sourceRef="create-signing-order" targetRef="Event_0ltwo7b" />
+      <bpmn:dataStoreReference id="DataStoreReference_0e9iwhm" name="Signing provider" />
+      <bpmn:dataStoreReference id="DataStoreReference_04j5szu" name="Signing provider" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="per-signee" name="Per signee">
+      <bpmn:documentation>
+## Signee Processing
+
+Processes signing workflow for each individual signee.
+- Input: Digital document packages ready for signing
+- System: Multi-instance subprocess handling each signee separately
+- Outcome: All signees notified and signing processes managed
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_16sv59a</bpmn:incoming>
+      <bpmn:outgoing>Flow_0q1vus5</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics />
+      <bpmn:startEvent id="Event_10zjrh7">
+        <bpmn:documentation>
+## Signee Processing Start
+
+Initiates signing workflow for a single signee.
+- Input: Individual signee from multi-instance loop
+- System: Starts subprocess for single signee processing
+- Outcome: Triggers signing notification for the signee
+        </bpmn:documentation>
+        <bpmn:outgoing>Flow_1w73icm</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:subProcess id="per-sign-order" name="Per sign order">
+        <bpmn:documentation>
+## Individual Signing Tasks
+
+Processes each signing order for the current signee.
+- Input: Signing notification sent and signing orders ready
+- System: Multi-instance subprocess for each signing order
+- Outcome: All signing orders completed for this signee
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_19cz3t8</bpmn:incoming>
+        <bpmn:outgoing>Flow_0fwf43f</bpmn:outgoing>
+        <bpmn:multiInstanceLoopCharacteristics />
+        <bpmn:startEvent id="Event_0il8wju">
+          <bpmn:documentation>
+## Signing Task Start
+
+Initiates a single signing task for one document.
+- Input: Individual signing order from multi-instance loop
+- System: Starts subprocess for single document signing
+- Outcome: Triggers user signing task
+          </bpmn:documentation>
+          <bpmn:outgoing>Flow_181ob3e</bpmn:outgoing>
+        </bpmn:startEvent>
+        <bpmn:endEvent id="Event_0mwaw6t">
+          <bpmn:documentation>
+## Signing Task Expired
+
+Escalates when signing task times out without completion.
+- Input: Timer expiration from signing task boundary event
+- System: Escalation event indicating task timeout
+- Outcome: Signing task escalated for handling
+          </bpmn:documentation>
+          <bpmn:incoming>Flow_1jwurvs</bpmn:incoming>
+          <bpmn:escalationEventDefinition id="EscalationEventDefinition_1r8fo0g" escalationRef="Escalation_0kbvbpi" />
+        </bpmn:endEvent>
+        <bpmn:endEvent id="Event_1l3zyu4">
+          <bpmn:documentation>
+## Signing Task Complete
+
+Completes a single signing task successfully.
+- Input: Signed document storage confirmation
+- System: Confirms successful completion of signing task
+- Outcome: Signing task ends with document signed and stored
+          </bpmn:documentation>
+          <bpmn:incoming>sign-order-status-completed</bpmn:incoming>
+        </bpmn:endEvent>
+        <bpmn:eventBasedGateway id="Gateway_1rjjmf5">
+          <bpmn:incoming>Flow_0ui8k5y</bpmn:incoming>
+          <bpmn:outgoing>Flow_09x2m3r</bpmn:outgoing>
+          <bpmn:outgoing>Flow_1m0tjx1</bpmn:outgoing>
+          <bpmn:outgoing>Flow_1vrdlcc</bpmn:outgoing>
+        </bpmn:eventBasedGateway>
+        <bpmn:intermediateCatchEvent id="Event_0n90b7a" name="signing task expired">
+          <bpmn:incoming>Flow_1m0tjx1</bpmn:incoming>
+          <bpmn:outgoing>Flow_1jwurvs</bpmn:outgoing>
+          <bpmn:timerEventDefinition id="TimerEventDefinition_0ycpw4r">
+            <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P10D</bpmn:timeDuration>
+          </bpmn:timerEventDefinition>
+        </bpmn:intermediateCatchEvent>
+        <bpmn:intermediateCatchEvent id="Event_18v8q1a" name="Task completed">
+          <bpmn:incoming>Flow_09x2m3r</bpmn:incoming>
+          <bpmn:outgoing>Flow_1q5xp3d</bpmn:outgoing>
+          <bpmn:messageEventDefinition id="MessageEventDefinition_0ym3kc4" messageRef="Message_11d144z" />
+        </bpmn:intermediateCatchEvent>
+        <bpmn:intermediateCatchEvent id="Event_1l27ad3" name="Manually verify">
+          <bpmn:incoming>Flow_1vrdlcc</bpmn:incoming>
+          <bpmn:outgoing>Flow_10xlzxz</bpmn:outgoing>
+          <bpmn:messageEventDefinition id="MessageEventDefinition_1bsw6he" messageRef="Message_0yff76s" />
+        </bpmn:intermediateCatchEvent>
+        <bpmn:exclusiveGateway id="Gateway_02hiygq">
+          <bpmn:incoming>Flow_1q5xp3d</bpmn:incoming>
+          <bpmn:incoming>Flow_10xlzxz</bpmn:incoming>
+          <bpmn:outgoing>Flow_159nz8n</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+        <bpmn:exclusiveGateway id="sign-order-status" name="Sign order status" default="Flow_02m1j99">
+          <bpmn:incoming>Flow_159nz8n</bpmn:incoming>
+          <bpmn:outgoing>sign-order-status-completed</bpmn:outgoing>
+          <bpmn:outgoing>Flow_02m1j99</bpmn:outgoing>
+          <bpmn:outgoing>sign-order-status-rejected</bpmn:outgoing>
+          <bpmn:outgoing>sign-order-status-other</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+        <bpmn:exclusiveGateway id="Gateway_0c32cgf">
+          <bpmn:incoming>Flow_181ob3e</bpmn:incoming>
+          <bpmn:incoming>Flow_02m1j99</bpmn:incoming>
+          <bpmn:outgoing>Flow_0ui8k5y</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+        <bpmn:endEvent id="Event_0yybjcv">
+          <bpmn:incoming>sign-order-status-rejected</bpmn:incoming>
+          <bpmn:escalationEventDefinition id="EscalationEventDefinition_0uiowgx" escalationRef="Escalation_196a7bv" />
+        </bpmn:endEvent>
+        <bpmn:endEvent id="Event_18y6a2e">
+          <bpmn:incoming>sign-order-status-other</bpmn:incoming>
+          <bpmn:escalationEventDefinition id="EscalationEventDefinition_0qo5hyq" escalationRef="Escalation_0kbvbpi" />
+        </bpmn:endEvent>
+        <bpmn:sequenceFlow id="Flow_181ob3e" sourceRef="Event_0il8wju" targetRef="Gateway_0c32cgf" />
+        <bpmn:sequenceFlow id="Flow_1jwurvs" sourceRef="Event_0n90b7a" targetRef="Event_0mwaw6t" />
+        <bpmn:sequenceFlow id="sign-order-status-completed" name="Completed" sourceRef="sign-order-status" targetRef="Event_1l3zyu4" />
+        <bpmn:sequenceFlow id="Flow_0ui8k5y" sourceRef="Gateway_0c32cgf" targetRef="Gateway_1rjjmf5" />
+        <bpmn:sequenceFlow id="Flow_09x2m3r" sourceRef="Gateway_1rjjmf5" targetRef="Event_18v8q1a" />
+        <bpmn:sequenceFlow id="Flow_1m0tjx1" sourceRef="Gateway_1rjjmf5" targetRef="Event_0n90b7a" />
+        <bpmn:sequenceFlow id="Flow_1vrdlcc" sourceRef="Gateway_1rjjmf5" targetRef="Event_1l27ad3" />
+        <bpmn:sequenceFlow id="Flow_1q5xp3d" sourceRef="Event_18v8q1a" targetRef="Gateway_02hiygq" />
+        <bpmn:sequenceFlow id="Flow_10xlzxz" sourceRef="Event_1l27ad3" targetRef="Gateway_02hiygq" />
+        <bpmn:sequenceFlow id="Flow_159nz8n" sourceRef="Gateway_02hiygq" targetRef="sign-order-status" />
+        <bpmn:sequenceFlow id="Flow_02m1j99" name="Not completed" sourceRef="sign-order-status" targetRef="Gateway_0c32cgf" />
+        <bpmn:sequenceFlow id="sign-order-status-rejected" name="Rejected&#10;" sourceRef="sign-order-status" targetRef="Event_0yybjcv" />
+        <bpmn:sequenceFlow id="sign-order-status-other" name="Other" sourceRef="sign-order-status" targetRef="Event_18y6a2e" />
+      </bpmn:subProcess>
+      <bpmn:exclusiveGateway id="Gateway_1ka0sjz">
+        <bpmn:documentation>
+## Reminder Trigger Gateway
+
+Merges automatic and manual reminder triggers.
+- Input: Either automatic timer or manual trigger for reminder
+- Gateway: Merges reminder trigger sources
+- Outcome: Proceeds to send reminder email
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_11n2k1i</bpmn:incoming>
+        <bpmn:incoming>Flow_0w4g8ml</bpmn:incoming>
+        <bpmn:outgoing>Flow_1wxfoca</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:sendTask id="send-signing-reminder" name="Send signing reminder">
+        <bpmn:documentation>
+## Send Signing Reminder
+
+Sends reminder email to signee about pending documents.
+- Input: Reminder trigger from automatic timer or manual request
+- System: Sends reminder email with signing links
+- Outcome: Signee reminded about pending signing tasks
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_1wxfoca</bpmn:incoming>
+        <bpmn:outgoing>Flow_10dvlpe</bpmn:outgoing>
+      </bpmn:sendTask>
+      <bpmn:endEvent id="Event_0vpwxbd">
+        <bpmn:documentation>
+## Reminder Sent Complete
+
+Completes the reminder sending process.
+- Input: Reminder email sent confirmation
+- System: Confirms reminder delivery
+- Outcome: Reminder process ends, signing tasks continue
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_10dvlpe</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:endEvent id="Event_0s5z31a">
+        <bpmn:documentation>
+## Signing Expired
+
+Escalates when entire signing process times out.
+- Input: Timer expiration from signing tasks boundary event
+- System: Escalation event indicating signing deadline exceeded
+- Outcome: Signing process escalated for manual intervention
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_0s38y1g</bpmn:incoming>
+        <bpmn:escalationEventDefinition id="EscalationEventDefinition_1ysmca1" escalationRef="Escalation_2pcn2ga" />
+      </bpmn:endEvent>
+      <bpmn:endEvent id="Event_0s3kzl1">
+        <bpmn:documentation>
+## Signee Processing Complete
+
+Completes signing workflow for a single signee.
+- Input: All signing tasks completed for this signee
+- System: Confirms signee has completed all required signatures
+- Outcome: Signee processing ends successfully
+        </bpmn:documentation>
+        <bpmn:incoming>Flow_0fwf43f</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:boundaryEvent id="Event_1objfb9" attachedToRef="per-sign-order">
+        <bpmn:outgoing>Flow_0s38y1g</bpmn:outgoing>
+        <bpmn:timerEventDefinition id="TimerEventDefinition_19y4yqm">
+          <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P5D</bpmn:timeDuration>
+        </bpmn:timerEventDefinition>
+      </bpmn:boundaryEvent>
+      <bpmn:boundaryEvent id="Event_0myd38p" name="manually trigger reminder" cancelActivity="false" attachedToRef="per-sign-order">
+        <bpmn:outgoing>Flow_0w4g8ml</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="MessageEventDefinition_1ho0rly" />
+      </bpmn:boundaryEvent>
+      <bpmn:boundaryEvent id="Event_18a063g" name="automatically trigger reminder" cancelActivity="false" attachedToRef="per-sign-order">
+        <bpmn:outgoing>Flow_11n2k1i</bpmn:outgoing>
+        <bpmn:timerEventDefinition id="TimerEventDefinition_0vi3hkf">
+          <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1H</bpmn:timeDuration>
+        </bpmn:timerEventDefinition>
+      </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="Flow_1w73icm" sourceRef="Event_10zjrh7" targetRef="Event_07y9rhs" />
+      <bpmn:sequenceFlow id="Flow_0fwf43f" sourceRef="per-sign-order" targetRef="Event_0s3kzl1" />
+      <bpmn:sequenceFlow id="Flow_11n2k1i" sourceRef="Event_18a063g" targetRef="Gateway_1ka0sjz" />
+      <bpmn:sequenceFlow id="Flow_0w4g8ml" sourceRef="Event_0myd38p" targetRef="Gateway_1ka0sjz" />
+      <bpmn:sequenceFlow id="Flow_1wxfoca" sourceRef="Gateway_1ka0sjz" targetRef="send-signing-reminder" />
+      <bpmn:sequenceFlow id="Flow_10dvlpe" sourceRef="send-signing-reminder" targetRef="Event_0vpwxbd" />
+      <bpmn:sequenceFlow id="Flow_0s38y1g" sourceRef="Event_1objfb9" targetRef="Event_0s5z31a" />
+      <bpmn:sequenceFlow id="Flow_19cz3t8" sourceRef="Event_07y9rhs" targetRef="per-sign-order" />
+      <bpmn:intermediateThrowEvent id="Event_07y9rhs" name="Notify sign">
+        <bpmn:incoming>Flow_1w73icm</bpmn:incoming>
+        <bpmn:outgoing>Flow_19cz3t8</bpmn:outgoing>
+        <bpmn:escalationEventDefinition id="EscalationEventDefinition_02dnnhw" escalationRef="Escalation_0lelnn0" />
+      </bpmn:intermediateThrowEvent>
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="Event_1kyqkxc" name="Manual reminder" attachedToRef="upload-manual-document">
+      <bpmn:outgoing>Flow_10bstre</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1q7p11o" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Event_19xtk5u" name="Send reminder" attachedToRef="upload-manual-document">
+      <bpmn:outgoing>Flow_04p4yq5</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1umx3xu" />
+    </bpmn:boundaryEvent>
+    <bpmn:exclusiveGateway id="Gateway_0s6m51u">
+      <bpmn:incoming>manual</bpmn:incoming>
+      <bpmn:incoming>Flow_1xzq7z3</bpmn:incoming>
+      <bpmn:outgoing>Flow_1au354b</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_1au354b" sourceRef="Gateway_0s6m51u" targetRef="Gateway_0ymo975" />
+    <bpmn:sequenceFlow id="Flow_1xzq7z3" sourceRef="Event_00w320y" targetRef="Gateway_0s6m51u" />
+    <bpmn:boundaryEvent id="Event_00w320y" name="Change to manual" attachedToRef="per-signee">
+      <bpmn:outgoing>Flow_1xzq7z3</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1acqez8" />
+    </bpmn:boundaryEvent>
+  </bpmn:process>
+  <bpmn:message id="Message_11d144z" name="sign-documents" />
+  <bpmn:message id="Message_0yff76s" name="manually-verify" />
+  <bpmn:escalation id="Escalation_196a7bv" name="signing-task-expired" escalationCode="signing-task-expired" />
+  <bpmn:escalation id="Escalation_09ck85f" name="send-reminder" escalationCode="send-reminder" />
+  <bpmn:escalation id="Escalation_0lelnn0" name="notify-sign" escalationCode="notify-sign" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0x4jsi5">
+      <bpmndi:BPMNShape id="Participant_0nhwa6b_di" bpmnElement="Participant_0nhwa6b" isHorizontal="true">
+        <dc:Bounds x="129" y="80" width="3350" height="1240" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_0zppwas_di" bpmnElement="Lane_0zppwas" isHorizontal="true">
+        <dc:Bounds x="159" y="870" width="3320" height="450" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1y565h5_di" bpmnElement="Lane_1y565h5" isHorizontal="true">
+        <dc:Bounds x="159" y="80" width="3320" height="790" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start-event">
+        <dc:Bounds x="219" y="412" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_12t2lul_di" bpmnElement="signing-methods">
+        <dc:Bounds x="375" y="405" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="356" y="381" width="89" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1k5snsd_di" bpmnElement="Gateway_1k5snsd" isMarkerVisible="true">
+        <dc:Bounds x="685" y="1045" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0vtvnlt" bpmnElement="Event_1esbspy">
+        <dc:Bounds x="692" y="922" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="603" y="933" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0r8ea0h_di" bpmnElement="distribute-manual-documents">
+        <dc:Bounds x="490" y="1030" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0ymo975_di" bpmnElement="Gateway_0ymo975" isMarkerVisible="true">
+        <dc:Bounds x="375" y="1045" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1jif6wt_di" bpmnElement="upload-manual-document">
+        <dc:Bounds x="850" y="1030" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0wx7dpc_di" bpmnElement="Event_0wx7dpc">
+        <dc:Bounds x="1132" y="1002" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1123" y="1045" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_05x01qe_di" bpmnElement="Event_05x01qe">
+        <dc:Bounds x="1132" y="1092" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1172" y="1096" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_185xpto_di" bpmnElement="Gateway_09r2ivu">
+        <dc:Bounds x="1025" y="1045" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_10x1ctb_di" bpmnElement="Event_1a83wo2">
+        <dc:Bounds x="692" y="1162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="673" y="1208" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0l982v2_di" bpmnElement="Event_0l982v2">
+        <dc:Bounds x="1272" y="1002" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_14bkxug" bpmnElement="store-signed-document">
+        <dc:Bounds x="3230" y="357" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0lxhh2n_di" bpmnElement="Event_0lxhh2n">
+        <dc:Bounds x="3422" y="379" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0s6m51u_di" bpmnElement="Gateway_0s6m51u" isMarkerVisible="true">
+        <dc:Bounds x="375" y="785" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_11vyq8d_di" bpmnElement="per-digital-document-package" isExpanded="true">
+        <dc:Bounds x="550" y="330" width="610" height="303" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0flhrnk_di" bpmnElement="Event_0flhrnk">
+        <dc:Bounds x="590" y="412" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0lqgrlf_di" bpmnElement="upload-document">
+        <dc:Bounds x="720" y="390" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_17snrye_di" bpmnElement="create-signing-order">
+        <dc:Bounds x="880" y="390" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0ltwo7b_di" bpmnElement="Event_0ltwo7b">
+        <dc:Bounds x="1072" y="412" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_0e9iwhm_di" bpmnElement="DataStoreReference_0e9iwhm">
+        <dc:Bounds x="745" y="528" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="730" y="585" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataStoreReference_04j5szu_di" bpmnElement="DataStoreReference_04j5szu">
+        <dc:Bounds x="905" y="528" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="890" y="585" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0xhnpss_di" bpmnElement="Flow_0xhnpss">
+        <di:waypoint x="626" y="430" />
+        <di:waypoint x="720" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1o2arhq_di" bpmnElement="Flow_1o2arhq">
+        <di:waypoint x="820" y="430" />
+        <di:waypoint x="880" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0lw2bde_di" bpmnElement="Flow_0lw2bde">
+        <di:waypoint x="980" y="430" />
+        <di:waypoint x="1072" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_191xuab" bpmnElement="per-signee" isExpanded="true">
+        <dc:Bounds x="1280" y="140" width="1840" height="670" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0foeiau" bpmnElement="Event_10zjrh7">
+        <dc:Bounds x="1320" y="409" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0oo2pz9" bpmnElement="per-sign-order" isExpanded="true">
+        <dc:Bounds x="1570" y="210" width="1022" height="430" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1921wqs" bpmnElement="Event_0il8wju">
+        <dc:Bounds x="1612" y="412" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1l4qdkt" bpmnElement="Event_0mwaw6t" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="1974" y="582" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_12ezs5s" bpmnElement="Event_1l3zyu4">
+        <dc:Bounds x="2422" y="412" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0rtuukp" bpmnElement="Gateway_1rjjmf5">
+        <dc:Bounds x="1867" y="405" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_196f7io" bpmnElement="Event_0n90b7a">
+        <dc:Bounds x="1874" y="582" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1812" y="584" width="59" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_18z3e9g" bpmnElement="Event_18v8q1a">
+        <dc:Bounds x="2012" y="412" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1993" y="455" width="77" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_12fwey4" bpmnElement="Event_1l27ad3">
+        <dc:Bounds x="2012" y="315" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1994" y="358" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1de0vs6" bpmnElement="Gateway_02hiygq" isMarkerVisible="true">
+        <dc:Bounds x="2135" y="405" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_16cudvk" bpmnElement="sign-order-status" isMarkerVisible="true">
+        <dc:Bounds x="2265" y="405" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2198" y="383" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_01ov25k" bpmnElement="Gateway_0c32cgf" isMarkerVisible="true">
+        <dc:Bounds x="1747" y="405" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0p38e19" bpmnElement="Event_0yybjcv" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="2422" y="582" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_12h45j5" bpmnElement="Event_18y6a2e" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="2422" y="502" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_1axrq53" bpmnElement="Flow_181ob3e">
+        <di:waypoint x="1648" y="430" />
+        <di:waypoint x="1747" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_10hy1fz" bpmnElement="Flow_1jwurvs">
+        <di:waypoint x="1910" y="600" />
+        <di:waypoint x="1974" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_1f6ju18" bpmnElement="sign-order-status-completed">
+        <di:waypoint x="2315" y="430" />
+        <di:waypoint x="2422" y="430" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2325" y="413" width="54" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_18w9zn4" bpmnElement="Flow_0ui8k5y">
+        <di:waypoint x="1797" y="430" />
+        <di:waypoint x="1867" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_1pk79sj" bpmnElement="Flow_09x2m3r">
+        <di:waypoint x="1917" y="430" />
+        <di:waypoint x="2012" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0lk65pn" bpmnElement="Flow_1m0tjx1">
+        <di:waypoint x="1892" y="455" />
+        <di:waypoint x="1892" y="582" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_1bcdwoz" bpmnElement="Flow_1vrdlcc">
+        <di:waypoint x="1892" y="405" />
+        <di:waypoint x="1892" y="333" />
+        <di:waypoint x="2012" y="333" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_10w6jov" bpmnElement="Flow_1q5xp3d">
+        <di:waypoint x="2048" y="430" />
+        <di:waypoint x="2135" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_17wiqol" bpmnElement="Flow_10xlzxz">
+        <di:waypoint x="2048" y="333" />
+        <di:waypoint x="2160" y="333" />
+        <di:waypoint x="2160" y="405" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_09ds1js" bpmnElement="Flow_159nz8n">
+        <di:waypoint x="2185" y="430" />
+        <di:waypoint x="2265" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0tjy2iw" bpmnElement="Flow_02m1j99">
+        <di:waypoint x="2290" y="405" />
+        <di:waypoint x="2290" y="280" />
+        <di:waypoint x="1772" y="280" />
+        <di:waypoint x="1772" y="405" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1996" y="262" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0pcclz5" bpmnElement="sign-order-status-rejected">
+        <di:waypoint x="2290" y="455" />
+        <di:waypoint x="2290" y="600" />
+        <di:waypoint x="2422" y="600" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2326" y="578" width="44" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0xq4n1e" bpmnElement="sign-order-status-other">
+        <di:waypoint x="2290" y="455" />
+        <di:waypoint x="2290" y="520" />
+        <di:waypoint x="2422" y="520" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2334" y="503" width="28" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_1sh4igo" bpmnElement="Gateway_1ka0sjz" isMarkerVisible="true">
+        <dc:Bounds x="2685" y="685" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0dsntx7" bpmnElement="send-signing-reminder">
+        <dc:Bounds x="2820" y="670" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0xcrybe" bpmnElement="Event_0vpwxbd">
+        <dc:Bounds x="3012" y="692" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1ne2eh6" bpmnElement="Event_0s5z31a" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="1642" y="692" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_02uk5pv" bpmnElement="Event_0s3kzl1">
+        <dc:Bounds x="3012" y="409" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0kt34kh_di" bpmnElement="Event_07y9rhs">
+        <dc:Bounds x="1432" y="409" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1424" y="452" width="52" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1q3dq93" bpmnElement="Event_18a063g">
+        <dc:Bounds x="2574" y="622" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2511" y="656" width="78" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0j6ur8v" bpmnElement="Event_0myd38p">
+        <dc:Bounds x="2574" y="552" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2491" y="563" width="79" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1jexz2d" bpmnElement="Event_1objfb9">
+        <dc:Bounds x="1552" y="622" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1201" y="570" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_1hx8nyo" bpmnElement="Flow_1w73icm">
+        <di:waypoint x="1356" y="427" />
+        <di:waypoint x="1432" y="427" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_065t6hx" bpmnElement="Flow_0fwf43f">
+        <di:waypoint x="2592" y="427" />
+        <di:waypoint x="3012" y="427" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0fzwrqu" bpmnElement="Flow_11n2k1i">
+        <di:waypoint x="2592" y="658" />
+        <di:waypoint x="2592" y="710" />
+        <di:waypoint x="2685" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_07ucvb9" bpmnElement="Flow_0w4g8ml">
+        <di:waypoint x="2610" y="570" />
+        <di:waypoint x="2710" y="570" />
+        <di:waypoint x="2710" y="685" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0hl0axz" bpmnElement="Flow_1wxfoca">
+        <di:waypoint x="2735" y="710" />
+        <di:waypoint x="2820" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_106yuj9" bpmnElement="Flow_10dvlpe">
+        <di:waypoint x="2920" y="710" />
+        <di:waypoint x="3012" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_1y13zhx" bpmnElement="Flow_0s38y1g">
+        <di:waypoint x="1570" y="658" />
+        <di:waypoint x="1570" y="710" />
+        <di:waypoint x="1642" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_19cz3t8_di" bpmnElement="Flow_19cz3t8">
+        <di:waypoint x="1468" y="427" />
+        <di:waypoint x="1570" y="427" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_13ru0gr_di" bpmnElement="Event_19xtk5u">
+        <dc:Bounds x="832" y="1092" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="873" y="1133" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0amyqa0_di" bpmnElement="Event_1kyqkxc">
+        <dc:Bounds x="832" y="1012" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="748" y="1003" width="83" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ogkwwh_di" bpmnElement="Event_00w320y">
+        <dc:Bounds x="1262" y="792" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1236" y="835" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0q1vus5_di" bpmnElement="Flow_0q1vus5">
+        <di:waypoint x="3120" y="397" />
+        <di:waypoint x="3230" y="397" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_02jphgx_di" bpmnElement="Flow_02jphgx">
+        <di:waypoint x="3330" y="397" />
+        <di:waypoint x="3422" y="397" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_167ptk0_di" bpmnElement="Flow_167ptk0">
+        <di:waypoint x="710" y="958" />
+        <di:waypoint x="710" y="1045" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_032558r_di" bpmnElement="Flow_032558r">
+        <di:waypoint x="590" y="1070" />
+        <di:waypoint x="685" y="1070" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0s5m5vx_di" bpmnElement="Flow_0s5m5vx">
+        <di:waypoint x="710" y="1162" />
+        <di:waypoint x="710" y="1095" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10bstre_di" bpmnElement="Flow_10bstre">
+        <di:waypoint x="850" y="1012" />
+        <di:waypoint x="850" y="940" />
+        <di:waypoint x="728" y="940" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0glqft1_di" bpmnElement="Flow_0glqft1">
+        <di:waypoint x="425" y="1070" />
+        <di:waypoint x="490" y="1070" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1m38vha_di" bpmnElement="Flow_1m38vha">
+        <di:waypoint x="1150" y="1128" />
+        <di:waypoint x="1150" y="1260" />
+        <di:waypoint x="400" y="1260" />
+        <di:waypoint x="400" y="1095" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1s9wy43_di" bpmnElement="manual">
+        <di:waypoint x="400" y="455" />
+        <di:waypoint x="400" y="785" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="411" y="487" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1khnauh_di" bpmnElement="Flow_1khnauh">
+        <di:waypoint x="255" y="430" />
+        <di:waypoint x="375" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0wl4lip_di" bpmnElement="digital">
+        <di:waypoint x="425" y="430" />
+        <di:waypoint x="550" y="430" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="472" y="412" width="31" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16sv59a_di" bpmnElement="Flow_16sv59a">
+        <di:waypoint x="1160" y="430" />
+        <di:waypoint x="1280" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_02lpd9k_di" bpmnElement="Flow_02lpd9k">
+        <di:waypoint x="735" y="1070" />
+        <di:waypoint x="850" y="1070" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_04p4yq5_di" bpmnElement="Flow_04p4yq5">
+        <di:waypoint x="850" y="1128" />
+        <di:waypoint x="850" y="1180" />
+        <di:waypoint x="728" y="1180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_08fvsdr_di" bpmnElement="Flow_08fvsdr">
+        <di:waypoint x="950" y="1070" />
+        <di:waypoint x="1025" y="1070" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13l1fkt_di" bpmnElement="Flow_13l1fkt">
+        <di:waypoint x="1050" y="1045" />
+        <di:waypoint x="1050" y="1020" />
+        <di:waypoint x="1132" y="1020" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1kzsd2g_di" bpmnElement="Flow_1kzsd2g">
+        <di:waypoint x="1168" y="1020" />
+        <di:waypoint x="1272" y="1020" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03i8qf5_di" bpmnElement="Flow_03i8qf5">
+        <di:waypoint x="1050" y="1095" />
+        <di:waypoint x="1050" y="1110" />
+        <di:waypoint x="1132" y="1110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1au354b_di" bpmnElement="Flow_1au354b">
+        <di:waypoint x="400" y="835" />
+        <di:waypoint x="400" y="1045" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1xzq7z3_di" bpmnElement="Flow_1xzq7z3">
+        <di:waypoint x="1262" y="810" />
+        <di:waypoint x="425" y="810" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_16ia6g1_di" bpmnElement="TextAnnotation_16ia6g1">
+        <dc:Bounds x="840" y="140" width="100" height="84" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_00o5q6b_di" bpmnElement="DataOutputAssociation_00o5q6b">
+        <di:waypoint x="770" y="470" />
+        <di:waypoint x="770" y="528" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataOutputAssociation_168tcu6_di" bpmnElement="DataOutputAssociation_168tcu6">
+        <di:waypoint x="930" y="470" />
+        <di:waypoint x="930" y="528" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1vd66k4_di" bpmnElement="Association_1vd66k4">
+        <di:waypoint x="868" y="330" />
+        <di:waypoint x="880" y="224" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

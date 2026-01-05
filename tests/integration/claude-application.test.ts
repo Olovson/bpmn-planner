@@ -31,28 +31,39 @@ const appEnv = process.env.VITE_APP_ENV || import.meta.env.VITE_APP_ENV || 'prod
 const useLlmEnv = process.env.VITE_USE_LLM || import.meta.env.VITE_USE_LLM;
 const anthropicKey = process.env.VITE_ANTHROPIC_API_KEY || import.meta.env.VITE_ANTHROPIC_API_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY måste vara satta i .env eller som miljövariabler');
-}
+// Extra skydd: kör bara detta test när vi uttryckligen tillåter riktiga Claude-anrop i integrationstester.
+// Använd t.ex.:
+//   CLAUDE_INTEGRATION_ENABLE=true npx vitest tests/integration/claude-application.test.ts
+const CLAUDE_INTEGRATION_ENABLED = process.env.CLAUDE_INTEGRATION_ENABLE === 'true';
 
-// SAFETY CHECK: Ensure tests use the test Supabase project
-const KNOWN_TEST_SUPABASE_URL = 'https://jxtlfdanzclcmtsgsrdd.supabase.co';
-if (appEnv === 'test' && !supabaseUrl.includes('jxtlfdanzclcmtsgsrdd')) {
-  throw new Error(
-    `SAFETY CHECK FAILED: VITE_APP_ENV=test but VITE_SUPABASE_URL does not point to test project!\n` +
-    `  Expected: ${KNOWN_TEST_SUPABASE_URL}\n` +
-    `  Got: ${supabaseUrl}\n` +
-    `  Check your .env.test file.`
-  );
-}
+if (!CLAUDE_INTEGRATION_ENABLED) {
+  // När flaggan inte är satt markerar vi testet som skippat istället för att kasta fel.
+  describe.skip('Claude-generering för application-processen (skippad – CLAUDE_INTEGRATION_ENABLE != true)', () => {
+    it('skipped', () => {});
+  });
+} else {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY måste vara satta i .env eller som miljövariabler');
+  }
 
-if (!useLlmEnv || useLlmEnv !== 'true') {
-  throw new Error('VITE_USE_LLM måste vara "true"');
-}
+  // SAFETY CHECK: Ensure tests use the test Supabase project
+  const KNOWN_TEST_SUPABASE_URL = 'https://jxtlfdanzclcmtsgsrdd.supabase.co';
+  if (appEnv === 'test' && !supabaseUrl.includes('jxtlfdanzclcmtsgsrdd')) {
+    throw new Error(
+      `SAFETY CHECK FAILED: VITE_APP_ENV=test but VITE_SUPABASE_URL does not point to test project!\n` +
+      `  Expected: ${KNOWN_TEST_SUPABASE_URL}\n` +
+      `  Got: ${supabaseUrl}\n` +
+      `  Check your .env.test file.`
+    );
+  }
 
-if (!anthropicKey) {
-  throw new Error('VITE_ANTHROPIC_API_KEY måste vara satt i .env eller som miljövariabel');
-}
+  if (!useLlmEnv || useLlmEnv !== 'true') {
+    throw new Error('VITE_USE_LLM måste vara "true"');
+  }
+
+  if (!anthropicKey) {
+    throw new Error('VITE_ANTHROPIC_API_KEY måste vara satt i .env eller som miljövariabel');
+  }
 
 // Skapa Supabase-klient
 const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
@@ -122,4 +133,3 @@ describe('Claude-generering för application-processen', () => {
     console.log(`   Application-dokumentation: ${applicationDocs.length} fil(er)`);
   }, 300000); // 5 minuter timeout för LLM-generering
 });
-

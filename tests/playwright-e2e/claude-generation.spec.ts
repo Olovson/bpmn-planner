@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+// Säkerhet: detta test får bara köras när vi explicit tillåter riktiga Claude-anrop.
+// Styr via env-flagga för att undvika oavsiktliga LLM-kostnader i CI:
+//   CLAUDE_E2E_ENABLE=true npx playwright test tests/playwright-e2e/claude-generation.spec.ts
+const CLAUDE_E2E_ENABLED = process.env.CLAUDE_E2E_ENABLE === 'true';
+
+test.skip(!CLAUDE_E2E_ENABLED, 'Claude E2E-test är inaktiverat (sätt CLAUDE_E2E_ENABLE=true för att köra).');
+
 /**
  * Test Claude-generering för application-processen
  * 
@@ -260,4 +267,3 @@ test.describe('Claude-generering för Application', () => {
     console.log('✅ Template-version-väljaren är korrekt borttagen');
   });
 });
-

@@ -13,12 +13,40 @@ import { getLlmClient, getDefaultLlmProvider } from './llmClients';
 import type { LlmProvider } from './llmClientAbstraction';
 import { LocalLlmUnavailableError } from './llmClients/localLlmClient';
 
+// Stöd både Vite (import.meta.env) och Node/skript (process.env)
+const VITE_ENV: Record<string, any> =
+  typeof import.meta !== 'undefined' && (import.meta as any).env
+    ? ((import.meta as any).env as Record<string, any>)
+    : {};
+
+const NODE_ENV: Record<string, any> =
+  typeof process !== 'undefined' && (process as any).env
+    ? ((process as any).env as Record<string, any>)
+    : {};
+
 const USE_LLM =
-  String(import.meta.env.VITE_USE_LLM ?? '').trim().toLowerCase() === 'true';
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-const MODE = import.meta.env.MODE;
+  String(
+    VITE_ENV.VITE_USE_LLM ?? NODE_ENV.VITE_USE_LLM ?? '',
+  )
+    .trim()
+    .toLowerCase() === 'true';
+
+const API_KEY: string | undefined =
+  (VITE_ENV.VITE_ANTHROPIC_API_KEY as string | undefined) ??
+  (NODE_ENV.VITE_ANTHROPIC_API_KEY as string | undefined);
+
+const MODE: string =
+  (VITE_ENV.MODE as string | undefined) ??
+  (NODE_ENV.MODE as string | undefined) ??
+  (NODE_ENV.NODE_ENV as string | undefined) ??
+  'development';
+
 const ALLOW_LLM_IN_TESTS =
-  String(import.meta.env.VITE_ALLOW_LLM_IN_TESTS ?? '')
+  String(
+    VITE_ENV.VITE_ALLOW_LLM_IN_TESTS ??
+      NODE_ENV.VITE_ALLOW_LLM_IN_TESTS ??
+      '',
+  )
     .trim()
     .toLowerCase() === 'true';
 

@@ -195,6 +195,8 @@ export async function generateBpmnMapFromFiles(): Promise<BpmnMap> {
           called_element: (ca as any).calledElement || null,
           subprocess_bpmn_file: subprocessBpmnFile,
           needs_manual_review: needsManualReview,
+          match_status: matchStatus,
+          source: 'heuristic',
         });
       }
 
@@ -211,9 +213,15 @@ export async function generateBpmnMapFromFiles(): Promise<BpmnMap> {
       // Processera varje process i filen
       for (const proc of processesInFile) {
         const callActivities: BpmnMapCallActivity[] = [];
-        const callActivitiesFromParse = parseResult.callActivities || [];
+        // Hitta motsvarande ProcessDefinition för denna process så vi får rätt callActivities
+        const processId =
+          proc.processId || proc.id || fileName.replace('.bpmn', '');
+        const processDef = processDefs.find(
+          (p) => p.fileName === fileName && p.id === processId,
+        );
+        const callActivitiesForProcess = processDef?.callActivities ?? [];
 
-        for (const ca of callActivitiesFromParse) {
+        for (const ca of callActivitiesForProcess) {
           totalCallActivities++;
           
           const match = matchCallActivityToProcesses(
@@ -234,18 +242,20 @@ export async function generateBpmnMapFromFiles(): Promise<BpmnMap> {
           callActivities.push({
             bpmn_id: ca.id,
             name: ca.name || ca.id,
-            called_element: (ca as any).calledElement || null,
+            called_element: ca.calledElement || null,
             subprocess_bpmn_file: subprocessBpmnFile,
             needs_manual_review: needsManualReview,
+            match_status: matchStatus,
+            source: 'heuristic',
           });
         }
 
         processes.push({
-          id: proc.processId || proc.id || fileName.replace('.bpmn', ''),
-          alias: proc.name || proc.processId || fileName.replace('.bpmn', ''),
+          id: processId,
+          alias: proc.name || processId,
           bpmn_file: fileName,
-          process_id: proc.processId || proc.id || fileName.replace('.bpmn', ''),
-          description: proc.name || proc.processId || fileName.replace('.bpmn', ''),
+          process_id: processId,
+          description: proc.name || processId,
           call_activities: callActivities,
         });
       }

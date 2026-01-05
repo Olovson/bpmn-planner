@@ -20,9 +20,19 @@ try {
 
 const API_KEY = process.env.VITE_ANTHROPIC_API_KEY || import.meta.env.VITE_ANTHROPIC_API_KEY;
 
-if (!API_KEY) {
-  throw new Error('VITE_ANTHROPIC_API_KEY måste vara satt');
-}
+// Extra skydd: kör bara detta test när vi uttryckligen tillåter riktiga Claude-anrop i integrationstester.
+// Använd t.ex.:
+//   CLAUDE_INTEGRATION_ENABLE=true npx vitest tests/integration/claude-application-object-info.test.ts
+const CLAUDE_INTEGRATION_ENABLED = process.env.CLAUDE_INTEGRATION_ENABLE === 'true';
+
+if (!CLAUDE_INTEGRATION_ENABLED) {
+  describe.skip('Claude API - Application -> Object -> Object information (skippad – CLAUDE_INTEGRATION_ENABLE != true)', () => {
+    it('skipped', () => {});
+  });
+} else {
+  if (!API_KEY) {
+    throw new Error('VITE_ANTHROPIC_API_KEY måste vara satt');
+  }
 
 // Robust JSON parsing (samma som i appen)
 function parseJsonResponse(text: string): any {
@@ -217,4 +227,3 @@ describe('Claude API - Application -> Object -> Object information', () => {
     console.log('📝 Summary (första 200 tecken):', parsed.summary.substring(0, 200));
   }, 120000); // 2 minuter timeout
 });
-

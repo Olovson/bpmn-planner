@@ -1,19 +1,37 @@
+export type BpmnMatchStatus = 'matched' | 'lowConfidence' | 'ambiguous' | 'unresolved';
+
 export interface BpmnMapCallActivity {
   bpmn_id: string;
   name?: string;
-  called_element?: string;
+  called_element?: string | null;
   subprocess_bpmn_file?: string;
+  /**
+   * JSON-fält: match_status: 'matched' | 'lowConfidence' | 'ambiguous' | 'unresolved'
+   */
+  match_status?: BpmnMatchStatus;
+  needs_manual_review?: boolean;
+  /**
+   * JSON-fält: source: 'manual' | 'heuristic' | 'llm'
+   */
+  source?: 'manual' | 'heuristic' | 'llm';
 }
 
 export interface BpmnMapProcess {
   id: string;
+  /**
+   * JSON-fält: bpmn_file – kan innehålla path; vid jämförelser normaliseras till basename.
+   */
   bpmn_file: string;
+  /**
+   * JSON-fält: process_id – kanoniskt ID för processen i mappen.
+   * Internt kan detta mappas mot t.ex. internalId i ProcessDefinition.
+   */
   process_id: string;
   call_activities: BpmnMapCallActivity[];
 }
 
 export interface BpmnMap {
-  orchestration?: { root_process?: string };
+  orchestration?: { root_process?: string | null };
   processes: BpmnMapProcess[];
 }
 

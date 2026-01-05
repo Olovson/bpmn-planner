@@ -2,7 +2,7 @@
 
 Den här guiden beskriver **hur testgenerering fungerar i koden just nu**.
 
-> **🧪 Test Environment:** For safe testing without affecting production data, see [../guides/user/QUICKSTART_AND_DEVELOPMENT.md](../guides/user/QUICKSTART_AND_DEVELOPMENT.md#test-environment) and [../analysis/TEST_ENVIRONMENT_PLAN.md](../analysis/TEST_ENVIRONMENT_PLAN.md).
+> **🧪 Test Environment:** For safe testing without affecting production data, see [../guides/user/QUICKSTART_AND_DEVELOPMENT.md](../guides/user/QUICKSTART_AND_DEVELOPMENT.md#test-environment).
 
 ## Översikt
 
