@@ -155,7 +155,51 @@ async function main() {
   const porcelainResult = runCommand('git status --porcelain', 'Ocommittade ändringar', { silent: true });
   
   if (porcelainResult.success && porcelainResult.output && porcelainResult.output.trim()) {
-    log('Hittade ocommittade ändringar. Committar...');
+    log('Hittade ocommittade ändringar.');
+    
+    // Visa sammanfattning av ändringar
+    console.log('');
+    log('═══════════════════════════════════════════════════════════');
+    log('Sammanfattning av ändringar:');
+    log('═══════════════════════════════════════════════════════════');
+    
+    // Visa diff-statistik
+    const diffStatResult = runCommand('git diff --stat', 'Diff-statistik', { silent: true });
+    if (diffStatResult.success && diffStatResult.output) {
+      console.log(diffStatResult.output);
+    }
+    
+    // Visa ändrade filer
+    const changedFiles = porcelainResult.output.trim().split('\n').map(line => {
+      const status = line.substring(0, 2).trim();
+      const file = line.substring(3).trim();
+      return { status, file };
+    });
+    
+    const added = changedFiles.filter(f => f.status.startsWith('A') || f.status.startsWith('??'));
+    const modified = changedFiles.filter(f => f.status.startsWith('M'));
+    const deleted = changedFiles.filter(f => f.status.startsWith('D'));
+    
+    if (added.length > 0) {
+      console.log(`\n📝 Nya filer (${added.length}):`);
+      added.forEach(f => console.log(`   + ${f.file}`));
+    }
+    
+    if (modified.length > 0) {
+      console.log(`\n✏️  Modifierade filer (${modified.length}):`);
+      modified.forEach(f => console.log(`   ~ ${f.file}`));
+    }
+    
+    if (deleted.length > 0) {
+      console.log(`\n🗑️  Borttagna filer (${deleted.length}):`);
+      deleted.forEach(f => console.log(`   - ${f.file}`));
+    }
+    
+    console.log('');
+    log('═══════════════════════════════════════════════════════════');
+    console.log('');
+    
+    log('Committar ändringar...');
     
     const addResult = runCommand('git add .', 'Lägger till alla ändringar', { silent: false });
     if (!addResult.success) {
@@ -163,8 +207,20 @@ async function main() {
       process.exit(1);
     }
 
+    // Skapa bättre commit-meddelande baserat på ändringar
+    let commitMessage = 'chore: sync local changes to origin';
+    const totalChanges = added.length + modified.length + deleted.length;
+    
+    if (totalChanges > 0) {
+      const parts = [];
+      if (added.length > 0) parts.push(`${added.length} ny(a)`);
+      if (modified.length > 0) parts.push(`${modified.length} modifierad(e)`);
+      if (deleted.length > 0) parts.push(`${deleted.length} borttagen(a)`);
+      commitMessage = `chore: sync local changes (${parts.join(', ')})`;
+    }
+
     const commitResult = runCommand(
-      'git commit -m "chore: sync local changes to origin"',
+      `git commit -m "${commitMessage}"`,
       'Committar ändringar',
       { silent: false }
     );
@@ -179,7 +235,7 @@ async function main() {
         process.exit(1);
       }
     } else {
-      success('Ändringar committade.');
+      success(`Ändringar committade: ${commitMessage}`);
     }
   } else {
     success('Inga ocommittade ändringar.');
@@ -230,6 +286,14 @@ async function main() {
   log('═══════════════════════════════════════════════════════════');
   success('Synkning klar!');
   log('═══════════════════════════════════════════════════════════');
+  console.log('');
+  
+  // Visa senaste commit om det skapades en
+  const lastCommitResult = runCommand('git log -1 --oneline', 'Senaste commit', { silent: true });
+  if (lastCommitResult.success && lastCommitResult.output) {
+    log(`Senaste commit: ${lastCommitResult.output.trim()}`);
+  }
+  
   console.log('');
   log('Lokala ändringar är nu synkade till GitHub.');
   log('Lokalt repo är facit - remote har uppdaterats därefter.');
