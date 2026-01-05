@@ -1,8 +1,13 @@
 # BPMN Map – Design för Automatisk Generering (Heuristik + Claude)
 
-Detta dokument beskriver den föreslagna designen för att generera och uppdatera `bpmn-map.json` automatiskt, med en kombination av befintlig heuristik och Claude‑baserade förslag.
+> **TL;DR (praktisk sammanfattning)**  
+> - Källa: BPMN‑filer läses från Supabase, heuristik bygger en första `bpmn-map.json`.  
+> - LLM: Claude används endast för callActivities som heuristiken är osäker på och föreslår förbättrade `subprocess_bpmn_file`‑mappningar.  
+> - Merge: Manuell mappning vinner alltid över heuristik/LLM; LLM kan bara fylla luckor eller förbättra icke‑manuella förslag.  
+> - Skydd: Scriptet `scripts/generate-bpmn-map.mjs` har `--preview` och `--force` så att vi inte råkar skriva över en bra map utan att märka det.  
+> - Validering: Den nya mappen måste gå att bygga processgraf av (`buildBpmnProcessGraph`), annars skrivs den inte tillbaka.
 
-Läs gärna först `docs/analysis/BPMN_MAP_GENERATION_ANALYSIS.md` för kontext om nuvarande läge och utmaningar.
+Resten av dokumentet är en mer detaljerad designreferens. Det är okej att bara använda sammanfattningen ovan för vardagligt arbete.
 
 ## 1. Mål och icke‑mål
 
