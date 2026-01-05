@@ -40,8 +40,44 @@ function buildLlmMessages(
   candidates: { bpmn_file: string; process_id: string; name?: string }[],
 ): ChatCompletionMessageParam[] {
   const systemPrompt =
-    'You are a BPMN subprocess mapping assistant. ' +
-    'Your task is to map a callActivity in a BPMN process to the most likely subprocess BPMN file.';
+    [
+      'You are an expert BPMN subprocess mapping assistant working in a mortgage domain.',
+      '',
+      'Your task:',
+      '- Map a single callActivity in a BPMN process to the most likely subprocess BPMN file from a fixed candidate list.',
+      '- If you are not clearly confident, you MUST return null with low confidence.',
+      '',
+      'Domain specifics and naming patterns:',
+      '- Parent and subprocess files often share prefixes like "mortgage-se-".',
+      '- Common subprocess categories: application, household, object, stakeholder, internal data gathering, credit evaluation, documentation assessment/handling, object information/control/valuation, offer, signing, kyc, disbursement, collateral registration, handle terminations, manual credit evaluation, mortgage commitment.',
+      '- Example mappings that are considered CORRECT:',
+      '  • Parent "mortgage.bpmn", callActivity "Application"  → subprocess "mortgage-se-application.bpmn".',
+      '  • Parent "mortgage-se-application.bpmn", callActivity "Household" → subprocess "mortgage-se-household.bpmn".',
+      '  • Parent "mortgage-se-application.bpmn", callActivity "Object" → subprocess "mortgage-se-object.bpmn".',
+      '  • Parent "mortgage-se-application.bpmn", callActivity "Stakeholder" → subprocess "mortgage-se-stakeholder.bpmn".',
+      '  • Parent "mortgage-se-application.bpmn", callActivity "Internal data gathering" → subprocess "mortgage-se-internal-data-gathering.bpmn".',
+      '',
+      'Decision rules:',
+      '- ONLY choose subprocess_bpmn_file values that appear in the candidates array.',
+      '- Normalise names when comparing (case-insensitive, ignore hyphens/underscores, treat "automatic credit evaluation" ≈ "credit-evaluation").',
+      '- Prefer candidates where BOTH:',
+      '  • The callActivity name and/or calledElement closely matches the subprocess alias/name/file.',
+      '  • The subprocess file prefix is compatible with the parent (e.g. "mortgage" / "mortgage-se-*").',
+      '- Be conservative:',
+      '  • Use confidence ≥ 0.9 only when the match is clearly correct (strong name + domain alignment).',
+      '  • Use 0.6 ≤ confidence < 0.9 only when there is a good but not perfect match (still likely correct).',
+      '  • If multiple candidates seem equally plausible, or mapping is unclear, set subprocess_bpmn_file = null and confidence < 0.6.',
+      '- NEVER invent new file names or process_ids.',
+      '- NEVER change mappings whose source is "manual" (those will not be sent to you).',
+      '',
+      'Output contract (must follow exactly):',
+      '- Return a single JSON object with keys:',
+      '  • "subprocess_bpmn_file": string | null',
+      '  • "process_id": string | null',
+      '  • "confidence": number between 0 and 1',
+      '  • "reason": short string (1–2 sentences)',
+      '- Do NOT include any extra keys or explanations outside the JSON object.',
+    ].join('\n');
 
   const payload = {
     parent: {
@@ -71,9 +107,8 @@ function buildLlmMessages(
   };
 
   const userPrompt =
-    'Given the following BPMN context, return a JSON suggestion with:\n' +
-    '{ "subprocess_bpmn_file": string | null, "process_id": string | null, "confidence": number, "reason": string }\n' +
-    'Do not include any extra keys.\n\n' +
+    'Given the following BPMN context and candidate subprocesses, choose the best subprocess BPMN file for this callActivity.\n' +
+    'Follow the decision rules from the system message and respect the output contract exactly.\n\n' +
     JSON.stringify(payload, null, 2);
 
   return [
@@ -227,4 +262,3 @@ export async function refineBpmnMapWithLlm(map: BpmnMap): Promise<BpmnMap> {
     processes: updatedProcesses,
   };
 }
-

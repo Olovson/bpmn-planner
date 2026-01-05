@@ -74,7 +74,6 @@ import { getCurrentVersionHash } from '@/lib/bpmnVersioning';
 import { isPGRST204Error, getSchemaErrorMessage } from '@/lib/schemaVerification';
 import { useLlmHealth } from '@/hooks/useLlmHealth';
 import { getAllUnresolvedDiffs } from '@/lib/bpmnDiffRegeneration';
-import { VersionSelector } from '@/components/VersionSelector';
 import { useVersionSelection } from '@/hooks/useVersionSelection';
 import type { BpmnProcessNode } from '@/lib/bpmnProcessGraph';
 import { useFileUpload } from '@/pages/BpmnFileManager/hooks/useFileUpload';
@@ -122,7 +121,7 @@ export default function BpmnFileManager() {
   
   // Use job management hook
   const { refreshGenerationJobs, createJob, updateJob, abortJob, setStatus } = useJobManagement({ generationJobs });
-  const { selection, setSelection, getVersionHashForFile } = useVersionSelection();
+  const { getVersionHashForFile } = useVersionSelection();
   const { hasTests } = useArtifactAvailability();
   const { data: llmHealth, isLoading: llmHealthLoading } = useLlmHealth();
   const [deleteFile, setDeleteFile] = useState<BpmnFile | null>(null);
@@ -810,29 +809,6 @@ export default function BpmnFileManager() {
             )}
           </div>
 
-          {/* Version Selector - Global version selection for all BPMN files */}
-          <Card className="p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold mb-1">Versionsval</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Välj vilken version av BPMN-filer som ska användas i hela appen
-                  </p>
-                </div>
-              </div>
-              <VersionSelector
-                selectedFileName={selection.selectedFileName}
-                onVersionChange={(versionHash, fileName) => {
-                  setSelection({
-                    selectedVersionHash: versionHash,
-                    selectedFileName: fileName,
-                  });
-                }}
-              />
-            </div>
-          </Card>
-
       {/* Upload Area */}
       <FileUploadArea
         dragActive={fileUpload.dragActive}
@@ -842,8 +818,6 @@ export default function BpmnFileManager() {
         onFiles={fileUpload.handleFiles}
         onUploadPending={() => fileUpload.uploadFiles(fileUpload.pendingFiles)}
         onCancelPending={() => fileUpload.setPendingFiles([])}
-        onSyncFromGithub={handleSyncFromGithub}
-        syncPending={syncMutation.isPending}
       />
 
       {/* Varning om bpmn-map.json har problem - visa bara om det finns filer */}

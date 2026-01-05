@@ -54,12 +54,78 @@ export function useFileUpload(
       const { suggestBpmnMapUpdates, generateUpdatedBpmnMap } = await import('@/lib/bpmn/bpmnMapSuggestions');
       const currentMap = await loadBpmnMapFromStorageSimple();
       const suggestions = await suggestBpmnMapUpdates(currentMap, filesData || []);
-      
+
+      // Möjlig LLM‑refinement av tvetydiga/lågkonfidens‑förslag innan vi visar dem
+      let effectiveSuggestions = suggestions.suggestions;
+      const useLlmForMapRefinement =
+        (import.meta as any).env?.VITE_USE_LLM === 'true';
+
+      if (useLlmForMapRefinement && effectiveSuggestions.length > 0) {
+        try {
+          const { refineBpmnMapWithLlm } = await import('@/lib/bpmn/bpmnMapLlmRefinement');
+
+          // Bygg en temporär map där alla förslag appliceras heuristiskt,
+          // så att LLM kan göra refinement på samma sätt som i orchestratorn.
+          const allSuggestionKeys = new Set(
+            effectiveSuggestions.map(s => `${s.bpmn_file}::${s.bpmn_id}`)
+          );
+
+          const newFilesDataForRefinement = suggestions.newFiles
+            .map(fileName => {
+              const fileData = filesData?.find(f => f.file_name === fileName);
+              return fileData ? { file_name: fileName, meta: fileData.meta } : null;
+            })
+            .filter(Boolean) as Array<{ file_name: string; meta: any }>;
+
+          const heuristicAppliedMap = generateUpdatedBpmnMap(
+            currentMap,
+            effectiveSuggestions,
+            allSuggestionKeys,
+            newFilesDataForRefinement.length > 0 ? newFilesDataForRefinement : undefined,
+          );
+
+          const refinedMap = await refineBpmnMapWithLlm(heuristicAppliedMap);
+
+          // Bygg upp en lookup för refined callActivities per (bpmn_file, bpmn_id)
+          const refinedLookup = new Map<string, { match_status?: string | null; subprocess_bpmn_file?: string | null }>();
+          for (const proc of refinedMap.processes) {
+            for (const ca of proc.call_activities || []) {
+              const key = `${proc.bpmn_file}::${ca.bpmn_id}`;
+              refinedLookup.set(key, {
+                match_status: (ca as any).match_status ?? null,
+                subprocess_bpmn_file: ca.subprocess_bpmn_file ?? null,
+              });
+            }
+          }
+
+          effectiveSuggestions = effectiveSuggestions.map(s => {
+            const key = `${s.bpmn_file}::${s.bpmn_id}`;
+            const refined = refinedLookup.get(key);
+            if (!refined) return s;
+
+            const updated = { ...s };
+
+            if (refined.subprocess_bpmn_file && refined.subprocess_bpmn_file !== s.suggested_subprocess_bpmn_file) {
+              updated.suggested_subprocess_bpmn_file = refined.subprocess_bpmn_file;
+              updated.reason = `${s.reason}; Claude-refinement uppdaterade mappningen`;
+            }
+
+            if (refined.match_status) {
+              updated.matchStatus = refined.match_status as any;
+            }
+
+            return updated;
+          });
+        } catch (e) {
+          console.warn('[useFileUpload] LLM refinement for BPMN map suggestions failed:', e);
+        }
+      }
+
       // Separera matchningar: hög konfidens (matched) vs tvetydiga/låg konfidens
-      const highConfidenceSuggestions = suggestions.suggestions.filter(
+      const highConfidenceSuggestions = effectiveSuggestions.filter(
         s => s.matchStatus === 'matched'
       );
-      const needsReviewSuggestions = suggestions.suggestions.filter(
+      const needsReviewSuggestions = effectiveSuggestions.filter(
         s => s.matchStatus !== 'matched'
       );
       
@@ -233,4 +299,3 @@ export function useFileUpload(
     uploadFiles,
   };
 }
-

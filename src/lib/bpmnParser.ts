@@ -559,25 +559,37 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
   };
 
   const tryStorage = async () => {
-    // Om filen har mappstruktur i fileUrl (t.ex. /bpmn/mortgage-se 2025.11.29/file.bpmn),
-    // försök först hitta den med den fulla sökvägen
-    if (fileUrl.includes('/') && !fileUrl.startsWith('http') && !fileUrl.startsWith('data:')) {
-      // Extrahera path från fileUrl (t.ex. "mortgage-se 2025.11.29/mortgage-se-credit-decision.bpmn")
+    // Om filen har mappstruktur (t.ex. /bpmn/... eller en ren storage‑path),
+    // försök först hitta den med den fulla sökvägen.
+    const isRelativePath =
+      fileUrl.includes('/') && !fileUrl.startsWith('http') && !fileUrl.startsWith('data:');
+
+    if (isRelativePath) {
+      // Hantera två fall:
+      // 1) /bpmn/...  (lokala projektfiler)
+      // 2) direkt storage‑path, t.ex. "mortgage-se/processes/.../mortgage.bpmn"
+      let fullPath: string | null = null;
       const pathMatch = fileUrl.match(/\/bpmn\/(.+)$/);
+
       if (pathMatch && pathMatch[1]) {
-        const fullPath = pathMatch[1];
-        
+        fullPath = pathMatch[1];
+      } else if (fileUrl.endsWith('.bpmn')) {
+        // Använd den normaliserade sökvägen som storage‑path
+        fullPath = normalized;
+      }
+
+      if (fullPath) {
         // Försök först hitta filen i databasen med storage_path eller file_name som matchar fullPath
         // Använd separata queries istället för .or() för bättre kompatibilitet
-        let storageRecord = null;
-        
+        let storageRecord: { storage_path: string } | null = null;
+
         // Försök först med storage_path
         const { data: storagePathRecord } = await supabase
           .from('bpmn_files')
           .select('storage_path')
           .eq('storage_path', fullPath)
           .maybeSingle();
-        
+
         if (storagePathRecord) {
           storageRecord = storagePathRecord;
         } else {
@@ -587,7 +599,7 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
             .select('storage_path')
             .eq('file_name', fullPath)
             .maybeSingle();
-          
+
           if (fileNameRecord) {
             storageRecord = fileNameRecord;
           }
@@ -607,7 +619,9 @@ async function loadBpmnXml(fileUrl: string, versionHash?: string | null): Promis
           } else if (error && (error.statusCode === 400 || error.message?.includes('400'))) {
             // Filen finns i databasen men inte i Storage - detta är ett verkligt problem
             if (import.meta.env.DEV) {
-              console.warn(`[bpmnParser] File ${fullPath} exists in database but not in Storage (likely deleted from Storage but not from database)`);
+              console.warn(
+                `[bpmnParser] File ${fullPath} exists in database but not in Storage (likely deleted from Storage but not from database)`,
+              );
             }
             return null;
           }

@@ -114,12 +114,12 @@ export async function suggestBpmnMapUpdates(
             suggestions.push({
               bpmn_file: mapProcess.bpmn_file,
               bpmn_id: ca.id,
-              name: ca.name || ca.id,
-              called_element: ca.calledElement,
-              suggested_subprocess_bpmn_file: matchResult.matchedFileName,
-              confidence: matchResult.confidence,
-              matchStatus: matchResult.matchStatus,
-              reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
+      name: ca.name || ca.id,
+      called_element: ca.calledElement,
+      suggested_subprocess_bpmn_file: matchResult.matchedFileName,
+      confidence: matchResult.confidence,
+      matchStatus: matchResult.matchStatus,
+      reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
             });
           }
         }
@@ -158,8 +158,8 @@ export async function suggestBpmnMapUpdates(
                 suggested_subprocess_bpmn_file: matchResult.matchedFileName,
                 confidence: matchResult.confidence,
                 matchStatus: matchResult.matchStatus,
-                reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
-                existing_mapping: mapCA,
+              reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
+              existing_mapping: mapCA,
               });
             }
           }
@@ -194,18 +194,18 @@ export async function suggestBpmnMapUpdates(
         const isVeryLowConfidence = matchResult.confidence < 0.1; // Mindre än 10% konfidens
         const shouldSkip = !hasEnoughFilesForReliableMatching && isVeryLowConfidence;
         
-        if (!shouldSkip) {
-          suggestions.push({
-            bpmn_file: fileName,
-            bpmn_id: ca.id,
-            name: ca.name || ca.id,
-            called_element: ca.calledElement,
-            suggested_subprocess_bpmn_file: matchResult.matchedFileName,
-            confidence: matchResult.confidence,
-            matchStatus: matchResult.matchStatus,
-            reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
-          });
-        }
+          if (!shouldSkip) {
+            suggestions.push({
+              bpmn_file: fileName,
+              bpmn_id: ca.id,
+              name: ca.name || ca.id,
+              called_element: ca.calledElement,
+              suggested_subprocess_bpmn_file: matchResult.matchedFileName,
+              confidence: matchResult.confidence,
+              matchStatus: matchResult.matchStatus,
+              reason: matchResult.candidates[0]?.reason || 'Automatisk matchning',
+            });
+          }
       }
     }
     
@@ -222,8 +222,41 @@ export async function suggestBpmnMapUpdates(
     }
   }
 
+  // Konsolidera dubbletter: om flera heuristiker ger samma målfil för samma callActivity,
+  // behåll en rad med högsta konfidens och kombinera orsakerna.
+  const dedupedSuggestionsMap = new Map<string, MapSuggestion>();
+  for (const s of suggestions) {
+    const key = `${s.bpmn_file}::${s.bpmn_id}::${s.suggested_subprocess_bpmn_file}`;
+    const existing = dedupedSuggestionsMap.get(key);
+    if (!existing) {
+      dedupedSuggestionsMap.set(key, { ...s });
+    } else {
+      const combinedReason =
+        existing.reason === s.reason
+          ? existing.reason
+          : `${existing.reason}; ${s.reason}`;
+      const confidence =
+        s.confidence > existing.confidence ? s.confidence : existing.confidence;
+      const matchStatus =
+        s.matchStatus === 'matched' || existing.matchStatus === 'matched'
+          ? 'matched'
+          : s.matchStatus === 'ambiguous' || existing.matchStatus === 'ambiguous'
+          ? 'ambiguous'
+          : s.matchStatus;
+
+      dedupedSuggestionsMap.set(key, {
+        ...existing,
+        reason: combinedReason,
+        confidence,
+        matchStatus,
+      });
+    }
+  }
+
+  const dedupedSuggestions = Array.from(dedupedSuggestionsMap.values());
+
   return {
-    suggestions,
+    suggestions: dedupedSuggestions,
     newFiles,
     missingInMap,
     totalFiles: allFiles.length,
@@ -331,4 +364,3 @@ export function generateUpdatedBpmnMap(
     generated_at: new Date().toISOString(),
   };
 }
-

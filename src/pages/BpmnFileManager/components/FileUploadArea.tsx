@@ -17,8 +17,6 @@ export interface FileUploadAreaProps {
   onFiles: (fileList: FileList) => Promise<void>;
   onUploadPending: () => void;
   onCancelPending: () => void;
-  onSyncFromGithub?: () => void;
-  syncPending?: boolean;
 }
 
 export function FileUploadArea({
@@ -29,8 +27,6 @@ export function FileUploadArea({
   onFiles,
   onUploadPending,
   onCancelPending,
-  onSyncFromGithub,
-  syncPending = false,
 }: FileUploadAreaProps) {
   return (
     <Card className="p-8 mb-8">
@@ -41,22 +37,6 @@ export function FileUploadArea({
             Dra och släpp eller välj filer att ladda upp
           </p>
         </div>
-        {onSyncFromGithub && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSyncFromGithub}
-            disabled={syncPending}
-            className="gap-2"
-          >
-            {syncPending ? (
-              <span className="animate-spin">⏳</span>
-            ) : (
-              <span>📥</span>
-            )}
-            {syncPending ? 'Synkar...' : 'Synka från GitHub'}
-          </Button>
-        )}
       </div>
       <div
         className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
@@ -139,7 +119,6 @@ export function FileUploadArea({
     </Card>
   );
 }
-
 
 
 

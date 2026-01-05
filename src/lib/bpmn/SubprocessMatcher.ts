@@ -315,6 +315,33 @@ function evaluateCandidate(
     value.replace(/^mortgage-se-/, '').replace(/^mortgage-/, '');
   const candidateFileBaseNoPrefix = stripCommonPrefix(candidateFileBase);
 
+  // Domän-specifik regel: "Automatic Credit Evaluation" ska starkt kopplas till
+  // processen "mortgage-se-credit-evaluation" oavsett exakta stavningsskillnader.
+  // Domänregel: koppla tekniska ID:t "credit-evaluation" till rätt subprocess.
+  // Vi baserar detta på stabila, tekniska fält (calledElement / id),
+  // inte på skärmnamn/översättningar som kan ändras över tid.
+  const isAutomaticCreditEvaluation =
+    calledElement === 'credit-evaluation' ||
+    callActivityName === 'credit-evaluation';
+
+  const candidateLooksLikeCreditEvaluation =
+    candidateFileBase.includes('credit-evaluation') ||
+    candidateProcessId.includes('credit-evaluation') ||
+    candidateProcessName.includes('credit-evaluation');
+
+  score = pickBestScore(
+    score,
+    reasons,
+    () => {
+      if (isAutomaticCreditEvaluation && candidateLooksLikeCreditEvaluation) {
+        // Treat as near-perfect deterministic match, slightly below explicit map match
+        return 0.95;
+      }
+      return 0;
+    },
+    'Domänregel: Automatic Credit Evaluation kopplad till credit-evaluation-subprocess',
+  );
+
   score = pickBestScore(
     score,
     reasons,

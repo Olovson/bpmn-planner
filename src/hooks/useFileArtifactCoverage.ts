@@ -158,26 +158,41 @@ export const useFileArtifactCoverage = (fileName: string) => {
       // DoR/DoD generation has been removed - no longer used
       const dorDod_covered = 0;
 
-      // Check test coverage from node_test_links for nodes in this file only
-      const { data: testLinksData } = await supabase
-        .from('node_test_links')
-        .select('bpmn_file, bpmn_element_id')
-        .eq('bpmn_file', fileName);
-
       // Create node IDs set for this file only
       const relevantNodeIds = new Set(
         nodesInThisFile.map(n => `${n.bpmnFile}:${n.bpmnElementId}`)
       );
 
-      const uniqueTestNodes = new Set(
-        testLinksData
-          ?.filter(t => {
-            const nodeId = `${t.bpmn_file}:${t.bpmn_element_id}`;
-            return relevantNodeIds.has(nodeId);
-          })
-          .map(t => `${t.bpmn_file}:${t.bpmn_element_id}`)
-          .filter(Boolean) || []
-      );
+      // Check test coverage using both node_test_links (generated scripts)
+      // and node_planned_scenarios (planned scenarios from Feature Goal generation)
+      const { data: testLinksData } = await supabase
+        .from('node_test_links')
+        .select('bpmn_file, bpmn_element_id')
+        .eq('bpmn_file', fileName);
+
+      const { data: plannedScenariosData } = await (supabase as any)
+        .from('node_planned_scenarios')
+        .select('bpmn_file, bpmn_element_id')
+        .eq('bpmn_file', fileName);
+
+      const uniqueTestNodes = new Set<string>();
+
+      // Count nodes that have linked test scripts
+      (testLinksData || []).forEach(t => {
+        const nodeId = `${t.bpmn_file}:${t.bpmn_element_id}`;
+        if (relevantNodeIds.has(nodeId)) {
+          uniqueTestNodes.add(nodeId);
+        }
+      });
+
+      // Count nodes that have planned scenarios (Feature Goal tests).
+      // Här litar vi på att node_planned_scenarios redan är kopplad till rätt fil/element
+      // och kräver bara att bpmn_file matchar denna fil.
+      (plannedScenariosData || []).forEach((row: { bpmn_file: string; bpmn_element_id: string }) => {
+        const nodeId = `${row.bpmn_file}:${row.bpmn_element_id}`;
+        uniqueTestNodes.add(nodeId);
+      });
+
       const tests_covered = uniqueTestNodes.size;
 
       const hasHierarchyTests = await hasHierarchicalTestsForFile(fileName);
@@ -328,9 +343,14 @@ export const useAllFilesArtifactCoverage = () => {
         // DoR/DoD generation has been removed - no longer used
         const allDorDodData: never[] = [];
 
-        // Get all test link data
+        // Get all test link data (generated scripts)
         const { data: allTestLinksData } = await supabase
           .from('node_test_links')
+          .select('bpmn_file, bpmn_element_id');
+
+        // Get all planned scenario data (Feature Goal / LLM-generated test scenarios)
+        const { data: allPlannedScenariosData } = await (supabase as any)
+          .from('node_planned_scenarios')
           .select('bpmn_file, bpmn_element_id');
 
       for (const file of bpmnFiles) {
@@ -437,16 +457,28 @@ export const useAllFilesArtifactCoverage = () => {
           // DoR/DoD generation has been removed - no longer used
           const dorDod_covered = 0;
 
-          // Check test coverage for nodes in this file only
-          const uniqueTestNodes = new Set(
-            allTestLinksData
-              ?.filter(t => {
-                const nodeId = `${t.bpmn_file}:${t.bpmn_element_id}`;
-                return relevantNodeIds.has(nodeId) && t.bpmn_file === file.file_name;
-              })
-              .map(t => `${t.bpmn_file}:${t.bpmn_element_id}`)
-              .filter(Boolean) || []
-          );
+          // Check test coverage for nodes in this file only,
+          // using both node_test_links and node_planned_scenarios
+          const uniqueTestNodes = new Set<string>();
+
+          // Nodes that have linked test scripts
+          (allTestLinksData || []).forEach(t => {
+            const nodeId = `${t.bpmn_file}:${t.bpmn_element_id}`;
+            if (t.bpmn_file === file.file_name && relevantNodeIds.has(nodeId)) {
+              uniqueTestNodes.add(nodeId);
+            }
+          });
+
+          // Nodes that have planned scenarios (Feature Goal tests).
+          // Här litar vi på bpmn_file/bpmn_element_id i node_planned_scenarios
+          // och kräver bara att bpmn_file matchar filen.
+          (allPlannedScenariosData || []).forEach((row: { bpmn_file: string; bpmn_element_id: string }) => {
+            if (row.bpmn_file === file.file_name) {
+              const nodeId = `${row.bpmn_file}:${row.bpmn_element_id}`;
+              uniqueTestNodes.add(nodeId);
+            }
+          });
+
           const tests_covered = uniqueTestNodes.size;
 
           // Debug logging for coverage calculation (only for Household or when issues detected)

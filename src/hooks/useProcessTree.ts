@@ -124,7 +124,19 @@ async function buildClientProcessTree(
   }
 
   // Load bpmn-map
-  const bpmnMap = loadBpmnMap(rawBpmnMap);
+  // Försök först hämta bpmn-map.json från Supabase‑storage så att Process Explorer
+  // alltid använder samma karta som filvyn och valideringen.
+  // Faller tillbaka till projektfilen om storage‑varianten saknas eller är ogiltig.
+  let bpmnMap;
+  try {
+    const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
+    bpmnMap = await loadBpmnMapFromStorageSimple();
+  } catch (e) {
+    if (import.meta.env.DEV) {
+      console.warn('[useProcessTree] Failed to load bpmn-map from storage, falling back to project file:', e);
+    }
+    bpmnMap = loadBpmnMap(rawBpmnMap);
+  }
 
   // Build ProcessGraph using the new implementation
   const graph = buildProcessGraph(parseResults, {
