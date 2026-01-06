@@ -14,12 +14,25 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
 **Fokus just nu:** Dessa tre punkter är viktigast för stabilitet, automatiserad mapping och vidare utveckling:
 
 1. **🤖 Claude‑stödd bpmn-map.json generering (LLM-refinement)** (HÖG – pågående)
-   - **Status:** Heuristik + merge + validering är implementerat och testat; LLM‑refinementlagret (`refineBpmnMapWithLlm`) finns och är enhetstestat (mockad Claude), men vi har ännu inte gjort en full end‑to‑end‑körning mot riktig Claude i ett skarpt flöde.
-   - **Problem just nu:** CLI‑scriptet `scripts/generate-bpmn-map.mjs` med `--llm` faller i Node/`tsx` p.g.a. `path-intersection`/ESM‑exports; detta påverkar inte Vitest‑tester eller appen, men gör att vi inte kan köra hela pipeline + grafvalidering via CLI.
-   - **Nästa steg:** 
-     - Använd experiment‑scriptet `scripts/experiment-bpmn-map-llm-refinement.ts` (via `npx tsx`) för att köra riktig Claude mot lokala `bpmn-map.json` och skriva `bpmn-map.llm.generated.json` för manuell review (ingen skrivning till Supabase).
-     - När vi är nöjda med beteendet: antingen förenkla CLI‑valideringen (tillfälligt utan `buildGraph`) eller lägga till ett litet opt‑in integrationstest som använder riktig Claude för att verifiera att refinement‑flödet fungerar.
-   - **Varför:** Ger bättre automatisk mappning med bibehållen säkerhet och manuell kontroll
+   - **Status:** 
+     - Heuristik + merge + validering är implementerat och testat.
+     - LLM‑refinementlagret (`refineBpmnMapWithLlm`) används nu både från CLI och från UI (BPMN‑mappningskortet).
+     - Files‑sidan har ett BPMN‑mappningskort + detaljerad dialog där:
+       - alla problemrader syns,
+       - Claude kan köras explicit på otydliga mappningar,
+       - ändringar sparas manuellt till `bpmn-map.json`.
+   - **Problem just nu:** 
+     - CLI‑scriptet `scripts/generate-bpmn-map.mjs` med `--llm` har fortfarande ESM/`path-intersection`‑strul (påverkar CLI, inte appen).
+     - Vi har ännu inte gjort en kontrollerad, dokumenterad end‑to‑end‑genomgång av “ladda upp 2026‑filer → fixa mappning i UI → generera docs/tests” som en formaliserad checklista.
+   - **Nästa steg (praktiskt fokus):** 
+     1. **UI‑checklista:** Skriv en kort, konkret “Så här mappar du nya BPMN‑filer”‑sektion i en user‑guide (eller uppdatera befintlig) som beskriver:
+        - upload → suggestions‑popup → BPMN‑mappningskort → spara → validera.
+     2. **Bekräfta 2026‑flödet:** Kör igenom fulla flödet för `mortgage-se 2026.01.04 16:30`:
+        - se att alla callActivities får korrekt subprocess eller tydlig varning,
+        - justera det som behövs och spara,
+        - verifiera att dokumentation/testgenerering fungerar utan fel.
+     3. **Separat:** när ork finns, stabilisera CLI‑scriptet eller dokumentera att UI‑flödet är “primary path” och CLI är experimentellt.
+   - **Varför:** Detta är hjärtat i appen – mappningen måste vara både **pålitlig** och **lätt att förstå** för användaren.
 
 2. **🚨 Testmiljö & Preview Deployments** (HÖG – pågående)
    - Preview deployments (Vercel/Netlify eller motsv.)
@@ -27,11 +40,14 @@ Detta dokument innehåller en prioriterad lista över uppgifter och förbättrin
    - Möjlighet att testa kodändringar säkert innan merge
    - **Varför:** Förhindrar att vi förstör fungerande funktionalitet
 
-3. **🔧 Files-sidan analys/fixar** (HÖG – 2–3 dagar analys + fixar)
-   - Systematisk analys av vad som fungerar/inte fungerar
-   - Fixa kritiska buggar
-   - **Varför:** Kärnfunktionalitet måste fungera korrekt
-   - **Beroende:** Kräver punkt 1 och 2 för att kunna testa och fixa säkert
+3. **🔧 Files-sidan analys/fixar** (HÖG – pågående, fokus på BPMN‑mappning)
+   - **Status:** 
+     - Nytt BPMN‑mappningskort på Files‑sidan visar alla problemrader och låter användaren justera mappningar + spara.
+     - Mappningsdialog och valideringsdialog är kopplade till samma `bpmn-map.json`.
+     - Upload‑flödet visar nu “Föreslagna uppdateringar…”‑popup automatiskt när heuristiken hittar förslag.
+   - **Nästa steg:** 
+     - Köra igenom ett par “riktiga” användarflöden (t.ex. ladda upp 2026‑mappen från scratch) och justera små UX‑detaljer (texter, tooltips) efter hur det faktiskt känns.
+   - **Varför:** Files‑sidan är den primära arbetsytan; den måste vara stabil och begriplig även när man är trött.
 
 **Total tid:** ~4-7 dagar för de 3 kritiska punkterna
 

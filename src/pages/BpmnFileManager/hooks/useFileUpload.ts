@@ -72,6 +72,10 @@ export function useFileUpload(
           onMapSuggestions?.(allSuggestions);
         }
 
+        // Nollställ tidigare val och öppna dialogen så användaren ser förslagen tydligt
+        onSetAcceptedSuggestions?.(new Set());
+        onShowMapSuggestionsDialog?.(true);
+
         const highConfidenceCount = allSuggestions.filter(s => s.matchStatus === 'matched').length;
         const needsReviewCount = allSuggestions.length - highConfidenceCount;
 

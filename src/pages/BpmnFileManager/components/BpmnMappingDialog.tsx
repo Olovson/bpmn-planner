@@ -39,6 +39,8 @@ interface BpmnMappingDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const NONE_VALUE = '__none__';
+
 export function BpmnMappingDialog({ open, onOpenChange }: BpmnMappingDialogProps) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -315,11 +317,11 @@ export function BpmnMappingDialog({ open, onOpenChange }: BpmnMappingDialogProps
                       </TableCell>
                       <TableCell className="align-top">
                         <Select
-                          value={row.subprocessFile ?? ''}
+                          value={row.subprocessFile ?? NONE_VALUE}
                           onValueChange={(value) =>
                             updateRowSubprocess(
                               row.id,
-                              value === '' ? null : value,
+                              value === NONE_VALUE ? null : value,
                             )
                           }
                         >
@@ -327,7 +329,7 @@ export function BpmnMappingDialog({ open, onOpenChange }: BpmnMappingDialogProps
                             <SelectValue placeholder="Ingen subprocess vald" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Ingen subprocess</SelectItem>
+                            <SelectItem value={NONE_VALUE}>Ingen subprocess</SelectItem>
                             {subprocessCandidates.map((candidate) => (
                               <SelectItem
                                 key={candidate}

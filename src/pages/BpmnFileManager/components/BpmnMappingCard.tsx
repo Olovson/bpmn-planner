@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Sparkles } from 'lucide-react';
 import type { BpmnMap } from '@/lib/bpmn/bpmnMapLoader';
 import {
   buildBpmnMappingOverview,
@@ -30,10 +30,11 @@ import { invalidateStructureQueries } from '@/lib/queryInvalidation';
 
 interface BpmnMappingCardProps {
   filesCount: number;
-  onOpenDialog: () => void;
 }
 
-export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardProps) {
+const NONE_VALUE = '__none__';
+
+export function BpmnMappingCard({ filesCount }: BpmnMappingCardProps) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
   const [saving, setSaving] = useState(false);
   const [refining, setRefining] = useState(false);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(true);
 
   const canUseLlm = import.meta.env.VITE_USE_LLM === 'true';
 
@@ -109,10 +111,7 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
     }
   }, [filesCount]);
 
-  const filteredRows = useMemo(
-    () => rows.filter((r) => r.status !== 'ok'),
-    [rows],
-  );
+  const filteredRows = useMemo(() => rows, [rows]);
 
   const summary = useMemo(() => {
     const total = rows.length;
@@ -291,7 +290,18 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
 
   return (
     <Card className="mt-4 p-4 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 cursor-pointer select-none rounded-md px-2 py-1 -mx-2 -mt-1 transition-colors hover:bg-muted/70"
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded((prev) => !prev)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExpanded((prev) => !prev);
+          }
+        }}
+      >
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-semibold">BPMN‑mappning</span>
@@ -314,58 +324,39 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
             </strong>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onOpenDialog}
-          >
-            Öppna detaljerad vy
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void loadData()}
-            disabled={loading}
-            className="gap-1"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Uppdaterar…
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-3 w-3" />
-                Uppdatera
-              </>
-            )}
-          </Button>
+        <div className="flex items-center gap-2">
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
         </div>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription className="text-xs">{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {infoMessage && (
-        <Alert>
-          <AlertDescription className="text-xs">{infoMessage}</AlertDescription>
-        </Alert>
-      )}
-
-      {rows.length === 0 && !loading ? (
-        <p className="text-xs text-muted-foreground">
-          Inga call activities hittades ännu eller bpmn‑map.json saknar processer. Ladda
-          upp BPMN‑filer och generera en karta för att se mappningar här.
-        </p>
-      ) : (
+      {expanded && (
         <>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription className="text-xs">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {infoMessage && (
+            <Alert>
+              <AlertDescription className="text-xs">{infoMessage}</AlertDescription>
+            </Alert>
+          )}
+
+          {rows.length === 0 && !loading ? (
+            <p className="text-xs text-muted-foreground">
+              Inga call activities hittades ännu eller bpmn‑map.json saknar processer.
+              Ladda upp BPMN‑filer och generera en karta för att se mappningar här.
+            </p>
+          ) : (
+            <>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
-              <span>Visar {filteredRows.length} call activities som behöver åtgärd</span>
+              <span>Visar {filteredRows.length} call activities</span>
               {dirtyCount > 0 && (
                 <span className="text-orange-700">
                   {dirtyCount} osparade ändring(ar)
@@ -422,6 +413,7 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
               <TableHeader>
                 <TableRow>
                   <TableHead>Fil</TableHead>
+                  <TableHead>Process</TableHead>
                   <TableHead>Call Activity</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Subprocess‑fil</TableHead>
@@ -434,6 +426,14 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
                       <code className="bg-muted px-1 rounded">
                         {row.bpmnFile}
                       </code>
+                    </TableCell>
+                    <TableCell className="align-top text-xs">
+                      <div className="font-medium">
+                        {row.processName ?? row.processId}
+                      </div>
+                      <div className="text-muted-foreground">
+                        id: <code>{row.processId}</code>
+                      </div>
                     </TableCell>
                     <TableCell className="align-top text-xs">
                       <div className="font-medium">
@@ -475,11 +475,11 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
                     </TableCell>
                     <TableCell className="align-top">
                       <Select
-                        value={row.subprocessFile ?? ''}
+                        value={row.subprocessFile ?? NONE_VALUE}
                         onValueChange={(value) =>
                           updateRowSubprocess(
                             row.id,
-                            value === '' ? null : value,
+                            value === NONE_VALUE ? null : value,
                           )
                         }
                       >
@@ -487,7 +487,7 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
                           <SelectValue placeholder="Ingen subprocess vald" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Ingen subprocess</SelectItem>
+                          <SelectItem value={NONE_VALUE}>Ingen subprocess</SelectItem>
                           {subprocessCandidates.map((candidate) => (
                             <SelectItem key={candidate} value={candidate}>
                               {candidate}
@@ -502,9 +502,11 @@ export function BpmnMappingCard({ filesCount, onOpenDialog }: BpmnMappingCardPro
             </Table>
           </div>
         </>
+          )}
+        </>
       )}
 
-      {summary.unclearOrMissing > 0 && (
+      {expanded && summary.unclearOrMissing > 0 && (
         <div className="flex items-start gap-2 text-xs text-muted-foreground mt-1">
           <AlertTriangle className="h-3 w-3 text-yellow-600 mt-0.5" />
           <span>

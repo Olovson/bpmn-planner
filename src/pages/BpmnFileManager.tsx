@@ -93,7 +93,6 @@ import { SyncReport } from '@/pages/BpmnFileManager/components/SyncReport';
 import { TransitionOverlay } from '@/pages/BpmnFileManager/components/TransitionOverlay';
 import { HierarchyReportDialog } from '@/pages/BpmnFileManager/components/HierarchyReportDialog';
 import { MapValidationDialog } from '@/pages/BpmnFileManager/components/MapValidationDialog';
-import { MapSuggestionsDialog } from '@/pages/BpmnFileManager/components/MapSuggestionsDialog';
 import { DeleteFileDialog } from '@/pages/BpmnFileManager/components/DeleteFileDialog';
 import { DeleteAllFilesDialog } from '@/pages/BpmnFileManager/components/DeleteAllFilesDialog';
 import { ResetRegistryDialog } from '@/pages/BpmnFileManager/components/ResetRegistryDialog';
@@ -191,30 +190,13 @@ export default function BpmnFileManager() {
   const [rootFileName, setRootFileName] = useState<string | null>(null);
   const [validatingMap, setValidatingMap] = useState(false);
   const [unresolvedDiffsCount, setUnresolvedDiffsCount] = useState(0);
-  const [mapSuggestions, setMapSuggestions] = useState<MapSuggestion[]>([]);
-  const [showMapSuggestionsDialog, setShowMapSuggestionsDialog] = useState(false);
-  const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<string>>(new Set());
-  const [mapSuggestionTotalFiles, setMapSuggestionTotalFiles] = useState<number | undefined>(undefined);
-  const [mapSuggestionHasEnoughFiles, setMapSuggestionHasEnoughFiles] = useState<boolean>(true);
   const [showMapValidationDialog, setShowMapValidationDialog] = useState(false);
   const [mapValidationResult, setMapValidationResult] = useState<any | null>(null);
   const [showMappingDialog, setShowMappingDialog] = useState(false);
 
   // Callback för att hantera map suggestions med filinformation
-  const handleMapSuggestions = useCallback((suggestions: MapSuggestion[], result?: { totalFiles?: number; hasEnoughFilesForReliableMatching?: boolean }) => {
-    setMapSuggestions(suggestions);
-    if (result) {
-      setMapSuggestionTotalFiles(result.totalFiles);
-      setMapSuggestionHasEnoughFiles(result.hasEnoughFilesForReliableMatching ?? true);
-    }
-  }, []);
-
-  // Use file upload hook
-  const fileUpload = useFileUpload(
-    handleMapSuggestions,
-    setShowMapSuggestionsDialog,
-    setAcceptedSuggestions,
-  );
+  // Use file upload hook (no suggestions popup – mapping hanteras via BPMN‑mappningskortet)
+  const fileUpload = useFileUpload();
 
   // Define resetGenerationState BEFORE it's used in hooks
   const resetGenerationState = useCallback(() => {
@@ -302,15 +284,12 @@ export default function BpmnFileManager() {
   });
 
   // Use BPMN map management hook
-  const { handleValidateBpmnMap, handleSaveUpdatedMap, handleRegenerateBpmnMap, handleExportUpdatedMap } = useBpmnMapManagement({
+  const { handleValidateBpmnMap, handleRegenerateBpmnMap } = useBpmnMapManagement({
     setValidatingMap,
     setMapValidationResult,
     setShowMapValidationDialog,
-    mapSuggestions,
-    acceptedSuggestions,
     setBpmnMapValidation,
     setRegeneratingMap,
-    setShowMapSuggestionsDialog,
   });
 
   // Use file operations hook
@@ -881,7 +860,6 @@ export default function BpmnFileManager() {
 
       <BpmnMappingCard
         filesCount={files.length}
-        onOpenDialog={() => setShowMappingDialog(true)}
       />
 
       {/* Generation Dialog - Consolidated popup */}
@@ -982,18 +960,6 @@ export default function BpmnFileManager() {
         mapValidationResult={mapValidationResult}
       />
 
-      <MapSuggestionsDialog
-        open={showMapSuggestionsDialog}
-        onOpenChange={setShowMapSuggestionsDialog}
-        mapSuggestions={mapSuggestions}
-        onSuggestionsChange={setMapSuggestions}
-        acceptedSuggestions={acceptedSuggestions}
-        onAcceptedSuggestionsChange={setAcceptedSuggestions}
-        onSave={handleSaveUpdatedMap}
-        totalFiles={mapSuggestionTotalFiles}
-        hasEnoughFilesForReliableMatching={mapSuggestionHasEnoughFiles}
-        canUseLlm={import.meta.env.VITE_USE_LLM === 'true'}
-      />
       <BpmnMappingDialog
         open={showMappingDialog}
         onOpenChange={setShowMappingDialog}

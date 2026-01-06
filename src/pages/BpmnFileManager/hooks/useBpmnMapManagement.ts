@@ -3,28 +3,21 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { invalidateStructureQueries } from '@/lib/queryInvalidation';
-import type { MapSuggestion } from '@/lib/bpmn/bpmnMapSuggestions';
 
 export interface UseBpmnMapManagementProps {
   setValidatingMap: (validating: boolean) => void;
   setMapValidationResult: (result: any) => void;
   setShowMapValidationDialog: (show: boolean) => void;
-  mapSuggestions: MapSuggestion[];
-  acceptedSuggestions: Set<string>;
   setBpmnMapValidation: (validation: { valid: boolean; error?: string; details?: string; source?: string } | null) => void;
   setRegeneratingMap: (regenerating: boolean) => void;
-  setShowMapSuggestionsDialog: (show: boolean) => void;
 }
 
 export function useBpmnMapManagement({
   setValidatingMap,
   setMapValidationResult,
   setShowMapValidationDialog,
-  mapSuggestions,
-  acceptedSuggestions,
   setBpmnMapValidation,
   setRegeneratingMap,
-  setShowMapSuggestionsDialog,
 }: UseBpmnMapManagementProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -237,46 +230,6 @@ export function useBpmnMapManagement({
     }
   }, [setValidatingMap, setMapValidationResult, setShowMapValidationDialog, toast]);
 
-  const handleSaveUpdatedMap = useCallback(async (syncToGitHub: boolean = false) => {
-    try {
-      const { loadBpmnMapFromStorageSimple, saveBpmnMapToStorage } = await import('@/lib/bpmn/bpmnMapStorage');
-      const { generateUpdatedBpmnMap } = await import('@/lib/bpmn/bpmnMapSuggestions');
-      const currentMap = await loadBpmnMapFromStorageSimple();
-      const updatedMap = generateUpdatedBpmnMap(currentMap, mapSuggestions, acceptedSuggestions, undefined);
-      
-      const result = await saveBpmnMapToStorage(updatedMap, syncToGitHub);
-      
-      if (result.success) {
-        toast({
-          title: 'bpmn-map.json uppdaterad',
-          description: result.githubSynced
-            ? 'Filen har uppdaterats i Supabase storage och synkats till GitHub.'
-            : 'Filen har uppdaterats i Supabase storage.',
-        });
-        
-        // Invalidera queries så att ny mappning laddas
-        invalidateStructureQueries(queryClient);
-        await queryClient.invalidateQueries({ queryKey: ['process-tree'] });
-        await queryClient.invalidateQueries({ queryKey: ['process-graph'] });
-        
-        setShowMapSuggestionsDialog(false);
-      } else {
-        toast({
-          title: 'Uppdatering misslyckades',
-          description: result.error || 'Kunde inte spara bpmn-map.json',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('[BpmnFileManager] Error saving map:', error);
-      toast({
-        title: 'Uppdatering misslyckades',
-        description: error instanceof Error ? error.message : 'Okänt fel',
-        variant: 'destructive',
-      });
-    }
-  }, [mapSuggestions, acceptedSuggestions, queryClient, setShowMapSuggestionsDialog, toast]);
-
   const handleRegenerateBpmnMap = useCallback(async () => {
     try {
       setRegeneratingMap(true);
@@ -343,34 +296,8 @@ export function useBpmnMapManagement({
     }
   }, [setRegeneratingMap, queryClient, setBpmnMapValidation, toast]);
 
-  const handleExportUpdatedMap = useCallback(async () => {
-    // Fallback: exportera som fil om användaren vill ha det manuellt
-    const { loadBpmnMapFromStorageSimple } = await import('@/lib/bpmn/bpmnMapStorage');
-    const { generateUpdatedBpmnMap } = await import('@/lib/bpmn/bpmnMapSuggestions');
-    const currentMap = await loadBpmnMapFromStorageSimple();
-    const updatedMap = generateUpdatedBpmnMap(currentMap, mapSuggestions, acceptedSuggestions, undefined);
-    
-    const jsonStr = JSON.stringify(updatedMap, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bpmn-map-updated.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: 'bpmn-map.json exporterad',
-      description: 'Den uppdaterade filen har laddats ner.',
-    });
-  }, [mapSuggestions, acceptedSuggestions, toast]);
-
   return {
     handleValidateBpmnMap,
-    handleSaveUpdatedMap,
     handleRegenerateBpmnMap,
-    handleExportUpdatedMap,
   };
 }
