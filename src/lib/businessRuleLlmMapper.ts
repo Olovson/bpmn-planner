@@ -38,10 +38,19 @@ function coerceStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value
       .map((v) => (typeof v === 'string' ? stripText(v) : ''))
-      .filter((v) => v.length > 0);
+      .filter((v) => {
+        if (!v || v.length === 0) return false;
+        // Ignorera strängar som bara består av skiljetecken (t.ex. ",")
+        return /[A-Za-zÅÄÖåäö0-9]/.test(v);
+      });
   }
   if (typeof value === 'string' && value.trim()) {
-    return [stripText(value)];
+    const s = stripText(value);
+    // Ignorera triviala värden som bara är skiljetecken
+    if (!/[A-Za-zÅÄÖåäö0-9]/.test(s)) {
+      return [];
+    }
+    return [s];
   }
   return [];
 }

@@ -75,7 +75,7 @@ export interface UseFileGenerationReturn {
     customNodeFilter?: (node: BpmnProcessNode) => boolean,
   ) => Promise<DetailedGenerationResult | null>;
   handleGenerateAllArtifacts: () => Promise<void>;
-  handleGenerateSelectedFile: (selectedFile: BpmnFile) => Promise<void>;
+  handleGenerateSelectedFile: () => Promise<void>;
 }
 
 export function useFileGeneration({
@@ -158,8 +158,50 @@ export function useFileGeneration({
     showReport: boolean = true,
     customNodeFilter?: (node: BpmnProcessNode) => boolean,
   ): Promise<DetailedGenerationResult | null> => {
+    // Validate file - check if it has storage_path, if not, try to find it in database
+    let fileToUse = file;
+    
+    // Debug logging
+    console.log('[handleGenerateArtifacts] File received:', {
+      file_name: file.file_name,
+      storage_path: file.storage_path,
+      file_type: file.file_type,
+      id: file.id,
+    });
+    
+    if (!file.storage_path && file.file_name) {
+      console.log('[handleGenerateArtifacts] storage_path missing, searching in database for:', file.file_name);
+      
+      // Try to find the file in database by file_name
+      const { data: fileRecord, error: dbError } = await supabase
+        .from('bpmn_files')
+        .select('storage_path, file_type, file_name')
+        .eq('file_name', file.file_name)
+        .maybeSingle();
+      
+      console.log('[handleGenerateArtifacts] Database query result:', {
+        found: !!fileRecord,
+        storage_path: fileRecord?.storage_path,
+        error: dbError?.message,
+      });
+      
+      if (fileRecord?.storage_path) {
+        // Update the file object with the storage_path from database
+        fileToUse = { ...file, storage_path: fileRecord.storage_path };
+        console.log('[handleGenerateArtifacts] Updated file with storage_path:', fileToUse.storage_path);
+      } else {
+        console.warn('[handleGenerateArtifacts] File not found in database or has no storage_path:', {
+          file_name: file.file_name,
+          found: !!fileRecord,
+          storage_path: fileRecord?.storage_path,
+        });
+      }
+    }
+    
     // Validate file
-    const validation = validateFileForGeneration(file);
+    const validation = validateFileForGeneration(fileToUse);
+    console.log('[handleGenerateArtifacts] Validation result:', validation);
+    
     if (!validation.valid) {
       toast({
         title: validation.error === 'Endast BPMN-filer stöds för generering' ? 'Ej stödd filtyp' : 'Filen är inte uppladdad än',
@@ -187,7 +229,7 @@ export function useFileGeneration({
     resetGenState();
     const effectiveLlmMode: LlmGenerationMode = 'slow';
     persistLlmGenerationMode(effectiveLlmMode);
-    setGeneratingFile(file.file_name);
+    setGeneratingFile(fileToUse.file_name);
     setActiveOperation('llm');
     
     // Show dialog immediately (will show plan, then progress, then result)
@@ -485,8 +527,8 @@ export function useFileGeneration({
     // Automatisk hierarki-byggning: Bygg hierarki automatiskt innan generering
     // Använd root-fil om den finns, annars använd den valda filen
     const hierarchyFile = rootFileName 
-      ? files.find(f => f.file_name === rootFileName) || file
-      : file;
+      ? files.find(f => f.file_name === rootFileName) || fileToUse
+      : fileToUse;
     
     if (hierarchyFile && hierarchyFile.file_type === 'bpmn' && hierarchyFile.storage_path) {
       // Bygg hierarki tyst i bakgrunden (transparent för användaren)
@@ -513,13 +555,13 @@ export function useFileGeneration({
           .filter(f => !!f.storage_path)
           .map(f => f.file_name);
         
-        const isRootFile = rootFileName && file.file_name === rootFileName;
+        const isRootFile = rootFileName && fileToUse.file_name === rootFileName;
         
         // Kolla om filen är subprocess för att inkludera i plan
         const { data: depsForPlan } = await supabase
           .from('bpmn_dependencies')
           .select('parent_file, child_file')
-          .eq('child_file', file.file_name);
+          .eq('child_file', fileToUse.file_name);
         
         const isSubprocess = depsForPlan && depsForPlan.length > 0;
         const parentFile = isSubprocess ? depsForPlan![0].parent_file : null;
@@ -538,7 +580,7 @@ export function useFileGeneration({
               .select('child_file')
               .eq('parent_file', parentFile);
             
-            const relatedFiles = new Set<string>([parentFile, file.file_name]);
+            const relatedFiles = new Set<string>([parentFile, fileToUse.file_name]);
             if (parentDeps.data) {
               parentDeps.data.forEach(dep => {
                 if (dep.child_file) relatedFiles.add(dep.child_file);
@@ -546,10 +588,10 @@ export function useFileGeneration({
             }
             planFiles = Array.from(relatedFiles).filter(f => existingBpmnFiles.includes(f));
           } else {
-            planFiles = [file.file_name];
+            planFiles = [fileToUse.file_name];
           }
           
-          const graph = await buildBpmnProcessGraph(file.file_name, planFiles);
+          const graph = await buildBpmnProcessGraph(fileToUse.file_name, planFiles);
           const summary = createGraphSummary(graph);
           const testableNodes = getTestableNodes(graph);
           
@@ -563,7 +605,7 @@ export function useFileGeneration({
           };
         } else {
           plan = {
-            files: [file.file_name],
+            files: [fileToUse.file_name],
             totalNodes: 0,
             totalFiles: 1,
             hierarchyDepth: 1,
@@ -725,7 +767,7 @@ export function useFileGeneration({
       }
       
       const result = await generateAllFromBpmnWithGraph(
-        file.file_name,
+        fileToUse.file_name,
         graphFiles,
         existingDmnFiles,
         useHierarchy,
@@ -875,7 +917,7 @@ export function useFileGeneration({
         
         const uploadResult = await uploadDocumentation(
           result.docs,
-          file,
+          fileToUse,
           filesIncluded,
           effectiveLlmMode,
           llmProvider,
@@ -1303,8 +1345,18 @@ export function useFileGeneration({
     }
   }, [files, generationMode, toast, queryClient, resolveRootBpmnFile, handleGenerateArtifacts, buildHierarchySilently, setGenerationDialogResult, setGenerationProgress]);
 
-  const handleGenerateSelectedFile = useCallback(async (selectedFileParam?: BpmnFile) => {
-    const fileToUse = selectedFileParam || selectedFile;
+  const handleGenerateSelectedFile = useCallback(async () => {
+    // Always use selectedFile from state, not a parameter
+    // This ensures we use the file that was actually selected in the UI
+    const fileToUse = selectedFile;
+    
+    console.log('[handleGenerateSelectedFile] Called, selectedFile from state:', fileToUse ? {
+      file_name: fileToUse.file_name,
+      storage_path: fileToUse.storage_path,
+      file_type: fileToUse.file_type,
+      id: fileToUse.id,
+    } : null);
+    
     if (!fileToUse) {
       toast({
         title: 'Ingen fil vald',
@@ -1314,21 +1366,23 @@ export function useFileGeneration({
       return;
     }
 
-    if (fileToUse.file_type !== 'bpmn') {
-      toast({
-        title: 'Ej stödd filtyp',
-        description: 'Endast BPMN-filer stöds för generering',
-        variant: 'destructive',
-      });
-      return;
-    }
+    console.log('[handleGenerateSelectedFile] About to call handleGenerateArtifacts with:', {
+      fileToUse: {
+        file_name: fileToUse.file_name,
+        storage_path: fileToUse.storage_path,
+        file_type: fileToUse.file_type,
+        id: fileToUse.id,
+      },
+      generationMode,
+    });
 
     toast({
       title: 'Startar generering',
       description: `Genererar dokumentation för ${fileToUse.file_name} med Slow LLM läge.`,
     });
 
-    await handleGenerateArtifacts(fileToUse, generationMode, 'file');
+    const result = await handleGenerateArtifacts(fileToUse, generationMode, 'file');
+    console.log('[handleGenerateSelectedFile] handleGenerateArtifacts returned:', result ? 'success' : 'null/failed');
   }, [selectedFile, generationMode, toast, handleGenerateArtifacts]);
 
   return {
@@ -1337,5 +1391,3 @@ export function useFileGeneration({
     handleGenerateSelectedFile,
   };
 }
-
-

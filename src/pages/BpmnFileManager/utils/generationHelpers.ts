@@ -56,19 +56,25 @@ export function checkCancellation(cancelGenerationRef: React.MutableRefObject<bo
   }
 }
 
+function isBpmnFile(file: BpmnFile): boolean {
+  if (!file) return false;
+  const name = (file.file_name || '').toLowerCase();
+  // Primärt: filnamn eller storage_path som innehåller .bpmn
+  if (name.includes('.bpmn')) return true;
+  // Sekundärt: explicit file_type-markering
+  if (file.file_type === 'bpmn') return true;
+  return false;
+}
+
 export function validateFileForGeneration(file: BpmnFile): { valid: boolean; error?: string } {
-  if (file.file_type !== 'bpmn') {
+  // Endast BPMN-filer ska gå in i pipeline
+  if (!isBpmnFile(file)) {
     return {
       valid: false,
       error: 'Endast BPMN-filer stöds för generering',
     };
   }
-  if (!file.storage_path) {
-    return {
-      valid: false,
-      error: 'Filen är inte uppladdad än. Ladda upp BPMN-filen via files-sidan innan du genererar artefakter.',
-    };
-  }
+  // LLM‑pipen läser BPMN från versionslagring och behöver inte längre
+  // lita på storage_path, så vi gör inga fler blockerande kontroller här.
   return { valid: true };
 }
-

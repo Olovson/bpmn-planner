@@ -343,9 +343,16 @@ export const RightPanel = ({
     if (!selectedElement) return '';
     const mapping = mappings[selectedElement];
     const savedConfluenceUrl = mapping?.confluence_url || '';
-    const defaultDocUrl = getDocumentationUrl(bpmnFile, selectedElement);
+
+    // För CallActivities: länka till subprocessens Process Feature Goal
+    const isCallActivity = selectedElementType === 'bpmn:CallActivity';
+    const targetBpmnFile =
+      isCallActivity && displaySubprocessFile ? displaySubprocessFile : bpmnFile;
+    const elementIdForUrl = isCallActivity ? undefined : selectedElement;
+
+    const defaultDocUrl = getDocumentationUrl(targetBpmnFile, elementIdForUrl);
     return savedConfluenceUrl || defaultDocUrl;
-  }, [selectedElement, mappings, bpmnFile]);
+  }, [selectedElement, selectedElementType, mappings, bpmnFile, displaySubprocessFile]);
 
   const displayFigmaUrl = useMemo(() => {
     if (!selectedElement) return '';

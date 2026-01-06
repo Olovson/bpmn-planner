@@ -250,7 +250,8 @@ export function GenerationControls({
               generatingFile !== null ||
               isLoading ||
               !selectedFile ||
-              selectedFile.file_type !== 'bpmn'
+              (selectedFile.file_type !== 'bpmn' &&
+                !selectedFile.file_name.toLowerCase().endsWith('.bpmn'))
                 ? 'outline'
                 : 'default'
             }
@@ -258,9 +259,13 @@ export function GenerationControls({
               generatingFile !== null ||
               isLoading ||
               !selectedFile ||
-              selectedFile.file_type !== 'bpmn'
+              (selectedFile.file_type !== 'bpmn' &&
+                !selectedFile.file_name.toLowerCase().endsWith('.bpmn'))
             }
-            onClick={onGenerateSelected}
+            onClick={() => {
+              console.log('[GenerationControls] Button clicked, selectedFile:', selectedFile);
+              onGenerateSelected();
+            }}
             className="gap-2"
             title={!selectedFile ? 'Välj en BPMN-fil i listan för att generera dokumentation' : 'Generera dokumentation och DoR/DoD för vald fil. Testgenerering sker i separat steg.'}
           >
@@ -298,7 +303,8 @@ export function GenerationControls({
               generatingFile !== null ||
               isLoading ||
               !selectedFile ||
-              selectedFile.file_type !== 'bpmn'
+              (selectedFile.file_type !== 'bpmn' &&
+                !selectedFile.file_name.toLowerCase().endsWith('.bpmn'))
             }
             onClick={onGenerateTestsSelected}
             className="gap-2"

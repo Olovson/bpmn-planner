@@ -156,7 +156,8 @@ export function buildBusinessRuleJsonSchema() {
           items: { type: 'string' },
         },
         decisionLogic: {
-          type: 'string',
+          type: 'array',
+          items: { type: 'string' },
         },
         outputs: {
           type: 'array',
